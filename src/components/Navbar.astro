@@ -1,0 +1,99 @@
+---
+const navLinks = [
+    { href: "/", label: "Home" },
+    { href: "/about", label: "About" },
+    { href: "/tech", label: "Tech Insights" },
+    { href: "/jewish-studies", label: "Jewish Studies" },
+    { href: "/projects", label: "Projects" },
+    { href: "/media-appearances", label: "Media" },
+    { href: "/xaas-list", label: "XaaS List" },
+];
+
+const isCurrentPage = (linkHref: string) => {
+    if (linkHref === "/") {
+        return Astro.url.pathname === "/";
+    }
+    return Astro.url.pathname === linkHref || Astro.url.pathname.startsWith(linkHref + '/');
+};
+---
+<header class="bg-card-bg-light/90 dark:bg-card-bg-dark/90 backdrop-blur-lg shadow-sm sticky top-0 z-50 border-b border-border-light dark:border-border-dark">
+    <nav class="container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between" aria-label="Main navigation">
+        <div class="flex-shrink-0">
+            <a href="/" class="text-xl font-bold text-accent dark:text-accent-dark hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-accent rounded-sm" aria-label="Matthew Miller - Homepage">
+                Matthew Miller
+            </a>
+        </div>
+
+        {/* Mobile Menu Button */}
+        <div class="md:hidden">
+            <button id="mobile-menu-button" type="button" class="inline-flex items-center justify-center p-2 rounded-md text-secondary-light dark:text-secondary-dark hover:text-primary-light dark:hover:text-primary-dark hover:bg-slate-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent" aria-controls="main-menu-mobile" aria-expanded="false">
+                <span class="sr-only">Open main menu</span>
+                <svg id="icon-menu-closed" class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+                <svg id="icon-menu-open" class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        {/* Desktop Menu */}
+        <div class="hidden md:flex md:ml-6 md:items-center md:space-x-1 lg:space-x-2">
+            {navLinks.map(link => (
+                <a
+                    href={link.href}
+                    class:list={[
+                        "px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-light dark:focus:ring-offset-bg-dark focus:ring-accent",
+                        isCurrentPage(link.href)
+                            ? "bg-accent/10 text-accent dark:text-accent-dark"
+                            : "text-primary-light dark:text-primary-dark hover:bg-slate-200/70 dark:hover:bg-slate-700/70 hover:text-accent dark:hover:text-accent-dark"
+                    ]}
+                    aria-current={isCurrentPage(link.href) ? 'page' : undefined}
+                >
+                    {link.label}
+                </a>
+            ))}
+        </div>
+    </nav>
+
+    {/* Mobile menu, show/hide based on menu state. */}
+    <div class="hidden md:hidden" id="main-menu-mobile">
+        <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-border-light dark:border-border-dark">
+            {navLinks.map(link => (
+                <a
+                    href={link.href}
+                    class:list={[
+                        "block px-3 py-2 rounded-md text-base font-medium transition-colors duration-150 ease-in-out",
+                        isCurrentPage(link.href)
+                            ? "bg-accent/10 text-accent dark:text-accent-dark"
+                            : "text-primary-light dark:text-primary-dark hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-accent dark:hover:text-accent-dark"
+                    ]}
+                    aria-current={isCurrentPage(link.href) ? 'page' : undefined}
+                >
+                    {link.label}
+                </a>
+            ))}
+        </div>
+    </div>
+</header>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const menuButton = document.getElementById('mobile-menu-button');
+    const mainMenu = document.getElementById('main-menu-mobile'); // Corrected ID
+    const iconClosed = document.getElementById('icon-menu-closed');
+    const iconOpen = document.getElementById('icon-menu-open');
+
+    if (menuButton && mainMenu && iconClosed && iconOpen) {
+        menuButton.addEventListener('click', () => {
+            const isExpanded = menuButton.getAttribute('aria-expanded') === 'true' || false;
+            menuButton.setAttribute('aria-expanded', String(!isExpanded));
+            mainMenu.classList.toggle('hidden');
+            iconClosed.classList.toggle('hidden');
+            iconClosed.classList.toggle('block');
+            iconOpen.classList.toggle('hidden');
+            iconOpen.classList.toggle('block');
+        });
+    }
+});
+</script>

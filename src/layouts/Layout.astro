@@ -1,0 +1,99 @@
+---
+import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css'; // Handled by @layer base in global.css now
+
+export interface Props {
+  title?: string;
+  description?: string;
+  image?: string; // For Open Graph image
+}
+
+const {
+  title: pageSpecificTitle,
+  description: pageSpecificDescription,
+  image: pageSpecificImage
+} = Astro.props;
+
+const siteTitleBase = 'Matthew Miller';
+const siteTagline = 'AI, Automation, Analytics | Jewish Studies';
+const defaultDescription = `Personal site of ${siteTitleBase} - Principal Analyst in AI, Automation, and Analytics, and Jewish Studies Aficionado. Explore tech insights, Jewish studies projects, and media appearances.`;
+const defaultOgImage = '/og-default.png'; // **CREATE THIS IMAGE (e.g., 1200x630px) and place in /public**
+
+const title = pageSpecificTitle ? `${pageSpecificTitle} | ${siteTitleBase}` : `${siteTitleBase} | ${siteTagline}`;
+const description = pageSpecificDescription || defaultDescription;
+const ogImage = new URL(pageSpecificImage || defaultOgImage, Astro.url.origin).href;
+---
+
+<!doctype html>
+<html lang="en" class="dark"> {/* Default to dark or remove to respect OS, or add JS toggle */}
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    {/* Favicons - Generate from a site like realfavicongenerator.net and place in /public */}
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#06b6d4"> {/* Use your accent color */}
+    <meta name="msapplication-TileColor" content="#0e7490"> {/* Darker accent */}
+    <meta name="theme-color" content="#ffffff"> {/* Or your light bg color */}
+
+
+    {/* Open Graph / Social Media Meta Tags */}
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:url" content={Astro.url.href} />
+    <meta property="og:site_name" content={siteTitleBase} />
+
+    {/* Twitter Card Tags */}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    {/* <meta name="twitter:site" content="@YourTwitterHandle"> */}
+    {/* <meta name="twitter:creator" content="@YourTwitterHandle"> */}
+
+    <meta name="generator" content={Astro.generator} />
+
+    {/* Fonts from Google Fonts */}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body class:list={[{'debug-screens' : import.meta.env.DEV}]}> {/* body classes moved to global.css */}
+    <Navbar />
+    <div class="flex-grow"> {/* Pushes footer down */}
+        <slot />
+    </div>
+    <Footer />
+
+    {/* Optional: Dark mode toggle script if darkMode: 'class' in tailwind.config.mjs */}
+    <script is:inline>
+      // Basic dark mode persistence
+      const theme = (() => {
+        if (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) {
+          return localStorage.getItem('theme');
+        }
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          return 'dark';
+        }
+        return 'light';
+      })();
+
+      if (theme === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+      // Store initial preference
+      //localStorage.setItem('theme', theme); // Uncomment if you want to persist on first load based on OS
+    </script>
+</body>
+</html>
