@@ -1,0 +1,340 @@
+<html lang="en">
+  <head>
+    <title>AI Photo Slideshow</title>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" defer></script>
+    <style>
+      body {
+        background: #111;
+        color: white;
+        font-family: sans-serif;
+        text-align: center;
+        padding: 1rem;
+      }
+      
+      .controls {
+        margin: 2rem auto;
+        max-width: 900px;
+      }
+      
+      .album-selector {
+        margin-bottom: 2rem;
+      }
+      
+      .album-selector label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+      }
+      
+      .album-selector select {
+        background: #222;
+        color: white;
+        border: 2px solid #444;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        min-width: 200px;
+        cursor: pointer;
+      }
+      
+      .album-selector select:focus {
+        outline: none;
+        border-color: #666;
+      }
+      
+      .loading {
+        color: #888;
+        font-style: italic;
+        margin: 2rem 0;
+      }
+      
+      .error {
+        color: #ff6b6b;
+        background: rgba(255, 107, 107, 0.1);
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 2rem auto;
+        max-width: 500px;
+      }
+      
+      .swiper {
+        max-width: 900px;
+        margin: 2rem auto;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+      
+      .swiper-slide img {
+        width: 100%;
+        height: 600px;
+        object-fit: cover;
+        display: block;
+      }
+      
+      .swiper-pagination-bullet {
+        background: rgba(255, 255, 255, 0.5);
+      }
+      
+      .swiper-pagination-bullet-active {
+        background: white;
+      }
+      
+      .swiper-button-prev,
+      .swiper-button-next {
+        color: white;
+        background: rgba(0, 0, 0, 0.5);
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+      }
+      
+      .swiper-button-prev:after,
+      .swiper-button-next:after {
+        font-size: 18px;
+      }
+      
+      .photo-count {
+        margin-top: 1rem;
+        color: #888;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AI Photo Slideshow</h1>
+
+    <div class="controls">
+      <div class="album-selector">
+        <label for="album-select">Choose Album:</label>
+        <select id="album-select">
+          <option value="">Select an album...</option>
+          <option value="matthew">AI Matthew</option>
+          <option value="aiRoshHashanah">AI Rosh Hashanah</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">
+      Loading photos...
+    </div>
+
+    <div id="error" class="error" style="display: none;">
+      <!-- Error message will be inserted here -->
+    </div>
+
+    <div class="swiper" id="swiper-container" style="display: none;">
+      <div class="swiper-wrapper" id="photo-wrapper">
+        <!-- Slides will be injected by JS -->
+      </div>
+      <div class="swiper-pagination"></div>
+      <div class="swiper-button-prev"></div>
+      <div class="swiper-button-next"></div>
+    </div>
+
+    <div id="photo-count" class="photo-count" style="display: none;">
+      <!-- Photo count will be shown here -->
+    </div>
+
+   <script type="module">
+    let swiper = null;
+
+    async function loadAlbum(albumKey) {
+      console.log('🔄 loadAlbum called with albumKey:', albumKey);
+      
+      if (!albumKey) {
+        console.log('❌ No album key provided, hiding all');
+        hideAll();
+        return;
+      }
+
+      try {
+        console.log('🚀 Starting to load album:', albumKey);
+        showLoading();
+        hideError();
+        
+        const timestamp = Date.now(); // Cache busting
+        const apiUrl = `/api/photos/${encodeURIComponent(albumKey)}?_t=${timestamp}`;
+        console.log('📡 Making API request to:', apiUrl);
+        
+        const res = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        console.log('📨 API Response status:', res.status, res.statusText);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        const photos = await res.json();
+        console.log('📊 Received photos array:', {
+          isArray: Array.isArray(photos),
+          length: photos.length,
+          firstPhotoId: photos[0]?.id,
+          firstPhotoFilename: photos[0]?.filename,
+          firstPhotoUrl: photos[0]?.baseUrl
+        });
+
+        // Log first 3 photo IDs and filenames for comparison
+        console.log('🖼️ First 3 photos details:');
+        photos.slice(0, 3).forEach((photo, index) => {
+          console.log(`  Photo ${index + 1}:`, {
+            id: photo.id,
+            filename: photo.filename,
+            baseUrl: photo.baseUrl?.substring(0, 50) + '...'
+          });
+        });
+
+        // Validate response
+        if (!Array.isArray(photos)) {
+          throw new Error('Invalid photo data received from API');
+        }
+
+        if (photos.length === 0) {
+          throw new Error('No photos found in this album');
+        }
+
+        // Clear existing slides
+        const wrapper = document.getElementById('photo-wrapper');
+        console.log('🧹 Clearing existing slides. Current slides count:', wrapper.children.length);
+        wrapper.innerHTML = '';
+
+        // Add new slides
+        console.log('➕ Adding new slides...');
+        for (const photo of photos) {
+          const slide = document.createElement('div');
+          slide.className = 'swiper-slide';
+          slide.innerHTML = `<img src="${photo.baseUrl}=w1200" alt="AI Art" loading="lazy" />`;
+          wrapper.appendChild(slide);
+        }
+        console.log('✅ Added', photos.length, 'slides to wrapper');
+
+        // Destroy existing swiper if it exists
+        if (swiper) {
+          console.log('🗑️ Destroying existing swiper instance');
+          swiper.destroy();
+          swiper = null;
+        }
+
+        // Initialize new swiper
+        console.log('🔄 Initializing new Swiper with', photos.length, 'slides');
+        swiper = new Swiper('.swiper', {
+          loop: photos.length > 1,
+          slidesPerView: 1,
+          spaceBetween: 20,
+          autoplay: {
+            delay: 4000,
+            disableOnInteraction: false,
+          },
+          pagination: {
+            el: '.swiper-pagination',
+            clickable: true,
+            dynamicBullets: true,
+          },
+          navigation: {
+            nextEl: '.swiper-button-next',
+            prevEl: '.swiper-button-prev',
+          },
+          keyboard: {
+            enabled: true,
+          },
+        });
+
+        console.log('✅ Swiper initialized successfully');
+
+        // Show slideshow and photo count
+        hideLoading();
+        showSlideshow();
+        showPhotoCount(photos.length, albumKey);
+        
+        console.log('🎉 Album loaded successfully:', albumKey, 'with', photos.length, 'photos');
+
+      } catch (err) {
+        console.error('❌ Failed to load photos:', err);
+        console.error('📊 Error details:', {
+          message: err.message,
+          stack: err.stack,
+          albumKey: albumKey
+        });
+        hideLoading();
+        showError(`Failed to load album: ${err.message}`);
+      }
+    }
+
+    function showLoading() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('swiper-container').style.display = 'none';
+      document.getElementById('photo-count').style.display = 'none';
+    }
+
+    function hideLoading() {
+      document.getElementById('loading').style.display = 'none';
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById('error');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+      document.getElementById('swiper-container').style.display = 'none';
+      document.getElementById('photo-count').style.display = 'none';
+    }
+
+    function hideError() {
+      document.getElementById('error').style.display = 'none';
+    }
+
+    function showSlideshow() {
+      document.getElementById('swiper-container').style.display = 'block';
+    }
+
+    function showPhotoCount(count, albumKey) {
+      const countDiv = document.getElementById('photo-count');
+      const albumName = albumKey === 'matthew' ? 'AI Matthew' : 
+                       albumKey === 'aiRoshHashanah' ? 'AI Rosh Hashanah' : albumKey;
+      countDiv.textContent = `${count} photos in ${albumName} album`;
+      countDiv.style.display = 'block';
+    }
+
+    function hideAll() {
+      hideLoading();
+      hideError();
+      document.getElementById('swiper-container').style.display = 'none';
+      document.getElementById('photo-count').style.display = 'none';
+      if (swiper) {
+        swiper.destroy();
+        swiper = null;
+      }
+    }
+
+    // Event listener for album selection
+    document.getElementById('album-select').addEventListener('change', (e) => {
+      const selectedAlbum = e.target.value;
+      console.log('🎛️ Album dropdown changed to:', selectedAlbum);
+      loadAlbum(selectedAlbum);
+    });
+
+    // Check URL parameters on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('🌐 Page loaded, checking URL parameters');
+      const urlParams = new URLSearchParams(window.location.search);
+      const albumParam = urlParams.get('album');
+      console.log('🔗 URL album parameter:', albumParam);
+      
+      if (albumParam) {
+        console.log('⚡ Setting dropdown to URL parameter and loading album');
+        const selectElement = document.getElementById('album-select');
+        selectElement.value = albumParam;
+        loadAlbum(albumParam);
+      } else {
+        console.log('ℹ️ No URL parameter found, waiting for user selection');
+      }
+    });
+  </script>
+  </body>
+</html>
