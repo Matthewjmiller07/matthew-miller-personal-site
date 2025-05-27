@@ -5,26 +5,30 @@ let matthewSwiper = null;
 
 async function loadMatthewSlideshow() {
     try {
-        console.log('Loading Matthew slideshow...');
-        
-        const response = await fetch('/api/photos/matthew');
+        console.log('🌀 Loading Matthew slideshow...');
+
+        // Prevent cached API response
+        const response = await fetch(`/api/photos/matthew?ts=${Date.now()}`);
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const photos = await response.json();
-        
+
         if (!Array.isArray(photos) || photos.length === 0) {
             throw new Error('No photos received');
         }
 
-        console.log(`Loaded ${photos.length} photos`);
+        // Debug log
+        console.log(`📸 Loaded ${photos.length} photos`);
+        console.log('🔍 Sample photos:', photos.slice(0, 3)); // first 3 for inspection
 
         const wrapper = document.getElementById('slideshow-wrapper');
         if (!wrapper) {
             throw new Error('Slideshow wrapper not found');
         }
-        
+
         wrapper.innerHTML = '';
 
         photos.forEach((photo, index) => {
@@ -71,18 +75,18 @@ async function loadMatthewSlideshow() {
                 onlyInViewport: true,
             },
             on: {
-                slideChange: function() {
+                slideChange: function () {
                     updateCounter(this.realIndex + 1, photos.length);
                 }
             }
         });
 
         updateCounter(1, photos.length);
-        console.log('Slideshow initialized');
+        console.log('✅ Slideshow initialized');
 
     } catch (error) {
-        console.error('Slideshow error:', error);
-        
+        console.error('❌ Slideshow error:', error);
+
         const wrapper = document.getElementById('slideshow-wrapper');
         if (wrapper) {
             wrapper.innerHTML = `
@@ -105,7 +109,7 @@ function updateCounter(current, total) {
     }
 }
 
-// Initialize when DOM is ready
+// Initialize on DOM ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadMatthewSlideshow);
 } else {
