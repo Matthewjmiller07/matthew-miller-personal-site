@@ -82,10 +82,12 @@ import Layout from '../layouts/Layout.astro';
     text-decoration: underline;
   }
 
-  video, img.fallback {
+  .media-element {
     width: 300px;
     max-width: 80%;
     height: auto;
+    display: block;
+    margin: 0 auto;
   }
 
   @media (min-width: 768px) {
@@ -98,7 +100,7 @@ import Layout from '../layouts/Layout.astro';
       font-size: 2rem;
     }
 
-    video, img.fallback {
+    .media-element {
       width: 400px;
     }
   }
@@ -115,26 +117,27 @@ import Layout from '../layouts/Layout.astro';
       </p>
     </div>
 
-    <script>
-      // Detect Safari on iOS
-      const isSafariIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
-                         !window.MSStream && 
-                         /WebKit/.test(navigator.userAgent) && 
-                         !/(Chrome|CriOS)/.test(navigator.userAgent);
+    <div id="media-container">
+      <video autoplay loop muted playsinline poster="/images/404.png" class="media-element">
+        <source src="/images/404me.webm" type="video/webm" />
+        <img src="/images/404.png" alt="Fallback animation frame" class="fallback" />
+      </video>
+    </div>
 
-      // Replace video with static image if on Safari iOS
-      if (isSafariIOS) {
-        document.write('<img src="/images/404 Background Removed.png" alt="404 Error" class="fallback">');
-      } else {
-        document.write('\
-          <video autoplay loop muted playsinline poster="/images/404.png">\n\
-            <source src="/images/404me.webm" type="video/webm" />\n\
-            <img src="/images/404.png" alt="Fallback animation frame" class="fallback" />\n\
-          </video>');
-      }
+    <script>
+      // Wait for the DOM to be fully loaded
+      document.addEventListener('DOMContentLoaded', function() {
+        const isSafariIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+                           !window.MSStream && 
+                           /WebKit/.test(navigator.userAgent) && 
+                           !/(Chrome|CriOS)/.test(navigator.userAgent);
+
+        const container = document.getElementById('media-container');
+        
+        if (isSafariIOS) {
+          container.innerHTML = `<img src="/images/404 Background Removed.png" alt="404 Error" class="media-element">`;
+        }
+      });
     </script>
-    <noscript>
-      <img src="/images/404 Background Removed.png" alt="404 Error" class="fallback">
-    </noscript>
   </main>
 </Layout>
