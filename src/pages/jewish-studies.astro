@@ -1,0 +1,209 @@
+---
+import Layout from '../layouts/Layout.astro';
+import data from '../data/newbooksinjewishstudiesepisodes.json';
+import '../styles/jewish-studies.css';
+
+const episodes = data.episodes;
+
+// Get unique publishers
+const publishers = [...new Set(episodes.filter(ep => ep.publisher).map(ep => ep.publisher))].sort();
+
+// Sort episodes chronologically
+const sortedEpisodes = [...episodes].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+// Group by year
+function groupEpisodesByYear(episodes) {
+  const grouped = {};
+  
+  for (const ep of episodes) {
+    const year = new Date(ep.date).getFullYear();
+    if (!grouped[year]) grouped[year] = [];
+    grouped[year].push(ep);
+  }
+  
+  return grouped;
+}
+
+const groupedEpisodes = groupEpisodesByYear(sortedEpisodes);
+const allYears = Object.keys(groupedEpisodes).sort((a, b) => Number(a) - Number(b));
+---
+
+<Layout title="Jewish Studies Podcast Episodes">
+  <main class="max-w-4xl mx-auto px-4 py-8">
+    <script>
+      document.addEventListener('astro:page-load', () => {
+        const yearLinks = document.querySelectorAll('[data-year-filter]');
+        const publisherSelect = document.getElementById('publisher-filter');
+        const episodeItems = document.querySelectorAll('.episode-item');
+        
+        function filterEpisodes() {
+          const selectedYear = document.querySelector('[data-year-filter].active')?.dataset.yearFilter || 'all';
+          const selectedPublisher = publisherSelect.value;
+          
+          episodeItems.forEach(item => {
+            const year = item.dataset.year;
+            const publisher = item.dataset.publisher;
+            const yearMatch = selectedYear === 'all' || year === selectedYear;
+            const publisherMatch = selectedPublisher === 'all' || publisher === selectedPublisher;
+            
+            item.style.display = yearMatch && publisherMatch ? 'block' : 'none';
+          });
+          
+          // Show/hide year sections based on visible episodes
+          document.querySelectorAll('.year-section').forEach(section => {
+            const hasVisibleEpisodes = section.querySelector('.episode-item[style="display: block"]');
+            section.style.display = hasVisibleEpisodes ? 'block' : 'none';
+          });
+        }
+        
+        yearLinks.forEach(link => {
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            yearLinks.forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+            filterEpisodes();
+          });
+        });
+        
+        publisherSelect?.addEventListener('change', filterEpisodes);
+      });
+    </script>
+    <header class="text-center mb-12">
+      <h1 class="text-4xl font-bold mb-4 text-primary-light dark:text-primary-dark">
+        Jewish Studies Podcast Episodes
+      </h1>
+      <p class="text-xl text-secondary-light dark:text-secondary-dark">
+        Hosted by Matthew Miller on the {data.summary.network}
+      </p>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-md transition-transform hover:scale-105">
+        <span class="block text-3xl font-bold mb-2 text-primary-light dark:text-primary-dark">{data.summary.totalEpisodes}</span>
+        <span class="text-secondary-light dark:text-secondary-dark">Total Episodes</span>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-md transition-transform hover:scale-105">
+        <span class="block text-3xl font-bold mb-2 text-primary-light dark:text-primary-dark">{data.summary.yearsActive}</span>
+        <span class="text-secondary-light dark:text-secondary-dark">Years Active</span>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-md transition-transform hover:scale-105">
+        <span class="block text-3xl font-bold mb-2 text-primary-light dark:text-primary-dark">{data.summary.yearRange}</span>
+        <span class="text-secondary-light dark:text-secondary-dark">Date Range</span>
+      </div>
+    </div>
+
+    <div class="mb-12 space-y-6">
+      <nav class="overflow-x-auto">
+        <div class="flex justify-center gap-4 flex-wrap">
+          <a 
+            href="#"
+            data-year-filter="all"
+            class="px-4 py-2 rounded-md bg-white dark:bg-gray-800 text-primary-light dark:text-primary-dark hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm active"
+          >
+            All Years
+          </a>
+          {allYears.map(year => (
+            <a 
+              href="#"
+              data-year-filter={year}
+              class="px-4 py-2 rounded-md bg-white dark:bg-gray-800 text-primary-light dark:text-primary-dark hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm"
+            >
+              {year}
+            </a>
+          ))}
+        </div>
+      </nav>
+      
+      <div class="flex justify-center">
+        <select 
+          id="publisher-filter"
+          class="px-4 py-2 rounded-md bg-white dark:bg-gray-800 text-primary-light dark:text-primary-dark border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+        >
+          <option value="all">All Publishers</option>
+          {publishers.map(publisher => (
+            <option value={publisher}>{publisher}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+
+    <div class="space-y-16">
+      {allYears.map(year => (
+        <section id={year} class="scroll-mt-16">
+          <h2 class="text-2xl font-bold mb-6 text-primary-light dark:text-primary-dark sticky top-0 bg-gray-50 dark:bg-gray-900 py-4 z-10">
+            {year}
+          </h2>
+          <ul class="space-y-6">
+            {groupedEpisodes[year].map(ep => {
+              const dateObj = new Date(ep.date);
+              const month = dateObj.toLocaleString('default', { month: 'short' });
+              const day = dateObj.getDate();
+
+              return (
+                <li 
+                  class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow episode-item"
+                  data-year={year}
+                  data-publisher={ep.publisher || ''}
+                >
+                  <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-shrink-0 text-center md:text-left">
+                      <div class="text-lg font-medium text-secondary-light dark:text-secondary-dark">{month} {day}</div>
+                    </div>
+                    <div class="flex-grow">
+                      <h3 class="text-xl font-medium mb-2">
+                        <a 
+                          href={ep.url} 
+                          class="text-primary-light dark:text-primary-dark hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {ep.title}
+                        </a>
+                      </h3>
+                      {ep.author && (
+                        <p class="text-secondary-light dark:text-secondary-dark mb-1">
+                          by {ep.author}
+                        </p>
+                      )}
+                      {ep.publisher && (
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                          {ep.publisher} {ep.year && `(${ep.year})`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
+
+    <footer class="mt-16 pt-8 border-t border-gray-200 dark:border-gray-700 text-center">
+      <div class="max-w-2xl mx-auto">
+        <h3 class="text-xl font-bold mb-4 text-primary-light dark:text-primary-dark">About the Host</h3>
+        <p class="text-secondary-light dark:text-secondary-dark mb-4">{data.host.bio}</p>
+        <div class="flex justify-center gap-4">
+          <a 
+            href={data.host.website} 
+            class="text-blue-600 dark:text-blue-400 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Website
+          </a>
+          <span class="text-gray-400">|</span>
+          <a 
+            href={data.host.profile} 
+            class="text-blue-600 dark:text-blue-400 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Host Profile
+          </a>
+        </div>
+      </div>
+    </footer>
+  </main>
+</Layout>

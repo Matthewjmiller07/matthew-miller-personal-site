@@ -1,0 +1,93 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Career Timeline" description="Explore Matthew Miller's professional experience in an interactive timeline.">
+  <div class="px-4 py-8 max-w-screen-xl mx-auto">
+    <h1 class="text-3xl md:text-4xl font-bold text-center mb-6">Career Timeline</h1>
+
+    <!-- Mobile Dropdown -->
+    <div class="sm:hidden mb-6 text-center">
+      <label for="job-select" class="sr-only">Select a job</label>
+      <select id="job-select" class="bg-gray-800 text-white border border-gray-700 rounded px-4 py-2">
+        <option disabled selected>Jump to a role</option>
+      </select>
+    </div>
+
+    <!-- Desktop Nav -->
+    <ul id="job-nav" class="hidden sm:flex flex-wrap justify-center gap-4 text-sm sm:text-base mb-8 text-gray-300"></ul>
+
+    <!-- Timeline Embed -->
+    <div id="timeline-embed" class="w-full h-[80vh] rounded-md overflow-hidden border border-gray-700 shadow-lg"></div>
+  </div>
+
+  <!-- TimelineJS -->
+  <script src="https://cdn.knightlab.com/libs/timeline3/latest/js/timeline.js" defer></script>
+
+  <!-- Dynamic Init Script -->
+  <script defer>
+  window.addEventListener('DOMContentLoaded', () => {
+    fetch('/data/timeline_experience_desc.json')
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (!data || !Array.isArray(data.events)) {
+          throw new Error('Invalid timeline JSON structure');
+        }
+
+        const navContainer = document.getElementById('job-nav');
+        const select = document.getElementById('job-select');
+
+        const icons = {
+          "Research": "briefcase",
+          "Senior": "bar-chart-2",
+          "Co-Founder": "user-cog",
+          "Translator": "type",
+          "Analyst": "activity",
+          "Linguist": "book-open"
+        };
+
+        const timeline = new TL.Timeline('timeline-embed', data, {
+          theme: 'dark'
+        });
+
+        data.events.forEach((event, index) => {
+          const title = event.text.headline;
+          const id = timeline.config.events[index]._id;
+
+          const iconName = Object.entries(icons).find(([key]) => title.includes(key))?.[1] || 'briefcase';
+
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <button class="flex items-center gap-1 hover:text-white hover:underline transition" data-index="${index}">
+              <img src="https://lucide.dev/icons/${iconName}.svg" alt="" class="w-4 h-4 opacity-70" />
+              ${title}
+            </button>`;
+          navContainer.appendChild(li);
+
+          const option = document.createElement('option');
+          option.value = index;
+          option.textContent = title;
+          select.appendChild(option);
+        });
+
+        navContainer.querySelectorAll('button').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const index = parseInt(btn.dataset.index);
+            timeline.goToId(timeline.config.events[index]._id);
+          });
+        });
+
+        select.addEventListener('change', (e) => {
+          const index = parseInt(e.target.value);
+          timeline.goToId(timeline.config.events[index]._id);
+        });
+      })
+      .catch(err => {
+        console.error('Failed to load timeline:', err.message);
+      });
+  });
+</script>
+</Layout>

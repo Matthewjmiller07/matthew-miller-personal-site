@@ -1,6 +1,7 @@
 ---
 import Navbar from '../components/Navbar.astro';
 import Footer from '../components/Footer.astro';
+import { ViewTransitions } from 'astro:transitions';
 import '../styles/global.css'; // Handled by @layer base in global.css now
 
 export interface Props {
@@ -26,8 +27,14 @@ const ogImage = new URL(pageSpecificImage || defaultOgImage, Astro.url.origin).h
 ---
 
 <!doctype html>
-<html lang="en" class="dark"> {/* Default to dark or remove to respect OS, or add JS toggle */}
+<html lang="en" class="dark" transition:animate="none">
 <head>
+    <script is:inline>
+      // Basic dark mode persistence - run immediately
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('theme') === 'light') {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
@@ -61,39 +68,21 @@ const ogImage = new URL(pageSpecificImage || defaultOgImage, Astro.url.origin).h
     {/* <meta name="twitter:creator" content="@YourTwitterHandle"> */}
 
     <meta name="generator" content={Astro.generator} />
+    <ViewTransitions />
 
     {/* Fonts from Google Fonts */}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
 </head>
-<body class:list={[{'debug-screens' : import.meta.env.DEV}]}> {/* body classes moved to global.css */}
+<body class:list={[{'debug-screens' : import.meta.env.DEV}]} transition:animate="none">
     <Navbar />
     <div class="flex-grow"> {/* Pushes footer down */}
         <slot />
     </div>
     <Footer />
 
-    {/* Optional: Dark mode toggle script if darkMode: 'class' in tailwind.config.mjs */}
-    <script is:inline>
-      // Basic dark mode persistence
-      const theme = (() => {
-        if (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) {
-          return localStorage.getItem('theme');
-        }
-        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          return 'dark';
-        }
-        return 'light';
-      })();
 
-      if (theme === 'light') {
-        document.documentElement.classList.remove('dark');
-      } else {
-        document.documentElement.classList.add('dark');
-      }
-      // Store initial preference
-      //localStorage.setItem('theme', theme); // Uncomment if you want to persist on first load based on OS
-    </script>
 </body>
 </html>
