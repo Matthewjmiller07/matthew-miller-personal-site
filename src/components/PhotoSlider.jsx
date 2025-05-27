@@ -3,7 +3,18 @@ import "swiper/css";
 import "swiper/css/navigation";
 import { Autoplay, Navigation } from "swiper/modules";
 
+import { useEffect, useState } from 'react';
+
 const PhotoSlider = ({ photos }) => {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return <div className="photo-slider-placeholder" style={{ height: '250px', background: '#1a1a1a' }} />;
+  }
   return (
     <Swiper
       slidesPerView={1}
@@ -55,9 +66,10 @@ const PhotoSlider = ({ photos }) => {
       {photos.map((photo, index) => (
         <SwiperSlide key={photo.id || index}>
           <img
-            src={`${photo.baseUrl}=w800`}
+            src={photo.baseUrl}
             alt="AI Generated Portrait"
             loading="lazy"
+            decoding="async"
           />
         </SwiperSlide>
       ))}
