@@ -75,23 +75,42 @@ const isCurrentPage = (linkHref: string) => {
     </div>
 </header>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const menuButton = document.getElementById('mobile-menu-button');
-    const mainMenu = document.getElementById('main-menu-mobile'); // Corrected ID
-    const iconClosed = document.getElementById('icon-menu-closed');
-    const iconOpen = document.getElementById('icon-menu-open');
+<script is:inline>
+    document.addEventListener('astro:page-load', () => {
+        const menuButton = document.getElementById('mobile-menu-button');
+        const mainMenu = document.getElementById('main-menu-mobile');
+        const iconClosed = document.getElementById('icon-menu-closed');
+        const iconOpen = document.getElementById('icon-menu-open');
 
-    if (menuButton && mainMenu && iconClosed && iconOpen) {
-        menuButton.addEventListener('click', () => {
-            const isExpanded = menuButton.getAttribute('aria-expanded') === 'true' || false;
-            menuButton.setAttribute('aria-expanded', String(!isExpanded));
+        if (!menuButton || !mainMenu || !iconClosed || !iconOpen) return;
+
+        function toggleMenu() {
             mainMenu.classList.toggle('hidden');
             iconClosed.classList.toggle('hidden');
             iconClosed.classList.toggle('block');
             iconOpen.classList.toggle('hidden');
             iconOpen.classList.toggle('block');
+            menuButton.setAttribute('aria-expanded', mainMenu.classList.contains('hidden') ? 'false' : 'true');
+        }
+
+        // Handle menu button clicks
+        menuButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMenu();
         });
-    }
-});
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!mainMenu.classList.contains('hidden') && 
+                !menuButton.contains(e.target) && 
+                !mainMenu.contains(e.target)) {
+                toggleMenu();
+            }
+        });
+
+        // Close menu when clicking a link
+        mainMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', toggleMenu);
+        });
+    });
 </script>
