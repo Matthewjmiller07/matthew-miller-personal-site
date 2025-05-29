@@ -32,36 +32,131 @@ const allYears = Object.keys(groupedEpisodes).sort((a, b) => Number(a) - Number(
   <main class="max-w-4xl mx-auto px-4 py-8">
     <script>
       document.addEventListener('astro:page-load', () => {
+        const filterFeedback = document.getElementById('filter-feedback');
+        const activeFilters = document.getElementById('active-filters');
         const yearLinks = document.querySelectorAll('[data-year-filter]');
         const publisherSelect = document.getElementById('publisher-filter');
         const episodeItems = document.querySelectorAll('.episode-item');
         
+        function updateURL(year, publisher) {
+          const params = new URLSearchParams(window.location.search);
+          if (year && year !== 'all') {
+            params.set('year', year);
+          } else {
+            params.delete('year');
+          }
+          if (publisher && publisher !== 'all') {
+            params.set('publisher', publisher);
+          } else {
+            params.delete('publisher');
+          }
+          const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+          window.history.replaceState({}, '', newUrl);
+        }
+
+        function updateActiveFilters(year, publisher) {
+          let html = '';
+          let hasActive = false;
+          if (year && year !== 'all') {
+            html += `<span class='bg-blue-700 text-white px-3 py-1 rounded-full flex items-center gap-2'>Year: ${year} <button type='button' class='ml-2 text-white' id='clear-year' aria-label='Clear year'>&times;</button></span>`;
+            hasActive = true;
+          }
+          if (publisher && publisher !== 'all') {
+            html += `<span class='bg-blue-700 text-white px-3 py-1 rounded-full flex items-center gap-2'>Publisher: ${publisher} <button type='button' class='ml-2 text-white' id='clear-publisher' aria-label='Clear publisher'>&times;</button></span>`;
+            hasActive = true;
+          }
+          activeFilters.innerHTML = html;
+          activeFilters.style.display = hasActive ? 'flex' : 'none';
+          if (hasActive) {
+            if (document.getElementById('clear-year')) {
+              document.getElementById('clear-year').onclick = () => {
+                document.querySelector('[data-year-filter][data-year-filter="all"]').click();
+              };
+            }
+            if (document.getElementById('clear-publisher')) {
+              document.getElementById('publisher-filter').value = 'all';
+              document.getElementById('clear-publisher').onclick = () => {
+                document.getElementById('publisher-filter').value = 'all';
+                filterEpisodes();
+              };
+            }
+          }
+        }
+
         function filterEpisodes() {
           const selectedYear = document.querySelector('[data-year-filter].active')?.dataset.yearFilter || 'all';
           const selectedPublisher = publisherSelect.value;
+          updateURL(selectedYear, selectedPublisher);
+          updateActiveFilters(selectedYear, selectedPublisher);
+          let visibleCount = 0;
+          let firstVisible = null;
           
           episodeItems.forEach(item => {
             const year = item.dataset.year;
             const publisher = item.dataset.publisher;
             const yearMatch = selectedYear === 'all' || year === selectedYear;
             const publisherMatch = selectedPublisher === 'all' || publisher === selectedPublisher;
-            
-            item.style.display = yearMatch && publisherMatch ? 'block' : 'none';
+            const visible = yearMatch && publisherMatch;
+            item.style.display = visible ? 'block' : 'none';
+            if (visible) {
+              visibleCount++;
+              if (!firstVisible) firstVisible = item;
+            }
           });
           
           // Show/hide year sections based on visible episodes
           document.querySelectorAll('.year-section').forEach(section => {
-            const hasVisibleEpisodes = section.querySelector('.episode-item[style="display: block"]');
+            const hasVisibleEpisodes = Array.from(section.querySelectorAll('.episode-item')).some(item => item.style.display !== 'none');
             section.style.display = hasVisibleEpisodes ? 'block' : 'none';
           });
+
+          // Feedback and scroll
+          if (filterFeedback) {
+            if (visibleCount === 0) {
+              filterFeedback.textContent = 'No episodes found for this filter.';
+            } else {
+              filterFeedback.textContent = '';
+            }
+          }
+          if (firstVisible) {
+            setTimeout(() => {
+              firstVisible.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+          }
         }
         
+        // On page load, set filters from URL
+        const params = new URLSearchParams(window.location.search);
+        const urlYear = params.get('year');
+        const urlPublisher = params.get('publisher');
+        if (urlYear) {
+          const yearBtn = Array.from(yearLinks).find(l => l.dataset.yearFilter === urlYear);
+          if (yearBtn) {
+            yearLinks.forEach(l => l.classList.remove('active'));
+            yearBtn.classList.add('active');
+          }
+        }
+        if (urlPublisher) {
+          publisherSelect.value = urlPublisher;
+        }
+        filterEpisodes();
+
         yearLinks.forEach(link => {
           link.addEventListener('click', (e) => {
             e.preventDefault();
             yearLinks.forEach(l => l.classList.remove('active'));
             link.classList.add('active');
             filterEpisodes();
+            // Scroll to year section if not 'all'
+            const year = link.dataset.yearFilter;
+            if (year && year !== 'all') {
+              const section = document.getElementById(year);
+              if (section) {
+                setTimeout(() => {
+                  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+              }
+            }
           });
         });
         
@@ -79,16 +174,16 @@ const allYears = Object.keys(groupedEpisodes).sort((a, b) => Number(a) - Number(
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
       <div class="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-md transition-transform hover:scale-105">
-        <span class="block text-3xl font-bold mb-2 text-primary-light dark:text-primary-dark">{data.summary.totalEpisodes}</span>
-        <span class="text-secondary-light dark:text-secondary-dark">Total Episodes</span>
+        <span class="block text-3xl font-bold mb-2 text-white">{data.summary.totalEpisodes}</span>
+        <span class="text-white">Total Episodes</span>
       </div>
       <div class="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-md transition-transform hover:scale-105">
-        <span class="block text-3xl font-bold mb-2 text-primary-light dark:text-primary-dark">{data.summary.yearsActive}</span>
-        <span class="text-secondary-light dark:text-secondary-dark">Years Active</span>
+        <span class="block text-3xl font-bold mb-2 text-white">{data.summary.yearsActive}</span>
+        <span class="text-white">Years Active</span>
       </div>
       <div class="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-md transition-transform hover:scale-105">
-        <span class="block text-3xl font-bold mb-2 text-primary-light dark:text-primary-dark">{data.summary.yearRange}</span>
-        <span class="text-secondary-light dark:text-secondary-dark">Date Range</span>
+        <span class="block text-3xl font-bold mb-2 text-white">{data.summary.yearRange}</span>
+        <span class="text-white">Date Range</span>
       </div>
     </div>
 
@@ -98,7 +193,7 @@ const allYears = Object.keys(groupedEpisodes).sort((a, b) => Number(a) - Number(
           <a 
             href="#"
             data-year-filter="all"
-            class="px-4 py-2 rounded-md bg-white dark:bg-gray-800 text-primary-light dark:text-primary-dark hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm active"
+            class="px-4 py-2 rounded-md bg-white dark:bg-gray-800 text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm active"
           >
             All Years
           </a>
@@ -106,7 +201,7 @@ const allYears = Object.keys(groupedEpisodes).sort((a, b) => Number(a) - Number(
             <a 
               href="#"
               data-year-filter={year}
-              class="px-4 py-2 rounded-md bg-white dark:bg-gray-800 text-primary-light dark:text-primary-dark hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm"
+              class="px-4 py-2 rounded-md bg-white dark:bg-gray-800 text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm"
             >
               {year}
             </a>
@@ -117,7 +212,7 @@ const allYears = Object.keys(groupedEpisodes).sort((a, b) => Number(a) - Number(
       <div class="flex justify-center">
         <select 
           id="publisher-filter"
-          class="px-4 py-2 rounded-md bg-white dark:bg-gray-800 text-primary-light dark:text-primary-dark border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+          class="px-4 py-2 rounded-md bg-white dark:bg-gray-800 text-white border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
         >
           <option value="all">All Publishers</option>
           {publishers.map(publisher => (
@@ -127,10 +222,12 @@ const allYears = Object.keys(groupedEpisodes).sort((a, b) => Number(a) - Number(
       </div>
     </div>
 
+    <div id="active-filters" class="mb-4 flex flex-wrap justify-center gap-4" style="display:none"></div>
+    <div id="filter-feedback" class="mb-6 text-center text-lg font-semibold text-primary-light dark:text-primary-dark" aria-live="polite"></div>
     <div class="space-y-16">
       {allYears.map(year => (
         <section id={year} class="scroll-mt-16">
-          <h2 class="text-2xl font-bold mb-6 text-primary-light dark:text-primary-dark sticky top-0 bg-gray-50 dark:bg-gray-900 py-4 z-10">
+          <h2 class="text-2xl font-bold mb-6 text-white sticky top-0 bg-gray-50 dark:bg-gray-900 py-4 z-10">
             {year}
           </h2>
           <ul class="space-y-6">
@@ -141,16 +238,16 @@ const allYears = Object.keys(groupedEpisodes).sort((a, b) => Number(a) - Number(
 
               return (
                 <li 
-                  class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow episode-item"
+                  class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow episode-item text-white"
                   data-year={year}
                   data-publisher={ep.publisher || ''}
                 >
                   <div class="flex flex-col md:flex-row gap-4">
                     <div class="flex-shrink-0 text-center md:text-left">
-                      <div class="text-lg font-medium text-secondary-light dark:text-secondary-dark">{month} {day}</div>
+                      <div class="text-lg font-medium text-white">{month} {day}</div>
                     </div>
                     <div class="flex-grow">
-                      <h3 class="text-xl font-medium mb-2">
+                      <h3 class="text-xl font-medium mb-2 text-white">
                         <a 
                           href={ep.url} 
                           class="text-primary-light dark:text-primary-dark hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
@@ -161,12 +258,12 @@ const allYears = Object.keys(groupedEpisodes).sort((a, b) => Number(a) - Number(
                         </a>
                       </h3>
                       {ep.author && (
-                        <p class="text-secondary-light dark:text-secondary-dark mb-1">
+                        <p class="mb-1 text-white">
                           by {ep.author}
                         </p>
                       )}
                       {ep.publisher && (
-                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                        <p class="text-sm text-white">
                           {ep.publisher} {ep.year && `(${ep.year})`}
                         </p>
                       )}
