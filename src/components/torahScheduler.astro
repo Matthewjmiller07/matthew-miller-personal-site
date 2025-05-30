@@ -1,0 +1,698 @@
+---
+// TorahScheduler.astro
+---
+
+<div class="torah-scheduler">
+  <div class="container">
+    <h1>Torah Study Schedule Generator</h1>
+    <p>Generate a personalized 5-year Torah study schedule from age 5 to 10</p>
+    
+    <form id="scheduleForm" class="form">
+      <div class="form-group">
+        <label for="childName">Child's Name:</label>
+        <input 
+          type="text" 
+          id="childName" 
+          name="childName" 
+          required 
+          placeholder="Enter child's name"
+        />
+      </div>
+      
+      <div class="form-group">
+        <label for="birthDate">Birth Date:</label>
+        <input 
+          type="date" 
+          id="birthDate" 
+          name="birthDate" 
+          required 
+        />
+      </div>
+      
+      <div class="form-group">
+        <label for="startDate">Custom Start Date (optional):</label>
+        <input 
+          type="date" 
+          id="startDate" 
+          name="startDate" 
+          placeholder="Leave empty to use 5th Hebrew birthday"
+        />
+        <small>Leave empty to automatically use the 5th Hebrew birthday</small>
+      </div>
+      
+      <button type="submit" id="generateBtn">Generate Schedule</button>
+    </form>
+    
+    <div id="progressContainer" class="progress-container hidden">
+      <div class="progress-bar">
+        <div id="progressBar" class="progress-fill"></div>
+      </div>
+      <div id="progressText" class="progress-text">Initializing...</div>
+    </div>
+    
+    <div id="results" class="results hidden">
+      <h2>Schedule Generated Successfully!</h2>
+      <div class="download-buttons">
+        <button id="downloadCSV" class="download-btn">Download CSV</button>
+        <button id="downloadLaTeX" class="download-btn">Download LaTeX</button>
+        <button id="downloadICS" class="download-btn">Download Calendar (ICS)</button>
+      </div>
+      <div id="preview" class="preview"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .torah-scheduler {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: system-ui, sans-serif;
+  }
+  
+  .container {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  h1 {
+    color: #2563eb;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+  
+  p {
+    text-align: center;
+    color: #6b7280;
+    margin-bottom: 2rem;
+  }
+  
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  label {
+    font-weight: 600;
+    color: #374151;
+  }
+  
+  input {
+    padding: 0.75rem;
+    border: 2px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+  }
+  
+  input:focus {
+    outline: none;
+    border-color: #2563eb;
+  }
+  
+  small {
+    color: #6b7280;
+    font-size: 0.875rem;
+  }
+  
+  button {
+    padding: 1rem 2rem;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  button:hover {
+    background: #1d4ed8;
+  }
+  
+  button:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+  
+  .progress-container {
+    margin: 2rem 0;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 8px;
+  }
+  
+  .progress-bar {
+    width: 100%;
+    height: 12px;
+    background: #e5e7eb;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2563eb, #3b82f6);
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+  
+  .progress-text {
+    text-align: center;
+    color: #374151;
+    font-weight: 500;
+  }
+  
+  .results {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: #f0f9ff;
+    border-radius: 8px;
+    border: 2px solid #bfdbfe;
+  }
+  
+  .download-buttons {
+    display: flex;
+    gap: 1rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+  }
+  
+  .download-btn {
+    background: #059669;
+    flex: 1;
+    min-width: 150px;
+  }
+  
+  .download-btn:hover {
+    background: #047857;
+  }
+  
+  .preview {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 6px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.875rem;
+    border: 1px solid #d1d5db;
+  }
+  
+  .hidden {
+    display: none;
+  }
+  
+  .error {
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    padding: 1rem;
+    border-radius: 6px;
+    margin: 1rem 0;
+  }
+</style>
+
+<script>
+class TorahScheduleGenerator {
+  constructor() {
+    this.hebrewMonthNames = {
+      1: 'ניסן', 2: 'אייר', 3: 'סיון', 4: 'תמוז', 5: 'אב', 6: 'אלול',
+      7: 'תשרי', 8: 'חשון', 9: 'כסלו', 10: 'טבת', 11: 'שבט', 12: 'אדר', 13: 'אדר ב'
+    };
+
+    this.hebrewDays = {
+      'Sunday': 'יום ראשון', 'Monday': 'יום שני', 'Tuesday': 'יום שלישי',
+      'Wednesday': 'יום רביעי', 'Thursday': 'יום חמישי', 'Friday': 'יום שישי',
+      'Saturday': 'שבת'
+    };
+
+    this.hebrewBookNames = {
+      'Genesis': 'בראשית', 'Exodus': 'שמות', 'Leviticus': 'ויקרא', 'Numbers': 'במדבר',
+      'Deuteronomy': 'דברים', 'Joshua': 'יהושע', 'Judges': 'שופטים',
+      'I Samuel': 'שמואל א', 'II Samuel': 'שמואל ב',
+      'I Kings': 'מלכים א', 'II Kings': 'מלכים ב', 'Isaiah': 'ישעיהו', 'Jeremiah': 'ירמיהו',
+      'Ezekiel': 'יחזקאל', 'Hosea': 'הושע', 'Joel': 'יואל', 'Amos': 'עמוס', 'Obadiah': 'עובדיה',
+      'Jonah': 'יונה', 'Micah': 'מיכה', 'Nahum': 'נחום', 'Habakkuk': 'חבקוק',
+      'Zephaniah': 'צפניה', 'Haggai': 'חגי', 'Zechariah': 'זכריה', 'Malachi': 'מלאכי',
+      'Psalms': 'תהלים', 'Proverbs': 'משלי', 'Job': 'איוב',
+      'Song of Songs': 'שיר השירים', 'Ruth': 'רות', 'Lamentations': 'איכה',
+      'Ecclesiastes': 'קהלת', 'Esther': 'אסתר', 'Daniel': 'דניאל', 'Ezra': 'עזרא',
+      'Nehemiah': 'נחמיה', 'I Chronicles': 'דברי הימים א', 'II Chronicles': 'דברי הימים ב'
+    };
+
+    this.hebrewGregorianMonths = {
+      1: 'ינואר', 2: 'פברואר', 3: 'מרץ', 4: 'אפריל', 5: 'מאי', 6: 'יוני',
+      7: 'יולי', 8: 'אוגוסט', 9: 'ספטמבר', 10: 'אוקטובר', 11: 'נובמבר', 12: 'דצמבר'
+    };
+  }
+
+  async fetchCSV() {
+    const response = await fetch('/Parsha Tracking Sheet - Chapters of Tanach and Mishnah.csv');
+    if (!response.ok) {
+      throw new Error('Failed to fetch CSV file');
+    }
+    return await response.text();
+  }
+
+  parseCSV(csvContent) {
+    const lines = csvContent.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    
+    const data = [];
+    for (let i = 1; i < lines.length; i++) {
+      const values = this.parseCSVLine(lines[i]);
+      const row = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index] || '';
+      });
+      data.push(row);
+    }
+    return data;
+  }
+
+  parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"' && (i === 0 || line[i-1] === ',')) {
+        inQuotes = true;
+      } else if (char === '"' && inQuotes && (i === line.length - 1 || line[i+1] === ',')) {
+        inQuotes = false;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  filterBibleData(data) {
+    return data.filter(row => row['Data Type'] === 'Bible');
+  }
+
+  buildBibleVerseList(bibleData) {
+    const verses = [];
+    bibleData.forEach(row => {
+      const book = row['Book'];
+      const chapter = parseInt(row['Chapter']);
+      const verseCount = parseInt(row['Number of Verses or Mishnahs']);
+      
+      if (!isNaN(chapter) && !isNaN(verseCount)) {
+        for (let verse = 1; verse <= verseCount; verse++) {
+          verses.push(`${book} ${chapter}:${verse}`);
+        }
+      }
+    });
+    return verses;
+  }
+
+  calculateHebrewBirthdays(birthDate, customStartDate = null) {
+    const birth = new Date(birthDate);
+    
+    let startDate;
+    if (customStartDate) {
+      startDate = new Date(customStartDate);
+    } else {
+      startDate = new Date(birth);
+      startDate.setFullYear(birth.getFullYear() + 5);
+    }
+    
+    const endDate = new Date(birth);
+    endDate.setFullYear(birth.getFullYear() + 10);
+    
+    return { start: startDate, end: endDate };
+  }
+
+  isSaturday(date) {
+    return date.getDay() === 6;
+  }
+
+  distributeVersesBalanced(verses, startDate, endDate, progressCallback) {
+    const distributed = [];
+    const currentDate = new Date(startDate);
+    let remainingVerses = [...verses];
+    const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    let dayCount = 0;
+    
+    while (currentDate <= endDate && remainingVerses.length > 0) {
+      const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)) + 1;
+      const portionMultiplier = this.isSaturday(currentDate) ? 1.2 : 1.0;
+      const versesToday = Math.max(1, Math.ceil(remainingVerses.length / daysLeft * portionMultiplier));
+      
+      distributed.push(remainingVerses.splice(0, versesToday));
+      currentDate.setDate(currentDate.getDate() + 1);
+      dayCount++;
+      
+      if (progressCallback && dayCount % 50 === 0) {
+        progressCallback(20 + (dayCount / totalDays) * 60); // 20-80% for distribution
+      }
+    }
+    
+    return distributed;
+  }
+
+  async generateSchedule(childName, birthDate, customStartDate = null, progressCallback) {
+    try {
+      if (progressCallback) progressCallback(5, 'Loading CSV data...');
+      
+      const csvContent = await this.fetchCSV();
+      const allData = this.parseCSV(csvContent);
+      
+      if (progressCallback) progressCallback(10, 'Filtering Bible data...');
+      
+      const bibleData = this.filterBibleData(allData);
+      const verses = this.buildBibleVerseList(bibleData);
+      
+      if (progressCallback) progressCallback(15, 'Calculating date range...');
+      
+      const dateRange = this.calculateHebrewBirthdays(birthDate, customStartDate);
+      
+      if (progressCallback) progressCallback(20, 'Distributing verses across dates...');
+      
+      const distributedVerses = this.distributeVersesBalanced(
+        verses, 
+        dateRange.start, 
+        dateRange.end,
+        progressCallback
+      );
+      
+      if (progressCallback) progressCallback(80, 'Building schedule...');
+      
+      const schedule = [];
+      const currentDate = new Date(dateRange.start);
+      
+      for (let i = 0; i < distributedVerses.length && currentDate <= dateRange.end; i++) {
+        const dayVerses = distributedVerses[i];
+        schedule.push({
+          date: currentDate.toISOString().split('T')[0],
+          dayOfWeek: currentDate.toLocaleDateString('en-US', { weekday: 'long' }),
+          bible: dayVerses.join(', '),
+          bibleCount: dayVerses.length,
+          hebrewDay: this.hebrewDays[currentDate.toLocaleDateString('en-US', { weekday: 'long' })]
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+        
+        if (progressCallback && i % 100 === 0) {
+          progressCallback(80 + (i / distributedVerses.length) * 15);
+        }
+      }
+      
+      if (progressCallback) progressCallback(95, 'Finalizing...');
+      
+      return {
+        schedule,
+        totalVerses: verses.length,
+        totalDays: schedule.length,
+        startDate: dateRange.start,
+        endDate: dateRange.end
+      };
+      
+    } catch (error) {
+      console.error('Error generating schedule:', error);
+      throw error;
+    }
+  }
+
+  scheduleToCSV(schedule) {
+    const headers = ['Date', 'Day of Week', 'Bible', 'Bible Count'];
+    const rows = [headers.join(',')];
+    
+    schedule.forEach(day => {
+      const row = [
+        day.date,
+        day.dayOfWeek,
+        `"${day.bible}"`,
+        day.bibleCount
+      ];
+      rows.push(row.join(','));
+    });
+    
+    return rows.join('\n');
+  }
+
+  hebrewNumber(num) {
+    if (!Number.isInteger(num) || num < 1) return String(num);
+    
+    const hebrewLetters = {
+      1: 'א', 2: 'ב', 3: 'ג', 4: 'ד', 5: 'ה', 6: 'ו', 7: 'ז', 8: 'ח', 9: 'ט',
+      10: 'י', 20: 'כ', 30: 'ל', 40: 'מ', 50: 'נ', 60: 'ס', 70: 'ע', 80: 'פ', 90: 'צ',
+      100: 'ק', 200: 'ר', 300: 'ש', 400: 'ת'
+    };
+    
+    if (num === 15) return 'טו';
+    if (num === 16) return 'טז';
+    
+    let result = '';
+    let remaining = num;
+    
+    const hundreds = Math.floor(remaining / 100) * 100;
+    if (hundreds && hebrewLetters[hundreds]) {
+      result += hebrewLetters[hundreds];
+    }
+    remaining %= 100;
+    
+    const tens = Math.floor(remaining / 10) * 10;
+    if (tens && hebrewLetters[tens]) {
+      result += hebrewLetters[tens];
+    }
+    remaining %= 10;
+    
+    if (remaining && hebrewLetters[remaining]) {
+      result += hebrewLetters[remaining];
+    }
+    
+    return result;
+  }
+
+  escapeLatexSpecialChars(text) {
+    const specialChars = {
+      '&': '\\&', '%': '\\%', '$': '\\$', '#': '\\#',
+      '_': '\\_', '{': '\\{', '}': '\\}', '~': '\\textasciitilde{}',
+      '^': '\\textasciicircum{}'
+    };
+    
+    let result = text;
+    for (const [char, esc] of Object.entries(specialChars)) {
+      result = result.replace(new RegExp('\\' + char, 'g'), esc);
+    }
+    return result;
+  }
+
+  generateLaTeX(schedule, childName) {
+    const preamble = `\\documentclass{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage{fontspec}
+\\usepackage{geometry}
+\\geometry{a4paper, top=2cm, bottom=2cm, left=2cm, right=2cm}
+\\usepackage{fancyhdr}
+\\pagestyle{fancy}
+\\fancyhf{}
+\\rfoot{\\thepage}
+\\usepackage{hyperref}
+\\usepackage{polyglossia}
+\\usepackage{fancybox}
+\\setmainlanguage{hebrew}
+\\setotherlanguage{english}
+\\newfontfamily\\hebrewfont[Script=Hebrew]{Ezra SIL}
+\\newfontfamily\\englishfont{Ezra SIL}
+\\setmainfont{Ezra SIL}
+
+\\begin{document}
+\\title{לוח לימוד תנ"ך - ${this.escapeLatexSpecialChars(childName)}}
+\\author{נוצר באופן אוטומטי}
+\\date{\\today}
+\\maketitle
+\\tableofcontents
+\\newpage
+
+`;
+
+    let content = preamble;
+
+    schedule.forEach((day, index) => {
+      const date = new Date(day.date);
+      const gregorianDate = `${date.getDate()} ${this.hebrewGregorianMonths[date.getMonth() + 1]} ${date.getFullYear()}`;
+      const hebrewDay = day.hebrewDay;
+      
+      const sectionTitle = `\\fbox{\\textbf{${hebrewDay} - ${gregorianDate}}}`;
+      content += `\\section*{${sectionTitle}}\n`;
+      
+      // Parse Bible references for Hebrew display
+      const refs = day.bible.split(', ');
+      let hebrewRefs = [];
+      
+      refs.forEach(ref => {
+        const parts = ref.split(' ');
+        if (parts.length >= 2 && parts[parts.length - 1].includes(':')) {
+          const book = parts.slice(0, -1).join(' ');
+          const [chapter, verse] = parts[parts.length - 1].split(':');
+          const hebrewBook = this.hebrewBookNames[book] || book;
+          const hebrewRef = `${hebrewBook} ${this.hebrewNumber(parseInt(chapter))}׳:${this.hebrewNumber(parseInt(verse))}׳`;
+          hebrewRefs.push(hebrewRef);
+        }
+      });
+      
+      const hebrewRefText = hebrewRefs.length > 0 ? hebrewRefs.join(', ') : 'לא זמין';
+      content += `\\subsection*{תנ"ך: ${hebrewRefText}}\n`;
+      content += `\\addcontentsline{toc}{section}{\\small ${gregorianDate} — ${hebrewRefText}}\n`;
+      content += '\\vspace{1em}\n\n';
+    });
+
+    content += '\\end{document}';
+    return content;
+  }
+
+  generateICS(schedule, childName) {
+    const icsLines = [];
+    icsLines.push("BEGIN:VCALENDAR");
+    icsLines.push("VERSION:2.0");
+    icsLines.push("PRODID:-//Torah Study Schedule//EN");
+    
+    schedule.forEach((day, index) => {
+      const dt = new Date(day.date);
+      const dtstart = dt.toISOString().replace(/[-:]/g, '').split('T')[0];
+      const dtend = new Date(dt.getTime() + 24 * 60 * 60 * 1000).toISOString().replace(/[-:]/g, '').split('T')[0];
+      const summary = `${childName} Torah Study`;
+      const description = `Learn: ${day.bible}`;
+      const uid = `${childName.replace(/\s+/g, '_')}_${dtstart}_${index}@torah_study`;
+      const dtstamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+      
+      icsLines.push("BEGIN:VEVENT");
+      icsLines.push(`UID:${uid}`);
+      icsLines.push(`DTSTAMP:${dtstamp}`);
+      icsLines.push(`DTSTART;VALUE=DATE:${dtstart}`);
+      icsLines.push(`DTEND;VALUE=DATE:${dtend}`);
+      icsLines.push(`SUMMARY:${summary}`);
+      icsLines.push(`DESCRIPTION:${description}`);
+      icsLines.push("END:VEVENT");
+    });
+    
+    icsLines.push("END:VCALENDAR");
+    return icsLines.join('\n');
+  }
+}
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', function() {
+  const generator = new TorahScheduleGenerator();
+  let currentScheduleData = null;
+
+  const form = document.getElementById('scheduleForm');
+  const progressContainer = document.getElementById('progressContainer');
+  const progressBar = document.getElementById('progressBar');
+  const progressText = document.getElementById('progressText');
+  const results = document.getElementById('results');
+  const preview = document.getElementById('preview');
+
+  function updateProgress(percent, text) {
+    progressBar.style.width = `${percent}%`;
+    progressText.textContent = text;
+  }
+
+  function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error';
+    errorDiv.textContent = message;
+    form.appendChild(errorDiv);
+    setTimeout(() => errorDiv.remove(), 5000);
+  }
+
+  function downloadFile(content, filename, contentType) {
+    const blob = new Blob([content], { type: contentType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const childName = document.getElementById('childName').value;
+    const birthDate = document.getElementById('birthDate').value;
+    const startDate = document.getElementById('startDate').value || null;
+    
+    const generateBtn = document.getElementById('generateBtn');
+    generateBtn.disabled = true;
+    generateBtn.textContent = 'Generating...';
+    
+    progressContainer.classList.remove('hidden');
+    results.classList.add('hidden');
+    
+    try {
+      currentScheduleData = await generator.generateSchedule(
+        childName,
+        birthDate,
+        startDate,
+        updateProgress
+      );
+      
+      updateProgress(100, 'Complete!');
+      
+      // Show preview
+      const previewText = `Schedule generated successfully!
+Total verses: ${currentScheduleData.totalVerses}
+Total days: ${currentScheduleData.totalDays}
+Start date: ${currentScheduleData.startDate.toDateString()}
+End date: ${currentScheduleData.endDate.toDateString()}
+
+First 5 days:
+${currentScheduleData.schedule.slice(0, 5).map((day, i) => 
+  `${i + 1}. ${day.date} (${day.dayOfWeek}): ${day.bibleCount} verses`
+).join('\n')}`;
+      
+      preview.textContent = previewText;
+      results.classList.remove('hidden');
+      
+      // Setup download buttons
+      document.getElementById('downloadCSV').onclick = () => {
+        const csv = generator.scheduleToCSV(currentScheduleData.schedule);
+        downloadFile(csv, `torah_schedule_${childName.replace(/\s+/g, '_')}_${birthDate}.csv`, 'text/csv');
+      };
+      
+      document.getElementById('downloadLaTeX').onclick = () => {
+        const latex = generator.generateLaTeX(currentScheduleData.schedule, childName);
+        downloadFile(latex, `torah_schedule_${childName.replace(/\s+/g, '_')}_${birthDate}.tex`, 'text/plain');
+      };
+      
+      document.getElementById('downloadICS').onclick = () => {
+        const ics = generator.generateICS(currentScheduleData.schedule, childName);
+        downloadFile(ics, `torah_schedule_${childName.replace(/\s+/g, '_')}_${birthDate}.ics`, 'text/calendar');
+      };
+      
+    } catch (error) {
+      console.error('Error:', error);
+      showError(`Error generating schedule: ${error.message}`);
+    } finally {
+      generateBtn.disabled = false;
+      generateBtn.textContent = 'Generate Schedule';
+      setTimeout(() => {
+        progressContainer.classList.add('hidden');
+      }, 2000);
+    }
+  });
+});
+</script>
