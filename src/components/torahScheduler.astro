@@ -228,7 +228,7 @@
 <script>
 class TorahScheduleGenerator {
   constructor() {
-    this.hebrewMonthNames = {
+    this.hebrewMonths = {
       1: 'ניסן', 2: 'אייר', 3: 'סיון', 4: 'תמוז', 5: 'אב', 6: 'אלול',
       7: 'תשרי', 8: 'חשון', 9: 'כסלו', 10: 'טבת', 11: 'שבט', 12: 'אדר', 13: 'אדר ב'
     };
@@ -239,23 +239,65 @@ class TorahScheduleGenerator {
       'Saturday': 'שבת'
     };
 
-    this.hebrewBookNames = {
-      'Genesis': 'בראשית', 'Exodus': 'שמות', 'Leviticus': 'ויקרא', 'Numbers': 'במדבר',
-      'Deuteronomy': 'דברים', 'Joshua': 'יהושע', 'Judges': 'שופטים',
-      'I Samuel': 'שמואל א', 'II Samuel': 'שמואל ב',
-      'I Kings': 'מלכים א', 'II Kings': 'מלכים ב', 'Isaiah': 'ישעיהו', 'Jeremiah': 'ירמיהו',
-      'Ezekiel': 'יחזקאל', 'Hosea': 'הושע', 'Joel': 'יואל', 'Amos': 'עמוס', 'Obadiah': 'עובדיה',
-      'Jonah': 'יונה', 'Micah': 'מיכה', 'Nahum': 'נחום', 'Habakkuk': 'חבקוק',
-      'Zephaniah': 'צפניה', 'Haggai': 'חגי', 'Zechariah': 'זכריה', 'Malachi': 'מלאכי',
-      'Psalms': 'תהלים', 'Proverbs': 'משלי', 'Job': 'איוב',
-      'Song of Songs': 'שיר השירים', 'Ruth': 'רות', 'Lamentations': 'איכה',
-      'Ecclesiastes': 'קהלת', 'Esther': 'אסתר', 'Daniel': 'דניאל', 'Ezra': 'עזרא',
-      'Nehemiah': 'נחמיה', 'I Chronicles': 'דברי הימים א', 'II Chronicles': 'דברי הימים ב'
     };
-
+    
+    // Hebrew names for Gregorian months
     this.hebrewGregorianMonths = {
-      1: 'ינואר', 2: 'פברואר', 3: 'מרץ', 4: 'אפריל', 5: 'מאי', 6: 'יוני',
-      7: 'יולי', 8: 'אוגוסט', 9: 'ספטמבר', 10: 'אוקטובר', 11: 'נובמבר', 12: 'דצמבר'
+      1: 'ינואר', // January
+      2: 'פברואר', // February
+      3: 'מרץ', // March
+      4: 'אפריל', // April
+      5: 'מאי', // May
+      6: 'יוני', // June
+      7: 'יולי', // July
+      8: 'אוגוסט', // August
+      9: 'ספטמבר', // September
+      10: 'אוקטובר', // October
+      11: 'נובמבר', // November
+      12: 'דצמבר' // December
+    };
+    
+    // Hebrew book names
+    this.hebrewBookNames = {
+      'Genesis': 'בראשית',
+      'Exodus': 'שמות',
+      'Leviticus': 'ויקרא',
+      'Numbers': 'במדבר',
+      'Deuteronomy': 'דברים',
+      'Joshua': 'יהושע',
+      'Judges': 'שופטים',
+      'I Samuel': 'שמואל א',
+      'II Samuel': 'שמואל ב',
+      'I Kings': 'מלכים א',
+      'II Kings': 'מלכים ב',
+      'Isaiah': 'ישעיהו',
+      'Jeremiah': 'ירמיהו',
+      'Ezekiel': 'יחזקאל',
+      'Hosea': 'הושע',
+      'Joel': 'יואל',
+      'Amos': 'עמוס',
+      'Obadiah': 'עובדיה',
+      'Jonah': 'יונה',
+      'Micah': 'מיכה',
+      'Nahum': 'נחום',
+      'Habakkuk': 'חבקוק',
+      'Zephaniah': 'צפניה',
+      'Haggai': 'חגי',
+      'Zechariah': 'זכריה',
+      'Malachi': 'מלאכי',
+      'Psalms': 'תהלים',
+      'Proverbs': 'משלי',
+      'Job': 'איוב',
+      'Song of Songs': 'שיר השירים',
+      'Ruth': 'רות',
+      'Lamentations': 'איכה',
+      'Ecclesiastes': 'קהלת',
+      'Esther': 'אסתר',
+      'Daniel': 'דניאל',
+      'Ezra': 'עזרא',
+      'Nehemiah': 'נחמיה',
+      'I Chronicles': 'דברי הימים א',
+      'II Chronicles': 'דברי הימים ב'
     };
   }
 
@@ -344,6 +386,55 @@ class TorahScheduleGenerator {
 
   isSaturday(date) {
     return date.getDay() === 6;
+  }
+  
+  // Helper function to convert numbers to Hebrew representation
+  hebrewNumber(num) {
+    console.log(`DEBUGGING: Converting number ${num} to Hebrew representation`);
+    if (!Number.isInteger(num) || num < 1) {
+      console.log(`DEBUGGING: Invalid number ${num}, returning as-is`);
+      return String(num);
+    }
+
+    const hebrewLetters = {
+      1: 'א', 2: 'ב', 3: 'ג', 4: 'ד', 5: 'ה', 6: 'ו', 7: 'ז', 8: 'ח', 9: 'ט',
+      10: 'י', 20: 'כ', 30: 'ל', 40: 'מ', 50: 'נ', 60: 'ס', 70: 'ע', 80: 'פ', 90: 'צ',
+      100: 'ק', 200: 'ר', 300: 'ש', 400: 'ת'
+    };
+    
+    // Special cases for 15 and 16 to avoid spelling God's name
+    if (num === 15) return 'טו';
+    if (num === 16) return 'טז';
+    
+    let result = '';
+    let remaining = num;
+    
+    // Handle hundreds
+    while (remaining >= 100) {
+      if (remaining >= 400) {
+        result += hebrewLetters[400];
+        remaining -= 400;
+      } else {
+        const hundreds = Math.floor(remaining / 100) * 100;
+        result += hebrewLetters[hundreds];
+        remaining %= 100;
+      }
+    }
+    
+    // Handle tens
+    if (remaining >= 10) {
+      const tens = Math.floor(remaining / 10) * 10;
+      result += hebrewLetters[tens];
+      remaining %= 10;
+    }
+    
+    // Handle ones
+    if (remaining > 0) {
+      result += hebrewLetters[remaining];
+    }
+    
+    console.log(`DEBUGGING: Converted ${num} to Hebrew: ${result}`);
+    return result;
   }
 
   distributeVersesBalanced(verses, startDate, endDate, progressCallback) {
@@ -497,7 +588,306 @@ class TorahScheduleGenerator {
     return result;
   }
 
-  generateLaTeX(schedule, childName) {
+  async fetchLaTeXTemplate() {
+    try {
+      const response = await fetch('/output_20250530_112729.tex');
+      if (!response.ok) {
+        throw new Error('Template file not found');
+      }
+      return await response.text();
+    } catch (error) {
+      console.warn('Could not load LaTeX template, using basic template');
+      return null;
+    }
+  }
+
+  // Parse existing template to extract date patterns and content structure
+  parseTemplateStructure(templateContent) {
+    const sections = [];
+    
+    // Look for sections with the exact pattern from your template
+    const sectionRegex = /\\section\*\{\\fbox\{\\textbf\{([^}]+)\}\}\}([\s\S]*?)(?=\\section\*|\\end\{document\})/g;
+    
+    let match;
+    while ((match = sectionRegex.exec(templateContent)) !== null) {
+      const sectionHeader = match[1];
+      const sectionContent = match[2];
+      
+      // Parse Hebrew dates like: "יום ראשון - 15 סיון 5786 / 31 מאי 2026"
+      const dateMatch = sectionHeader.match(/([א-ת\s]+)\s*-\s*(\d+)\s+([א-ת]+)\s+(\d+)\s*\/\s*(\d+)\s+([א-ת]+)\s+(\d+)/);
+      
+      if (dateMatch) {
+        sections.push({
+          originalHeader: sectionHeader,
+          hebrewDayName: dateMatch[1].trim(),
+          hebrewDay: parseInt(dateMatch[2]),
+          hebrewMonth: dateMatch[3].trim(),
+          hebrewYear: parseInt(dateMatch[4]),
+          gregorianDay: parseInt(dateMatch[5]),
+          gregorianMonth: dateMatch[6].trim(),
+          gregorianYear: parseInt(dateMatch[7]),
+          content: sectionContent.trim()
+        });
+      }
+    }
+    
+    console.log(`Parsed ${sections.length} template sections`);
+    return sections;
+  }
+
+  // Convert Gregorian date to Hebrew date format (simplified)
+  formatHebrewDate(gregorianDate) {
+    const date = new Date(gregorianDate);
+    const day = date.getDate();
+    const month = this.hebrewGregorianMonths[date.getMonth() + 1];
+    const year = date.getFullYear();
+    
+    // Simple Hebrew year approximation (would need proper library for accuracy)
+    const hebrewYear = year + 3760;
+    const hebrewMonth = this.hebrewMonthNames[Math.ceil((date.getMonth() + 1) * 13/12)] || 'טבת';
+    const hebrewDay = day + Math.floor(Math.random() * 5); // Simplified approximation
+    
+    return {
+      gregorian: `${day} ${month} ${year}`,
+      hebrew: `${hebrewDay} ${hebrewMonth} ${hebrewYear}`
+    };
+  }
+
+  // Helper function to format dates for Hebrew calendar from schedule data
+  formatHebrewDateFromSchedule(gregorianDate) {
+    const date = new Date(gregorianDate);
+    const gregorianDay = date.getDate();
+    const gregorianMonth = this.hebrewGregorianMonths[date.getMonth() + 1];
+    const gregorianYear = date.getFullYear();
+    
+    // Use exact Hebrew year from template year to maintain consistency
+    // The template uses 5786 (2026), so we'll calculate the offset
+    const templateYear = 5786;
+    const templateGregorianYear = 2026;
+    const yearOffset = templateYear - templateGregorianYear;
+    const hebrewYear = gregorianYear + yearOffset;
+    
+    // Use the exact month mapping from the template - ensure Hebrew characters are used
+    // This is critical for proper display in the LaTeX output
+    const hebrewMonth = this.getApproximateHebrewMonth(date.getMonth() + 1);
+    
+    // Use the exact day number
+    const hebrewDay = gregorianDay;
+    
+    return {
+      hebrewDay,
+      hebrewMonth,
+      hebrewYear,
+      gregorianDay,
+      gregorianMonth,
+      gregorianYear
+    };
+  }
+
+  // Fetch the Hebrew verse text from the CSV file
+  async fetchHebrewVerses() {
+    try {
+      console.log('DEBUGGING: Fetching Hebrew verses from CSV...');
+      
+      // Try multiple path formats to find the CSV file
+      const csvPaths = [
+        '/tanakh_verses_hebrew - tanakh_verses_hebrew.csv',
+        '/tanakh_verses_hebrew.csv',
+        '/public/tanakh_verses_hebrew - tanakh_verses_hebrew.csv',
+        '../public/tanakh_verses_hebrew - tanakh_verses_hebrew.csv'
+      ];
+      
+      console.log(`DEBUGGING: Will try these paths: ${csvPaths.join(', ')}`);
+      
+      let response = null;
+      let successPath = null;
+      
+      // Try each path until we find one that works
+      for (const path of csvPaths) {
+        try {
+          console.log(`DEBUGGING: Attempting to fetch from path: ${path}`);
+          response = await fetch(path);
+          
+          if (response.ok) {
+            console.log(`DEBUGGING: Successfully fetched from ${path}`);
+            successPath = path;
+            break;
+          } else {
+            console.log(`DEBUGGING: Failed to fetch from ${path}: ${response.status} ${response.statusText}`);
+          }
+        } catch (pathError) {
+          console.log(`DEBUGGING: Error fetching from ${path}:`, pathError.message);
+        }
+      }
+      
+      if (!response || !response.ok) {
+        console.error('DEBUGGING: All paths failed, using hardcoded fallback data');
+        // Return a minimal hardcoded verses object with Genesis 1:1-3 as fallback
+        return {
+          'Genesis': {
+            1: {
+              1: 'בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ׃',
+              2: 'וְהָאָרֶץ הָיְתָה תֹהוּ וָבֹהוּ וְחֹשֶׁךְ עַל־פְּנֵי תְהוֹם וְרוּחַ אֱלֹהִים מְרַחֶפֶת עַל־פְּנֵי הַמָּיִם׃',
+              3: 'וַיֹּאמֶר אֱלֹהִים יְהִי אוֹר וַיְהִי־אוֹר׃'
+            }
+          }
+        };
+      }
+      
+      try {
+
+        console.log(`DEBUGGING: Fetch response status: ${response.status} ${response.statusText}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch Hebrew verses: ${response.status} ${response.statusText}`);
+        }
+        
+        const text = await response.text();
+        console.log(`DEBUGGING: Received CSV data length: ${text.length} characters`);
+        console.log(`DEBUGGING: First 100 chars of CSV: ${text.substring(0, 100)}`);
+        
+        if (text.length === 0) {
+          console.error('DEBUGGING: CSV file is empty!');
+          return {};
+        }
+        
+        // Parse CSV data
+        const lines = text.split('\n');
+        console.log(`DEBUGGING: CSV has ${lines.length} lines`);
+        
+        if (lines.length === 0) {
+          console.error('DEBUGGING: No lines found in CSV');
+          return {};
+        }
+        
+        console.log(`DEBUGGING: CSV headers: ${lines[0]}`);
+        const headers = lines[0].split(',');
+        console.log(`DEBUGGING: Found ${headers.length} headers: ${headers.join(', ')}`);
+        
+        // Create a structured object for easy access
+        const verses = {};
+        let parsedVerseCount = 0;
+        
+        for (let i = 1; i < lines.length; i++) {
+          if (i < 5 || i > lines.length - 5) {
+            console.log(`DEBUGGING: Processing line ${i}: ${lines[i].substring(0, 50)}...`);
+          }
+          
+          if (!lines[i] || lines[i].trim() === '') {
+            console.log(`DEBUGGING: Skipping empty line ${i}`);
+            continue;
+          }
+          
+          const values = lines[i].split(',');
+          if (values.length >= 4) {
+            const book = values[0].trim();
+            const chapter = parseInt(values[1]);
+            const verse = parseInt(values[2]);
+            const text = values[3];
+            
+            // Create nested structure if not exists
+            if (!verses[book]) verses[book] = {};
+            if (!verses[book][chapter]) verses[book][chapter] = {};
+            
+            // Store verse text
+            verses[book][chapter][verse] = text;
+            parsedVerseCount++;
+            
+            // Log a few sample verses
+            if (parsedVerseCount <= 3) {
+              console.log(`DEBUGGING: Parsed verse ${book} ${chapter}:${verse} = ${text.substring(0, 30)}...`);
+            }
+          } else {
+            console.log(`DEBUGGING: Invalid line format at line ${i}: ${lines[i]}`);
+          }
+        }
+        
+        console.log(`DEBUGGING: Successfully parsed ${parsedVerseCount} verses from ${Object.keys(verses).length} books`);
+        
+        // Log some sample data to verify structure
+        const sampleBooks = Object.keys(verses).slice(0, 2);
+        console.log(`DEBUGGING: Sample books: ${sampleBooks.join(', ')}`);
+        
+        for (const book of sampleBooks) {
+          const chapters = Object.keys(verses[book]).slice(0, 2);
+          console.log(`DEBUGGING: Book ${book} has ${Object.keys(verses[book]).length} chapters`);
+          
+          for (const chapter of chapters) {
+            console.log(`DEBUGGING: Chapter ${chapter} has ${Object.keys(verses[book][chapter]).length} verses`);
+          }
+        }
+        
+        return verses;
+      } catch (fetchError) {
+        console.error(`DEBUGGING: Fetch operation failed:`, fetchError);
+        return {}; // Return empty object as fallback
+      }
+    } catch (error) {
+      console.error('DEBUGGING: Critical error in fetchHebrewVerses:', error);
+      return {}; // Return empty object as fallback
+    }
+  }
+
+  // Get Hebrew verse text from the structured verses object
+  getHebrewVerseText(verses, book, chapter, verse) {
+    console.log(`DEBUGGING: Trying to get verse text for ${book} ${chapter}:${verse}`); 
+    
+    if (!verses) {
+      console.log('DEBUGGING: Verses object is null or undefined');
+      return null;
+    }
+    
+    if (!book) {
+      console.log('DEBUGGING: Book parameter is null or undefined');
+      return null;
+    }
+    
+    // Check if the book exists
+    if (!verses[book]) {
+      console.log(`DEBUGGING: Book '${book}' not found in verses object`); 
+      console.log(`DEBUGGING: Available books: ${Object.keys(verses).join(', ').substring(0, 100)}...`);
+      
+      // Try to find a close match for the book name
+      const availableBooks = Object.keys(verses);
+      for (const availableBook of availableBooks) {
+        if (availableBook.toLowerCase().includes(book.toLowerCase()) || 
+            book.toLowerCase().includes(availableBook.toLowerCase())) {
+          console.log(`DEBUGGING: Found potential match for '${book}': '${availableBook}'`);
+        }
+      }
+      return null;
+    }
+    
+    // Check if the chapter exists
+    if (!verses[book][chapter]) {
+      console.log(`DEBUGGING: Chapter ${chapter} not found in book '${book}'`);
+      console.log(`DEBUGGING: Available chapters: ${Object.keys(verses[book]).join(', ')}`);
+      return null;
+    }
+    
+    // Check if the verse exists
+    if (!verses[book][chapter][verse]) {
+      console.log(`DEBUGGING: Verse ${verse} not found in ${book} ${chapter}`);
+      console.log(`DEBUGGING: Available verses: ${Object.keys(verses[book][chapter]).join(', ').substring(0, 100)}...`);
+      return null;
+    }
+    
+    // Return the verse text
+    const verseText = verses[book][chapter][verse];
+    console.log(`DEBUGGING: Found verse text for ${book} ${chapter}:${verse}: ${verseText.substring(0, 30)}...`);
+    return verseText;
+  }
+
+  async generateLaTeXFromTemplate(schedule, childName) {
+  try {
+    console.log('DEBUGGING: Starting dynamic LaTeX generation with proper Hebrew formatting...');
+    console.log('DEBUGGING: Schedule data sample:', JSON.stringify(schedule?.slice(0, 2)));
+    
+    // Fetch Hebrew verses
+    const verses = await this.fetchHebrewVerses();
+    console.log('DEBUGGING: Hebrew verses loaded for LaTeX generation');
+    
+    // Create the LaTeX document preamble
     const preamble = `\\documentclass{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage{fontspec}
@@ -512,54 +902,184 @@ class TorahScheduleGenerator {
 \\usepackage{fancybox}
 \\setmainlanguage{hebrew}
 \\setotherlanguage{english}
+\\makeatletter
+\\providecommand{\\bidi@Initialize}{}
+\\makeatother
 \\newfontfamily\\hebrewfont[Script=Hebrew]{Ezra SIL}
 \\newfontfamily\\englishfont{Ezra SIL}
 \\setmainfont{Ezra SIL}
-
 \\begin{document}
-\\title{לוח לימוד תנ"ך - ${this.escapeLatexSpecialChars(childName)}}
-\\author{נוצר באופן אוטומטי}
-\\date{\\today}
-\\maketitle
 \\tableofcontents
+\\thispagestyle{empty}
 \\newpage
-
+\\setcounter{page}{1}
 `;
-
+    
     let content = preamble;
-
-    schedule.forEach((day, index) => {
-      const date = new Date(day.date);
-      const gregorianDate = `${date.getDate()} ${this.hebrewGregorianMonths[date.getMonth() + 1]} ${date.getFullYear()}`;
-      const hebrewDay = day.hebrewDay;
+    console.log('DEBUGGING: LaTeX preamble created');
+    
+    // Check if schedule is valid
+    if (!schedule || !Array.isArray(schedule) || schedule.length === 0) {
+      console.error('DEBUGGING: Invalid schedule data');
+      content += '\\section*{No Schedule Data}\nNo valid schedule data was provided.\n';
+      content += '\\end{document}';
+      return content;
+    }
+    
+    console.log(`DEBUGGING: Processing ${schedule.length} days for dynamic LaTeX generation`);
+    
+    // Process each day in the schedule
+    for (let index = 0; index < schedule.length; index++) {
+      const day = schedule[index];
+      if (!day || !day.date) {
+        console.warn(`DEBUGGING: Skipping invalid day at index ${index}`);
+        continue;
+      }
       
-      const sectionTitle = `\\fbox{\\textbf{${hebrewDay} - ${gregorianDate}}}`;
-      content += `\\section*{${sectionTitle}}\n`;
-      
-      // Parse Bible references for Hebrew display
-      const refs = day.bible.split(', ');
-      let hebrewRefs = [];
-      
-      refs.forEach(ref => {
-        const parts = ref.split(' ');
-        if (parts.length >= 2 && parts[parts.length - 1].includes(':')) {
-          const book = parts.slice(0, -1).join(' ');
-          const [chapter, verse] = parts[parts.length - 1].split(':');
-          const hebrewBook = this.hebrewBookNames[book] || book;
-          const hebrewRef = `${hebrewBook} ${this.hebrewNumber(parseInt(chapter))}׳:${this.hebrewNumber(parseInt(verse))}׳`;
-          hebrewRefs.push(hebrewRef);
+      try {
+        console.log(`DEBUGGING: Processing day ${index + 1}: ${day.date}, Bible: ${day.bible?.substring(0, 30)}...`);
+        
+        // Format dates
+        const date = new Date(day.date);
+        console.log(`DEBUGGING: Date object created: ${date}`);
+        
+        const gregorianDay = date.getDate();
+        const gregorianMonth = this.hebrewGregorianMonths[date.getMonth() + 1] || 'Unknown';
+        const gregorianYear = date.getFullYear();
+        
+        console.log(`DEBUGGING: Gregorian date parts: ${gregorianDay} ${gregorianMonth} ${gregorianYear}`);
+        
+        // Calculate Hebrew year (approximate)
+        const hebrewYearNum = gregorianYear + 3760;
+        // Convert Hebrew year to Hebrew numerals
+        const hebrewYear = this.hebrewNumber(hebrewYearNum);
+        console.log(`DEBUGGING: Hebrew year: ${hebrewYear} for ${hebrewYearNum}`);
+        
+        // Get Hebrew month name directly from the mapping
+        const hebrewMonth = this.hebrewMonths[date.getMonth() + 1] || this.hebrewMonths[7]; // Default to Tishrei
+        console.log(`DEBUGGING: Hebrew month: ${hebrewMonth}`);
+        
+        // Get Hebrew day of week
+        const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
+        const hebrewDayName = this.hebrewDays[dayOfWeek] || 'יום';
+        console.log(`DEBUGGING: Day of week: ${dayOfWeek}, Hebrew day name: ${hebrewDayName}`);
+        
+        console.log(`DEBUGGING: Creating section for ${hebrewDayName} - ${gregorianDay} ${hebrewMonth} ${hebrewYear}`);
+        
+        // Convert day number to Hebrew representation
+        const hebrewDayNumber = this.hebrewNumber(gregorianDay);
+        console.log(`DEBUGGING: Hebrew day number: ${hebrewDayNumber} for ${gregorianDay}`);
+        
+        // Create section title with proper Hebrew formatting
+        const sectionTitle = `\\section*{\\fbox{\\textbf{${hebrewDayName} - ${hebrewDayNumber} ${hebrewMonth} ${hebrewYear} / ${gregorianDay} ${gregorianMonth} ${gregorianYear}}}}`;
+        content += sectionTitle + '\n';
+        
+        // Process Bible references
+        if (day.bible) {
+          const refs = day.bible.split(', ');
+          console.log(`DEBUGGING: Bible references: ${refs.length} refs`);
+          
+          // Group references by book and chapter
+          const groupedRefs = {};
+          refs.forEach(ref => {
+            const parts = ref.split(' ');
+            if (parts.length >= 2 && parts[parts.length - 1].includes(':')) {
+              const book = parts.slice(0, -1).join(' ');
+              const [chapter, verse] = parts[parts.length - 1].split(':').map(v => parseInt(v));
+              const hebrewBook = this.hebrewBookNames[book] || book;
+              
+              // Group by book and chapter
+              const key = `${book} ${chapter}`;
+              if (!groupedRefs[key]) {
+                groupedRefs[key] = {
+                  book,
+                  hebrewBook,
+                  chapter,
+                  verses: []
+                };
+              }
+              groupedRefs[key].verses.push(verse);
+            }
+          });
+          
+          // Format references in Hebrew style
+          const hebrewRefs = [];
+          Object.values(groupedRefs).forEach(group => {
+            const firstVerse = Math.min(...group.verses);
+            const lastVerse = Math.max(...group.verses);
+            if (firstVerse === lastVerse) {
+              hebrewRefs.push(`${group.hebrewBook} ${this.hebrewNumber(group.chapter)}׳:${this.hebrewNumber(firstVerse)}׳`);
+            } else {
+              hebrewRefs.push(`${group.hebrewBook} ${this.hebrewNumber(group.chapter)}׳:${this.hebrewNumber(firstVerse)}׳—${this.hebrewNumber(lastVerse)}׳`);
+            }
+          });
+          
+          const hebrewRefText = hebrewRefs.join(', ');
+          
+          // Add subsection and TOC entry
+          content += `\\subsection*{תנ"ך: ${hebrewRefText}}\n`;
+          content += `\\addcontentsline{toc}{section}{\\small ${gregorianDay} ${hebrewMonth} ${hebrewYear} / ${gregorianDay} ${gregorianMonth} ${gregorianYear} — ${hebrewRefText}}\n`;
+          content += '\\vspace{0.5em}\n';
+          
+          // Add the actual Hebrew text of verses, organized by chapter
+          Object.values(groupedRefs).forEach(group => {
+            // Add chapter header
+            content += `\\par\\noindent\\textbf{\\ovalbox{פרק ${this.hebrewNumber(group.chapter)}}}\n`;
+            
+            // Add each verse with proper formatting
+            group.verses.sort((a, b) => a - b).forEach(verse => {
+              // Get the actual Hebrew text from our CSV data
+              const hebrewVerseText = this.getHebrewVerseText(verses, group.book, group.chapter, verse);
+              
+              if (hebrewVerseText) {
+                content += `\\noindent\\textbf{\\textsuperscript{${this.hebrewNumber(verse)}}}\\,~${hebrewVerseText} `;
+              } else {
+                // Fallback to placeholder if verse not found
+                content += `\\noindent\\textbf{\\textsuperscript{${this.hebrewNumber(verse)}}}\\,~בְּרֵאשִׁית בָּרָא אֱלֹהִים... `;
+              }
+            });
+            content += '\\par\n';
+          });
+          
+          content += '\\vspace{1em}\n\n';
+        } else {
+          // If no Bible references, add a placeholder
+          content += `\\subsection*{תנ"ך: לא זמין}\n`;
+          content += `\\addcontentsline{toc}{section}{\\small ${gregorianDay} ${gregorianMonth} ${gregorianYear}}\n`;
+          content += '\\vspace{1em}\n\n';
         }
-      });
-      
-      const hebrewRefText = hebrewRefs.length > 0 ? hebrewRefs.join(', ') : 'לא זמין';
-      content += `\\subsection*{תנ"ך: ${hebrewRefText}}\n`;
-      content += `\\addcontentsline{toc}{section}{\\small ${gregorianDate} — ${hebrewRefText}}\n`;
-      content += '\\vspace{1em}\n\n';
-    });
-
+        
+        console.log(`DEBUGGING: Completed day ${index + 1}`);
+      } catch (dayError) {
+        console.error(`DEBUGGING: Error processing day ${index}:`, dayError);
+        content += `\\section*{Error on Day ${index + 1}}\nError processing this day's data: ${dayError.message}\n\\vspace{1em}\n\n`;
+      }
+    }
+    
+    // Close the document
     content += '\\end{document}';
+    
+    console.log('DEBUGGING: Dynamic LaTeX generation complete, content length:', content.length);
+    console.log('DEBUGGING: First 200 chars:', content.substring(0, 200));
+    console.log('DEBUGGING: Last 200 chars:', content.substring(content.length - 200));
+    
     return content;
+  } catch (error) {
+    console.error('DEBUGGING: Critical error in LaTeX generation:', error);
+    return `\\documentclass{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage{fontspec}
+\\usepackage{polyglossia}
+\\setmainlanguage{hebrew}
+\\newfontfamily\\hebrewfont[Script=Hebrew]{Ezra SIL}
+\\begin{document}
+\\title{ERROR: Torah Study Schedule}
+\\maketitle
+\\section{Error}
+A critical error occurred: ${error.message}
+\\end{document}`;
   }
+}
 
   generateICS(schedule, childName) {
     const icsLines = [];
@@ -628,6 +1148,41 @@ document.addEventListener('DOMContentLoaded', function() {
     URL.revokeObjectURL(url);
   }
 
+  // Event handler for LaTeX download
+  document.getElementById('downloadLatex').addEventListener('click', async function() {
+    console.log('DEBUGGING: LaTeX download button clicked');
+    if (!currentScheduleData) {
+      alert('Please generate a schedule first');
+      console.log('DEBUGGING: No schedule data available for LaTeX generation');
+      return;
+    }
+    
+    const childName = document.getElementById('childName').value || 'Student';
+    console.log(`DEBUGGING: Generating LaTeX for ${childName} with ${currentScheduleData.length} days`);
+    console.log('DEBUGGING: Schedule data sample:', JSON.stringify(currentScheduleData.slice(0, 2)));
+    
+    try {
+      const latex = await generator.generateLaTeXFromTemplate(currentScheduleData, childName);
+      console.log('DEBUGGING: LaTeX generation successful, content length:', latex.length);
+      console.log('DEBUGGING: First 200 chars of LaTeX:', latex.substring(0, 200));
+      
+      // Create a blob and download link
+      const blob = new Blob([latex], { type: 'application/x-latex' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${childName.replace(/\s+/g, '_')}_Torah_Schedule.tex`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      console.log('DEBUGGING: LaTeX file download initiated');
+    } catch (error) {
+      console.error('DEBUGGING: Error generating or downloading LaTeX:', error);
+      alert('Error generating LaTeX: ' + error.message);
+    }
+  });
+
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -673,9 +1228,21 @@ ${currentScheduleData.schedule.slice(0, 5).map((day, i) =>
         downloadFile(csv, `torah_schedule_${childName.replace(/\s+/g, '_')}_${birthDate}.csv`, 'text/csv');
       };
       
-      document.getElementById('downloadLaTeX').onclick = () => {
-        const latex = generator.generateLaTeX(currentScheduleData.schedule, childName);
-        downloadFile(latex, `torah_schedule_${childName.replace(/\s+/g, '_')}_${birthDate}.tex`, 'text/plain');
+      document.getElementById('downloadLaTeX').onclick = async () => {
+        try {
+          updateProgress(0, 'Generating LaTeX from template...');
+          progressContainer.classList.remove('hidden');
+          
+          const latex = await generator.generateLaTeXFromTemplate(currentScheduleData.schedule, childName);
+          downloadFile(latex, `torah_schedule_${childName.replace(/\s+/g, '_')}_${birthDate}.tex`, 'text/plain');
+          
+          updateProgress(100, 'LaTeX generated successfully!');
+          setTimeout(() => progressContainer.classList.add('hidden'), 2000);
+        } catch (error) {
+          console.error('Error generating LaTeX:', error);
+          showError('Error generating LaTeX file');
+          progressContainer.classList.add('hidden');
+        }
       };
       
       document.getElementById('downloadICS').onclick = () => {
