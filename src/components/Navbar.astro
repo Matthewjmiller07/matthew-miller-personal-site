@@ -2,6 +2,14 @@
 const navLinks = [
     { href: "/", label: "Home" },
     { href: "/about", label: "About" },
+    { 
+        href: "/art",
+        label: "Art",
+        submenu: [
+            { href: "/art/ai-matthew", label: "AI Portraits" },
+            { href: "/art/ai-art", label: "AI Art Gallery" }
+        ]
+    },
     { href: "/projects", label: "Projects" },
     { href: "/jewish-studies", label: "Podcast" },
     { href: "/media-appearances", label: "Media Mentions" },
@@ -11,7 +19,17 @@ const isCurrentPage = (linkHref: string) => {
     if (linkHref === "/") {
         return Astro.url.pathname === "/";
     }
+    // Special case for Art section to highlight when any art subpage is active
+    if (linkHref === "/art") {
+        return Astro.url.pathname === "/art" || Astro.url.pathname.startsWith('/art/');
+    }
     return Astro.url.pathname === linkHref || Astro.url.pathname.startsWith(linkHref + '/');
+};
+
+// Check if we should show the submenu (for Art section)
+const shouldShowSubmenu = (link: any) => {
+    if (!link.submenu) return false;
+    return isCurrentPage(link.href) || link.submenu.some((item: any) => isCurrentPage(item.href));
 };
 ---
 <header class="bg-card-bg-light/98 dark:bg-card-bg-dark/98 backdrop-blur-lg shadow-sm sticky top-0 z-50 border-b border-border-light dark:border-border-dark">
@@ -38,18 +56,61 @@ const isCurrentPage = (linkHref: string) => {
         {/* Desktop Menu */}
         <div class="hidden md:flex md:ml-6 md:items-center md:space-x-1 lg:space-x-2">
             {navLinks.map(link => (
-                <a
-                    href={link.href}
-                    class:list={[
-                        "px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-light dark:focus:ring-offset-bg-dark focus:ring-accent",
-                        isCurrentPage(link.href)
-                            ? "bg-accent/10 text-accent dark:text-accent-dark"
-                            : "text-primary-light dark:text-primary-dark hover:bg-slate-200/70 dark:hover:bg-slate-700/70 hover:text-accent dark:hover:text-accent-dark"
-                    ]}
-                    aria-current={isCurrentPage(link.href) ? 'page' : undefined}
-                >
-                    {link.label}
-                </a>
+                link.href ? (
+                    <a
+                        href={link.href}
+                        class:list={[
+                            "px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-light dark:focus:ring-offset-bg-dark focus:ring-accent",
+                            isCurrentPage(link.href)
+                                ? "bg-accent/10 text-accent dark:text-accent-dark"
+                                : "text-primary-light dark:text-primary-dark hover:bg-slate-200/70 dark:hover:bg-slate-700/70 hover:text-accent dark:hover:text-accent-dark"
+                        ]}
+                        aria-current={isCurrentPage(link.href) ? 'page' : undefined}
+                    >
+                        {link.label}
+                    </a>
+                ) : (
+                    <div class="relative group">
+                        <a
+                            href={link.href}
+                            class:list={[
+                                "px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-light dark:focus:ring-offset-bg-dark focus:ring-accent inline-flex items-center",
+                                isCurrentPage(link.href)
+                                    ? "bg-accent/10 text-accent dark:text-accent-dark"
+                                    : "text-primary-light dark:text-primary-dark hover:bg-slate-200/70 dark:hover:bg-slate-700/70 hover:text-accent dark:hover:text-accent-dark"
+                            ]}
+                            aria-current={isCurrentPage(link.href) ? 'page' : undefined}
+                            aria-haspopup="true"
+                            aria-expanded={shouldShowSubmenu(link) ? 'true' : 'false'}
+                        >
+                            {link.label}
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </a>
+                        <div class:list={[
+                            "absolute left-0 mt-1 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-50 transition-all duration-200 transform origin-top-left",
+                            shouldShowSubmenu(link) 
+                                ? "opacity-100 visible scale-100" 
+                                : "opacity-0 invisible scale-95 group-hover:opacity-100 group-hover:visible group-hover:scale-100"
+                        ]} style="pointer-events: auto;">
+                            <div class="py-1">
+                                {link.submenu?.map(subLink => (
+                                    <a
+                                        href={subLink.href}
+                                        class:list={[
+                                            "block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700",
+                                            isCurrentPage(subLink.href) ? "bg-gray-100 dark:bg-gray-700" : ""
+                                        ]}
+                                        aria-current={isCurrentPage(subLink.href) ? 'page' : undefined}
+                                    >
+                                        {subLink.label}
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )
             ))}
         </div>
     </nav>
@@ -58,18 +119,45 @@ const isCurrentPage = (linkHref: string) => {
     <div class="hidden md:hidden" id="main-menu-mobile">
         <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-border-light dark:border-border-dark">
             {navLinks.map(link => (
-                <a
-                    href={link.href}
-                    class:list={[
-                        "block px-3 py-2 rounded-md text-base font-medium transition-colors duration-150 ease-in-out",
-                        isCurrentPage(link.href)
-                            ? "bg-accent/10 text-accent dark:text-accent-dark"
-                            : "text-primary-light dark:text-primary-dark hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-accent dark:hover:text-accent-dark"
-                    ]}
-                    aria-current={isCurrentPage(link.href) ? 'page' : undefined}
-                >
-                    {link.label}
-                </a>
+                link.href ? (
+                    <a
+                        href={link.href}
+                        class:list={[
+                            "block px-3 py-2 rounded-md text-base font-medium transition-colors duration-150 ease-in-out",
+                            isCurrentPage(link.href)
+                                ? "bg-accent/10 text-accent dark:text-accent-dark"
+                                : "text-primary-light dark:text-primary-dark hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-accent dark:hover:text-accent-dark"
+                        ]}
+                        aria-current={isCurrentPage(link.href) ? 'page' : undefined}
+                    >
+                        {link.label}
+                    </a>
+                ) : (
+                    <div class="space-y-1">
+                        <button class="mobile-menu-dropdown w-full flex justify-between items-center px-3 py-2 rounded-md text-base font-medium text-left text-primary-light dark:text-primary-dark hover:bg-slate-200 dark:hover:bg-slate-700">
+                            {link.label}
+                            <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div class="pl-4 hidden">
+                            {link.submenu?.map(subLink => (
+                                <a
+                                    href={subLink.href}
+                                    class:list={[
+                                        "block px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ease-in-out",
+                                        isCurrentPage(subLink.href)
+                                            ? "bg-accent/10 text-accent dark:text-accent-dark"
+                                            : "text-primary-light dark:text-primary-dark hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    ]}
+                                    aria-current={isCurrentPage(subLink.href) ? 'page' : undefined}
+                                >
+                                    {subLink.label}
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                )
             ))}
         </div>
     </div>
@@ -97,6 +185,19 @@ const isCurrentPage = (linkHref: string) => {
         menuButton.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleMenu();
+        });
+
+        // Handle mobile dropdown toggles
+        document.querySelectorAll('.mobile-menu-dropdown').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const submenu = button.nextElementSibling;
+                const isExpanded = submenu.classList.toggle('hidden');
+                const icon = button.querySelector('svg');
+                if (icon) {
+                    icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+                }
+            });
         });
 
         // Close menu when clicking outside

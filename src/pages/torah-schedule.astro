@@ -1,0 +1,218 @@
+---
+// src/pages/torah-schedule.astro
+import Layout from '../layouts/Layout.astro';
+import TorahScheduleApp from '../components/TorahScheduleApp';
+
+// Client-side component
+const TorahScheduleClient = TorahScheduleApp;
+
+// Default values
+const today = new Date();
+const defaultEndDate = new Date(today);
+defaultEndDate.setFullYear(today.getFullYear() + 5);
+
+const childName = 'A';
+const birthDate = today.toISOString().split('T')[0];
+const startDate = today.toISOString().split('T')[0];
+const endDate = defaultEndDate.toISOString().split('T')[0];
+
+---
+
+<Layout title="Torah Study Schedule">
+  <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <h1 class="text-3xl font-bold mb-8 text-center">Torah Study Schedule</h1>
+    
+    <!-- React Component -->
+    <TorahScheduleClient 
+      client:load
+      childName={childName}
+      birthDate={new Date(birthDate)}
+      startDate={new Date(startDate)}
+      endDate={new Date(endDate)}
+      extraShabbatContent={false}
+      includeHebrewDates={true}
+    />
+    
+    <!-- Schedule Display -->
+    {schedule.length > 0 && (
+      <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold">{childName}'s Study Schedule</h2>
+          <button 
+            class="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700"
+            onclick="window.print()"
+          >
+            Print Schedule
+          </button>
+        </div>
+        
+        <div class="overflow-hidden border border-gray-200 rounded-lg">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Torah Portion</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              {schedule.map((entry, index) => {
+                const date = new Date(entry.date);
+                const formattedDate = date.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                });
+                
+                return (
+                  <tr class={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>                    
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm font-medium text-gray-900">{entry.dayOfWeek}</div>
+                      <div class="text-sm text-gray-500">{formattedDate}</div>
+                      <div class="text-sm text-gray-600 font-hebrew mt-1">{entry.hebrewDate}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                      <div class="space-y-2">
+                        {entry.bible.map((verse, i) => {
+                          const isParasha = verse.type === 'parsha';
+                          const isHaftarah = verse.type === 'haftarah';
+                          const isExtra = isParasha || isHaftarah;
+                          
+                          return (
+                            <div key={i} class="border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                              <div class={`text-sm font-hebrew ${isExtra ? 'text-blue-600 font-semibold' : 'text-gray-900'}`}>
+                                {verse.ref}
+                              </div>
+                              {verse.text && !isExtra && (
+                                <div class="mt-1 text-xs text-gray-600 font-hebrew leading-snug">
+                                  {verse.text}
+                                </div>
+                              )}
+                              {isParasha && (
+                                <div class="mt-1 text-xs text-blue-700 font-hebrew">
+                                  {verse.text}
+                                </div>
+                              )}
+                              {isHaftarah && (
+                                <div class="mt-1 text-xs text-purple-700 font-hebrew">
+                                  {verse.text}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        
+        {showLatex && latexOutput && (
+          <div class="mt-8 bg-white p-6 rounded-lg shadow-md border border-gray-200">
+            <h2 class="text-2xl font-bold mb-4">LaTeX Source</h2>
+            <div class="bg-gray-50 p-4 rounded border border-gray-200">
+              <h3 class="font-medium text-blue-800 mb-2">Generated LaTeX Source</h3>
+              <div class="flex justify-between items-center mb-4">
+                <button 
+                  onclick="navigator.clipboard.writeText(document.getElementById('latex-output').innerText)"
+                  class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium transition-colors"
+                >
+                  Copy to Clipboard
+                </button>
+                <a 
+                  href={`data:text/plain;charset=utf-8,${encodeURIComponent(latexOutput)}`}
+                  download="torah-schedule.tex"
+                  class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-sm font-medium transition-colors"
+                >
+                  Download LaTeX File
+                </a>
+              </div>
+              
+              <div class="relative">
+                <pre id="latex-output" class="bg-white p-4 rounded border border-gray-300 overflow-auto max-h-96 text-sm font-mono">
+                  {latexOutput}
+                </pre>
+                <div class="absolute top-2 right-2 bg-gray-100 px-2 py-1 rounded text-xs text-gray-600">
+                  {Math.ceil(latexOutput.length / 1000)} KB
+                </div>
+              </div>
+              
+              <div class="mt-4 text-sm text-gray-600">
+                <p>To compile this LaTeX document, you'll need XeLaTeX with the following packages installed:</p>
+                <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><code>fontspec</code> and <code>polyglossia</code> for Hebrew text support</li>
+                  <li><code>Ezra SIL</code> font installed on your system</li>
+                  <li>XeLaTeX or LuaLaTeX as the compiler (required for Unicode and OpenType font support)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div class="mt-6 pt-4 border-t border-gray-200">
+          <p class="text-sm text-gray-600">
+            Showing first 10 days of the schedule. A complete implementation would include the full schedule from the 5th to 10th Hebrew birthday.
+          </p>
+        </div>
+      </div>
+    )}
+    
+    <!-- Explanation Section -->
+    <div class="mt-12 bg-blue-50 p-6 rounded-lg border border-blue-100">
+      <h2 class="text-xl font-semibold mb-3">About This Schedule</h2>
+      <p class="mb-4 text-gray-700">
+        This schedule is designed to help track a child's Torah study from their 5th to 10th Hebrew birthday.
+        The schedule is automatically generated based on the child's birth date, with Hebrew dates calculated
+        using the Hebcal library.
+      </p>
+      <div class="bg-white p-4 rounded border border-blue-100">
+        <h3 class="font-medium text-blue-800 mb-2">Features:</h3>
+        <ul class="list-disc pl-5 space-y-1 text-gray-700">
+          <li>Accurate Hebrew date calculations using @hebcal/core</li>
+          <li>Responsive design that works on all devices</li>
+          <li>LaTeX output that matches the original format</li>
+          <li>Print-friendly format</li>
+        </ul>
+      </div>
+      <div class="mt-4 text-sm text-blue-700">
+        <p class="font-medium">Note:</strong> This is a demonstration showing the first 10 days of the schedule.</p>
+        <ul class="list-disc pl-5 mt-1 space-y-1">
+          <li>Full implementation would include all days from 5th to 10th birthday</li>
+          <li>Integration with Sefaria API for actual verse text</li>
+          <li>More sophisticated verse distribution algorithm</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  /* RTL and Hebrew text support */
+  [dir='rtl'], .rtl {
+    direction: rtl;
+    text-align: right;
+  }
+  
+  .font-hebrew {
+    font-family: 'Frank Ruhl Libre', 'Taamey Frank CLM', 'Taamey Frank', 'Frank Ruehl', 'Times New Roman', serif;
+    direction: rtl;
+  }
+  
+  @media print {
+    .no-print {
+      display: none;
+    }
+    
+    body {
+      font-size: 12px;
+    }
+    
+    .container {
+      max-width: 100%;
+      padding: 0;
+    }
+  }
+</style>

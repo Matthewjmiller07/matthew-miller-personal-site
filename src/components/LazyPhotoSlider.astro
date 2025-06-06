@@ -1,0 +1,339 @@
+---
+interface Props {
+  folder: string;
+  maxImages?: number;
+  autoplay?: boolean;
+  delay?: number;
+  effect?: 'slide' | 'fade' | 'cube' | 'coverflow' | 'flip';
+}
+
+const { 
+  folder, 
+  maxImages = 12, 
+  autoplay = true, 
+  delay = 4000,
+  effect = 'slide' 
+} = Astro.props;
+
+// Get all image files from the public directory
+const getImagePaths = () => {
+  try {
+    // This will be populated client-side
+    return [];
+  } catch (error) {
+    console.error('Error loading images:', error);
+    return [];
+  }
+};
+
+// Preload the first few images
+const preloadImages = [];
+for (let i = 1; i <= 3; i++) {
+  const imgNum = i.toString().padStart(5, '0');
+  preloadImages.push(`/images/${folder}/${imgNum}-*.png`);
+}
+---
+
+<div class="swiper-container relative w-full h-[500px] bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden shadow-xl">
+  <div class="swiper-wrapper">
+    <!-- Images will be loaded here by the client-side script -->
+  </div>
+  
+  <!-- Navigation buttons -->
+  <div class="swiper-button-next text-white hover:text-primary-light transition-colors duration-200"></div>
+  <div class="swiper-button-prev text-white hover:text-primary-light transition-colors duration-200"></div>
+  
+  <!-- Pagination -->
+  <div class="swiper-pagination"></div>
+  
+  <!-- Progress bar -->
+  <div class="absolute bottom-0 left-0 right-0 h-1 bg-black/10 dark:bg-white/10 z-10">
+    <div class="swiper-progress h-full bg-primary-light dark:bg-primary-dark transition-all duration-300 ease-linear"></div>
+  </div>
+</div>
+
+<!-- Preload first few images -->
+{preloadImages.map((img, i) => (
+  <link rel="preload" href={img} as="image" fetchpriority={i === 0 ? 'high' : 'low'} />
+))}
+
+<!-- Lazy load Swiper -->
+<script>
+  // Wait for the component to be visible in the viewport before loading Swiper
+  async function initSwiper() {
+    const Swiper = (await import('swiper')).default;
+    const { Navigation, Pagination, Autoplay, EffectFade, EffectCube, EffectCoverflow, EffectFlip } = await import('swiper/modules');
+    
+    // Initialize Swiper
+    const swiper = new Swiper('.swiper-container', {
+      modules: [Navigation, Pagination, Autoplay, EffectFade, EffectCube, EffectCoverflow, EffectFlip],
+      effect: '${effect}',
+      loop: true,
+      grabCursor: true,
+      centeredSlides: true,
+      slidesPerView: 1,
+      spaceBetween: 20,
+      speed: 800,
+      autoplay: ${autoplay} ? {
+        delay: ${delay},
+        disableOnInteraction: false,
+        pauseOnMouseEnter: true,
+      } : false,
+      navigation: {
+        nextEl: '.swiper-button-next',
+        prevEl: '.swiper-button-prev',
+      },
+      pagination: {
+        el: '.swiper-pagination',
+        clickable: true,
+        dynamicBullets: true,
+      },
+      breakpoints: {
+        640: {
+          slidesPerView: 1.2,
+        },
+        768: {
+          slidesPerView: 1.5,
+        },
+        1024: {
+          slidesPerView: 2,
+          spaceBetween: 30,
+        },
+      },
+      on: {
+        init: function() {
+          // Progress bar animation
+          const progress = document.querySelector('.swiper-progress');
+          if (progress) {
+            progress.style.width = '0%';
+            progress.style.transition = 'width ${delay}ms linear';
+            progress.style.width = '100%';
+          }
+        },
+        slideChangeTransitionStart: function() {
+          // Reset and restart progress bar
+          const progress = document.querySelector('.swiper-progress');
+          if (progress) {
+            progress.style.transition = 'none';
+            progress.style.width = '0%';
+            setTimeout(() => {
+              progress.style.transition = 'width ${delay}ms linear';
+              progress.style.width = '100%';
+            }, 10);
+          }
+        }
+      }
+    });
+
+    // Dynamically load images
+    const folder = '${folder}';
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+    const swiperWrapper = document.querySelector('.swiper-wrapper');
+    
+    // Function to create a slide with lazy loading
+    function createSlide(imageUrl) {
+      const slide = document.createElement('div');
+      slide.className = 'swiper-slide group';
+      
+      const imageContainer = document.createElement('div');
+      imageContainer.className = 'relative w-full h-full rounded-lg overflow-hidden';
+      
+      const img = document.createElement('img');
+      img.className = 'w-full h-full object-cover transition-transform duration-700 group-hover:scale-105';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.alt = 'AI Generated Portrait';
+      
+      // Create a low-quality placeholder
+      const placeholder = document.createElement('div');
+      placeholder.className = 'absolute inset-0 bg-gray-200 dark:bg-gray-700 animate-pulse';
+      
+      // Load image with fade-in effect
+      img.onload = () => {
+        img.classList.add('opacity-0');
+        setTimeout(() => {
+          img.classList.add('opacity-100');
+          img.classList.remove('opacity-0');
+          if (placeholder.parentNode) {
+            placeholder.remove();
+          }
+        }, 50);
+      };
+      
+      img.src = imageUrl;
+      
+      imageContainer.appendChild(placeholder);
+      imageContainer.appendChild(img);
+      slide.appendChild(imageContainer);
+      
+      return slide;
+    }
+    
+    // Get all images from the folder
+    try {
+      // Get all image files from the public directory
+      const images = [];
+      
+      // First, try to get the list of images from the server
+      try {
+        // This is a placeholder - in a real app, you would fetch this from an API endpoint
+        // that returns the list of available images
+        
+        // For now, we'll use a hardcoded list of image patterns
+        const imagePatterns = [
+          '00001-*.png', '00002-*.png', '00003-*.png', '00004-*.png', '00005-*.png',
+          '00011-*.png', '00012-*.png', '00014-*.png', '00016-*.png', '00019-*.png',
+          '00020-*.png', '00021-*.png', '00022-*.png', '00023-*.png', '00025-*.png',
+          '00026-*.png', '00027-*.png', '00028-*.png', '00029-*.png', '00030-*.png',
+          '00031-*.png', '00033-*.png', '00037-*.png', '00038-*.png', '00039-*.png',
+          '00040-*.png', '00041-*.png', '00042-*.png', '00044-*.png', '00045-*.png',
+          '00048-*.png', '00049-*.png', '00051-*.png', '00056-*.png', '00057-*.png',
+          '00058-*.png', '00060-*.png', '00061-*.png', '00065-*.png', '00068-*.png',
+          '00069-*.png', '00070-*.png', '00071-*.png', '00074-*.png', '00084-*.png',
+          '00085-*.png', '00087-*.png', '00088-*.png'
+        ];
+        
+        // Convert patterns to full paths
+        imagePatterns.forEach(pattern => {
+          images.push(`/images/${folder}/${pattern}`);
+        });
+        
+        // Shuffle the array to show random images
+        const shuffled = [...images].sort(() => 0.5 - Math.random());
+        
+        // Take the first maxImages images
+        const selectedImages = shuffled.slice(0, Math.min(${maxImages}, shuffled.length));
+        
+        // Create slides for the selected images
+        selectedImages.forEach(imgPath => {
+          const slide = createSlide(imgPath);
+          swiperWrapper.appendChild(slide);
+        });
+        
+        // Update swiper
+        swiper.update();
+        
+      } catch (error) {
+        console.error('Error loading image list:', error);
+        throw error; // Re-throw to be caught by the outer catch
+      }
+      
+    } catch (error) {
+      console.error('Error loading images:', error);
+      
+      // Fallback: Show a message if no images are found
+      const fallback = document.createElement('div');
+      fallback.className = 'text-center py-12';
+      fallback.innerHTML = `
+        <p class="text-lg text-gray-600 dark:text-gray-400">
+          Could not load images. Please check the image directory.
+        </p>
+        <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
+          Expected path: /public/images/${folder}/
+        </p>
+      `;
+      swiperWrapper.parentNode.replaceChild(fallback, swiperWrapper);
+    }
+  }
+  
+  // Initialize when component is visible
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        initSwiper();
+        observer.disconnect();
+      }
+    });
+  }, { threshold: 0.1 });
+  
+  // Start observing the swiper container
+  const swiperContainer = document.querySelector('.swiper-container');
+  if (swiperContainer) {
+    observer.observe(swiperContainer);
+  }
+  
+  // Cleanup on component unmount
+  document.addEventListener('astro:before-swap', () => {
+    if (swiperContainer) {
+      observer.unobserve(swiperContainer);
+    }
+  });
+</script>
+
+<style>
+  .swiper-container {
+    --swiper-theme-color: #3b82f6;
+    --swiper-navigation-size: 24px;
+    --swiper-pagination-bullet-size: 10px;
+    --swiper-pagination-bullet-horizontal-gap: 6px;
+  }
+  
+  .swiper-slide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0.7;
+    transform: scale(0.9);
+    height: 100%;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+  
+  .swiper-slide-active {
+    opacity: 1;
+    transform: scale(1);
+  }
+  
+  .swiper-button-next,
+  .swiper-button-prev {
+    background: rgba(0, 0, 0, 0.3);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+  
+  .swiper-button-next:hover,
+  .swiper-button-prev:hover {
+    background: rgba(0, 0, 0, 0.6);
+    transform: scale(1.1);
+  }
+  
+  .swiper-pagination-bullet {
+    width: 10px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 1;
+    transition: all 0.3s ease;
+  }
+  
+  .swiper-pagination-bullet-active {
+    background: #fff;
+    transform: scale(1.2);
+  }
+  
+  @media (max-width: 768px) {
+    .swiper-button-next,
+    .swiper-button-prev {
+      display: none;
+    }
+    
+    .swiper-slide {
+      padding: 0.5rem;
+    }
+  }
+  
+  /* Fade in animation for images */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .swiper-slide img {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+</style>

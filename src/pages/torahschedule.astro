@@ -1,0 +1,424 @@
+---
+// src/pages/torahschedule.astro
+import Layout from "../layouts/Layout.astro";
+
+const pageTitle = "Torah Schedule Creator";
+const pageDescription = "Generate personalized Tanach and Mishnah study schedules and export them as CSV or iCalendar files.";
+
+// Client-side scripts (loaded by <Layout>)
+const scripts = [
+  { src: "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" },
+  { src: "https://cdn.jsdelivr.net/npm/flatpickr" },
+  { src: "/js/data.js" },
+  { src: "/js/tanachData.js" },
+  { src: "/js/app.js" }
+];
+---
+
+<Layout title={pageTitle} description={pageDescription} scripts={scripts}>
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="text-center mb-10">
+      <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">Torah Schedule Creator</h1>
+      <p class="text-xl text-gray-600 dark:text-gray-300">Generate personalized study schedules for Tanach and Mishnah</p>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="border-b border-gray-200 dark:border-gray-700 mb-8">
+      <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="scheduleTabs" role="tablist">
+        <li class="mr-2" role="presentation">
+          <button 
+            class="tab-button active"
+            id="tanach-tab" 
+            data-bs-toggle="tab"
+            data-bs-target="#tanach" 
+            type="button" 
+            role="tab"
+            aria-controls="tanach" 
+            aria-selected="true"
+          >
+            Tanach
+          </button>
+        </li>
+        <li class="mr-2" role="presentation">
+          <button 
+            class="tab-button"
+            id="mishnah-tab" 
+            data-bs-toggle="tab"
+            data-bs-target="#mishnah" 
+            type="button" 
+            role="tab"
+            aria-controls="mishnah" 
+            aria-selected="false"
+          >
+            Mishnah
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <div class="tab-content bg-white dark:bg-gray-800 rounded-lg shadow-md p-6" id="scheduleTabsContent">
+      <!-- Tanach Tab Content -->
+      <div class="tab-pane fade show active" id="tanach" role="tabpanel" aria-labelledby="tanach-tab">
+        <form id="scheduleForm" class="space-y-6">
+          <!-- Name -->
+          <div class="space-y-2">
+            <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Schedule Name</label>
+            <input 
+              type="text" 
+              id="name" 
+              class="block w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              placeholder="Enter a name for your schedule"
+              required 
+            />
+          </div>
+
+          <!-- What to study -->
+          <div class="form-group">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Select what to study:</label>
+            <select class="form-select" id="tanachSelection">
+              <option value="all">Complete Tanach</option>
+              <option value="torah">Torah (Five Books of Moses)</option>
+              <option value="neviim">Nevi'im (Prophets)</option>
+              <option value="ketuvim">Ketuvim (Writings)</option>
+              <option value="custom">Individual Book</option>
+              <option value="chidon">Chidon Curriculum</option>
+              <option value="childSchedule">Child's Tanach Schedule (Ages 5-10)</option>
+            </select>
+          </div> 
+
+          <!-- Book picker (shown only when “custom” chosen) -->
+          <div class="form-group" id="bookSelectionGroup" style="display:none;">
+            <label for="bookSelection">Select Book:</label>
+            <select class="form-select" id="bookSelection"></select>
+          </div>
+
+          <!-- Chidon extras -->
+          <div class="form-group" id="chidonDivisionGroup" style="display:none;">
+            <label for="chidonDivision">Select Chidon Division:</label>
+            <select class="form-select" id="chidonDivision">
+              <option value="middleSchool">Middle School (Grades 6-8)</option>
+              <option value="highSchool">High School (Grades 9-12)</option>
+            </select>
+
+            <div class="mt-3 alert alert-info">
+              <h5>Select Chidon Parts:</h5>
+              <div id="chidonPartsSelection" class="mb-3"></div>
+              <h5>Chidon Curriculum Books:</h5>
+              <div id="chidonBooksInfo"></div>
+            </div>
+          </div>
+
+          <!-- Child schedule extras -->
+          <div class="form-group" id="childScheduleGroup" style="display:none;">
+            <div class="alert alert-info mb-3">
+              <p>This feature divides the entire Tanach over five years for children ages 5-10.</p>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="childName"  class="form-label">Child's Name:</label>
+                <input type="text" class="form-control" id="childName" required />
+              </div>
+              <div class="col-md-6">
+                <label for="childBirthdate" class="form-label">Child's Birth Date:</label>
+                <input type="text" class="form-control" id="childBirthdate"
+                       placeholder="YYYY-MM-DD" required />
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="useCustomStartDate">
+                  <label class="form-check-label" for="useCustomStartDate">
+                    Use custom start date
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-6" id="customStartDateGroup" style="display:none;">
+                <label for="customStartDate" class="form-label">Custom Start Date:</label>
+                <input type="text" class="form-control" id="customStartDate"
+                       placeholder="YYYY-MM-DD">
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="saturdayEmphasis" checked>
+                <label class="form-check-label" for="saturdayEmphasis">
+                  Assign more verses on Saturdays
+                </label>
+              </div>
+            </div>
+
+            <div id="childScheduleInfo" class="alert alert-secondary" style="display:none;">
+              <h5>Schedule Information:</h5>
+              <div id="scheduleDetails"></div>
+            </div>
+          </div>
+
+          <!-- Schedule type -->
+          <div class="form-group">
+            <label>Schedule Type:</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="chaptersPerDayCheckbox">
+              <label class="form-check-label" for="chaptersPerDayCheckbox">Units per day</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="timeframeCheckbox">
+              <label class="form-check-label" for="timeframeCheckbox">Set timeframe</label>
+            </div>
+          </div>
+
+          <!-- Units per day -->
+          <div class="form-group" id="chaptersPerDayInputGroup" style="display:none;">
+            <label for="chaptersPerDayInput">Study units per day:</label>
+            <div class="mb-2">
+              <select class="form-select" id="studyUnitType">
+                <option value="chapters" selected>Chapters</option>
+                <option value="verses">Verses</option>
+              </select>
+            </div>
+            <input type="number" class="form-control" id="chaptersPerDayInput"
+                   min="1" value="1">
+          </div>
+
+          <!-- Timeframe -->
+          <div class="form-group" id="timeframeInputGroup" style="display:none;">
+            <label for="startDate">Start Date:</label>
+            <input type="text" class="form-control" id="startDate">
+            <div class="mt-2">
+              <label for="endDate">End Date (optional):</label>
+              <input type="text" class="form-control" id="endDate"
+                     placeholder="Leave empty to finish on start date">
+            </div>
+          </div>
+
+          <!-- Study days -->
+          <div class="form-group">
+            <label>Study Days:</label>
+            <div class="weekday-selector">
+              <label><input type="checkbox" value="0" class="weekday" checked> Sunday</label>
+              <label><input type="checkbox" value="1" class="weekday" checked> Monday</label>
+              <label><input type="checkbox" value="2" class="weekday" checked> Tuesday</label>
+              <label><input type="checkbox" value="3" class="weekday" checked> Wednesday</label>
+              <label><input type="checkbox" value="4" class="weekday" checked> Thursday</label>
+              <label><input type="checkbox" value="5" class="weekday" checked> Friday</label>
+              <label><input type="checkbox" value="6" class="weekday" checked> Saturday</label>
+            </div>
+          </div>
+
+          <!-- Learning-of-the-day auto-preview -->
+          <div id="learningContent" class="alert alert-info mt-3">
+            <strong>Learning of the Day:</strong>
+            <ul></ul>
+          </div>
+
+          <!-- Free-form Sefaria reference -->
+          <div class="form-group">
+            <label for="sefariaReference">Enter Sefaria Reference:</label>
+            <input type="text" class="form-control" id="sefariaReference"
+                   placeholder="e.g., Genesis 1 or Berachot 1:1">
+            <button type="button" class="btn btn-secondary" id="fetchLearningBtn">
+              Fetch Learning
+            </button>
+          </div>
+
+          <button type="button" class="btn btn-primary" id="generateScheduleBtn">
+            Generate Schedule
+          </button>
+        </form>
+      </div>
+
+      <!-- ──────────────── Mishnah TAB ──────────────── -->
+      <div class="tab-pane fade" id="mishnah"
+           role="tabpanel" aria-labelledby="mishnah-tab">
+
+        <form id="mishnayotForm">
+          <!-- Name -->
+          <div class="form-group">
+            <label for="mishnayotName">Name (for the schedule):</label>
+            <input type="text" class="form-control" id="mishnayotName" required>
+          </div>
+
+          <!-- What to study -->
+          <div class="form-group">
+            <label>Select what to study:</label>
+            <select class="form-select" id="mishnayotSelection">
+              <option value="all">Complete Mishnayot</option>
+              <option value="seder">Select Seder</option>
+            </select>
+          </div>
+
+          <!-- Seder picker -->
+          <div class="form-group" id="sederSelectionGroup" style="display:none;">
+            <label for="sederSelection">Select Seder:</label>
+            <select class="form-select" id="sederSelection"></select>
+
+            <div class="form-check mt-2">
+              <input class="form-check-input" type="checkbox" id="studyWholeSeder" checked>
+              <label class="form-check-label" for="studyWholeSeder">
+                Study the entire Seder
+              </label>
+            </div>
+
+            <!-- Tractate multiselect (shown when studyWholeSeder unchecked) -->
+            <div id="tractateSelectionContainer" class="mt-2" style="display:none;">
+              <label for="tractateSelection">Select Tractate(s):</label>
+              <select class="form-select" id="tractateSelection" multiple size="8"></select>
+              <small class="form-text text-muted mt-1">
+                On mobile: tap to select multiple. On desktop: hold Ctrl/Cmd.
+              </small>
+            </div>
+          </div>
+
+          <!-- Schedule type -->
+          <div class="form-group">
+            <label>Schedule Type:</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio"
+                     name="mishnayotScheduleType" id="mishnayotChaptersPerDay"
+                     value="chaptersPerDay" checked>
+              <label class="form-check-label" for="mishnayotChaptersPerDay">
+                Units per day
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio"
+                     name="mishnayotScheduleType" id="mishnayotTimeframe"
+                     value="timeframe">
+              <label class="form-check-label" for="mishnayotTimeframe">
+                Set timeframe
+              </label>
+            </div>
+          </div>
+
+          <!-- Units per day -->
+          <div class="form-group" id="mishnayotChaptersPerDayGroup">
+            <label for="mishnayotChaptersPerDayInput">Study units per day:</label>
+            <div class="mb-2">
+              <select class="form-select" id="mishnayotStudyUnitType">
+                <option value="chapters">Chapters</option>
+                <option value="mishnayot" selected>Individual Mishnayot</option>
+              </select>
+            </div>
+            <input type="number" class="form-control"
+                   id="mishnayotChaptersPerDayInput" min="1" value="2">
+          </div>
+
+          <!-- Timeframe -->
+          <div class="form-group" id="mishnayotTimeframeGroup" style="display:none;">
+            <label for="mishnayotStartDate">Start Date:</label>
+            <input type="text" class="form-control" id="mishnayotStartDate">
+            <div class="mt-2">
+              <label for="mishnayotEndDate">End Date (optional):</label>
+              <input type="text" class="form-control" id="mishnayotEndDate"
+                     placeholder="Leave empty to finish on start date">
+            </div>
+          </div>
+
+          <!-- Study days -->
+          <div class="form-group">
+            <label>Study Days:</label>
+            <div class="weekday-selector">
+              <label><input type="checkbox" value="0" class="mishnayotWeekday" checked> Sunday</label>
+              <label><input type="checkbox" value="1" class="mishnayotWeekday" checked> Monday</label>
+              <label><input type="checkbox" value="2" class="mishnayotWeekday" checked> Tuesday</label>
+              <label><input type="checkbox" value="3" class="mishnayotWeekday" checked> Wednesday</label>
+              <label><input type="checkbox" value="4" class="mishnayotWeekday" checked> Thursday</label>
+              <label><input type="checkbox" value="5" class="mishnayotWeekday" checked> Friday</label>
+              <label><input type="checkbox" value="6" class="mishnayotWeekday" checked> Saturday</label>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-primary" id="generateMishnayotScheduleBtn">
+            Generate Schedule
+          </button>
+        </form>
+      </div> <!-- /Mishnah tab -->
+    </div>   <!-- /tab-content -->
+
+    <!-- ──────────────── Results Section ──────────────── -->
+    <div class="result-section" id="resultSection">
+      <h3>Your Schedule</h3>
+      <div class="d-flex flex-column flex-sm-row justify-content-between mb-3 gap-2">
+        <div class="d-grid gap-2 d-sm-flex">
+          <div class="flex gap-2">
+            <button id="downloadCsv" class="btn btn-primary">Download CSV</button>
+            <button id="downloadIcs" class="btn btn-primary">Download ICS</button>
+            <button id="downloadLatex" class="btn btn-primary">Download LaTeX</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="schedulePreview">
+        <table class="table table-striped table-bordered table-responsive">
+          <thead class="table-light">
+            <tr><th>Date</th><th>Day</th><th>Reading</th></tr>
+          </thead>
+          <tbody id="scheduleTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page-specific styles -->
+  <style is:global>
+    /* Tab styling */
+    .tab-button {
+      @apply inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 cursor-pointer;
+    }
+    
+    .tab-button.active {
+      @apply text-blue-600 border-blue-600 dark:text-blue-500 dark:border-blue-500 font-medium;
+    }
+    
+    /* Tab content visibility */
+    .tab-pane {
+      display: none;
+    }
+    
+    .tab-pane.active {
+      display: block;
+    }
+    
+    /* Hide the flatpickr calendar that's appearing at the bottom */
+    .flatpickr-calendar {
+      display: none !important;
+    }
+    
+    /* Form elements */
+    .form-control, .form-select {
+      @apply block w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+    }
+    
+    /* Buttons */
+    .btn {
+      @apply px-4 py-2 font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200;
+    }
+    
+    .btn-primary {
+      @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 dark:bg-blue-600 dark:hover:bg-blue-700;
+    }
+    
+    .btn-outline {
+      @apply border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700;
+    }
+    
+    /* Alerts */
+    .alert {
+      @apply p-4 mb-4 border rounded-lg;
+    }
+    
+    .alert-info {
+      @apply text-blue-800 bg-blue-50 border-blue-300 dark:bg-gray-800 dark:text-blue-400 dark:border-blue-800;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 640px) {
+      .sm\:grid-cols-1 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</Layout>

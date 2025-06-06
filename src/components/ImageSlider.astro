@@ -1,0 +1,327 @@
+---
+interface Props {
+  folder?: string;
+  maxImages?: number; // Set to 0 or negative to show all images
+  autoplay?: boolean;
+  delay?: number;
+  effect?: 'slide' | 'fade' | 'cube' | 'coverflow' | 'flip';
+}
+
+const { 
+  folder = 'AI-Matthew', 
+  maxImages = 12, 
+  autoplay = true, 
+  delay = 5000,
+  effect = 'fade' 
+} = Astro.props;
+
+// Get all image files from the specified folder
+let imageFilenames = [];
+
+try {
+  // This will be replaced at build time by Vite's import.meta.glob
+  const imageModules = import.meta.glob('../../public/**/*.{png,jpg,jpeg,webp}', { 
+    eager: true,
+    as: 'url' 
+  });
+  
+  // Filter and map the images from the specified folder
+  const folderPath = `public/${folder}`.replace(/\//g, '/');
+  
+  // Extract filenames from the imported modules that match our folder
+  imageFilenames = Object.entries(imageModules)
+    .filter(([path]) => path.includes(folderPath))
+    .map(([path]) => {
+      // Get the relative path from the public folder
+      const relativePath = path.replace(/^.*?public\//, '');
+      return `/${relativePath}`; // Add leading slash for web paths
+    });
+  
+  console.log(`Found ${imageFilenames.length} images in ${folder} folder`);
+  
+  if (imageFilenames.length === 0) {
+    console.warn(`No images found in ${folder} folder. Make sure the folder exists in the public directory.`);
+    // Fallback to a default image if no images are found
+    imageFilenames = ['/images/placeholder.jpg'];
+  }
+} catch (error) {
+  console.error('Error loading images:', error);
+  // Fallback to a default image if there's an error
+  imageFilenames = ['/images/placeholder.jpg'];
+}
+
+// Process all images (or up to maxImages if specified)
+let selectedImages = [...imageFilenames].sort(() => 0.5 - Math.random());
+
+// If maxImages is specified, limit the number of images
+if (maxImages > 0) {
+  selectedImages = selectedImages.slice(0, maxImages);
+  console.log(`Showing ${selectedImages.length} random images out of ${imageFilenames.length} total`);
+} else {
+  console.log(`Showing all ${selectedImages.length} images`);
+}
+
+// Preload first 3 images for better performance
+const preloadImages = selectedImages.slice(0, 3);
+---
+
+<div class="relative w-full h-[500px] bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden shadow-xl">
+  <!-- Slider main container -->
+  <div class="swiper">
+    <!-- Additional required wrapper -->
+    <div class="swiper-wrapper">
+      <!-- Slides -->
+      {selectedImages.map((imgSrc, index) => (
+        <div class="swiper-slide">
+          <img 
+            src={imgSrc}
+            alt={`AI Generated Portrait ${index + 1}`}
+            loading="lazy"
+            decoding="async"
+            class="w-full h-full object-cover"
+          />
+        </div>
+      ))}
+    </div>
+    
+    <!-- Navigation buttons -->
+    <div class="swiper-button-next"></div>
+    <div class="swiper-button-prev"></div>
+    
+    <!-- Pagination -->
+    <div class="swiper-pagination"></div>
+    
+    <!-- Scrollbar -->
+    <div class="swiper-scrollbar"></div>
+  </div>
+</div>
+
+<!-- Preload first few images -->
+{preloadImages.map((img, i) => (
+  <link rel="preload" href={img} as="image" fetchpriority={i === 0 ? 'high' : 'low'} />
+))}
+
+<!-- Initialize Swiper -->
+<script>
+  // Import Swiper and its modules
+  import Swiper from 'swiper';
+  import { Navigation, Pagination, Autoplay, EffectFade } from 'swiper/modules';
+  
+  // Initialize Swiper when the component mounts
+  document.addEventListener('astro:page-load', () => {
+    // Initialize Swiper
+    const swiper = new Swiper('.swiper', {
+      // Configure Swiper modules
+      modules: [Navigation, Pagination, Autoplay, EffectFade],
+      
+      // Enable lazy loading
+      lazy: true,
+      
+      // Optional parameters
+      direction: 'horizontal',
+      loop: true,
+      effect: 'fade',
+      fadeEffect: {
+        crossFade: true
+      },
+      
+      // If we need pagination
+      pagination: {
+        el: '.swiper-pagination',
+        clickable: true,
+      },
+      
+      // Navigation arrows
+      navigation: {
+        nextEl: '.swiper-button-next',
+        prevEl: '.swiper-button-prev',
+      },
+      
+      // Autoplay
+      autoplay: {
+        delay: 5000,
+        disableOnInteraction: false,
+        pauseOnMouseEnter: true,
+      },
+      
+      // Responsive breakpoints
+      breakpoints: {
+        // when window width is >= 320px
+        320: {
+          slidesPerView: 1,
+          spaceBetween: 20
+        },
+        // when window width is >= 640px
+        640: {
+          slidesPerView: 1,
+          spaceBetween: 20
+        },
+        // when window width is >= 1024px
+        1024: {
+          slidesPerView: 1,
+          spaceBetween: 20
+        }
+      },
+      
+      // Enable debugger
+      debugger: true
+    });
+    
+    // Log swiper instance for debugging
+    console.log('Swiper initialized:', swiper);
+  });
+</script>
+
+<style>
+  /* Import Swiper styles */
+  @import 'swiper/css';
+  @import 'swiper/css/navigation';
+  @import 'swiper/css/pagination';
+  @import 'swiper/css/effect-fade';
+  
+  .swiper {
+    width: 100%;
+    height: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    background: #f5f5f5;
+  }
+  
+  .swiper-slide {
+    text-align: center;
+    font-size: 18px;
+    background: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+    height: calc(100% - 40px); /* Account for padding */
+    margin: 20px 0;
+  }
+  
+  .swiper-slide img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    margin: 0 auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .swiper-button-next,
+  .swiper-button-prev {
+    color: white;
+    background: rgba(0, 0, 0, 0.5);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  
+  .swiper-button-next {
+    right: 10px;
+  }
+  
+  .swiper-button-prev {
+    left: 10px;
+  }
+  
+  .swiper-button-next:after,
+  .swiper-button-prev:after {
+    font-size: 24px;
+    font-weight: bold;
+  }
+  
+  .swiper-button-next:hover,
+  .swiper-button-prev:hover {
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.1);
+  }
+  
+  .swiper-pagination-bullet {
+    background: rgba(255, 255, 255, 0.7);
+    opacity: 0.7;
+    width: 10px;
+    height: 10px;
+    margin: 0 5px;
+    transition: all 0.3s ease;
+  }
+  
+  .swiper-pagination-bullet-active {
+    background: #3b82f6;
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  
+  .swiper-slide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+  
+  .swiper-slide-active {
+    opacity: 1;
+    transform: scale(1);
+  }
+  
+  .swiper-button-next,
+  .swiper-button-prev {
+    background: rgba(0, 0, 0, 0.3);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+  
+  .swiper-button-next:hover,
+  .swiper-button-prev:hover {
+    background: rgba(0, 0, 0, 0.6);
+    transform: scale(1.1);
+  }
+  
+  .swiper-pagination-bullet {
+    width: 10px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 1;
+    transition: all 0.3s ease;
+  }
+  
+  .swiper-pagination-bullet-active {
+    background: #fff;
+    transform: scale(1.2);
+  }
+  
+  @media (max-width: 768px) {
+    .swiper-button-next,
+    .swiper-button-prev {
+      display: none;
+    }
+    
+    .swiper-slide {
+      padding: 0.5rem;
+    }
+  }
+  
+  /* Fade in animation for images */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .swiper-slide img {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+</style>
