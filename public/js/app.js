@@ -1444,17 +1444,21 @@ function getHebrewMonthName(monthInput) {
     
     // Month name mapping
     const englishNames = {
-        1: 'Nisan', 2: 'Iyar', 3: 'Sivan', 4: 'muz', 5: 'Av', 6: 'Elul',
-        7: 'Tishrei', 8: 'Cheshvan', 9: 'Kislev', 10: 'Tevet', 11: 'Shevat', 12: 'Adar', 13: 'Adar II',
-        'Nisan': 'Nisan', 'Iyar': 'Iyar', 'Sivan': 'Sivan', 'Tamuz': 'Tamuz', 'Av': 'Av', 'Elul': 'Elul',
-        'Tishrei': 'Tishrei', 'Cheshvan': 'Cheshvan', 'Kislev': 'Kislev', 'Tevet': 'Tevet', 'Shevat': 'Shevat', 'Adar': 'Adar', 'Adar II': 'Adar II'
+        1: 'Nisan', 2: 'Iyyar', 3: 'Sivan', 4: 'Tamuz', 5: 'Av', 6: 'Elul',
+        7: 'Tishrei', 8: 'Cheshvan', 9: 'Kislev', 10: 'Tevet', 11: "Sh'vat", 12: 'Adar', 13: 'Adar II',
+        'Nisan': 'Nisan', 'Iyyar': 'Iyyar', 'Sivan': 'Sivan', 'Tamuz': 'Tamuz', 'Av': 'Av', 'Elul': 'Elul',
+        'Tishrei': 'Tishrei', 'Cheshvan': 'Cheshvan', 'Kislev': 'Kislev', 'Tevet': 'Tevet', "Sh'vat": "Sh'vat", 'Adar': 'Adar', 'Adar II': 'Adar II',
+        // Add non-standard spellings that might come from the API
+        'Shvat': "Sh'vat", 'Iyar': 'Iyyar'
     };
     
     const hebrewNames = {
         1: 'ניסן', 2: 'אייר', 3: 'סיון', 4: 'תמוז', 5: 'אב', 6: 'אלול',
         7: 'תשרי', 8: 'חשון', 9: 'כסלו', 10: 'טבת', 11: 'שבט', 12: 'אדר', 13: 'אדר ב',
-        'Nisan': 'ניסן', 'Iyar': 'אייר', 'Sivan': 'סיון', 'Tamuz': 'תמוז', 'Av': 'אב', 'Elul': 'אלול',
-        'Tishrei': 'תשרי', 'Cheshvan': 'חשון', 'Kislev': 'כסלו', 'Tevet': 'טבת', 'Shevat': 'שבט', 'Adar': 'אדר', 'Adar II': 'אדר ב'
+        'Nisan': 'ניסן', 'Iyyar': 'אייר', 'Sivan': 'סיון', 'Tamuz': 'תמוז', 'Av': 'אב', 'Elul': 'אלול',
+        'Tishrei': 'תשרי', 'Cheshvan': 'חשון', 'Kislev': 'כסלו', 'Tevet': 'טבת', "Sh'vat": 'שבט', 'Adar': 'אדר', 'Adar II': 'אדר ב',
+        // Add non-standard spellings that might come from the API
+        'Shvat': 'שבט', 'Iyar': 'אייר'
     };
     
     // Add more detailed debugging
@@ -1464,20 +1468,31 @@ function getHebrewMonthName(monthInput) {
     // When in Hebrew mode, return the Hebrew name
     if (currentLang === LANG.HE) {
         console.log('In Hebrew mode, returning Hebrew name');
-        // Force exact matching for common month names to debug
-        if (monthInput === 'Sivan') return 'סיון';
-        if (monthInput === 'Nisan') return 'ניסן';
-        if (monthInput === 'Iyar') return 'אייר';
-        if (monthInput === 'Tamuz') return 'תמוז';
-        if (monthInput === 'Av') return 'אב';
-        if (monthInput === 'Elul') return 'אלול';
-        if (monthInput === 'Tishrei') return 'תשרי';
-        if (monthInput === 'Cheshvan') return 'חשון';
-        if (monthInput === 'Kislev') return 'כסלו';
-        if (monthInput === 'Tevet') return 'טבת';
-        if (monthInput === 'Shevat') return 'שבט';
-        if (monthInput === 'Adar') return 'אדר';
-        if (monthInput === 'Adar II') return 'אדר ב';
+        // First, normalize the month name to handle variations
+        let normalizedMonthInput = monthInput;
+        if (monthInput === 'Iyar') normalizedMonthInput = 'Iyyar';
+        if (monthInput === 'Shvat') normalizedMonthInput = "Sh'vat";
+        
+        // Check if we have a direct mapping for the normalized name
+        if (hebrewNames[normalizedMonthInput]) {
+            console.log('Found direct Hebrew mapping for:', normalizedMonthInput, '->', hebrewNames[normalizedMonthInput]);
+            return hebrewNames[normalizedMonthInput];
+        }
+        
+        // If no direct mapping, try the individual checks
+        if (normalizedMonthInput === 'Sivan') return 'סיון';
+        if (normalizedMonthInput === 'Nisan') return 'ניסן';
+        if (normalizedMonthInput === 'Iyyar') return 'אייר';
+        if (normalizedMonthInput === 'Tamuz') return 'תמוז';
+        if (normalizedMonthInput === 'Av') return 'אב';
+        if (normalizedMonthInput === 'Elul') return 'אלול';
+        if (normalizedMonthInput === 'Tishrei') return 'תשרי';
+        if (normalizedMonthInput === 'Cheshvan') return 'חשון';
+        if (normalizedMonthInput === 'Kislev') return 'כסלו';
+        if (normalizedMonthInput === 'Tevet') return 'טבת';
+        if (normalizedMonthInput === "Sh'vat") return 'שבט';
+        if (normalizedMonthInput === 'Adar') return 'אדר';
+        if (normalizedMonthInput === 'Adar II') return 'אדר ב';
         
         // If the direct lookup didn't work, try the explicit mapping above
         return hebrewNames[monthInput] || monthInput;
@@ -1505,6 +1520,7 @@ function updateDateCellText(cell, gregDate, hebrewDateData, entryId) {
     
     // Add the Gregorian date in current language format
     const gregDateText = document.createElement('div');
+    gregDateText.className = 'gregorian-date'; // Add class for styling
     gregDateText.textContent = currentLang === LANG.HE ? formatHebrewDate(gregDate) : formatDateForDisplay(gregDate);
     if (currentLang === LANG.HE) {
         gregDateText.dir = 'rtl';
@@ -1566,8 +1582,8 @@ function getHebrewMonthName(data) {
     // If we have a month number in hm, map it to a name
     if (data.hm && typeof data.hm === 'number') {
         const hebrewMonths = {
-            1: 'Nisan', 2: 'Iyar', 3: 'Sivan', 4: 'Tamuz', 5: 'Av', 6: 'Elul',
-            7: 'Tishrei', 8: 'Cheshvan', 9: 'Kislev', 10: 'Tevet', 11: 'Shevat', 12: 'Adar', 13: 'Adar II'
+            1: 'Nisan', 2: 'Iyyar', 3: 'Sivan', 4: 'Tamuz', 5: 'Av', 6: 'Elul',
+            7: 'Tishrei', 8: 'Cheshvan', 9: 'Kislev', 10: 'Tevet', 11: "Sh'vat", 12: 'Adar', 13: 'Adar II'
         };
         return hebrewMonths[data.hm] || 'Unknown';
     }
@@ -1599,7 +1615,197 @@ function getHebrewMonthName(data) {
 /**
  * Display the generated schedule in the UI
  */
+// Add better styling for the schedule table
+function addScheduleTableStyles() {
+    // Check if styles already exist
+    if (document.getElementById('scheduleTableStyles')) {
+        return;
+    }
+
+    // Create style element
+    const styleEl = document.createElement('style');
+    styleEl.id = 'scheduleTableStyles';
+    styleEl.textContent = `
+        #schedulePreview {
+            overflow-x: auto;
+            margin-top: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            background-color: #ffffff;
+            margin-bottom: 2rem;
+        }
+        
+        #scheduleTable {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            font-size: 16px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        #scheduleTable th {
+            background-color: #f0f5ff;
+            color: #103a9e; /* Darker blue for better contrast and readability */
+            padding: 16px 20px;
+            font-weight: 600;
+            text-align: left;
+            border-bottom: 2px solid #d4e3ff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        #scheduleTable td {
+            padding: 16px 20px;
+            vertical-align: top;
+            border-bottom: 1px solid #e9ecef;
+            line-height: 1.5;
+        }
+        
+        #scheduleTable tr:last-child td {
+            border-bottom: none;
+        }
+        
+        #scheduleTable tr:nth-child(even) {
+            background-color: #f9fafc;
+        }
+        
+        #scheduleTable tr:hover {
+            background-color: #f0f7ff;
+        }
+        
+        /* Specific cell styling */
+        .date-cell {
+            min-width: 140px;
+            font-weight: 500;
+            color: #000000; /* Black text for maximum contrast */
+        }
+        
+        .day-cell {
+            min-width: 100px;
+            color: #202939; /* Darker text color */
+            font-weight: 500;
+        }
+        
+        .reading-cell {
+            font-family: var(--font-family, system-ui, -apple-system, sans-serif);
+            color: #111827; /* Much darker text color for better readability */
+            font-weight: 500;
+        }
+        
+        .today-row {
+            background-color: #ebf5ff !important;
+            border-left: 4px solid #2b6cb0;
+        }
+        
+        .today-row td {
+            font-weight: 500;
+        }
+        
+        /* Gregorian date styling */
+        .gregorian-date {
+            color: #000000;
+            font-size: 16px;
+            font-weight: 700; /* Extra bold for even more contrast */
+        }
+        
+        /* Hebrew date styling */
+        .hebrew-date, .hebrew-date-english {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #000000; /* Black text for maximum contrast */
+            font-weight: 600; /* Make it bold for better visibility */
+            padding-top: 4px;
+            border-top: 1px solid #c0c0c0; /* Darker, solid border for better visibility */
+        }
+        
+        /* Language toggle button styling */
+        #langToggleBtn {
+            margin: 0 0 20px 0;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 6px;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #scheduleTable {
+                font-size: 15px;
+            }
+            
+            #scheduleTable th {
+                padding: 14px 16px;
+            }
+            
+            #scheduleTable td {
+                padding: 12px 16px;
+            }
+            
+            .date-cell {
+                min-width: 120px;
+            }
+            
+            .day-cell {
+                min-width: 80px;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            #scheduleTable {
+                font-size: 14px;
+            }
+            
+            #scheduleTable th, #scheduleTable td {
+                padding: 10px 12px;
+            }
+        }
+        
+        /* Very small screens */
+        @media (max-width: 480px) {
+            #scheduleTable {
+                font-size: 13px;
+            }
+            
+            #scheduleTable th {
+                font-size: 13px;
+                padding: 8px 10px;
+            }
+            
+            #scheduleTable td {
+                padding: 10px;
+            }
+            
+            /* Keep dates readable on mobile */
+            .gregorian-date {
+                font-size: 15px;
+                font-weight: 700;
+            }
+            
+            .hebrew-date, .hebrew-date-english {
+                font-size: 13px;
+                font-weight: 700;
+                color: #000000;
+            }
+            
+            /* Compact view for date and day */
+            .date-cell, .day-cell {
+                padding-bottom: 4px;
+            }
+            
+            .reading-cell {
+                padding-top: 8px;
+            }
+        }
+    `;
+    document.head.appendChild(styleEl);
+}
+
 function displaySchedule(schedule, name, additionalInfo = null) {
+    // Apply custom styling to the schedule table
+    addScheduleTableStyles();
+    
     // Store the schedule in window.currentSchedule
     window.currentSchedule = schedule;
     if (name) window.scheduleName = name;
@@ -1671,6 +1877,7 @@ function displaySchedule(schedule, name, additionalInfo = null) {
         }
 
         const dateCell = document.createElement('td');
+        dateCell.className = 'date-cell';
         const date = new Date(entry.date);
         
         // Fetch Hebrew date information
@@ -1710,9 +1917,14 @@ function displaySchedule(schedule, name, additionalInfo = null) {
                 
                 // Direct mapping of English month names to Hebrew script
                 let hebrewMonthName;
-                switch(hebMonthEnglish) {
+                // Normalize month name first
+                let normalizedMonthName = hebMonthEnglish;
+                if (hebMonthEnglish === 'Iyar' || hebMonthEnglish === 'Iyyar') normalizedMonthName = 'Iyyar';
+                if (hebMonthEnglish === 'Shvat' || hebMonthEnglish === "Sh'vat") normalizedMonthName = "Sh'vat";
+                
+                switch(normalizedMonthName) {
                     case 'Nisan': hebrewMonthName = 'ניסן'; break;
-                    case 'Iyar': hebrewMonthName = 'אייר'; break;
+                    case 'Iyyar': hebrewMonthName = 'אייר'; break;
                     case 'Sivan': hebrewMonthName = 'סיון'; break;
                     case 'Tamuz': hebrewMonthName = 'תמוז'; break;
                     case 'Av': hebrewMonthName = 'אב'; break;
@@ -1721,7 +1933,7 @@ function displaySchedule(schedule, name, additionalInfo = null) {
                     case 'Cheshvan': hebrewMonthName = 'חשון'; break;
                     case 'Kislev': hebrewMonthName = 'כסלו'; break;
                     case 'Tevet': hebrewMonthName = 'טבת'; break;
-                    case 'Shevat': hebrewMonthName = 'שבט'; break;
+                    case "Sh'vat": hebrewMonthName = 'שבט'; break;
                     case 'Adar': hebrewMonthName = 'אדר'; break;
                     case 'Adar II': hebrewMonthName = 'אדר ב'; break;
                     default: hebrewMonthName = hebMonthEnglish;
@@ -1758,6 +1970,7 @@ function displaySchedule(schedule, name, additionalInfo = null) {
         row.appendChild(dateCell);
 
         const dayCell = document.createElement('td');
+        dayCell.className = 'day-cell';
         // Use Hebrew day names when in Hebrew mode
         if (currentLang === LANG.HE) {
             // Use the hebrewDays object directly with the day name as key
@@ -1771,16 +1984,25 @@ function displaySchedule(schedule, name, additionalInfo = null) {
         row.appendChild(dayCell);
 
         const readingCell = document.createElement('td');
+        readingCell.className = 'reading-cell';
         // If in Hebrew mode, try to use Hebrew book names
         if (currentLang === LANG.HE) {
             const hebrewReadings = entry.reading.map(item => {
-                // Try to find and replace the book name with Hebrew equivalent
-                const parts = item.split(' ');
-                const bookName = parts[0];
-                // Use the helper function to get the Hebrew book name
-                const hebrewName = getHebrewBookName(bookName);
-                parts[0] = hebrewName;
-                return parts.join(' ');
+                // Extract book name and reference parts properly to handle Roman numerals
+                // Match the book name pattern (e.g., "I Samuel", "II Kings", etc.)
+                const match = item.match(/^((?:I|II|III|IV|1|2|3|4|Song of Songs|[A-Za-z]+)(?: [A-Za-z]+)*) (.+)$/);
+                if (match) {
+                    const fullBookName = match[1]; // Complete book name including Roman numerals
+                    const reference = match[2];   // Chapter and verse reference
+                    
+                    // Use the helper function to get the Hebrew book name
+                    const hebrewName = getHebrewBookName(fullBookName);
+                    console.log(`Converting book: [${fullBookName}] to Hebrew: [${hebrewName}]`);
+                    
+                    return `${hebrewName} ${reference}`;
+                }
+                // Fallback if match fails
+                return item;
             });
             readingCell.textContent = hebrewReadings.join(', ');
             readingCell.dir = 'rtl'; // Right-to-left for Hebrew
@@ -1862,28 +2084,83 @@ function displaySchedule(schedule, name, additionalInfo = null) {
  * @returns {string} - Hebrew book name or original if not found
  */
 function getHebrewBookName(bookName) {
-    // Function to get Hebrew book name from tanachData structure
+    // Direct mapping for books with Roman numerals and special cases
+    const directMapping = {
+        'I Samuel': 'שמואל א',
+        '1 Samuel': 'שמואל א',
+        'II Samuel': 'שמואל ב',
+        '2 Samuel': 'שמואל ב',
+        'I Kings': 'מלכים א',
+        '1 Kings': 'מלכים א',
+        'II Kings': 'מלכים ב',
+        '2 Kings': 'מלכים ב',
+        'Song of Songs': 'שיר השירים',
+        'I Chronicles': 'דברי הימים א',
+        '1 Chronicles': 'דברי הימים א',
+        'II Chronicles': 'דברי הימים ב',
+        '2 Chronicles': 'דברי הימים ב',
+        'Genesis': 'בראשית',
+        'Exodus': 'שמות', 
+        'Leviticus': 'ויקרא',
+        'Numbers': 'במדבר',
+        'Deuteronomy': 'דברים',
+        'Joshua': 'יהושע',
+        'Judges': 'שופטים',
+        'Ruth': 'רות',
+        'Isaiah': 'ישעיהו',
+        'Jeremiah': 'ירמיהו',
+        'Lamentations': 'איכה',
+        'Ezekiel': 'יחזקאל',
+        'Daniel': 'דניאל',
+        'Hosea': 'הושע',
+        'Joel': 'יואל',
+        'Amos': 'עמוס',
+        'Obadiah': 'עובדיה',
+        'Jonah': 'יונה',
+        'Micah': 'מיכה',
+        'Nahum': 'נחום',
+        'Habakkuk': 'חבקוק',
+        'Zephaniah': 'צפניה',
+        'Haggai': 'חגי',
+        'Zechariah': 'זכריה',
+        'Malachi': 'מלאכי',
+        'Psalms': 'תהלים',
+        'Proverbs': 'משלי',
+        'Job': 'איוב',
+        'Ecclesiastes': 'קהלת',
+        'Esther': 'אסתר',
+        'Ezra': 'עזרא',
+        'Nehemiah': 'נחמיה'
+    };
+    
+    // First check our direct mapping for known problematic cases
+    if (directMapping[bookName]) {
+        console.log(`Found direct Hebrew mapping for book: ${bookName} -> ${directMapping[bookName]}`);
+        return directMapping[bookName];
+    }
+    
+    // If not found in direct mapping, continue with the original approach
     let hebrewName = bookName;
     
-    // First check in more comprehensive tanachData object
+    // Check in tanachData object
     for (const category of ['torah', 'neviim', 'ketuvim']) {
         if (tanachData[category]) {
             for (const book of tanachData[category]) {
                 if (book.name === bookName && book.hebrewName) {
                     hebrewName = book.hebrewName;
-                    return hebrewName; // Return immediately if found
+                    return hebrewName;
                 }
             }
         }
     }
     
-    // If not found in tanachData, check in chidon data
+    // Check in chidon data
     for (const division of [chidonData.middleSchool, chidonData.highSchool]) {
         if (division && division.getAllBooks) {
             for (const book of division.getAllBooks()) {
                 if (book.name === bookName && book.hebrewName) {
                     hebrewName = book.hebrewName;
-                    return hebrewName; // Return immediately if found
+                    return hebrewName;
                 }
             }
         }
@@ -2137,6 +2414,7 @@ async function downloadScheduleLatex(learningTitle = '') {
                     // Map English month names to Hebrew
                     const monthMap = { 
                         "Nisan": "ניסן", 
+                        "Iyyar": "אייר", 
                         "Iyar": "אייר", 
                         "Sivan": "סיון", 
                         "Tamuz": "תמוז", 
@@ -2146,7 +2424,8 @@ async function downloadScheduleLatex(learningTitle = '') {
                         "Cheshvan": "חשון", 
                         "Kislev": "כסלו", 
                         "Tevet": "טבת", 
-                        "Shevat": "שבט", 
+                        "Sh'vat": "שבט", 
+                        "Shvat": "שבט", 
                         "Adar": "אדר", 
                         "Adar II": "אדר ב'", 
                     };
@@ -2174,17 +2453,43 @@ async function downloadScheduleLatex(learningTitle = '') {
                 // Generate reading range title
                 let rangeDescription = '';
                 const firstRef = entry.reading[0];
-                const [firstBook, ...firstRefParts] = firstRef.split(' ');
-                const firstRefPart = firstRefParts.join(' ');
+                
+                // Extract book name and reference parts properly to handle Roman numerals
+                // Match the book name pattern (e.g., "I Samuel", "II Kings", "Song of Songs", etc.)
+                const firstRefMatch = firstRef.match(/^((?:I|II|III|IV|1|2|3|4|Song of Songs|[A-Za-z]+)(?: [A-Za-z]+)*) (.+)$/);
+                let firstBook, firstRefPart;
+                
+                if (firstRefMatch) {
+                    firstBook = firstRefMatch[1]; // Complete book name including Roman numerals
+                    firstRefPart = firstRefMatch[2]; // Chapter and verse reference
+                } else {
+                    // Fallback to old method
+                    const parts = firstRef.split(' ');
+                    firstBook = parts[0];
+                    firstRefPart = parts.slice(1).join(' ');
+                }
+                
                 const [firstChapter, firstVerse] = firstRefPart.split(':').map(part => parseInt(part));
                 
                 const lastRef = entry.reading[entry.reading.length - 1];
-                const [lastBook, ...lastRefParts] = lastRef.split(' ');
-                const lastRefPart = lastRefParts.join(' ');
+                const lastRefMatch = lastRef.match(/^((?:I|II|III|IV|1|2|3|4|Song of Songs|[A-Za-z]+)(?: [A-Za-z]+)*) (.+)$/);
+                let lastBook, lastRefPart;
+                
+                if (lastRefMatch) {
+                    lastBook = lastRefMatch[1]; // Complete book name including Roman numerals
+                    lastRefPart = lastRefMatch[2]; // Chapter and verse reference
+                } else {
+                    // Fallback to old method
+                    const parts = lastRef.split(' ');
+                    lastBook = parts[0];
+                    lastRefPart = parts.slice(1).join(' ');
+                }
+                
                 const [lastChapterNum, lastVerse] = lastRefPart.split(':').map(part => parseInt(part));
                 
                 if (currentLang === LANG.HE) {
                     const hebrewBookName = getHebrewBookName(firstBook);
+                    console.log(`LaTeX conversion - Book: [${firstBook}] to Hebrew: [${hebrewBookName}]`);
                     
                     if (entry.reading.length === 1 && !isNaN(firstVerse)) { 
                         rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳:${toHebrewNumeral(firstVerse)}׳`; 
