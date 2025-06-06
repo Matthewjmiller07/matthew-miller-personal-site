@@ -209,7 +209,82 @@ function initializeFormListeners() {
     }
 
     if (latexButton) {
-        latexButton.addEventListener('click', downloadScheduleLatex);
+        latexButton.addEventListener('click', function() {
+            const selectionElement = document.getElementById('tanachSelection');
+            const selectionValue = selectionElement.value;
+            let learningTitle = '';
+
+            const hebrewTitles = {
+                'all': 'כל התנ"ך',
+                'torah': 'תורה',
+                'neviim': 'נביאים',
+                'ketuvim': 'כתובים',
+                'chidon': 'חומר חידון התנ"ך',
+                'childSchedule': 'לוח לימוד לילדים'
+            };
+
+            // Define book name mappings (Hebrew to English)
+            const bookNameMap = {
+                'בראשית': 'Genesis',
+                'שמות': 'Exodus',
+                'ויקרא': 'Leviticus',
+                'במדבר': 'Numbers',
+                'דברים': 'Deuteronomy',
+                'יהושע': 'Joshua',
+                'שופטים': 'Judges',
+                'שמואל א': 'I Samuel',
+                'שמואל ב': 'II Samuel',
+                'מלכים א': 'I Kings',
+                'מלכים ב': 'II Kings',
+                'ישעיהו': 'Isaiah',
+                'ירמיהו': 'Jeremiah',
+                'יחזקאל': 'Ezekiel',
+                'הושע': 'Hosea',
+                'יואל': 'Joel',
+                'עמוס': 'Amos',
+                'עובדיה': 'Obadiah',
+                'יונה': 'Jonah',
+                'מיכה': 'Micah',
+                'נחום': 'Nahum',
+                'חבקוק': 'Habakkuk',
+                'צפניה': 'Zephaniah',
+                'חגי': 'Haggai',
+                'זכריה': 'Zechariah',
+                'מלאכי': 'Malachi',
+                'תהלים': 'Psalms',
+                'משלי': 'Proverbs',
+                'איוב': 'Job',
+                'שיר השירים': 'Song of Songs',
+                'רות': 'Ruth',
+                'איכה': 'Lamentations',
+                'קהלת': 'Ecclesiastes',
+                'אסתר': 'Esther',
+                'דניאל': 'Daniel',
+                'עזרא': 'Ezra',
+                'נחמיה': 'Nehemiah',
+                'דברי הימים א': 'I Chronicles',
+                'דברי הימים ב': 'II Chronicles'
+            };
+
+            if (selectionValue === 'custom') {
+                const bookElement = document.getElementById('bookSelection');
+                const englishBookName = bookElement.value;
+                // Get Hebrew book name from the book name map
+                for (const [hebrew, english] of Object.entries(bookNameMap)) {
+                    if (english === englishBookName) {
+                        learningTitle = hebrew;
+                        break;
+                    }
+                }
+                if (!learningTitle) {
+                    learningTitle = 'לוח לימוד תנ"ך';
+                }
+            } else {
+                learningTitle = hebrewTitles[selectionValue] || 'לוח לימוד תנ"ך';
+            }
+
+            downloadScheduleLatex(learningTitle);
+        });
     }
 
     // Event listener for fetching learning based on user input
@@ -1370,16 +1445,16 @@ function getHebrewMonthName(monthInput) {
     // Month name mapping
     const englishNames = {
         1: 'Nisan', 2: 'Iyar', 3: 'Sivan', 4: 'muz', 5: 'Av', 6: 'Elul',
-        7: 'Tishri', 8: 'Cheshvan', 9: 'Kislev', 10: 'Tevet', 11: 'Shevat', 12: 'Adar', 13: 'Adar II',
+        7: 'Tishrei', 8: 'Cheshvan', 9: 'Kislev', 10: 'Tevet', 11: 'Shevat', 12: 'Adar', 13: 'Adar II',
         'Nisan': 'Nisan', 'Iyar': 'Iyar', 'Sivan': 'Sivan', 'Tamuz': 'Tamuz', 'Av': 'Av', 'Elul': 'Elul',
-        'Tishri': 'Tishri', 'Cheshvan': 'Cheshvan', 'Kislev': 'Kislev', 'Tevet': 'Tevet', 'Shevat': 'Shevat', 'Adar': 'Adar', 'Adar II': 'Adar II'
+        'Tishrei': 'Tishrei', 'Cheshvan': 'Cheshvan', 'Kislev': 'Kislev', 'Tevet': 'Tevet', 'Shevat': 'Shevat', 'Adar': 'Adar', 'Adar II': 'Adar II'
     };
     
     const hebrewNames = {
         1: 'ניסן', 2: 'אייר', 3: 'סיון', 4: 'תמוז', 5: 'אב', 6: 'אלול',
         7: 'תשרי', 8: 'חשון', 9: 'כסלו', 10: 'טבת', 11: 'שבט', 12: 'אדר', 13: 'אדר ב',
         'Nisan': 'ניסן', 'Iyar': 'אייר', 'Sivan': 'סיון', 'Tamuz': 'תמוז', 'Av': 'אב', 'Elul': 'אלול',
-        'Tishri': 'תשרי', 'Cheshvan': 'חשון', 'Kislev': 'כסלו', 'Tevet': 'טבת', 'Shevat': 'שבט', 'Adar': 'אדר', 'Adar II': 'אדר ב'
+        'Tishrei': 'תשרי', 'Cheshvan': 'חשון', 'Kislev': 'כסלו', 'Tevet': 'טבת', 'Shevat': 'שבט', 'Adar': 'אדר', 'Adar II': 'אדר ב'
     };
     
     // Add more detailed debugging
@@ -1396,7 +1471,7 @@ function getHebrewMonthName(monthInput) {
         if (monthInput === 'Tamuz') return 'תמוז';
         if (monthInput === 'Av') return 'אב';
         if (monthInput === 'Elul') return 'אלול';
-        if (monthInput === 'Tishri') return 'תשרי';
+        if (monthInput === 'Tishrei') return 'תשרי';
         if (monthInput === 'Cheshvan') return 'חשון';
         if (monthInput === 'Kislev') return 'כסלו';
         if (monthInput === 'Tevet') return 'טבת';
@@ -1642,7 +1717,7 @@ function displaySchedule(schedule, name, additionalInfo = null) {
                     case 'Tamuz': hebrewMonthName = 'תמוז'; break;
                     case 'Av': hebrewMonthName = 'אב'; break;
                     case 'Elul': hebrewMonthName = 'אלול'; break;
-                    case 'Tishri': hebrewMonthName = 'תשרי'; break;
+                    case 'Tishrei': hebrewMonthName = 'תשרי'; break;
                     case 'Cheshvan': hebrewMonthName = 'חשון'; break;
                     case 'Kislev': hebrewMonthName = 'כסלו'; break;
                     case 'Tevet': hebrewMonthName = 'טבת'; break;
@@ -1969,357 +2044,231 @@ function toHebrewNumeral(num) {
  * Download the schedule as a LaTeX file
  */
 /**
-
- * Escapes text for use in LaTeX documents to prevent compilation errors.
-
- * @param {string | null | undefined} text The text to escape.
-
- * @returns {string} The escaped text.
-
- */
-
+ * Escape special characters in LaTeX
+ */
 function escapeLatexText(text) {
-
-        if (text === null || text === undefined) {
-    
-            return '';
-    
-        }
-    
-        return String(text)
-    
-            .replace(/&/g, '\\&')
-    
-            .replace(/%/g, '\\%')
-    
-            .replace(/\$/g, '\\$')
-    
-            .replace(/#/g, '\\#')
-    
-            .replace(/_/g, '\\_')
-    
-            .replace(/{/g, '\\{')
-    
-            .replace(/}/g, '\\}')
-    
-            .replace(/~/g, '\\textasciitilde{}')
-    
-            .replace(/\^/g, '\\textasciicircum{}')
-    
-            .replace(/\\/g, '\\textbackslash{}');
-    
+    if (text === null || text === undefined) {
+        return '';
     }
     
-    
-    
-    async function downloadScheduleLatex() {
-    
-        if (!window.currentSchedule || window.currentSchedule.length === 0) {
-    
-            alert(localise('No schedule to download. Please generate a schedule first.', 'אין לוח זמנים להורדה. נא ליצור לוח זמנים תחילה.'));
-    
-            return;
-    
-        }
-    
-    
-    
-        try {
-    
-            console.log('Starting LaTeX generation with schedule:', window.currentSchedule);
-    
-    
-    
-            let documentLines = [];
-    
-            let lastChapter = null;
-    
-    
-    
-            // --- Preamble (Unchanged) ---
-    
-            documentLines.push(latexCmd('documentclass[12pt]', 'article'));
-    
-            documentLines.push(latexCmd('usepackage', 'fontspec'));
-    
-            documentLines.push(latexCmd('usepackage[margin=1in]', 'geometry'));
-    
-            documentLines.push(latexCmd('usepackage', 'booktabs'));
-    
-            documentLines.push(latexCmd('usepackage', 'longtable'));
-    
-            documentLines.push(latexCmd('usepackage', 'polyglossia'));
-    
-            documentLines.push(latexCmd('usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]', 'hyperref'));
-    
-            documentLines.push(latexCmd('usepackage', 'titlesec'));
-    
-            documentLines.push(latexCmd('setmainlanguage', currentLang === LANG.HE ? 'hebrew' : 'english'));
-    
-            documentLines.push(latexCmd('setotherlanguage', currentLang === LANG.HE ? 'english' : 'hebrew'));
-    
-            documentLines.push(latexCmd('newfontfamily') + latexCmd('hebrewfont') + '{Ezra SIL}');
-    
-            documentLines.push(latexCmd('newfontfamily') + latexCmd('englishfont') + '{Ezra SIL}');
-    
-            documentLines.push(latexCmd('setmainfont', 'Ezra SIL'));
-    
-    
-    
-            // --- Document Metadata (with escaping) ---
-    
-            const titleText = escapeLatexText(window.scheduleName);
-    
-            const titlePrefix = currentLang === LANG.HE ? latexCmd('begin', 'hebrew') : '';
-    
-            const titleSuffix = currentLang === LANG.HE ? latexCmd('end', 'hebrew') : '';
-    
-            documentLines.push(latexCmd('title') + `{${titlePrefix}${titleText}${titleSuffix}}`);
-    
-            documentLines.push(latexCmd('author') + '{}');
-    
-            const dateText = currentLang === LANG.HE ?
-    
-                `${latexCmd('begin', 'hebrew')}נוצר בתאריך ${new Date().toLocaleDateString('he-IL')}${latexCmd('end', 'hebrew')}` :
-    
-                `Generated on ${new Date().toLocaleDateString()}`;
-    
-            documentLines.push(latexCmd('date') + `{${dateText}}`);
-    
-    
-    
-            // --- Document Body ---
-    
-            documentLines.push(latexCmd('begin', 'document'));
-    
-            documentLines.push(latexCmd('maketitle'));
-    
-            const tocName = currentLang === LANG.HE ? `${latexCmd('begin', 'hebrew')}תוכן עניינים${latexCmd('end', 'hebrew')}` : 'Table of Contents';
-    
-            documentLines.push(latexCmd('renewcommand') + `{${latexCmd('contentsname')}}{${tocName}}`);
-    
-            documentLines.push(latexCmd('tableofcontents'));
-    
-            documentLines.push(latexCmd('newpage'));
-    
-            documentLines.push(latexCmd('setcounter', 'page') + '{1}');
-    
-    
-    
-            // --- Main Loop for Schedule Entries ---
-    
-          for (const entry of window.currentSchedule) {
-    
-        const dateStr = formatDateForDisplay(entry.date);
+    return String(text)
+        .replace(/&/g, '\\&')
+        .replace(/%/g, '\\%')
+        .replace(/\$/g, '\\$')
+        .replace(/#/g, '\\#')
+        .replace(/_/g, '\\_')
+        .replace(/{/g, '\\{')
+        .replace(/}/g, '\\}')
+        .replace(/~/g, '\\textasciitilde{}')
+        .replace(/\^/g, '\\textasciicircum{}')
+        .replace(/\\/g, '\\textbackslash{}');
+}
 
-    
-         const dayStr = currentLang === LANG.HE ? getHebrewDayName(entry.date.getDay()) : getDayName(entry.date.getDay());
-    
-        const reading = entry.reading;
-    
-    
-    
-                let hebrewDateInfo = '';
-    
-                if (entry.hebrewDate) {
-    
-                    const { hd, hm, hy } = entry.hebrewDate;
-    
-                    let hebrewMonthName = hm;
-    
-                    if (currentLang === LANG.HE) {
-    
-                        const monthMap = { Nisan: 'ניסן', Iyar: 'אייר', Sivan: 'סיון', Tamuz: 'תמוז', Av: 'אב', Elul: 'אלול', Tishri: 'תשרי', Cheshvan: 'חשון', Kislev: 'כסלו', Tevet: 'טבת', Shevat: 'שבט', Adar: 'אדר', 'Adar II': 'אדר ב' };
-    
-                        hebrewMonthName = monthMap[hm] || hm;
-    
-                    }
-    
-                    hebrewDateInfo = `${hd} ${hebrewMonthName} ${hy}`;
-    
-                }
-    
-    
-    
-                const dateHeaderForTOC = `${dayStr} - ${dateStr} | ${hebrewDateInfo}`;
-    
-                const dateHeaderEscaped = escapeLatexText(dateHeaderForTOC);
-    
-                
-    
-                let boxedDateHeader = currentLang === LANG.HE ?
-    
-                    `${latexCmd('begin', 'hebrew')}\\centerline{\\fbox{${dateHeaderEscaped}}}${latexCmd('end', 'hebrew')}` :
-    
-                    `\\centerline{\\fbox{${dateHeaderEscaped}}}`;
-    
-    
-    
-                // FIX: The correct sequence for working TOC links.
-    
-                documentLines.push('\\phantomsection');
-    
-                documentLines.push(`\\addcontentsline{toc}{section}{${dateHeaderEscaped}}`);
-    
-                documentLines.push(`\\section*{${boxedDateHeader}}`);
-    
-    
-    
-                if (reading.length > 0) {
-    
-                    // RESTORED: This is the essential logic block you wanted to keep for generating the reading range title.
-    
-                    let rangeDescription = '';
-    
-                    const firstRef = reading[0];
-    
-                    const [firstBook, ...firstRefParts] = firstRef.split(' ');
-    
-                    const firstRefPart = firstRefParts.join(' ');
-    
-                    const [firstChapter, firstVerse] = firstRefPart.split(':').map(part => parseInt(part));
-    
-                    const lastRef = reading[reading.length - 1];
-    
-                    const [lastBook, ...lastRefParts] = lastRef.split(' ');
-    
-                    const lastRefPart = lastRefParts.join(' ');
-    
-                    const [lastChapterNum, lastVerse] = lastRefPart.split(':').map(part => parseInt(part));
-    
-                    if (currentLang === LANG.HE) {
-    
-                        const hebrewBookName = getHebrewBookName(firstBook);
-    
-                        if (reading.length === 1 && !isNaN(firstVerse)) { rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳:${toHebrewNumeral(firstVerse)}׳`; }
-    
-                        else if (firstChapter === lastChapterNum && !isNaN(firstVerse) && !isNaN(lastVerse)) { rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳:${toHebrewNumeral(firstVerse)}׳–${toHebrewNumeral(lastVerse)}׳`; }
-    
-                        else if (firstChapter !== lastChapterNum && !isNaN(firstVerse) && !isNaN(lastVerse)) { rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳:${toHebrewNumeral(firstVerse)}׳–${toHebrewNumeral(lastChapterNum)}׳:${toHebrewNumeral(lastVerse)}׳`; }
-    
-                        else if (isNaN(firstVerse) && isNaN(lastVerse) && firstChapter === lastChapterNum) { rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳`; }
-    
-                        else if (isNaN(firstVerse) && isNaN(lastVerse) && firstChapter !== lastChapterNum) { rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳–${toHebrewNumeral(lastChapterNum)}׳`; }
-    
-                        else { rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳`; }
-    
-                    } else {
-    
-                        if (reading.length === 1 && !isNaN(firstVerse)) { rangeDescription = `${firstBook} ${firstChapter}:${firstVerse}`; }
-    
-                        else if (firstChapter === lastChapterNum && !isNaN(firstVerse) && !isNaN(lastVerse)) { rangeDescription = `${firstBook} ${firstChapter}:${firstVerse}-${lastVerse}`; }
-    
-                        else if (isNaN(firstVerse) && isNaN(lastVerse) && firstChapter === lastChapterNum) { rangeDescription = `${firstBook} ${firstChapter}`; }
-    
-                        else { rangeDescription = `${firstBook} ${firstChapter}:${firstVerse}-${lastChapterNum}:${lastVerse}`; }
-    
-                    }
-    
-                    
-    
-                    const readingSectionTitleText = escapeLatexText(rangeDescription);
-    
-                    const readingSectionTitle = currentLang === LANG.HE ? `${latexCmd('begin', 'hebrew')}${readingSectionTitleText}${latexCmd('end', 'hebrew')}` : readingSectionTitleText;
-    
-                    documentLines.push(latexCmd('subsection*') + `{${readingSectionTitle}}`);
-    
-                    
-    
-                    // IMPROVEMENT: Aggregates all verses into a single block for a clean paragraph layout.
-    
-                    let fullText = [];
-    
-                    for (const ref of reading) {
-    
-                        try {
-    
-                            const verseData = await fetchSefariaText(ref);
-    
-                            if (verseData && verseData.he) {
-    
-                                const hebrewContent = Array.isArray(verseData.he) ? verseData.he : [verseData.he];
-    
-                                const [, ch, startV] = ref.match(/(\d+):?(\d+)?/) || [null, '1', '1'];
-    
-                                const chapterNum = parseInt(ch);
-    
-                                const startVerseNum = startV ? parseInt(startV.split('-')[0]) : 1;
-    
-                                
-    
-                                if (chapterNum !== lastChapter) {
-    
-                                    if (fullText.length > 0) {
-    
-                                        documentLines.push(`${latexCmd('begin', 'hebrew')}${fullText.join(' ')}${latexCmd('end', 'hebrew')}`);
-    
-                                    }
-    
-                                    fullText = [`\\fbox{\\textbf{${toHebrewNumeral(chapterNum)}}}`];
-    
-                                    lastChapter = chapterNum;
-    
-                                }
-    
-    
-    
-                                hebrewContent.forEach((verse, idx) => {
-    
-                                    const verseNum = startVerseNum + idx;
-    
-                                    const cleanedVerse = cleanTextForLatex(verse);
-    
-                                    fullText.push(`\\textsuperscript{${toHebrewNumeral(verseNum)}}${cleanedVerse}`);
-    
-                                });
-    
-                            }
-    
-                        } catch (fetchError) {
-    
-                            console.error(`Error fetching text for ${ref}:`, fetchError);
-    
-                        }
-    
-                    }
-    
-                    if (fullText.length > 0) {
-    
-                        documentLines.push(`${latexCmd('begin', 'hebrew')}${fullText.join(' ')}${latexCmd('end', 'hebrew')}`);
-    
-                    }
-    
-                }
-    
-    
-    
-                documentLines.push(latexCmd('vspace', '2em'));
-    
-            }
-    
-    
-    
-            documentLines.push(latexCmd('end', 'document'));
-    
-    
-    
-            const latexContent = documentLines.join('\n');
-    
-            downloadFile(latexContent, `${window.scheduleName}_schedule.tex`, 'text/plain');
-    
-            alert('LaTeX file downloaded successfully!');
-    
-    
-    
-        } catch (error) {
-    
-            console.error('Error generating LaTeX:', error);
-    
-            alert(localise('Failed to generate LaTeX file. Please try again.', 'נכשל ביצירת קובץ LaTeX. נא לנסות שוב.'));
-    
-        }
-    
+/**
+ * Download the schedule as a LaTeX file
+ * @param {string} learningTitle - Optional Hebrew title for the document
+ */
+async function downloadScheduleLatex(learningTitle = '') {
+    console.log("📥 Attempting to download LaTeX...");
+
+    if (!window.currentSchedule || window.currentSchedule.length === 0) {
+        console.warn("⚠️ No schedule found! Cannot download.");
+        alert(localise('No schedule to download. Please generate a schedule first.', 'אין לוח זמנים להורדה. נא ליצור לוח זמנים תחילה.'));
+        return;
     }
+
+    try {
+        console.log("✅ Schedule found! Preparing LaTeX...");
+        let documentLines = [];
+
+        // --- LaTeX Preamble ---
+        documentLines.push(latexCmd('documentclass[12pt]', 'article'));
+        documentLines.push(latexCmd('usepackage', 'fontspec'));
+        documentLines.push(latexCmd('usepackage[margin=1in]', 'geometry'));
+        documentLines.push(latexCmd('usepackage', 'booktabs'));
+        documentLines.push(latexCmd('usepackage', 'longtable'));
+        documentLines.push(latexCmd('usepackage', 'polyglossia'));
+        documentLines.push(latexCmd('usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]', 'hyperref'));
+        documentLines.push(latexCmd('usepackage', 'titlesec'));
+        
+        // Set languages
+        documentLines.push(latexCmd('setmainlanguage', 'hebrew'));
+        documentLines.push(latexCmd('setotherlanguage', 'english'));
+        
+        // Set fonts for Hebrew
+        documentLines.push(latexCmd('newfontfamily') + latexCmd('hebrewfont') + '{Ezra SIL}');
+        documentLines.push(latexCmd('setmainfont', 'Ezra SIL'));
+
+        // --- Document Metadata ---
+        // Use the provided learningTitle or fall back to scheduleName
+        const titleText = escapeLatexText(learningTitle || window.scheduleName || 'לוח לימוד תנ"ך');
+        documentLines.push(latexCmd('title') + `{${latexCmd('begin', 'hebrew')}${titleText}${latexCmd('end', 'hebrew')}}`);
+        documentLines.push(latexCmd('author') + '{}');
+        documentLines.push(latexCmd('date') + '{}'); // Empty date to remove it from title page
+
+        // --- Document Body ---
+        documentLines.push(latexCmd('begin', 'document'));
+        documentLines.push(latexCmd('maketitle'));
+        
+        // Table of contents with Hebrew title
+        const tocName = `${latexCmd('begin', 'hebrew')}תוכן עניינים${latexCmd('end', 'hebrew')}`;
+        documentLines.push(latexCmd('renewcommand') + `{${latexCmd('contentsname')}}{${tocName}}`);
+        documentLines.push(latexCmd('tableofcontents'));
+        documentLines.push(latexCmd('newpage'));
+
+        // Reset page numbering
+        documentLines.push(latexCmd('setcounter', 'page') + '{1}');
+        
+        // For tracking chapters in the reading
+        let lastChapter = null;
+
+        // --- Main Loop for Schedule Entries ---
+        for (const entry of window.currentSchedule) {
+            // Format date information
+            const dateStr = formatDateForDisplay(entry.date);
+            const dayStr = currentLang === LANG.HE ? getHebrewDayName(entry.date.getDay()) : getDayName(entry.date.getDay());
+            
+            // Handle Hebrew date if available
+            let hebrewDateInfo = '';
+            if (entry.hebrewDate) {
+                const { hd, hm, hy } = entry.hebrewDate;
+                let hebrewMonthName = hm;
+                if (currentLang === LANG.HE) {
+                    // Map English month names to Hebrew
+                    const monthMap = { 
+                        "Nisan": "ניסן", 
+                        "Iyar": "אייר", 
+                        "Sivan": "סיון", 
+                        "Tamuz": "תמוז", 
+                        "Av": "אב", 
+                        "Elul": "אלול", 
+                        "Tishrei": "תשרי", 
+                        "Cheshvan": "חשון", 
+                        "Kislev": "כסלו", 
+                        "Tevet": "טבת", 
+                        "Shevat": "שבט", 
+                        "Adar": "אדר", 
+                        "Adar II": "אדר ב'", 
+                    };
+                    hebrewMonthName = monthMap[hm] || hm;
+                }
+                hebrewDateInfo = `${hd} ${hebrewMonthName} ${hy}`;
+            }
+
+            // Create section header for this day
+            const dateHeaderForTOC = `${dayStr} - ${dateStr}${hebrewDateInfo ? ' | ' + hebrewDateInfo : ''}`;
+            const dateHeaderEscaped = escapeLatexText(dateHeaderForTOC);
+            
+            // Box the date header for emphasis
+            let boxedDateHeader = currentLang === LANG.HE ?
+                `${latexCmd('begin', 'hebrew')}${latexCmd('centerline')}{${latexCmd('fbox')}{${dateHeaderEscaped}}}${latexCmd('end', 'hebrew')}` :
+                `${latexCmd('centerline')}{${latexCmd('fbox')}{${dateHeaderEscaped}}}`;
+            
+            // Add to table of contents
+            documentLines.push(latexCmd('phantomsection'));
+            documentLines.push(latexCmd('addcontentsline') + `{toc}{section}{${dateHeaderEscaped}}`);
+            documentLines.push(latexCmd('section*') + `{${boxedDateHeader}}`);
+            
+            
+            if (entry.reading && entry.reading.length > 0) {
+                // Generate reading range title
+                let rangeDescription = '';
+                const firstRef = entry.reading[0];
+                const [firstBook, ...firstRefParts] = firstRef.split(' ');
+                const firstRefPart = firstRefParts.join(' ');
+                const [firstChapter, firstVerse] = firstRefPart.split(':').map(part => parseInt(part));
+                
+                const lastRef = entry.reading[entry.reading.length - 1];
+                const [lastBook, ...lastRefParts] = lastRef.split(' ');
+                const lastRefPart = lastRefParts.join(' ');
+                const [lastChapterNum, lastVerse] = lastRefPart.split(':').map(part => parseInt(part));
+                
+                if (currentLang === LANG.HE) {
+                    const hebrewBookName = getHebrewBookName(firstBook);
+                    
+                    if (entry.reading.length === 1 && !isNaN(firstVerse)) { 
+                        rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳:${toHebrewNumeral(firstVerse)}׳`; 
+                    } else if (firstChapter === lastChapterNum && !isNaN(firstVerse) && !isNaN(lastVerse)) { 
+                        rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳:${toHebrewNumeral(firstVerse)}׳–${toHebrewNumeral(lastVerse)}׳`; 
+                    } else if (firstChapter !== lastChapterNum && !isNaN(firstVerse) && !isNaN(lastVerse)) { 
+                        rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳:${toHebrewNumeral(firstVerse)}׳–${toHebrewNumeral(lastChapterNum)}׳:${toHebrewNumeral(lastVerse)}׳`; 
+                    } else if (isNaN(firstVerse) && isNaN(lastVerse) && firstChapter === lastChapterNum) { 
+                        rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳`; 
+                    } else if (isNaN(firstVerse) && isNaN(lastVerse) && firstChapter !== lastChapterNum) { 
+                        rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳–${toHebrewNumeral(lastChapterNum)}׳`; 
+                    } else { 
+                        rangeDescription = `${hebrewBookName} ${toHebrewNumeral(firstChapter)}׳`; 
+                    }
+                } else {
+                    if (entry.reading.length === 1 && !isNaN(firstVerse)) { 
+                        rangeDescription = `${firstBook} ${firstChapter}:${firstVerse}`; 
+                    } else if (firstChapter === lastChapterNum && !isNaN(firstVerse) && !isNaN(lastVerse)) { 
+                        rangeDescription = `${firstBook} ${firstChapter}:${firstVerse}-${lastVerse}`; 
+                    } else if (isNaN(firstVerse) && isNaN(lastVerse) && firstChapter === lastChapterNum) { 
+                        rangeDescription = `${firstBook} ${firstChapter}`; 
+                    } else { 
+                        rangeDescription = `${firstBook} ${firstChapter}:${firstVerse}-${lastChapterNum}:${lastVerse}`; 
+                    }
+                }
+                
+                const readingSectionTitleText = escapeLatexText(rangeDescription);
+                const readingSectionTitle = currentLang === LANG.HE ? 
+                    `${latexCmd('begin', 'hebrew')}${readingSectionTitleText}${latexCmd('end', 'hebrew')}` : 
+                    readingSectionTitleText;
+                    
+                documentLines.push(latexCmd('subsection*') + `{${readingSectionTitle}}`);
+                
+                let fullText = [];
+                
+                for (const ref of entry.reading) {
+                    try {
+                        const verseData = await fetchSefariaText(ref);
+                        
+                        if (verseData && verseData.he) {
+                            const hebrewContent = Array.isArray(verseData.he) ? verseData.he : [verseData.he];
+                            
+                            const [, ch, startV] = ref.match(/(\d+):?(\d+)?/) || [null, '1', '1'];
+                            const chapterNum = parseInt(ch);
+                            const startVerseNum = startV ? parseInt(startV.split('-')[0]) : 1;
+                            
+                            if (chapterNum !== lastChapter) {
+                                if (fullText.length > 0) {
+                                    documentLines.push(`${latexCmd('begin', 'hebrew')}${fullText.join(' ')}${latexCmd('end', 'hebrew')}`);
+                                }
+                                fullText = [`\\fbox{\\textbf{${toHebrewNumeral(chapterNum)}}}`];
+                                lastChapter = chapterNum;
+                            }
+                            
+                            hebrewContent.forEach((verse, idx) => {
+                                const verseNum = startVerseNum + idx;
+                                const cleanedVerse = cleanTextForLatex(verse);
+                                fullText.push(`\\textsuperscript{${toHebrewNumeral(verseNum)}}${cleanedVerse}`);
+                            });
+                        }
+                    } catch (fetchError) {
+                        console.error(`Error fetching text for ${ref}:`, fetchError);
+                    }
+                }
+                
+                if (fullText.length > 0) {
+                    documentLines.push(`${latexCmd('begin', 'hebrew')}${fullText.join(' ')}${latexCmd('end', 'hebrew')}`);
+                }
+            }
+            
+            documentLines.push(latexCmd('vspace', '2em'));
+        }
+        
+        documentLines.push(latexCmd('end', 'document'));
+        
+        const latexContent = documentLines.join('\n');
+        downloadFile(latexContent, `${window.scheduleName}_schedule.tex`, 'text/plain');
+        alert('LaTeX file downloaded successfully!');
+        
+    } catch (error) {
+        console.error('Error generating LaTeX:', error);
+        alert(localise('Failed to generate LaTeX file. Please try again.', 'נכשל ביצירת קובץ LaTeX. נא לנסות שוב.'));
+    }
+}
 
 /**
  * Helper function to download a file
