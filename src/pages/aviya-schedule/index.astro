@@ -1,0 +1,116 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { format } from 'date-fns';
+import fs from 'fs';
+import path from 'path';
+import { parse } from 'csv-parse/sync';
+
+// Read the Aviya Schedule CSV
+const csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
+const csvContent = fs.readFileSync(csvFilePath, 'utf-8');
+const records = parse(csvContent, {
+  columns: true,
+  skip_empty_lines: true
+});
+
+// Group records by month for the calendar view
+const recordsByMonth = records.reduce((acc, record) => {
+  const date = new Date(record.Date);
+  const monthYear = format(date, 'MMMM yyyy');
+  
+  if (!acc[monthYear]) {
+    acc[monthYear] = [];
+  }
+  
+  acc[monthYear].push({
+    ...record,
+    dateObj: date,
+    formattedDate: format(date, 'yyyy-MM-dd'),
+    dayOfMonth: date.getDate()
+  });
+  
+  return acc;
+}, {});
+
+// Get first day's text for demo purposes
+const firstDay = records[0];
+---
+
+<Layout title="Aviya Schedule">
+  <div class="container mx-auto px-4 py-8 text-black dark:text-white">
+    <h1 class="text-3xl font-bold mb-6 text-center">Aviya Schedule</h1>
+    <p class="text-center mb-8">Daily Torah reading schedule with text and notes</p>
+    
+    <!-- Calendar View -->
+    {Object.entries(recordsByMonth).slice(0, 3).map(([monthYear, days]) => {
+      const firstDate = days[0].dateObj;
+      const daysInMonth = new Date(
+        firstDate.getFullYear(),
+        firstDate.getMonth() + 1,
+        0
+      ).getDate();
+      
+      const firstDayOfMonth = new Date(
+        firstDate.getFullYear(),
+        firstDate.getMonth(),
+        1
+      ).getDay();
+      
+      return (
+        <div class="mb-12">
+          <h2 class="text-2xl font-bold mb-4">{monthYear}</h2>
+          <div class="grid grid-cols-7 gap-1 text-center font-semibold mb-2">
+            <div class="py-2">Sun</div>
+            <div class="py-2">Mon</div>
+            <div class="py-2">Tue</div>
+            <div class="py-2">Wed</div>
+            <div class="py-2">Thu</div>
+            <div class="py-2">Fri</div>
+            <div class="py-2">Sat</div>
+          </div>
+          
+          <div class="grid grid-cols-7 gap-1">
+            {/* Empty cells for days before the month starts */}
+            {Array(firstDayOfMonth).fill(null).map(() => (
+              <div class="border dark:border-gray-700 h-24 p-1 bg-gray-100 dark:bg-gray-800"></div>
+            ))}
+            
+            {/* Calendar days */}
+            {Array(daysInMonth).fill(null).map((_, index) => {
+              const day = index + 1;
+              const dayRecord = days.find(d => d.dayOfMonth === day);
+              
+              return (
+                <div class="border dark:border-gray-700 h-24 p-1 overflow-hidden dark:bg-gray-900">
+                  <div class="flex justify-between">
+                    <span class="font-bold">{day}</span>
+                    {dayRecord && (
+                      <a href={`/aviya-schedule/${dayRecord.formattedDate}`}>
+                        <span class="text-blue-600 dark:text-blue-400 underline text-sm">View</span>
+                      </a>
+                    )}
+                  </div>
+                  {dayRecord && (
+                    <div class="text-xs mt-1">
+                      {dayRecord.Reading.split(', ').slice(0, 3).join(', ')}
+                      {dayRecord.Reading.split(', ').length > 3 && '...'}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    })}
+    
+    <!-- Quick Preview of First Day -->
+    <div class="mt-12 border-t dark:border-gray-700 pt-8">
+      <h2 class="text-2xl font-bold mb-4">Preview: {format(new Date(firstDay.Date), 'MMMM d, yyyy')} ({firstDay.Day_of_Week})</h2>
+      <p class="mb-4">Reading: {firstDay.Reading}</p>
+      <a href={`/aviya-schedule/${format(new Date(firstDay.Date), 'yyyy-MM-dd')}`} class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600">
+        View Full Page
+      </a>
+    </div>
+  </div>
+</Layout>
