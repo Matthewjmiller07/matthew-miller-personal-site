@@ -84,10 +84,16 @@ records.forEach(record => {
     recordsByMonth[month] = [];
   }
   
+  // Check for Notes and Images
+  const hasNotes = record.Notes && record.Notes.trim() !== '';
+  const hasImages = record.Images && record.Images.trim() !== '';
+  
   recordsByMonth[month].push({
     ...record,
     formattedDate: format(date, 'yyyy-MM-dd'),
     day: date.getDate(),
+    hasNotes,
+    hasImages
   });
 });
 
@@ -192,17 +198,31 @@ const firstDay = records[0];
                     
                     return (
                       <div class="border dark:border-gray-700 h-16 md:h-20 p-1 bg-white dark:bg-gray-800">
-                        <div class="flex justify-between items-center mb-1">
-                          <span class="font-bold">{dayRecord.day}</span>
-                          <a href={`/aviya-schedule/${dayRecord.formattedDate}`}>
-                            <span class="text-blue-600 dark:text-blue-400 underline text-xs md:text-sm english-ui">View</span>
-                            <span class="text-blue-600 dark:text-blue-400 underline text-xs md:text-sm hebrew-ui hidden">{hebrewTranslations['View']}</span>
-                          </a>
+                        <div class="day-cell block p-1 md:p-2 h-full">
+                          <div class="flex justify-between items-start">
+                            <div class="day-number text-sm font-semibold">{dayRecord.day}</div>
+                            <div class="flex space-x-1">
+                              {dayRecord.hasNotes && (
+                                <span title="Has notes" class="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+                              )}
+                              {dayRecord.hasImages && (
+                                <span title="Has images" class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                              )}
+                            </div>
+                          </div>
+                          {dayRecord.Reading && (
+                            <div class="mt-1">
+                              <a href={`/aviya-schedule/${dayRecord.formattedDate}`} class="text-blue-600 dark:text-blue-400 text-xs hover:underline block">
+                                <span class="english-ui">View</span>
+                                <span class="hebrew-ui hidden">{hebrewTranslations['View']}</span>
+                              </a>
+                              <div class="text-xs text-gray-600 dark:text-gray-400 truncate mt-1">
+                                <span class="english-ui">{dayRecord.Reading.split(',')[0]}</span>
+                                <span class="hebrew-ui hidden">{translateReferenceToHebrew(dayRecord.Reading.split(',')[0])}</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <p class="text-xs overflow-hidden truncate">
-                          <span class="english-ui">{dayRecord.Reading.split(',')[0]}</span>
-                          <span class="hebrew-ui hidden">{translateReferenceToHebrew(dayRecord.Reading.split(',')[0])}</span>
-                        </p>
                       </div>
                     );
                   })}

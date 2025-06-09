@@ -68,37 +68,64 @@ const { date: dateParam } = Astro.params;
 // Read the CSV data
 const csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
 let record;
-let readings = ["Genesis 1:1"];
-let date = new Date();
-let formattedDate = format(date, 'MMMM d, yyyy');
-let dayOfWeek = "Unknown";
-let texts = [];
+let readings = [];
 let prevDate = null;
 let nextDate = null;
+let dayOfWeek = '';
+let notes = '';
+let images = [];
+let date = new Date();
+let formattedDate = format(date, 'MMMM d, yyyy');
+let texts = [];
 
 try {
+  // Read the CSV file
   const csvContent = fs.readFileSync(csvFilePath, 'utf-8');
   const records = parse(csvContent, {
     columns: true,
     skip_empty_lines: true
   });
   
-  // Find the record that matches the date parameter
-  record = records.find(r => {
-    try {
-      const recordDate = new Date(r.Date);
-      return format(recordDate, 'yyyy-MM-dd') === dateParam;
-    } catch (e) {
-      return false;
-    }
-  });
+  // Find the record that matches our date
+  const currentIndex = records.findIndex(r => format(new Date(r.Date), 'yyyy-MM-dd') === dateParam);
   
-  if (record) {
-    // Safely extract data from the record
+  if (currentIndex >= 0) {
+    record = records[currentIndex];
+    readings = record.Reading.split(', ');
+    dayOfWeek = record["Day of Week"];
+    notes = record.Notes || '';
+    
+    // Parse images if available
+    if (record.Images) {
+      try {
+        // Handle both comma-separated lists and JSON arrays
+        if (record.Images.startsWith('[')) {
+          images = JSON.parse(record.Images);
+        } else {
+          // Just use the raw image URL/path if it's a single entry
+          if (record.Images.includes(',')) {
+            images = record.Images.split(',').map(img => img.trim());
+          } else {
+            images = [record.Images.trim()];
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing images:', error);
+        images = [];
+      }
+    }
+    
+    // Get previous and next dates for navigation
+    if (currentIndex > 0) {
+      prevDate = format(new Date(records[currentIndex - 1].Date), 'yyyy-MM-dd');
+    }
+    
+    if (currentIndex < records.length - 1) {
+      nextDate = format(new Date(records[currentIndex + 1].Date), 'yyyy-MM-dd');
+    }
+    
     date = new Date(record.Date);
     formattedDate = format(date, 'MMMM d, yyyy');
-    dayOfWeek = record['Day of Week'] || record.Day_of_Week || "Unknown";
-    readings = record.Reading ? record.Reading.split(', ') : ["Genesis 1:1"];
     
     // Function to fetch text from Sefaria API
     async function fetchSefariaText(reference) {
@@ -115,24 +142,6 @@ try {
     // Fetch all texts for this day
     const textPromises = readings.map(reference => fetchSefariaText(reference));
     texts = await Promise.all(textPromises);
-    
-    // Find previous and next dates
-    const currentDateStr = dateParam;
-    const currentIndex = records.findIndex(r => {
-      try {
-        return format(new Date(r.Date), 'yyyy-MM-dd') === currentDateStr;
-      } catch (e) {
-        return false;
-      }
-    });
-    
-    if (currentIndex !== -1) {
-      const prevRecord = currentIndex > 0 ? records[currentIndex - 1] : null;
-      const nextRecord = currentIndex < records.length - 1 ? records[currentIndex + 1] : null;
-      
-      prevDate = prevRecord ? format(new Date(prevRecord.Date), 'yyyy-MM-dd') : null;
-      nextDate = nextRecord ? format(new Date(nextRecord.Date), 'yyyy-MM-dd') : null;
-    }
   }
 } catch (error) {
   console.error('Error reading or parsing CSV:', error);
@@ -258,36 +267,52 @@ try {
         <span class="english-ui">Notes</span>
         <span class="hebrew-ui hidden">{hebrewTranslations['Notes']}</span>
       </h3>
-      <div class="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-6 min-h-[300px]">
-        <p class="text-gray-400 dark:text-gray-500 italic">
-          <span class="english-ui">Add your notes here...</span>
-          <span class="hebrew-ui hidden">{hebrewTranslations['Add your notes here...']}</span>
-        </p>
-        <!-- In a future iteration, this could be a rich text editor or form -->
+      <div class="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-6 min-h-[150px]">
+        {notes ? (
+          <div class="prose dark:prose-invert max-w-none" set:html={notes}></div>
+        ) : (
+          <p class="text-gray-400 dark:text-gray-500 italic">
+            <span class="english-ui">Add your notes here...</span>
+            <span class="hebrew-ui hidden">{hebrewTranslations['Add your notes here...']}</span>
+          </p>
+        )}
       </div>
     </div>
     
-    <!-- Image upload section -->
+    <!-- Images section -->
     <div class="mt-10">
       <h3 class="text-2xl font-semibold mb-4">
         <span class="english-ui">Images</span>
         <span class="hebrew-ui hidden">{hebrewTranslations['Images']}</span>
       </h3>
-      <div class="bg-gray-100 dark:bg-gray-800 border border-dashed dark:border-gray-700 rounded-lg p-10 text-center">
-        <p class="text-gray-500 dark:text-gray-400 mb-2">
-          <span class="english-ui">Drag and drop images here</span>
-          <span class="hebrew-ui hidden">{hebrewTranslations['Drag and drop images here']}</span>
-        </p>
-        <p class="text-gray-400 text-sm">
-          <span class="english-ui">or</span>
-          <span class="hebrew-ui hidden">{hebrewTranslations['or']}</span>
-        </p>
-        <button class="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600">
-          <span class="english-ui">Select Images</span>
-          <span class="hebrew-ui hidden">{hebrewTranslations['Select Images']}</span>
-        </button>
-        <!-- In a future iteration, this would be connected to image upload functionality -->
-      </div>
+      
+      {images && images.length > 0 ? (
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {images.map((image) => {
+            // Check if it's a URL or a file path
+            const isFullUrl = image.trim().startsWith('http') || image.trim().startsWith('//');
+            const imageSrc = isFullUrl ? image.trim() : `/images/aviya/${image.trim()}`;
+            
+            return (
+              <div class="border dark:border-gray-700 rounded-lg overflow-hidden">
+                <img 
+                  src={imageSrc} 
+                  alt="Study image" 
+                  class="w-full h-auto object-cover"
+                  loading="lazy" 
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div class="bg-gray-100 dark:bg-gray-800 border border-dashed dark:border-gray-700 rounded-lg p-10 text-center">
+          <p class="text-gray-500 dark:text-gray-400">
+            <span class="english-ui">No images available for this day</span>
+            <span class="hebrew-ui hidden">אין תמונות זמינות ליום זה</span>
+          </p>
+        </div>
+      )}
     </div>
   </div>
 </Layout>
