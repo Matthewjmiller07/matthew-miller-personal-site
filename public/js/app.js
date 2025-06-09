@@ -1832,12 +1832,29 @@ function displaySchedule(schedule, name, additionalInfo = null) {
         /* Study days */
         #studyDaysHeader { color: #000 !important; font-weight: 800 !important; }
         .study-day-label { color: #000 !important; font-weight: 700 !important; }
-        /* Weekday selector black text */
-        .weekday-selector label { color: #000000 !important; font-weight: 600 !important; }
-        /* All labels should be dark */
-        label { color: #000000 !important; }
+        /* Weekday selector black text - MAXIMUM SPECIFICITY AND !IMPORTANT FLAGS */
+        .weekday-selector label, div.weekday-selector label, form .weekday-selector label { 
+            color: #000000 !important; 
+            font-weight: 700 !important; 
+            text-shadow: 0 0 0.5px rgba(0,0,0,0.3) !important;
+        }
+        /* All form labels should be dark */
+        label, form label { 
+            color: #000000 !important; 
+            font-weight: 600 !important;
+        }
+        /* Direct style for checkbox labels */
+        input[type="checkbox"] + label, label > input[type="checkbox"] { 
+            color: #000000 !important;
+        }
     `;
     document.head.appendChild(emergencyStyle);
+    
+    // Force black text on weekday selectors and all labels
+    if (typeof forceBlackText === 'function') {
+        forceBlackText();
+        setTimeout(forceBlackText, 300);
+    }
     
     // Set the proper language attribute on the body for CSS selectors
     if (TorahData.currentLang() === TorahData.LANG.HE) {
@@ -2947,6 +2964,28 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
+  // Force set ALL labels to black text
+  const forceBlackText = function() {
+    // Target all weekday selector labels
+    const weekdayLabels = document.querySelectorAll('.weekday-selector label');
+    weekdayLabels.forEach(label => {
+      label.style.color = '#000000';
+      label.style.fontWeight = '600';
+    });
+    
+    // Target ALL labels for good measure
+    const allLabels = document.querySelectorAll('label');
+    allLabels.forEach(label => {
+      label.style.color = '#000000';
+    });
+    
+    console.log('✓ Enforced black text on all labels');
+  };
+  
+  // Run immediately and also after a slight delay to catch any dynamic content
+  forceBlackText();
+  setTimeout(forceBlackText, 500);
+  
   const langToggleBtn = document.getElementById('langToggle');
   if (langToggleBtn) {
     langToggleBtn.addEventListener('click', () => {
@@ -2962,6 +3001,11 @@ document.addEventListener('DOMContentLoaded', function() {
       // update button label
       langToggleBtn.textContent =
         TorahData.currentLang() === TorahData.LANG.HE ? 'English' : 'עברית';
+      
+      // Force black text again after language toggle
+      forceBlackText();
+      // Also after a slight delay as some content may be redrawn
+      setTimeout(forceBlackText, 300);
     });
   }
 });
