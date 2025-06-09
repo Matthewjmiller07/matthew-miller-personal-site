@@ -98,16 +98,20 @@ try {
     
     // Parse images if available
     if (record.Images) {
+      console.log('Found Images data:', record.Images);
       try {
-        // Handle both comma-separated lists and JSON arrays
+        // Try to parse as JSON first
         if (record.Images.startsWith('[')) {
           images = JSON.parse(record.Images);
+          console.log('Parsed images as JSON array:', images);
         } else {
-          // Just use the raw image URL/path if it's a single entry
+          // Otherwise, split by commas if present
           if (record.Images.includes(',')) {
             images = record.Images.split(',').map(img => img.trim());
+            console.log('Split images by comma:', images);
           } else {
             images = [record.Images.trim()];
+            console.log('Single image found:', images);
           }
         }
       } catch (error) {
@@ -344,10 +348,12 @@ try {
               <div class="border dark:border-gray-700 rounded-lg overflow-hidden">
                 <img 
                   src={imageSrc} 
-                  alt="Study image" 
+                  alt={`Study image for ${formattedDate}`} 
                   class="w-full h-auto object-cover max-h-96"
                   loading="lazy" 
+                  onload="console.log('Image loaded successfully:', this.src); this.style.opacity = 1;"
                   onerror="console.error('Failed to load image:', this.src); this.src='/images/placeholder-image.jpg';"
+                  style="opacity: 0.6; transition: opacity 0.3s ease;"
                 />
               </div>
             );
