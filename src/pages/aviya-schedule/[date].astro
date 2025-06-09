@@ -5,6 +5,63 @@ import fs from 'fs';
 import path from 'path';
 import { format } from 'date-fns';
 
+// Hebrew translations for UI elements
+const hebrewTranslations = {
+  // Days of week
+  'Sunday': 'יום ראשון',
+  'Monday': 'יום שני',
+  'Tuesday': 'יום שלישי',
+  'Wednesday': 'יום רביעי',
+  'Thursday': 'יום חמישי',
+  'Friday': 'יום שישי',
+  'Saturday': 'יום שבת',
+  
+  // Book names - Genesis, etc.
+  'Genesis': 'בראשית',
+  'Exodus': 'שמות',
+  'Leviticus': 'ויקרא',
+  'Numbers': 'במדבר',
+  'Deuteronomy': 'דברים',
+  
+  // UI elements
+  'Back to Schedule': 'חזרה ללוח',
+  'First Day': 'יום ראשון',
+  'Previous Day': 'יום קודם',
+  'Next Day': 'יום הבא',
+  'Last Day': 'יום אחרון',
+  "Today's Readings": 'קריאות היום',
+  'Text Content': 'תוכן הטקסט',
+  'Notes': 'הערות',
+  'Add your notes here...': 'הוסף את ההערות שלך כאן...',
+  'Images': 'תמונות',
+  'Drag and drop images here': 'גרור ושחרר תמונות כאן',
+  'or': 'או',
+  'Select Images': 'בחר תמונות',
+  'Both': 'שניהם',
+  'Hebrew Only': 'עברית בלבד',
+  'English Only': 'אנגלית בלבד'
+};
+
+// Function to translate Bible references to Hebrew
+function translateReferenceToHebrew(reference) {
+  const bookMap = {
+    'Genesis': 'בראשית',
+    'Exodus': 'שמות',
+    'Leviticus': 'ויקרא',
+    'Numbers': 'במדבר',
+    'Deuteronomy': 'דברים'
+  };
+  
+  let hebrewReference = reference;
+  Object.entries(bookMap).forEach(([english, hebrew]) => {
+    if (reference.includes(english)) {
+      hebrewReference = reference.replace(english, hebrew);
+    }
+  });
+  
+  return hebrewReference;
+}
+
 // Get the date parameter from URL
 const { date: dateParam } = Astro.params;
 
@@ -84,39 +141,64 @@ try {
 
 <Layout title={`Aviya Schedule - ${formattedDate}`}>
   <div class="container mx-auto px-4 py-8 text-black dark:text-white">
-    <div class="mb-8">
-      <a href="/aviya-schedule" class="text-blue-600 dark:text-blue-400 hover:underline">&larr; Back to Schedule</a>
+    <div class="mb-8 flex justify-between items-center">
+      <a href="/aviya-schedule" class="text-blue-600 dark:text-blue-400 hover:underline">
+        <span class="english-ui">&larr; Back to Schedule</span>
+        <span class="hebrew-ui hidden">{hebrewTranslations['Back to Schedule']} &rarr;</span>
+      </a>
+      
+      <button id="siteLanguageToggle" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm">
+        <span class="english-ui">עברית</span>
+        <span class="hebrew-ui hidden">English</span>
+      </button>
     </div>
     
     <h1 class="text-3xl font-bold mb-2">{formattedDate}</h1>
-    <h2 class="text-xl mb-6">{dayOfWeek}</h2>
+    <h2 class="text-xl mb-6">
+      <span class="english-ui">{dayOfWeek}</span>
+      <span class="hebrew-ui hidden">{hebrewTranslations[dayOfWeek] || dayOfWeek}</span>
+    </h2>
     
     <!-- Navigation between days -->
     <div class="flex justify-between mb-8">
       {prevDate ? (
         <a href={`/aviya-schedule/${prevDate}`} class="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
-          &larr; Previous Day
+          <span class="english-ui">&larr; Previous Day</span>
+          <span class="hebrew-ui hidden">{hebrewTranslations['Previous Day']} &rarr;</span>
         </a>
       ) : (
-        <span class="bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded opacity-50">First Day</span>
+        <span class="bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded opacity-50">
+          <span class="english-ui">First Day</span>
+          <span class="hebrew-ui hidden">{hebrewTranslations['First Day']}</span>
+        </span>
       )}
       
       {nextDate ? (
         <a href={`/aviya-schedule/${nextDate}`} class="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
-          Next Day &rarr;
+          <span class="english-ui">Next Day &rarr;</span>
+          <span class="hebrew-ui hidden">&larr; {hebrewTranslations['Next Day']}</span>
         </a>
       ) : (
-        <span class="bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded opacity-50">Last Day</span>
+        <span class="bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded opacity-50">
+          <span class="english-ui">Last Day</span>
+          <span class="hebrew-ui hidden">{hebrewTranslations['Last Day']}</span>
+        </span>
       )}
     </div>
     
     <!-- Daily readings -->
     <div class="mb-10">
-      <h3 class="text-2xl font-semibold mb-4">Today's Readings</h3>
+      <h3 class="text-2xl font-semibold mb-4">
+        <span class="english-ui">Today's Readings</span>
+        <span class="hebrew-ui hidden">{hebrewTranslations["Today's Readings"]}</span>
+      </h3>
       <ul>
         {readings.map((reference, index) => (
           <li class="mb-2">
-            <strong class="text-lg">{reference}</strong>
+            <strong class="text-lg">
+              <span class="english-ui">{reference}</span>
+              <span class="hebrew-ui hidden">{translateReferenceToHebrew(reference)}</span>
+            </strong>
           </li>
         ))}
       </ul>
@@ -125,12 +207,21 @@ try {
     <!-- Text content from Sefaria -->
     <div class="mb-10">
       <div class="flex justify-between items-center mb-6">
-        <h3 class="text-2xl font-semibold">Text Content</h3>
+        <h3 class="text-2xl font-semibold">
+          <span class="english-ui">Text Content</span>
+          <span class="hebrew-ui hidden">{hebrewTranslations['Text Content']}</span>
+        </h3>
         
-        <div class="flex space-x-2">
+        <div class="flex space-x-2 english-ui">
           <button id="bothLangs" class="px-3 py-1 rounded bg-blue-600 text-white text-sm lang-toggle active">Both</button>
           <button id="hebrewOnly" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm lang-toggle">Hebrew Only</button>
           <button id="englishOnly" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm lang-toggle">English Only</button>
+        </div>
+        
+        <div class="flex space-x-2 hebrew-ui hidden">
+          <button id="bothLangs" class="px-3 py-1 rounded bg-blue-600 text-white text-sm lang-toggle active">{hebrewTranslations['Both']}</button>
+          <button id="hebrewOnly" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm lang-toggle">{hebrewTranslations['Hebrew Only']}</button>
+          <button id="englishOnly" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm lang-toggle">{hebrewTranslations['English Only']}</button>
         </div>
       </div>
       
@@ -139,7 +230,10 @@ try {
           const textData = texts[index];
           return (
             <div class="border dark:border-gray-700 rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
-              <h4 class="text-xl font-semibold mb-3">{reference}</h4>
+              <h4 class="text-xl font-semibold mb-3">
+                <span class="english-ui">{reference}</span>
+                <span class="hebrew-ui hidden">{translateReferenceToHebrew(reference)}</span>
+              </h4>
               
               <div class="grid md:grid-cols-2 gap-6">
                 <!-- Hebrew text -->
@@ -160,21 +254,37 @@ try {
     
     <!-- Notes section -->
     <div class="mt-10 border-t pt-6">
-      <h3 class="text-2xl font-semibold mb-4">Notes</h3>
+      <h3 class="text-2xl font-semibold mb-4">
+        <span class="english-ui">Notes</span>
+        <span class="hebrew-ui hidden">{hebrewTranslations['Notes']}</span>
+      </h3>
       <div class="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-6 min-h-[300px]">
-        <p class="text-gray-400 dark:text-gray-500 italic">Add your notes here...</p>
+        <p class="text-gray-400 dark:text-gray-500 italic">
+          <span class="english-ui">Add your notes here...</span>
+          <span class="hebrew-ui hidden">{hebrewTranslations['Add your notes here...']}</span>
+        </p>
         <!-- In a future iteration, this could be a rich text editor or form -->
       </div>
     </div>
     
     <!-- Image upload section -->
     <div class="mt-10">
-      <h3 class="text-2xl font-semibold mb-4">Images</h3>
+      <h3 class="text-2xl font-semibold mb-4">
+        <span class="english-ui">Images</span>
+        <span class="hebrew-ui hidden">{hebrewTranslations['Images']}</span>
+      </h3>
       <div class="bg-gray-100 dark:bg-gray-800 border border-dashed dark:border-gray-700 rounded-lg p-10 text-center">
-        <p class="text-gray-500 dark:text-gray-400 mb-2">Drag and drop images here</p>
-        <p class="text-gray-400 text-sm">or</p>
+        <p class="text-gray-500 dark:text-gray-400 mb-2">
+          <span class="english-ui">Drag and drop images here</span>
+          <span class="hebrew-ui hidden">{hebrewTranslations['Drag and drop images here']}</span>
+        </p>
+        <p class="text-gray-400 text-sm">
+          <span class="english-ui">or</span>
+          <span class="hebrew-ui hidden">{hebrewTranslations['or']}</span>
+        </p>
         <button class="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600">
-          Select Images
+          <span class="english-ui">Select Images</span>
+          <span class="hebrew-ui hidden">{hebrewTranslations['Select Images']}</span>
         </button>
         <!-- In a future iteration, this would be connected to image upload functionality -->
       </div>
@@ -205,12 +315,25 @@ try {
   .dark .lang-toggle.active {
     background-color: #3b82f6; /* dark:bg-blue-500 */
   }
+  
+  /* For Hebrew UI, ensure proper direction */
+  .hebrew-ui-active {
+    direction: rtl;
+  }
+  
+  /* Hidden elements */
+  .hidden {
+    display: none;
+  }
 </style>
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const textContainer = document.querySelector('.grid.gap-8');
     const langButtons = document.querySelectorAll('.lang-toggle');
+    const siteLanguageToggle = document.getElementById('siteLanguageToggle');
+    const englishElements = document.querySelectorAll('.english-ui');
+    const hebrewElements = document.querySelectorAll('.hebrew-ui');
     
     // Language toggle functionality
     langButtons.forEach(button => {
@@ -243,5 +366,35 @@ try {
         });
       });
     });
+    
+    // Site-wide language toggle (UI language)
+    if (siteLanguageToggle) {
+      // Check if there's a stored preference
+      const savedLanguage = localStorage.getItem('aviyaUiLanguage');
+      if (savedLanguage === 'hebrew') {
+        document.body.classList.add('hebrew-ui-active');
+        englishElements.forEach(el => el.classList.add('hidden'));
+        hebrewElements.forEach(el => el.classList.remove('hidden'));
+        document.documentElement.dir = 'rtl';
+      }
+      
+      siteLanguageToggle.addEventListener('click', () => {
+        document.body.classList.toggle('hebrew-ui-active');
+        
+        if (document.body.classList.contains('hebrew-ui-active')) {
+          // Switch to Hebrew UI
+          localStorage.setItem('aviyaUiLanguage', 'hebrew');
+          englishElements.forEach(el => el.classList.add('hidden'));
+          hebrewElements.forEach(el => el.classList.remove('hidden'));
+          document.documentElement.dir = 'rtl';
+        } else {
+          // Switch to English UI
+          localStorage.setItem('aviyaUiLanguage', 'english');
+          englishElements.forEach(el => el.classList.remove('hidden'));
+          hebrewElements.forEach(el => el.classList.add('hidden'));
+          document.documentElement.dir = 'ltr';
+        }
+      });
+    }
   });
 </script>

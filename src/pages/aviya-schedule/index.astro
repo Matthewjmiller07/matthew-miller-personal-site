@@ -5,6 +5,67 @@ import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
 
+// Hebrew translations for UI elements
+const hebrewTranslations = {
+  // Month names
+  'January': 'ינואר',
+  'February': 'פברואר',
+  'March': 'מרץ',
+  'April': 'אפריל',
+  'May': 'מאי',
+  'June': 'יוני',
+  'July': 'יולי',
+  'August': 'אוגוסט',
+  'September': 'ספטמבר',
+  'October': 'אוקטובר',
+  'November': 'נובמבר',
+  'December': 'דצמבר',
+  
+  // Days of week
+  'Sun': 'א',
+  'Mon': 'ב',
+  'Tue': 'ג',
+  'Wed': 'ד',
+  'Thu': 'ה',
+  'Fri': 'ו',
+  'Sat': 'ש',
+  
+  // Book names - Genesis, etc.
+  'Genesis': 'בראשית',
+  'Exodus': 'שמות',
+  'Leviticus': 'ויקרא',
+  'Numbers': 'במדבר',
+  'Deuteronomy': 'דברים',
+  
+  // UI elements
+  'Aviya Schedule': 'לוח אביה',
+  'Daily Torah reading schedule with text and notes': 'לוח קריאה יומי בתורה עם טקסטים והערות',
+  'Preview': 'תצוגה מקדימה',
+  'Reading': 'קריאה',
+  'View Full Page': 'צפה בדף המלא',
+  'View': 'צפה'
+};
+
+// Function to translate Bible references to Hebrew
+function translateReferenceToHebrew(reference) {
+  const bookMap = {
+    'Genesis': 'בראשית',
+    'Exodus': 'שמות',
+    'Leviticus': 'ויקרא',
+    'Numbers': 'במדבר',
+    'Deuteronomy': 'דברים'
+  };
+  
+  let hebrewReference = reference;
+  Object.entries(bookMap).forEach(([english, hebrew]) => {
+    if (reference.includes(english)) {
+      hebrewReference = reference.replace(english, hebrew);
+    }
+  });
+  
+  return hebrewReference;
+}
+
 // Read the Aviya Schedule CSV
 const csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
 const csvContent = fs.readFileSync(csvFilePath, 'utf-8');
@@ -14,103 +75,215 @@ const records = parse(csvContent, {
 });
 
 // Group records by month for the calendar view
-const recordsByMonth = records.reduce((acc, record) => {
+const recordsByMonth = {};
+records.forEach(record => {
   const date = new Date(record.Date);
-  const monthYear = format(date, 'MMMM yyyy');
+  const month = format(date, 'MMMM yyyy');
   
-  if (!acc[monthYear]) {
-    acc[monthYear] = [];
+  if (!recordsByMonth[month]) {
+    recordsByMonth[month] = [];
   }
   
-  acc[monthYear].push({
+  recordsByMonth[month].push({
     ...record,
-    dateObj: date,
     formattedDate: format(date, 'yyyy-MM-dd'),
-    dayOfMonth: date.getDate()
+    day: date.getDate(),
   });
-  
-  return acc;
-}, {});
+});
 
-// Get first day's text for demo purposes
+// Sort monthYear keys chronologically
+const sortedMonthYears = Object.keys(recordsByMonth).sort((a, b) => {
+  const dateA = new Date(a);
+  const dateB = new Date(b);
+  return dateA - dateB;
+});
+
+// Create a new sorted recordsByMonth object
+const sortedRecordsByMonth = {};
+sortedMonthYears.forEach(month => {
+  sortedRecordsByMonth[month] = recordsByMonth[month];
+});
+
+// Group months by year for better organization
+const recordsByYear = {};
+sortedMonthYears.forEach(monthYear => {
+  const year = monthYear.split(' ')[1];
+  if (!recordsByYear[year]) {
+    recordsByYear[year] = [];
+  }
+  recordsByYear[year].push(monthYear);
+});
+
 const firstDay = records[0];
 ---
 
 <Layout title="Aviya Schedule">
   <div class="container mx-auto px-4 py-8 text-black dark:text-white">
-    <h1 class="text-3xl font-bold mb-6 text-center">Aviya Schedule</h1>
-    <p class="text-center mb-8">Daily Torah reading schedule with text and notes</p>
+    <div class="flex justify-end mb-4">
+      <button id="siteLanguageToggle" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm">
+        <span class="english-ui">עברית</span>
+        <span class="hebrew-ui hidden">English</span>
+      </button>
+    </div>
     
-    <!-- Calendar View -->
-    {Object.entries(recordsByMonth).slice(0, 3).map(([monthYear, days]) => {
-      const firstDate = days[0].dateObj;
-      const daysInMonth = new Date(
-        firstDate.getFullYear(),
-        firstDate.getMonth() + 1,
-        0
-      ).getDate();
-      
-      const firstDayOfMonth = new Date(
-        firstDate.getFullYear(),
-        firstDate.getMonth(),
-        1
-      ).getDay();
-      
-      return (
-        <div class="mb-12">
-          <h2 class="text-2xl font-bold mb-4">{monthYear}</h2>
-          <div class="grid grid-cols-7 gap-1 text-center font-semibold mb-2">
-            <div class="py-2">Sun</div>
-            <div class="py-2">Mon</div>
-            <div class="py-2">Tue</div>
-            <div class="py-2">Wed</div>
-            <div class="py-2">Thu</div>
-            <div class="py-2">Fri</div>
-            <div class="py-2">Sat</div>
-          </div>
-          
-          <div class="grid grid-cols-7 gap-1">
-            {/* Empty cells for days before the month starts */}
-            {Array(firstDayOfMonth).fill(null).map(() => (
-              <div class="border dark:border-gray-700 h-24 p-1 bg-gray-100 dark:bg-gray-800"></div>
-            ))}
+    <h1 class="text-3xl font-bold mb-6 text-center">
+      <span class="english-ui">Aviya Schedule</span>
+      <span class="hebrew-ui hidden">{hebrewTranslations['Aviya Schedule']}</span>
+    </h1>
+    <p class="text-center mb-8">
+      <span class="english-ui">Daily Torah reading schedule with text and notes</span>
+      <span class="hebrew-ui hidden">{hebrewTranslations['Daily Torah reading schedule with text and notes']}</span>
+    </p>
+    
+    <!-- Calendar View with years as sections -->
+    {Object.entries(recordsByYear).map(([year, monthsInYear]) => (
+      <div class="mb-16">
+        <h2 class="text-3xl font-bold mb-8 text-center border-b pb-2 dark:border-gray-700">
+          <span class="english-ui">{year}</span>
+          <span class="hebrew-ui hidden">{year}</span>
+        </h2>
+        
+        <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
+          {monthsInYear.map(monthYear => {
+            const days = sortedRecordsByMonth[monthYear];
             
-            {/* Calendar days */}
-            {Array(daysInMonth).fill(null).map((_, index) => {
-              const day = index + 1;
-              const dayRecord = days.find(d => d.dayOfMonth === day);
-              
-              return (
-                <div class="border dark:border-gray-700 h-24 p-1 overflow-hidden dark:bg-gray-900">
-                  <div class="flex justify-between">
-                    <span class="font-bold">{day}</span>
-                    {dayRecord && (
-                      <a href={`/aviya-schedule/${dayRecord.formattedDate}`}>
-                        <span class="text-blue-600 dark:text-blue-400 underline text-sm">View</span>
-                      </a>
-                    )}
-                  </div>
-                  {dayRecord && (
-                    <div class="text-xs mt-1">
-                      {dayRecord.Reading.split(', ').slice(0, 3).join(', ')}
-                      {dayRecord.Reading.split(', ').length > 3 && '...'}
-                    </div>
-                  )}
+            // Calculate the starting position for the first day
+            const firstDayRecord = days[0];
+            const firstDate = new Date(firstDayRecord.Date);
+            const firstDay = firstDate.getDay(); // 0 for Sunday, 1 for Monday, etc.
+            
+            // Create an array for a grid
+            const calendarGrid = [];
+            // Add empty slots for days before the 1st of the month
+            for (let i = 0; i < firstDay; i++) {
+              calendarGrid.push(null);
+            }
+            
+            // Add the actual days
+            days.forEach(dayRecord => {
+              calendarGrid.push(dayRecord);
+            });
+            
+            return (
+              <div class="mb-6 border p-4 rounded dark:border-gray-700 bg-white dark:bg-gray-800">
+                <h3 class="text-xl font-bold mb-4">
+                  <span class="english-ui">{monthYear.split(' ')[0]}</span>
+                  <span class="hebrew-ui hidden">
+                    {hebrewTranslations[monthYear.split(' ')[0]] || monthYear.split(' ')[0]}
+                  </span>
+                </h3>
+                
+                <div class="grid grid-cols-7 gap-1 text-center font-semibold mb-2 text-xs md:text-sm">
+                  <div class="py-1"><span class="english-ui">Sun</span><span class="hebrew-ui hidden">{hebrewTranslations['Sun']}</span></div>
+                  <div class="py-1"><span class="english-ui">Mon</span><span class="hebrew-ui hidden">{hebrewTranslations['Mon']}</span></div>
+                  <div class="py-1"><span class="english-ui">Tue</span><span class="hebrew-ui hidden">{hebrewTranslations['Tue']}</span></div>
+                  <div class="py-1"><span class="english-ui">Wed</span><span class="hebrew-ui hidden">{hebrewTranslations['Wed']}</span></div>
+                  <div class="py-1"><span class="english-ui">Thu</span><span class="hebrew-ui hidden">{hebrewTranslations['Thu']}</span></div>
+                  <div class="py-1"><span class="english-ui">Fri</span><span class="hebrew-ui hidden">{hebrewTranslations['Fri']}</span></div>
+                  <div class="py-1"><span class="english-ui">Sat</span><span class="hebrew-ui hidden">{hebrewTranslations['Sat']}</span></div>
                 </div>
-              );
-            })}
-          </div>
+                
+                <div class="grid grid-cols-7 gap-1">
+                  {/* Empty cells for days before the month starts */}
+                  {calendarGrid.map((dayRecord, index) => {
+                    if (dayRecord === null) {
+                      return <div class="border dark:border-gray-700 h-16 md:h-20 p-1 bg-gray-100 dark:bg-gray-900"></div>;
+                    }
+                    
+                    return (
+                      <div class="border dark:border-gray-700 h-16 md:h-20 p-1 bg-white dark:bg-gray-800">
+                        <div class="flex justify-between items-center mb-1">
+                          <span class="font-bold">{dayRecord.day}</span>
+                          <a href={`/aviya-schedule/${dayRecord.formattedDate}`}>
+                            <span class="text-blue-600 dark:text-blue-400 underline text-xs md:text-sm english-ui">View</span>
+                            <span class="text-blue-600 dark:text-blue-400 underline text-xs md:text-sm hebrew-ui hidden">{hebrewTranslations['View']}</span>
+                          </a>
+                        </div>
+                        <p class="text-xs overflow-hidden truncate">
+                          <span class="english-ui">{dayRecord.Reading.split(',')[0]}</span>
+                          <span class="hebrew-ui hidden">{translateReferenceToHebrew(dayRecord.Reading.split(',')[0])}</span>
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
-      );
-    })}
+      </div>
+    ))}
     
     <!-- Quick Preview of First Day -->
     <div class="mt-12 border-t dark:border-gray-700 pt-8">
-      <h2 class="text-2xl font-bold mb-4">Preview: {format(new Date(firstDay.Date), 'MMMM d, yyyy')} ({firstDay.Day_of_Week})</h2>
-      <p class="mb-4">Reading: {firstDay.Reading}</p>
+      <h2 class="text-2xl font-bold mb-4">
+        <span class="english-ui">
+          Preview: {format(new Date(firstDay.Date), 'MMMM d, yyyy')} ({firstDay.Day_of_Week})
+        </span>
+        <span class="hebrew-ui hidden">
+          {hebrewTranslations['Preview']}: 
+          {hebrewTranslations[format(new Date(firstDay.Date), 'MMMM').split(' ')[0]] || format(new Date(firstDay.Date), 'MMMM')} 
+          {new Date(firstDay.Date).getDate()}, {new Date(firstDay.Date).getFullYear()}
+        </span>
+      </h2>
+      <p class="mb-4">
+        <span class="english-ui">Reading: {firstDay.Reading}</span>
+        <span class="hebrew-ui hidden">{hebrewTranslations['Reading']}: {translateReferenceToHebrew(firstDay.Reading)}</span>
+      </p>
       <a href={`/aviya-schedule/${format(new Date(firstDay.Date), 'yyyy-MM-dd')}`} class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600">
-        View Full Page
+        <span class="english-ui">View Full Page</span>
+        <span class="hebrew-ui hidden">{hebrewTranslations['View Full Page']}</span>
       </a>
     </div>
   </div>
 </Layout>
+
+<style>
+  /* For Hebrew UI, ensure proper direction */
+  .hebrew-ui-active {
+    direction: rtl;
+  }
+  
+  /* Hidden elements */
+  .hidden {
+    display: none;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const siteLanguageToggle = document.getElementById('siteLanguageToggle');
+    const englishElements = document.querySelectorAll('.english-ui');
+    const hebrewElements = document.querySelectorAll('.hebrew-ui');
+    
+    // Site-wide language toggle (UI language)
+    if (siteLanguageToggle) {
+      // Check if there's a stored preference
+      const savedLanguage = localStorage.getItem('aviyaUiLanguage');
+      if (savedLanguage === 'hebrew') {
+        document.body.classList.add('hebrew-ui-active');
+        englishElements.forEach(el => el.classList.add('hidden'));
+        hebrewElements.forEach(el => el.classList.remove('hidden'));
+        document.documentElement.dir = 'rtl';
+      }
+      
+      siteLanguageToggle.addEventListener('click', () => {
+        document.body.classList.toggle('hebrew-ui-active');
+        
+        if (document.body.classList.contains('hebrew-ui-active')) {
+          // Switch to Hebrew UI
+          localStorage.setItem('aviyaUiLanguage', 'hebrew');
+          englishElements.forEach(el => el.classList.add('hidden'));
+          hebrewElements.forEach(el => el.classList.remove('hidden'));
+          document.documentElement.dir = 'rtl';
+        } else {
+          // Switch to English UI
+          localStorage.setItem('aviyaUiLanguage', 'english');
+          englishElements.forEach(el => el.classList.remove('hidden'));
+          hebrewElements.forEach(el => el.classList.add('hidden'));
+          document.documentElement.dir = 'ltr';
+        }
+      });
+    }
+  });
+</script>
