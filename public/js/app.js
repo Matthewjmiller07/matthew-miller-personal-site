@@ -1128,7 +1128,6 @@ function generateChildSchedule(verses, startDate, endDate, selectedDays, saturda
             const todayVerses = dayOfWeek === 6 && saturdayEmphasis ? 
                 saturdayVerses : regularDayVerses;
             
-            // Get verses for today
             const dailyVerses = [];
             let versesNeeded = todayVerses;
             
@@ -1169,6 +1168,7 @@ function generateChildSchedule(verses, startDate, endDate, selectedDays, saturda
     
     return schedule;
 }
+
 
 /**
  * Generate Mishnayot study schedule
@@ -1678,58 +1678,67 @@ function addScheduleTableStyles() {
         
         /* Specific cell styling */
         .date-cell {
-            min-width: 140px;
             font-weight: 500;
-            color: #000000; /* Black text for maximum contrast */
         }
         
-        .day-cell {
+        /* Date column styling */
+        #scheduleTable td:first-child {
+            font-weight: 700;
+            color: #000000 !important;
+            background-color: #f8f9fa;
+        }
+        
+        /* Day of week column - EXTRA DARK */
+        #scheduleTable .day-cell {
             min-width: 100px;
-            color: #202939; /* Darker text color */
-            font-weight: 500;
+            color: #000000; /* Pure black for maximum contrast */
+            font-weight: 700; /* Bold for better visibility */
         }
         
         .reading-cell {
-            font-family: var(--font-family, system-ui, -apple-system, sans-serif);
-            color: #111827; /* Much darker text color for better readability */
-            font-weight: 500;
+            min-width: 150px;
+            color: #000000;
         }
         
-        .today-row {
-            background-color: #ebf5ff !important;
-            border-left: 4px solid #2b6cb0;
-        }
-        
-        .today-row td {
-            font-weight: 500;
-        }
-        
-        /* Gregorian date styling */
+        /* Gregorian date styling - EXTRA DARK */
         .gregorian-date {
             color: #000000;
             font-size: 16px;
-            font-weight: 700; /* Extra bold for even more contrast */
+            font-weight: 800;
+            display: block;
+            margin-bottom: 6px;
         }
         
-        /* Hebrew date styling */
+        /* Hebrew date styling - EXTRA DARK */
         .hebrew-date, .hebrew-date-english {
             margin-top: 8px;
-            font-size: 14px;
-            color: #000000; /* Black text for maximum contrast */
-            font-weight: 600; /* Make it bold for better visibility */
+            font-size: 15px;
+            color: #000000; /* Pure black for maximum contrast */
+            font-weight: 700; /* Bold for better visibility */
             padding-top: 4px;
-            border-top: 1px solid #c0c0c0; /* Darker, solid border for better visibility */
+            border-top: 1px solid #666; /* Darker border for better visibility */
+            display: block;
+        }
+        
+        /* Study days styling - EXTRA DARK */
+        #studyDaysHeader { 
+            color: #000000 !important; 
+            font-weight: 700 !important; 
+        }
+        .study-day-label { 
+            color: #000000 !important; 
+            font-weight: 700 !important; 
         }
         
         /* Language toggle button styling */
         #langToggleBtn {
-            margin: 0 0 20px 0;
-            padding: 8px 16px;
-            font-size: 14px;
-            border-radius: 6px;
+            margin-bottom: 1rem;
         }
         
-        /* Responsive adjustments */
+        /* RTL support for Hebrew mode */
+        body[data-lang="he"] #scheduleTable th { text-align: right !important; }
+        body[data-lang="he"] #scheduleTable td.day-cell { text-align: right !important; }
+        body[data-lang="he"] #scheduleTable td.reading-cell { text-align: right !important; }
         @media (max-width: 768px) {
             #scheduleTable {
                 font-size: 15px;
@@ -1805,6 +1814,37 @@ function addScheduleTableStyles() {
 function displaySchedule(schedule, name, additionalInfo = null) {
     // Apply custom styling to the schedule table
     addScheduleTableStyles();
+    
+    // Add emergency style override for maximum visibility
+    const emergencyStyle = document.createElement('style');
+    emergencyStyle.innerHTML = `
+        #scheduleTable th { color: #000000 !important; font-weight: 700 !important; }
+        #scheduleTable td { color: #000000 !important; font-weight: 600 !important; }
+        #scheduleTable .gregorian-date { color: #000000 !important; font-weight: 900 !important; }
+        #scheduleTable .hebrew-date, .hebrew-date-english { color: #000000 !important; font-weight: 800 !important; }
+        #scheduleTable .day-cell { color: #000000 !important; font-weight: 800 !important; }
+        /* Day names - extremely high contrast */
+        #scheduleTable td.day-cell { color: #000000 !important; font-weight: 800 !important; text-shadow: 0 0 0.5px rgba(0,0,0,0.5) !important; }
+        /* Extra specificity for day names */
+        tr td.day-cell { color: #000000 !important; font-weight: 800 !important; }
+        /* Force text color on span inside day cell if any */
+        td.day-cell > span, td.day-cell > div { color: #000000 !important; font-weight: 800 !important; }
+        /* Study days */
+        #studyDaysHeader { color: #000 !important; font-weight: 800 !important; }
+        .study-day-label { color: #000 !important; font-weight: 700 !important; }
+        /* Weekday selector black text */
+        .weekday-selector label { color: #000000 !important; font-weight: 600 !important; }
+        /* All labels should be dark */
+        label { color: #000000 !important; }
+    `;
+    document.head.appendChild(emergencyStyle);
+    
+    // Set the proper language attribute on the body for CSS selectors
+    if (TorahData.currentLang() === TorahData.LANG.HE) {
+        document.body.setAttribute('data-lang', 'he');
+    } else {
+        document.body.setAttribute('data-lang', 'en');
+    }
     
     // Store the schedule in window.currentSchedule
     window.currentSchedule = schedule;
@@ -1969,20 +2009,42 @@ function displaySchedule(schedule, name, additionalInfo = null) {
         }
         row.appendChild(dateCell);
 
+        // Day cell
         const dayCell = document.createElement('td');
         dayCell.className = 'day-cell';
-        // Use Hebrew day names when in Hebrew mode
+        
+        // Create a strongly styled day name element with inline styling for maximum contrast
+        const strongDayName = document.createElement('strong');
+        strongDayName.style.color = '#000000'; // Pure black
+        strongDayName.style.fontWeight = '800'; // Extra bold
+        
+        // Get the day of week index (0 = Sunday, 1 = Monday, etc)
+        const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+            .indexOf(entry.dayOfWeek);
+        
+        // Format day of week based on language
         if (currentLang === LANG.HE) {
-            // Use the hebrewDays object directly with the day name as key
-            dayCell.textContent = hebrewDays[entry.dayOfWeek] || entry.dayOfWeek;
+            const hebrewDays = ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'שבת'];
+            strongDayName.textContent = hebrewDays[dayIndex];
+            dayCell.dir = 'rtl'; // Right-to-left for Hebrew
         } else {
-            dayCell.textContent = entry.dayOfWeek;
+            strongDayName.textContent = entry.dayOfWeek;
         }
+        
+        // Add the styled element to the cell
+        dayCell.appendChild(strongDayName);
         if (currentLang === LANG.HE) {
             dayCell.dir = 'rtl'; // Right-to-left for Hebrew
         }
         row.appendChild(dayCell);
-
+        
+        // Ensure the day name text is pure black with strong contrast
+        // This fixes Sunday, Monday, Tuesday, etc. appearing light
+        if (dayCell.textContent) {
+            dayCell.style.color = '#000000';
+            dayCell.style.fontWeight = '700';
+        }
+        
         const readingCell = document.createElement('td');
         readingCell.className = 'reading-cell';
         // If in Hebrew mode, try to use Hebrew book names
