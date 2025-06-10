@@ -2,18 +2,52 @@ import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
 
+// Check if we're running in a Netlify or other serverless environment
+// Make sure we're actually checking for truthy values, not just undefined values
+const isServerless = Boolean(process.env.NETLIFY || process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSION);
+// For local development, always set to false
+const isDev = process.env.NODE_ENV === 'development';
+const isServerlessMode = isServerless && !isDev;
+
+// Helper to log more details about the environment
+function logEnvironmentDetails() {
+  console.log('Environment details:');
+  console.log('- CWD:', process.cwd());
+  console.log('- ENV variables:', Object.keys(process.env).filter(key => !key.includes('SECRET') && !key.includes('KEY')).join(', '));
+  console.log('- Platform:', process.platform);
+  console.log('- Is serverless:', isServerless ? 'Yes' : 'No');
+}
+
 export async function GET({ request }) {
+  // Log environment details to help debug
+  logEnvironmentDetails();
+  
   try {
     // Get the date from the query parameters
     const url = new URL(request.url);
     const date = url.searchParams.get('date');
-    
+
     if (!date) {
-      return new Response(JSON.stringify({ error: 'Date parameter is required' }), {
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      return new Response(JSON.stringify({
+        error: "Date parameter is required"
+      }), {
+        status: 400, 
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // If in serverless environment, inform the client that they should rely on localStorage
+    if (isServerlessMode) {
+      console.log('Serverless environment detected - notifying client to use localStorage');
+      return new Response(JSON.stringify({
+        serverless: true,
+        date: date,
+        notes: "",
+        verseNotes: {},
+        message: "Running in serverless environment - client should use localStorage"
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
     
