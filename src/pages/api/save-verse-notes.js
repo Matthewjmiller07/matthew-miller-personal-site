@@ -42,25 +42,46 @@ export async function POST({ request }) {
 
     // Determine whether to use Google Sheets or local CSV
     const useGoogleSheets = shouldUseGoogleSheets;
+    const isServerlessProd = isServerless && !isDev;
     let saveResult = { success: false };
+
+    console.log('Save environment check:', { isServerless, isDev, isServerlessProd });
 
     if (useGoogleSheets) {
       // Try to save to Google Sheets
       try {
-        console.log('Saving data to Google Sheets...');
+        console.log('Attempting to save data to Google Sheets...');
         console.log('Google Sheets config:', JSON.stringify({
           spreadsheetId: GOOGLE_SHEETS_CONFIG.spreadsheetId,
           range: GOOGLE_SHEETS_CONFIG.range,
           useInDevelopment: GOOGLE_SHEETS_CONFIG.useInDevelopment,
           useInProduction: GOOGLE_SHEETS_CONFIG.useInProduction
         }));
+        
         saveResult = await saveToGoogleSheets(normalizedDate, verseNotes, notes);
+        
+        // If we got here, Google Sheets save was successful
+        console.log('Successfully saved to Google Sheets');
       } catch (error) {
         console.error('Error saving to Google Sheets:', error);
         console.error('Stack trace:', error.stack);
-        // Fall back to local CSV
-        console.log('Falling back to local CSV due to Google Sheets error');
-        saveResult = await saveToLocalCsv(normalizedDate, verseNotes, notes);
+        
+        if (isServerlessProd) {
+          // In production serverless, don't try to fall back to CSV (read-only filesystem)
+          console.error('In production environment - cannot fall back to local CSV (read-only filesystem)');
+          return new Response(JSON.stringify({
+            success: false,
+            message: `Failed to save to Google Sheets: ${error.message}`,
+            dataSource: 'google-sheets-failed'
+          }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        } else {
+          // Only in development, fall back to local CSV
+          console.log('In development environment - falling back to local CSV');
+          saveResult = await saveToLocalCsv(normalizedDate, verseNotes, notes);
+        }
       }
     } else {
       // Use local CSV

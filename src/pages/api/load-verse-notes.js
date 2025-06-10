@@ -40,16 +40,25 @@ export async function GET({ request }) {
     
     // Determine whether to use Google Sheets or local CSV
     const useGoogleSheets = shouldUseGoogleSheets || url.searchParams.get('useSheets') === 'true';
+    const isServerlessProd = isServerless && !isDev;
+    
+    console.log(`Environment check for loading:`, { isServerless, isDev, isServerlessProd });
     console.log(`Using Google Sheets: ${useGoogleSheets}`);
     
     let allRecords = [];
     let record = null;
     let dataSource = 'unknown'; // Track where we loaded data from
     
+    // Force Google Sheets in production regardless of other settings
+    const shouldForceGoogleSheets = isServerlessProd;
+    if (shouldForceGoogleSheets && !useGoogleSheets) {
+      console.log('In production serverless environment - forcing Google Sheets usage');
+    }
+    
     // === FETCH DATA FROM SOURCE ===
     // Either Google Sheets or local CSV file
     
-    if (useGoogleSheets) {
+    if (useGoogleSheets || shouldForceGoogleSheets) {
       // Try to fetch from Google Sheets
       try {
         console.log('Fetching data from Google Sheets...');
