@@ -44,6 +44,7 @@ export async function GET({ request }) {
     
     let allRecords = [];
     let record = null;
+    let dataSource = 'unknown'; // Track where we loaded data from
     
     // === FETCH DATA FROM SOURCE ===
     // Either Google Sheets or local CSV file
@@ -52,23 +53,47 @@ export async function GET({ request }) {
       // Try to fetch from Google Sheets
       try {
         console.log('Fetching data from Google Sheets...');
+        console.log('Google Sheets config:', JSON.stringify({
+          spreadsheetId: GOOGLE_SHEETS_CONFIG.spreadsheetId,
+          range: GOOGLE_SHEETS_CONFIG.range
+        }));
+        
         const sheetData = await getSheetData(
           GOOGLE_SHEETS_CONFIG.spreadsheetId,
           GOOGLE_SHEETS_CONFIG.range
         );
         
-        // Convert sheet data to CSV-like format
+        if (!sheetData || !Array.isArray(sheetData)) {
+          console.error('Invalid sheet data format:', sheetData);
+          throw new Error('Invalid sheet data format');
+        }
+        
+        console.log(`Raw sheet data: ${sheetData.length} rows, first row has ${sheetData[0]?.length || 0} columns`);
+        console.log(`Headers: ${JSON.stringify(sheetData[0])}`);
+        
+        // Convert sheet data to CSV-like format using our improved function
         allRecords = sheetValuesToCsv(sheetData);
-        console.log(`Retrieved ${allRecords.length} records from Google Sheets`);
+        console.log(`Converted to ${allRecords.length} records from Google Sheets`);
+        console.log(`First record: ${JSON.stringify(allRecords[0])}`);
+        
+        // Data source tracking
+        dataSource = 'google-sheets';
       } catch (error) {
         console.error('Error accessing Google Sheets:', error);
+        console.error('Error details:', {
+          message: error.message,
+          code: error.code,
+          stack: error.stack?.split('\n').slice(0, 3).join('\n')
+        });
         // Fall back to local CSV
         console.log('Falling back to local CSV due to Google Sheets error');
         allRecords = await loadFromLocalCsv();
+        dataSource = 'local-csv';
       }
     } else {
       // Use local CSV
       allRecords = await loadFromLocalCsv();
+      dataSource = 'local-csv';
     }
     
     // Find the record for this date
@@ -174,12 +199,15 @@ export async function GET({ request }) {
       }
     });
     
-    // Return the response with verse notes and general notes
+    console.log(`Returning data for ${normalizedDate} from source: ${dataSource}`);
+    console.log(`Verse notes: ${JSON.stringify(verseNotes)}`);
+    
+    // Return the record data
     return new Response(JSON.stringify({
       date: normalizedDate,
       notes: record.Notes || '',
       verseNotes: verseNotes,
-      dataSource: useGoogleSheets ? 'google-sheets' : 'local-csv'
+      dataSource: dataSource
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
