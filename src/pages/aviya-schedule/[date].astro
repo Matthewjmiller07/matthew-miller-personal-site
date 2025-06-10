@@ -859,16 +859,29 @@ try {
             console.log('Saving payload:', JSON.stringify(payload));
             
             // Send the updated notes to the API
+            console.log('Sending save request to API...');
             const response = await fetch('/api/save-verse-notes', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload)
             });
             
-            if (!response.ok) throw new Error('Failed to save note');
+            const responseText = await response.text(); // Get raw response text first
+            console.log(`API Response (${response.status}):`, responseText);
             
-            const data = await response.json();
-            console.log('Save response:', data);
+            let data;
+            try {
+              // Try to parse as JSON
+              data = JSON.parse(responseText);
+              console.log('Parsed response data:', data);
+              
+              if (!response.ok) {
+                throw new Error(data.message || data.error || `Failed with status ${response.status}`);
+              }
+            } catch (parseError) {
+              console.error('Error parsing response:', parseError);
+              throw new Error(`Failed to save note (Status: ${response.status})`);
+            }
             
             // Update the current data in browser memory
             window.currentVerseNotesData = payload.verseNotes;

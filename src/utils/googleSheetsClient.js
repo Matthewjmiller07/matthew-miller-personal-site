@@ -146,13 +146,67 @@ export async function updateSheetData(spreadsheetId, range, values) {
 export function csvToSheetValues(csvData) {
   if (!csvData || !csvData.length) return [];
   
-  // Extract headers and convert record objects to row arrays
-  const headers = Object.keys(csvData[0]);
-  const rows = csvData.map(record => 
-    headers.map(header => record[header] || '')
-  );
+  // Get the original headers from the first record
+  let originalHeaders = [];
   
-  return [headers, ...rows];
+  // We need to use the headers we got from the original sheet to keep the structure
+  for (const key in csvData[0]) {
+    // If the key is numeric or looks like a numeric index, attempt to convert it
+    if (!isNaN(key)) {
+      originalHeaders[parseInt(key)] = key;
+    } else {
+      originalHeaders.push(key);
+    }
+  }
+  
+  // Fill any gaps in numeric indices
+  originalHeaders = originalHeaders.filter(h => h !== undefined);
+  
+  console.log('Using original headers for Sheet:', originalHeaders);
+  
+  // For numeric headers (0, 1, 2...), we need to find the column indexes for our data
+  // This ensures we put data back in the right columns
+  let dateColIndex = 0; // Default is first column
+  let notesColIndex = 3; // Default is 4th column
+  let verseNotesColIndex = 5; // Default is 6th column
+  
+  // Try to find the columns if they aren't numeric
+  if (isNaN(originalHeaders[0])) {
+    dateColIndex = originalHeaders.findIndex(h => h === 'Date');
+    notesColIndex = originalHeaders.findIndex(h => h === 'Notes');
+    verseNotesColIndex = originalHeaders.findIndex(h => h === 'VerseNotes');
+  }
+  
+  if (dateColIndex === -1) dateColIndex = 0;
+  if (notesColIndex === -1) notesColIndex = 3;
+  if (verseNotesColIndex === -1) verseNotesColIndex = 5;
+  
+  console.log(`Sheet column mapping for write: Date=${dateColIndex}, Notes=${notesColIndex}, VerseNotes=${verseNotesColIndex}`);
+  
+  // Now convert records to rows
+  const rows = csvData.map(record => {
+    const row = new Array(originalHeaders.length).fill('');
+    
+    // Place data in appropriate columns
+    row[dateColIndex] = record.Date || '';
+    row[notesColIndex] = record.Notes || '';
+    row[verseNotesColIndex] = record.VerseNotes || '';
+    
+    // Add any other fields that might exist
+    for (let i = 0; i < originalHeaders.length; i++) {
+      if (i !== dateColIndex && i !== notesColIndex && i !== verseNotesColIndex) {
+        // Check if we have data for this column
+        const header = originalHeaders[i];
+        if (record[header] !== undefined) {
+          row[i] = record[header];
+        }
+      }
+    }
+    
+    return row;
+  });
+  
+  return [originalHeaders, ...rows];
 }
 
 // Convert Google Sheets data (2D array) to CSV-like format (array of objects)

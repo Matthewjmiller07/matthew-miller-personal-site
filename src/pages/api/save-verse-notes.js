@@ -98,20 +98,41 @@ async function saveToGoogleSheets(date, verseNotes, notes) {
       GOOGLE_SHEETS_CONFIG.range
     );
     
+    // Log the raw sheet data for debugging
+    console.log(`Raw sheet data has ${sheetData.length} rows, first row has ${sheetData[0]?.length || 0} columns`);
+    console.log(`Headers: ${JSON.stringify(sheetData[0])}`);
+    
     // Convert sheet data to CSV-like format
     const allRecords = sheetValuesToCsv(sheetData);
+    console.log(`Converted to ${allRecords.length} records from Google Sheets`);
+    console.log(`First few records:`, allRecords.slice(0, 3));
     
-    // Find the record for this date
-    let recordIndex = allRecords.findIndex(r => r.Date === date);
+    // Find the record for this date with more flexible matching
+    let recordIndex = allRecords.findIndex(r => {
+      // Direct string comparison
+      if (r.Date === date) return true;
+      
+      // Try normalizing the date (remove time component if present)
+      try {
+        const recordDateStr = r.Date ? r.Date.split('T')[0] : null;
+        return recordDateStr === date;
+      } catch (e) {
+        return false;
+      }
+    });
     
     if (recordIndex === -1) {
       console.log(`No record found for date ${date}, cannot update`);
+      console.log(`Available dates in first 10 records:`, allRecords.slice(0, 10).map(r => r.Date));
       return { 
         success: false, 
         message: `Date ${date} not found in schedule`,
         dataSource: 'google-sheets' 
       };
     }
+    
+    console.log(`Found record for date ${date} at index ${recordIndex}`);
+    console.log(`Current record:`, allRecords[recordIndex]);
     
     // Update the record with new notes
     allRecords[recordIndex].Notes = notes || '';
