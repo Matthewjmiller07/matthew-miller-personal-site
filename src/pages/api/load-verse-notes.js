@@ -28,25 +28,27 @@ export async function GET({ request }) {
     });
     
     console.log('Looking for date:', date);
-    console.log('Available records:', records.map(r => ({ date: r.Date, notes: r.Notes })));
     
-    // Find the record for this date
+    // Clean the date (remove time component if present)
+    const normalizedDate = date.split('T')[0]; // Ensure we just have YYYY-MM-DD
+    
+    // Find the record with exact date match
     const record = records.find(r => {
       try {
-        // More reliable date comparison: just compare the date strings directly
-        // This avoids timezone issues when parsing dates
-        console.log(`Comparing record date [${r.Date}] with requested date [${date}]`);
-        
-        // Option 1: Direct string comparison
-        if (r.Date === date) {
-          console.log('Direct match found!');
+        // Direct string comparison
+        if (r.Date === normalizedDate) {
+          console.log('Exact date match found!');
           return true;
         }
         
-        // Option 2: Try to normalize the date format
-        const recordDate = r.Date.split('T')[0]; // Remove any time component
-        console.log(`Comparing simplified dates [${recordDate}] with [${date}]`, recordDate === date);
-        return recordDate === date;
+        // Compare just the date part (ignoring time component if present)
+        const recordDateStr = r.Date.split('T')[0];
+        if (recordDateStr === normalizedDate) {
+          console.log('Date match found after normalizing!');
+          return true;
+        }
+        
+        return false;
       } catch (e) {
         console.error('Date parsing error for', r.Date, e);
         return false;

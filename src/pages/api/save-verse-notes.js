@@ -18,6 +18,11 @@ export async function POST({ request }) {
       });
     }
     
+    console.log(`Processing save verse notes for date: ${date}`);
+    
+    // Make sure we're using a clean date format (YYYY-MM-DD)
+    const normalizedDate = date.split('T')[0]; // Remove any time component
+    
     // Read the CSV file
     const csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
     const csvContent = fs.readFileSync(csvFilePath, 'utf-8');
@@ -28,18 +33,35 @@ export async function POST({ request }) {
       skip_empty_lines: true
     });
     
-    // Find the record for this date
+    // Find the exact record for this date
     const recordIndex = records.findIndex(r => {
       try {
-        const recordDate = new Date(r.Date);
-        return recordDate.toISOString().split('T')[0] === date;
+        // Direct string comparison
+        if (r.Date === normalizedDate) {
+          console.log('Exact date match found!');
+          return true;
+        }
+        
+        // Compare just the date part (ignoring time component if present)
+        const recordDateStr = r.Date.split('T')[0];
+        if (recordDateStr === normalizedDate) {
+          console.log('Date match found after normalizing!');
+          return true;
+        }
+        
+        return false;
       } catch (e) {
+        console.error('Error comparing dates:', e);
         return false;
       }
     });
     
     if (recordIndex === -1) {
-      return new Response(JSON.stringify({ error: 'Date not found in schedule' }), {
+      console.error(`Date not found in schedule: ${normalizedDate}`);
+      return new Response(JSON.stringify({ 
+        error: 'Date not found in schedule', 
+        requestedDate: normalizedDate 
+      }), {
         status: 404,
         headers: {
           'Content-Type': 'application/json'
