@@ -17,8 +17,34 @@ export async function GET({ request }) {
       });
     }
     
-    // Read the CSV file
-    const csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
+    // Try multiple possible CSV file paths for compatibility with different environments
+    let csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
+    
+    // Check if the file exists at the standard path
+    if (!fs.existsSync(csvFilePath)) {
+      // If not found, try the path that might be used in production
+      csvFilePath = path.join(process.cwd(), 'dist', 'aviya.csv');
+      if (!fs.existsSync(csvFilePath)) {
+        // Last resort, try looking for it in the root directory
+        csvFilePath = path.join(process.cwd(), 'aviya.csv');
+        if (!fs.existsSync(csvFilePath)) {
+          console.error('CSV file not found in any expected location');
+          return new Response(JSON.stringify({ 
+            error: 'CSV file not found', 
+            checkedPaths: [
+              path.join(process.cwd(), 'public', 'aviya.csv'),
+              path.join(process.cwd(), 'dist', 'aviya.csv'),
+              path.join(process.cwd(), 'aviya.csv')
+            ] 
+          }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+    }
+    
+    console.log('Loading verse notes using CSV file path:', csvFilePath);
     const csvContent = fs.readFileSync(csvFilePath, 'utf-8');
     
     // Parse CSV

@@ -28,8 +28,34 @@ export async function POST({ request }) {
     // Make sure we're using a clean date format (YYYY-MM-DD)
     const normalizedDate = date.split('T')[0]; // Remove any time component
     
-    // Read the CSV file
-    const csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
+    // Read the CSV file - handle both dev and production paths
+    let csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
+    
+    // Check if the file exists at the standard path
+    if (!fs.existsSync(csvFilePath)) {
+      // If not found, try the path that might be used in production
+      csvFilePath = path.join(process.cwd(), 'dist', 'aviya.csv');
+      if (!fs.existsSync(csvFilePath)) {
+        // Last resort, try looking for it in the root directory
+        csvFilePath = path.join(process.cwd(), 'aviya.csv');
+        if (!fs.existsSync(csvFilePath)) {
+          console.error('CSV file not found in any expected location');
+          return new Response(JSON.stringify({ 
+            error: 'CSV file not found', 
+            checkedPaths: [
+              path.join(process.cwd(), 'public', 'aviya.csv'),
+              path.join(process.cwd(), 'dist', 'aviya.csv'),
+              path.join(process.cwd(), 'aviya.csv')
+            ] 
+          }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+    }
+    
+    console.log('Using CSV file path:', csvFilePath);
     const csvContent = fs.readFileSync(csvFilePath, 'utf-8');
     
     // Parse CSV
@@ -101,24 +127,56 @@ export async function POST({ request }) {
     }
     
     // Write back to CSV
-    const columns = Object.keys(records[0]);
     // Ensure we have all the key columns in the right order
     const essentialColumns = ['Date', 'Day of Week', 'Reading', 'Notes', 'Images', 'VerseNotes'];
     essentialColumns.forEach(col => {
-      if (!columns.includes(col) && col !== 'VerseNotes') {
-        columns.push(col);
+      if (!records[0].hasOwnProperty(col) && col !== 'VerseNotes') {
+        records.forEach(r => {
+          r[col] = '';
+        });
       }
     });
     
-    const csv = stringify(records, { header: true, columns });
-    fs.writeFileSync(csvFilePath, csv);
-    
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json'
+    try {
+      const csv = stringify(records, { header: true });
+      
+      // Check if we have write permissions
+      try {
+        fs.accessSync(csvFilePath, fs.constants.W_OK);
+      } catch (accessError) {
+        console.error('No write permission to CSV file:', accessError);
+        return new Response(JSON.stringify({ 
+          error: 'No write permission to CSV file',
+          path: csvFilePath,
+          message: accessError.message 
+        }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
-    });
+      
+      // Write the file
+      fs.writeFileSync(csvFilePath, csv);
+      console.log('Successfully updated CSV file at:', csvFilePath);
+      
+      return new Response(JSON.stringify({ 
+        success: true,
+        message: 'Notes saved successfully',
+        path: csvFilePath 
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (writeError) {
+      console.error('Error writing CSV file:', writeError);
+      return new Response(JSON.stringify({ 
+        error: 'Error writing to CSV file', 
+        message: writeError.message 
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
     
   } catch (error) {
     console.error('Error saving verse notes:', error);
