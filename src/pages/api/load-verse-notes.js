@@ -32,7 +32,7 @@ export async function GET({ request }) {
     // Clean the date (remove time component if present)
     const normalizedDate = date.split('T')[0]; // Ensure we just have YYYY-MM-DD
     
-    // Find the record with exact date match
+    // Find the record with exact date match for the current day
     const record = records.find(r => {
       try {
         // Direct string comparison
@@ -64,16 +64,81 @@ export async function GET({ request }) {
       });
     }
     
-    // Check if we have verse notes for this date
+    // Get the readings for the current day to know which verses we need to look for
+    const currentDayReadings = [];
+    if (record.Reading) {
+      const readingStr = record.Reading.replace(/["']/g, ''); // Remove quotes if present
+      currentDayReadings.push(...readingStr.split(',').map(r => r.trim()));
+    }
+    
+    console.log('Current day readings:', currentDayReadings);
+    
+    // The combined verse notes object we'll return
     let verseNotes = {};
+    
+    // NEW APPROACH: Fetch verse notes from ALL days in the CSV for the verses we're displaying today
+    console.log('Searching all records for notes related to today\'s verses...');
+    
+    // First, get notes from the current day's record
     if (record.VerseNotes) {
+      console.log('Raw VerseNotes found in current day CSV record:', record.VerseNotes);
       try {
-        verseNotes = JSON.parse(record.VerseNotes);
+        let currentDayNotes = {};
+        
+        // Check if it's already an object
+        if (typeof record.VerseNotes === 'object' && record.VerseNotes !== null) {
+          currentDayNotes = record.VerseNotes;
+        } else if (record.VerseNotes.trim().startsWith('{')) {
+          // Parse JSON string
+          currentDayNotes = JSON.parse(record.VerseNotes);
+        }
+        
+        // Add to our combined notes
+        verseNotes = {...currentDayNotes};
+        console.log('Added notes from current day:', currentDayNotes);
       } catch (e) {
-        console.error('Error parsing verse notes:', e);
-        // Continue with empty verse notes if parsing fails
+        console.error('Error parsing current day verse notes:', e);
       }
     }
+    
+    // Then check all other days for notes related to verses we're displaying today
+    records.forEach((r, index) => {
+      // Skip the current day since we already processed it
+      if (r.Date === normalizedDate) return;
+      
+      // Skip if no verse notes
+      if (!r.VerseNotes) return;
+      
+      try {
+        let otherDayNotes = {};
+        
+        // Parse the verse notes from this day
+        if (typeof r.VerseNotes === 'object' && r.VerseNotes !== null) {
+          otherDayNotes = r.VerseNotes;
+        } else if (r.VerseNotes.trim().startsWith('{')) {
+          otherDayNotes = JSON.parse(r.VerseNotes);
+        } else {
+          return; // Skip if can't parse
+        }
+        
+        // Check if any of the verse references match our current day's readings
+        Object.keys(otherDayNotes).forEach(verseRef => {
+          if (currentDayReadings.includes(verseRef)) {
+            console.log(`Found note for ${verseRef} in record for ${r.Date}`);
+            
+            // Only add if we don't already have a note for this verse
+            // This ensures the current day's notes take precedence
+            if (!verseNotes[verseRef]) {
+              verseNotes[verseRef] = otherDayNotes[verseRef];
+            }
+          }
+        });
+      } catch (e) {
+        console.error(`Error processing verse notes from day ${r.Date}:`, e);
+      }
+    });
+    
+    console.log('Final combined verse notes:', verseNotes);
     
     // Include the general notes from the Notes column
     const notes = record.Notes || '';
