@@ -160,13 +160,37 @@ export function sheetValuesToCsv(sheetValues) {
   if (!sheetValues || !sheetValues.length) return [];
   
   const headers = sheetValues[0];
-  const records = sheetValues.slice(1).map(row => {
+  const rows = sheetValues.slice(1);
+  
+  // Determine the column indices for Date, Notes, and VerseNotes
+  // This makes the function more robust against different sheet structures
+  let dateColIndex = headers.findIndex(h => h === 'Date');
+  let notesColIndex = headers.findIndex(h => h === 'Notes');
+  let verseNotesColIndex = headers.findIndex(h => h === 'VerseNotes');
+  
+  // If we couldn't find the columns by name, assume standard order (for numeric headers)
+  if (dateColIndex === -1) dateColIndex = 0; // First column is Date
+  if (notesColIndex === -1) notesColIndex = 3; // Fourth column is Notes
+  if (verseNotesColIndex === -1) verseNotesColIndex = 5; // Sixth column is VerseNotes
+  
+  console.log(`Sheet column mapping: Date=${dateColIndex}, Notes=${notesColIndex}, VerseNotes=${verseNotesColIndex}`);
+  console.log(`Sample header values: ${JSON.stringify(headers)}`);
+  
+  return rows.map((row, rowIndex) => {
     const record = {};
+    
+    // Always ensure we have these critical fields with the correct names
+    record['Date'] = row[dateColIndex] || '';
+    record['Notes'] = row[notesColIndex] || '';
+    record['VerseNotes'] = row[verseNotesColIndex] || '';
+    
+    // Also include all other columns by their original header names
     headers.forEach((header, index) => {
-      record[header] = row[index] || '';
+      if (index !== dateColIndex && index !== notesColIndex && index !== verseNotesColIndex) {
+        record[header] = row[index] || '';
+      }
     });
+    
     return record;
   });
-  
-  return records;
 }
