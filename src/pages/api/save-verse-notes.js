@@ -7,15 +7,20 @@ export async function POST({ request }) {
   try {
     // Parse the request body
     const body = await request.json();
-    const { date, verseNotes } = body;
+    const { date, verseNotes, notes } = body;
     
-    if (!date || !verseNotes || Object.keys(verseNotes).length === 0) {
-      return new Response(JSON.stringify({ error: 'Invalid data' }), {
+    if (!date) {
+      return new Response(JSON.stringify({ error: 'Date is required' }), {
         status: 400,
         headers: {
           'Content-Type': 'application/json'
         }
       });
+    }
+    
+    // Allowing empty notes and verseNotes for cases where we want to clear them
+    if (!verseNotes || typeof verseNotes !== 'object') {
+      console.warn('No verse notes provided or invalid format');
     }
     
     console.log(`Processing save verse notes for date: ${date}`);
@@ -69,7 +74,7 @@ export async function POST({ request }) {
       });
     }
     
-    // Update the record with verse notes
+    // Update the record with verse notes and general notes
     const record = records[recordIndex];
     
     // Ensure we have a VerseNotes column in our records
@@ -81,10 +86,17 @@ export async function POST({ request }) {
     }
     
     // Store verse notes as JSON
-    record.VerseNotes = JSON.stringify(verseNotes);
+    if (verseNotes && typeof verseNotes === 'object') {
+      record.VerseNotes = JSON.stringify(verseNotes);
+      console.log('Saved verse notes:', verseNotes);
+    }
     
-    // Make sure we're preserving the existing Notes column
-    if (record.Notes === undefined) {
+    // Update the general notes if provided
+    if (notes !== undefined) {
+      record.Notes = notes;
+      console.log('Saved general notes:', notes);
+    } else if (record.Notes === undefined) {
+      // Make sure the Notes column exists
       record.Notes = '';
     }
     
