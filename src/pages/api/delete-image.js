@@ -29,7 +29,40 @@ export async function POST({ request }) {
     console.log(`Normalized date: ${normalizedDate}`);
     
     // Read the CSV file
-    const csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
+    // Try to read from the data directory first (it will have the most up-to-date copy if it exists)
+    const dataDir = path.join(process.cwd(), 'data');
+    const dataFilePath = path.join(dataDir, 'aviya.csv');
+    let csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
+    
+    // Check possible locations in priority order
+    const possiblePaths = [
+      dataFilePath,                                // Data directory (writable version)
+      path.join(process.cwd(), 'public', 'aviya.csv'), // Development
+      path.join(process.cwd(), 'dist', 'aviya.csv'),   // Production build
+      path.join(process.cwd(), 'aviya.csv')            // Root directory
+    ];
+    
+    let fileFound = false;
+    for (const possiblePath of possiblePaths) {
+      if (fs.existsSync(possiblePath)) {
+        csvFilePath = possiblePath;
+        fileFound = true;
+        console.log('Found CSV file at:', possiblePath);
+        break;
+      }
+    }
+    
+    if (!fileFound) {
+      console.error('CSV file not found in any expected location');
+      return new Response(JSON.stringify({ 
+        error: 'CSV file not found', 
+        checkedPaths: possiblePaths
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
     const csv = fs.readFileSync(csvFilePath, 'utf8');
     const records = parse(csv, { columns: true, skip_empty_lines: true });
     
@@ -118,9 +151,55 @@ export async function POST({ request }) {
     // Update the record with the modified images array
     record.Images = images.length > 0 ? JSON.stringify(images) : '';
     
-    // Write the updated CSV back to the file
-    const updatedCsv = stringify(records, { header: true });
-    fs.writeFileSync(csvFilePath, updatedCsv);
+    // Always try to write to the data directory version if possible
+    try {
+      // Make sure data directory exists
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+        console.log('Created data directory at:', dataDir);
+      }
+      
+      // Generate the updated CSV content
+      const updatedCsv = stringify(records, { header: true });
+      
+      // Choose the target file path (prefer data directory)
+      const targetFilePath = fs.existsSync(dataFilePath) ? dataFilePath : 
+                          (fs.existsSync(csvFilePath) && isWritable(csvFilePath)) ? csvFilePath : 
+                          dataFilePath;
+      
+      // Write to the chosen location
+      fs.writeFileSync(targetFilePath, updatedCsv);
+      console.log('Successfully wrote updated CSV to:', targetFilePath);
+      
+      // If we wrote to the data directory and it's not the same as the source, copy back to original if possible
+      if (targetFilePath === dataFilePath && targetFilePath !== csvFilePath && isWritable(csvFilePath)) {
+        try {
+          fs.copyFileSync(dataFilePath, csvFilePath);
+          console.log('Copied updated CSV back to original location:', csvFilePath);
+        } catch (copyError) {
+          console.warn('Could not copy back to original location, but data was saved:', copyError.message);
+        }
+      }
+    } catch (writeError) {
+      console.error('Failed to write CSV file:', writeError);
+      return new Response(JSON.stringify({
+        error: 'Failed to write CSV file',
+        message: writeError.message
+      }), { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+    
+    // Helper function to check if a path is writable
+    function isWritable(path) {
+      try {
+        fs.accessSync(path, fs.constants.W_OK);
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
     
     console.log(`Successfully updated CSV. Remaining images: ${record.Images}`);
     

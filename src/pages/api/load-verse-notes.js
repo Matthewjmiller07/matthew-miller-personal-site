@@ -17,31 +17,38 @@ export async function GET({ request }) {
       });
     }
     
-    // Try multiple possible CSV file paths for compatibility with different environments
+    // Try to read from the data directory first (it will have the most up-to-date copy if it exists)
+    const dataDir = path.join(process.cwd(), 'data');
+    const dataFilePath = path.join(dataDir, 'aviya.csv');
     let csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
     
-    // Check if the file exists at the standard path
-    if (!fs.existsSync(csvFilePath)) {
-      // If not found, try the path that might be used in production
-      csvFilePath = path.join(process.cwd(), 'dist', 'aviya.csv');
-      if (!fs.existsSync(csvFilePath)) {
-        // Last resort, try looking for it in the root directory
-        csvFilePath = path.join(process.cwd(), 'aviya.csv');
-        if (!fs.existsSync(csvFilePath)) {
-          console.error('CSV file not found in any expected location');
-          return new Response(JSON.stringify({ 
-            error: 'CSV file not found', 
-            checkedPaths: [
-              path.join(process.cwd(), 'public', 'aviya.csv'),
-              path.join(process.cwd(), 'dist', 'aviya.csv'),
-              path.join(process.cwd(), 'aviya.csv')
-            ] 
-          }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
+    // Check possible locations in priority order
+    const possiblePaths = [
+      dataFilePath,                                // Data directory (writable version)
+      path.join(process.cwd(), 'public', 'aviya.csv'), // Development
+      path.join(process.cwd(), 'dist', 'aviya.csv'),   // Production build
+      path.join(process.cwd(), 'aviya.csv')            // Root directory
+    ];
+    
+    let fileFound = false;
+    for (const possiblePath of possiblePaths) {
+      if (fs.existsSync(possiblePath)) {
+        csvFilePath = possiblePath;
+        fileFound = true;
+        console.log('Found CSV file at:', possiblePath);
+        break;
       }
+    }
+    
+    if (!fileFound) {
+      console.error('CSV file not found in any expected location');
+      return new Response(JSON.stringify({ 
+        error: 'CSV file not found', 
+        checkedPaths: possiblePaths
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
     
     console.log('Loading verse notes using CSV file path:', csvFilePath);

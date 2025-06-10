@@ -31,26 +31,72 @@ export async function POST({ request }) {
     // Read the CSV file - handle both dev and production paths
     let csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
     
-    // Check if the file exists at the standard path
-    if (!fs.existsSync(csvFilePath)) {
-      // If not found, try the path that might be used in production
-      csvFilePath = path.join(process.cwd(), 'dist', 'aviya.csv');
-      if (!fs.existsSync(csvFilePath)) {
-        // Last resort, try looking for it in the root directory
-        csvFilePath = path.join(process.cwd(), 'aviya.csv');
-        if (!fs.existsSync(csvFilePath)) {
-          console.error('CSV file not found in any expected location');
-          return new Response(JSON.stringify({ 
-            error: 'CSV file not found', 
-            checkedPaths: [
-              path.join(process.cwd(), 'public', 'aviya.csv'),
-              path.join(process.cwd(), 'dist', 'aviya.csv'),
-              path.join(process.cwd(), 'aviya.csv')
-            ] 
-          }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' }
-          });
+    // In production, we need to handle the case where the CSV might be read-only
+    // Create data directory if it doesn't exist - this should be writable in most environments
+    const dataDir = path.join(process.cwd(), 'data');
+    try {
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+        console.log('Created data directory at:', dataDir);
+      }
+    } catch (mkdirError) {
+      console.warn('Could not create data directory:', mkdirError.message);
+      // Continue with the process as we'll try other locations
+    }
+    
+    // If we're in production, try to use the data directory first
+    const dataFilePath = path.join(dataDir, 'aviya.csv');
+    let shouldCopyToDataDir = false;
+    let sourceFilePath;
+    
+    // Check for file existence in various locations
+    if (fs.existsSync(dataFilePath)) {
+      // We have a writable copy in the data dir, use it
+      console.log('Using writable CSV in data directory:', dataFilePath);
+      csvFilePath = dataFilePath;
+    } else if (!fs.existsSync(csvFilePath)) {
+      // Look in other locations
+      const altPaths = [
+        path.join(process.cwd(), 'dist', 'aviya.csv'),
+        path.join(process.cwd(), 'aviya.csv')
+      ];
+      
+      for (const altPath of altPaths) {
+        if (fs.existsSync(altPath)) {
+          sourceFilePath = altPath;
+          csvFilePath = altPath;
+          shouldCopyToDataDir = true;
+          console.log('Found CSV at alternate location:', altPath);
+          break;
+        }
+      }
+      
+      if (!sourceFilePath) {
+        console.error('CSV file not found in any expected location');
+        return new Response(JSON.stringify({ 
+          error: 'CSV file not found', 
+          checkedPaths: [
+            path.join(process.cwd(), 'public', 'aviya.csv'),
+            path.join(process.cwd(), 'dist', 'aviya.csv'),
+            path.join(process.cwd(), 'aviya.csv'),
+            dataFilePath
+          ] 
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      // If we should copy to data dir, do it now
+      if (shouldCopyToDataDir) {
+        try {
+          fs.copyFileSync(sourceFilePath, dataFilePath);
+          console.log('Copied CSV to data directory for write access');
+          // Use the data directory version going forward
+          csvFilePath = dataFilePath;
+        } catch (copyError) {
+          console.warn('Could not copy CSV to data directory:', copyError.message);
+          // Continue using the original file path - we'll test write permissions later
         }
       }
     }
@@ -138,31 +184,54 @@ export async function POST({ request }) {
     });
     
     try {
+      // Generate the updated CSV content
       const csv = stringify(records, { header: true });
       
-      // Check if we have write permissions
-      try {
-        fs.accessSync(csvFilePath, fs.constants.W_OK);
-      } catch (accessError) {
-        console.error('No write permission to CSV file:', accessError);
-        return new Response(JSON.stringify({ 
-          error: 'No write permission to CSV file',
-          path: csvFilePath,
-          message: accessError.message 
-        }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' }
-        });
+      // Make sure data directory exists
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+        console.log('Created data directory at:', dataDir);
       }
       
-      // Write the file
-      fs.writeFileSync(csvFilePath, csv);
-      console.log('Successfully updated CSV file at:', csvFilePath);
+      // Choose the best target file path (prefer data directory)
+      let targetFilePath = csvFilePath;
+      
+      // Function to check if a path is writable
+      function isWritable(path) {
+        try {
+          fs.accessSync(path, fs.constants.W_OK);
+          return true;
+        } catch (error) {
+          return false;
+        }
+      }
+      
+      // If data path exists, use it, otherwise check if original path is writable
+      if (fs.existsSync(dataFilePath)) {
+        targetFilePath = dataFilePath;
+      } else if (!isWritable(csvFilePath)) {
+        targetFilePath = dataFilePath; // Default to data directory if original isn't writable
+      }
+      
+      // Write to the chosen location
+      fs.writeFileSync(targetFilePath, csv);
+      console.log('Successfully wrote updated CSV to:', targetFilePath);
+      
+      // If we wrote to the data directory and it's not the same as the source, 
+      // try to copy back to original if possible (for consistency)
+      if (targetFilePath === dataFilePath && targetFilePath !== csvFilePath && isWritable(csvFilePath)) {
+        try {
+          fs.copyFileSync(dataFilePath, csvFilePath);
+          console.log('Copied updated CSV back to original location:', csvFilePath);
+        } catch (copyError) {
+          console.warn('Could not copy back to original location, but data was saved:', copyError.message);
+        }
+      }
       
       return new Response(JSON.stringify({ 
         success: true,
         message: 'Notes saved successfully',
-        path: csvFilePath 
+        path: targetFilePath 
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
