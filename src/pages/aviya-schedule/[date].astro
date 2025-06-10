@@ -837,27 +837,45 @@ try {
           const reference = event.target.closest('.verse-save-btn').dataset.reference;
           const textarea = document.querySelector(`.verse-note[data-reference="${reference}"]`);
           if (!textarea) return;
-
+          
           const originalButtonText = saveBtn.innerHTML;
           saveBtn.disabled = true;
           if (saveBtn.querySelector('.english-ui')) saveBtn.querySelector('.english-ui').textContent = 'Saving...';
-
+          
           try {
-            const verseNotes = window.currentVerseNotesData || {};
+            console.log(`Saving note for ${reference}: ${textarea.value}`);
             const noteText = textarea.value.trim();
-            if (noteText) verseNotes[reference] = noteText;
-            else delete verseNotes[reference];
-
+            
+            // Prepare payload with all existing verse notes plus this one
+            const payload = {
+              date: currentDateParam,
+              verseNotes: {
+                ...window.currentVerseNotesData || {},
+                [reference]: noteText
+              },
+              notes: document.getElementById('general-note-textarea')?.value || ''
+            };
+            
+            console.log('Saving payload:', JSON.stringify(payload));
+            
+            // Send the updated notes to the API
             const response = await fetch('/api/save-verse-notes', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ date: currentDateParam, verseNotes: verseNotes })
+              body: JSON.stringify(payload)
             });
+            
             if (!response.ok) throw new Error('Failed to save note');
-
-            window.currentVerseNotesData = verseNotes;
+            
+            const data = await response.json();
+            console.log('Save response:', data);
+            
+            // Update the current data in browser memory
+            window.currentVerseNotesData = payload.verseNotes;
+            
             if (saveBtn.querySelector('.english-ui')) saveBtn.querySelector('.english-ui').textContent = 'Saved!';
             saveBtn.classList.replace('bg-green-600', 'bg-blue-600');
+            
             setTimeout(() => {
               saveBtn.innerHTML = originalButtonText;
               saveBtn.disabled = false;

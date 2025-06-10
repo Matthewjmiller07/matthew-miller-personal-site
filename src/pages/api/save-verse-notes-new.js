@@ -48,23 +48,15 @@ export async function POST({ request }) {
       // Try to save to Google Sheets
       try {
         console.log('Saving data to Google Sheets...');
-        console.log('Google Sheets config:', JSON.stringify({
-          spreadsheetId: GOOGLE_SHEETS_CONFIG.spreadsheetId,
-          range: GOOGLE_SHEETS_CONFIG.range,
-          useInDevelopment: GOOGLE_SHEETS_CONFIG.useInDevelopment,
-          useInProduction: GOOGLE_SHEETS_CONFIG.useInProduction
-        }));
         saveResult = await saveToGoogleSheets(normalizedDate, verseNotes, notes);
       } catch (error) {
         console.error('Error saving to Google Sheets:', error);
-        console.error('Stack trace:', error.stack);
         // Fall back to local CSV
         console.log('Falling back to local CSV due to Google Sheets error');
         saveResult = await saveToLocalCsv(normalizedDate, verseNotes, notes);
       }
     } else {
       // Use local CSV
-      console.log('Google Sheets is disabled, using local CSV');
       saveResult = await saveToLocalCsv(normalizedDate, verseNotes, notes);
     }
 

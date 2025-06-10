@@ -115,28 +115,20 @@ export async function GET({ request }) {
       try {
         let currentDayNotes = {};
         
-        console.log('VerseNotes type:', typeof record.VerseNotes);
-        console.log('VerseNotes raw value:', record.VerseNotes);
-        
         // Check if it's already an object or needs parsing
         if (typeof record.VerseNotes === 'object' && record.VerseNotes !== null) {
           currentDayNotes = record.VerseNotes;
-          console.log('Using object directly');
         } else if (typeof record.VerseNotes === 'string' && record.VerseNotes.trim().startsWith('{')) {
           // Parse JSON string
-          console.log('Parsing JSON string:', record.VerseNotes);
           currentDayNotes = JSON.parse(record.VerseNotes);
         }
         
         // Add to our combined notes
         verseNotes = {...currentDayNotes};
         console.log('Added notes from current day:', Object.keys(currentDayNotes).length);
-        console.log('Verse notes found:', JSON.stringify(currentDayNotes));
       } catch (e) {
         console.error('Error parsing current day verse notes:', e);
       }
-    } else {
-      console.log('No verse notes found in record');
     }
     
     // Then check all other days for notes related to verses we're displaying today
