@@ -24,10 +24,13 @@ export async function GET({ request }) {
   logEnvironmentDetails();
   
   try {
-    // Get the date from the query parameters
+    // Get the date and schedule from the query parameters
     const url = new URL(request.url);
     const date = url.searchParams.get('date');
+    const schedule = url.searchParams.get('schedule') || 'default';
     const normalizedDate = date ? date.split('T')[0] : null; // Ensure we just have YYYY-MM-DD
+    
+    console.log(`Loading notes for date: ${normalizedDate}, schedule: ${schedule}`);
 
     if (!normalizedDate) {
       return new Response(JSON.stringify({
@@ -51,8 +54,9 @@ export async function GET({ request }) {
     
     // Force Google Sheets in production regardless of other settings
     const shouldForceGoogleSheets = isServerlessProd;
-    if (shouldForceGoogleSheets && !useGoogleSheets) {
+    if (shouldForceGoogleSheets) {
       console.log('In production serverless environment - forcing Google Sheets usage');
+      console.log('Google Sheets credentials available:', !!process.env.GOOGLE_CREDENTIALS);
     }
     
     // === FETCH DATA FROM SOURCE ===
@@ -62,14 +66,26 @@ export async function GET({ request }) {
       // Try to fetch from Google Sheets
       try {
         console.log('Fetching data from Google Sheets...');
+        // Determine which sheet/range to use based on the schedule parameter
+        let range;
+        if (schedule === 'default' || !schedule) {
+          // Default to 'Aviya' sheet if no specific schedule is provided
+          range = 'Aviya!A:Z';
+          console.log('Using default Aviya sheet');
+        } else {
+          // Use the specified sheet name with full column range
+          range = `${schedule}!A:Z`;
+          console.log(`Using custom sheet: ${range}`);
+        }
+        
         console.log('Google Sheets config:', JSON.stringify({
           spreadsheetId: GOOGLE_SHEETS_CONFIG.spreadsheetId,
-          range: GOOGLE_SHEETS_CONFIG.range
+          range: range
         }));
         
         const sheetData = await getSheetData(
           GOOGLE_SHEETS_CONFIG.spreadsheetId,
-          GOOGLE_SHEETS_CONFIG.range
+          range
         );
         
         if (!sheetData || !Array.isArray(sheetData)) {
@@ -105,6 +121,13 @@ export async function GET({ request }) {
       dataSource = 'local-csv';
     }
     
+    // Log all available dates for debugging
+    console.log(`All available dates in sheet (${allRecords.length} records):`, allRecords.map((r, i) => ({
+      index: i,
+      date: r.Date,
+      hasNotes: !!r.Notes || !!r.VerseNotes
+    })).filter(r => r.date).slice(0, 10)); // Show first 10 records for brevity
+    
     // Find the record for this date
     record = allRecords.find(r => {
       // Direct string comparison
@@ -115,22 +138,25 @@ export async function GET({ request }) {
         const recordDateStr = r.Date ? r.Date.split('T')[0] : null;
         return recordDateStr === normalizedDate;
       } catch (e) {
+        console.error('Error parsing date:', r.Date, e);
         return false;
       }
     });
     
     if (!record) {
       console.log(`No record found for date: ${normalizedDate}`);
+      console.log('Available records:', allRecords);
       return new Response(JSON.stringify({ 
         error: 'Date not found in schedule',
-        date: normalizedDate
+        date: normalizedDate,
+        availableDates: allRecords.map(r => r.Date).filter(Boolean)
       }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' }
       });
     }
     
-    console.log(`Found record for date ${normalizedDate}`);
+    console.log(`Found record for date ${normalizedDate}:`, record);
     
     // Get the readings for the current day
     const currentDayReadings = [];

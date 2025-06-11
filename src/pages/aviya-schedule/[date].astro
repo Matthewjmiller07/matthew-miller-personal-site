@@ -4,6 +4,8 @@ import { parse } from 'csv-parse/sync';
 import fs from 'fs';
 import path from 'path';
 import { format } from 'date-fns';
+import { getSheetData } from '../../utils/googleSheetsClient.js';
+import { GOOGLE_SHEETS_CONFIG } from '../api/config.js';
 // Do not use any async/await in the frontmatter section
 
 // Hebrew translations for UI elements
@@ -63,11 +65,12 @@ function translateReferenceToHebrew(reference) {
   return hebrewReference;
 }
 
-// Get the date parameter from URL
+// Get the date parameter from URL and any query parameters
 const { date: dateParam } = Astro.params;
+const searchParams = Astro.url.searchParams;
+const scheduleName = searchParams.get('schedule') || 'default';
 
-// Read the CSV data
-const csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
+// Initialize variables
 let record;
 let readings = [];
 let prevDate = null;
@@ -78,17 +81,71 @@ let images = [];
 let date = new Date();
 let formattedDate = format(date, 'MMMM d, yyyy');
 let texts = [];
+let currentScheduleName = scheduleName === 'default' ? 'Original Aviya Schedule' : scheduleName;
+
+// Track where the data came from for debugging
+let dataSource = 'csv';
 
 try {
-  // Read the CSV file (synchronously)
-  const csvContent = fs.readFileSync(csvFilePath, 'utf-8');
-  const records = parse(csvContent, {
-    columns: true,
-    skip_empty_lines: true
-  });
+  // Determine which data source to use
+  let records = [];
   
-  // Detailed debugging of CSV records
-  console.log('First CSV record:', records[0]);
+  console.log(`Loading schedule: ${scheduleName}`);
+  
+  if (scheduleName === 'default') {
+    // Read the default CSV file (synchronously)
+    const csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
+    const csvContent = fs.readFileSync(csvFilePath, 'utf-8');
+    records = parse(csvContent, {
+      columns: true,
+      skip_empty_lines: true
+    });
+    dataSource = 'csv';
+    console.log(`Loaded ${records.length} records from CSV`);
+  } else {
+    // Load data from Google Sheets for the specific sheet
+    try {
+      const sheetData = await getSheetData(
+        GOOGLE_SHEETS_CONFIG.spreadsheetId,
+        `${scheduleName}!A:F`  // Adjust range as needed
+      );
+      
+      if (!sheetData || sheetData.length <= 1) {
+        console.error(`No data found in sheet: ${scheduleName}`);
+        // Instead of redirecting, try to load the sheet directly
+        const allSheets = await listSheets(GOOGLE_SHEETS_CONFIG.spreadsheetId);
+        if (allSheets.some(sheet => sheet.properties.title === scheduleName)) {
+          // Sheet exists but has no data, continue with empty records
+          console.log(`Sheet ${scheduleName} exists but has no data`);
+          records = [];
+        } else {
+          console.error(`Sheet does not exist: ${scheduleName}`);
+          return Astro.redirect('/studyschedules');
+        }
+      }
+      
+      // Convert sheet data to record format (headers as keys)
+      const headers = sheetData[0];
+      records = sheetData.slice(1).map(row => {
+        const record = {};
+        headers.forEach((header, index) => {
+          record[header] = row[index] || '';
+        });
+        return record;
+      });
+      
+      dataSource = 'google-sheets';
+      console.log(`Loaded ${records.length} records from Google sheet: ${scheduleName}`);
+    } catch (error) {
+      console.error(`Error loading data from Google Sheet: ${scheduleName}`, error);
+      return Astro.redirect('/aviya-schedules?error=sheet-not-found');
+    }
+  }
+  
+  // Detailed debugging of records
+  if (records.length > 0) {
+    console.log('First record:', records[0]);
+  }
   console.log('Request URL date parameter:', dateParam);
   
   // Parse dates in a timezone-safe way without the shifting problem
@@ -192,14 +249,33 @@ try {
     // NOTE: We've moved the Sefaria API fetching to client-side JS
     // instead of server-side to avoid async issues in Astro frontmatter
 } catch (error) {
-  console.error('Error reading or parsing CSV:', error);
+  console.error('Error loading schedule data:', error);
+  // If it's a 404 error, the sheet might not exist
+  if (error.message.includes('Unable to parse range') || error.message.includes('404')) {
+    console.error(`Sheet not found: ${scheduleName}`);
+    return Astro.redirect('/studyschedules');
+  }
+  // For other errors, we'll continue with empty records
+  console.error('Continuing with empty records due to error:', error.message);
+  records = [];
 }
 ---
 
 <Layout title={`Aviya Schedule - ${formattedDate}`}>
   <div class="container mx-auto px-4 py-8 text-black dark:text-white">
-    <div class="mb-8 flex justify-between items-center">
-      <a href="/aviya-schedule" class="text-blue-600 dark:text-blue-400 hover:underline">
+    <!-- Header with Schedule Info -->
+    <div class="mb-2 flex justify-between items-center bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+      <h2 class="text-xl">
+        {scheduleName !== 'default' ? 
+          <span>Schedule: <strong>{currentScheduleName}</strong></span> : 
+          <span>Original Aviya Schedule</span>
+        }
+      </h2>
+      <a href="/studyschedules" class="btn btn-sm btn-outline-secondary">All Schedules</a>
+    </div>
+
+    <div class="mb-6 flex justify-between items-center">
+      <a href="/studyschedules" class="text-blue-600 dark:text-blue-400 hover:underline">
         <span class="english-ui">&larr; Back to Schedule</span>
         <span class="hebrew-ui hidden">{hebrewTranslations['Back to Schedule']} &rarr;</span>
       </a>
@@ -219,7 +295,7 @@ try {
     <!-- Navigation between days -->
     <div class="flex justify-between mb-8">
       {prevDate ? (
-        <a href={`/aviya-schedule/${prevDate}`} class="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+        <a href={`/schedule/${scheduleName === 'original' ? 'original' : scheduleName}/${prevDate}`} class="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
           <span class="english-ui">&larr; Previous Day</span>
           <span class="hebrew-ui hidden">{hebrewTranslations['Previous Day']} &rarr;</span>
         </a>
@@ -231,7 +307,7 @@ try {
       )}
       
       {nextDate ? (
-        <a href={`/aviya-schedule/${nextDate}`} class="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+        <a href={`/schedule/${scheduleName === 'original' ? 'original' : scheduleName}/${nextDate}`} class="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
           <span class="english-ui">Next Day &rarr;</span>
           <span class="hebrew-ui hidden">&larr; {hebrewTranslations['Next Day']}</span>
         </a>
@@ -562,17 +638,45 @@ try {
   }
 </style>
 
-<script>
-  // This is the main function that sets up all the interactive parts of the page.
-  // It's designed to be re-run every time you navigate to a new date page.
-  function initializePage() {
+<script is:inline>
+  // Wait for the document to be fully loaded
+  document.addEventListener('DOMContentLoaded', function() {
+    'use strict';
+    
+    // This is the main function that sets up all the interactive parts of the page.
+    // It's designed to be re-run every time you navigate to a new date page.
+    function initializePage() {
     console.log('Initializing page for:', window.location.pathname);
 
     // --- 1. DEFINE ALL CONSTANTS & SELECTORS ---
     const textContainer = document.querySelector('.grid.gap-8');
     const englishElements = document.querySelectorAll('.english-ui');
     const hebrewElements = document.querySelectorAll('.hebrew-ui');
-    const currentDateParam = window.location.pathname.split('/').pop();
+    // Get the date and schedule from the URL
+    const getUrlParams = () => {
+      const pathParts = window.location.pathname.split('/').filter(Boolean);
+      const urlParams = new URLSearchParams(window.location.search);
+      let currentDateParam, currentSchedule;
+      
+      // Handle both old and new URL formats
+      if (pathParts[0] === 'schedule' && pathParts.length >= 3) {
+        // New format: /schedule/[schedule]/[date]
+        currentDateParam = pathParts[3];
+        currentSchedule = pathParts[2]; // Keep the original schedule name
+      } else {
+        // Old format: /aviya-schedule/[date]?schedule=...
+        currentDateParam = pathParts[1];
+        currentSchedule = urlParams.get('schedule') || 'Aviya'; // Default to 'Aviya' if not specified
+      }
+      
+      // Normalize the schedule name (remove any path characters)
+      currentSchedule = (currentSchedule || '').replace(/[^a-zA-Z0-9_-]/g, '');
+      
+      return { currentDateParam, currentSchedule };
+    };
+    
+    let { currentDateParam, currentSchedule } = getUrlParams();
+    console.log(`Current schedule: ${currentSchedule}`);
 
     // Guard clause: If a core element isn't on the page, stop.
     if (!textContainer) {
@@ -630,10 +734,25 @@ try {
     // Loads general and verse-specific notes from your API.
     async function loadVerseNotes() {
       try {
-        console.log('Loading verse notes for date:', currentDateParam);
-        const response = await fetch(`/api/load-verse-notes?date=${currentDateParam}`);
+        console.log('Loading verse notes for date:', currentDateParam, 'schedule:', currentSchedule);
         
-        if (!response.ok) throw new Error(`Failed to load notes: ${response.statusText}`);
+        // Validate currentDateParam and currentSchedule
+        if (!currentDateParam) {
+          console.error('No date parameter found in URL');
+          return;
+        }
+        
+        // Always include the schedule parameter, default to 'Aviya' if not set
+        const scheduleToUse = currentSchedule || 'Aviya';
+        const url = `/api/load-verse-notes?date=${encodeURIComponent(currentDateParam)}&schedule=${encodeURIComponent(scheduleToUse)}`;
+        console.log('Fetching notes from:', url);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          console.error('Failed to load notes:', response.status, response.statusText);
+          return;
+        }
         
         const data = await response.json();
         console.log('Loaded note data:', data);
@@ -643,10 +762,16 @@ try {
         console.log('Stored verse notes in window.currentVerseNotesData:', window.currentVerseNotesData);
 
         // Handle general notes
-        const generalNotesTextarea = document.getElementById('general-note-textarea');
-        if (generalNotesTextarea && data.notes) {
-          console.log('Setting general notes:', data.notes);
-          generalNotesTextarea.value = data.notes;
+        try {
+          const generalNotesTextarea = document.getElementById('general-note-textarea');
+          if (generalNotesTextarea && data.notes) {
+            console.log('Setting general notes:', data.notes);
+            generalNotesTextarea.value = data.notes;
+          } else if (!generalNotesTextarea) {
+            console.log('General notes textarea not found');
+          }
+        } catch (error) {
+          console.error('Error setting general notes:', error);
         }
 
         // Process verse-specific notes
@@ -654,33 +779,36 @@ try {
           console.log('Found verse notes to display:', Object.keys(data.verseNotes).length);
           
           Object.entries(data.verseNotes).forEach(([reference, note]) => {
-            console.log(`Looking for textarea for reference: '${reference}'`);
-            // Try different selector approaches to find the textarea
-            let textarea = document.querySelector(`.verse-note[data-reference="${reference}"]`);
-            
-            if (!textarea) {
-              // Try escaping special characters in the reference
-              const escapedReference = reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              textarea = document.querySelector(`.verse-note[data-reference="${escapedReference}"]`);
-            }
-            
-            if (textarea) {
-              console.log(`Found textarea for ${reference}, setting value:`, note);
-              textarea.value = note;
-            } else {
-              console.warn(`Could not find textarea for reference: '${reference}'`);
-              // List all available textareas for debugging
-              const allTextareas = document.querySelectorAll('.verse-note');
-              console.log('Available verse textareas:', Array.from(allTextareas).map(t => t.dataset.reference));
+            try {
+              if (!reference) return;
+              
+              console.log(`Looking for textarea for reference: '${reference}'`);
+              // Try exact match first
+              let textarea = document.querySelector(`.verse-note[data-reference="${reference}"]`);
+              
+              if (!textarea) {
+                // Try escaping special characters in the reference
+                const escapedReference = reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                textarea = document.querySelector(`.verse-note[data-reference="${escapedReference}"]`);
+              }
+              
+              if (textarea) {
+                console.log(`Found textarea for ${reference}, setting value`);
+                textarea.value = note || '';
+              } else {
+                console.warn(`Could not find textarea for reference: '${reference}'`);
+              }
+            } catch (error) {
+              console.error(`Error processing reference ${reference}:`, error);
             }
           });
         } else {
-          console.warn('No verse notes found in the response or invalid format:', data.verseNotes);
+          console.log('No verse notes found in the response');
         }
         
-        console.log('All notes loading complete.');
+        console.log('Notes loading completed');
       } catch (error) {
-        console.error('Error loading verse notes:', error);
+        console.error('Error in loadVerseNotes:', error);
       }
     }
     
@@ -819,7 +947,8 @@ try {
               body: JSON.stringify({
                 date: currentDateParam,
                 notes: generalNotesTextarea?.value || '',
-                verseNotes: window.currentVerseNotesData || {}
+                verseNotes: window.currentVerseNotesData || {},
+                sheet: currentSchedule || 'default'  // Ensure we always send a sheet parameter
               }),
             });
             generalNoteSaveBtn.innerHTML = '<span class="english-ui">✓ Saved</span><span class="hebrew-ui hidden">✓ נשמר</span>';
@@ -853,17 +982,26 @@ try {
                 ...window.currentVerseNotesData || {},
                 [reference]: noteText
               },
-              notes: document.getElementById('general-note-textarea')?.value || ''
+              notes: document.getElementById('general-note-textarea')?.value || '',
+              sheet: currentSchedule  // Add the schedule parameter
             };
             
             console.log('Saving payload:', JSON.stringify(payload));
             
             // Send the updated notes to the API
             console.log('Sending save request to API (V2)...');
+            // Ensure we include the current schedule in the payload
+            const payloadWithSchedule = {
+              ...payload,
+              sheet: currentSchedule || 'default'  // Ensure we always send a sheet parameter
+            };
+            
+            console.log('Saving with payload:', JSON.stringify(payloadWithSchedule, null, 2));
+            
             const response = await fetch('/api/save-verse-notes-v2', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
+              body: JSON.stringify(payloadWithSchedule)
             });
             
             const responseText = await response.text(); // Get raw response text first
@@ -933,7 +1071,11 @@ try {
             const response = await fetch('/api/delete-verse-notes-v2', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ date: currentDateParam, reference: reference })
+              body: JSON.stringify({
+                date: currentDateParam,
+                reference: reference,
+                sheet: currentSchedule  // Add the schedule parameter
+              })
             });
             if (!response.ok) throw new Error('Failed to delete note');
             
@@ -980,8 +1122,19 @@ try {
 
     // Asynchronously load dynamic content
     (async () => {
-      await loadVerseNotes();
-      await fetchSefariaTexts();
+      try {
+        console.log('Starting to load verse notes...');
+        await loadVerseNotes();
+      } catch (error) {
+        console.error('Error loading verse notes, continuing with other content:', error);
+      }
+      
+      try {
+        console.log('Starting to fetch Sefaria texts...');
+        await fetchSefariaTexts();
+      } catch (error) {
+        console.error('Error fetching Sefaria texts:', error);
+      }
     })();
     
     // Define deleteImage in the global scope so it can be called from the onclick attribute
@@ -1045,13 +1198,17 @@ try {
     };
     
   } // --- END of initializePage ---
-
-  // --- 4. ATTACH TO PAGE LOAD EVENTS ---
-  document.addEventListener('DOMContentLoaded', initializePage);
-  document.addEventListener('astro:page-load', initializePage);
-  
-  // Make the deleteImage function available globally
-  if (typeof window !== 'undefined') {
-    window.deleteImage = window.deleteImage || function(){console.error('deleteImage not initialized');};
-  }
+    
+    // Initialize the page
+    initializePage();
+    
+    // Also run on Astro page load
+    document.addEventListener('astro:page-load', initializePage);
+    
+    // Expose initializePage for debugging
+    window.initializeSchedulePage = initializePage;
+    window.deleteImage = window.deleteImage || function() {
+      console.error('deleteImage not initialized');
+    };
+  }); // End DOMContentLoaded
 </script>

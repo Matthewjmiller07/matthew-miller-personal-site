@@ -1,0 +1,151 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { GOOGLE_SHEETS_CONFIG } from '../api/config.js';
+import { listSheets, getSheetData } from '../../utils/googleSheetsClient.js';
+
+// Get all available schedules
+let schedules = [];
+let error = null;
+
+try {
+  // First check if we have a schedules master sheet
+  const allSheets = await listSheets(GOOGLE_SHEETS_CONFIG.spreadsheetId);
+  
+  // Check if we have the schedules master sheet
+  const schedulesSheet = allSheets.find(sheet => sheet.title === 'schedules');
+  
+  if (schedulesSheet) {
+    // Get data from the schedules sheet
+    const scheduleData = await getSheetData(
+      GOOGLE_SHEETS_CONFIG.spreadsheetId,
+      'schedules!A:F'
+    );
+    
+    // Skip header row
+    if (scheduleData && scheduleData.length > 1) {
+      // Extract schedule info from rows
+      // Expected columns: Name, SheetName, CreatedAt, EntryCount, DateRange, Description
+      schedules = scheduleData.slice(1).map(row => ({
+        name: row[0] || '',
+        sheetName: row[1] || '',
+        createdAt: row[2] ? new Date(row[2]).toLocaleDateString() : '',
+        entryCount: parseInt(row[3]) || 0,
+        dateRange: row[4] || '',
+        description: row[5] || '',
+      }));
+    }
+  } else {
+    // No master schedules sheet, fallback to listing all non-system sheets
+    const systemSheets = ['Sheet1', 'schedules'];
+    schedules = allSheets
+      .filter(sheet => !systemSheets.includes(sheet.title))
+      .map(sheet => ({
+        name: sheet.title,
+        sheetName: sheet.title,
+        createdAt: '',
+        entryCount: 0,
+        dateRange: '',
+        description: 'Schedule sheet'
+      }));
+  }
+  
+  // Add the default "Aviya Schedule" as the first option
+  schedules.unshift({
+    name: 'Original Aviya Schedule',
+    sheetName: 'default',
+    createdAt: '',
+    entryCount: 0,
+    dateRange: '',
+    description: 'The original Aviya Schedule'
+  });
+  
+} catch (e) {
+  console.error('Error loading schedules:', e);
+  error = e.message;
+  
+  // Add the default schedule even if there's an error
+  schedules = [{
+    name: 'Original Aviya Schedule',
+    sheetName: 'default',
+    createdAt: '',
+    entryCount: 0,
+    dateRange: '',
+    description: 'The original Aviya Schedule'
+  }];
+}
+
+// Get current date in YYYY-MM-DD format
+const today = new Date().toISOString().split('T')[0];
+---
+
+<Layout title="Aviya Torah Schedules">
+  <main>
+    <h1 class="text-center mb-4">Aviya Torah Schedules</h1>
+    
+    {error && 
+      <div class="alert alert-danger" role="alert">
+        Error loading schedules: {error}
+      </div>
+    }
+    
+    <div class="container">
+      <div class="row mb-4">
+        <div class="col">
+          <div class="d-flex justify-content-between align-items-center">
+            <h2>Available Schedules</h2>
+            <a href="/torahschedule" class="btn btn-primary">Create New Schedule</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {schedules.map(schedule => (
+          <div class="col">
+            <div class="card h-100">
+              <div class="card-body">
+                <h5 class="card-title">{schedule.name}</h5>
+                {schedule.description && <p class="card-text">{schedule.description}</p>}
+                
+                <ul class="list-group list-group-flush mb-3">
+                  {schedule.createdAt && (
+                    <li class="list-group-item"><strong>Created:</strong> {schedule.createdAt}</li>
+                  )}
+                  {schedule.entryCount > 0 && (
+                    <li class="list-group-item"><strong>Entries:</strong> {schedule.entryCount}</li>
+                  )}
+                  {schedule.dateRange && (
+                    <li class="list-group-item"><strong>Date Range:</strong> {schedule.dateRange}</li>
+                  )}
+                </ul>
+                
+                <div class="d-grid gap-2">
+                  <a href={`/aviya-schedule/${today}?schedule=${schedule.sheetName}`} class="btn btn-outline-primary">
+                    Open Schedule
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {schedules.length === 0 && (
+        <div class="alert alert-info" role="alert">
+          No schedules found. You can create one using the Torah Schedule generator.
+        </div>
+      )}
+    </div>
+  </main>
+</Layout>
+
+<style>
+  main {
+    padding: 1rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
+  }
+</style>

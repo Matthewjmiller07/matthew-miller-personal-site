@@ -1,0 +1,64 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+// Extract the schedule name and date from the URL
+const { schedule: scheduleParts } = Astro.params;
+const [scheduleName, date] = scheduleParts.split('/');
+
+// Redirect to the new URL format if needed
+if (!date) {
+  const today = new Date().toISOString().split('T')[0];
+  return Astro.redirect(`/schedule/${scheduleName}/${today}`);
+}
+
+// Handle 'original' as an alias for the default schedule
+const schedule = scheduleName === 'original' ? undefined : scheduleName;
+---
+
+<Layout title={`${scheduleName} - Torah Schedule`}>
+  <div id="schedule-app" class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <!-- Schedule content will be loaded here by JavaScript -->
+    <div class="container mx-auto px-4 py-8">
+      <div class="text-center py-8">
+        <div class="animate-pulse">
+          <div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mx-auto mb-4"></div>
+          <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mx-auto"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline>
+    (function() {
+      try {
+        // Get the current path and extract schedule and date
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        let scheduleName = '';
+        let dateStr = '';
+        
+        // Handle both /schedule/[schedule]/[date] and /schedule/[schedule] formats
+        if (pathParts[0] === 'schedule') {
+          scheduleName = pathParts[1] || '';
+          dateStr = pathParts[2] || new Date().toISOString().split('T')[0];
+        }
+        
+        // Handle 'original' as an alias for the default schedule
+        if (scheduleName === 'original') {
+          scheduleName = '';
+        }
+        
+        // Build the redirect URL
+        const url = scheduleName 
+          ? `/aviya-schedule/${encodeURIComponent(dateStr)}?schedule=${encodeURIComponent(scheduleName)}`
+          : `/aviya-schedule/${encodeURIComponent(dateStr)}`;
+        
+        console.log('Redirecting to:', url);
+        window.location.href = url;
+      } catch (error) {
+        console.error('Error during redirect:', error);
+        // Fallback to today's date if something goes wrong
+        window.location.href = '/aviya-schedule/' + new Date().toISOString().split('T')[0];
+      }
+    })();
+  </script>
+</Layout>
