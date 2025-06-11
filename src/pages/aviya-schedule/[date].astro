@@ -719,18 +719,27 @@ try {
         
         const fetchPromises = readings.map(async (reference) => {
           try {
-            // Parse the reference to get book, chapter, and verse
-            const match = reference.match(/^(.*?)(\d+):(\d+)(?:-(\d+))?$/);
-            if (!match) {
-              console.warn(`Invalid reference format: ${reference}`);
-              return { reference, data: { he: "פורמט פסוק לא תקין", text: "Invalid verse format" } };
+            // First try to match verse references (e.g., "Ruth 1:1" or "Ruth 1:1-2")
+            let match = reference.match(/^(.*?)(\d+):(\d+)(?:-(\d+))?$/);
+            let url;
+            
+            if (match) {
+              // Handle verse-level references
+              const [, book, chapter, startVerse, endVerse] = match;
+              const verseRange = endVerse ? `${startVerse}-${endVerse}` : startVerse;
+              url = `https://www.sefaria.org/api/texts/${book}.${chapter}.${verseRange}?context=0`;
+            } else {
+              // Handle chapter-level references (e.g., "Ruth 1")
+              const chapterMatch = reference.match(/^(.*?)(\d+)$/);
+              if (chapterMatch) {
+                const [, book, chapter] = chapterMatch;
+                // Fetch the entire chapter
+                url = `https://www.sefaria.org/api/texts/${book}.${chapter}?context=0`;
+              } else {
+                console.warn(`Invalid reference format: ${reference}`);
+                return { reference, data: { he: "פורמט פסוק לא תקין", text: `Invalid reference format: ${reference}` } };
+              }
             }
-            
-            const [, book, chapter, startVerse, endVerse] = match;
-            const verseRange = endVerse ? `${startVerse}-${endVerse}` : startVerse;
-            
-            // Fetch the specific verse(s)
-            const url = `https://www.sefaria.org/api/texts/${book}.${chapter}.${verseRange}?context=0`;
             console.log(`Fetching from Sefaria: ${url}`);
             
             const response = await fetch(url);
