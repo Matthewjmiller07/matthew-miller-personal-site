@@ -392,52 +392,115 @@ try {
         {readings.map((reference, index) => {
           const textData = texts[index];
           const verseId = `verse-${reference.replace(/\s+|:/g, '-').toLowerCase()}`;
+          
+          // If this is a chapter with multiple verses
+          if (textData?.isChapter && textData.verses) {
+            return (
+              <div id={verseId} class="border dark:border-gray-700 rounded-lg p-6 bg-gray-50 dark:bg-gray-800 scroll-mt-20">
+                <h3 class="text-xl font-bold mb-4">
+                  <span class="english-ui">{reference}</span>
+                  <span class="hebrew-ui hidden">{translateReferenceToHebrew(reference)}</span>
+                </h3>
+                
+                {textData.verses.map((verse, verseIndex) => (
+                  <div key={verseIndex} class="mb-6 p-4 border border-gray-300 dark:border-gray-700 rounded-lg">
+                    <h4 class="text-lg font-semibold mb-2">{verse.reference}</h4>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                      {/* Hebrew text */}
+                      <div dir="rtl" lang="he" class="font-serif text-lg leading-relaxed hebrew-text">
+                        {verse.data && verse.data.he ? (
+                          <div set:html={typeof verse.data.he === 'string' ? verse.data.he : ''} />
+                        ) : (
+                          <div class="text-gray-500 italic">Loading Hebrew text...</div>
+                        )}
+                      </div>
+                      
+                      {/* English text */}
+                      <div class="font-serif text-lg leading-relaxed english-text">
+                        {verse.data && verse.data.text ? (
+                          <div set:html={typeof verse.data.text === 'string' ? verse.data.text : ''} />
+                        ) : (
+                          <div class="text-gray-500 italic">Loading English text...</div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Verse notes */}
+                    <div class="mt-4">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <span class="english-ui">Notes for {verse.reference}</span>
+                        <span class="hebrew-ui hidden">הערות ל{verse.reference}</span>
+                      </label>
+                      <textarea 
+                        class="verse-note w-full h-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-black dark:text-white"
+                        data-reference={verse.reference}
+                        placeholder="Add your notes for this verse..."
+                      ></textarea>
+                      <div class="flex justify-end mt-2">
+                        <button 
+                          class="save-note-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm" 
+                          data-reference={verse.reference}
+                        >
+                          <span class="english-ui">Save Note</span>
+                          <span class="hebrew-ui hidden">שמור הערה</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          }
+          
+          // Single verse or no data yet
           return (
             <div id={verseId} class="border dark:border-gray-700 rounded-lg p-6 bg-gray-50 dark:bg-gray-800 scroll-mt-20">
-              <h4 class="text-xl font-semibold mb-3">
+              <h4 class="text-lg font-semibold mb-2">
                 <span class="english-ui">{reference}</span>
                 <span class="hebrew-ui hidden">{translateReferenceToHebrew(reference)}</span>
               </h4>
               
               <div class="grid md:grid-cols-2 gap-6">
-                <!-- Hebrew text -->
+                {/* Hebrew text */}
                 <div dir="rtl" lang="he" class="font-serif text-lg leading-relaxed hebrew-text">
-                  <Fragment set:html={textData?.he || "Loading Hebrew text..."} />
+                  {textData?.he ? (
+                    <div set:html={typeof textData.he === 'string' ? textData.he : ''} />
+                  ) : (
+                    <div class="text-gray-500 italic">Loading Hebrew text...</div>
+                  )}
                 </div>
                 
-                <!-- English text -->
+                {/* English text */}
                 <div class="font-serif text-lg leading-relaxed english-text">
-                  <Fragment set:html={textData?.text || "Loading English text..."} />
+                  {textData?.text ? (
+                    <div set:html={typeof textData.text === 'string' ? textData.text : ''} />
+                  ) : (
+                    <div class="text-gray-500 italic">Loading English text...</div>
+                  )}
                 </div>
               </div>
               
               {/* Verse notes */}
               <div class="mt-6">
-                <div class="flex justify-between items-center mb-2">
-                  <h5 class="text-lg font-semibold">
-                    <span class="english-ui">Verse Notes</span>
-                    <span class="hebrew-ui hidden">{hebrewTranslations['Verse Notes'] || 'הערות לפסוק'}</span>
-                  </h5>
-                  <div class="flex space-x-2">
-                    <button 
-                      class="verse-save-btn px-3 py-1 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 transition"
-                      data-reference={reference}>
-                      <span class="english-ui">Save</span>
-                      <span class="hebrew-ui hidden">{hebrewTranslations['Save'] || 'שמור'}</span>
-                    </button>
-                    <button 
-                      class="verse-delete-btn px-3 py-1 text-sm rounded-md bg-red-600 text-white hover:bg-red-700 transition"
-                      data-reference={reference}>
-                      <span class="english-ui">Delete</span>
-                      <span class="hebrew-ui hidden">{hebrewTranslations['Delete'] || 'מחק'}</span>
-                    </button>
-                  </div>
-                </div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <span class="english-ui">Notes for {reference}</span>
+                  <span class="hebrew-ui hidden">הערות ל{reference}</span>
+                </label>
                 <textarea 
-                  class="verse-note w-full p-3 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
-                  data-reference={reference} 
-                  rows="3"
-                  placeholder="Add your notes for this verse..."></textarea>
+                  class="verse-note w-full h-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-black dark:text-white"
+                  data-reference={reference}
+                  placeholder="Add your notes for this verse..."
+                ></textarea>
+                <div class="flex justify-end mt-2">
+                  <button 
+                    class="save-note-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm" 
+                    data-reference={reference}
+                  >
+                    <span class="english-ui">Save Note</span>
+                    <span class="hebrew-ui hidden">שמור הערה</span>
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -650,6 +713,12 @@ try {
     // This is the main function that sets up all the interactive parts of the page.
     // It's designed to be re-run every time you navigate to a new date page.
     function initializePage() {
+      // Function to process verse text (remove HTML tags, trim, etc.)
+      const processVerseText = (text) => {
+        if (!text) return '';
+        // Remove HTML tags but keep line breaks
+        return text.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/\s+/g, ' ').trim();
+      };
     console.log('Initializing page for:', window.location.pathname);
 
     // --- 1. DEFINE ALL CONSTANTS & SELECTORS ---
@@ -691,292 +760,314 @@ try {
     // --- 2. DEFINE ALL HELPER FUNCTIONS ---
 
     // Fetches text content from the Sefaria API with a retry mechanism.
-    async function fetchSefariaTexts(attemptCount = 1) {
-      console.log(`Attempting to fetch Sefaria texts (attempt ${attemptCount})...`);
-      try {
-        const containers = document.querySelectorAll('div[class*="border dark:border-gray-700 rounded-lg"]');
-        const readingElements = document.querySelectorAll('ul li strong .english-ui');
-
-        if ((containers.length === 0 || readingElements.length === 0) && attemptCount < 5) {
-          console.log('Content not ready, retrying in 500ms...');
-          setTimeout(() => fetchSefariaTexts(attemptCount + 1), 500);
-          return;
-        }
-
-        // Get all reading elements and clean up the text
-        const readings = [];
-        readingElements.forEach(el => {
-          // Get the text content and clean it up
-          const refText = el.textContent.trim();
-          // Split by comma and clean each reference
-          refText.split(',').forEach(ref => {
-            const cleanRef = ref.trim();
-            if (cleanRef) readings.push(cleanRef);
-          });
-        });
+    // Fetches text content from the Sefaria API with a retry mechanism.
+    async function fetchSefariaTexts() {
+      console.log("Attempting to fetch Sefaria texts...");
+      try {
+        // Get all the individual verse/chapter containers. The ID is the most reliable selector.
+        const containers = document.querySelectorAll('div[id^="verse-"]');
+        if (containers.length === 0) {
+          console.warn('No verse containers found on the page. Sefaria fetch cannot proceed.');
+          return;
+        }
         
-        console.log('Processed readings:', readings);
-        
-        const fetchPromises = readings.map(async (reference) => {
-          try {
-            // First try to match verse references (e.g., "Ruth 1:1" or "Ruth 1:1-2")
-            let match = reference.match(/^(.*?)(\d+):(\d+)(?:-(\d+))?$/);
-            let url;
-            
-            if (match) {
-              // Handle verse-level references
-              const [, book, chapter, startVerse, endVerse] = match;
-              const verseRange = endVerse ? `${startVerse}-${endVerse}` : startVerse;
-              url = `https://www.sefaria.org/api/texts/${book}.${chapter}.${verseRange}?context=0`;
-            } else {
-              // Handle chapter-level references (e.g., "Ruth 1")
-              const chapterMatch = reference.match(/^(.*?)(\d+)$/);
-              if (chapterMatch) {
-                const [, book, chapter] = chapterMatch;
-                // Fetch the entire chapter
-                url = `https://www.sefaria.org/api/texts/${book}.${chapter}?context=0`;
-              } else {
-                console.warn(`Invalid reference format: ${reference}`);
-                return { reference, data: { he: "פורמט פסוק לא תקין", text: `Invalid reference format: ${reference}` } };
-              }
-            }
-            console.log(`Fetching from Sefaria: ${url}`);
-            
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            
-            const data = await response.json();
-            
-            // If we have multiple verses, join them with newlines
-            if (data.he && Array.isArray(data.he)) {
-              data.he = data.he.join(' ');
-            }
-            if (data.text && Array.isArray(data.text)) {
-              data.text = data.text.join(' ');
-            }
-            
-            return { reference, data };
-          } catch (error) {
-            console.error(`Error fetching ${reference}:`, error);
-            return { reference, data: { he: "שגיאה בטעינת הטקסט", text: `Error loading text: ${error.message}` } };
-          }
-        });
+        console.log(`Found ${containers.length} verse containers to populate.`);
 
-        const results = await Promise.all(fetchPromises);
-        console.log(`Successfully retrieved ${results.length} texts from Sefaria.`);
-
-        containers.forEach(container => {
-          const titleEl = container.querySelector('h4 .english-ui');
-          if (!titleEl) return;
-          const reference = titleEl.textContent.trim();
-          const result = results.find(r => r.reference === reference);
-          if (result) {
-            const hebrewTextDiv = container.querySelector('.hebrew-text');
-            const englishTextDiv = container.querySelector('.english-text');
-            if (hebrewTextDiv && result.data.he) hebrewTextDiv.innerHTML = result.data.he;
-            if (englishTextDiv && result.data.text) englishTextDiv.innerHTML = result.data.text;
+        // Create a list of fetch promises, one for each reference
+        const fetchPromises = Array.from(containers).map(container => {
+          const referenceElement = container.querySelector('h4 .english-ui, h3 .english-ui');
+          if (!referenceElement) {
+            console.warn('Could not find reference element in container:', container);
+            return null; // Skip this container if it's malformed
           }
-        });
-      } catch (error) {
-        console.error('General error fetching Sefaria texts:', error);
-      }
-    }
+          const reference = referenceElement.textContent.trim();
+          const apiUrl = `https://www.sefaria.org/api/texts/${reference.replace(/\s/g, '.')}?context=0`;
+          
+          console.log(`Preparing to fetch for reference: "${reference}" from URL: ${apiUrl}`);
+
+          return fetch(apiUrl)
+            .then(response => {
+              if (!response.ok) {
+                // Throw an error to be caught by the .catch block
+                throw new Error(`HTTP error! status: ${response.status} for ${reference}`);
+              }
+              return response.json();
+            })
+            .then(data => ({ reference, data, container })) // Pass data and the container along
+            .catch(error => {
+              console.error(`Error fetching or parsing Sefaria data for ${reference}:`, error);
+              return { reference, error, container }; // Handle individual errors gracefully
+            });
+        });
+
+        // Wait for all fetches to complete
+        const results = await Promise.all(fetchPromises.filter(p => p !== null));
+
+        console.log(`Successfully settled ${results.length} fetches from Sefaria.`);
+
+        // Now, update the DOM with the results
+        results.forEach(result => {
+          const { reference, data, error, container } = result;
+
+          const hebrewTextDiv = container.querySelector('.hebrew-text');
+          const englishTextDiv = container.querySelector('.english-text');
+
+          if (error) {
+            // If an error occurred for this specific reference, display it
+            if (hebrewTextDiv) hebrewTextDiv.innerHTML = `<div class="text-red-500 italic">שגיאה בטעינת הטקסט</div>`;
+            if (englishTextDiv) englishTextDiv.innerHTML = `<div class="text-red-500 italic">Error loading text: ${error.message}</div>`;
+            return; // Move to the next result
+          }
+          
+          // Sefaria returns text/he as an array for chapters and a string for verses.
+          const hebrewText = Array.isArray(data.he) ? data.he.join('<br>') : data.he;
+          const englishText = Array.isArray(data.text) ? data.text.join('<br>') : data.text;
+
+          // Update the text content
+          if (hebrewTextDiv && hebrewText) {
+            hebrewTextDiv.innerHTML = hebrewText;
+          } else if (hebrewTextDiv) {
+            hebrewTextDiv.innerHTML = `<div class="text-gray-500 italic">Hebrew text not available.</div>`;
+          }
+
+          if (englishTextDiv && englishText) {
+            englishTextDiv.innerHTML = englishText;
+          } else if (englishTextDiv) {
+            englishTextDiv.innerHTML = `<div class="text-gray-500 italic">English text not available.</div>`;
+          }
+        });
+      } catch (error) {
+        console.error('A critical error occurred in fetchSefariaTexts:', error);
+      }
+    }
 
     // Loads general and verse-specific notes from your API.
-    async function loadVerseNotes() {
-      try {
-        console.log('Loading verse notes for date:', currentDateParam, 'schedule:', currentSchedule);
-        
-        // Validate currentDateParam and currentSchedule
-        if (!currentDateParam) {
-          console.error('No date parameter found in URL');
-          return;
-        }
-        
-        // Always include the schedule parameter, default to 'Aviya' if not set
-        const scheduleToUse = currentSchedule || 'Aviya';
-        const url = `/api/load-verse-notes?date=${encodeURIComponent(currentDateParam)}&schedule=${encodeURIComponent(scheduleToUse)}`;
-        console.log('Fetching notes from:', url);
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          console.error('Failed to load notes:', response.status, response.statusText);
-          return;
-        }
-        
-        const data = await response.json();
-        console.log('Loaded note data:', data);
-        
-        // Store verse notes in a global variable for later use
-        window.currentVerseNotesData = data.verseNotes || {};
-        console.log('Stored verse notes in window.currentVerseNotesData:', window.currentVerseNotesData);
-
-        // Handle general notes
-        try {
-          const generalNotesTextarea = document.getElementById('general-note-textarea');
-          if (generalNotesTextarea && data.notes) {
-            console.log('Setting general notes:', data.notes);
-            generalNotesTextarea.value = data.notes;
-          } else if (!generalNotesTextarea) {
-            console.log('General notes textarea not found');
+    // Loads general and verse-specific notes from your API.
+    async function loadVerseNotes() {
+      try {
+        console.log('Loading verse notes for date:', currentDateParam, 'schedule:', currentSchedule);
+        
+        // Validate currentDateParam and currentSchedule
+        if (!currentDateParam) {
+          console.error('No date parameter found in URL');
+          return;
+        }
+        
+        // Always include the schedule parameter, default if not set
+        const scheduleToUse = currentSchedule || 'default';
+        const url = `/api/load-verse-notes?date=${encodeURIComponent(currentDateParam)}&schedule=${encodeURIComponent(scheduleToUse)}`;
+        console.log('Fetching notes from:', url);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          console.error('Failed to load notes:', response.status, response.statusText);
+          // Attempt to parse error from body if available
+          try {
+            const errorData = await response.json();
+            console.error('Error details:', errorData);
+          } catch (e) {
+            // Body might not be JSON, just log the status text
+            console.error('Could not parse error response body.');
           }
-        } catch (error) {
-          console.error('Error setting general notes:', error);
-        }
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('Loaded note data:', data);
+        
+        // Store verse notes in a global variable for later use
+        window.currentVerseNotesData = data.verseNotes || {};
+        console.log('Stored verse notes in window.currentVerseNotesData:', window.currentVerseNotesData);
 
-        // Process verse-specific notes
-        if (data.verseNotes && typeof data.verseNotes === 'object') {
-          console.log('Found verse notes to display:', Object.keys(data.verseNotes).length);
-          
-          Object.entries(data.verseNotes).forEach(([reference, note]) => {
-            try {
-              if (!reference) return;
+        // Handle general notes
+        try {
+          const generalNotesTextarea = document.getElementById('general-note-textarea');
+          if (generalNotesTextarea && data.notes) {
+            console.log('Setting general notes:', data.notes);
+            generalNotesTextarea.value = data.notes;
+          } else if (!generalNotesTextarea) {
+            console.log('General notes textarea not found');
+          }
+        } catch (error) {
+          console.error('Error setting general notes:', error);
+        }
+
+        // Process and display verse-specific notes
+        if (data.verseNotes && typeof data.verseNotes === 'object') {
+          console.log('Found verse notes to display:', Object.keys(data.verseNotes).length);
+          
+          Object.entries(data.verseNotes).forEach(([reference, note]) => {
+            try {
+              if (!reference || !note) return;
+              
+              // Find the corresponding textarea for the verse
+              const noteTextarea = document.querySelector(`.verse-note[data-reference="${reference}"]`);
               
-              console.log(`Looking for textarea for reference: '${reference}'`);
-              // Try exact match first
-              let textarea = document.querySelector(`.verse-note[data-reference="${reference}"]`);
-              
-              if (!textarea) {
-                // Try escaping special characters in the reference
-                const escapedReference = reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                textarea = document.querySelector(`.verse-note[data-reference="${escapedReference}"]`);
-              }
-              
-              if (textarea) {
-                console.log(`Found textarea for ${reference}, setting value`);
-                textarea.value = note || '';
+              if (noteTextarea) {
+                console.log(`Setting note for reference: '${reference}'`);
+                noteTextarea.value = note;
               } else {
-                console.warn(`Could not find textarea for reference: '${reference}'`);
+                console.warn(`Textarea not found for reference: '${reference}'`);
               }
-            } catch (error) {
-              console.error(`Error processing reference ${reference}:`, error);
+            } catch (error) {
+              // This catch block fixes the original syntax error.
+              console.error(`Error processing note for reference: ${reference}`, error);
             }
-          });
-        } else {
-          console.log('No verse notes found in the response');
-        }
-        
-        console.log('Notes loading completed');
-      } catch (error) {
-        console.error('Error in loadVerseNotes:', error);
-      }
-    }
+          });
+        }
+      } catch (error) {
+        console.error('A critical error occurred in loadVerseNotes:', error);
+      }
+    }
     
-    // Sets up drag-and-drop and file input for image uploads.
-    function setupImageUpload() {
-      const dragDropArea = document.getElementById('drag-drop-area');
-      const fileInput = document.getElementById('image-upload');
-      const uploadProgress = document.getElementById('upload-progress');
-      const uploadProgressBar = document.getElementById('upload-progress-bar');
-      const uploadPercentage = document.getElementById('upload-percentage');
-      const uploadStatus = document.getElementById('upload-status');
-      if (!dragDropArea || !fileInput) return;
+    // Save note for a specific verse
+    // *** NEW AND IMPROVED saveNote function ***
+    // Saves a specific verse note directly to the Google Sheet via the API.
+    async function saveNote(reference) {
+      if (!reference) return;
 
-      const preventDefaults = (e) => { e.preventDefault(); e.stopPropagation(); };
-      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dragDropArea.addEventListener(eventName, preventDefaults, false);
-      });
+      const saveButton = document.querySelector(`.save-note-btn[data-reference="${reference}"]`);
+      const noteElement = document.querySelector(`.verse-note[data-reference="${reference}"]`);
 
-      const highlight = () => dragDropArea.classList.add('bg-blue-50', 'dark:bg-blue-900/20', 'border-blue-300', 'dark:border-blue-700');
-      const unhighlight = () => dragDropArea.classList.remove('bg-blue-50', 'dark:bg-blue-900/20', 'border-blue-300', 'dark:border-blue-700');
-      ['dragenter', 'dragover'].forEach(eventName => dragDropArea.addEventListener(eventName, highlight, false));
-      ['dragleave', 'drop'].forEach(eventName => dragDropArea.addEventListener(eventName, unhighlight, false));
+      if (!saveButton || !noteElement) {
+        console.error(`Could not find button or textarea for reference: ${reference}`);
+        return;
+      }
+      
+      const originalButtonHTML = saveButton.innerHTML;
+      saveButton.innerHTML = '<span class="english-ui">Saving...</span><span class="hebrew-ui hidden">שומר...</span>';
+      saveButton.disabled = true;
 
-      const handleDrop = (e) => {
-        const files = e.dataTransfer.files;
-        if (files.length > 0) uploadImage(files[0]);
-      };
-      dragDropArea.addEventListener('drop', handleDrop, false);
+      try {
+        // --- DATA COLLECTION ---
+        // 1. Get the current value from the general notes textarea.
+        const generalNotes = document.getElementById('general-note-textarea').value;
 
-      fileInput.addEventListener('change', function() {
-        if (this.files && this.files[0]) uploadImage(this.files[0]);
-      });
-
-      function uploadImage(file) {
-        if (!file.type.startsWith('image/')) {
-          alert('Please select an image file.');
-          return;
-        }
-        uploadProgress.classList.remove('hidden');
-        uploadStatus.textContent = 'Uploading...';
-        uploadProgressBar.style.width = '0%';
-        uploadPercentage.textContent = '0%';
-
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('date', currentDateParam);
-        
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/upload-image', true);
-
-        xhr.upload.addEventListener('progress', (e) => {
-          if (e.lengthComputable) {
-            const percentComplete = Math.round((e.loaded / e.total) * 100);
-            uploadProgressBar.style.width = percentComplete + '%';
-            uploadPercentage.textContent = percentComplete + '%';
+        // 2. Get the current values from ALL verse note textareas on the page.
+        //    This ensures we send a complete and up-to-date record to the sheet.
+        const verseNotes = {};
+        document.querySelectorAll('.verse-note').forEach(textarea => {
+          const ref = textarea.dataset.reference;
+          if (ref) {
+            verseNotes[ref] = textarea.value;
           }
         });
-
-        xhr.onload = function() {
-          if (xhr.status === 200) {
-            uploadStatus.textContent = 'Upload Complete';
-            setTimeout(() => location.reload(), 1500);
-          } else {
-            uploadStatus.textContent = 'Upload Failed';
-            uploadStatus.classList.replace('text-blue-600', 'text-red-600');
-            uploadStatus.classList.replace('bg-blue-200', 'bg-red-200');
-          }
+        
+        const payload = {
+          date: currentDateParam,
+          notes: generalNotes,
+          verseNotes: verseNotes,
+          sheet: currentSchedule || 'default'
         };
 
-        xhr.onerror = function() {
-          uploadStatus.textContent = 'Upload Error';
-          uploadStatus.classList.replace('text-blue-600', 'text-red-600');
-          uploadStatus.classList.replace('bg-blue-200', 'bg-red-200');
-        };
+        console.log('Sending updated payload to sheet:', payload);
 
-        xhr.send(formData);
+        // --- API CALL ---
+        const response = await fetch('/api/save-verse-notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Server responded with status ${response.status}`);
+        }
+
+        // --- SUCCESS FEEDBACK ---
+        console.log(`Successfully saved note for ${reference} to the sheet.`);
+        saveButton.innerHTML = '<span class="english-ui">✓ Saved!</span><span class="hebrew-ui hidden">✓ נשמר!</span>';
+        saveButton.classList.remove('bg-blue-600');
+        saveButton.classList.add('bg-green-600');
+
+      } catch (error) {
+        // --- ERROR FEEDBACK ---
+        console.error(`Failed to save note for ${reference}:`, error);
+        saveButton.innerHTML = '<span class="english-ui">Error</span><span class="hebrew-ui hidden">שגיאה</span>';
+        saveButton.classList.remove('bg-blue-600');
+        saveButton.classList.add('bg-red-600');
+        alert(`Could not save note for ${reference}. Error: ${error.message}`);
+
+      } finally {
+        // --- RESET BUTTON ---
+        // After a few seconds, reset the button's appearance.
+        setTimeout(() => {
+          saveButton.innerHTML = originalButtonHTML;
+          saveButton.disabled = false;
+          saveButton.classList.remove('bg-green-600', 'bg-red-600');
+          saveButton.classList.add('bg-blue-600');
+        }, 2500);
       }
-      console.log('Image upload handlers are set up.');
     }
 
     // Sets up all button clicks and interactions.
     function addAllEventListeners() {
+      // *** UPDATE THIS LISTENER ***
+      // Individual "Save Note" buttons now trigger a direct save to the sheet.
+      document.addEventListener('click', async (e) => { // Make the callback async
+        const saveBtn = e.target.closest('.save-note-btn');
+        if (saveBtn) {
+          e.preventDefault();
+          const reference = saveBtn.dataset.reference;
+          // The saveNote function now handles everything else.
+          await saveNote(reference); 
+        }
+      });
+      
+      // Auto-save when textarea loses focus
+      document.addEventListener('blur', (e) => {
+        if (e.target.matches('.verse-note')) {
+          const noteElement = e.target;
+          const reference = noteElement.dataset.reference;
+          const content = noteElement.value;
+          saveNote(reference, content);
+        }
+      }, true);
+      
       // Language toggle for text content
       const langButtons = document.querySelectorAll('.lang-toggle');
-      langButtons.forEach(button => {
-        button.addEventListener('click', () => {
-          langButtons.forEach(btn => {
-            btn.classList.remove('active', 'bg-blue-600', 'text-white');
-            btn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-black', 'dark:text-white');
+      const textContainer = document.querySelector('.text-container');
+      const englishElements = document.querySelectorAll('.english-ui');
+      const hebrewElements = document.querySelectorAll('.hebrew-ui');
+      
+      if (langButtons.length && textContainer) {
+        langButtons.forEach(button => {
+          button.addEventListener('click', () => {
+            langButtons.forEach(btn => {
+              btn.classList.remove('active', 'bg-blue-600', 'text-white');
+              btn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-black', 'dark:text-white');
+            });
+            button.classList.add('active', 'bg-blue-600', 'text-white');
+            button.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-black', 'dark:text-white');
+
+            textContainer.classList.remove('hebrew-only', 'english-only');
+            if (button.id === 'hebrewOnly') textContainer.classList.add('hebrew-only');
+            else if (button.id === 'englishOnly') textContainer.classList.add('english-only');
           });
-          button.classList.add('active', 'bg-blue-600', 'text-white');
-          button.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-black', 'dark:text-white');
-
-          textContainer.classList.remove('hebrew-only', 'english-only');
-          if (button.id === 'hebrewOnly') textContainer.classList.add('hebrew-only');
-          else if (button.id === 'englishOnly') textContainer.classList.add('english-only');
         });
-      });
-
+      }
+      
       // Site-wide UI language toggle
       const siteLanguageToggle = document.getElementById('siteLanguageToggle');
       if (siteLanguageToggle) {
         const applyLanguage = (lang) => {
           if (lang === 'hebrew') {
             document.body.classList.add('hebrew-ui-active');
-            englishElements.forEach(el => el.classList.add('hidden'));
-            hebrewElements.forEach(el => el.classList.remove('hidden'));
+            document.querySelectorAll('.english-ui').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.hebrew-ui').forEach(el => el.classList.remove('hidden'));
             document.documentElement.dir = 'rtl';
           } else {
             document.body.classList.remove('hebrew-ui-active');
-            englishElements.forEach(el => el.classList.remove('hidden'));
-            hebrewElements.forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.english-ui').forEach(el => el.classList.remove('hidden'));
+            document.querySelectorAll('.hebrew-ui').forEach(el => el.classList.add('hidden'));
             document.documentElement.dir = 'ltr';
           }
         };
 
-        applyLanguage(localStorage.getItem('aviyaUiLanguage')); // Apply on load
+        // Apply saved language preference
+        const savedLang = localStorage.getItem('aviyaUiLanguage') || 'english';
+        applyLanguage(savedLang);
         
         siteLanguageToggle.addEventListener('click', () => {
           const newLang = document.body.classList.contains('hebrew-ui-active') ? 'english' : 'hebrew';
@@ -984,7 +1075,6 @@ try {
           applyLanguage(newLang);
         });
       }
-
       // General Notes "Save" button
       const generalNoteSaveBtn = document.getElementById('general-note-save-btn');
       if (generalNoteSaveBtn) {
@@ -999,7 +1089,7 @@ try {
                 date: currentDateParam,
                 notes: generalNotesTextarea?.value || '',
                 verseNotes: window.currentVerseNotesData || {},
-                sheet: currentSchedule || 'default'  // Ensure we always send a sheet parameter
+                sheet: currentSchedule || 'default'
               }),
             });
             generalNoteSaveBtn.innerHTML = '<span class="english-ui">✓ Saved</span><span class="hebrew-ui hidden">✓ נשמר</span>';
@@ -1010,163 +1100,155 @@ try {
           }
         });
       }
-
-      // Individual verse "Save" button
-      document.querySelectorAll('.verse-save-btn').forEach(saveBtn => {
-        saveBtn.addEventListener('click', async (event) => {
-          const reference = event.target.closest('.verse-save-btn').dataset.reference;
-          const textarea = document.querySelector(`.verse-note[data-reference="${reference}"]`);
-          if (!textarea) return;
-          
-          const originalButtonText = saveBtn.innerHTML;
-          saveBtn.disabled = true;
-          if (saveBtn.querySelector('.english-ui')) saveBtn.querySelector('.english-ui').textContent = 'Saving...';
-          
-          try {
-            console.log(`Saving note for ${reference}: ${textarea.value}`);
-            const noteText = textarea.value.trim();
-            
-            // Prepare payload with all existing verse notes plus this one
-            const payload = {
-              date: currentDateParam,
-              verseNotes: {
-                ...window.currentVerseNotesData || {},
-                [reference]: noteText
-              },
-              notes: document.getElementById('general-note-textarea')?.value || '',
-              sheet: currentSchedule  // Add the schedule parameter
-            };
-            
-            console.log('Saving payload:', JSON.stringify(payload));
-            
-            // Send the updated notes to the API
-            console.log('Sending save request to API (V2)...');
-            // Ensure we include the current schedule in the payload
-            const payloadWithSchedule = {
-              ...payload,
-              sheet: currentSchedule || 'default'  // Ensure we always send a sheet parameter
-            };
-            
-            console.log('Saving with payload:', JSON.stringify(payloadWithSchedule, null, 2));
-            
-            const response = await fetch('/api/save-verse-notes-v2', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payloadWithSchedule)
-            });
-            
-            const responseText = await response.text(); // Get raw response text first
-            console.log(`API Response (${response.status}):`, responseText);
-            
-            let data;
-            try {
-              // Try to parse as JSON
-              data = JSON.parse(responseText);
-              console.log('Parsed response data:', data);
-              
-              if (!response.ok) {
-                throw new Error(data.message || data.error || `Failed with status ${response.status}`);
-              }
-            } catch (parseError) {
-              console.error('Error parsing response:', parseError);
-              throw new Error(`Failed to save note (Status: ${response.status})`);
-            }
-            
-            // Update the current data in browser memory
-            window.currentVerseNotesData = payload.verseNotes;
-            
-            if (saveBtn.querySelector('.english-ui')) saveBtn.querySelector('.english-ui').textContent = 'Saved!';
-            saveBtn.classList.replace('bg-green-600', 'bg-blue-600');
-            
-            // Reset button state after 2 seconds
-            setTimeout(() => {
-              // Restore original button text and styling
-              if (saveBtn.querySelector('.english-ui')) {
-                saveBtn.querySelector('.english-ui').textContent = 'Save';
-              } else {
-                saveBtn.innerHTML = originalButtonText;
-              }
-              saveBtn.disabled = false;
-              saveBtn.classList.replace('bg-blue-600', 'bg-green-600');
-            }, 2000);
-          } catch (error) {
-            console.error('Error saving verse note:', error);
-            if (saveBtn.querySelector('.english-ui')) saveBtn.querySelector('.english-ui').textContent = 'Error!';
-            saveBtn.classList.replace('bg-green-600', 'bg-red-600');
-            setTimeout(() => {
-              saveBtn.innerHTML = originalButtonText;
-              saveBtn.disabled = false;
-              saveBtn.classList.replace('bg-red-600', 'bg-green-600');
-            }, 2000);
-          }
-        });
+      
+      // Auto-save when textarea loses focus
+      document.addEventListener('blur', (e) => {
+        if (e.target.matches('.verse-note')) {
+          const noteElement = e.target;
+          const reference = noteElement.dataset.reference;
+          const content = noteElement.value;
+          saveNote(reference, content);
+        }
+      }, true);
+      
+      // Set up drag and drop for image uploads
+      setupImageUpload();
+      
+      
+      
+      // Handle window resize for responsive design
+      window.addEventListener('resize', () => {
+        // Any responsive adjustments can go here
       });
       
-      // Individual verse "Delete" button
-      document.querySelectorAll('.verse-delete-btn').forEach(deleteBtn => {
-        deleteBtn.addEventListener('click', async (event) => {
-          const reference = event.target.closest('.verse-delete-btn').dataset.reference;
-          const textarea = document.querySelector(`.verse-note[data-reference="${reference}"]`);
-          if (!textarea) return;
+      // Handle delete button clicks
+      document.addEventListener('click', async (e) => {
+        const deleteBtn = e.target.closest('.delete-note-btn');
+        if (!deleteBtn) return;
+        
+        e.preventDefault();
+        const reference = deleteBtn.dataset.reference;
+        const textarea = document.querySelector(`.verse-note[data-reference="${reference}"]`);
+        if (!textarea) return;
+        
+        const originalButtonText = deleteBtn.innerHTML;
+        deleteBtn.disabled = true;
+        
+        // Update button text
+        if (deleteBtn.querySelector('.english-ui')) {
+          deleteBtn.querySelector('.english-ui').textContent = 'Deleting...';
+        }
+        
+        try {
+          const response = await fetch('/api/delete-verse-note', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date: currentDateParam,
+              reference: reference,
+              sheet: currentSchedule || 'default'
+            }),
+          });
           
-          const originalButtonText = deleteBtn.innerHTML;
-          deleteBtn.disabled = true;
-          if (deleteBtn.querySelector('.english-ui')) deleteBtn.querySelector('.english-ui').textContent = 'Deleting...';
-          
-          try {
-            const verseNotes = window.currentVerseNotesData || {};
-            delete verseNotes[reference];
-            textarea.value = '';
-
-            // Call the dedicated delete endpoint instead of using the save endpoint
-            const response = await fetch('/api/delete-verse-notes-v2', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                date: currentDateParam,
-                reference: reference,
-                sheet: currentSchedule  // Add the schedule parameter
-              })
-            });
-            if (!response.ok) throw new Error('Failed to delete note');
+          if (response.ok) {
+            // Remove from localStorage
+            localStorage.removeItem(`note-${reference}`);
             
-            window.currentVerseNotesData = verseNotes;
-            if (deleteBtn.querySelector('.english-ui')) deleteBtn.querySelector('.english-ui').textContent = 'Deleted!';
-            deleteBtn.classList.replace('bg-red-600', 'bg-blue-600');
-
-            // Reset button state after 2 seconds
+            // Clear the textarea
+            textarea.value = '';
+            
+            // Show success message
+            deleteBtn.innerHTML = '<span class="english-ui">Deleted!</span><span class="hebrew-ui hidden">נמחק!</span>';
+            deleteBtn.classList.remove('bg-red-600');
+            deleteBtn.classList.add('bg-green-600');
+            
+            // Reset button after delay
             setTimeout(() => {
-              // Restore original button text and styling
-              if (deleteBtn.querySelector('.english-ui')) {
-                deleteBtn.querySelector('.english-ui').textContent = 'Delete';
-              } else {
-                deleteBtn.innerHTML = originalButtonText;
-              }
+              deleteBtn.innerHTML = originalButtonText;
               deleteBtn.disabled = false;
-              deleteBtn.classList.replace('bg-blue-600', 'bg-red-600');
+              deleteBtn.classList.remove('bg-green-600');
+              deleteBtn.classList.add('bg-red-600');
             }, 2000);
-          } catch (error) {
-            console.error('Error deleting verse note:', error);
-            if (deleteBtn.querySelector('.english-ui')) deleteBtn.querySelector('.english-ui').textContent = 'Error!';
-            deleteBtn.classList.replace('bg-red-600', 'bg-yellow-600');
-             
-            // Reset button after error
-            setTimeout(() => {
-              // Restore original button text and styling
-              if (deleteBtn.querySelector('.english-ui')) {
-                deleteBtn.querySelector('.english-ui').textContent = 'Delete';
-              } else {
-                deleteBtn.innerHTML = originalButtonText;
-              }
-              deleteBtn.disabled = false;
-              deleteBtn.classList.replace('bg-yellow-600', 'bg-red-600');
-            }, 2000);
+          } else {
+            throw new Error('Failed to delete note');
           }
-        });
+        } catch (error) {
+          console.error('Error deleting note:', error);
+          deleteBtn.innerHTML = '<span class="english-ui">Error!</span><span class="hebrew-ui hidden">שגיאה!</span>';
+          deleteBtn.classList.remove('bg-red-600');
+          deleteBtn.classList.add('bg-red-800');
+          
+          setTimeout(() => {
+            deleteBtn.innerHTML = originalButtonText;
+            deleteBtn.disabled = false;
+            deleteBtn.classList.remove('bg-red-800');
+            deleteBtn.classList.add('bg-red-600');
+          }, 2000);
+        }
       });
+      
       console.log('All event listeners are set up.');
     }
 
+    // Setup image upload functionality
+    function setupImageUpload() {
+      const uploadForm = document.getElementById('image-upload-form');
+      const fileInput = document.getElementById('image-upload');
+      const uploadStatus = document.getElementById('upload-status');
+      
+      if (!uploadForm || !fileInput) return;
+      
+      uploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const file = fileInput.files[0];
+        if (!file) {
+          updateUploadStatus('Please select a file first', 'error');
+          return;
+        }
+        
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('date', new URLSearchParams(window.location.search).get('date') || '');
+        
+        try {
+          updateUploadStatus('Uploading...', 'info');
+          const response = await fetch('/api/upload-image', {
+            method: 'POST',
+            body: formData
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok && result.success) {
+            updateUploadStatus('Image uploaded successfully!', 'success');
+            // Reload the page to show the new image
+            setTimeout(() => window.location.reload(), 1000);
+          } else {
+            throw new Error(result.error || 'Failed to upload image');
+          }
+        } catch (error) {
+          console.error('Upload error:', error);
+          updateUploadStatus(`Error: ${error.message}`, 'error');
+        }
+      });
+      
+      function updateUploadStatus(message, type = 'info') {
+        if (!uploadStatus) return;
+        
+        uploadStatus.textContent = message;
+        uploadStatus.className = 'text-sm mt-2';
+        
+        if (type === 'error') {
+          uploadStatus.classList.add('text-red-600', 'dark:text-red-400');
+        } else if (type === 'success') {
+          uploadStatus.classList.add('text-green-600', 'dark:text-green-400');
+        } else {
+          uploadStatus.classList.add('text-blue-600', 'dark:text-blue-400');
+        }
+      }
+    }
+    
     // --- 3. EXECUTE INITIALIZATION LOGIC ---
     addAllEventListeners();
     setupImageUpload();
