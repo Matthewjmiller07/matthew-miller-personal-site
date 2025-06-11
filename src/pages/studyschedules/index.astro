@@ -108,7 +108,7 @@ const today = new Date().toISOString().split('T')[0];
     ) : (
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {schedules.map(schedule => (
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+          <div class="schedule-card bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300" data-schedule-name="{schedule.name}">
             <div class="p-6">
               <h3 class="text-lg font-bold mb-2 text-gray-800 dark:text-white">{schedule.name}</h3>
               {schedule.description && (
@@ -157,4 +157,46 @@ const today = new Date().toISOString().split('T')[0];
       </div>
     )}
   </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check for a schedule name in the URL hash
+      const scheduleName = window.location.hash.substring(1);
+      if (scheduleName) {
+        // Find the schedule card with matching name
+        const scheduleCard = document.querySelector(`[data-schedule-name="${scheduleName}"]`);
+        if (scheduleCard) {
+          // Scroll to the schedule card
+          scheduleCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Add highlight class
+          scheduleCard.classList.add('border-primary', 'shadow-lg');
+          
+          // Remove highlight after 5 seconds
+          setTimeout(() => {
+            scheduleCard.classList.remove('border-primary', 'shadow-lg');
+          }, 5000);
+        }
+      }
+    });
+  </script>
 </Layout>
+
+<style>
+  /* Add transition for smooth highlight effect */
+  .schedule-card {
+    transition: all 0.3s ease-in-out;
+  }
+  
+  /* Highlight styles */
+  .border-primary {
+    border-color: #3b82f6 !important;
+    border-width: 2px;
+  }
+  
+  /* Ensure the card has a higher z-index when highlighted */
+  .schedule-card:hover,
+  .schedule-card.highlighted {
+    z-index: 10;
+  }
+</style>

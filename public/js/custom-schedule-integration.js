@@ -62,12 +62,14 @@ async function saveScheduleToGoogleSheets() {
         
         if (response.ok) {
             saveButton.textContent = 'Saved!';
-            showMessage(`Schedule "${scheduleName}" saved successfully! A new sheet named "${result.sheetName}" was created with ${result.entriesAdded} entries.`);
+            const message = `Schedule "${scheduleName}" saved successfully! A new sheet named "${result.sheetName}" was created with ${result.entriesAdded} entries.`;
+            showMessage(message);
             
-            // Reset button text after a delay
+            // Redirect to schedules page with the new schedule highlighted
             setTimeout(() => {
-                saveButton.textContent = originalText;
-            }, 3000);
+                // Navigate to the schedules page with the new schedule highlighted
+                window.location.href = `/studyschedules#${encodeURIComponent(scheduleName)}`;
+            }, 1500);
         } else {
             saveButton.textContent = originalText;
             showMessage(`Error saving schedule: ${result.message || 'Unknown error'}`);
