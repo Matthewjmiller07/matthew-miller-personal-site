@@ -14,7 +14,7 @@ export async function POST({ request }) {
   
   try {
     // Parse request body
-    const { date, reference } = await request.json();
+    const { date, reference, sheet } = await request.json();
     const normalizedDate = date ? date.split('T')[0] : null; // Ensure we just have YYYY-MM-DD
 
     if (!normalizedDate) {
@@ -40,7 +40,11 @@ export async function POST({ request }) {
     // Always use Google Sheets in V2 endpoint
     try {
       console.log('Deleting from Google Sheets directly...');
-      const result = await deleteFromGoogleSheets(normalizedDate, reference);
+      // Get sheet name from request or use default
+      const sheetName = sheet || 'default';
+      console.log(`Using sheet: ${sheetName}`);
+      
+      const result = await deleteFromGoogleSheets(normalizedDate, reference, sheetName);
       
       return new Response(JSON.stringify(result), {
         status: result.success ? 200 : 500,
@@ -72,12 +76,24 @@ export async function POST({ request }) {
 }
 
 // Delete verse note from Google Sheets
-async function deleteFromGoogleSheets(date, reference) {
+async function deleteFromGoogleSheets(date, reference, sheetName = 'default') {
   try {
+    // Determine which sheet/range to use
+    let range;
+    if (sheetName === 'default') {
+      // Use the default sheet range from config
+      range = GOOGLE_SHEETS_CONFIG.range;
+    } else {
+      // Use the specified sheet name
+      range = `${sheetName}!A:Z`; // Use full range
+    }
+    
+    console.log(`Using range: ${range}`);
+    
     // Get existing data from Google Sheets
     const sheetData = await getSheetData(
       GOOGLE_SHEETS_CONFIG.spreadsheetId,
-      GOOGLE_SHEETS_CONFIG.range
+      range
     );
     
     // Log the raw sheet data for debugging
@@ -146,7 +162,7 @@ async function deleteFromGoogleSheets(date, reference) {
     // Write back to Google Sheets
     await updateSheetData(
       GOOGLE_SHEETS_CONFIG.spreadsheetId,
-      GOOGLE_SHEETS_CONFIG.range,
+      range,
       updatedSheetValues
     );
     

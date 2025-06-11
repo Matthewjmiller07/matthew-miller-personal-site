@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // This file handles authentication and basic operations with the Google Sheets API
+// Extended with support for creating and managing multiple sheets
 
 // Initialize the Google Sheets client
 export async function getGoogleSheetsClient() {
@@ -107,6 +108,33 @@ export async function updateSheetData(spreadsheetId, range, values) {
     console.log(`Attempting to update Google Sheet: ${spreadsheetId}, range: ${range}`);
     console.log(`First row data (preview): ${JSON.stringify(values[0])}`);
     
+    // Validate and sanitize values to ensure they are properly formatted for Google Sheets API
+    const sanitizedValues = values.map(row => {
+      // Ensure row is an array
+      if (!Array.isArray(row)) {
+        console.warn('Row is not an array, converting:', row);
+        row = [String(row)];
+      }
+      
+      // Sanitize each cell value in the row
+      return row.map(cell => {
+        if (cell === null || cell === undefined) {
+          return ''; // Convert null/undefined to empty string
+        } else if (typeof cell === 'object') {
+          try {
+            return JSON.stringify(cell); // Convert objects to JSON strings
+          } catch (e) {
+            console.warn('Failed to stringify object:', e);
+            return String(cell);
+          }
+        } else {
+          return String(cell); // Ensure all other values are strings
+        }
+      });
+    });
+    
+    console.log(`Sanitized first row data (preview): ${JSON.stringify(sanitizedValues[0])}`);
+    
     const sheets = await getGoogleSheetsClient();
     
     // Log the auth client details (without sensitive info)
@@ -122,7 +150,7 @@ export async function updateSheetData(spreadsheetId, range, values) {
       spreadsheetId,
       range,
       valueInputOption: 'RAW',
-      resource: { values },
+      resource: { values: sanitizedValues },
     });
     
     console.log('Google Sheets update successful!');
@@ -138,6 +166,89 @@ export async function updateSheetData(spreadsheetId, range, values) {
     if (error.errors) {
       console.error('API errors:', error.errors);
     }
+    throw error;
+  }
+}
+
+// Create a new sheet in the spreadsheet
+export async function createSheet(spreadsheetId, sheetTitle, headers = ['Date', 'DayOfWeek', 'Reading', 'Notes', 'VerseNotes', 'Images']) {
+  try {
+    console.log(`Creating new sheet '${sheetTitle}' in spreadsheet: ${spreadsheetId}`);
+    
+    const sheets = await getGoogleSheetsClient();
+    
+    // First check if sheet already exists
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId
+    });
+    
+    const existingSheets = spreadsheet.data.sheets.map(sheet => sheet.properties.title);
+    
+    if (existingSheets.includes(sheetTitle)) {
+      throw new Error(`Sheet '${sheetTitle}' already exists in this spreadsheet`);
+    }
+    
+    // Add a new sheet
+    const addSheetRequest = {
+      spreadsheetId,
+      resource: {
+        requests: [{
+          addSheet: {
+            properties: {
+              title: sheetTitle
+            }
+          }
+        }]
+      }
+    };
+    
+    await sheets.spreadsheets.batchUpdate(addSheetRequest);
+    console.log(`Sheet '${sheetTitle}' created successfully`);
+    
+    // Add headers to the new sheet
+    const range = `${sheetTitle}!A1:${String.fromCharCode(64 + headers.length)}1`;
+    
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range,
+      valueInputOption: 'RAW',
+      resource: {
+        values: [headers]
+      }
+    });
+    
+    console.log(`Headers added to sheet '${sheetTitle}'`);
+    return { success: true, sheetTitle, range };
+    
+  } catch (error) {
+    console.error('Error creating sheet:', error);
+    throw error;
+  }
+}
+
+// Get list of all sheets in a spreadsheet
+export async function listSheets(spreadsheetId) {
+  try {
+    console.log(`Listing all sheets in spreadsheet: ${spreadsheetId}`);
+    
+    const sheets = await getGoogleSheetsClient();
+    
+    const response = await sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: 'sheets.properties'
+    });
+    
+    const sheetList = response.data.sheets.map(sheet => ({
+      id: sheet.properties.sheetId,
+      title: sheet.properties.title,
+      index: sheet.properties.index
+    }));
+    
+    console.log(`Found ${sheetList.length} sheets`);
+    return sheetList;
+    
+  } catch (error) {
+    console.error('Error listing sheets:', error);
     throw error;
   }
 }

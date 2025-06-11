@@ -26,8 +26,10 @@ export async function POST({ request }) {
 
   try {
     // Parse request body
-    const { date, verseNotes, notes } = await request.json();
+    const { date, verseNotes, notes, sheet: schedule = 'default' } = await request.json();
     const normalizedDate = date ? date.split('T')[0] : null; // Ensure we just have YYYY-MM-DD
+    
+    console.log(`Saving notes for date: ${normalizedDate}, schedule: ${schedule}`);
 
     if (!normalizedDate) {
       return new Response(JSON.stringify({
@@ -58,7 +60,7 @@ export async function POST({ request }) {
           useInProduction: GOOGLE_SHEETS_CONFIG.useInProduction
         }));
         
-        saveResult = await saveToGoogleSheets(normalizedDate, verseNotes, notes);
+        saveResult = await saveToGoogleSheets(normalizedDate, verseNotes, notes, schedule);
         
         // If we got here, Google Sheets save was successful
         console.log('Successfully saved to Google Sheets');
@@ -111,12 +113,26 @@ export async function POST({ request }) {
 }
 
 // Save to Google Sheets
-async function saveToGoogleSheets(date, verseNotes, notes) {
+async function saveToGoogleSheets(date, verseNotes, notes, schedule = 'default') {
   try {
+    // Determine which sheet/range to use based on the schedule parameter
+    let range;
+    if (schedule === 'default' || !schedule) {
+      // Default to 'Aviya' sheet if no specific schedule is provided
+      range = 'Aviya!A:Z';
+      console.log('Using default Aviya sheet for saving');
+    } else {
+      // Use the specified sheet name with full column range
+      range = `${schedule}!A:Z`;
+      console.log(`Using custom sheet for saving: ${range}`);
+    }
+      
+    console.log(`Using sheet range: ${range}`);
+    
     // Get existing data from Google Sheets
     const sheetData = await getSheetData(
       GOOGLE_SHEETS_CONFIG.spreadsheetId,
-      GOOGLE_SHEETS_CONFIG.range
+      range
     );
     
     // Log the raw sheet data for debugging
@@ -165,9 +181,11 @@ async function saveToGoogleSheets(date, verseNotes, notes) {
     // Write back to Google Sheets
     await updateSheetData(
       GOOGLE_SHEETS_CONFIG.spreadsheetId,
-      GOOGLE_SHEETS_CONFIG.range,
+      range,
       updatedSheetValues
     );
+    
+    console.log(`Successfully updated record for date ${date} in sheet: ${range}`);
     
     console.log(`Successfully updated record for date ${date} in Google Sheets`);
     return { 

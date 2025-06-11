@@ -20,7 +20,8 @@ export const GOOGLE_SHEETS_CONFIG = {
   spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID || '1rscI-ubLqs-4Zg8lWB5SLIHE0ngIUm74zTP2jQZpFnQ',
   
   // The range or tab name where your schedule data is stored
-  range: process.env.GOOGLE_SPREADSHEET_RANGE || 'aviya2!A1:Z1000',
+  // Note: 'default' will be replaced with the actual sheet name in the code
+  range: process.env.GOOGLE_SPREADSHEET_RANGE || 'default!A1:Z1000',
   
   // How many retry attempts for Google Sheets operations
   maxRetries: 3,

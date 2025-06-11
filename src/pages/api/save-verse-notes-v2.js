@@ -8,13 +8,12 @@ const isServerless = Boolean(process.env.NETLIFY || process.env.VERCEL || proces
 export async function POST({ request }) {
   console.log('============== SAVE VERSE NOTES V2 ==============');
   console.log('Environment details:');
-  console.log('- CWD:', process.cwd());
   console.log('- Is development:', isDev ? 'Yes' : 'No');
   console.log('- Is serverless:', isServerless ? 'Yes' : 'No');
   
   try {
     // Parse request body
-    const { date, verseNotes, notes } = await request.json();
+    const { date, verseNotes, notes, sheet } = await request.json();
     const normalizedDate = date ? date.split('T')[0] : null; // Ensure we just have YYYY-MM-DD
 
     if (!normalizedDate) {
@@ -35,7 +34,11 @@ export async function POST({ request }) {
     // Always save directly to Google Sheets in V2 endpoint
     try {
       console.log('Saving to Google Sheets directly...');
-      const result = await saveToGoogleSheets(normalizedDate, verseNotes, notes);
+      // Get sheet name from request or use default
+      const sheetName = sheet || 'default';
+      console.log(`Using sheet: ${sheetName}`);
+      
+      const result = await saveToGoogleSheets(normalizedDate, verseNotes, notes, sheetName);
       
       return new Response(JSON.stringify(result), {
         status: result.success ? 200 : 500,
@@ -66,13 +69,27 @@ export async function POST({ request }) {
   }
 }
 
-// Save to Google Sheets
-async function saveToGoogleSheets(date, verseNotes, notes) {
+// Save notes to Google Sheets
+async function saveToGoogleSheets(date, verseNotes, notes, sheetName = 'default') {
   try {
+    // Determine which sheet/range to use based on the schedule parameter
+    let range;
+    if (sheetName === 'default' || !sheetName) {
+      // Default to 'Aviya' sheet if no specific schedule is provided
+      range = 'Aviya!A:Z';
+      console.log('Using default Aviya sheet for saving (v2)');
+    } else {
+      // Use the specified sheet name with full column range
+      range = `${sheetName}!A:Z`;
+      console.log(`Using custom sheet for saving (v2): ${range}`);
+    }
+    
+    console.log(`Using range: ${range}`);
+    
     // Get existing data from Google Sheets
     const sheetData = await getSheetData(
       GOOGLE_SHEETS_CONFIG.spreadsheetId,
-      GOOGLE_SHEETS_CONFIG.range
+      range
     );
     
     // Log the raw sheet data for debugging
@@ -121,7 +138,7 @@ async function saveToGoogleSheets(date, verseNotes, notes) {
     // Write back to Google Sheets
     await updateSheetData(
       GOOGLE_SHEETS_CONFIG.spreadsheetId,
-      GOOGLE_SHEETS_CONFIG.range,
+      range,
       updatedSheetValues
     );
     
