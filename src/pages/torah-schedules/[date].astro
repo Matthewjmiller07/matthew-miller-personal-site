@@ -86,9 +86,9 @@ let currentScheduleName = scheduleName === 'default' ? 'Original Aviya Schedule'
 // Track where the data came from for debugging
 let dataSource = 'csv';
 
+let records = [];
 try {
   // Determine which data source to use
-  let records = [];
   
   console.log(`Loading schedule: ${scheduleName}`);
   
@@ -295,6 +295,44 @@ try {
       <span class="english-ui">{dayOfWeek}</span>
       <span class="hebrew-ui hidden">{hebrewTranslations[dayOfWeek] || dayOfWeek}</span>
     </h2>
+
+    <!-- Calendar Date Picker -->
+    <div class="mb-8 flex items-center space-x-4">
+      <label for="schedule-date-picker" class="font-medium">
+        <span class="english-ui">Jump to Date:</span>
+        <span class="hebrew-ui hidden">בחר תאריך</span>
+      </label>
+      <input
+        id="schedule-date-picker"
+        type="date"
+        class="border rounded px-2 py-1 dark:bg-gray-800 dark:text-white"
+        value={dateParam}
+        min={records[0]?._normalizedDate}
+        max={records[records.length-1]?._normalizedDate}
+        list="schedule-date-list"
+      />
+      <datalist id="schedule-date-list">
+        {records.map(r => <option value={r._normalizedDate}></option>)}
+      </datalist>
+    </div>
+    <script is:inline>
+      // Calendar picker navigation logic
+      document.addEventListener('DOMContentLoaded', function() {
+        const picker = document.getElementById('schedule-date-picker');
+        if (picker) {
+          picker.addEventListener('change', function() {
+            const selectedDate = picker.value;
+            if (selectedDate) {
+              const params = new URLSearchParams(window.location.search);
+              const scheduleName = params.get('schedule') || '';
+              let url = `/torah-schedules/${selectedDate}`;
+              if (scheduleName) url += `?schedule=${encodeURIComponent(scheduleName)}`;
+              window.location.href = url;
+            }
+          });
+        }
+      });
+    </script>
     
     <!-- Navigation between days -->
     <div class="flex justify-between mb-8">
