@@ -181,7 +181,7 @@ try {
     console.log(`First date readings: ${records[0].Reading}`);
     
     // Force redirect to the first valid date from the CSV
-    return Astro.redirect(`/aviya-schedule/${firstCSVDate}`);
+    return Astro.redirect(`/torah-schedules/${firstCSVDate}?schedule=${encodeURIComponent(scheduleName)}`);
   }
   
   // We found the date - let's ensure we're showing the right record
@@ -368,7 +368,7 @@ try {
     </div>
     
     <!-- Text content from Sefaria -->
-    <div class="mb-10">
+    <div class="mb-10 text-container">
       <div class="flex justify-between items-center mb-6">
         <h3 class="text-2xl font-semibold">
           <span class="english-ui">Text Content</span>
@@ -703,6 +703,17 @@ try {
   .hidden {
     display: none;
   }
+  
+  .grid.single-lang {
+    display: block !important;
+    grid-template-columns: none !important;
+  }
+  .grid.single-lang .hebrew-text,
+  .grid.single-lang .english-text {
+    width: 100%;
+    max-width: 100%;
+    display: block;
+  }
 </style>
 
 <script is:inline>
@@ -737,7 +748,7 @@ try {
         currentDateParam = pathParts[3];
         currentSchedule = pathParts[2]; // Keep the original schedule name
       } else {
-        // Old format: /aviya-schedule/[date]?schedule=...
+        // Old format: /torah-schedules/[date]?schedule=...
         currentDateParam = pathParts[1];
         currentSchedule = urlParams.get('schedule') || 'Aviya'; // Default to 'Aviya' if not specified
       }
@@ -757,89 +768,165 @@ try {
       return;
     }
 
+   function translateReferenceToHebrew(reference) {
+  const bookMap = {
+    'Genesis': 'בראשית',
+    'Exodus': 'שמות',
+    'Leviticus': 'ויקרא',
+    'Numbers': 'במדבר',
+    'Deuteronomy': 'דברים'
+  };
+  
+  let hebrewReference = reference;
+  Object.entries(bookMap).forEach(([english, hebrew]) => {
+    if (reference.includes(english)) {
+      hebrewReference = reference.replace(english, hebrew);
+    }
+  });
+  
+  return hebrewReference;
+}
+
     // --- 2. DEFINE ALL HELPER FUNCTIONS ---
 
     // Fetches text content from the Sefaria API with a retry mechanism.
     // Fetches text content from the Sefaria API with a retry mechanism.
+    // Fetches text content from the Sefaria API and dynamically builds verse-by-verse layouts for chapters.
+    // Fetches text content from the Sefaria API and dynamically builds verse-by-verse layouts for chapters.
     async function fetchSefariaTexts() {
-      console.log("Attempting to fetch Sefaria texts...");
+      console.log("Attempting to fetch Sefaria texts with chapter support...");
       try {
-        // Get all the individual verse/chapter containers. The ID is the most reliable selector.
         const containers = document.querySelectorAll('div[id^="verse-"]');
         if (containers.length === 0) {
-          console.warn('No verse containers found on the page. Sefaria fetch cannot proceed.');
+          console.warn('No verse containers found. Sefaria fetch cannot proceed.');
           return;
         }
-        
-        console.log(`Found ${containers.length} verse containers to populate.`);
+        
+        console.log(`Found ${containers.length} reading containers to populate.`);
 
-        // Create a list of fetch promises, one for each reference
         const fetchPromises = Array.from(containers).map(container => {
           const referenceElement = container.querySelector('h4 .english-ui, h3 .english-ui');
-          if (!referenceElement) {
-            console.warn('Could not find reference element in container:', container);
-            return null; // Skip this container if it's malformed
-          }
-          const reference = referenceElement.textContent.trim();
-          const apiUrl = `https://www.sefaria.org/api/texts/${reference.replace(/\s/g, '.')}?context=0`;
-          
-          console.log(`Preparing to fetch for reference: "${reference}" from URL: ${apiUrl}`);
+          if (!referenceElement) return null;
+          
+          const reference = referenceElement.textContent.trim();
+          const apiUrl = `https://www.sefaria.org/api/texts/${reference.replace(/\s/g, '.')}?context=0`;
 
           return fetch(apiUrl)
-            .then(response => {
-              if (!response.ok) {
-                // Throw an error to be caught by the .catch block
-                throw new Error(`HTTP error! status: ${response.status} for ${reference}`);
-              }
+            .then(response => {
+              if (!response.ok) throw new Error(`HTTP ${response.status} for ${reference}`);
               return response.json();
             })
-            .then(data => ({ reference, data, container })) // Pass data and the container along
-            .catch(error => {
-              console.error(`Error fetching or parsing Sefaria data for ${reference}:`, error);
-              return { reference, error, container }; // Handle individual errors gracefully
-            });
+            .then(data => ({ reference, data, container }))
+            .catch(error => ({ reference, error, container }));
         });
 
-        // Wait for all fetches to complete
         const results = await Promise.all(fetchPromises.filter(p => p !== null));
-
         console.log(`Successfully settled ${results.length} fetches from Sefaria.`);
 
         // Now, update the DOM with the results
         results.forEach(result => {
-          const { reference, data, error, container } = result;
+          const { reference, data, error, container } = result;
 
-          const hebrewTextDiv = container.querySelector('.hebrew-text');
-          const englishTextDiv = container.querySelector('.english-text');
+          if (error) {
+            container.innerHTML = `<div class="text-red-500 p-4">Error loading text for ${reference}: ${error.message}</div>`;
+            return;
+          }
 
-          if (error) {
-            // If an error occurred for this specific reference, display it
-            if (hebrewTextDiv) hebrewTextDiv.innerHTML = `<div class="text-red-500 italic">שגיאה בטעינת הטקסט</div>`;
-            if (englishTextDiv) englishTextDiv.innerHTML = `<div class="text-red-500 italic">Error loading text: ${error.message}</div>`;
-            return; // Move to the next result
-          }
-          
-          // Sefaria returns text/he as an array for chapters and a string for verses.
-          const hebrewText = Array.isArray(data.he) ? data.he.join('<br>') : data.he;
-          const englishText = Array.isArray(data.text) ? data.text.join('<br>') : data.text;
+          const isChapter = Array.isArray(data.he) && Array.isArray(data.text);
 
-          // Update the text content
-          if (hebrewTextDiv && hebrewText) {
-            hebrewTextDiv.innerHTML = hebrewText;
-          } else if (hebrewTextDiv) {
-            hebrewTextDiv.innerHTML = `<div class="text-gray-500 italic">Hebrew text not available.</div>`;
-          }
+          if (isChapter) {
+            console.log(`Rendering "${reference}" as a full chapter.`);
+            
+            // *** THE FIX ***
+            // 1. Clear the entire container to remove any old titles or placeholders.
+            container.innerHTML = '';
 
-          if (englishTextDiv && englishText) {
-            englishTextDiv.innerHTML = englishText;
-          } else if (englishTextDiv) {
-            englishTextDiv.innerHTML = `<div class="text-gray-500 italic">English text not available.</div>`;
-          }
+            // 2. Create a new container element to hold everything.
+            const newContentWrapper = document.createElement('div');
+            
+            // 3. Add the main chapter title ONCE to the new container.
+            newContentWrapper.innerHTML = `
+              <h3 class="text-xl font-bold mb-4">
+                <span class="english-ui">${reference}</span>
+                <span class="hebrew-ui hidden">${translateReferenceToHebrew(reference)}</span>
+              </h3>
+            `;
+
+            // 4. Create a sub-container for the list of verses.
+            const versesListContainer = document.createElement('div');
+            versesListContainer.className = 'space-y-6 mt-4';
+
+            data.he.forEach((hebrewVerse, index) => {
+              const englishVerse = data.text[index];
+              const verseNum = index + 1;
+              const chapterNum = data.sections[0];
+              const verseReference = `${data.book} ${chapterNum}:${verseNum}`;
+              const existingNote = window.currentVerseNotesData[verseReference] || '';
+
+              // Add the HTML for each verse to the list container.
+              versesListContainer.innerHTML += createVerseHTML(verseReference, hebrewVerse, englishVerse, existingNote);
+            });
+            
+            // 5. Append the list of verses to the main wrapper.
+            newContentWrapper.appendChild(versesListContainer);
+
+            // 6. Finally, append the fully constructed wrapper to the now-empty main container.
+            container.appendChild(newContentWrapper);
+
+          } else {
+            console.log(`Rendering "${reference}" as a single verse/range.`);
+            // This logic for single verses remains the same.
+            const hebrewTextDiv = container.querySelector('.hebrew-text');
+            const englishTextDiv = container.querySelector('.english-text');
+            if (hebrewTextDiv) hebrewTextDiv.innerHTML = data.he || '<i>Text not available.</i>';
+            if (englishTextDiv) englishTextDiv.innerHTML = data.text || '<i>Text not available.</i>';
+          }
         });
+
+        console.log('Sefaria text rendering complete.');
+
       } catch (error) {
         console.error('A critical error occurred in fetchSefariaTexts:', error);
       }
     }
+
+    // *** NEW HELPER FUNCTION ***
+    // Creates the complete HTML for a single verse block.
+    function createVerseHTML(reference, hebrewText, englishText, noteText) {
+      const hebrewReference = translateReferenceToHebrew(reference); // Assumes translateReferenceToHebrew is available
+      return `
+        <div class="verse-block p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+          <h4 class="text-lg font-semibold mb-2">
+            <span class="english-ui">${reference}</span>
+            <span class="hebrew-ui hidden">${hebrewReference}</span>
+          </h4>
+          <div class="grid md:grid-cols-2 gap-6">
+            <div dir="rtl" lang="he" class="font-serif text-lg leading-relaxed hebrew-text">${hebrewText || '<i>Text not available.</i>'}</div>
+            <div class="font-serif text-lg leading-relaxed english-text">${englishText || '<i>Text not available.</i>'}</div>
+          </div>
+          <div class="mt-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <span class="english-ui">Notes for ${reference}</span>
+              <span class="hebrew-ui hidden">הערות ל${hebrewReference}</span>
+            </label>
+            <textarea 
+              class="verse-note w-full h-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-black dark:text-white"
+              data-reference="${reference}"
+              placeholder="Add your notes for this verse..."
+            >${noteText}</textarea>
+            <div class="flex justify-end mt-2">
+              <button 
+                class="save-note-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm" 
+                data-reference="${reference}"
+              >
+                <span class="english-ui">Save Note</span>
+                <span class="hebrew-ui hidden">שמור הערה</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
     // Loads general and verse-specific notes from your API.
     // Loads general and verse-specific notes from your API.
@@ -1025,13 +1112,9 @@ try {
         }
       }, true);
       
-      // Language toggle for text content
+      // Language toggle for verse text only
       const langButtons = document.querySelectorAll('.lang-toggle');
-      const textContainer = document.querySelector('.text-container');
-      const englishElements = document.querySelectorAll('.english-ui');
-      const hebrewElements = document.querySelectorAll('.hebrew-ui');
-      
-      if (langButtons.length && textContainer) {
+      if (langButtons.length) {
         langButtons.forEach(button => {
           button.addEventListener('click', () => {
             langButtons.forEach(btn => {
@@ -1041,9 +1124,20 @@ try {
             button.classList.add('active', 'bg-blue-600', 'text-white');
             button.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-black', 'dark:text-white');
 
-            textContainer.classList.remove('hebrew-only', 'english-only');
-            if (button.id === 'hebrewOnly') textContainer.classList.add('hebrew-only');
-            else if (button.id === 'englishOnly') textContainer.classList.add('english-only');
+            const grids = document.querySelectorAll('.grid.md\\:grid-cols-2');
+            if (button.id === 'hebrewOnly') {
+              document.querySelectorAll('.hebrew-text').forEach(el => el.style.display = 'block');
+              document.querySelectorAll('.english-text').forEach(el => el.style.display = 'none');
+              grids.forEach(grid => grid.classList.add('single-lang'));
+            } else if (button.id === 'englishOnly') {
+              document.querySelectorAll('.hebrew-text').forEach(el => el.style.display = 'none');
+              document.querySelectorAll('.english-text').forEach(el => el.style.display = 'block');
+              grids.forEach(grid => grid.classList.add('single-lang'));
+            } else {
+              document.querySelectorAll('.hebrew-text').forEach(el => el.style.display = 'block');
+              document.querySelectorAll('.english-text').forEach(el => el.style.display = 'block');
+              grids.forEach(grid => grid.classList.remove('single-lang'));
+            }
           });
         });
       }
