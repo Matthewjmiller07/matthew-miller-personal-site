@@ -211,7 +211,17 @@ async function saveToGoogleSheets(date, verseNotes, notes, schedule = 'default')
     
   } catch (error) {
     console.error('Error saving to Google Sheets:', error);
-    throw error;
+    // Return error details in the API response for debugging
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message: 'Error saving to Google Sheets',
+        error: error.message || String(error),
+        stack: error.stack || null,
+        errorObj: JSON.stringify(error, Object.getOwnPropertyNames(error))
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }
 
