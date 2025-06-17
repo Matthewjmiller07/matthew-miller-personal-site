@@ -1095,9 +1095,14 @@ try {
           body: JSON.stringify(payload),
         });
 
+        // Always try to parse the response body, whether successful or not
+        const responseData = await response.json();
+        
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Server responded with status ${response.status}`);
+          // Create an enhanced error with the response data attached
+          const error = new Error(responseData.error || responseData.message || `Server responded with status ${response.status}`);
+          error.errorData = responseData; // Attach the full error data for detailed error handling
+          throw error;
         }
 
         // --- SUCCESS FEEDBACK ---
@@ -1109,9 +1114,43 @@ try {
       } catch (error) {
         // --- ERROR FEEDBACK ---
         console.error(`Failed to save note for ${reference}:`, error);
-        saveButton.innerHTML = '<span class="english-ui">Error</span><span class="hebrew-ui hidden">שגיאה</span>';
+        
+        // Get detailed error info if available
+        let errorMessage = error.message || 'Unknown error';
+        
+        // Try to parse more detailed error information from the response
+        try {
+          if (error.errorData) {
+            // Log all error details for debugging
+            console.error('Server error details:', error.errorData);
+            
+            // Create a more informative error message
+            if (error.errorData.error) {
+              errorMessage = `Error: ${error.errorData.error}`;
+            }
+            
+            // If we have detailed error info from Google Sheets, display it
+            if (error.errorData.details?.errorObj) {
+              try {
+                const parsedError = JSON.parse(error.errorData.details.errorObj);
+                if (parsedError.errors && parsedError.errors.length > 0) {
+                  const gsError = parsedError.errors[0];
+                  errorMessage = `Google Sheets API Error: ${gsError.message} (${gsError.reason})`;
+                }
+              } catch (e) {
+                console.error('Failed to parse Google Sheets error details', e);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Failed to process error details', e);
+        }
+        
+        // Show error state in the UI
+        saveButton.innerHTML = `<span class="english-ui">Error: ${errorMessage.slice(0, 20)}${errorMessage.length > 20 ? '...' : ''}</span><span class="hebrew-ui hidden">שגיאה</span>`;
         saveButton.classList.remove('bg-blue-600');
         saveButton.classList.add('bg-red-600');
+        saveButton.title = errorMessage; // Show full error on hover
         alert(`Could not save note for ${reference}. Error: ${error.message}`);
 
       } finally {

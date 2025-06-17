@@ -133,40 +133,50 @@ export async function updateSheetData(spreadsheetId, range, values) {
       });
     });
     
-    console.log(`Sanitized first row data (preview): ${JSON.stringify(sanitizedValues[0])}`);
-    
     const sheets = await getGoogleSheetsClient();
     
-    // Log the auth client details (without sensitive info)
+    // Log auth details (safely)
     const auth = sheets.context._options.auth;
-    console.log('Auth client info:', {
-      type: auth.constructor.name,
-      credentials: auth.key ? 'Present' : 'Missing',
-      scopes: auth.scopes,
-      email: auth.email
-    });
+    console.log('Auth type:', auth.constructor.name);
+    console.log('Using service account:', auth.email || auth.subject || '(unknown)');
+    console.log('Scopes:', auth.scopes || '(unknown)');
     
-    const response = await sheets.spreadsheets.values.update({
+    // Perform the update
+    console.log('Making API call to update sheet data...');
+    const result = await sheets.spreadsheets.values.update({
       spreadsheetId,
       range,
       valueInputOption: 'RAW',
       resource: { values: sanitizedValues },
     });
     
-    console.log('Google Sheets update successful!');
-    return response.data;
-  } catch (error) {
-    console.error('Error updating sheet data:', error);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      status: error.status,
-      statusText: error.statusText
-    });
-    if (error.errors) {
-      console.error('API errors:', error.errors);
+    console.log('Update successful! Status:', result.status);
+    return result;
+  } catch (err) {
+    // Enhanced error handling
+    console.error('Google Sheets API error:', err.message);
+    console.error('Error details:', JSON.stringify(err.errors || err, null, 2));
+    
+    // Check for specific error types
+    if (err.code === 403) {
+      console.error('PERMISSION ERROR: The service account lacks write permission to this sheet');
+    } else if (err.code === 404) {
+      console.error('NOT FOUND ERROR: The spreadsheet or range does not exist');
+    } else if (err.code === 400) {
+      console.error('BAD REQUEST: The data format may be incorrect');
     }
-    throw error;
+    
+    // Log all error properties
+    console.error('Full error details:', {
+      message: err.message,
+      code: err.code,
+      status: err.status,
+      statusText: err.statusText
+    });
+    if (err.errors) {
+      console.error('API errors:', err.errors);
+    }
+    throw err;
   }
 }
 

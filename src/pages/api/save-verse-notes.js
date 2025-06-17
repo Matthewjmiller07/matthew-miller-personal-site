@@ -91,12 +91,24 @@ export async function POST({ request }) {
       saveResult = await saveToLocalCsv(normalizedDate, verseNotes, notes);
     }
 
-    // Return the result
-    return new Response(JSON.stringify({
+    // Return the result with enhanced error information
+    const responseBody = {
       success: saveResult.success,
       message: saveResult.message,
       dataSource: saveResult.dataSource
-    }), {
+    };
+    
+    // Include detailed error information if available (for client-side debugging)
+    if (!saveResult.success) {
+      responseBody.error = saveResult.error || 'Unknown error';
+      
+      // Add detailed debugging info if available
+      if (saveResult.details) {
+        responseBody.details = saveResult.details;
+      }
+    }
+    
+    return new Response(JSON.stringify(responseBody), {
       status: saveResult.success ? 200 : 500,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -211,17 +223,21 @@ async function saveToGoogleSheets(date, verseNotes, notes, schedule = 'default')
     
   } catch (error) {
     console.error('Error saving to Google Sheets:', error);
-    // Return error details in the API response for debugging
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: 'Error saving to Google Sheets',
-        error: error.message || String(error),
-        stack: error.stack || null,
+    console.error('Stack trace:', error.stack);
+    
+    // Return a properly formatted error object (not a Response object)
+    // This will be handled by the main API handler
+    return {
+      success: false,
+      message: `Error saving to Google Sheets: ${error.message}`,
+      error: error.message || String(error),
+      dataSource: 'google-sheets-error',
+      // Include detailed error info for debugging
+      details: {
+        stack: error.stack,
         errorObj: JSON.stringify(error, Object.getOwnPropertyNames(error))
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+      }
+    };
   }
 }
 
