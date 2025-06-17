@@ -413,6 +413,7 @@ function handleTanachSelectionChange() {
         if (chidonDivisionGroup) chidonDivisionGroup.style.display = 'none';
         if (childScheduleGroup) childScheduleGroup.style.display = 'none';
 
+        populateBookSelections(); // Ensure the dropdown is populated immediately
         resetDatePickers();
         if (timeframeGroup && timeframeCheckbox) timeframeGroup.style.display = timeframeCheckbox.checked ? 'block' : 'none';
         if (chaptersPerDayGroup && chaptersPerDayCheckbox) chaptersPerDayGroup.style.display = chaptersPerDayCheckbox.checked ? 'block' : 'none';
