@@ -160,7 +160,17 @@ async function saveToGoogleSheets(date, verseNotes, notes, schedule = 'default')
     
     if (recordIndex === -1) {
       console.log(`No record found for date ${date}, cannot update`);
-      console.log(`Available dates in first 10 records:`, allRecords.slice(0, 10).map(r => r.Date));
+      const allDates = allRecords.map(r => r.Date);
+      const uniqueDates = Array.from(new Set(allDates));
+      console.log('--- DEBUGGING DATE MATCH ---');
+      console.log('Searched for date:', JSON.stringify(date), 'type:', typeof date);
+      console.log('All dates in sheet:', allDates);
+      console.log('Unique dates in sheet:', uniqueDates);
+      console.log('Headers:', Object.keys(allRecords[0] || {}));
+      allRecords.forEach((r, idx) => {
+        console.log(`Row ${idx}:`, JSON.stringify(r.Date), 'type:', typeof r.Date);
+      });
+      console.log('--- END DEBUG ---');
       return { 
         success: false, 
         message: `Date ${date} not found in schedule`,
