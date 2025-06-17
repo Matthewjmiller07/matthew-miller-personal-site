@@ -187,22 +187,27 @@ async function saveToGoogleSheets(date, verseNotes, notes, schedule = 'default')
     
     // Convert back to sheet values format
     const updatedSheetValues = csvToSheetValues(allRecords);
-    
-    // Write back to Google Sheets
-    await updateSheetData(
-      GOOGLE_SHEETS_CONFIG.spreadsheetId,
-      range,
-      updatedSheetValues
-    );
-    
-    console.log(`Successfully updated record for date ${date} in sheet: ${range}`);
-    
-    console.log(`Successfully updated record for date ${date} in Google Sheets`);
-    return { 
-      success: true, 
-      message: 'Notes saved to Google Sheets',
-      dataSource: 'google-sheets'
-    };
+    console.log('About to update sheet. Preview of updatedSheetValues[0]:', JSON.stringify(updatedSheetValues[0]));
+    console.log('Preview of updatedSheetValues[last]:', JSON.stringify(updatedSheetValues[updatedSheetValues.length - 1]));
+    console.log('Total rows to write:', updatedSheetValues.length);
+    try {
+      // Write back to Google Sheets
+      await updateSheetData(
+        GOOGLE_SHEETS_CONFIG.spreadsheetId,
+        range,
+        updatedSheetValues
+      );
+      console.log(`Successfully updated record for date ${date} in sheet: ${range}`);
+      console.log(`Successfully updated record for date ${date} in Google Sheets`);
+      return { 
+        success: true, 
+        message: 'Notes saved to Google Sheets',
+        dataSource: 'google-sheets'
+      };
+    } catch (err) {
+      console.error('Error during updateSheetData:', err);
+      throw err;
+    }
     
   } catch (error) {
     console.error('Error saving to Google Sheets:', error);
