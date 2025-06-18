@@ -33,7 +33,8 @@ export const GOOGLE_SHEETS_CONFIG = {
   useInDevelopment: true,
   
   // Whether to fall back to local CSV if Google Sheets fails
-  useLocalCsvFallback: true,
+  // Setting to false to never use CSV
+  useLocalCsvFallback: false,
 };
 
 // Local CSV configuration
@@ -56,8 +57,5 @@ export const ENV = {
 };
 
 // Should we use Google Sheets based on current environment?
-export const shouldUseGoogleSheets = 
-  (isProduction && GOOGLE_SHEETS_CONFIG.useInProduction) || 
-  (isDevelopment && GOOGLE_SHEETS_CONFIG.useInDevelopment) || 
-  // Allow override via environment variable
-  process.env.USE_GOOGLE_SHEETS === 'true';
+// Always use Google Sheets regardless of environment
+export const shouldUseGoogleSheets = true;

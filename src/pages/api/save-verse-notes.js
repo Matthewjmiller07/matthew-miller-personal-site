@@ -49,46 +49,33 @@ export async function POST({ request }) {
 
     console.log('Save environment check:', { isServerless, isDev, isServerlessProd });
 
-    if (useGoogleSheets) {
-      // Try to save to Google Sheets
-      try {
-        console.log('Attempting to save data to Google Sheets...');
-        console.log('Google Sheets config:', JSON.stringify({
-          spreadsheetId: GOOGLE_SHEETS_CONFIG.spreadsheetId,
-          range: GOOGLE_SHEETS_CONFIG.range,
-          useInDevelopment: GOOGLE_SHEETS_CONFIG.useInDevelopment,
-          useInProduction: GOOGLE_SHEETS_CONFIG.useInProduction
-        }));
-        
-        saveResult = await saveToGoogleSheets(normalizedDate, verseNotes, notes, schedule);
-        
-        // If we got here, Google Sheets save was successful
-        console.log('Successfully saved to Google Sheets');
-      } catch (error) {
-        console.error('Error saving to Google Sheets:', error);
-        console.error('Stack trace:', error.stack);
-        
-        if (isServerlessProd) {
-          // In production serverless, don't try to fall back to CSV (read-only filesystem)
-          console.error('In production environment - cannot fall back to local CSV (read-only filesystem)');
-          return new Response(JSON.stringify({
-            success: false,
-            message: `Failed to save to Google Sheets: ${error.message}`,
-            dataSource: 'google-sheets-failed'
-          }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        } else {
-          // Only in development, fall back to local CSV
-          console.log('In development environment - falling back to local CSV');
-          saveResult = await saveToLocalCsv(normalizedDate, verseNotes, notes);
-        }
-      }
-    } else {
-      // Use local CSV
-      console.log('Google Sheets is disabled, using local CSV');
-      saveResult = await saveToLocalCsv(normalizedDate, verseNotes, notes);
+    // Always try to save to Google Sheets (CSV option has been removed)
+    try {
+      console.log('Attempting to save data to Google Sheets...');
+      console.log('Google Sheets config:', JSON.stringify({
+        spreadsheetId: GOOGLE_SHEETS_CONFIG.spreadsheetId,
+        range: GOOGLE_SHEETS_CONFIG.range,
+        useInDevelopment: GOOGLE_SHEETS_CONFIG.useInDevelopment,
+        useInProduction: GOOGLE_SHEETS_CONFIG.useInProduction
+      }));
+      
+      saveResult = await saveToGoogleSheets(normalizedDate, verseNotes, notes, schedule);
+      
+      // If we got here, Google Sheets save was successful
+      console.log('Successfully saved to Google Sheets');
+    } catch (error) {
+      console.error('Error saving to Google Sheets:', error);
+      console.error('Stack trace:', error.stack);
+      
+      return new Response(JSON.stringify({
+        success: false,
+        message: `Failed to save to Google Sheets: ${error.message}`,
+        dataSource: 'google-sheets-failed',
+        error: 'Failed to save notes. Please ensure Google Sheets credentials are properly configured.'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     // Return the result with enhanced error information
