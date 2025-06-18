@@ -1,0 +1,182 @@
+---
+import Layout from "../layouts/Layout.astro";
+const pageTitle = "Chicago vs Hollywood (FL) – Temperature Comparison";
+---
+
+<Layout title={pageTitle}>
+
+  <!-- Extra <head> content -->
+  <Fragment slot="head">
+    <meta name="description" content="Compare historical temperatures between Chicago and Hollywood, FL." />
+    <style is:global>
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+      .controls label {
+        font-size: 0.9rem;
+      }
+      canvas {
+        max-width: 100%;
+      }
+    </style>
+  </Fragment>
+
+  <!-- Page content -->
+  <h1>{pageTitle}</h1>
+  <p>
+    Data from <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> (ERA5 reanalysis, 1940–present).
+    Filter by time, season, metric, or unit.
+  </p>
+
+  <div class="controls">
+    <label>Period:
+      <select id="years">
+        <option value="5">Last 5 years</option>
+        <option value="10">Last 10 years</option>
+        <option value="30">Last 30 years</option>
+        <option value="85">Full record</option>
+      </select>
+    </label>
+
+    <label>Filter:
+      <select id="filter">
+        <option value="all">All months</option>
+        <option value="winter">Winter (DJF)</option>
+        <option value="spring">Spring (MAM)</option>
+        <option value="summer">Summer (JJA)</option>
+        <option value="fall">Fall (SON)</option>
+        <option value="1">Jan</option>
+        <option value="2">Feb</option>
+        <option value="3">Mar</option>
+        <option value="4">Apr</option>
+        <option value="5">May</option>
+        <option value="6">Jun</option>
+        <option value="7">Jul</option>
+        <option value="8">Aug</option>
+        <option value="9">Sep</option>
+        <option value="10">Oct</option>
+        <option value="11">Nov</option>
+        <option value="12">Dec</option>
+      </select>
+    </label>
+
+    <label>Metric:
+      <select id="metric">
+        <option value="raw">Raw Temps</option>
+        <option value="delta">Δ (Chi - Hwd)</option>
+        <option value="pct">% Diff vs Hwd</option>
+      </select>
+    </label>
+
+    <label>Units:
+      <select id="units">
+        <option value="C">°C</option>
+        <option value="F">°F</option>
+      </select>
+    </label>
+  </div>
+
+  <canvas id="chart" width="900" height="480"></canvas>
+
+  <script type="module">
+  window.addEventListener("DOMContentLoaded", async () => {
+    const { Chart, registerables } = await import("https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm");
+    Chart.register(...registerables);
+
+    const CHI = { name: "Chicago, IL", lat: 41.8781, lon: -87.6298 };
+    const HWD = { name: "Hollywood, FL", lat: 26.0112, lon: -80.1495 };
+    let chart;
+
+    const yearsEl  = document.getElementById("years");
+    const filterEl = document.getElementById("filter");
+    const metricEl = document.getElementById("metric");
+    const unitsEl  = document.getElementById("units");
+    const ctx      = document.getElementById("chart").getContext("2d");
+
+    [yearsEl, filterEl, metricEl, unitsEl].forEach(el => el.addEventListener("change", update));
+    update();
+
+    const toF = (c) => c * 9 / 5 + 32;
+
+    async function update() {
+      const backYears = +yearsEl.value;
+      const now = new Date();
+      const end = now.toISOString().slice(0, 10);
+      const start = new Date(now.setFullYear(now.getFullYear() - backYears)).toISOString().slice(0, 10);
+      const qs = `&start_date=${start}&end_date=${end}&daily=temperature_2m_mean&timezone=UTC`;
+      const url = ({ lat, lon }) =>
+        `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}${qs}`;
+
+      const [cRaw, hRaw] = await Promise.all([
+        fetch(url(CHI)).then(r => r.json()),
+        fetch(url(HWD)).then(r => r.json())
+      ]);
+
+      const cData = cRaw.daily.time.map((d, i) => [d, cRaw.daily.temperature_2m_mean[i]]);
+      const hData = hRaw.daily.time.map((d, i) => [d, hRaw.daily.temperature_2m_mean[i]]);
+      const merged = cData.filter(([d]) => hData.find(([d2]) => d === d2))
+        .map(([d, tC]) => {
+          const tH = hData.find(([d2]) => d2 === d)[1];
+          return { d, tC, tH };
+        });
+
+      const filter = filterEl.value;
+      const keepMonth = m =>
+        filter === "all" ||
+        (+filter && +filter === m) ||
+        (filter === "winter" && [12, 1, 2].includes(m)) ||
+        (filter === "spring" && [3, 4, 5].includes(m)) ||
+        (filter === "summer" && [6, 7, 8].includes(m)) ||
+        (filter === "fall"   && [9, 10, 11].includes(m));
+
+      const labels = [], chi = [], hwd = [], delta = [], pct = [];
+      const unit = unitsEl.value;
+      const labelUnit = unit === "F" ? "°F" : "°C";
+
+      merged.forEach(({ d, tC, tH }) => {
+        const m = new Date(d).getUTCMonth() + 1;
+        if (!keepMonth(m)) return;
+        if (typeof tC !== "number" || typeof tH !== "number") return;
+
+        const tC_converted = unit === "F" ? toF(tC) : tC;
+        const tH_converted = unit === "F" ? toF(tH) : tH;
+
+        labels.push(d);
+        chi.push(tC_converted);
+        hwd.push(tH_converted);
+        delta.push(tC_converted - tH_converted);
+        pct.push(((tC - tH) / tH) * 100);
+      });
+
+      const metric = metricEl.value;
+
+      const datasets =
+        metric === "raw" ? [
+          { label: `${CHI.name} (${labelUnit})`, data: chi },
+          { label: `${HWD.name} (${labelUnit})`, data: hwd }
+        ] :
+        metric === "delta" ? [
+          { label: `Δ Chi - Hwd (${labelUnit})`, data: delta }
+        ] : [
+          { label: "% Diff vs Hwd", data: pct }
+        ];
+
+      if (!chart) {
+        chart = new Chart(ctx, {
+          type: "line",
+          data: { labels, datasets },
+          options: { responsive: true }
+        });
+      } else {
+        chart.data.labels = labels;
+        chart.data.datasets = datasets;
+        chart.update();
+      }
+    }
+  });
+</script>
+
+</Layout>
