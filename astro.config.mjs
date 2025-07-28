@@ -1,20 +1,21 @@
 // astro.config.mjs
 import { defineConfig } from 'astro/config';
-import tailwind from "@astrojs/tailwind";
-import netlify from "@astrojs/netlify";
-import react from "@astrojs/react";
+import tailwind from '@astrojs/tailwind';
+import react from '@astrojs/react';
+import sitemap from '@astrojs/sitemap';
 
+// https://astro.build/config
 export default defineConfig({
-  prefetch: true, // Enable built-in prefetching
-  output: 'server', // Enable server-side rendering for API routes
-  adapter: netlify(),
+  site: 'https://matthewjamesmiller.com',
   integrations: [
     tailwind(),
-    react()
+    react(),
+    sitemap()
   ],
   vite: {
     optimizeDeps: {
-      include: ['swiper']
+      include: ['@react-three/drei', 'three'],
+      exclude: ['@react-three/fiber']
     }
   }
 });
