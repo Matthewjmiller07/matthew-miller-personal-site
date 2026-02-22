@@ -1,0 +1,309 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { format } from 'date-fns';
+import fs from 'fs';
+import path from 'path';
+import { parse } from 'csv-parse/sync';
+
+// Hebrew translations for UI elements
+const hebrewTranslations = {
+  // Month names
+  'January': 'ינואר',
+  'February': 'פברואר',
+  'March': 'מרץ',
+  'April': 'אפריל',
+  'May': 'מאי',
+  'June': 'יוני',
+  'July': 'יולי',
+  'August': 'אוגוסט',
+  'September': 'ספטמבר',
+  'October': 'אוקטובר',
+  'November': 'נובמבר',
+  'December': 'דצמבר',
+  
+  // Days of week
+  'Sun': 'א',
+  'Mon': 'ב',
+  'Tue': 'ג',
+  'Wed': 'ד',
+  'Thu': 'ה',
+  'Fri': 'ו',
+  'Sat': 'ש',
+  
+  // Book names - Genesis, etc.
+  'Genesis': 'בראשית',
+  'Exodus': 'שמות',
+  'Leviticus': 'ויקרא',
+  'Numbers': 'במדבר',
+  'Deuteronomy': 'דברים',
+  
+  // UI elements
+  'Aviya Schedule': 'לוח אביה',
+  'Daily Torah reading schedule with text and notes': 'לוח קריאה יומי בתורה עם טקסטים והערות',
+  'Preview': 'תצוגה מקדימה',
+  'Reading': 'קריאה',
+  'View Full Page': 'צפה בדף המלא',
+  'View': 'צפה'
+};
+
+// Function to translate Bible references to Hebrew
+function translateReferenceToHebrew(reference) {
+  const bookMap = {
+    'Genesis': 'בראשית',
+    'Exodus': 'שמות',
+    'Leviticus': 'ויקרא',
+    'Numbers': 'במדבר',
+    'Deuteronomy': 'דברים'
+  };
+  
+  let hebrewReference = reference;
+  Object.entries(bookMap).forEach(([english, hebrew]) => {
+    if (reference.includes(english)) {
+      hebrewReference = reference.replace(english, hebrew);
+    }
+  });
+  
+  return hebrewReference;
+}
+
+// Read the Aviya Schedule CSV
+const csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
+const csvContent = fs.readFileSync(csvFilePath, 'utf-8');
+const records = parse(csvContent, {
+  columns: true,
+  skip_empty_lines: true
+});
+
+// Group records by month for the calendar view
+const recordsByMonth = {};
+records.forEach(record => {
+  const date = new Date(record.Date);
+  const month = format(date, 'MMMM yyyy');
+  
+  if (!recordsByMonth[month]) {
+    recordsByMonth[month] = [];
+  }
+  
+  // Check for Notes and Images
+  const hasNotes = record.Notes && record.Notes.trim() !== '';
+  const hasImages = record.Images && record.Images.trim() !== '';
+  
+  recordsByMonth[month].push({
+    ...record,
+    formattedDate: format(date, 'yyyy-MM-dd'),
+    day: date.getDate(),
+    hasNotes,
+    hasImages
+  });
+});
+
+// Sort monthYear keys chronologically
+const sortedMonthYears = Object.keys(recordsByMonth).sort((a, b) => {
+  const dateA = new Date(a);
+  const dateB = new Date(b);
+  return dateA - dateB;
+});
+
+// Create a new sorted recordsByMonth object
+const sortedRecordsByMonth = {};
+sortedMonthYears.forEach(month => {
+  sortedRecordsByMonth[month] = recordsByMonth[month];
+});
+
+// Group months by year for better organization
+const recordsByYear = {};
+sortedMonthYears.forEach(monthYear => {
+  const year = monthYear.split(' ')[1];
+  if (!recordsByYear[year]) {
+    recordsByYear[year] = [];
+  }
+  recordsByYear[year].push(monthYear);
+});
+
+const firstDay = records[0];
+---
+
+<Layout title="Aviya Schedule">
+  <div class="container mx-auto px-4 py-8 text-black dark:text-white">
+    <div class="flex justify-end mb-4">
+      <button id="siteLanguageToggle" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm">
+        <span class="english-ui">עברית</span>
+        <span class="hebrew-ui hidden">English</span>
+      </button>
+    </div>
+    
+    <h1 class="text-3xl font-bold mb-6 text-center">
+      <span class="english-ui">Aviya Schedule</span>
+      <span class="hebrew-ui hidden">{hebrewTranslations['Aviya Schedule']}</span>
+    </h1>
+    <p class="text-center mb-8">
+      <span class="english-ui">Daily Torah reading schedule with text and notes</span>
+      <span class="hebrew-ui hidden">{hebrewTranslations['Daily Torah reading schedule with text and notes']}</span>
+    </p>
+    
+    <!-- Calendar View with years as sections -->
+    {Object.entries(recordsByYear).map(([year, monthsInYear]) => (
+      <div class="mb-16">
+        <h2 class="text-3xl font-bold mb-8 text-center border-b pb-2 dark:border-gray-700">
+          <span class="english-ui">{year}</span>
+          <span class="hebrew-ui hidden">{year}</span>
+        </h2>
+        
+        <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
+          {monthsInYear.map(monthYear => {
+            const days = sortedRecordsByMonth[monthYear];
+            
+            // Calculate the starting position for the first day
+            const firstDayRecord = days[0];
+            const firstDate = new Date(firstDayRecord.Date);
+            const firstDay = firstDate.getDay(); // 0 for Sunday, 1 for Monday, etc.
+            
+            // Create an array for a grid
+            const calendarGrid = [];
+            // Add empty slots for days before the 1st of the month
+            for (let i = 0; i < firstDay; i++) {
+              calendarGrid.push(null);
+            }
+            
+            // Add the actual days
+            days.forEach(dayRecord => {
+              calendarGrid.push(dayRecord);
+            });
+            
+            return (
+              <div class="mb-6 border p-4 rounded dark:border-gray-700 bg-white dark:bg-gray-800">
+                <h3 class="text-xl font-bold mb-4">
+                  <span class="english-ui">{monthYear.split(' ')[0]}</span>
+                  <span class="hebrew-ui hidden">
+                    {hebrewTranslations[monthYear.split(' ')[0]] || monthYear.split(' ')[0]}
+                  </span>
+                </h3>
+                
+                <div class="grid grid-cols-7 gap-1 text-center font-semibold mb-2 text-xs md:text-sm">
+                  <div class="py-1"><span class="english-ui">Sun</span><span class="hebrew-ui hidden">{hebrewTranslations['Sun']}</span></div>
+                  <div class="py-1"><span class="english-ui">Mon</span><span class="hebrew-ui hidden">{hebrewTranslations['Mon']}</span></div>
+                  <div class="py-1"><span class="english-ui">Tue</span><span class="hebrew-ui hidden">{hebrewTranslations['Tue']}</span></div>
+                  <div class="py-1"><span class="english-ui">Wed</span><span class="hebrew-ui hidden">{hebrewTranslations['Wed']}</span></div>
+                  <div class="py-1"><span class="english-ui">Thu</span><span class="hebrew-ui hidden">{hebrewTranslations['Thu']}</span></div>
+                  <div class="py-1"><span class="english-ui">Fri</span><span class="hebrew-ui hidden">{hebrewTranslations['Fri']}</span></div>
+                  <div class="py-1"><span class="english-ui">Sat</span><span class="hebrew-ui hidden">{hebrewTranslations['Sat']}</span></div>
+                </div>
+                
+                <div class="grid grid-cols-7 gap-1">
+                  {/* Empty cells for days before the month starts */}
+                  {calendarGrid.map((dayRecord, index) => {
+                    if (dayRecord === null) {
+                      return <div class="border dark:border-gray-700 h-16 md:h-20 p-1 bg-gray-100 dark:bg-gray-900"></div>;
+                    }
+                    
+                    return (
+                      <div class="border dark:border-gray-700 h-16 md:h-20 p-1 bg-white dark:bg-gray-800">
+                        <div class="day-cell block p-1 md:p-2 h-full">
+                          <div class="flex justify-between items-start">
+                            <div class="day-number text-sm font-semibold">{dayRecord.day}</div>
+                            <div class="flex space-x-1">
+                              {dayRecord.hasNotes && (
+                                <span title="Has notes" class="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+                              )}
+                              {dayRecord.hasImages && (
+                                <span title="Has images" class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                              )}
+                            </div>
+                          </div>
+                          {dayRecord.Reading && (
+                            <div class="mt-1">
+                              <a href={`/schedule/original/${dayRecord.formattedDate}`} class="text-blue-600 dark:text-blue-400 text-xs hover:underline block">
+                                <span class="english-ui">View</span>
+                                <span class="hebrew-ui hidden">{hebrewTranslations['View']}</span>
+                              </a>
+                              <div class="text-xs text-gray-600 dark:text-gray-400 truncate mt-1">
+                                <span class="english-ui">{dayRecord.Reading.split(',')[0]}</span>
+                                <span class="hebrew-ui hidden">{translateReferenceToHebrew(dayRecord.Reading.split(',')[0])}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    ))}
+    
+    <!-- Quick Preview of First Day -->
+    <div class="mt-12 border-t dark:border-gray-700 pt-8">
+      <h2 class="text-2xl font-bold mb-4">
+        <span class="english-ui">
+          Preview: {format(new Date(firstDay.Date), 'MMMM d, yyyy')} ({firstDay.Day_of_Week})
+        </span>
+        <span class="hebrew-ui hidden">
+          {hebrewTranslations['Preview']}: 
+          {hebrewTranslations[format(new Date(firstDay.Date), 'MMMM').split(' ')[0]] || format(new Date(firstDay.Date), 'MMMM')} 
+          {new Date(firstDay.Date).getDate()}, {new Date(firstDay.Date).getFullYear()}
+        </span>
+      </h2>
+      <p class="mb-4">
+        <span class="english-ui">Reading: {firstDay.Reading}</span>
+        <span class="hebrew-ui hidden">{hebrewTranslations['Reading']}: {translateReferenceToHebrew(firstDay.Reading)}</span>
+      </p>
+      <a href={`/schedule/original/${format(new Date(firstDay.Date), 'yyyy-MM-dd')}`} class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600">
+        <span class="english-ui">View Full Page</span>
+        <span class="hebrew-ui hidden">{hebrewTranslations['View Full Page']}</span>
+      </a>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  /* For Hebrew UI, ensure proper direction */
+  .hebrew-ui-active {
+    direction: rtl;
+  }
+  
+  /* Hidden elements */
+  .hidden {
+    display: none;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const siteLanguageToggle = document.getElementById('siteLanguageToggle');
+    const englishElements = document.querySelectorAll('.english-ui');
+    const hebrewElements = document.querySelectorAll('.hebrew-ui');
+    
+    // Site-wide language toggle (UI language)
+    if (siteLanguageToggle) {
+      // Check if there's a stored preference
+      const savedLanguage = localStorage.getItem('aviyaUiLanguage');
+      if (savedLanguage === 'hebrew') {
+        document.body.classList.add('hebrew-ui-active');
+        englishElements.forEach(el => el.classList.add('hidden'));
+        hebrewElements.forEach(el => el.classList.remove('hidden'));
+        document.documentElement.dir = 'rtl';
+      }
+      
+      siteLanguageToggle.addEventListener('click', () => {
+        document.body.classList.toggle('hebrew-ui-active');
+        
+        if (document.body.classList.contains('hebrew-ui-active')) {
+          // Switch to Hebrew UI
+          localStorage.setItem('aviyaUiLanguage', 'hebrew');
+          englishElements.forEach(el => el.classList.add('hidden'));
+          hebrewElements.forEach(el => el.classList.remove('hidden'));
+          document.documentElement.dir = 'rtl';
+        } else {
+          // Switch to English UI
+          localStorage.setItem('aviyaUiLanguage', 'english');
+          englishElements.forEach(el => el.classList.remove('hidden'));
+          hebrewElements.forEach(el => el.classList.add('hidden'));
+          document.documentElement.dir = 'ltr';
+        }
+      });
+    }
+  });
+</script>

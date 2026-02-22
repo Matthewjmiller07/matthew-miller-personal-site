@@ -1,0 +1,557 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Tourism Library Analysis - Israel Ministry of Tourism">
+    <main class="min-h-screen bg-gray-50">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                        </svg>
+                        <div>
+                            <h1 class="text-2xl font-bold">Tourism Library Analysis</h1>
+                            <p class="text-blue-100">Israel Ministry of Tourism Professional Library Catalog</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-blue-100">Dataset Overview</p>
+                        <p class="text-lg font-semibold" id="totalRecords">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-8">
+            <!-- Search Section -->
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div class="flex items-center space-x-2 mb-4">
+                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <h2 class="text-xl font-semibold text-gray-800">Search Catalog</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <input type="text" id="searchTitle" placeholder="Search titles..." 
+                           class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <input type="text" id="searchAuthor" placeholder="Search authors..." 
+                           class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <input type="text" id="searchPublisher" placeholder="Search publishers..." 
+                           class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <input type="text" id="searchYear" placeholder="Year (e.g., 1990-2000)" 
+                           class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="performSearch()" 
+                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <span>Search</span>
+                    </button>
+                    <button onclick="clearSearch()" 
+                            class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        <span>Clear</span>
+                    </button>
+                    <button onclick="searchJewishContent()" 
+                            class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                        </svg>
+                        <span>Jewish/Heritage Content</span>
+                    </button>
+                    <button onclick="searchJerusalemContent()" 
+                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span>Jerusalem Content</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Statistics Cards -->
+            <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6 hover:transform hover:scale-105 transition-all duration-300">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Total Publications</p>
+                            <p class="text-2xl font-bold text-gray-800" id="statTotal">0</p>
+                        </div>
+                        <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-6 hover:transform hover:scale-105 transition-all duration-300">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Years Covered</p>
+                            <p class="text-2xl font-bold text-gray-800" id="statYears">0</p>
+                        </div>
+                        <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-6 hover:transform hover:scale-105 transition-all duration-300">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Publishers</p>
+                            <p class="text-2xl font-bold text-gray-800" id="statPublishers">0</p>
+                        </div>
+                        <svg class="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-6 hover:transform hover:scale-105 transition-all duration-300">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Filtered Results</p>
+                            <p class="text-2xl font-bold text-gray-800" id="statFiltered">0</p>
+                        </div>
+                        <svg class="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        </svg>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        <span>Publications by Decade</span>
+                    </h3>
+                    <canvas id="decadeChart"></canvas>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
+                        </svg>
+                        <span>Top Publishers</span>
+                    </h3>
+                    <canvas id="publisherChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Results Table -->
+            <section class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                        <span>Search Results</span>
+                    </h3>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-600" id="resultCount">Showing 0 results</span>
+                        <button onclick="exportResults()" 
+                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            <span>Export CSV</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Publisher</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pages</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                                    Loading data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="mt-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <button onclick="previousPage()" id="prevBtn" 
+                                class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Previous
+                        </button>
+                        <span class="text-sm text-gray-600" id="pageInfo">Page 1 of 1</span>
+                        <button onclick="nextPage()" id="nextBtn" 
+                                class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Next
+                        </button>
+                    </div>
+                    <select id="pageSize" onchange="changePageSize()" 
+                            class="px-3 py-1 border border-gray-300 rounded text-sm">
+                        <option value="10">10 per page</option>
+                        <option value="25">25 per page</option>
+                        <option value="50">50 per page</option>
+                        <option value="100">100 per page</option>
+                    </select>
+                </div>
+            </section>
+        </main>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Global variables
+        let allData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        let pageSize = 10;
+        let decadeChart = null;
+        let publisherChart = null;
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+        });
+
+        // Load data from the JSON file
+        async function loadData() {
+            try {
+                const response = await fetch('./tourism_library_data.json');
+                const data = await response.json();
+                allData = data.result.records;
+                filteredData = [...allData];
+                
+                updateStatistics();
+                updateCharts();
+                displayResults();
+                
+                document.getElementById('totalRecords').textContent = allData.length.toLocaleString();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('resultsTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-red-500">
+                            Error loading data. Please make sure tourism_library_data.json is in the public directory.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            document.getElementById('statTotal').textContent = filteredData.length.toLocaleString();
+            
+            // Calculate years covered
+            const years = filteredData.filter(item => item.pub_year && item.pub_year.trim())
+                                    .map(item => parseInt(item.pub_year))
+                                    .filter(year => !isNaN(year));
+            if (years.length > 0) {
+                const minYear = Math.min(...years);
+                const maxYear = Math.max(...years);
+                document.getElementById('statYears').textContent = `${minYear}-${maxYear}`;
+            } else {
+                document.getElementById('statYears').textContent = 'N/A';
+            }
+            
+            // Count unique publishers
+            const publishers = new Set(filteredData.map(item => item.publishing_house).filter(p => p && p.trim()));
+            document.getElementById('statPublishers').textContent = publishers.size;
+            
+            document.getElementById('statFiltered').textContent = filteredData.length.toLocaleString();
+        }
+
+        // Update charts
+        function updateCharts() {
+            updateDecadeChart();
+            updatePublisherChart();
+        }
+
+        function updateDecadeChart() {
+            const decades = {};
+            filteredData.forEach(item => {
+                if (item.pub_year && item.pub_year.trim()) {
+                    const year = parseInt(item.pub_year);
+                    if (!isNaN(year)) {
+                        const decade = Math.floor(year / 10) * 10;
+                        decades[decade] = (decades[decade] || 0) + 1;
+                    }
+                }
+            });
+
+            const sortedDecades = Object.keys(decades).sort();
+            const ctx = document.getElementById('decadeChart').getContext('2d');
+            
+            if (decadeChart) decadeChart.destroy();
+            
+            decadeChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedDecades.map(d => `${d}s`),
+                    datasets: [{
+                        label: 'Publications',
+                        data: sortedDecades.map(d => decades[d]),
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function updatePublisherChart() {
+            const publishers = {};
+            filteredData.forEach(item => {
+                if (item.publishing_house && item.publishing_house.trim()) {
+                    publishers[item.publishing_house] = (publishers[item.publishing_house] || 0) + 1;
+                }
+            });
+
+            const sortedPublishers = Object.entries(publishers)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+
+            const ctx = document.getElementById('publisherChart').getContext('2d');
+            
+            if (publisherChart) publisherChart.destroy();
+            
+            publisherChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: sortedPublishers.map(p => p[0]),
+                    datasets: [{
+                        data: sortedPublishers.map(p => p[1]),
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(16, 185, 129, 0.8)',
+                            'rgba(251, 146, 60, 0.8)',
+                            'rgba(147, 51, 234, 0.8)',
+                            'rgba(236, 72, 153, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(107, 114, 128, 0.8)',
+                            'rgba(220, 38, 38, 0.8)',
+                            'rgba(6, 182, 212, 0.8)',
+                            'rgba(163, 230, 53, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Search functionality
+        function performSearch() {
+            const titleQuery = document.getElementById('searchTitle').value.toLowerCase();
+            const authorQuery = document.getElementById('searchAuthor').value.toLowerCase();
+            const publisherQuery = document.getElementById('searchPublisher').value.toLowerCase();
+            const yearQuery = document.getElementById('searchYear').value;
+
+            filteredData = allData.filter(item => {
+                const titleMatch = !titleQuery || item.item_name.toLowerCase().includes(titleQuery);
+                const authorMatch = !authorQuery || item.author_name.toLowerCase().includes(authorQuery);
+                const publisherMatch = !publisherQuery || item.publishing_house.toLowerCase().includes(publisherQuery);
+                
+                let yearMatch = true;
+                if (yearQuery) {
+                    if (yearQuery.includes('-')) {
+                        const [start, end] = yearQuery.split('-').map(y => parseInt(y));
+                        const itemYear = parseInt(item.pub_year);
+                        yearMatch = !isNaN(itemYear) && itemYear >= start && itemYear <= end;
+                    } else {
+                        yearMatch = item.pub_year.includes(yearQuery);
+                    }
+                }
+
+                return titleMatch && authorMatch && publisherMatch && yearMatch;
+            });
+
+            currentPage = 1;
+            updateStatistics();
+            updateCharts();
+            displayResults();
+        }
+
+        function clearSearch() {
+            document.getElementById('searchTitle').value = '';
+            document.getElementById('searchAuthor').value = '';
+            document.getElementById('searchPublisher').value = '';
+            document.getElementById('searchYear').value = '';
+            
+            filteredData = [...allData];
+            currentPage = 1;
+            updateStatistics();
+            updateCharts();
+            displayResults();
+        }
+
+        function searchJewishContent() {
+            const jewishTerms = ['יהודי', 'יהדות', 'תורה', 'תלמוד', 'מקווה', 'בית כנסת', 'כשר', 'שבת', 'חג', 'רב', 'מורשת'];
+            
+            filteredData = allData.filter(item => {
+                const searchText = `${item.item_name} ${item.author_name} ${item.publishing_house} ${item.remarks}`.toLowerCase();
+                return jewishTerms.some(term => searchText.includes(term));
+            });
+
+            currentPage = 1;
+            updateStatistics();
+            updateCharts();
+            displayResults();
+        }
+
+        function searchJerusalemContent() {
+            filteredData = allData.filter(item => {
+                const searchText = `${item.item_name} ${item.author_name} ${item.publishing_house} ${item.pub_place} ${item.remarks}`.toLowerCase();
+                return searchText.includes('ירושלים') || searchText.includes('jerusalem');
+            });
+
+            currentPage = 1;
+            updateStatistics();
+            updateCharts();
+            displayResults();
+        }
+
+        // Display results in table
+        function displayResults() {
+            const tbody = document.getElementById('resultsTableBody');
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageData = filteredData.slice(start, end);
+
+            document.getElementById('resultCount').textContent = `Showing ${start + 1}-${Math.min(end, filteredData.length)} of ${filteredData.length} results`;
+            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${Math.ceil(filteredData.length / pageSize)}`;
+            
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage >= Math.ceil(filteredData.length / pageSize);
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                            No results found
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = pageData.map(item => `
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900 max-w-xs truncate" title="${item.item_name}">
+                        ${highlightSearch(item.item_name)}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="${item.author_name}">
+                        ${item.author_name || '-'}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="${item.publishing_house}">
+                        ${item.publishing_house || '-'}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        ${item.pub_year || '-'}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        ${item.pages || '-'}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="${item.remarks}">
+                        ${item.remarks || '-'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function highlightSearch(text) {
+            const titleQuery = document.getElementById('searchTitle').value.toLowerCase();
+            if (!titleQuery) return text;
+            
+            const regex = new RegExp(`(${titleQuery})`, 'gi');
+            return text.replace(regex, '<span class="bg-yellow-200">$1</span>');
+        }
+
+        // Pagination
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                displayResults();
+            }
+        }
+
+        function nextPage() {
+            const maxPage = Math.ceil(filteredData.length / pageSize);
+            if (currentPage < maxPage) {
+                currentPage++;
+                displayResults();
+            }
+        }
+
+        function changePageSize() {
+            pageSize = parseInt(document.getElementById('pageSize').value);
+            currentPage = 1;
+            displayResults();
+        }
+
+        // Export functionality
+        function exportResults() {
+            const headers = ['Title', 'Author', 'Publisher', 'Year', 'Pages', 'Notes'];
+            const csvContent = [
+                headers.join(','),
+                ...filteredData.map(item => [
+                    `"${item.item_name.replace(/"/g, '""')}"`,
+                    `"${item.author_name.replace(/"/g, '""')}"`,
+                    `"${item.publishing_house.replace(/"/g, '""')}"`,
+                    `"${item.pub_year}"`,
+                    `"${item.pages}"`,
+                    `"${item.remarks.replace(/"/g, '""')}"`
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'tourism_library_search_results.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</Layout>

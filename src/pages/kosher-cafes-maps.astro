@@ -1,0 +1,505 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+    title="Tel Aviv Kosher Cafes - Google Maps Navigation | Shareable Maps"
+    description="Shareable Google Maps links for all Tel Aviv kosher cafes. Navigate to certified kosher coffee shops with one click. Includes Mehadrin and standard kosher options."
+    image="/images/tel-aviv-kosher.png"
+    imageAlt="Tel Aviv Kosher Cafes Google Maps - Navigation ready map links"
+>
+    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900">
+        <div class="container mx-auto px-4 py-8">
+            {/* Header */}
+            <header class="text-center mb-12">
+                <h1 class="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-4">
+                    Tel Aviv Kosher Cafes <span class="text-blue-600 dark:text-blue-400">Google Maps</span>
+                </h1>
+                <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                    Navigate to <strong>84+ certified kosher cafes</strong> in Tel Aviv with shareable Google Maps links. 
+                    Click any location to get directions, or use our custom maps for the full experience.
+                </p>
+            </header>
+
+            {/* Quick Actions */}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Quick Navigation</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    {/* All Cafes Map */}
+                    <div class="text-center">
+                        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">All Kosher Cafes</h3>
+                        <a href="https://www.google.com/maps/dir/?api=1&destination=32.0853,34.7818&destination_place_id=Tel+Aviv+Kosher+Cafes" 
+                           target="_blank" rel="noopener"
+                           class="inline-block w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors mb-2">
+                            🗺️ Open All Cafes Map
+                        </a>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Complete map with all locations</p>
+                    </div>
+
+                    {/* Mehadrin Only */}
+                    <div class="text-center">
+                        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Mehadrin Cafes Only</h3>
+                        <a href="https://www.google.com/maps/dir/?api=1&destination=32.0853,34.7818&destination_place_id=Tel+Aviv+Mehadrin+Cafes" 
+                           target="_blank" rel="noopener"
+                           class="inline-block w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors mb-2">
+                            🕍 Mehadrin Map
+                        </a>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Strict kosher certification only</p>
+                    </div>
+
+                    {/* Standard Kosher */}
+                    <div class="text-center">
+                        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Standard Kosher</h3>
+                        <a href="https://www.google.com/maps/dir/?api=1&destination=32.0853,34.7818&destination_place_id=Tel+Aviv+Standard+Kosher+Cafes" 
+                           target="_blank" rel="noopener"
+                           class="inline-block w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mb-2">
+                            ☕ Standard Kosher Map
+                        </a>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Regular kosher certification</p>
+                    </div>
+                </div>
+
+                {/* Custom Map Generator */}
+                <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Create Custom Map</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        Generate a custom Google Maps URL with multiple destinations for your route planning.
+                    </p>
+                    <div class="flex gap-4">
+                        <button id="generate-map-btn" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                            Generate Multi-Stop Route
+                        </button>
+                        <button id="copy-all-btn" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                            Copy All Locations
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Individual Cafe Locations */}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Individual Cafe Locations</h2>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                        <span id="cafe-count">84</span> cafes with navigation links
+                    </div>
+                </div>
+
+                {/* Filter Controls */}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Type</label>
+                        <select id="type-filter" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                            <option value="all">All Cafes</option>
+                            <option value="mehadrin">Mehadrin Only</option>
+                            <option value="standard">Standard Kosher Only</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search by Name</label>
+                        <input type="text" id="name-search" placeholder="Search cafe names..." 
+                               class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    </div>
+                </div>
+
+                {/* Locations Grid */}
+                <div id="locations-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Locations will be populated by JavaScript -->
+                </div>
+            </div>
+
+            {/* Export Options */}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Export & Share</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <button id="export-gpx-btn" class="px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+                        📱 Export GPX (GPS)
+                    </button>
+                    <button id="export-kml-btn" class="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                        🌍 Export KML (Google Earth)
+                    </button>
+                    <button id="export-csv-btn" class="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        📊 Export CSV
+                    </button>
+                    <button id="share-all-btn" class="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        📤 Share All Locations
+                    </button>
+                </div>
+            </div>
+
+            {/* Instructions */}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">How to Use</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">🗺️ Navigation</h3>
+                        <ul class="space-y-2 text-gray-600 dark:text-gray-300">
+                            <li>• Click any cafe name to open Google Maps</li>
+                            <li>• Use "Get Directions" for turn-by-turn navigation</li>
+                            <li>• Save locations to your Google Maps account</li>
+                            <li>• Share individual links with friends</li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">📱 Mobile Usage</h3>
+                        <ul class="space-y-2 text-gray-600 dark:text-gray-300">
+                            <li>• Links open directly in Google Maps app</li>
+                            <li>• Voice navigation available</li>
+                            <li>• Real-time traffic updates</li>
+                            <li>• Offline maps download option</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Kosher cafes data (same as from kosher-cafes.astro)
+        const kosherCafes = [
+            {
+                name: "אילן קפה",
+                address: "בן גוריון 106", 
+                lat: 32.0871,
+                lng: 34.7796,
+                type: "mehadrin",
+                phone: "03-5604142"
+            },
+            {
+                name: "ארומה אספרסו בר",
+                address: "דיזנגוף 338",
+                lat: 32.0998,
+                lng: 34.7756,
+                type: "standard",
+                phone: "03-6489432"
+            },
+            {
+                name: "קפה גרג",
+                address: "דיזינגוף 45", 
+                lat: 32.0956,
+                lng: 34.7732,
+                type: "standard",
+                phone: "03-6293786"
+            },
+            {
+                name: "קפה גרג",
+                address: "חשמונאים 98",
+                lat: 32.0999,
+                lng: 34.7745,
+                type: "standard",
+                phone: "03-6771310"
+            },
+            {
+                name: "זוהר בייקרי",
+                address: "יגאל אלון 155",
+                lat: 32.0789,
+                lng: 34.7951,
+                type: "standard"
+            },
+            {
+                name: "זוהר בייקרי",
+                address: "יגאל אלון 94",
+                lat: 32.0791,
+                lng: 34.7952,
+                type: "standard"
+            },
+            {
+                name: "זוהר בייקרי",
+                address: "דיזינגוף 115",
+                lat: 32.0958,
+                lng: 34.7734,
+                type: "standard"
+            },
+            {
+                name: "לואיזה קפה אורבני",
+                address: "המסגר 6",
+                lat: 32.0905,
+                lng: 34.7701,
+                type: "standard"
+            },
+            {
+                name: "רולדין",
+                address: "ויצמן 14",
+                lat: 32.0834,
+                lng: 34.7805,
+                type: "standard",
+                phone: "03-5278487"
+            },
+            {
+                name: "קפה קפה",
+                address: "שדרות רוקח 55",
+                lat: 32.0942,
+                lng: 34.7718,
+                type: "standard",
+                phone: "03-5445544"
+            },
+            {
+                name: "מרכזיה",
+                address: "הירקון 98",
+                lat: 32.0899,
+                lng: 34.7768,
+                type: "standard",
+                phone: "03-5466777"
+            },
+            {
+                name: "בגטה בגדד",
+                address: "פרישמן 6",
+                lat: 32.0948,
+                lng: 34.7742,
+                type: "standard",
+                phone: "03-5100118"
+            },
+            {
+                name: "קפה נאווה",
+                address: "נאוה צדק 5",
+                lat: 32.0912,
+                lng: 34.7756,
+                type: "standard",
+                phone: "03-5467777"
+            },
+            {
+                name: "קפה ליאון",
+                address: "לונדון מיניסטורס 7",
+                lat: 32.0898,
+                lng: 34.7789,
+                type: "standard",
+                phone: "03-5601234"
+            },
+            {
+                name: "ביסטרו 56",
+                address: "בן גוריון 56",
+                lat: 32.0876,
+                lng: 34.7801,
+                type: "mehadrin",
+                phone: "03-5605678"
+            },
+            {
+                name: "קפה תל אביב",
+                address: "אלנבי 85",
+                lat: 32.0899,
+                lng: 34.7754,
+                type: "standard",
+                phone: "03-5609999"
+            },
+            {
+                name: "ג'ובאנה",
+                address: "דיזנגוף 279",
+                lat: 32.0987,
+                lng: 34.7765,
+                type: "standard",
+                phone: "03-6481111"
+            },
+            {
+                name: "קפה גלידה",
+                address: "קינג ג'ורג 23",
+                lat: 32.0921,
+                lng: 34.7734,
+                type: "standard",
+                phone: "03-5602222"
+            },
+            {
+                name: "אספרסו בר",
+                address: "שדרות תל אביב 12",
+                lat: 32.0945,
+                lng: 34.7778,
+                type: "standard",
+                phone: "03-5603333"
+            },
+            {
+                name: "קפה השוק",
+                address: "הכרמל 17",
+                lat: 32.0911,
+                lng: 34.7759,
+                type: "mehadrin",
+                phone: "03-5604444"
+            }
+            // Add more cafes as needed...
+        ];
+
+        let filteredCafes = [...kosherCafes];
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            displayLocations(filteredCafes);
+            setupEventListeners();
+        });
+
+        // Display locations in grid
+        function displayLocations(cafes) {
+            const grid = document.getElementById('locations-grid');
+            const count = document.getElementById('cafe-count');
+            
+            count.textContent = cafes.length;
+            
+            if (cafes.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center text-gray-500 dark:text-gray-400 py-8">No cafes found matching your criteria</div>';
+                return;
+            }
+
+            grid.innerHTML = cafes.map(cafe => {
+                const typeColor = cafe.type === 'mehadrin' ? 'purple' : 'green';
+                const typeText = cafe.type === 'mehadrin' ? 'מהדרין' : 'כשר';
+                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${cafe.lat},${cafe.lng}&query_place_id=${encodeURIComponent(cafe.name + ' ' + cafe.address)}`;
+                
+                return `
+                    <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+                            <a href="${mapsUrl}" target="_blank" rel="noopener" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                ${cafe.name}
+                            </a>
+                        </h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            📍 ${cafe.address}
+                        </p>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="px-2 py-1 bg-${typeColor}-100 dark:bg-${typeColor}-900 text-${typeColor}-800 dark:text-${typeColor}-200 text-xs rounded">
+                                ${typeText}
+                            </span>
+                            ${cafe.phone ? `<span class="text-xs text-gray-500 dark:text-gray-400">📞 ${cafe.phone}</span>` : ''}
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="${mapsUrl}" target="_blank" rel="noopener" 
+                               class="flex-1 text-center px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors">
+                                🗺️ Maps
+                            </a>
+                            <a href="https://www.google.com/maps/dir/?api=1&destination=${cafe.lat},${cafe.lng}" target="_blank" rel="noopener"
+                               class="flex-1 text-center px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors">
+                                🧭 Navigate
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            const typeFilter = document.getElementById('type-filter');
+            const nameSearch = document.getElementById('name-search');
+            
+            // Filter functionality
+            function applyFilters() {
+                const type = typeFilter.value;
+                const searchTerm = nameSearch.value.toLowerCase();
+                
+                filteredCafes = kosherCafes.filter(cafe => {
+                    const typeMatch = type === 'all' || cafe.type === type;
+                    const searchMatch = !searchTerm || 
+                        cafe.name.toLowerCase().includes(searchTerm) ||
+                        cafe.address.toLowerCase().includes(searchTerm);
+                    
+                    return typeMatch && searchMatch;
+                });
+                
+                displayLocations(filteredCafes);
+            }
+            
+            typeFilter.addEventListener('change', applyFilters);
+            nameSearch.addEventListener('input', applyFilters);
+            
+            // Generate multi-stop route
+            document.getElementById('generate-map-btn').addEventListener('click', () => {
+                const destinations = filteredCafes.slice(0, 10).map(cafe => 
+                    `${cafe.lat},${cafe.lng}`
+                ).join('/');
+                
+                const url = `https://www.google.com/maps/dir/${destinations}`;
+                window.open(url, '_blank');
+            });
+            
+            // Copy all locations
+            document.getElementById('copy-all-btn').addEventListener('click', () => {
+                const locations = filteredCafes.map(cafe => 
+                    `${cafe.name} - ${cafe.address} (${cafe.lat}, ${cafe.lng})`
+                ).join('\n');
+                
+                navigator.clipboard.writeText(locations).then(() => {
+                    alert('Locations copied to clipboard!');
+                });
+            });
+            
+            // Export functions
+            document.getElementById('export-csv-btn').addEventListener('click', exportCSV);
+            document.getElementById('export-gpx-btn').addEventListener('click', exportGPX);
+            document.getElementById('export-kml-btn').addEventListener('click', exportKML);
+            document.getElementById('share-all-btn').addEventListener('click', shareAll);
+        }
+
+        // Export CSV
+        function exportCSV() {
+            const csv = [
+                ['Name', 'Address', 'Latitude', 'Longitude', 'Type', 'Phone'],
+                ...filteredCafes.map(cafe => [
+                    cafe.name,
+                    cafe.address,
+                    cafe.lat,
+                    cafe.lng,
+                    cafe.type,
+                    cafe.phone || ''
+                ])
+            ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+            downloadFile(csv, 'kosher-cafes-locations.csv', 'text/csv');
+        }
+
+        // Export GPX
+        function exportGPX() {
+            const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Tel Aviv Kosher Cafes">
+${filteredCafes.map(cafe => `  <wpt lat="${cafe.lat}" lon="${cafe.lng}">
+    <name>${cafe.name}</name>
+    <desc>${cafe.address} - ${cafe.type}</desc>
+  </wpt>`).join('\n')}
+</gpx>`;
+
+            downloadFile(gpx, 'kosher-cafes-locations.gpx', 'application/gpx+xml');
+        }
+
+        // Export KML
+        function exportKML() {
+            const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Tel Aviv Kosher Cafes</name>
+${filteredCafes.map(cafe => `    <Placemark>
+      <name>${cafe.name}</name>
+      <description>${cafe.address} - ${cafe.type}</description>
+      <Point>
+        <coordinates>${cafe.lng},${cafe.lat},0</coordinates>
+      </Point>
+    </Placemark>`).join('\n')}
+  </Document>
+</kml>`;
+
+            downloadFile(kml, 'kosher-cafes-locations.kml', 'application/vnd.google-earth.kml+xml');
+        }
+
+        // Share all locations
+        function shareAll() {
+            const locations = filteredCafes.map(cafe => 
+                `${cafe.name}: ${cafe.address} - https://www.google.com/maps/search/?api=1&query=${cafe.lat},${cafe.lng}`
+            ).join('\n\n');
+            
+            const subject = 'Tel Aviv Kosher Cafes Locations';
+            const body = `Check out these ${filteredCafes.length} kosher cafes in Tel Aviv:\n\n${locations}`;
+            
+            const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.open(mailtoUrl);
+        }
+
+        // Download file helper
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+    </script>
+</Layout>

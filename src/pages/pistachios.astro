@@ -1,0 +1,666 @@
+---
+// src/pages/pistachios.astro
+import Layout from '../layouts/Layout.astro';
+import { supabase } from '../lib/supabase';
+import { formatPistachioData, getReligionBadgeColor, getLanguageBadgeColor } from '../utils/pistachioUtils';
+
+// Fetch all pistachios from Supabase
+let { data: pistachios, error } = await supabase
+  .from('Pistachios')
+  .select('*')
+  .order('source_id', { ascending: true });
+
+if (error) {
+  console.error('Error fetching pistachios:', error);
+  pistachios = [];
+}
+
+const pageTitle = 'Pistachios';
+const pageDescription = 'Explore translations, meanings, and biblical verses with interactive visualizations';
+
+// Extract unique values for filters
+const religions = [...new Set(pistachios?.map(p => p.Religion).filter(Boolean) || [])];
+const languages = [...new Set(pistachios?.map(p => p.Language).filter(Boolean) || [])];
+const meanings = [...new Set(pistachios?.map(p => p.Meaning).filter(Boolean) || [])];
+const dates = [...new Set(pistachios?.map(p => p.Date).filter(Boolean) || [])];
+
+// Parse dates properly (handle BCE dates)
+function parseDate(dateStr: string) {
+  if (!dateStr) return null;
+  if (dateStr.includes('BCE')) {
+    return -parseInt(dateStr.replace(' BCE', ''));
+  }
+  const year = parseInt(dateStr);
+  return isNaN(year) ? null : year;
+}
+
+const parsedDates = dates.map(parseDate).filter(d => d !== null).sort((a, b) => a - b);
+const minDate = parsedDates.length > 0 ? parsedDates[0] : null;
+const maxDate = parsedDates.length > 0 ? parsedDates[parsedDates.length - 1] : null;
+
+// Statistics for visualizations
+const religionStats = religions.reduce((acc, religion) => {
+  acc[religion] = pistachios?.filter(p => p.Religion === religion).length || 0;
+  return acc;
+}, {} as Record<string, number>);
+
+const languageStats = languages.reduce((acc, language) => {
+  acc[language] = pistachios?.filter(p => p.Language === language).length || 0;
+  return acc;
+}, {} as Record<string, number>);
+
+const meaningStats = meanings.reduce((acc, meaning) => {
+  acc[meaning] = pistachios?.filter(p => p.Meaning === meaning).length || 0;
+  return acc;
+}, {} as Record<string, number>);
+
+// Create timeline data
+const timelineData = pistachios?.map(p => ({
+  ...p,
+  parsedDate: parseDate(p.Date)
+})).filter(p => p.parsedDate !== null).sort((a, b) => a.parsedDate - b.parsedDate) || [];
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+  <div class="max-w-7xl mx-auto px-4 py-12">
+    <header class="mb-12">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-4xl font-bold text-gray-900 dark:text-white">{pageTitle}</h1>
+          <p class="text-lg text-gray-500 dark:text-gray-400 mt-1">
+            {pistachios.length} translations across {religions.length} religions, {languages.length} languages, and {meanings.length} unique meanings
+          </p>
+        </div>
+        <a 
+          href="mailto:matthewjmiller07@gmail.com?subject=New%20Pistachio%20Entry%20Suggestion&body=Source%20ID%3A%20%5BEnter%20Source%20ID%5D%0D%0A%0D%0ATranslation%3A%20%5BEnter%20Translation%5D%0D%0A%0D%0ADate%3A%20%5BEnter%20Date%5D%0D%0A%0D%0ATranslation%20Source%3A%20%5BEnter%20Translation%20Source%5D%0D%0A%0D%0AReligion%3A%20%5BEnter%20Religion%5D%0D%0A%0D%0ALanguage%3A%20%5BEnter%20Language%5D%0D%0A%0D%0AURL%3A%20%5BEnter%20URL%5D%0D%0A%0D%0AMeaning%3A%20%5BEnter%20Meaning%5D%0D%0A%0D%0ABiblical%20Verse%3A%20%5BEnter%20Biblical%20Verse%5D"
+          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-700 dark:hover:bg-green-600 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+          </svg>
+          Suggest an Entry
+        </a>
+      </div>
+      <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">
+        Interactive exploration of translations, meanings, and biblical verses from various religious and linguistic traditions.
+      </p>
+    </header>
+
+    <!-- Genesis 43:11 Explanation -->
+    <section class="mb-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
+      <div class="flex items-start gap-4">
+        <div class="flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Analyzing Genesis 43:11</h3>
+          <div class="space-y-3">
+            <div class="bg-white dark:bg-gray-800 rounded-md p-4 border border-gray-200 dark:border-gray-600">
+              <p class="text-sm text-gray-700 dark:text-gray-300 mb-3 text-right">
+                <span class="float-left"><strong>Hebrew (Masoretic Text):</strong></span><br>
+                <span class="text-lg leading-relaxed" dir="rtl" style="font-family: 'SBL Hebrew', 'David CLM', 'Ezra SIL', 'Times New Roman', serif; unicode-bidi: plaintext;">וַיֹּ֨אמֶר אֲלֵהֶ֜ם יִשְׂרָאֵ֣ל אֲבִיהֶ֗ם אִם־כֵּ֣ן ׀ אֵפוֹא֮ זֹ֣את עֲשׂוּ֒ קְח֞וּ מִזִּמְרַ֤ת הָאָ֙רֶץ֙ בִּכְלֵיכֶ֔ם וְהוֹרִ֥ידוּ לָאִ֖ישׁ מִנְחָ֑ה מְעַ֤ט צֳרִי֙ וּמְעַ֣ט דְּבַ֔שׁ נְכֹ֣את וָלֹ֔ט <span class="font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-1 rounded">בּטנים</span> וּשְׁקֵדִֽים׃</span>
+              </p>
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                <strong>Focus Word:</strong> <span class="font-bold text-blue-600 dark:text-blue-400">בּטנים</span> (b'tonim) - This Hebrew word appears in Genesis 43:11 and is traditionally translated as "pistachios" or "pistachio nuts" in most English Bible versions. The data below explores how this word has been translated across different languages, religious traditions, and time periods.
+              </p>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              The translations and meanings displayed below represent various interpretations of בּטנים throughout history, showing how this single word has been understood across different cultures and linguistic contexts.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Statistics Dashboard -->
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Data Overview</h2>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
+          <div class="flex items-center">
+            <div class="flex-shrink-0 bg-blue-100 dark:bg-blue-900/50 rounded-lg p-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Entries</p>
+              <p class="text-2xl font-semibold text-gray-900 dark:text-white">{pistachios.length}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
+          <div class="flex items-center">
+            <div class="flex-shrink-0 bg-green-100 dark:bg-green-900/50 rounded-lg p-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Languages</p>
+              <p class="text-2xl font-semibold text-gray-900 dark:text-white">{languages.length}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
+          <div class="flex items-center">
+            <div class="flex-shrink-0 bg-purple-100 dark:bg-purple-900/50 rounded-lg p-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Religions</p>
+              <p class="text-2xl font-semibold text-gray-900 dark:text-white">{religions.length}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
+          <div class="flex items-center">
+            <div class="flex-shrink-0 bg-orange-100 dark:bg-orange-900/50 rounded-lg p-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </div>
+            <div class="ml-4">
+              <button 
+                id="meaningsToggle"
+                class="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors cursor-pointer"
+                title="Click to see all meanings"
+              >
+                Meanings
+              </button>
+              <p class="text-2xl font-semibold text-gray-900 dark:text-white">{meanings.length}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Distribution by Religion</h3>
+          <div class="space-y-2">
+            {Object.entries(religionStats).map(([religion, count]) => {
+              const countNum = count as number;
+              return (
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600 dark:text-gray-300">{religion}</span>
+                <div class="flex items-center">
+                  <div class="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2 mr-2">
+                    <div 
+                      class="bg-blue-600 h-2 rounded-full" 
+                      style={`width: ${(countNum / (pistachios?.length || 1)) * 100}%`}
+                    ></div>
+                  </div>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white">{countNum}</span>
+                </div>
+              </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Distribution by Language</h3>
+          <div class="space-y-2">
+            {Object.entries(languageStats).map(([language, count]) => {
+              const countNum = count as number;
+              return (
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600 dark:text-gray-300">{language}</span>
+                <div class="flex items-center">
+                  <div class="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2 mr-2">
+                    <div 
+                      class="bg-green-600 h-2 rounded-full" 
+                      style={`width: ${(countNum / (pistachios?.length || 1)) * 100}%`}
+                    ></div>
+                  </div>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white">{countNum}</span>
+                </div>
+              </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Timeline Overview</h3>
+          <div class="space-y-2">
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600 dark:text-gray-300">Earliest:</span>
+              <span class="font-medium text-gray-900 dark:text-white">
+                {minDate && minDate < 0 ? `${Math.abs(minDate)} BCE` : minDate}
+              </span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600 dark:text-gray-300">Latest:</span>
+              <span class="font-medium text-gray-900 dark:text-white">
+                {maxDate && maxDate < 0 ? `${Math.abs(maxDate)} BCE` : maxDate}
+              </span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600 dark:text-gray-300">Span:</span>
+              <span class="font-medium text-gray-900 dark:text-white">
+                {minDate && maxDate ? `${maxDate - minDate} years` : 'Unknown'}
+              </span>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+              <div class="text-xs text-gray-500 dark:text-gray-400">
+                Showing {timelineData.length} dated entries
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filters Section -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Explore & Filter</h2>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Search -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search Translations</label>
+            <input 
+              type="text" 
+              id="searchInput"
+              placeholder="Search translations..."
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          <!-- Religion Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Religion</label>
+            <select 
+              id="religionFilter"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">All Religions</option>
+              {religions.map(religion => (
+                <option value={religion}>{religion}</option>
+              ))}
+            </select>
+          </div>
+
+          <!-- Language Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Language</label>
+            <select 
+              id="languageFilter"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">All Languages</option>
+              {languages.map(language => (
+                <option value={language}>{language}</option>
+              ))}
+            </select>
+          </div>
+
+          <!-- Sort By -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sort By</label>
+            <select 
+              id="sortBy"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="Translation">Translation</option>
+              <option value="Meaning">Meaning</option>
+              <option value="Date">Date</option>
+              <option value="Language">Language</option>
+              <option value="Religion">Religion</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Results Section -->
+    <section>
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
+          Results <span id="resultCount" class="text-lg font-normal text-gray-500 dark:text-gray-400">({pistachios.length})</span>
+        </h2>
+        <button 
+          id="clearFilters"
+          class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+        >
+          Clear Filters
+        </button>
+      </div>
+
+      <div id="pistachiosGrid" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {pistachios.map((pistachio) => {
+          if (!pistachio) return null;
+          const formatted = formatPistachioData(pistachio);
+          return (
+          <article class="pistachio-card bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 border border-gray-100 dark:border-gray-700" data-religion={pistachio.Religion} data-language={pistachio.Language} data-date={pistachio.Date} data-translation={pistachio.Translation} data-meaning={pistachio.Meaning}>
+            <div class="p-6">
+              <div class="flex flex-col h-full">
+                <div class="flex items-start justify-between mb-3">
+                  <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+                    {pistachio.Translation}
+                  </h2>
+                </div>
+                
+                <div class="space-y-3 mb-4">
+                  {pistachio.Date && (
+                    <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {pistachio.Date}
+                    </div>
+                  )}
+                  
+                  {pistachio['Translation Source'] && (
+                    <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                      Source: {pistachio['Translation Source']}
+                    </div>
+                  )}
+                  
+                  <div class="flex flex-wrap gap-2">
+                    {pistachio.Religion && (
+                      <span class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getReligionBadgeColor(pistachio.Religion)}`}>
+                        {pistachio.Religion}
+                      </span>
+                    )}
+                    {pistachio.Language && (
+                      <span class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getLanguageBadgeColor(pistachio.Language)}`}>
+                        {pistachio.Language}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {pistachio.Meaning && (
+                  <div class="mb-4">
+                    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meaning</h3>
+                    <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                      <p class="text-sm text-gray-600 dark:text-gray-300">
+                        {pistachio.Meaning}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {formatted.hasBiblicalVerse && (
+                  <div class="mb-4">
+                    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Biblical Verse</h3>
+                    <div class="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                      <p class="text-sm text-gray-600 dark:text-gray-300 italic">
+                        {pistachio['Biblical Verse']}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {formatted.hasUrl && (
+                  <div class="mt-auto">
+                    <a 
+                      href={pistachio.URL} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                    >
+                      Read more
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          </article>
+        )})}
+      </div>
+
+      <div id="noResults" class="hidden text-center py-12">
+        <p class="text-gray-600 dark:text-gray-400">
+          No entries found matching your filters.
+        </p>
+      </div>
+    </section>
+
+    <!-- Meanings Modal -->
+    <div id="meaningsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+      <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+          <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xl font-semibold text-gray-900 dark:text-white">All Meanings ({meanings.length})</h3>
+              <button 
+                id="closeMeaningsModal"
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="p-6 overflow-y-auto max-h-[60vh]">
+            <div class="space-y-3">
+              {Object.entries(meaningStats).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([meaning, count]) => {
+              const countNum = count as number;
+              const escapedMeaning = meaning.replace(/'/g, "\\'").replace(/"/g, '\\"');
+              return (
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer" onclick={`filterByMeaning('${escapedMeaning}')`}>
+                  <div class="flex-1">
+                    <h4 class="font-medium text-gray-900 dark:text-white">{meaning}</h4>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                      {countNum} translation{countNum !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <div class="flex items-center">
+                    <div class="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2 mr-3">
+                      <div 
+                        class="bg-orange-600 h-2 rounded-full" 
+                        style={`width: ${(countNum / (pistachios?.length || 1)) * 100}%`}
+                      ></div>
+                    </div>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{countNum}</span>
+                  </div>
+                </div>
+              );
+            })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Client-side filtering and search functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+    const religionFilter = document.getElementById('religionFilter') as HTMLSelectElement;
+    const languageFilter = document.getElementById('languageFilter') as HTMLSelectElement;
+    const sortBy = document.getElementById('sortBy') as HTMLSelectElement;
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    const pistachiosGrid = document.getElementById('pistachiosGrid');
+    const resultCount = document.getElementById('resultCount');
+    const noResults = document.getElementById('noResults');
+    const meaningsToggle = document.getElementById('meaningsToggle');
+    const meaningsModal = document.getElementById('meaningsModal');
+    const closeMeaningsModal = document.getElementById('closeMeaningsModal');
+    
+    if (!searchInput || !religionFilter || !languageFilter || !sortBy || !clearFiltersBtn || !pistachiosGrid || !resultCount || !noResults || !meaningsToggle || !meaningsModal || !closeMeaningsModal) {
+      console.error('Required DOM elements not found');
+      return;
+    }
+    
+    let allCards = Array.from(document.querySelectorAll('.pistachio-card')) as HTMLElement[];
+    
+    function filterAndSort() {
+      const searchTerm = searchInput.value.toLowerCase();
+      const selectedReligion = religionFilter.value;
+      const selectedLanguage = languageFilter.value;
+      const sortCriteria = sortBy.value;
+      
+      let filteredCards = allCards.filter(card => {
+        const translation = card.dataset.translation?.toLowerCase() || '';
+        const meaning = card.dataset.meaning?.toLowerCase() || '';
+        const religion = card.dataset.religion || '';
+        const language = card.dataset.language || '';
+        
+        const matchesSearch = translation.includes(searchTerm) || meaning.includes(searchTerm);
+        const matchesReligion = !selectedReligion || religion === selectedReligion;
+        const matchesLanguage = !selectedLanguage || language === selectedLanguage;
+        
+        return matchesSearch && matchesReligion && matchesLanguage;
+      });
+      
+      // Sort the filtered cards
+      filteredCards.sort((a, b) => {
+        switch(sortCriteria) {
+          case 'Translation':
+            return a.querySelector('.text-xl')!.textContent.localeCompare(b.querySelector('.text-xl')!.textContent);
+          case 'Meaning':
+            const aMeaning = a.dataset.meaning || '';
+            const bMeaning = b.dataset.meaning || '';
+            return aMeaning.localeCompare(bMeaning);
+          case 'Date':
+            const aDate = a.dataset.date || '';
+            const bDate = b.dataset.date || '';
+            // Parse dates properly (handle BCE)
+            function parseDate(dateStr: string) {
+              if (!dateStr) return 0;
+              if (dateStr.includes('BCE')) {
+                return -parseInt(dateStr.replace(' BCE', ''));
+              }
+              return parseInt(dateStr) || 0;
+            }
+            return parseDate(aDate) - parseDate(bDate);
+          case 'Language':
+            return a.dataset.language!.localeCompare(b.dataset.language!);
+          case 'Religion':
+            return a.dataset.religion!.localeCompare(b.dataset.religion!);
+          default:
+            return 0;
+        }
+      });
+      
+      // Clear and rebuild grid
+      if (pistachiosGrid) pistachiosGrid.innerHTML = '';
+      
+      if (filteredCards.length === 0) {
+        if (noResults) noResults.classList.remove('hidden');
+        if (resultCount) resultCount.textContent = '(0)';
+      } else {
+        if (noResults) noResults.classList.add('hidden');
+        if (resultCount) resultCount.textContent = `(${filteredCards.length})`;
+        if (pistachiosGrid) filteredCards.forEach(card => pistachiosGrid.appendChild(card));
+      }
+    }
+    
+    // Modal functionality
+    function openMeaningsModal() {
+      meaningsModal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+    
+    function closeMeaningsModalFunc() {
+      meaningsModal.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+    }
+    
+    // Global function for filtering by meaning (called from onclick)
+    (window as any).filterByMeaning = function(meaning: string) {
+      console.log('Filtering by meaning:', meaning);
+      
+      // Update search to filter by the selected meaning
+      searchInput.value = meaning;
+      
+      // Clear other filters to ensure we get results
+      religionFilter.value = '';
+      languageFilter.value = '';
+      sortBy.value = 'Meaning';
+      
+      filterAndSort();
+      closeMeaningsModalFunc();
+      
+      // Scroll to results
+      pistachiosGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+      // Log results for debugging
+      setTimeout(() => {
+        const visibleCards = pistachiosGrid.querySelectorAll('.pistachio-card:not([style*="display: none"])');
+        console.log('Visible cards after filtering:', visibleCards.length);
+      }, 100);
+    };
+    
+    // Event listeners
+    searchInput.addEventListener('input', filterAndSort);
+    religionFilter.addEventListener('change', filterAndSort);
+    languageFilter.addEventListener('change', filterAndSort);
+    sortBy.addEventListener('change', filterAndSort);
+    
+    clearFiltersBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      religionFilter.value = '';
+      languageFilter.value = '';
+      sortBy.value = 'Translation';
+      filterAndSort();
+    });
+    
+    meaningsToggle.addEventListener('click', openMeaningsModal);
+    closeMeaningsModal.addEventListener('click', closeMeaningsModalFunc);
+    
+    // Close modal on background click
+    meaningsModal.addEventListener('click', function(e) {
+      if (e.target === meaningsModal) {
+        closeMeaningsModalFunc();
+      }
+    });
+    
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && !meaningsModal.classList.contains('hidden')) {
+        closeMeaningsModalFunc();
+      }
+    });
+  });
+</script>
+
+<style>
+  /* Smooth scrolling for anchor links */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Better focus styles */
+  a:focus, button:focus {
+    @apply outline-none ring-2 ring-green-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 rounded;
+  }
+  
+  /* Dark mode transitions */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+    
+    * {
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+  }
+  
+  /* Chart animations */
+  .bg-blue-600, .bg-green-600 {
+    transition: width 0.3s ease-in-out;
+  }
+</style>

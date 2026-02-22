@@ -1,0 +1,557 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Parsha Explorer"
+  description="Explore the weekly Torah portions with morphological breakdowns, filters, and lemma analytics."
+  scripts={[
+    { src: 'https://cdn.jsdelivr.net/npm/chart.js' },
+    { src: '/parsha-explorer/parsha-explorer.js' }
+  ]}
+>
+  <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-10 parsha-explorer-page">
+    <header class="max-w-3xl mx-auto text-center space-y-4">
+      <p class="text-sm uppercase tracking-[0.3em] text-secondary-light dark:text-secondary-dark">Interactive Study Tool</p>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-primary-light dark:text-primary-dark">
+        Parsha Explorer
+      </h1>
+      <p class="text-base sm:text-lg text-secondary-light dark:text-secondary-dark">
+        Choose a sefer, parsha, or verse range to visualize the Hebrew text, inspect lemmas, highlight parts of speech,
+        and analyze usage via charts built on the MorphHB dataset.
+      </p>
+    </header>
+
+    <section id="appDescription" class="bg-card-bg-light dark:bg-card-bg-dark border border-border-light dark:border-border-dark rounded-xl shadow-md p-6 space-y-4">
+      <h2 class="text-2xl font-semibold text-primary-light dark:text-primary-dark">How it works</h2>
+      <p class="text-secondary-light dark:text-secondary-dark">
+        Pick a book, optionally drill into a parsha and aliya, or specify a custom verse range. Load the section to view
+        each verse word-by-word with morphology, lemma cross references, and highlighting filters. Charts summarize
+        lemma frequency for proper nouns, verbs, and adverbs, and the table lets you jump directly to matching verses.
+      </p>
+      <ol class="list-decimal list-inside text-secondary-light dark:text-secondary-dark space-y-2">
+        <li>Choose a book or "Whole Tanach". Torah books unlock parsha + aliya selection.</li>
+        <li>Provide an optional verse range or rely on parsha presets, then press <strong>Load Selection</strong>.</li>
+        <li>Use filters to highlight specific parts of speech, click a word for lemma + morphology, or analyze charts and tables.</li>
+      </ol>
+    </section>
+
+    <section class="controls-section controls bg-card-bg-light dark:bg-card-bg-dark border border-border-light dark:border-border-dark rounded-xl shadow-md p-6 space-y-4">
+      <div class="grid gap-4 md:grid-cols-2">
+        <label class="flex flex-col gap-2 text-sm font-medium text-primary-light dark:text-primary-dark">
+          Book
+          <select id="bookSelect" onchange="handleBookChange()" class="rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-900 px-3 py-2 text-base text-primary-light dark:text-primary-dark">
+            <option value="">Select Book</option>
+            <option value="Whole Tanach">Whole Tanach</option>
+            <option value="Genesis">Genesis (בראשית)</option>
+            <option value="Exodus">Exodus (שמות)</option>
+            <option value="Leviticus">Leviticus (ויקרא)</option>
+            <option value="Numbers">Numbers (במדבר)</option>
+            <option value="Deuteronomy">Deuteronomy (דברים)</option>
+            <option value="Joshua">Joshua (יהושע)</option>
+            <option value="Judges">Judges (שופטים)</option>
+            <option value="1 Samuel">1 Samuel (שמואל א)</option>
+            <option value="2 Samuel">2 Samuel (שמואל ב)</option>
+            <option value="1 Kings">1 Kings (מלכים א)</option>
+            <option value="2 Kings">2 Kings (מלכים ב)</option>
+            <option value="Isaiah">Isaiah (ישעיה)</option>
+            <option value="Jeremiah">Jeremiah (ירמיה)</option>
+            <option value="Ezekiel">Ezekiel (יחזקאל)
+            </option>
+            <option value="Hosea">Hosea (הושע)
+            </option>
+            <option value="Joel">Joel (יואל)
+            </option>
+            <option value="Amos">Amos (עמוס)
+            </option>
+            <option value="Obadiah">Obadiah (עובדיה)
+            </option>
+            <option value="Jonah">Jonah (יונה)
+            </option>
+            <option value="Micah">Micah (מיכה)
+            </option>
+            <option value="Nahum">Nahum (נחום)
+            </option>
+            <option value="Habakkuk">Habakkuk (חבקוק)
+            </option>
+            <option value="Zephaniah">Zephaniah (צפניה)
+            </option>
+            <option value="Haggai">Haggai (חגי)
+            </option>
+            <option value="Zechariah">Zechariah (זכריה)
+            </option>
+            <option value="Malachi">Malachi (מלאכי)
+            </option>
+            <option value="Psalms">Psalms (תהילים)
+            </option>
+            <option value="Proverbs">Proverbs (משלי)
+            </option>
+            <option value="Job">Job (איוב)
+            </option>
+            <option value="Song of Songs">Song of Songs (שיר השירים)
+            </option>
+            <option value="Ruth">Ruth (רות)
+            </option>
+            <option value="Lamentations">Lamentations (איכה)
+            </option>
+            <option value="Ecclesiastes">Ecclesiastes (קהלת)
+            </option>
+            <option value="Esther">Esther (אסתר)
+            </option>
+            <option value="Daniel">Daniel (דניאל)
+            </option>
+            <option value="Ezra">Ezra (עזרא)
+            </option>
+            <option value="Nehemiah">Nehemiah (נחמיה)
+            </option>
+            <option value="1 Chronicles">1 Chronicles (דברי הימים א)
+            </option>
+            <option value="2 Chronicles">2 Chronicles (דברי הימים ב)
+            </option>
+          </select>
+        </label>
+
+        <div id="parshaSection" class="space-y-3" style="display: none;">
+          <label class="flex flex-col gap-2 text-sm font-medium text-primary-light dark:text-primary-dark">
+            Parsha
+            <select id="parshaSelect" onchange="loadAliyot()" class="rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-900 px-3 py-2 text-base text-primary-light dark:text-primary-dark">
+              <option value="">Select Parsha</option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-2 text-sm font-medium text-primary-light dark:text-primary-dark">
+            Aliya
+            <select id="aliyaSelect" onchange="loadAliyaRangeFromAliya()" class="rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-900 px-3 py-2 text-base text-primary-light dark:text-primary-dark">
+              <option value="">Select Aliya</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <label class="flex flex-col gap-2 text-sm font-medium text-primary-light dark:text-primary-dark">
+          Verse / Range
+          <input
+            id="verseRange"
+            type="text"
+            placeholder="e.g., 1:1 or 2:1-3:4"
+            oninput="handleVerseRangeInput()"
+            class="rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-900 px-3 py-2 text-base text-primary-light dark:text-primary-dark"
+          />
+        </label>
+        <div class="flex items-end">
+          <button onclick="loadContent()" class="inline-flex w-full justify-center rounded-md bg-accent px-4 py-3 text-lg font-semibold text-white shadow-md hover:bg-accent-dark transition">
+            Load Selection
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div id="loading" class="error" style="display:none">Loading...</div>
+    <div id="error" class="error" style="display:none"></div>
+
+    <div class="title-display" id="referenceDisplay" style="display: none;">Loading Title...</div>
+
+    <section class="filter-box" style="display:none;">
+      <div class="filter-description">
+        Toggle filters to highlight different word types. Click the counts to view words in each category.
+      </div>
+      <div class="highlight-key">
+        <div class="filter-item">
+          <input type="checkbox" id="highlight-noun-checkbox" onclick="toggleFilter('highlight-noun')" />
+          <label for="highlight-noun-checkbox">Noun</label>
+          <div class="word-counts">
+            <span class="word-count" onclick="toggleWordsDisplay('highlight-noun')">Total Nouns: <span id="highlight-noun-count">0</span></span>
+            <span class="word-count" onclick="toggleUniqueWordsDisplay('highlight-noun')">Unique Nouns: <span id="highlight-noun-unique-count">0</span></span>
+            <div class="sort-controls">
+              <button onclick="toggleSortOrder('highlight-noun')" class="sort-btn">Sort: A-Z</button>
+            </div>
+          </div>
+          <div id="highlight-noun-words" class="word-list"></div>
+          <div id="highlight-noun-unique-words" class="word-list"></div>
+        </div>
+
+        <div class="filter-item">
+          <input type="checkbox" id="highlight-proper-noun-checkbox" onclick="toggleFilter('highlight-proper-noun')" />
+          <label for="highlight-proper-noun-checkbox">Proper Noun</label>
+          <div class="word-counts">
+            <span class="word-count" onclick="toggleWordsDisplay('highlight-proper-noun')">Total Proper Nouns: <span id="highlight-proper-noun-count">0</span></span>
+            <span class="word-count" onclick="toggleUniqueWordsDisplay('highlight-proper-noun')">Unique Proper Nouns: <span id="highlight-proper-noun-unique-count">0</span></span>
+            <div class="sort-controls">
+              <button onclick="toggleSortOrder('highlight-proper-noun')" class="sort-btn">Sort: A-Z</button>
+            </div>
+          </div>
+          <div id="highlight-proper-noun-words" class="word-list"></div>
+          <div id="highlight-proper-noun-unique-words" class="word-list"></div>
+        </div>
+
+        <div class="filter-item">
+          <input type="checkbox" id="highlight-adverb-checkbox" onclick="toggleFilter('highlight-adverb')" />
+          <label for="highlight-adverb-checkbox">Adverb</label>
+          <div class="word-counts">
+            <span class="word-count" onclick="toggleWordsDisplay('highlight-adverb')">Total Adverbs: <span id="highlight-adverb-count">0</span></span>
+            <span class="word-count" onclick="toggleUniqueWordsDisplay('highlight-adverb')">Unique Adverbs: <span id="highlight-adverb-unique-count">0</span></span>
+            <div class="sort-controls">
+              <button onclick="toggleSortOrder('highlight-adverb')" class="sort-btn">Sort: A-Z</button>
+            </div>
+          </div>
+          <div id="highlight-adverb-words" class="word-list"></div>
+          <div id="highlight-adverb-unique-words" class="word-list"></div>
+        </div>
+
+        <div class="filter-item">
+          <input type="checkbox" id="highlight-verb-checkbox" onclick="toggleFilter('highlight-verb')" />
+          <label for="highlight-verb-checkbox">Verb</label>
+          <div class="word-counts">
+            <span class="word-count" onclick="toggleWordsDisplay('highlight-verb')">Total Verbs: <span id="highlight-verb-count">0</span></span>
+            <span class="word-count" onclick="toggleUniqueWordsDisplay('highlight-verb')">Unique Verbs: <span id="highlight-verb-unique-count">0</span></span>
+            <div class="sort-controls">
+              <button onclick="toggleSortOrder('highlight-verb')" class="sort-btn">Sort: A-Z</button>
+            </div>
+          </div>
+          <div id="highlight-verb-words" class="word-list"></div>
+          <div id="highlight-verb-unique-words" class="word-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="controls" id="chartControls" style="display: none;">
+      <label for="chartTypeSelect">Select Chart Type:</label>
+      <select id="chartTypeSelect" onchange="updateChart()">
+        <option value="properNouns">Proper Nouns</option>
+        <option value="verbs">Verbs</option>
+        <option value="adverbs">Adverbs</option>
+      </select>
+    </div>
+
+    <canvas id="chart" width="800" height="400" style="display: none;"></canvas>
+    <div id="tableToggleWrapper" style="display: none;">
+      <button id="toggleTableButton" onclick="toggleTable()">Show Full Table</button>
+    </div>
+    <div id="fullLemmaTableWrapper" style="display: none;">
+      <table id="fullLemmaTable">
+        <thead>
+          <tr>
+            <th>Lemma</th>
+            <th>Frequency</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <canvas id="lemmaUsageChart" style="display: none;"></canvas>
+
+    <button onclick="showAllWords()" style="display: none;">Reset Verses</button>
+    <div class="lemma-search" style="display: none;">
+      <input type="text" id="lemmaInput" placeholder="Enter lemma number" />
+      <button onclick="filterByLemma()">Search</button>
+    </div>
+
+    <div id="verseContainer" style="display: none;"></div>
+    <div id="current-verse-container" class="verse-container" style="display: none;"></div>
+  </main>
+
+  <style>
+    :global(body) {
+      font-family: 'SBL Hebrew', 'Times New Roman', serif;
+      color: #000;
+    }
+
+    :global(.parsha-explorer-page) {
+      color: #000 !important;
+    }
+
+    :global(.parsha-explorer-page) {
+      color: #000 !important;
+    }
+
+    :global(.parsha-explorer-page *) {
+      color: #000 !important;
+    }
+
+    :global(.dark .parsha-explorer-page) {
+      color: #f3f4f6 !important;
+    }
+
+    :global(.dark .parsha-explorer-page *) {
+      color: #f3f4f6 !important;
+    }
+    :global(.controls-section) {
+      background-color: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    :global(.title-display) {
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #f3f4f6;
+      background-color: #1f2937;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    :global(.verse-container) {
+      background-color: #1f2937;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      color: #f3f4f6 !important;
+    }
+    :global(.dark .verse-container) {
+      background-color: #1f2937;
+      color: #f3f4f6;
+    }
+    :global(.verse-label) {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #f3f4f6 !important;
+    }
+    :global(.dark .verse-label) {
+      color: #f3f4f6;
+    }
+    :global(.hebrew-text) {
+      font-size: 24px;
+      line-height: 1.8;
+      color: #f3f4f6 !important;
+      direction: rtl;
+      text-align: right;
+    }
+    :global(.dark .hebrew-text) {
+      color: #f3f4f6;
+    }
+    :global(.word-container) {
+      display: inline-block;
+      margin: 0 5px;
+      cursor: pointer;
+      color: #f3f4f6 !important;
+      padding: 2px 4px;
+      transition: background-color 0.2s;
+      position: relative;
+    }
+    :global(.word-container:hover) {
+      background-color: #374151;
+      border-radius: 4px;
+    }
+    :global(#chart) {
+      max-width: 100%;
+      height: auto;
+      margin-top: 20px;
+    }
+    :global(#lemmaUsageChart) {
+      max-width: 100%;
+      max-height: 400px;
+      margin-top: 20px;
+    }
+    :global(.word-info) {
+      font-size: 14px;
+      color: #f3f4f6 !important;
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #1f2937;
+      border-radius: 4px;
+      direction: ltr;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    :global(.filter-box) {
+      padding: 15px;
+      background-color: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      color: #f3f4f6 !important;
+    }
+    :global(.filter-item) {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      border-bottom: 1px solid #374151;
+      padding-bottom: 15px;
+      margin-bottom: 15px;
+    }
+    :global(.word-count) {
+      background-color: #374151;
+      border-radius: 4px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #f3f4f6 !important;
+    }
+    :global(.word-list) {
+      display: none;
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #374151;
+      border-radius: 4px;
+      font-size: 14px;
+      max-height: 200px;
+      overflow-y: auto;
+      color: #f3f4f6 !important;
+    }
+    :global(#fullLemmaTableWrapper) {
+      margin-top: 20px;
+      max-height: 400px;
+      overflow-y: scroll;
+      border: 1px solid #374151;
+      border-radius: 5px;
+      padding: 15px;
+      background-color: #1f2937;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    :global(.dark #fullLemmaTableWrapper) {
+      background-color: #1f2937;
+      border-color: #374151;
+    }
+    :global(#fullLemmaTable th) {
+      background-color: #374151;
+      color: #f3f4f6;
+      font-weight: bold;
+      padding: 10px;
+      border-bottom: 2px solid #4b5563;
+    }
+    :global(.dark #fullLemmaTable th) {
+      background-color: #374151;
+      color: #f3f4f6;
+      border-bottom-color: #4b5563;
+    }
+    :global(#fullLemmaTable td) {
+      padding: 10px;
+      border-bottom: 1px solid #4b5563;
+      color: #f3f4f6;
+    }
+    :global(.dark #fullLemmaTable td) {
+      border-bottom-color: #4b5563;
+      color: #e5e7eb;
+    }
+    :global(.highlight-noun) {
+      background-color: #fbbf24;
+      font-weight: bold;
+      color: #000;
+    }
+    :global(.highlight-verb) {
+      background-color: #f59e0b;
+      font-weight: bold;
+      color: #000;
+    }
+    :global(.highlight-proper-noun) {
+      border: 2px solid #f3f4f6;
+      border-radius: 4px;
+      padding: 2px;
+    }
+    :global(.highlight-adverb) {
+      background-color: #a78bfa;
+      border-radius: 4px;
+      padding: 2px;
+      color: #000;
+    }
+    :global(.construct-noun) {
+      border: 2px dashed #f3f4f6;
+      background-color: #fbbf24;
+      padding: 2px;
+      border-radius: 4px;
+      margin: 0 2px;
+      color: #000;
+    }
+    :global(.selected-word) {
+      box-shadow: 0 0 10px 2px #f97316;
+    }
+    :global(.match-highlight) {
+      outline: 2px solid #10b981;
+      outline-offset: 2px;
+    }
+    :global(select) {
+      background-color: #1f2937 !important;
+      color: #f3f4f6 !important;
+      border-color: #374151 !important;
+    }
+    :global(option) {
+      background-color: #1f2937 !important;
+      color: #f3f4f6 !important;
+    }
+    :global(input[type="text"]) {
+      background-color: #374151 !important;
+      color: #f3f4f6 !important;
+      border-color: #4b5563 !important;
+      placeholder-color: #9ca3af !important;
+    }
+    :global(input::placeholder) {
+      color: #9ca3af !important;
+    }
+    :global(button) {
+      background-color: #3b82f6 !important;
+      color: #ffffff !important;
+      border: 1px solid #2563eb !important;
+      padding: 8px 16px !important;
+      border-radius: 6px !important;
+      cursor: pointer !important;
+      font-weight: 500 !important;
+      transition: all 0.2s ease !important;
+    }
+    :global(button:hover) {
+      background-color: #2563eb !important;
+      border-color: #1d4ed8 !important;
+    }
+    :global(.word-count) {
+      background-color: #374151 !important;
+      color: #f3f4f6 !important;
+      border: 1px solid #4b5563 !important;
+      padding: 6px 12px !important;
+      border-radius: 4px !important;
+      cursor: pointer !important;
+      font-size: 14px !important;
+      transition: all 0.2s ease !important;
+      margin: 2px !important;
+      display: inline-block !important;
+    }
+    :global(.word-count:hover) {
+      background-color: #4b5563 !important;
+      border-color: #6b7280 !important;
+    }
+    :global(input[type="checkbox"]) {
+      width: 18px !important;
+      height: 18px !important;
+      margin: 0 8px 0 0 !important;
+      cursor: pointer !important;
+      accent-color: #3b82f6 !important;
+    }
+    :global(.filter-item label) {
+      cursor: pointer !important;
+      color: #f3f4f6 !important;
+      font-weight: 500 !important;
+      margin-bottom: 8px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+    }
+    :global(.sort-controls) {
+      margin-top: 8px !important;
+      margin-bottom: 8px !important;
+    }
+    :global(.sort-btn) {
+      background-color: #4b5563 !important;
+      color: #f3f4f6 !important;
+      border: 1px solid #6b7280 !important;
+      padding: 4px 8px !important;
+      border-radius: 3px !important;
+      cursor: pointer !important;
+      font-size: 12px !important;
+      transition: all 0.2s ease !important;
+    }
+    :global(.sort-btn:hover) {
+      background-color: #6b7280 !important;
+      border-color: #9ca3af !important;
+    }
+    :global(@media (max-width: 768px)) {
+      .title-display {
+        font-size: 1.1rem;
+        padding: 10px;
+      }
+      .hebrew-text {
+        font-size: 20px;
+      }
+    }
+  </style>
+</Layout>

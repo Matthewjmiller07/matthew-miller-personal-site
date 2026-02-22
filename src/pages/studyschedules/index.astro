@@ -1,0 +1,202 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { GOOGLE_SHEETS_CONFIG } from '../api/config.js';
+import { listSheets, getSheetData } from '../../utils/googleSheetsClient.js';
+
+// Add cache control headers to prevent caching
+Astro.response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+Astro.response.headers.set('Pragma', 'no-cache');
+Astro.response.headers.set('Expires', '0');
+
+// Get all available schedules
+let schedules = [];
+let error = null;
+
+try {
+  console.log('Fetching schedules from Google Sheets...');
+  
+  // Get all sheets to check if the schedules sheet exists
+  const allSheets = await listSheets(GOOGLE_SHEETS_CONFIG.spreadsheetId);
+  console.log(`Found ${allSheets.length} total sheets:`, allSheets.map(s => s.title).join(', '));
+  
+  // Check if we have the schedules master sheet
+  const schedulesSheet = allSheets.find(sheet => sheet.title === 'schedules');
+  
+  if (!schedulesSheet) {
+    throw new Error('No schedules sheet found in the Google Sheet. Please create a "schedules" sheet with your schedule information.');
+  }
+  
+  console.log('Found master schedules sheet');
+  
+  // Get data from the schedules sheet
+  const scheduleData = await getSheetData(
+    GOOGLE_SHEETS_CONFIG.spreadsheetId,
+    'schedules!A:F'
+  );
+  
+  console.log(`Schedules sheet has ${scheduleData ? scheduleData.length - 1 : 0} schedules (excluding header)`);
+  
+  // Skip header row and process each schedule
+  if (scheduleData && scheduleData.length > 1) {
+    // Expected columns: Name, SheetName, CreatedAt, EntryCount, DateRange, Description
+    const masterSchedules = scheduleData.slice(1).map(row => ({
+      name: row[0] || 'Unnamed Schedule',
+      sheetName: row[1] || '',
+      createdAt: row[2] ? new Date(row[2]).toLocaleDateString() : 'Unknown',
+      entryCount: parseInt(row[3]) || 0,
+      dateRange: row[4] || 'N/A',
+      description: row[5] || 'No description available',
+    }));
+    
+    // Only add schedules that have both a name and a sheet name
+    const validSchedules = masterSchedules.filter(s => s.name && s.sheetName);
+    
+    if (validSchedules.length === 0) {
+      console.warn('No valid schedules found in the schedules sheet');
+    } else {
+      console.log(`Added ${validSchedules.length} valid schedules from master sheet`);
+      schedules.push(...validSchedules);
+    }
+  } else {
+    console.warn('Schedules sheet is empty or has no data');
+  }
+  
+} catch (e) {
+  console.error('Error loading schedules:', e);
+  error = e.message;
+  
+  // Add the default schedule even if there's an error
+  schedules = [{
+    name: 'Original Aviya Schedule',
+    sheetName: 'original',
+    createdAt: '',
+    entryCount: 0,
+    dateRange: '',
+    description: 'The original Aviya Schedule'
+  }];
+}
+
+// Get current date in YYYY-MM-DD format
+const today = new Date().toISOString().split('T')[0];
+---
+
+<Layout title="Torah Study Schedules">
+  <div class="container mx-auto px-4 py-8">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold mb-2 text-gray-800 dark:text-white">Torah Study Schedules</h1>
+      <p class="text-gray-600 dark:text-gray-300">Select a study schedule or create your own</p>
+    </div>
+    
+    {error && 
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert">
+        <strong class="font-bold">Error:</strong>
+        <span class="block sm:inline"> {error}</span>
+      </div>
+    }
+    
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Available Schedules</h2>
+      <a href="/torahschedule" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300">
+        Create New Schedule
+      </a>
+    </div>
+
+    {schedules.length === 0 ? (
+      <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-6" role="alert">
+        <p>No schedules found. You can create one using the Torah Schedule generator.</p>
+      </div>
+    ) : (
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {schedules.map(schedule => (
+          <div class="schedule-card bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300" data-schedule-name="{schedule.name}">
+            <div class="p-6">
+              <h3 class="text-lg font-bold mb-2 text-gray-800 dark:text-white">{schedule.name}</h3>
+              {schedule.description && (
+                <p class="text-gray-600 dark:text-gray-300 mb-4 text-sm">{schedule.description}</p>
+              )}
+              
+              <div class="space-y-2 mb-6">
+                {schedule.createdAt && (
+                  <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Created: {schedule.createdAt}
+                  </div>
+                )}
+                
+                {schedule.entryCount > 0 && (
+                  <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    {schedule.entryCount} entries
+                  </div>
+                )}
+                
+                {schedule.dateRange && (
+                  <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    {schedule.dateRange}
+                  </div>
+                )}
+              </div>
+              
+              <div class="flex justify-center">
+                <a 
+                  href={`/schedule/${schedule.sheetName}/${today}`} 
+                  class="inline-block bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white text-center font-medium py-2 px-4 rounded-full transition duration-300 w-full">
+                  Open Schedule
+                </a>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check for a schedule name in the URL hash
+      const scheduleName = window.location.hash.substring(1);
+      if (scheduleName) {
+        // Find the schedule card with matching name
+        const scheduleCard = document.querySelector(`[data-schedule-name="${scheduleName}"]`);
+        if (scheduleCard) {
+          // Scroll to the schedule card
+          scheduleCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Add highlight class
+          scheduleCard.classList.add('border-primary', 'shadow-lg');
+          
+          // Remove highlight after 5 seconds
+          setTimeout(() => {
+            scheduleCard.classList.remove('border-primary', 'shadow-lg');
+          }, 5000);
+        }
+      }
+    });
+  </script>
+</Layout>
+
+<style>
+  /* Add transition for smooth highlight effect */
+  .schedule-card {
+    transition: all 0.3s ease-in-out;
+  }
+  
+  /* Highlight styles */
+  .border-primary {
+    border-color: #3b82f6 !important;
+    border-width: 2px;
+  }
+  
+  /* Ensure the card has a higher z-index when highlighted */
+  .schedule-card:hover,
+  .schedule-card.highlighted {
+    z-index: 10;
+  }
+</style>

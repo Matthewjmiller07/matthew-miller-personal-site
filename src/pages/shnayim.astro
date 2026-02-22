@@ -1,0 +1,821 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Shnayim Mikra - Torah with Targum Onkelos">
+  <main class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="bg-card-bg-light dark:bg-card-bg-dark rounded-xl shadow-md border border-border-light dark:border-border-dark p-6">
+      <h1 class="text-3xl font-bold text-primary-light dark:text-primary-dark mb-6">
+        Shnayim Mikra - Torah with Targum Onkelos
+      </h1>
+      
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-secondary-light dark:text-secondary-dark mb-2">
+          Select Parsha:
+        </label>
+        <select id="parshaSelect" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-background-light dark:bg-background-dark text-primary-light dark:text-primary-dark">
+          <option value="">Loading parshiyot...</option>
+        </select>
+      </div>
+
+      <div id="aliyaControls" class="mb-6 hidden">
+        <div class="flex items-center justify-between mb-4">
+          <h2 id="parshaTitle" class="text-xl font-semibold text-primary-light dark:text-primary-dark"></h2>
+          <div class="flex items-center gap-4">
+            <button id="prevAliya" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+              ← Previous Aliya
+            </button>
+            <span id="aliyaCounter" class="text-sm font-medium text-secondary-light dark:text-secondary-dark"></span>
+            <button id="nextAliya" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+              Next Aliya →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="loadingIndicator" class="hidden text-center py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <p class="mt-2 text-sm text-secondary-light dark:text-secondary-dark">Loading verses...</p>
+      </div>
+
+      <div id="aliyaContent" class="space-y-6 hidden">
+        <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <!-- Mobile-optimized header -->
+          <div class="mb-4">
+            <h3 class="text-lg font-semibold text-primary-light dark:text-primary-dark mb-3">
+              Torah with Targum Onkelos
+            </h3>
+            
+            <!-- Font controls - stacked on mobile -->
+            <div class="space-y-3">
+              <!-- Font selector -->
+              <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
+                <span class="text-sm text-secondary-light dark:text-secondary-dark mb-1 sm:mb-0">Font:</span>
+                <select id="fontSelector" class="px-3 py-2 text-sm bg-white dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto">
+                  <option value="system-ui, -apple-system, sans-serif">System Default</option>
+                  <option value="'Noto Sans Hebrew', sans-serif">Noto Sans Hebrew</option>
+                  <option value="'David CLM', 'David', serif">David</option>
+                  <option value="'Frank Rühl Libre', serif">Frank Rühl Libre</option>
+                  <option value="'Crimson Text', serif">Crimson Text</option>
+                  <option value="'Times New Roman', serif">Times New Roman</option>
+                </select>
+              </div>
+              
+              <!-- Font size controls -->
+              <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
+                <span class="text-sm text-secondary-light dark:text-secondary-dark mb-1 sm:mb-0">Size:</span>
+                <div class="flex space-x-1">
+                  <button id="decreaseFont" class="px-3 py-2 text-sm bg-white dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-500 transition-colors" title="Decrease font size">
+                    A-
+                  </button>
+                  <button id="resetFont" class="px-3 py-2 text-sm bg-white dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-500 transition-colors" title="Reset font size">
+                    A
+                  </button>
+                  <button id="increaseFont" class="px-3 py-2 text-sm bg-white dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-500 transition-colors" title="Increase font size">
+                    A+
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Font preview area - mobile optimized -->
+          <div class="mb-4 p-3 bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600">
+            <div class="text-xs text-secondary-light dark:text-secondary-dark mb-2">Preview:</div>
+            <div id="fontPreview" class="text-right p-2 bg-gray-50 dark:bg-slate-600 rounded" style="font-size: clamp(18px, 4.5vw, 22px); line-height: 2; font-family: system-ui, -apple-system, sans-serif;" dir="rtl">
+              וַיֹּאמֶר בָּר֤וּךְ יְהֹוָה
+            </div>
+          </div>
+          
+          <!-- Verses container - mobile optimized -->
+          <div id="torahVerses" class="space-y-5 sm:space-y-6">
+            <!-- Verse pairs will be inserted here -->
+          </div>
+        </div>
+        
+        <!-- Bottom navigation -->
+        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div class="text-sm text-secondary-light dark:text-secondary-dark">
+            <span id="aliyaCounterBottom" class="font-medium"></span>
+          </div>
+          <button id="nextAliyaBottom" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
+            Next Aliya →
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Load parsha data from CSV
+    interface ParshaData {
+      book: string;
+      verses: string;
+      aliyot: string[];
+    }
+
+    let parshaData: Record<string, ParshaData> = {};
+    let currentParsha: string | null = null;
+    let currentAliyaIndex = 0;
+
+    // Font size management
+    const mobileFontQuery = window.matchMedia('(max-width: 640px)');
+    const defaultFontSize = mobileFontQuery.matches ? 20 : 18;
+    let currentFontSize = defaultFontSize;
+    const minFontSize = mobileFontQuery.matches ? 14 : 12;
+    const maxFontSize = 32;
+    const fontStep = 2;
+
+    // Font management
+    let currentFont = "system-ui, -apple-system, sans-serif";
+
+    // Helper function to calculate total verses in a range (including multi-chapter)
+    function calculateTotalVersesInRange(startChapter: number, startVerse: number, endChapter: number, endVerse: number): number {
+      if (startChapter === endChapter) {
+        return endVerse - startVerse + 1;
+      }
+      
+      // For multi-chapter ranges, we need to know chapter lengths
+      // This is a simplified approach - in reality we'd need a chapter map
+      // For now, we'll estimate based on the data returned by the API
+      console.log(`[calculateTotalVersesInRange] Multi-chapter range: ${startChapter}:${startVerse} to ${endChapter}:${endVerse}`);
+      return 50; // This will be overridden by actual API data length
+    }
+
+    // Helper function to get verse reference for display
+    function getVerseReference(currentChapter: number, currentVerse: number, startChapter: number, startVerse: number): string {
+      if (currentChapter === startChapter) {
+        return `${currentChapter}:${currentVerse}`;
+      }
+      return `${currentChapter}:${currentVerse}`;
+    }
+
+    // Helper function to get verse count for a chapter (simplified)
+    function getChapterVerseCount(chapter: number): number {
+      // This is a simplified mapping - in reality we'd need a complete chapter map
+      const chapterLengths: Record<number, number> = {
+        23: 20,  // Genesis 23 has 20 verses
+        24: 67,  // Genesis 24 has 67 verses
+        25: 18,  // Genesis 25 has 18 verses
+      };
+      return chapterLengths[chapter] || 50; // Default to 50 if unknown
+    }
+
+    function updateFontSize(size: number) {
+      console.log(`[updateFontSize] Called with size: ${size}px`);
+      currentFontSize = Math.max(minFontSize, Math.min(maxFontSize, size));
+      const torahVerses = document.getElementById('torahVerses');
+      console.log(`[updateFontSize] torahVerses element:`, torahVerses);
+      if (torahVerses) {
+        // Apply font size to all verse text elements within the container
+        const verseTexts = torahVerses.querySelectorAll('.font-serif');
+        verseTexts.forEach(element => {
+          (element as HTMLElement).style.fontSize = `${currentFontSize}px`;
+        });
+        console.log(`[updateFontSize] Font size set to ${currentFontSize}px on ${verseTexts.length} elements`);
+        
+        // Update preview font size
+        updateFontPreview();
+      } else {
+        console.error(`[updateFontSize] torahVerses element not found`);
+      }
+    }
+
+    function updateFont(fontFamily: string) {
+      console.log(`[updateFont] Called with font: ${fontFamily}`);
+      currentFont = fontFamily;
+      const torahVerses = document.getElementById('torahVerses');
+      if (torahVerses) {
+        // Apply font to all verse text elements within the container
+        const verseTexts = torahVerses.querySelectorAll('.font-serif');
+        verseTexts.forEach(element => {
+          (element as HTMLElement).style.fontFamily = fontFamily;
+        });
+        console.log(`[updateFont] Font set to ${fontFamily} on ${verseTexts.length} elements`);
+        
+        // Update preview font
+        updateFontPreview();
+      } else {
+        console.error(`[updateFont] torahVerses element not found`);
+      }
+    }
+
+    function updateFontPreview() {
+      const preview = document.getElementById('fontPreview');
+      if (preview) {
+        preview.style.fontSize = `${currentFontSize}px`;
+        preview.style.fontFamily = currentFont;
+        console.log(`[updateFontPreview] Preview updated: ${currentFontSize}px, ${currentFont}`);
+      }
+    }
+
+    function increaseFontSize() {
+      console.log(`[increaseFontSize] Current size: ${currentFontSize}px, new size: ${currentFontSize + fontStep}px`);
+      updateFontSize(currentFontSize + fontStep);
+    }
+
+    function decreaseFontSize() {
+      console.log(`[decreaseFontSize] Current size: ${currentFontSize}px, new size: ${currentFontSize - fontStep}px`);
+      updateFontSize(currentFontSize - fontStep);
+    }
+
+    function resetFontSize() {
+      console.log(`[resetFontSize] Resetting to 16px`);
+      updateFontSize(16);
+    }
+    function getUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        parsha: params.get('parsha'),
+        aliya: params.get('aliya') ? parseInt(params.get('aliya')!) - 1 : null // Convert to 0-based
+      };
+    }
+
+    function updateUrlParams() {
+      const params = new URLSearchParams();
+      if (currentParsha) {
+        params.set('parsha', currentParsha);
+        if (currentAliyaIndex > 0) {
+          params.set('aliya', (currentAliyaIndex + 1).toString()); // Convert to 1-based
+        }
+      }
+      const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+
+    async function loadParshaData() {
+      try {
+        const response = await fetch('/csv/Parsha%20Tracking%20Sheet%20-%205784.csv');
+        const csvText = await response.text();
+        const lines = csvText.split('\n');
+        
+        // Skip header rows and parse data
+        for (let i = 57; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const columns = line.split(',');
+          if (columns.length < 10) continue;
+          
+          const parshaName = columns[1].replace(/"/g, '');
+          const book = columns[2].replace(/"/g, '');
+          const verses = columns[3].replace(/"/g, '');
+          
+          const aliyot = [];
+          for (let j = 4; j <= 10; j++) {
+            if (columns[j] && columns[j].replace(/"/g, '')) {
+              aliyot.push(columns[j].replace(/"/g, ''));
+            }
+          }
+          
+          parshaData[parshaName] = {
+            book,
+            verses,
+            aliyot
+          };
+        }
+        
+        populateParshaSelect();
+        setThisWeeksParsha();
+      } catch (error) {
+        console.error('Error loading parsha data:', error);
+      }
+    }
+
+    function populateParshaSelect() {
+      const select = document.getElementById('parshaSelect') as HTMLSelectElement;
+      if (!select) return;
+      
+      select.innerHTML = '<option value="">Choose a parsha...</option>';
+      
+      // Use the order from CSV, not alphabetical
+      const parshaOrder = [
+        "Bereshit", "Noach", "Lech-Lecha", "Vayera", "Chayei Sarah", "Toldot", "Vayetze", "Vayishlach",
+        "Vayeshev", "Miketz", "Vayigash", "Vayechi", "Shemot", "Va'era", "Bo", "Beshalach",
+        "Yitro", "Mishpatim", "Terumah", "Tetzaveh", "Ki Tisa", "Vayakhel", "Pekudei", "Vayikra",
+        "Tzav", "Shmini", "Tazria", "Metzora", "Acharei Mot", "Kedoshim", "Emor", "Behar",
+        "Bechukotai", "Bamidbar", "Nasso", "Beha'alotecha", "Sh'lach", "Korach", "Chukat", "Balak",
+        "Pinchas", "Matot", "Masei", "Devarim", "Va'etchanan", "Eikev", "Re'eh", "Shoftim",
+        "Ki Teitzei", "Ki Tavo", "Nitzavim", "Vayelech", "Ha'azinu", "V'Zot HaBerachah"
+      ];
+      
+      parshaOrder.forEach(parsha => {
+        if (parshaData[parsha]) {
+          const option = document.createElement('option');
+          option.value = parsha;
+          option.textContent = parsha;
+          select.appendChild(option);
+        }
+      });
+      
+      select.addEventListener('change', () => onParshaSelect());
+    }
+
+    async function setThisWeeksParsha() {
+      try {
+        // Check URL parameters first
+        const urlParams = getUrlParams();
+        
+        if (urlParams.parsha && parshaData[urlParams.parsha]) {
+          console.log(`[setThisWeeksParsha] Using URL parameter parsha: ${urlParams.parsha}`);
+          const select = document.getElementById('parshaSelect') as HTMLSelectElement;
+          if (select) {
+            select.value = urlParams.parsha;
+            onParshaSelect(urlParams.aliya || 0);
+          }
+          return;
+        }
+        
+        // If no URL params, get current parsha from Sefaria
+        const response = await fetch('https://www.sefaria.org/api/calendars');
+        const data = await response.json();
+        const parshaItem = data.calendar_items.find((item: any) => item.title.en === "Parashat Hashavua");
+        
+        if (parshaItem && parshaData[parshaItem.displayValue.en]) {
+          const select = document.getElementById('parshaSelect') as HTMLSelectElement;
+          if (select) {
+            select.value = parshaItem.displayValue.en;
+            onParshaSelect();
+          }
+        }
+      } catch (error) {
+        console.error('Error getting current parsha:', error);
+      }
+    }
+
+    function onParshaSelect(aliyaIndex: number = 0) {
+      const select = document.getElementById('parshaSelect') as HTMLSelectElement;
+      if (!select) return;
+      
+      const parsha = select.value;
+      
+      if (!parsha || !parshaData[parsha]) {
+        hideAliyaContent();
+        return;
+      }
+      
+      console.log(`[onParshaSelect] Selected parsha: ${parsha}`);
+      console.log(`[onParshaSelect] Parsha data:`, parshaData[parsha]);
+      console.log(`[onParshaSelect] First aliya:`, parshaData[parsha].aliyot[0]);
+      
+      currentParsha = parsha;
+      currentAliyaIndex = aliyaIndex;
+      showAliyaControls();
+      loadAliya(currentAliyaIndex);
+      updateUrlParams();
+    }
+
+    function showAliyaControls() {
+      const controls = document.getElementById('aliyaControls');
+      const title = document.getElementById('parshaTitle');
+      if (controls && title) {
+        controls.classList.remove('hidden');
+        title.textContent = currentParsha;
+        updateAliyaCounter();
+        updateNavigationButtons();
+      }
+    }
+
+    function hideAliyaContent() {
+      const controls = document.getElementById('aliyaControls');
+      const content = document.getElementById('aliyaContent');
+      if (controls) controls.classList.add('hidden');
+      if (content) content.classList.add('hidden');
+    }
+
+    function updateAliyaCounter() {
+      const counter = document.getElementById('aliyaCounter');
+      const counterBottom = document.getElementById('aliyaCounterBottom');
+      
+      if (counter && currentParsha) {
+        counter.textContent = `Aliya ${currentAliyaIndex + 1} of ${parshaData[currentParsha].aliyot.length}`;
+      }
+      
+      if (counterBottom && currentParsha) {
+        counterBottom.textContent = `Aliya ${currentAliyaIndex + 1} of ${parshaData[currentParsha].aliyot.length}`;
+      }
+    }
+
+    function updateNavigationButtons() {
+      const prevBtn = document.getElementById('prevAliya') as HTMLButtonElement;
+      const nextBtn = document.getElementById('nextAliya') as HTMLButtonElement;
+      const nextBtnBottom = document.getElementById('nextAliyaBottom') as HTMLButtonElement;
+      
+      if (prevBtn && nextBtn && nextBtnBottom && currentParsha) {
+        const isLastAliya = currentAliyaIndex === parshaData[currentParsha].aliyot.length - 1;
+        prevBtn.disabled = currentAliyaIndex === 0;
+        nextBtn.disabled = isLastAliya;
+        nextBtnBottom.disabled = isLastAliya;
+      }
+    }
+
+    async function loadAliya(index: number) {
+      const aliyot = parshaData[currentParsha!].aliyot;
+      if (index < 0 || index >= aliyot.length) return;
+      
+      const aliyaRange = aliyot[index];
+      console.log(`[loadAliya] Starting to load Aliya ${index + 1}: ${aliyaRange}`);
+      console.log(`[loadAliya] All aliyot for ${currentParsha}:`, aliyot);
+      console.log(`[loadAliya] Aliya ${index + 1} should be: ${aliyaRange}`);
+      const startTime = performance.now();
+      
+      document.getElementById('loadingIndicator')!.classList.remove('hidden');
+      document.getElementById('aliyaContent')!.classList.add('hidden');
+      
+      try {
+        // Parse the aliya range (e.g., "Genesis 1:1-2:3")
+        console.log(`[loadAliya] Raw aliyaRange: "${aliyaRange}"`);
+        const parts = aliyaRange.split(' ');
+        console.log(`[loadAliya] Split parts:`, parts);
+        const book = parts[0];
+        const range = parts[1];
+        console.log(`[loadAliya] Book: "${book}", Range: "${range}"`);
+        
+        // Use the range directly with Sefaria API
+        console.log(`[loadAliya] Fetching range: ${book} ${range}`);
+        
+        const [torahData, targumData] = await Promise.all([
+          fetchRangeText(book, range),
+          fetchTargumRangeText(book, range)
+        ]);
+        
+        console.log(`[loadAliya] Got Torah data:`, torahData);
+        console.log(`[loadAliya] Expected range: ${range}`);
+        console.log(`[loadAliya] API returned ref: ${torahData.ref}`);
+        console.log(`[loadAliya] API returned ${torahData.he?.length || 0} verses`);
+        
+        // Check if the API returned the correct range
+        if (torahData.ref && torahData.ref !== `${book} ${range}`) {
+          console.warn(`[loadAliya] API returned different range than requested!`);
+          console.warn(`[loadAliya] Requested: ${book} ${range}`);
+          console.warn(`[loadAliya] Received: ${torahData.ref}`);
+        }
+        
+        const endTime = performance.now();
+        const totalTime = endTime - startTime;
+        console.log(`[loadAliya] Aliya ${index + 1} completed in ${totalTime.toFixed(2)}ms`);
+        
+        console.log(`[loadAliya] About to call displayRangeVerses`);
+        displayRangeVerses(torahData, targumData, range);
+        console.log(`[loadAliya] Called displayRangeVerses`);
+        
+      } catch (error) {
+        console.error('Error loading aliya:', error);
+        document.getElementById('torahVerses')!.innerHTML = '<p class="text-red-500">Error loading verses</p>';
+        document.getElementById('targumVerses')!.innerHTML = '<p class="text-red-500">Error loading Targum</p>';
+      } finally {
+        console.log(`[loadAliya] In finally block - hiding loading, showing content`);
+        document.getElementById('loadingIndicator')!.classList.add('hidden');
+        document.getElementById('aliyaContent')!.classList.remove('hidden');
+        console.log(`[loadAliya] Content container classes:`, document.getElementById('aliyaContent')!.className);
+      }
+    }
+
+    function getVerseRange(start: string, end: string) {
+      console.log(`[getVerseRange] Parsing range: ${start} to ${end}`);
+      const [startChapter, startVerse] = start.match(/(\d+):(\d+)/)!.slice(1);
+      const [endChapter, endVerse] = end.match(/(\d+):(\d+)/)!.slice(1);
+      
+      console.log(`[getVerseRange] Start: chapter ${startChapter}, verse ${startVerse}`);
+      console.log(`[getVerseRange] End: chapter ${endChapter}, verse ${endVerse}`);
+      
+      const verses = [];
+      
+      if (startChapter === endChapter) {
+        // Same chapter - simple range
+        console.log(`[getVerseRange] Same chapter, adding verses ${startVerse} to ${endVerse}`);
+        for (let i = parseInt(startVerse); i <= parseInt(endVerse); i++) {
+          verses.push(`${startChapter}:${i}`);
+        }
+      } else {
+        // Different chapters - handle properly
+        console.log(`[getVerseRange] Different chapters, handling multi-chapter range`);
+        
+        // Add remaining verses from start chapter
+        for (let i = parseInt(startVerse); i <= 50; i++) {
+          verses.push(`${startChapter}:${i}`);
+        }
+        
+        // Add full chapters in between
+        for (let ch = parseInt(startChapter) + 1; ch < parseInt(endChapter); ch++) {
+          for (let v = 1; v <= 50; v++) {
+            verses.push(`${ch}:${v}`);
+          }
+        }
+        
+        // Add verses up to end verse
+        for (let i = 1; i <= parseInt(endVerse); i++) {
+          verses.push(`${endChapter}:${i}`);
+        }
+      }
+      
+      console.log(`[getVerseRange] Generated ${verses.length} verses: ${verses.slice(0, 5).join(', ')}...${verses.length > 5 ? verses.slice(-5).join(', ') : ''}`);
+      return verses;
+    }
+
+    async function fetchRangeText(book: string, range: string) {
+      const bookMap = {
+        'Genesis': 'Genesis',
+        'Exodus': 'Exodus',
+        'Leviticus': 'Leviticus',
+        'Numbers': 'Numbers',
+        'Deuteronomy': 'Deuteronomy'
+      };
+      
+      const sefariaRef = `${bookMap[book as keyof typeof bookMap]} ${range}`;
+      const fetchStart = performance.now();
+      console.log(`[fetchRangeText] Fetching Torah range: ${sefariaRef}`);
+      
+      try {
+        const response = await fetch(`https://www.sefaria.org/api/texts/${encodeURIComponent(sefariaRef)}?lang=he`);
+        const data = await response.json();
+        const fetchEnd = performance.now();
+        const fetchTime = fetchEnd - fetchStart;
+        console.log(`[fetchRangeText] Torah range ${sefariaRef} fetched in ${fetchTime.toFixed(2)}ms - got ${data.he?.length || 0} verses`);
+        return data;
+      } catch (error) {
+        console.error(`Error fetching range ${sefariaRef}:`, error);
+        return { he: ['[Error]'] };
+      }
+    }
+
+    async function fetchTargumRangeText(book: string, range: string) {
+      const bookMap = {
+        'Genesis': 'Targum Onkelos Genesis',
+        'Exodus': 'Targum Onkelos Exodus',
+        'Leviticus': 'Targum Onkelos Leviticus',
+        'Numbers': 'Targum Onkelos Numbers',
+        'Deuteronomy': 'Targum Onkelos Deuteronomy'
+      };
+      
+      const sefariaRef = `${bookMap[book as keyof typeof bookMap]} ${range}`;
+      const fetchStart = performance.now();
+      console.log(`[fetchTargumRangeText] Fetching Targum range: ${sefariaRef}`);
+      
+      try {
+        const response = await fetch(`https://www.sefaria.org/api/texts/${encodeURIComponent(sefariaRef)}?lang=he`);
+        const data = await response.json();
+        const fetchEnd = performance.now();
+        const fetchTime = fetchEnd - fetchStart;
+        console.log(`[fetchTargumRangeText] Targum range ${sefariaRef} fetched in ${fetchTime.toFixed(2)}ms - got ${data.he?.length || 0} verses`);
+        return data;
+      } catch (error) {
+        console.error(`Error fetching Targum range ${sefariaRef}:`, error);
+        return { he: ['[Error]'] };
+      }
+    }
+
+    function displayRangeVerses(torahData: any, targumData: any, range: string) {
+      console.log(`[displayRangeVerses] Function started`);
+      
+      const torahContainer = document.getElementById('torahVerses');
+      
+      console.log(`[displayRangeVerses] torahContainer:`, torahContainer);
+      
+      if (!torahContainer) {
+        console.error(`[displayRangeVerses] Missing torah container`);
+        return;
+      }
+      
+      console.log(`[displayRangeVerses] Torah data:`, torahData);
+      console.log(`[displayRangeVerses] Targum data:`, targumData);
+      console.log(`[displayRangeVerses] Range:`, range);
+      
+      // Parse the requested range to extract the correct verses
+      const rangeMatch = range.match(/(\d+):(\d+)-(\d+):(\d+)/);
+      if (!rangeMatch) {
+        console.error(`[displayRangeVerses] Invalid range format: ${range}`);
+        return;
+      }
+      
+      const [, startChapter, startVerse, endChapter, endVerse] = rangeMatch.map(Number);
+      console.log(`[displayRangeVerses] Parsed range: ${startChapter}:${startVerse} to ${endChapter}:${endVerse}`);
+      
+      let torahVerses: string[];
+      let targumVerses: string[];
+      
+      if (startChapter === endChapter) {
+        // Single chapter range - use simple slicing
+        console.log(`[displayRangeVerses] Single chapter range detected`);
+        const startIdx = startVerse - 1;
+        const endIdx = endVerse - 1;
+        console.log(`[displayRangeVerses] Extracting verses ${startIdx} to ${endIdx} from API response`);
+        
+        torahVerses = torahData.he.slice(startIdx, endIdx + 1);
+        targumVerses = targumData.he.slice(startIdx, endIdx + 1);
+      } else {
+        // Multi-chapter range - the API returns nested arrays for each chapter
+        console.log(`[displayRangeVerses] Multi-chapter range detected`);
+        console.log(`[displayRangeVerses] API returned structure:`, typeof torahData.he);
+        console.log(`[displayRangeVerses] Torah data type:`, Array.isArray(torahData.he) ? 'array' : 'object');
+        console.log(`[displayRangeVerses] Torah array length:`, torahData.he.length);
+        
+        // The API returns an array where each element is a chapter's verses
+        torahVerses = [];
+        targumVerses = [];
+        
+        if (Array.isArray(torahData.he)) {
+          torahData.he.forEach((chapterData: any, index: number) => {
+            console.log(`[displayRangeVerses] Processing chapter ${index + 1}:`, Array.isArray(chapterData) ? `${chapterData.length} verses` : 'not an array');
+            if (Array.isArray(chapterData)) {
+              torahVerses.push(...chapterData);
+            }
+          });
+        }
+        
+        if (Array.isArray(targumData.he)) {
+          targumData.he.forEach((chapterData: any, index: number) => {
+            console.log(`[displayRangeVerses] Processing targum chapter ${index + 1}:`, Array.isArray(chapterData) ? `${chapterData.length} verses` : 'not an array');
+            if (Array.isArray(chapterData)) {
+              targumVerses.push(...chapterData);
+            }
+          });
+        }
+        
+        console.log(`[displayRangeVerses] After processing: ${torahVerses.length} Torah verses, ${targumVerses.length} Targum verses`);
+        
+        // Now extract only the verses we need from the flattened array
+        if (torahVerses.length > 0) {
+          // Calculate how many verses to take from each chapter
+          const startChapterVerses = getChapterVerseCount(startChapter) - startVerse + 1;
+          const endChapterVerses = endVerse;
+          const totalVersesNeeded = startChapterVerses + endChapterVerses;
+          
+          console.log(`[displayRangeVerses] Need ${totalVersesNeeded} verses: ${startChapterVerses} from chapter ${startChapter}, ${endChapterVerses} from chapter ${endChapter}`);
+          
+          // Extract the exact verses we need
+          torahVerses = torahVerses.slice(startVerse - 1, startVerse - 1 + totalVersesNeeded);
+          targumVerses = targumVerses.slice(startVerse - 1, startVerse - 1 + totalVersesNeeded);
+          
+          console.log(`[displayRangeVerses] Final extraction: ${torahVerses.length} Torah verses, ${targumVerses.length} Targum verses`);
+        }
+      }
+      
+      console.log(`[displayRangeVerses] Extracted ${torahVerses.length} Torah verses`);
+      console.log(`[displayRangeVerses] Extracted ${targumVerses.length} Targum verses`);
+      
+      // Create verse-by-verse layout: Torah verse x2, then Targum verse
+      let combinedHtml = '';
+      
+      console.log(`[displayRangeVerses] Starting loop for ${torahVerses.length} verses`);
+      
+      for (let i = 0; i < torahVerses.length; i++) {
+        const torahText = torahVerses[i];
+        const targumText = targumVerses[i] || '[Targum not available]';
+        
+        // Calculate the actual verse number based on position in range
+        let verseRef: string;
+        if (startChapter === endChapter) {
+          // Single chapter - simple numbering
+          const actualVerseNum = startVerse + i;
+          verseRef = `${startChapter}:${actualVerseNum}`;
+        } else {
+          // Multi-chapter - calculate based on chapter boundaries
+          let currentChapter = startChapter;
+          let currentVerse = startVerse + i;
+          
+          // Move to next chapter if we've exceeded the current chapter's length
+          while (currentVerse > getChapterVerseCount(currentChapter)) {
+            currentVerse -= getChapterVerseCount(currentChapter);
+            currentChapter++;
+          }
+          
+          verseRef = `${currentChapter}:${currentVerse}`;
+        }
+        
+        console.log(`[displayRangeVerses] Adding verse ${verseRef}:`, torahText);
+        
+        combinedHtml += `
+          <div class="verse-pair mb-4 p-4 sm:p-5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700" dir="rtl">
+            <div class="mb-3 space-y-3">
+              <span class="font-bold text-primary-light dark:text-primary-dark text-base sm:text-sm block text-right">${verseRef}</span>
+              <div class="space-y-3">
+                <div class="font-serif text-[1.35rem] sm:text-xl leading-[2.25rem] sm:leading-relaxed tracking-[0.01em] text-gray-900 dark:text-gray-100">
+                  ${torahText}
+                </div>
+                <div class="font-serif text-[1.35rem] sm:text-xl leading-[2.25rem] sm:leading-relaxed tracking-[0.01em] text-gray-900 dark:text-gray-100">
+                  ${torahText}
+                </div>
+              </div>
+            </div>
+            <div class="border-t border-slate-200 dark:border-slate-600 pt-3 space-y-2">
+              <span class="font-bold text-amber-600 dark:text-amber-400 text-base sm:text-sm block text-right">Onkelos</span>
+              <div class="font-serif text-[1.25rem] sm:text-lg leading-[2rem] sm:leading-relaxed tracking-[0.01em] text-amber-800 dark:text-amber-200">
+                ${targumText}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
+      console.log(`[displayRangeVerses] Generated HTML with ${torahVerses.length} verses`);
+      console.log(`[displayRangeVerses] HTML length:`, combinedHtml.length);
+      
+      // Display in a single container
+      torahContainer.innerHTML = combinedHtml;
+      
+      // Initialize font size after content is loaded
+      updateFontSize(currentFontSize);
+      updateFont(currentFont);
+      
+      console.log(`[displayRangeVerses] HTML set to container`);
+      console.log(`[displayRangeVerses] Function completed`);
+    }
+
+    // Event listeners
+    const prevBtn = document.getElementById('prevAliya') as HTMLButtonElement;
+    const nextBtn = document.getElementById('nextAliya') as HTMLButtonElement;
+    const nextBtnBottom = document.getElementById('nextAliyaBottom') as HTMLButtonElement;
+    
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        if (currentAliyaIndex > 0) {
+          currentAliyaIndex--;
+          updateAliyaCounter();
+          updateNavigationButtons();
+          loadAliya(currentAliyaIndex);
+          updateUrlParams();
+        }
+      });
+    }
+    
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        if (currentParsha && currentAliyaIndex < parshaData[currentParsha].aliyot.length - 1) {
+          currentAliyaIndex++;
+          updateAliyaCounter();
+          updateNavigationButtons();
+          loadAliya(currentAliyaIndex);
+          updateUrlParams();
+        }
+      });
+    }
+    
+    if (nextBtnBottom) {
+      nextBtnBottom.addEventListener('click', () => {
+        if (currentParsha && currentAliyaIndex < parshaData[currentParsha].aliyot.length - 1) {
+          currentAliyaIndex++;
+          updateAliyaCounter();
+          updateNavigationButtons();
+          loadAliya(currentAliyaIndex);
+          updateUrlParams();
+        }
+      });
+    }
+
+    // Font size event listeners
+    const decreaseFontBtn = document.getElementById('decreaseFont') as HTMLButtonElement;
+    const resetFontBtn = document.getElementById('resetFont') as HTMLButtonElement;
+    const increaseFontBtn = document.getElementById('increaseFont') as HTMLButtonElement;
+
+    console.log(`[Font Controls] decreaseFontBtn:`, decreaseFontBtn);
+    console.log(`[Font Controls] resetFontBtn:`, resetFontBtn);
+    console.log(`[Font Controls] increaseFontBtn:`, increaseFontBtn);
+
+    if (decreaseFontBtn) {
+      console.log(`[Font Controls] Adding event listener to decreaseFontBtn`);
+      decreaseFontBtn.addEventListener('click', () => {
+        console.log(`[Font Controls] Decrease button clicked`);
+        decreaseFontSize();
+      });
+    } else {
+      console.error(`[Font Controls] decreaseFontBtn not found`);
+    }
+
+    if (resetFontBtn) {
+      console.log(`[Font Controls] Adding event listener to resetFontBtn`);
+      resetFontBtn.addEventListener('click', () => {
+        console.log(`[Font Controls] Reset button clicked`);
+        resetFontSize();
+      });
+    } else {
+      console.error(`[Font Controls] resetFontBtn not found`);
+    }
+
+    if (increaseFontBtn) {
+      console.log(`[Font Controls] Adding event listener to increaseFontBtn`);
+      increaseFontBtn.addEventListener('click', () => {
+        console.log(`[Font Controls] Increase button clicked`);
+        increaseFontSize();
+      });
+    } else {
+      console.error(`[Font Controls] increaseFontBtn not found`);
+    }
+
+    // Font selector event listener
+    const fontSelector = document.getElementById('fontSelector') as HTMLSelectElement;
+    if (fontSelector) {
+      console.log(`[Font Controls] fontSelector:`, fontSelector);
+      fontSelector.addEventListener('change', (e) => {
+        const selectedFont = (e.target as HTMLSelectElement).value;
+        console.log(`[Font Controls] Font selected: ${selectedFont}`);
+        updateFont(selectedFont);
+      });
+    } else {
+      console.error(`[Font Controls] fontSelector not found`);
+    }
+
+    // Initialize
+    loadParshaData();
+  </script>
+</Layout>

@@ -1,0 +1,128 @@
+---
+import Layout from '../layouts/Layout.astro';
+import intel from '../data/competitive-intel.json';
+
+type Intel = typeof intel;
+const data = intel as Intel;
+---
+
+<Layout title="Competitive Intel" description="Competitive intelligence on OpenAI and key competitors.">
+  <main class="container mx-auto px-6 lg:px-8 py-10">
+    <header class="max-w-3xl">
+      <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-primary-light dark:text-primary-dark">
+        Competitive Intelligence
+      </h1>
+      <p class="mt-3 text-base sm:text-lg text-secondary-light dark:text-secondary-dark">
+        Executive-grade competitive intel on OpenAI and the field (enterprise share, pricing pressure, narrative attacks, and recommended plays).
+      </p>
+      <p class="mt-2 text-sm text-secondary-light/80 dark:text-secondary-dark/80">
+        Last updated: <span class="font-semibold">{data.updated}</span>
+      </p>
+    </header>
+
+    <section class="mt-10">
+      <h2 class="text-2xl font-bold text-primary-light dark:text-primary-dark">Executive snapshot</h2>
+      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {data.executiveSnapshot.map((item) => (
+          <div class="rounded-lg border border-border-light dark:border-border-dark bg-card-bg-light dark:bg-card-bg-dark p-4">
+            <div class="text-sm font-semibold text-accent dark:text-accent-dark">{item.metric}</div>
+            <div class="mt-2 text-2xl font-extrabold text-primary-light dark:text-primary-dark">{item.value}</div>
+            <div class="mt-2 text-sm text-secondary-light dark:text-secondary-dark">{item.note}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="mt-12">
+      <h2 class="text-2xl font-bold text-primary-light dark:text-primary-dark">Pricing pressure (per 1M tokens)</h2>
+      <p class="mt-2 text-sm text-secondary-light dark:text-secondary-dark">Unit: {data.pricing.unit}</p>
+      <div class="mt-4 overflow-x-auto rounded-lg border border-border-light dark:border-border-dark">
+        <table class="min-w-full text-sm">
+          <thead class="bg-slate-50 dark:bg-slate-900">
+            <tr>
+              <th class="text-left p-3 font-bold">Company</th>
+              <th class="text-left p-3 font-bold">Model</th>
+              <th class="text-left p-3 font-bold">Input</th>
+              <th class="text-left p-3 font-bold">Output</th>
+              <th class="text-left p-3 font-bold">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.pricing.rows.map((row) => (
+              <tr class:list={["border-t border-border-light dark:border-border-dark", row.company === 'OpenAI' ? 'bg-accent/5' : '']}>
+                <td class="p-3 font-semibold">{row.company}</td>
+                <td class="p-3"><span class="font-mono">{row.model}</span></td>
+                <td class="p-3">${row.input}</td>
+                <td class="p-3">${row.output}</td>
+                <td class="p-3 text-secondary-light dark:text-secondary-dark">{row.source}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mt-12">
+      <h2 class="text-2xl font-bold text-primary-light dark:text-primary-dark">Competitor briefs</h2>
+      <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {data.competitors.map((c) => (
+          <article class="rounded-lg border border-border-light dark:border-border-dark bg-card-bg-light dark:bg-card-bg-dark p-5">
+            <header class="flex items-start justify-between gap-3">
+              <div>
+                <h3 class="text-xl font-extrabold text-primary-light dark:text-primary-dark">{c.name}</h3>
+                <p class="mt-1 text-sm text-secondary-light dark:text-secondary-dark">{c.positioning}</p>
+              </div>
+              <span class="inline-flex items-center rounded-full border border-border-light dark:border-border-dark px-2.5 py-1 text-xs font-bold">
+                {c.threat} threat
+              </span>
+            </header>
+
+            <div class="mt-4">
+              <h4 class="text-sm font-bold text-accent dark:text-accent-dark">Strengths</h4>
+              <ul class="mt-2 list-disc pl-5 text-sm text-secondary-light dark:text-secondary-dark">
+                {c.strengths.map((s) => (<li>{s}</li>))}
+              </ul>
+            </div>
+
+            <div class="mt-4">
+              <h4 class="text-sm font-bold text-accent dark:text-accent-dark">Weaknesses</h4>
+              <ul class="mt-2 list-disc pl-5 text-sm text-secondary-light dark:text-secondary-dark">
+                {c.weaknesses.map((w) => (<li>{w}</li>))}
+              </ul>
+            </div>
+
+            <div class="mt-4">
+              <h4 class="text-sm font-bold text-accent dark:text-accent-dark">OpenAI moves</h4>
+              <ul class="mt-2 list-disc pl-5 text-sm text-secondary-light dark:text-secondary-dark">
+                {c.openaiMoves.map((m) => (<li>{m}</li>))}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="mt-12">
+      <h2 class="text-2xl font-bold text-primary-light dark:text-primary-dark">24-hour rapid-response template</h2>
+      <div class="mt-4 rounded-lg border border-border-light dark:border-border-dark bg-card-bg-light dark:bg-card-bg-dark p-5">
+        <ol class="list-decimal pl-6 text-sm text-secondary-light dark:text-secondary-dark">
+          {data.rapidResponseTemplate.sections.map((s) => (<li class="mt-1">{s}</li>))}
+        </ol>
+      </div>
+    </section>
+
+    <section class="mt-12">
+      <h2 class="text-2xl font-bold text-primary-light dark:text-primary-dark">Sources</h2>
+      <div class="mt-3 rounded-lg border border-border-light dark:border-border-dark bg-card-bg-light dark:bg-card-bg-dark p-5">
+        <ul class="list-disc pl-5 text-sm">
+          {data.sources.map((s) => (
+            <li class="mt-1">
+              <a class="text-accent dark:text-accent-dark underline" href={s.url} target="_blank" rel="noreferrer">{s.title}</a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+  </main>
+</Layout>

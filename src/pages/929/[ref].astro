@@ -1,0 +1,436 @@
+---
+export const prerender = false;
+
+import Layout from "../../layouts/Layout.astro";
+import { parse, HTMLElement } from 'node-html-parser';
+ 
+
+// Helper: first visible character (letter/number or first codepoint)
+function firstVisibleChar(s: string): string {
+  // First try to parse as HTML to handle verse spans
+  try {
+    const root = parse(s);
+    // Get all text nodes and find the first one with content
+    const walker = (node: any): string | null => {
+      if (node.nodeType === 3) { // Text node
+        const text = node.text.trim();
+        if (text) {
+          // Find first letter that's not part of a verse number
+          const match = text.match(/[a-zA-Z]/);
+          if (match) return match[0].toUpperCase();
+        }
+      }
+      
+      if (node.childNodes) {
+        for (const child of node.childNodes) {
+          const result = walker(child);
+          if (result) return result;
+        }
+      }
+      return null;
+    };
+    
+    const result = walker(root);
+    if (result) return result;
+  } catch (e) {
+    console.warn('Error parsing HTML for first character', e);
+  }
+  
+  // Fallback to simple string parsing if HTML parsing fails or no letter found
+  const text = s.replace(/<[^>]*>/g, ''); // Remove HTML tags
+  const match = text.match(/[a-zA-Z]/);
+  if (match) return match[0].toUpperCase();
+  
+  // If no letter found, return 'I' as default
+  return 'I';
+}
+
+// Helper: remove the first visible character from an HTML string, skipping tags and verse numbers
+function removeFirstVisibleCharFromHTML(html: string): string {
+  try {
+    // Try to parse as HTML first
+    const root = parse(html);
+    
+    // Find and process the first text node with a letter
+    const processNode = (node: any): boolean => {
+      if (node.nodeType === 3) { // Text node
+        const text = node.text || '';
+        // Find first non-whitespace character that's not part of a verse number
+        const match = text.match(/^(\s*\d*\s*)([^\s\d])(.*)$/);
+        
+        if (match) {
+          const [_, leading, firstChar, rest] = match;
+          // Create a new text node with the first non-whitespace character removed
+          const newText = leading + rest;
+          
+          // Create a new text node with the modified content
+          const newTextNode = new Text();
+          newTextNode.textContent = newText;
+          
+          // Replace the old text node with the new one
+          if (node.parentNode) {
+            node.parentNode.replaceChild(newTextNode, node);
+          }
+          return true; // Successfully removed a letter
+        }
+      }
+      
+      // Process child nodes if needed
+      if (node.childNodes) {
+        for (const child of node.childNodes) {
+          if (processNode(child)) return true;
+        }
+      }
+      
+      return false;
+    };
+    
+    // Process the root and its children
+    processNode(root);
+    return root.toString();
+    
+    // If we get here, no non-whitespace characters were found
+    return html;
+  } catch (e) {
+    console.warn('Error processing HTML for drop cap removal, falling back to string method', e);
+    
+    // Fallback to string-based method if HTML parsing fails
+    let out = '';
+    let removed = false;
+    let inTag = false;
+    
+    for (let i = 0; i < html.length; i++) {
+      const ch = html[i];
+      if (ch === '<') {
+        inTag = true;
+        out += ch;
+        continue;
+      }
+      if (ch === '>' && inTag) {
+        inTag = false;
+        out += ch;
+        continue;
+      }
+      if (!inTag && !removed) {
+        // Skip whitespace until we hit a visible character
+        if (/\s/.test(ch)) { out += ch; continue; }
+        // Remove first non-whitespace character
+        removed = true;
+        continue;
+      }
+      out += ch;
+    }
+    
+    return out;
+  }
+}
+
+// Helper: extract footnotes from Sefaria HTML. We look for:
+// <sup class="footnote-marker">*</sup><i class="footnote"> ... </i>
+// and convert them to numbered references with an endnotes block.
+
+// Type guard to check if a node is an HTMLElement
+function isHTMLElement(node: any): node is HTMLElement {
+  return node && typeof node.classList === 'object';
+}
+
+function extractFootnotesFromHTML(html: string): { bodyHtml: string; notes: { index: number; marker: string; html: string; }[] } {
+  const notes: { index: number; marker: string; html: string; }[] = [];
+  let index = 1;
+
+  try {
+    const root = parse(html);
+    const markers = root.querySelectorAll('sup.footnote-marker');
+
+    for (const marker of markers) {
+      if (!isHTMLElement(marker)) continue;
+      
+      let nextNode = marker.nextSibling;
+      const nodesToRemove: any[] = [marker];
+      let footnoteNode: HTMLElement | null = null;
+
+      // Find the corresponding i.footnote, collecting nodes in between
+      while (nextNode) {
+        nodesToRemove.push(nextNode);
+        if (isHTMLElement(nextNode) && nextNode.classList.contains('footnote')) {
+          footnoteNode = nextNode;
+          break;
+        }
+        nextNode = nextNode.nextSibling;
+      }
+
+      if (footnoteNode) {
+        const n = index++;
+        // Extract content and add to our notes list
+        notes.push({ index: n, marker: '*', html: footnoteNode.innerHTML });
+
+        // Create the new superscript reference link
+        const refLink = parse(`<sup class="footnote-ref"><a href="#fn${n}" id="fnref${n}">${n}</a></sup>`);
+        
+        // Replace the first node in the sequence (the original marker) with the new link
+        nodesToRemove[0].replaceWith(refLink);
+
+        // Remove all other nodes in the sequence (intervening text, the i.footnote tag)
+        for (let i = 1; i < nodesToRemove.length; i++) {
+          nodesToRemove[i].remove();
+        }
+      }
+    }
+
+    return { bodyHtml: root.toString(), notes };
+
+  } catch (error) {
+    console.error("ERROR during footnote processing:", error);
+    return { bodyHtml: html, notes: [] }; // Fallback to original HTML on error
+  }
+}
+
+// Fetch Sefaria text for a given ref and language
+async function fetchSefariaText(ref: string, lang: 'en' | 'he'): Promise<string> {
+  const url = `https://www.sefaria.org/api/texts/${encodeURIComponent(ref)}`;
+  const params = new URLSearchParams({ lang, context: '0', commentary: '0' });
+  const resp = await fetch(`${url}?${params.toString()}`);
+  if (!resp.ok) throw new Error(`Sefaria request failed: ${resp.status}`);
+  const data = await resp.json();
+  let textContent: string;
+  
+  // Handle both array and string payloads
+  const payload = lang === 'he' ? (data?.he ?? []) : (data?.text ?? []);
+  
+  console.log('Processing verses for ref:', ref);
+  if (Array.isArray(payload)) {
+    // If we have verse numbers in the data, use them to structure the text
+    if (data.verses && Array.isArray(data.verses)) {
+      console.log('Found verses array with length:', data.verses.length);
+      
+      // Create a wrapper div for the entire content
+      textContent = `<div class="verses-container">${data.verses.map((verse: { verse: number, text: string }) => {
+        console.log(`Processing verse ${verse.verse} for ref ${ref}`);
+        
+        if (verse.verse === 28 && ref.includes('Genesis 1')) {
+          console.log('Found Genesis 1:28 - adding illustration');
+          return `
+            <div class="verse-28-wrapper" style="position: relative;">
+              <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start;">
+                <div style="flex: 1; min-width: 200px;">
+                  <span class="verse"><sup class="verse-number">${verse.verse}</sup> ${verse.text}</span>
+                </div>
+                <div style="flex: 0 0 200px; margin: 0.5rem 0;">
+                  <div style="background: white; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid #fbbf24; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <img 
+                      src="/images/illustrations/image-removebg-preview (1).png" 
+                      alt="Illustration for Genesis 1:28"
+                      style="width: 100%; height: auto; display: block;"
+                    />
+                    <p style="margin: 0.25rem 0 0; font-size: 0.75rem; color: #b45309; font-style: italic; text-align: center;">Genesis 1:28</p>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+        }
+        return `<span class="verse"><sup class="verse-number">${verse.verse}</sup> ${verse.text}</span>`;
+      }).join(' ')}</div>`;
+    } else {
+      // Fallback for non-verse structured text
+      textContent = payload
+        .filter((x: unknown) => typeof x === 'string')
+        .map((text: string, idx: number) => 
+          `<span class="verse"><sup class="verse-number">${idx + 1}</sup> ${text}</span>`
+        )
+        .join(' ')
+        .trim();
+    }
+  } else if (typeof payload === 'string') {
+    textContent = payload.trim();
+  } else {
+    throw new Error('Unexpected Sefaria payload format.');
+  }
+  
+  if (!textContent) {
+    throw new Error('No text returned. Try "Genesis 1" or "Genesis 1:1-5".');
+  }
+  
+  return textContent;
+}
+
+const { params, request } = Astro;
+const refParam = decodeURIComponent(params.ref ?? 'Genesis 1');
+const urlObj = new URL(request.url);
+const lang = (urlObj.searchParams.get('lang') === 'he' ? 'he' : 'en') as 'en' | 'he';
+
+let fullText = '';
+try {
+  fullText = await fetchSefariaText(refParam, lang);
+} catch (e) {
+  fullText = '';
+}
+
+const trimmed = fullText.trimStart();
+const initialChar = firstVisibleChar(trimmed);
+const htmlRemainder = removeFirstVisibleCharFromHTML(trimmed);
+let contentHtml = htmlRemainder;
+let footnotes: { index: number; marker: string; html: string; }[] = [];
+try {
+  const extracted = extractFootnotesFromHTML(htmlRemainder);
+  contentHtml = extracted.bodyHtml;
+  footnotes = extracted.notes;
+} catch (err) {
+  // In case of any parsing error in production, render content without footnote extraction
+  contentHtml = htmlRemainder;
+  footnotes = [];
+}
+const isRTL = lang === 'he';
+
+// Attempt to use local capital letter image. Prefer lowercase letter name.
+const letterLower = initialChar.toLowerCase();
+const letterCandidates = [
+  `/images/letters/${letterLower}.png`,  // Try lowercase .png first
+  `/images/letters/${letterLower}.jpg`,  // Then lowercase .jpg
+  `/images/letters/${letterLower.charAt(0).toUpperCase() + letterLower.slice(1)}.png`,  // Then titlecase .png
+  `/images/letters/${letterLower.charAt(0).toUpperCase() + letterLower.slice(1)}.jpg`,  // Then titlecase .jpg
+];
+
+const initialImgClass = isRTL
+  ? 'float-right ml-4 mb-2 rounded-md border border-amber-400 shadow'
+  : 'float-left mr-4 mb-2 rounded-md border border-amber-400 shadow';
+---
+<Layout title={`Illuminated Manuscript · ${refParam}`}>
+  <section class:list={[
+    'mx-auto max-w-4xl rounded-lg p-6 shadow-inner',
+    'border border-amber-300/60 dark:border-amber-700/50',
+    'bg-white/60 dark:bg-slate-900/60',
+    'prose prose-slate dark:prose-invert',
+    isRTL ? 'text-right' : 'text-left'
+  ]} dir={isRTL ? 'rtl' : 'ltr'}>
+    <h1 class="mb-3 text-2xl font-bold">Illuminated Manuscript · {refParam}</h1>
+    {fullText ? (
+      <>
+        <img id="initialImg" class={initialImgClass + ' w-44 bg-transparent'} src={letterCandidates[0]} data-candidates={JSON.stringify(letterCandidates.slice(1))} alt={`Initial ${initialChar}`} />
+        <div class="sefaria-content prose max-w-none text-justify leading-8" set:html={contentHtml}></div>
+        {footnotes.length > 0 && (
+          <section class="footnotes mt-8 pt-4 text-sm border-t border-amber-300/50 dark:border-amber-700/40">
+            <h2 class="mb-2 text-base font-semibold text-amber-700 dark:text-amber-300">Footnotes</h2>
+            <ol class="list-decimal pl-6 space-y-2">
+              {footnotes.map((fn) => (
+                <li id={`fn${fn.index}`}>
+                  <span set:html={fn.html}></span>
+                  <a class="ml-2 opacity-70 hover:opacity-100" href={`#fnref${fn.index}`} aria-label="Back to content">↩</a>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {refParam.includes('Genesis 1') && contentHtml.includes('28') && (
+          <div class="mt-4 mb-6 text-center md:float-right md:ml-6 md:mb-4 md:max-w-xs">
+            <img 
+              src="/images/illustrations/image-removebg-preview (1).png" 
+              alt="Illustration for Genesis 1:28"
+              class="mx-auto max-w-full h-auto rounded-lg shadow-lg border border-amber-200 dark:border-amber-800"
+              style="max-height: 300px;"
+            />
+            <p class="mt-2 text-sm text-amber-700 dark:text-amber-400 italic">Illustration for Genesis 1:28</p>
+          </div>
+        )}
+        <div class="clear-both pt-4 text-sm opacity-80">Source text via Sefaria API</div>
+        <style>
+          /* Style for verse numbers */
+          .verse {
+            position: relative;
+            margin-right: 0.25em;
+          }
+          .verse-number {
+            position: relative;
+            top: -0.5em;
+            font-size: 0.75em;
+            font-weight: bold;
+            color: #b45309; /* amber-700 */
+            opacity: 0.8;
+            margin-right: 0.1em;
+          }
+          .dark .verse-number {
+            color: #f59e0b; /* amber-500 */
+          }
+          /* Keep existing footnote styles */
+          .footnote-ref a {
+            text-decoration: none;
+            color: inherit;
+            font-weight: bold;
+          }
+        </style>
+      </>
+    ) : (
+      <p>Could not load text for <strong>{refParam}</strong>. Check the reference format or try another passage.</p>
+    )}
+  </section>
+
+  <script is:inline>
+    // Fallback chain: try multiple file candidates (.jpg/.png, lower/upper). Then fallback to SVG.
+    (function(){
+      const img = /** @type {HTMLImageElement|null} */(document.getElementById('initialImg'));
+      if(!img) return;
+      function makePlaceholder(letter){
+        const w = 420, h = 720;
+        const border1 = 'rgba(184, 155, 94, 0.5)', ink = '#3c2a17';
+        const svg = `<?xml version="1.0" encoding="UTF-8"?>\n`+
+          `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">`+
+          `<rect x="8" y="8" width="${w-16}" height="${h-16}" fill="none" stroke="${border1}" stroke-width="2"/>`+
+          `<text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle" `+
+          `font-family="Cardo, serif" font-size="${h*0.55}" fill="${ink}">${letter}</text>`+
+          `</svg>`;
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      }
+      const initialLetter = (img.getAttribute('alt') || '').slice(-1) || 'I';
+      let candidates = [];
+      try {
+        const raw = img.getAttribute('data-candidates') || '[]';
+        candidates = JSON.parse(raw);
+      } catch {}
+
+      function tryNext(){
+        /** @type {HTMLImageElement} */
+        const self = this;
+        if (candidates.length > 0) {
+          const next = candidates.shift();
+          self.removeEventListener('error', tryNext);
+          self.addEventListener('error', tryNext, { once: true });
+          self.src = next;
+        } else {
+          self.src = makePlaceholder(initialLetter);
+        }
+      }
+      // If the initial src already failed before we attached the handler, trigger fallback now
+      if (img.complete && img.naturalWidth === 0) {
+        tryNext.call(img);
+      } else {
+        // First error: try remaining candidates, then placeholder
+        img.addEventListener('error', tryNext, { once: true });
+      }
+    })();
+  </script>
+  <style>
+    .sefaria-content sup.footnote-marker {
+      color: #b45309; /* amber-700 */
+      font-weight: 600;
+      line-height: 1;
+    }
+    .sefaria-content i.footnote {
+      font-style: normal; /* already explanatory; avoid double italics */
+      font-size: 0.9em;
+      color: #475569; /* slate-600 */
+      background: rgba(245, 158, 11, 0.06); /* amber-500 @ ~6% */
+      padding: 0.1rem 0.3rem 0.1rem 0.5rem;
+      border-left: 2px solid #f59e0b; /* amber-500 */
+      border-radius: 0.125rem;
+      margin-left: 0.25rem;
+    }
+    .dark .sefaria-content sup.footnote-marker { color: #fbbf24; /* amber-400 */ }
+    .dark .sefaria-content i.footnote {
+      color: #cbd5e1; /* slate-300 */
+      background: rgba(245, 158, 11, 0.12); /* stronger in dark */
+      border-left-color: #fbbf24; /* amber-400 */
+    }
+    /* Ensure line breaks render comfortably in prose */
+    .sefaria-content br { content: ""; display: block; margin-top: 0.35rem; }
+  </style>
+</Layout>

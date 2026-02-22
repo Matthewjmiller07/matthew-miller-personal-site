@@ -1,0 +1,110 @@
+---
+interface Props {
+  folder?: string;
+  imagesPerPage?: number;
+}
+
+const { 
+  folder = 'AI-Matthew',
+  imagesPerPage = 20
+} = Astro.props;
+
+// Get all image files from the specified folder
+let imageFilenames = [];
+
+try {
+  // This will be replaced at build time by Vite's import.meta.glob
+  const imageModules = import.meta.glob('../../public/**/*.{png,jpg,jpeg,webp}', { 
+    eager: true,
+    as: 'url' 
+  });
+  
+  // Filter and map the images from the specified folder
+  const folderPath = `public/${folder}`.replace(/\//g, '/');
+  
+  // Extract filenames from the imported modules that match our folder
+  imageFilenames = Object.entries(imageModules)
+    .filter(([path]) => path.includes(folderPath))
+    .map(([path]) => {
+      // Get the relative path from the public folder
+      const relativePath = path.replace(/^.*?public\//, '');
+      return `/${relativePath}`; // Add leading slash for web paths
+    });
+  
+  console.log(`Found ${imageFilenames.length} images in ${folder} folder`);
+  
+} catch (error) {
+  console.error('Error loading images:', error);
+}
+
+// Shuffle images for variety
+const shuffledImages = [...imageFilenames].sort(() => 0.5 - Math.random());
+---
+
+<div class="container mx-auto px-4 py-8">
+  <h2 class="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">
+    {folder.includes('AI-Matthew') ? 'AI Portraits' : 'AI Art Gallery'}
+  </h2>
+  
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+    {shuffledImages.map((imgSrc, index) => (
+      <a 
+        href={imgSrc} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        class="group relative block overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300"
+      >
+        <img 
+          src={imgSrc}
+          alt={`${folder} image ${index + 1}`}
+          loading="lazy"
+          decoding="async"
+          class="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-300"
+        />
+        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+          <span class="text-white text-sm font-medium bg-black bg-opacity-50 px-2 py-1 rounded">
+            View Full Size
+          </span>
+        </div>
+      </a>
+    ))}
+  </div>
+</div>
+
+<style>
+  /* Add smooth scrolling behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Add a subtle animation for images */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .grid > * {
+    animation: fadeIn 0.5s ease-out forwards;
+    opacity: 0;
+  }
+  
+  /* Stagger the animations */
+  .grid > *:nth-child(5n+1) { animation-delay: 0.1s; }
+  .grid > *:nth-child(5n+2) { animation-delay: 0.2s; }
+  .grid > *:nth-child(5n+3) { animation-delay: 0.3s; }
+  .grid > *:nth-child(5n+4) { animation-delay: 0.4s; }
+  .grid > *:nth-child(5n+5) { animation-delay: 0.5s; }
+  
+  /* Responsive adjustments */
+  @media (max-width: 640px) {
+    .grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
+</style>

@@ -1,0 +1,160 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="Sukkah Posters — Create Vinyl Posters" description="Create Printify vinyl poster products from images in the Sukkah Posters folder.">
+  <main class="container mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold mb-6">Sukkah Posters — Create Vinyl Posters</h1>
+    <p class="mb-6 text-slate-600 dark:text-slate-300">Use the controls below to select a Printify blueprint and provider, then create a product from one of your images. Nothing is published unless you check "Publish after create".</p>
+
+    <section class="mb-6 grid gap-4 md:grid-cols-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Blueprint (search: poster)</label>
+        <select id="blueprint" class="w-full border rounded p-2"></select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Print Provider</label>
+        <select id="provider" class="w-full border rounded p-2"></select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Variants</label>
+        <select id="variants" class="w-full border rounded p-2" multiple size="6"></select>
+        <small class="text-slate-500">Leave empty to include all available variants.</small>
+      </div>
+    </section>
+
+    <div class="flex items-center gap-4 mb-8">
+      <label class="inline-flex items-center gap-2">
+        <input type="checkbox" id="publish" />
+        <span>Publish after create</span>
+      </label>
+      <button id="refresh" class="px-3 py-2 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600">Refresh Images</button>
+      <span id="status" class="text-sm text-slate-500"></span>
+    </div>
+
+    <section>
+      <h2 class="text-xl font-semibold mb-3">Images</h2>
+      <div id="images" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+    </section>
+  </main>
+
+  <script>
+    const els = {
+      blueprint: document.getElementById('blueprint'),
+      provider: document.getElementById('provider'),
+      variants: document.getElementById('variants'),
+      publish: document.getElementById('publish'),
+      refresh: document.getElementById('refresh'),
+      status: document.getElementById('status'),
+      images: document.getElementById('images'),
+    };
+
+    function setStatus(msg) {
+      els.status.textContent = msg || '';
+    }
+
+    async function loadBlueprints() {
+      setStatus('Loading blueprints…');
+      const res = await fetch('/api/printify/catalog/blueprints?q=poster');
+      const data = await res.json();
+      els.blueprint.innerHTML = '';
+      (data.blueprints || []).forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.textContent = `${b.title} (id: ${b.id})`;
+        els.blueprint.appendChild(opt);
+      });
+      setStatus('');
+      if (els.blueprint.value) {
+        await loadProviders();
+      }
+    }
+
+    async function loadProviders() {
+      const blueprintId = els.blueprint.value;
+      if (!blueprintId) return;
+      setStatus('Loading print providers…');
+      const res = await fetch(`/api/printify/catalog/print-providers?blueprint_id=${encodeURIComponent(blueprintId)}`);
+      const data = await res.json();
+      els.provider.innerHTML = '';
+      (data.print_providers || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.title} (id: ${p.id})`;
+        els.provider.appendChild(opt);
+      });
+      setStatus('');
+      if (els.provider.value) {
+        await loadVariants();
+      }
+    }
+
+    async function loadVariants() {
+      const blueprintId = els.blueprint.value;
+      const providerId = els.provider.value;
+      if (!blueprintId || !providerId) return;
+      setStatus('Loading variants…');
+      const res = await fetch(`/api/printify/catalog/variants?blueprint_id=${encodeURIComponent(blueprintId)}&print_provider_id=${encodeURIComponent(providerId)}`);
+      const data = await res.json();
+      const list = data.variants || data || [];
+      els.variants.innerHTML = '';
+      (list || []).forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = `${v.title || v.name || 'Variant'} — ${v.options?.join(' / ') || ''} (id: ${v.id})`;
+        els.variants.appendChild(opt);
+      });
+      setStatus('');
+    }
+
+    async function loadImages() {
+      setStatus('Loading images…');
+      const res = await fetch('/api/printify/list-images');
+      const data = await res.json();
+      const images = data.images || [];
+      els.images.innerHTML = '';
+      images.forEach(img => {
+        const card = document.createElement('div');
+        card.className = 'rounded border p-3 flex flex-col gap-2';
+        card.innerHTML = `
+          <img src="${img.url}" alt="${img.name}" class="w-full h-48 object-contain bg-slate-50 rounded" />
+          <div class="text-sm break-words">${img.name}</div>
+          <button class="create px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Create Product</button>
+          <pre class="result text-xs text-slate-600 whitespace-pre-wrap"></pre>
+        `;
+        const btn = card.querySelector('button.create');
+        const result = card.querySelector('pre.result');
+        btn.addEventListener('click', async () => {
+          const blueprint_id = els.blueprint.value;
+          const print_provider_id = els.provider.value;
+          const selected = Array.from(els.variants.selectedOptions).map(o => Number(o.value));
+          const variant_ids = selected.length ? selected : undefined;
+          const publish = els.publish.checked;
+          result.textContent = 'Creating…';
+          try {
+            const res = await fetch('/api/printify/create-poster', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ imageName: img.name, blueprint_id, print_provider_id, variant_ids, publish })
+            });
+            const data = await res.json();
+            result.textContent = JSON.stringify(data, null, 2);
+          } catch (e) {
+            result.textContent = String(e);
+          }
+        });
+        els.images.appendChild(card);
+      });
+      setStatus('');
+    }
+
+    els.blueprint.addEventListener('change', () => loadProviders());
+    els.provider.addEventListener('change', () => loadVariants());
+    els.refresh.addEventListener('click', () => loadImages());
+
+    (async function init() {
+      await loadBlueprints();
+      await loadImages();
+    })();
+  </script>
+</Layout>

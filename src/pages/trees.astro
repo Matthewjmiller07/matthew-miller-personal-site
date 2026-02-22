@@ -1,0 +1,431 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { SITE_TITLE } from '../consts';
+import { fetchTreeData, fetchTreePoints } from '../utils/fetchTreeData';
+
+// Fetch tree data at build time
+const treeData = await fetchTreeData();
+const treePoints = await fetchTreePoints();
+
+// Calculate total trees
+const totalTrees = treeData.reduce((sum, tree) => sum + tree.count, 0);
+const totalCO2Sequestration = treeData.reduce((sum, tree) => sum + (tree.co2Sequestration * tree.count), 0);
+
+// Sort by count for the charts
+const sortedByCount = [...treeData].sort((a, b) => b.count - a.count);
+const topSpecies = sortedByCount.slice(0, 5);
+const topSpeciesNames = topSpecies.map((t) => t.name);
+const topSpeciesCounts = topSpecies.map((t) => t.count);
+const topSpeciesHeights = topSpecies.map((t) => t.height || 0);
+---
+
+<Layout title={`Tree Canopy Data | ${SITE_TITLE}`}>
+  <main class="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-gray-100">
+    <div class="container mx-auto px-4 py-12">
+      <!-- Hero Section -->
+      <div class="text-center mb-16">
+        <h1 class="text-5xl font-bold text-green-400 mb-4">🌳 Israel's Urban Forest</h1>
+        <p class="text-xl text-gray-300 max-w-3xl mx-auto">
+          Exploring the diversity and impact of urban trees across Israel's cities
+        </p>
+      </div>
+
+      <!-- Stats Overview -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div class="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+          <div class="text-4xl font-bold text-green-400 mb-2">{totalTrees.toLocaleString()}</div>
+          <div class="text-gray-400">Trees Mapped</div>
+        </div>
+        <div class="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+          <div class="text-4xl font-bold text-green-400 mb-2">{treeData.length}</div>
+          <div class="text-gray-400">Tree Species</div>
+        </div>
+        <div class="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+          <div class="text-4xl font-bold text-green-400 mb-2">{Math.round(totalCO2Sequestration).toLocaleString()} kg</div>
+          <div class="text-gray-400">CO₂ Sequestered Annually</div>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column -->
+        <div class="lg:col-span-2 space-y-8">
+          <!-- Map: Tree Distribution -->
+          <div class="bg-gray-800 rounded-xl shadow-lg p-0 border border-gray-700 overflow-hidden">
+            <div class="px-6 pt-6">
+              <h2 class="text-2xl font-bold text-gray-100 mb-4">Tree Distribution Map</h2>
+              <p class="text-sm text-gray-400 mb-4">Rendering National Canopy Trees V2. If no local GeoJSON is found, uses a small fallback sample.</p>
+            </div>
+            <div class="h-96">
+              <div
+                id="treesMap"
+                class="h-full w-full"
+                data-points={JSON.stringify(treePoints)}
+              ></div>
+            </div>
+          </div>
+
+          <!-- Species Distribution Chart -->
+          <div class="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-6">Top Tree Species</h2>
+            <div class="h-80">
+              <div
+                id="speciesChart"
+                class="h-full"
+                data-labels={JSON.stringify(topSpeciesNames)}
+                data-counts={JSON.stringify(topSpeciesCounts)}
+                data-heights={JSON.stringify(topSpeciesHeights)}
+              ></div>
+            </div>
+          </div>
+
+          <!-- Tree Benefits -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+              <h3 class="text-xl font-semibold text-gray-100 mb-4">Environmental Impact</h3>
+              <div class="space-y-4">
+                <div>
+                  <div class="flex justify-between mb-1">
+                    <span class="text-sm font-medium text-gray-300">Air Quality Improvement</span>
+                    <span class="text-sm font-medium text-green-400">High</span>
+                  </div>
+                  <div class="w-full bg-gray-700 rounded-full h-2.5">
+                    <div class="bg-green-500 h-2.5 rounded-full" style="width: 85%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between mb-1">
+                    <span class="text-sm font-medium text-gray-300">Carbon Sequestration</span>
+                    <span class="text-sm font-medium text-green-400">Very High</span>
+                  </div>
+                  <div class="w-full bg-gray-700 rounded-full h-2.5">
+                    <div class="bg-green-600 h-2.5 rounded-full" style="width: 92%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between mb-1">
+                    <span class="text-sm font-medium text-gray-300">Biodiversity Support</span>
+                    <span class="text-sm font-medium text-yellow-400">Medium</span>
+                  </div>
+                  <div class="w-full bg-gray-700 rounded-full h-2.5">
+                    <div class="bg-yellow-400 h-2.5 rounded-full" style="width: 65%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+              <h3 class="text-xl font-semibold text-gray-100 mb-4">Quick Facts</h3>
+              <ul class="space-y-3">
+                <li class="flex items-start">
+                  <span class="text-green-400 mr-2">•</span>
+                  <span class="text-gray-300">Urban trees can reduce air temperature by 2-8°C</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="text-green-400 mr-2">•</span>
+                  <span class="text-gray-300">Trees can reduce energy use for cooling by 30%</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="text-green-400 mr-2">•</span>
+                  <span class="text-gray-300">Mature trees can absorb up to 150kg of CO₂ per year</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="text-green-400 mr-2">•</span>
+                  <span class="text-gray-300">Urban forests improve mental health and wellbeing</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="space-y-6">
+          <!-- Top Species List -->
+          <div class="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">Top 5 Species</h2>
+            <div class="space-y-4">
+              {topSpecies.map((tree) => (
+                <div class="border-b border-gray-700 pb-3 last:border-0 last:pb-0">
+                  <div class="flex justify-between items-start mb-1">
+                    <div>
+                      <h3 class="font-medium text-gray-100">{tree.name}</h3>
+                      <p class="text-sm text-gray-400">{tree.scientificName}</p>
+                    </div>
+                    <span class="bg-green-900 text-green-300 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                      {((tree.count / totalTrees) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div class="flex justify-between text-sm text-gray-400">
+                    <span>{tree.count.toLocaleString()} trees</span>
+                    <span>~{Math.round(tree.co2Sequestration * tree.count).toLocaleString()} kg CO₂/year</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <!-- Data Source -->
+          <div class="bg-blue-900/30 rounded-xl p-4 border border-blue-800/50">
+            <h3 class="font-medium text-blue-300 mb-2">Data Source</h3>
+            <p class="text-sm text-blue-200 mb-3">
+              This data comes from the National Tree Canopy Mapping project by the Israel Mapping Center.
+            </p>
+            <a 
+              href="https://data.gov.il/dataset/nationalcanopytrees" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="inline-flex items-center text-sm font-medium text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+            >
+              View Full Dataset
+              <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Leaflet CSS & JS for map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Add ApexCharts for better visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script>
+    /* @ts-nocheck */
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize Leaflet map
+      const mapEl = document.getElementById('treesMap');
+      const L = (window && window.L) ? window.L : null;
+      if (mapEl && L) {
+        const points = JSON.parse(mapEl.getAttribute('data-points') || '[]');
+        const map = L.map('treesMap', { preferCanvas: true, scrollWheelZoom: false });
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; OpenStreetMap, &copy; CARTO',
+          maxZoom: 19
+        }).addTo(map);
+
+        const renderFallback = () => {
+          if (points.length > 0) {
+            const latlngs = points.map((p) => [p.lat, p.lng]);
+            const bounds = L.latLngBounds(latlngs);
+            map.fitBounds(bounds.pad(0.15));
+
+            const maxCount = Math.max(...points.map((p) => p.count));
+            points.forEach((p) => {
+              const radius = 6 + (p.count / maxCount) * 14; // 6-20px
+              const circle = L.circleMarker([p.lat, p.lng], {
+                radius,
+                color: '#10B981',
+                weight: 1.5,
+                fillColor: '#10B981',
+                fillOpacity: 0.55
+              }).addTo(map);
+              circle.bindPopup(`<strong>${p.name}</strong><br/>${p.species}<br/>${p.count.toLocaleString()} trees`);
+            });
+          } else {
+            map.setView([31.5, 34.8], 8);
+          }
+        };
+
+        // Try to load converted GeoJSON from public/data/canopy-sample.geojson
+        fetch('/data/canopy-sample.geojson')
+          .then((res) => (res.ok ? res.json() : null))
+          .then((geo) => {
+            if (geo) {
+              const layer = L.geoJSON(geo, {
+                pointToLayer: (_feature, latlng) =>
+                  L.circleMarker(latlng, {
+                    radius: 3,
+                    color: '#10B981',
+                    weight: 1,
+                    fillColor: '#10B981',
+                    fillOpacity: 0.5
+                  }),
+                style: {
+                  color: '#10B981',
+                  weight: 1,
+                  opacity: 0.6,
+                  fillOpacity: 0.3
+                },
+                onEachFeature: (feature, layer) => {
+                  const props = feature && feature.properties ? feature.properties : {};
+                  const entries = Object.entries(props).slice(0, 5)
+                    .map(([k, v]) => `<div><strong>${k}:</strong> ${String(v)}</div>`)
+                    .join('');
+                  layer.bindPopup(entries || 'Tree feature');
+                }
+              }).addTo(map);
+              try {
+                const b = layer.getBounds();
+                if (b && b.isValid && b.isValid()) {
+                  map.fitBounds(b.pad(0.1));
+                }
+              } catch {}
+            } else {
+              renderFallback();
+            }
+          })
+          .catch(() => {
+            renderFallback();
+          });
+      }
+
+      // Read chart data from data-* attributes on the chart element
+      const el = document.getElementById('speciesChart');
+      if (!el) return;
+      const labels = JSON.parse(el.getAttribute('data-labels') || '[]');
+      const counts = JSON.parse(el.getAttribute('data-counts') || '[]');
+      const heights = JSON.parse(el.getAttribute('data-heights') || '[]');
+
+      // Species Distribution Chart
+      const speciesChart = new ApexCharts(document.querySelector("#speciesChart"), {
+        series: [{
+          name: 'Number of Trees',
+          data: counts
+        }],
+        chart: {
+          type: 'bar',
+          height: '100%',
+          background: 'transparent',
+          foreColor: '#f3f4f6',
+          fontFamily: 'Inter, sans-serif',
+          toolbar: {
+            show: true,
+            tools: {
+              download: true,
+              selection: false,
+              zoom: false,
+              zoomin: false,
+              zoomout: false,
+              pan: false,
+              reset: false
+            }
+          }
+        },
+        plotOptions: {
+          bar: {
+            borderRadius: 4,
+            horizontal: false,
+            distributed: true,
+            columnWidth: '60%',
+            endingShape: 'rounded'
+          },
+        },
+        dataLabels: {
+          enabled: false
+        },
+        xaxis: {
+          categories: labels,
+          labels: {
+            style: {
+              fontSize: '12px',
+              fontWeight: 500
+            }
+          }
+        },
+        yaxis: {
+          title: {
+            text: 'Number of Trees',
+            style: {
+              color: '#9ca3af',
+              fontSize: '12px',
+              fontWeight: 500
+            }
+          },
+          labels: {
+            style: {
+              colors: '#9ca3af'
+            },
+            formatter: function(val) {
+              return Math.floor(val).toLocaleString();
+            }
+          }
+        },
+        colors: ['#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B'],
+        tooltip: {
+          theme: 'dark',
+          y: {
+            formatter: function (val) {
+              return val.toLocaleString() + ' trees';
+            }
+          }
+        },
+        legend: {
+          position: 'top',
+          horizontalAlign: 'left',
+          offsetY: -10,
+          fontSize: '14px',
+          markers: {
+            radius: 12
+          },
+          itemMargin: {
+            horizontal: 10
+          }
+        },
+        grid: {
+          borderColor: '#374151',
+          strokeDashArray: 4,
+          yaxis: {
+            lines: {
+              show: true
+            }
+          }
+        }
+      });
+
+      speciesChart.render();
+
+      // Add responsive behavior
+      window.addEventListener('resize', () => {
+        speciesChart.updateOptions({
+          chart: {
+            width: '100%'
+          }
+        });
+      });
+    });
+  </script>
+
+  <style is:global>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #111827;
+      color: #f3f4f6;
+    }
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #1F2937;
+      border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: #4B5563;
+      border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: #6B7280;
+    }
+    
+    /* Animation for cards */
+    .card-hover {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .card-hover:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+  </style>
+</Layout>

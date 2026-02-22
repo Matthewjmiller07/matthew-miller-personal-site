@@ -1,0 +1,118 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import fs from 'fs';
+import path from 'path';
+import '../../styles/watermark.css';
+
+// Get all images from the public directory
+const publicDir = path.join(process.cwd(), 'public');
+const imageDir = path.join(publicDir, 'images', 'Sukkah Posters');
+
+// Read the directory and filter for image files
+const imageFilenames = fs.existsSync(imageDir) 
+  ? fs.readdirSync(imageDir).filter(file => 
+      /\.(jpg|jpeg|png|webp|avif)$/i.test(file)
+    )
+  : [];
+
+// Create image objects with proper paths
+const images = imageFilenames
+  .sort()
+  .map(filename => ({
+    src: `/images/Sukkah Posters/${filename}`,
+    alt: filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+    title: filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ')
+  }));
+---
+
+<Layout 
+  title="Sukkah Posters | Matthew Miller" 
+  description="A collection of Sukkah posters featuring Jewish scholars and rabbis."
+>
+  <main class="container mx-auto px-4 py-10">
+    <header class="text-center mb-12">
+      <h1 class="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        Sukkah Posters
+      </h1>
+      <p class="text-xl text-slate-600 dark:text-slate-300 max-w-3xl mx-auto">
+        A collection of posters featuring Jewish scholars and rabbis, perfect for your sukkah or study space.
+      </p>
+    </header>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      {images.map((image) => (
+        <article class="group relative overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+          <div class="aspect-[3/4] relative bg-slate-50 dark:bg-slate-800">
+            <div class="relative w-full h-full">
+              <img
+                src={image.src}
+                alt={image.alt}
+                class="w-full h-full object-contain p-4"
+                loading="lazy"
+              />
+              <div class="watermark-overlay"></div>
+              <div class="absolute bottom-0 left-0 right-0 text-center py-2 bg-gradient-to-t from-black/70 to-transparent text-white/90 text-sm font-medium pointer-events-none">
+                
+              </div>
+              <div class="absolute bottom-0 left-0 right-0 p-4 pointer-events-none">
+                <h2 class="text-white text-lg font-bold drop-shadow-md">{image.title}</h2>
+              </div>
+              <a 
+                href={image.src} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                class="absolute inset-0 flex items-end justify-center p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              >
+                <span class="inline-block bg-white text-slate-900 font-bold px-4 py-2 rounded-lg shadow-lg hover:bg-gray-100 pointer-events-auto">
+                  VIEW FULL SIZE
+                </span>
+              </a>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  </main>
+</Layout>
+
+<style>
+  /* Smooth hover effects */
+  article {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  /* Responsive image container */
+  .aspect-\[3/4\] {
+    position: relative;
+    padding-bottom: 133.33%; /* 4:3 aspect ratio */
+  }
+  
+  .aspect-\[3/4\] img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  
+  /* Animation for grid items */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .grid > * {
+    animation: fadeIn 0.6s ease-out forwards;
+    opacity: 0;
+  }
+  
+  .grid > *:nth-child(1) { animation-delay: 0.1s; }
+  .grid > *:nth-child(2) { animation-delay: 0.2s; }
+  .grid > *:nth-child(3) { animation-delay: 0.3s; }
+  .grid > *:nth-child(4) { animation-delay: 0.4s; }
+  .grid > *:nth-child(5) { animation-delay: 0.5s; }
+  .grid > *:nth-child(6) { animation-delay: 0.6s; }
+  .grid > *:nth-child(7) { animation-delay: 0.7s; }
+  .grid > *:nth-child(8) { animation-delay: 0.8s; }
+</style>
