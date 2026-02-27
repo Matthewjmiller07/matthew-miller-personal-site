@@ -154,30 +154,7 @@ const benchmarks = data.benchmarkComparison;
         </div>
       </div>
 
-      <!-- Live Pricing Comparison -->
-      <section class="mb-12">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold text-white">Live Pricing Comparison</h2>
-          <button id="refresh-live-pricing" class="text-xs px-3 py-1 rounded bg-gray-800 border border-gray-700 hover:border-cyan-400 transition-colors">Refresh</button>
-        </div>
-        <p class="text-xs text-gray-500 mb-3">Pulled from provider pricing pages via Firecrawl extraction.</p>
-        <p id="live-pricing-status" class="text-xs text-gray-400 mb-3"></p>
-        <div class="overflow-x-auto rounded-xl border border-gray-800">
-          <table class="min-w-full text-sm" id="live-pricing-table">
-            <thead class="bg-gray-900 border-b border-gray-800">
-              <tr>
-                <th class="text-left p-3 font-semibold text-gray-400">Company</th>
-                <th class="text-left p-3 font-semibold text-gray-400">Scope</th>
-                <th class="text-left p-3 font-semibold text-gray-400">Summary</th>
-                <th class="text-left p-3 font-semibold text-gray-400">Price Signals</th>
-                <th class="text-left p-3 font-semibold text-gray-400">Source</th>
-              </tr>
-            </thead>
-            <tbody id="live-pricing-tbody"></tbody>
-          </table>
-        </div>
-      </section>
-
+      
       <!-- Competitor Cards with filter tabs -->
       <section class="mb-12">
         <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
@@ -370,7 +347,6 @@ const benchmarks = data.benchmarkComparison;
           body: JSON.stringify({
             transcript,
             accountName: document.getElementById('accountName')?.value || '',
-            pricingContext: livePricingContext,
           }),
         });
 
@@ -402,63 +378,7 @@ const benchmarks = data.benchmarkComparison;
     }, 1200);
   }
 
-  async function loadLivePricing() {
-    if (!pricingStatus || !pricingTableBody) {
-      return;
-    }
-
-    pricingStatus.textContent = 'Loading latest pricing snapshots...';
-    pricingStatus.className = 'text-xs text-cyan-300 mb-3';
-
-    try {
-      const response = await fetch('/api/live-pricing');
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result?.error || 'Failed to load live pricing.');
-      }
-
-      const rows = Array.isArray(result.providers) ? result.providers : [];
-      livePricingContext = rows
-        .map((entry) => {
-          const provider = String(entry?.provider || '').trim();
-          const scope = String(entry?.scope || '').trim();
-          const firstSignal = Array.isArray(entry?.priceSignals) ? String(entry.priceSignals[0] || '').trim() : '';
-          if (!provider) return '';
-          return [provider, scope, firstSignal].filter(Boolean).join(' | ');
-        })
-        .filter(Boolean)
-        .slice(0, 8);
-
-      pricingTableBody.innerHTML = rows
-        .map((entry) => {
-          const firstSource = Array.isArray(entry.sourceUrls) ? entry.sourceUrls[0] : '';
-          const allSignals = Array.isArray(entry.priceSignals) ? entry.priceSignals : [];
-          return `
-            <tr class="border-t border-gray-800 hover:bg-gray-800/50 transition-colors">
-              <td class="p-3 font-semibold text-white">${safeText(entry.provider)}</td>
-              <td class="p-3 text-xs text-gray-300">${safeText(entry.scope)}</td>
-              <td class="p-3 text-xs text-gray-200">${safeText(entry.summary)}</td>
-              <td class="p-3 text-xs text-yellow-200">${allSignals.map((signal) => `• ${safeText(signal)}`).join('<br/>') || 'No explicit prices found.'}</td>
-              <td class="p-3 text-xs"><a href="${safeText(firstSource)}" target="_blank" rel="noopener noreferrer" class="text-cyan-300 hover:underline">Source</a></td>
-            </tr>
-          `;
-        })
-        .join('');
-
-      if (!rows.length) {
-        pricingTableBody.innerHTML = '<tr><td colspan="5" class="p-3 text-xs text-gray-500">No pricing rows returned.</td></tr>';
-      }
-
-      pricingStatus.textContent = `Updated ${new Date(result.updatedAt).toLocaleString()}${result.cached ? ' (cached)' : ''}`;
-      pricingStatus.className = 'text-xs text-green-300 mb-3';
-    } catch (error) {
-      pricingStatus.textContent = error.message || 'Failed to load live pricing.';
-      pricingStatus.className = 'text-xs text-red-300 mb-3';
-      pricingTableBody.innerHTML = '<tr><td colspan="5" class="p-3 text-xs text-red-300">Unable to fetch live pricing right now.</td></tr>';
-    }
-  }
-
+  
   // ── Competitor card filter ─────────────────────────────────────────
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -486,14 +406,10 @@ const benchmarks = data.benchmarkComparison;
   const inputTextArea = document.getElementById('inputText');
   const liveSuggestionsContainer = document.getElementById('live-suggestions');
   const liveSuggestionsContent = document.getElementById('live-suggestions-content');
-  const pricingStatus = document.getElementById('live-pricing-status');
-  const pricingTableBody = document.getElementById('live-pricing-tbody');
-  const refreshLivePricingButton = document.getElementById('refresh-live-pricing');
 
   let suggestionTimer = null;
   let isListening = false;
   let recognition = null;
-  let livePricingContext = [];
 
   function renderList(items, className = 'text-gray-300') {
     if (!Array.isArray(items) || !items.length) {
@@ -734,6 +650,4 @@ const benchmarks = data.benchmarkComparison;
     });
   }
 
-  refreshLivePricingButton?.addEventListener('click', loadLivePricing);
-  loadLivePricing();
-</script>
+  </script>
