@@ -39,6 +39,99 @@ const benchmarks = data.benchmarkComparison;
         </div>
       </section>
 
+      <!-- Live GTM Copilot -->
+      <section class="mb-12 bg-gray-900 rounded-xl border border-gray-800 p-6">
+        <div class="flex flex-col gap-2 mb-4">
+          <h2 class="text-2xl font-bold text-white">Live GTM Sales Copilot</h2>
+          <p class="text-sm text-gray-400 max-w-3xl">
+            Drop in discovery notes or upload an audio call clip. The copilot transcribes audio,
+            generates competitive counters, and returns sales-ready talking points grounded in your intel dataset.
+          </p>
+        </div>
+
+        <form id="gtm-copilot-form" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="space-y-3">
+            <label class="block text-xs font-semibold tracking-wide text-gray-300 uppercase" for="accountName">Account Name</label>
+            <input
+              id="accountName"
+              name="accountName"
+              type="text"
+              placeholder="Acme Corp"
+              class="w-full rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+
+            <label class="block text-xs font-semibold tracking-wide text-gray-300 uppercase" for="persona">Buyer Persona</label>
+            <input
+              id="persona"
+              name="persona"
+              type="text"
+              placeholder="CIO, Head of AI, VP Engineering"
+              class="w-full rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+
+            <label class="block text-xs font-semibold tracking-wide text-gray-300 uppercase" for="salesStage">Sales Stage</label>
+            <select
+              id="salesStage"
+              name="salesStage"
+              class="w-full rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            >
+              <option value="">Select stage</option>
+              <option value="Discovery">Discovery</option>
+              <option value="Technical Validation">Technical Validation</option>
+              <option value="Procurement">Procurement</option>
+              <option value="Executive Review">Executive Review</option>
+              <option value="Renewal / Expansion">Renewal / Expansion</option>
+            </select>
+
+            <label class="block text-xs font-semibold tracking-wide text-gray-300 uppercase" for="audio">Audio (optional)</label>
+            <input
+              id="audio"
+              name="audio"
+              type="file"
+              accept="audio/*"
+              class="w-full text-sm text-gray-300 file:mr-4 file:rounded-md file:border-0 file:bg-yellow-400 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-gray-900 hover:file:bg-yellow-300"
+            />
+            <p class="text-xs text-gray-500">Max 25MB. Supported by OpenAI transcription endpoint.</p>
+          </div>
+
+          <div class="space-y-3">
+            <label class="block text-xs font-semibold tracking-wide text-gray-300 uppercase" for="inputText">Seller Notes / Prospect Call Context</label>
+            <textarea
+              id="inputText"
+              name="inputText"
+              rows="11"
+              placeholder="Paste discovery notes, competitor mentions, objection text, procurement blockers, and goals..."
+              class="w-full rounded-lg bg-gray-950 border border-gray-700 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            ></textarea>
+            <div class="flex flex-wrap items-center gap-3">
+              <button
+                id="toggle-voice"
+                type="button"
+                class="rounded-md bg-cyan-500 px-4 py-2 text-sm font-bold text-gray-950 hover:bg-cyan-400 transition-colors"
+              >
+                Start Talking
+              </button>
+              <button
+                id="run-copilot"
+                type="submit"
+                class="rounded-md bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-900 hover:bg-yellow-300 transition-colors"
+              >
+                Generate Battlecard
+              </button>
+              <span id="copilot-status" class="text-xs text-gray-400"></span>
+            </div>
+            <p id="voice-status" class="text-xs text-cyan-300"></p>
+          </div>
+        </form>
+
+        <div id="live-suggestions" class="mt-4 hidden rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
+          <h3 class="text-sm font-bold text-cyan-300 mb-2">Live Talk Track Suggestions</h3>
+          <div id="live-suggestions-content" class="space-y-3"></div>
+        </div>
+
+        <div id="copilot-output" class="mt-6 hidden"></div>
+      </section>
+
       <!-- Charts Row -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
 
@@ -61,41 +154,26 @@ const benchmarks = data.benchmarkComparison;
         </div>
       </div>
 
-      <!-- Interactive Pricing Table -->
+      <!-- Live Pricing Comparison -->
       <section class="mb-12">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold text-white">Pricing Comparison — Flagship Models</h2>
-          <div class="flex gap-2">
-            <button id="sort-input" class="text-xs px-3 py-1 rounded bg-gray-800 border border-gray-700 hover:border-yellow-400 transition-colors">Sort: Input ↕</button>
-            <button id="sort-output" class="text-xs px-3 py-1 rounded bg-gray-800 border border-gray-700 hover:border-yellow-400 transition-colors">Sort: Output ↕</button>
-          </div>
+          <h2 class="text-xl font-bold text-white">Live Pricing Comparison</h2>
+          <button id="refresh-live-pricing" class="text-xs px-3 py-1 rounded bg-gray-800 border border-gray-700 hover:border-cyan-400 transition-colors">Refresh</button>
         </div>
+        <p class="text-xs text-gray-500 mb-3">Pulled from provider pricing pages via Firecrawl extraction.</p>
+        <p id="live-pricing-status" class="text-xs text-gray-400 mb-3"></p>
         <div class="overflow-x-auto rounded-xl border border-gray-800">
-          <table class="min-w-full text-sm" id="pricing-table">
+          <table class="min-w-full text-sm" id="live-pricing-table">
             <thead class="bg-gray-900 border-b border-gray-800">
               <tr>
                 <th class="text-left p-3 font-semibold text-gray-400">Company</th>
-                <th class="text-left p-3 font-semibold text-gray-400">Flagship Model</th>
-                <th class="text-right p-3 font-semibold text-gray-400">Input / 1M</th>
-                <th class="text-right p-3 font-semibold text-gray-400">Output / 1M</th>
-                <th class="text-right p-3 font-semibold text-gray-400">vs. GPT-5.2</th>
+                <th class="text-left p-3 font-semibold text-gray-400">Scope</th>
+                <th class="text-left p-3 font-semibold text-gray-400">Summary</th>
+                <th class="text-left p-3 font-semibold text-gray-400">Price Signals</th>
+                <th class="text-left p-3 font-semibold text-gray-400">Source</th>
               </tr>
             </thead>
-            <tbody id="pricing-tbody">
-              {pricingRows.map((row) => {
-                const vsGPT = row.input === 1.75 ? '—' : row.input < 1.75 ? `${Math.round((1 - row.input/1.75)*100)}% cheaper` : `${Math.round((row.input/1.75 - 1)*100)}% pricier`;
-                const vsClass = row.input < 1.75 ? 'text-green-400' : row.input === 1.75 ? 'text-gray-400' : 'text-red-400';
-                return (
-                  <tr class="border-t border-gray-800 hover:bg-gray-800/50 transition-colors" data-input={row.input} data-output={row.output}>
-                    <td class="p-3 font-semibold text-white">{row.company}</td>
-                    <td class="p-3 font-mono text-gray-300 text-xs">{row.model}</td>
-                    <td class="p-3 text-right text-yellow-300">${row.input}</td>
-                    <td class="p-3 text-right text-orange-300">${row.output}</td>
-                    <td class={`p-3 text-right text-xs font-semibold ${vsClass}`}>{vsGPT}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
+            <tbody id="live-pricing-tbody"></tbody>
           </table>
         </div>
       </section>
@@ -272,15 +350,114 @@ const benchmarks = data.benchmarkComparison;
     }
   });
 
-  // ── Pricing table sort ─────────────────────────────────────────────
-  function sortTable(col) {
-    const tbody = document.getElementById('pricing-tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    rows.sort((a, b) => parseFloat(a.dataset[col]) - parseFloat(b.dataset[col]));
-    rows.forEach(r => tbody.appendChild(r));
+  function debounceLiveSuggestions() {
+    if (suggestionTimer) {
+      clearTimeout(suggestionTimer);
+    }
+
+    suggestionTimer = setTimeout(async () => {
+      const transcript = String(inputTextArea?.value || '').trim();
+      if (!transcript || transcript.length < 40) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/competitive-suggestions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            transcript,
+            accountName: document.getElementById('accountName')?.value || '',
+            pricingContext: livePricingContext,
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result?.error || 'Failed to generate live suggestions.');
+        }
+
+        const list = (title, items, colorClass) => {
+          const safeItems = Array.isArray(items) ? items.map((item) => `<li>${safeText(item)}</li>`).join('') : '';
+          return `
+            <section>
+              <h4 class="text-xs font-bold uppercase tracking-wide ${colorClass} mb-1">${title}</h4>
+              <ul class="list-disc pl-5 text-sm text-gray-200 space-y-1">${safeItems || '<li>No items returned.</li>'}</ul>
+            </section>
+          `;
+        };
+
+        liveSuggestionsContent.innerHTML = [
+          list('Live Suggestions', result.liveSuggestions, 'text-cyan-300'),
+          list('Risk Flags', result.riskFlags, 'text-red-300'),
+          list('Ask Next', result.askNext, 'text-green-300'),
+        ].join('');
+        liveSuggestionsContainer.classList.remove('hidden');
+      } catch (error) {
+        liveSuggestionsContent.innerHTML = `<p class="text-xs text-red-300">${safeText(error.message || 'Suggestion error')}</p>`;
+        liveSuggestionsContainer.classList.remove('hidden');
+      }
+    }, 1200);
   }
-  document.getElementById('sort-input').addEventListener('click', () => sortTable('input'));
-  document.getElementById('sort-output').addEventListener('click', () => sortTable('output'));
+
+  async function loadLivePricing() {
+    if (!pricingStatus || !pricingTableBody) {
+      return;
+    }
+
+    pricingStatus.textContent = 'Loading latest pricing snapshots...';
+    pricingStatus.className = 'text-xs text-cyan-300 mb-3';
+
+    try {
+      const response = await fetch('/api/live-pricing');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.error || 'Failed to load live pricing.');
+      }
+
+      const rows = Array.isArray(result.providers) ? result.providers : [];
+      livePricingContext = rows
+        .map((entry) => {
+          const provider = String(entry?.provider || '').trim();
+          const scope = String(entry?.scope || '').trim();
+          const firstSignal = Array.isArray(entry?.priceSignals) ? String(entry.priceSignals[0] || '').trim() : '';
+          if (!provider) return '';
+          return [provider, scope, firstSignal].filter(Boolean).join(' | ');
+        })
+        .filter(Boolean)
+        .slice(0, 8);
+
+      pricingTableBody.innerHTML = rows
+        .map((entry) => {
+          const firstSource = Array.isArray(entry.sourceUrls) ? entry.sourceUrls[0] : '';
+          const allSignals = Array.isArray(entry.priceSignals) ? entry.priceSignals : [];
+          return `
+            <tr class="border-t border-gray-800 hover:bg-gray-800/50 transition-colors">
+              <td class="p-3 font-semibold text-white">${safeText(entry.provider)}</td>
+              <td class="p-3 text-xs text-gray-300">${safeText(entry.scope)}</td>
+              <td class="p-3 text-xs text-gray-200">${safeText(entry.summary)}</td>
+              <td class="p-3 text-xs text-yellow-200">${allSignals.map((signal) => `• ${safeText(signal)}`).join('<br/>') || 'No explicit prices found.'}</td>
+              <td class="p-3 text-xs"><a href="${safeText(firstSource)}" target="_blank" rel="noopener noreferrer" class="text-cyan-300 hover:underline">Source</a></td>
+            </tr>
+          `;
+        })
+        .join('');
+
+      if (!rows.length) {
+        pricingTableBody.innerHTML = '<tr><td colspan="5" class="p-3 text-xs text-gray-500">No pricing rows returned.</td></tr>';
+      }
+
+      pricingStatus.textContent = `Updated ${new Date(result.updatedAt).toLocaleString()}${result.cached ? ' (cached)' : ''}`;
+      pricingStatus.className = 'text-xs text-green-300 mb-3';
+    } catch (error) {
+      pricingStatus.textContent = error.message || 'Failed to load live pricing.';
+      pricingStatus.className = 'text-xs text-red-300 mb-3';
+      pricingTableBody.innerHTML = '<tr><td colspan="5" class="p-3 text-xs text-red-300">Unable to fetch live pricing right now.</td></tr>';
+    }
+  }
 
   // ── Competitor card filter ─────────────────────────────────────────
   document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -298,4 +475,265 @@ const benchmarks = data.benchmarkComparison;
       });
     });
   });
+
+  // ── Live GTM Copilot ───────────────────────────────────────────────
+  const copilotForm = document.getElementById('gtm-copilot-form');
+  const copilotStatus = document.getElementById('copilot-status');
+  const copilotOutput = document.getElementById('copilot-output');
+  const runButton = document.getElementById('run-copilot');
+  const voiceButton = document.getElementById('toggle-voice');
+  const voiceStatus = document.getElementById('voice-status');
+  const inputTextArea = document.getElementById('inputText');
+  const liveSuggestionsContainer = document.getElementById('live-suggestions');
+  const liveSuggestionsContent = document.getElementById('live-suggestions-content');
+  const pricingStatus = document.getElementById('live-pricing-status');
+  const pricingTableBody = document.getElementById('live-pricing-tbody');
+  const refreshLivePricingButton = document.getElementById('refresh-live-pricing');
+
+  let suggestionTimer = null;
+  let isListening = false;
+  let recognition = null;
+  let livePricingContext = [];
+
+  function renderList(items, className = 'text-gray-300') {
+    if (!Array.isArray(items) || !items.length) {
+      return '<p class="text-xs text-gray-500">No items returned.</p>';
+    }
+    return `<ul class="list-disc pl-5 space-y-1 ${className}">${items
+      .map((item) => `<li>${item}</li>`)
+      .join('')}</ul>`;
+  }
+
+  function safeText(value) {
+    return String(value || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function renderBattlecard(payload) {
+    const analysis = payload?.analysis || {};
+    const counters = Array.isArray(analysis.competitive_counters) ? analysis.competitive_counters : [];
+    const objections = Array.isArray(analysis.objection_handling) ? analysis.objection_handling : [];
+
+    const countersHtml = counters.length
+      ? counters
+          .map(
+            (counter) => `
+              <article class="rounded-lg border border-gray-700 bg-gray-950 p-3">
+                <div class="text-xs uppercase tracking-wide text-yellow-300 font-semibold">${safeText(counter.competitor || 'Competitor')}</div>
+                <p class="text-sm text-gray-200 mt-1"><span class="text-gray-500">Claim:</span> ${safeText(counter.claim)}</p>
+                <p class="text-sm text-green-300 mt-1"><span class="text-gray-500">Counter:</span> ${safeText(counter.counter)}</p>
+                <p class="text-xs text-blue-300 mt-1"><span class="text-gray-500">Proof:</span> ${safeText(counter.proof)}</p>
+              </article>
+            `
+          )
+          .join('')
+      : '<p class="text-xs text-gray-500">No competitor counters returned.</p>';
+
+    const objectionsHtml = objections.length
+      ? objections
+          .map(
+            (obj) => `
+              <article class="rounded-lg border border-gray-700 bg-gray-950 p-3">
+                <p class="text-sm text-orange-200"><span class="text-gray-500">Objection:</span> ${safeText(obj.objection)}</p>
+                <p class="text-sm text-green-300 mt-1"><span class="text-gray-500">Response:</span> ${safeText(obj.response)}</p>
+              </article>
+            `
+          )
+          .join('')
+      : '<p class="text-xs text-gray-500">No objections returned.</p>';
+
+    return `
+      <div class="rounded-xl border border-gray-700 bg-gray-900/60 p-5 space-y-6">
+        <div>
+          <h3 class="text-lg font-bold text-white">Executive Summary</h3>
+          <p class="text-sm text-gray-300 mt-2">${safeText(analysis.executive_summary || 'No summary returned.')}</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <section>
+            <h4 class="text-sm font-bold text-yellow-300 mb-2">Talking Points</h4>
+            ${renderList((analysis.talking_points || []).map(safeText))}
+          </section>
+          <section>
+            <h4 class="text-sm font-bold text-blue-300 mb-2">Next Best Actions</h4>
+            ${renderList((analysis.next_best_actions || []).map(safeText))}
+          </section>
+        </div>
+
+        <section>
+          <h4 class="text-sm font-bold text-red-300 mb-2">Competitive Counters</h4>
+          <div class="space-y-3">${countersHtml}</div>
+        </section>
+
+        <section>
+          <h4 class="text-sm font-bold text-orange-300 mb-2">Objection Handling</h4>
+          <div class="space-y-3">${objectionsHtml}</div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <section>
+            <h4 class="text-sm font-bold text-green-300 mb-2">Cited Figures</h4>
+            ${renderList((analysis.cited_figures || []).map(safeText))}
+          </section>
+          <section>
+            <h4 class="text-sm font-bold text-gray-200 mb-2">Confidence Notes</h4>
+            ${renderList((analysis.confidence_notes || []).map(safeText), 'text-gray-400')}
+          </section>
+        </div>
+
+        ${payload?.transcript
+          ? `<section><h4 class="text-sm font-bold text-cyan-300 mb-2">Transcription</h4><p class="text-sm text-gray-300 whitespace-pre-wrap">${safeText(payload.transcript)}</p></section>`
+          : ''}
+      </div>
+    `;
+  }
+
+  if (copilotForm) {
+    inputTextArea?.addEventListener('input', debounceLiveSuggestions);
+
+    if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+      const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new RecognitionCtor();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event) => {
+        let interim = '';
+        let finalText = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const text = event.results[i][0]?.transcript || '';
+          if (event.results[i].isFinal) {
+            finalText += `${text} `;
+          } else {
+            interim += text;
+          }
+        }
+
+        if (finalText) {
+          const existing = String(inputTextArea.value || '');
+          inputTextArea.value = `${existing}${existing ? ' ' : ''}${finalText}`.trim();
+          debounceLiveSuggestions();
+        }
+
+        voiceStatus.textContent = interim ? `Listening... ${interim}` : 'Listening...';
+      };
+
+      recognition.onerror = (event) => {
+        voiceStatus.textContent = `Voice error: ${event.error}`;
+        voiceStatus.className = 'text-xs text-red-300';
+      };
+
+      recognition.onend = () => {
+        if (isListening) {
+          recognition.start();
+          return;
+        }
+        voiceButton.textContent = 'Start Talking';
+        voiceStatus.textContent = 'Voice capture stopped.';
+      };
+
+      voiceButton?.addEventListener('click', () => {
+        if (!recognition) return;
+
+        if (!isListening) {
+          isListening = true;
+          recognition.start();
+          voiceButton.textContent = 'Stop Talking';
+          voiceStatus.textContent = 'Listening...';
+          voiceStatus.className = 'text-xs text-cyan-300';
+        } else {
+          isListening = false;
+          recognition.stop();
+          voiceButton.textContent = 'Start Talking';
+          voiceStatus.textContent = 'Voice capture stopped.';
+          voiceStatus.className = 'text-xs text-gray-400';
+        }
+      });
+    } else {
+      voiceButton?.setAttribute('disabled', 'true');
+      voiceButton?.classList.add('opacity-50', 'cursor-not-allowed');
+      if (voiceStatus) {
+        voiceStatus.textContent = 'Live voice capture is not supported in this browser.';
+        voiceStatus.className = 'text-xs text-gray-500';
+      }
+    }
+
+    copilotForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const formData = new FormData(copilotForm);
+      const inputText = String(formData.get('inputText') || '').trim();
+      const accountName = String(formData.get('accountName') || '').trim();
+      const persona = String(formData.get('persona') || '').trim();
+      const salesStage = String(formData.get('salesStage') || '').trim();
+      const audio = formData.get('audio');
+
+      if (!inputText && !(audio instanceof File && audio.size > 0)) {
+        copilotStatus.textContent = 'Add notes or upload audio before generating.';
+        copilotStatus.className = 'text-xs text-red-400';
+        return;
+      }
+
+      if (audio instanceof File && audio.size > 25 * 1024 * 1024) {
+        copilotStatus.textContent = 'Audio file is too large (max 25MB).';
+        copilotStatus.className = 'text-xs text-red-400';
+        return;
+      }
+
+      runButton.setAttribute('disabled', 'true');
+      runButton.classList.add('opacity-60', 'cursor-not-allowed');
+      copilotStatus.textContent = 'Analyzing call context...';
+      copilotStatus.className = 'text-xs text-yellow-300';
+
+      try {
+        const hasAudio = audio instanceof File && audio.size > 0;
+        const requestOptions = hasAudio
+          ? {
+              method: 'POST',
+              body: formData,
+            }
+          : {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                inputText,
+                accountName,
+                persona,
+                salesStage,
+              }),
+            };
+
+        const response = await fetch('/api/competitive-intel', requestOptions);
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result?.error || 'Failed to generate intel response.');
+        }
+
+        copilotOutput.innerHTML = renderBattlecard(result);
+        copilotOutput.classList.remove('hidden');
+        copilotStatus.textContent = 'Battlecard generated.';
+        copilotStatus.className = 'text-xs text-green-400';
+      } catch (error) {
+        copilotOutput.classList.add('hidden');
+        copilotStatus.textContent = error.message || 'Unexpected error.';
+        copilotStatus.className = 'text-xs text-red-400';
+      } finally {
+        runButton.removeAttribute('disabled');
+        runButton.classList.remove('opacity-60', 'cursor-not-allowed');
+      }
+    });
+  }
+
+  refreshLivePricingButton?.addEventListener('click', loadLivePricing);
+  loadLivePricing();
 </script>
