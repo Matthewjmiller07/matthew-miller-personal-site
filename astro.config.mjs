@@ -21,7 +21,7 @@ export default defineConfig({
       },
     },
     optimizeDeps: {
-      include: ['@react-three/drei', 'three'],
+      include: ['@react-three/drei', 'three', 'react-is', 'recharts'],
       exclude: ['@react-three/fiber']
     }
   }
