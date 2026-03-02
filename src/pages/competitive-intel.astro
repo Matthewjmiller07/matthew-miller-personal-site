@@ -1,46 +1,313 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import data from '../data/competitive-intel-2026.json';
+import gtmTableCsv from '../data/gtm-positioning.csv?raw';
 
 const pricingRows = data.pricingComparison.flagship;
 const competitors = data.competitors;
 const benchmarks = data.benchmarkComparison;
+
+const parseCsvLine = (line: string) => {
+  const cells: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === ',' && !inQuotes) {
+      cells.push(current);
+      current = '';
+      continue;
+    }
+
+    current += char;
+  }
+
+  cells.push(current);
+  return cells;
+};
+
+const csvLines = gtmTableCsv.trim().split(/\r?\n/);
+const headers = parseCsvLine(csvLines.shift() ?? '');
+const tableRows = csvLines.map((line) => {
+  const cells = parseCsvLine(line);
+  return headers.reduce<Record<string, string>>((acc, header, index) => {
+    acc[header] = cells[index] ?? '';
+    return acc;
+  }, {});
+});
+
+const tableColumns = [
+  'Feature/Capability',
+  'OpenAI ChatGPT/AgentKit Approach',
+  'Anthropic Claude/MCP Apps Approach',
+  'Competitive Positioning Strategy',
+  'Key Enterprise Advantage (Inferred)',
+  'Source',
+];
 ---
 
-<Layout title="AI Competitive Intelligence 2026" description="Interactive competitive intelligence on OpenAI and the field — pricing, benchmarks, corporate developments.">
+<Layout title="ChatGPT vs Claude War Room" description="GTM arsenal for dismantling the Claude Plugins narrative — assets, battlecards, and legacy competitive intel.">
   <main class="bg-gray-950 min-h-screen text-white">
     <div class="container mx-auto px-4 lg:px-8 py-10 max-w-7xl">
 
       <!-- Header -->
       <header class="mb-10">
-        <div class="flex items-center gap-3 mb-2">
-          <span class="text-xs font-bold uppercase tracking-widest text-yellow-400 bg-yellow-400/10 px-3 py-1 rounded-full">Live Intel</span>
-          <span class="text-xs text-gray-500">Updated {data.updated}</span>
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="text-xs font-bold uppercase tracking-widest text-yellow-400 bg-yellow-400/10 px-3 py-1 rounded-full">GTM Arsenal</span>
+          <span class="text-xs font-semibold uppercase tracking-widest text-cyan-300 bg-cyan-400/10 px-3 py-1 rounded-full">Claude Plugins Focus</span>
+          <span class="text-xs text-gray-500">Updated March 2, 2026</span>
         </div>
-        <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white">AI Competitive Intelligence</h1>
-        <p class="mt-3 text-lg text-gray-400 max-w-3xl">Executive-grade analysis of OpenAI and 9 competitors — pricing pressure, benchmark performance, funding, and strategic positioning.</p>
+        <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white">ChatGPT vs Claude: Plugin War Room</h1>
+        <p class="mt-3 text-lg text-gray-300 max-w-3xl">
+          Arming OpenAI GTM teams with decisive assets to dismantle the Claude Plugin narrative and close enterprise deals faster.
+        </p>
+        <p class="mt-2 text-sm text-yellow-300 font-semibold">Insights where you are, when you need them.</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          {['Podcast', 'Slide Deck', 'Battlecard Table', 'Newsletter', 'Teams Chat', 'Gong Insights', 'Competitive Intel'].map((chip) => (
+            <span class="text-[11px] uppercase tracking-widest bg-gray-800 border border-gray-700 text-gray-300 px-3 py-1 rounded-full">{chip}</span>
+          ))}
+        </div>
+        <p class="mt-4 text-xs text-gray-500">Created by GPT-5.2 and Matthew Miller</p>
       </header>
 
-      <!-- OpenAI Snapshot -->
-      <section class="mb-12 bg-gray-900 rounded-xl border border-gray-800 p-6">
-        <div class="flex items-center gap-2 mb-3">
-          <span class="w-3 h-3 rounded-full bg-green-400 inline-block"></span>
-          <h2 class="text-xl font-bold text-white">OpenAI — Current Position</h2>
-        </div>
-        <p class="text-gray-300 text-sm leading-relaxed">{data.openai.headline}</p>
-        <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {data.openai.pricing.map((p) => (
-            <div class="bg-gray-800 rounded-lg p-3 border border-gray-700">
-              <div class="text-xs text-gray-400 font-mono truncate">{p.model}</div>
-              <div class="mt-1 text-sm font-bold text-green-400">${p.input} in</div>
-              <div class="text-sm text-gray-300">${p.output} out</div>
+      <!-- ChatGPT vs Claude Overview -->
+      <section class="mb-12">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-gradient-to-br from-emerald-500/10 via-gray-900 to-gray-950 border border-emerald-400/20 rounded-2xl p-6">
+            <div class="flex items-center justify-between">
+              <h2 class="text-xl font-bold text-white">ChatGPT Enterprise + AgentKit</h2>
+              <span class="text-xs font-bold text-emerald-300">Operating System</span>
             </div>
-          ))}
+            <p class="mt-3 text-sm text-gray-300">Unified AI OS for enterprise — governed workflows, centralized connectors, and secure agent orchestration.</p>
+            <ul class="mt-4 space-y-2 text-sm text-gray-300">
+              <li>• Agent Builder with Guardrail Nodes + PII protection</li>
+              <li>• Connector Registry + App Directory (no zip files)</li>
+              <li>• Codex app + AgentKit for scalable, audited automation</li>
+              <li>• Enterprise governance with global admin controls</li>
+            </ul>
+          </div>
+          <div class="bg-gradient-to-br from-red-500/10 via-gray-900 to-gray-950 border border-red-400/20 rounded-2xl p-6">
+            <div class="flex items-center justify-between">
+              <h2 class="text-xl font-bold text-white">Claude Cowork Plugins</h2>
+              <span class="text-xs font-bold text-red-300">Fragmented Plugins</span>
+            </div>
+            <p class="mt-3 text-sm text-gray-300">Bundled skills + commands + MCP connectors packaged into department-specific plugin bundles.</p>
+            <ul class="mt-4 space-y-2 text-sm text-gray-300">
+              <li>• Custom plugin sharing via manual .zip exports</li>
+              <li>• MCP execution vulnerabilities across open servers</li>
+              <li>• Local terminal workflows + hidden config overhead</li>
+              <li>• Governance gaps for enterprise compliance</li>
+            </ul>
+          </div>
+        </div>
+        <div class="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <p class="text-sm text-gray-300">
+            <span class="text-yellow-300 font-semibold">GTM framing:</span> Claude sells plugins. OpenAI sells a secure, unified AI Operating System with enterprise-grade Guardrails.
+          </p>
         </div>
       </section>
 
+      <!-- Asset Arsenal -->
+      <section class="mb-12">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
+          <div>
+            <h2 class="text-2xl font-bold text-white">GTM Asset Arsenal</h2>
+            <p class="text-sm text-gray-400">Battle-tested assets for repositioning Claude Plugins in every enterprise conversation.</p>
+          </div>
+          <span class="text-xs uppercase tracking-widest text-yellow-300 bg-yellow-300/10 px-3 py-1 rounded-full">Priority Pack</span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <article class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-bold text-white">Podcast: Beat Claude by Selling the OS</h3>
+              <span class="text-xs font-bold text-gray-900 bg-yellow-400 px-2 py-1 rounded-full">Audio</span>
+            </div>
+            <p class="mt-3 text-sm text-gray-400">A rapid enablement episode for reps. Use this for onboarding and deal prep.</p>
+            <audio class="mt-4 w-full" controls>
+              <source src="/competitive-intel/Beat_Claude_by_Selling_the_OS.m4a" type="audio/mp4" />
+              Your browser does not support the audio element.
+            </audio>
+          </article>
+
+          <article class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-bold text-white">Slide Deck: Winning the Platform War</h3>
+              <span class="text-xs font-bold text-gray-900 bg-cyan-400 px-2 py-1 rounded-full">Deck</span>
+            </div>
+            <p class="mt-3 text-sm text-gray-400">Use in exec briefings and board-level GTM syncs.</p>
+            <div class="mt-4 aspect-video overflow-hidden rounded-lg border border-gray-700 bg-black/40">
+              <iframe
+                src="/competitive-intel/Winning_the_Platform_War_(2).pdf#view=fitH"
+                class="w-full h-full"
+                title="Winning the Platform War deck"
+              ></iframe>
+            </div>
+            <a class="mt-3 inline-flex text-xs text-yellow-300 hover:text-yellow-200" href="/competitive-intel/Winning_the_Platform_War_(2).pdf" target="_blank" rel="noopener noreferrer">Open deck ↗</a>
+          </article>
+        </div>
+
+        <article class="mt-6 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h3 class="text-lg font-bold text-white">GTM Positioning: ChatGPT vs Claude</h3>
+              <p class="text-xs text-gray-400">Enterprise-ready comparison table for battlecard decks.</p>
+            </div>
+            <span class="text-xs font-bold text-gray-900 bg-emerald-400 px-2 py-1 rounded-full">Data Table</span>
+          </div>
+          <div class="mt-4 overflow-x-auto rounded-xl border border-gray-800">
+            <table class="min-w-full text-xs">
+              <thead class="bg-gray-950 border-b border-gray-800">
+                <tr>
+                  {tableColumns.map((col) => (
+                    <th class="text-left p-3 font-semibold text-gray-400 uppercase tracking-wide">{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tableRows.map((row) => (
+                  <tr class="border-t border-gray-800 hover:bg-gray-800/40 transition-colors">
+                    {tableColumns.map((col) => (
+                      <td class="p-3 text-gray-300 align-top leading-relaxed whitespace-pre-line">{row[col]}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <article class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-bold text-white">Mock Newsletter: GTM Insider</h3>
+              <span class="text-xs font-bold text-gray-900 bg-purple-400 px-2 py-1 rounded-full">Internal Memo</span>
+            </div>
+            <div class="mt-4 rounded-xl border border-gray-800 bg-gray-950/70 p-4 text-sm text-gray-300 space-y-4">
+              <div class="text-xs uppercase tracking-wide text-gray-500">To: Global Go-To-Market (GTM) Team · From: GTM Strategy & Product Marketing · Date: March 2, 2026</div>
+              <h4 class="text-sm font-bold text-yellow-300">Subject: 🚀 GTM Insider: Dismantling Anthropic’s "Plugin" Narrative and Winning the Enterprise</h4>
+              <p>Team,</p>
+              <p>Over the past few weeks, Anthropic has dominated news cycles with the release of their Claude Cowork Plugins and Claude Code Plugins. These releases have sent shockwaves through the market, contributing to a massive software stock selloff (dubbed the "SaaSpocalypse") as investors fear AI agents will replace traditional SaaS interfaces.</p>
+              <p>Anthropic is aggressively pitching these plugins as "instant AI employees" for every department. As our competitors attempt to commoditize workflows, we need to clearly articulate why OpenAI’s ecosystem (AgentKit, App Directory, and Guardrails) is the only secure, scalable choice for the enterprise.</p>
+              <p class="font-semibold text-white">Here is your laser-focused playbook for deconstructing the Claude Plugin hype and closing deals in 2026.</p>
+              <hr class="border-gray-800" />
+              <h5 class="text-xs font-bold text-cyan-300 uppercase tracking-wide">🎯 Understanding the Threat: What Are Claude Plugins?</h5>
+              <p>Cowork Plugins: 11 official plugins mapped to departments (Legal, HR, Finance, Sales, Marketing). Each plugin bundles skills, commands, and MCP connectors.</p>
+              <p>Claude Code Plugins: 50+ CLI plugins (type checking, security guidance) run directly in terminal workflows.</p>
+              <h5 class="text-xs font-bold text-red-300 uppercase tracking-wide">🛡️ The Anthropic Vulnerability: Where Claude Plugins Fail</h5>
+              <ol class="list-decimal pl-5 space-y-2">
+                <li><strong>Zip File Distribution Nightmare:</strong> Custom Cowork plugins are saved locally and shared via exported .zip files.</li>
+                <li><strong>Massive Security Blind Spots:</strong> 40%+ of MCP servers allow unrestricted command execution.</li>
+                <li><strong>Black Box Developer Workflows:</strong> Terminal-centric workflows slow inference and create context bloat.</li>
+              </ol>
+              <h5 class="text-xs font-bold text-emerald-300 uppercase tracking-wide">💡 Battlecards: Handling Claude Plugin Objections</h5>
+              <p><strong>Objection 1:</strong> "Claude’s Cowork Plugins give us a pre-built legal and HR department." <br />
+              <strong>Rebuttal:</strong> Agent Builder lets ops teams design workflows that match enterprise policies, with centralized app governance.</p>
+              <p><strong>Objection 2:</strong> "Developers prefer Claude Code plugins." <br />
+              <strong>Rebuttal:</strong> AgentKit ships with Evals, trace grading, and Codex app UI for secure multi-agent orchestration.</p>
+              <p><strong>Objection 3:</strong> "MCP is the standard." <br />
+              <strong>Rebuttal:</strong> OpenAI supports MCP but wraps it in Guardrails + Global Admin Console.</p>
+              <h5 class="text-xs font-bold text-yellow-300 uppercase tracking-wide">🚀 The Bottom Line</h5>
+              <p>Claude Plugins are packaged skills + connectors. OpenAI delivers a secure AI Operating System with Guardrails, Connector Registry, and Agent Builder.</p>
+              <p class="font-semibold text-white">— OpenAI GTM Strategy Team</p>
+            </div>
+          </article>
+
+          <article class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-bold text-white">Microsoft Teams: GTM Strategy Chat</h3>
+              <span class="text-xs font-bold text-gray-900 bg-blue-400 px-2 py-1 rounded-full">Transcript</span>
+            </div>
+            <div class="mt-4 rounded-xl border border-gray-800 bg-gray-950/70 p-4 space-y-4 text-sm text-gray-200">
+              <div class="text-xs text-gray-500 uppercase tracking-wide">Channel: GTM Strategy & Battlecards · March 2, 2026</div>
+              <div class="space-y-3">
+                {[
+                  {
+                    name: 'Alex (GTM Lead)',
+                    time: '10:32 AM',
+                    message: '@CompIntel Bot I need a quick competitive rundown. Prospects are blowing up my inbox about Anthropic\'s new "Cowork Plugins" and their new security scanner. What exactly did they release, and why are software stocks tanking?'
+                  },
+                  {
+                    name: 'CompIntel Bot',
+                    time: '10:33 AM',
+                    message: 'Anthropic launched 11 Claude Cowork Plugins for departments like Legal, HR, Finance, and Marketing. They bundle skills, commands, and MCP connectors. They also previewed Claude Code Security for zero-day vulnerability detection, sparking the SaaSpocalypse as SaaS margins look threatened.'
+                  },
+                  {
+                    name: 'Alex (GTM Lead)',
+                    time: '10:35 AM',
+                    message: 'How do we de-position their Cowork plugins when pitching ChatGPT Enterprise and AgentKit?'
+                  },
+                  {
+                    name: 'CompIntel Bot',
+                    time: '10:36 AM',
+                    message: 'Highlight deployment friction (zip files), governance gaps, and MCP security risks. OpenAI offers Connector Registry + visual Agent Builder with Guardrails. No zip files. Full admin controls.'
+                  },
+                  {
+                    name: 'Alex (GTM Lead)',
+                    time: '10:39 AM',
+                    message: 'What about public sector? I saw headlines about Anthropic and DOD.'
+                  },
+                  {
+                    name: 'CompIntel Bot',
+                    time: '10:40 AM',
+                    message: 'Anthropic was blacklisted as a supply-chain risk. OpenAI has secured deployment in U.S. defense networks and regulated industries.'
+                  },
+                  {
+                    name: 'Alex (GTM Lead)',
+                    time: '10:42 AM',
+                    message: 'Give me a 2-sentence pitch for #global-sales.'
+                  },
+                  {
+                    name: 'CompIntel Bot',
+                    time: '10:43 AM',
+                    message: '"While Anthropic relies on open MCP servers and manual zip sharing, OpenAI\'s AgentKit provides a governed AI Operating System out of the box. After Anthropic\'s federal ban, OpenAI is the only frontier model cleared for regulated and defense deployments."'
+                  }
+                ].map((msg) => (
+                  <div class={`flex ${msg.name === 'CompIntel Bot' ? 'justify-start' : 'justify-end'}`}>
+                    <div class={`max-w-[85%] rounded-2xl px-4 py-3 ${msg.name === 'CompIntel Bot' ? 'bg-gray-800 text-gray-200' : 'bg-blue-500/20 text-blue-100 border border-blue-400/30'}`}>
+                      <div class="text-[11px] uppercase tracking-wide text-gray-400 mb-1">{msg.name} · {msg.time}</div>
+                      <p class="text-sm">{msg.message}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <article class="mt-6 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold text-white">Gong Real-Time Insights Mockup</h3>
+            <span class="text-xs font-bold text-gray-900 bg-orange-400 px-2 py-1 rounded-full">Live Call</span>
+          </div>
+          <p class="mt-2 text-sm text-gray-400">Use in enablement decks to show real-time AI coaching during Claude Plugin objections.</p>
+          <div class="mt-4 overflow-hidden rounded-xl border border-gray-800">
+            <img src="/competitive-intel/replicate-prediction-bstq1kf8j9rmr0cwnxq8hz99xc.jpeg" alt="Gong real-time insights mockup" class="w-full" />
+          </div>
+        </article>
+      </section>
+
+      <details class="mb-12 bg-gray-900/50 border border-gray-800 rounded-2xl">
+        <summary class="cursor-pointer px-6 py-4 text-sm font-semibold text-gray-200 uppercase tracking-wide">
+          Expand legacy competitive intel modules
+        </summary>
+        <div class="px-6 pb-6 pt-2 space-y-12">
+
       <!-- Live GTM Copilot -->
-      <section class="mb-12 bg-gray-900 rounded-xl border border-gray-800 p-6">
+      <section class="bg-gray-900 rounded-xl border border-gray-800 p-6">
         <div class="flex flex-col gap-2 mb-4">
           <h2 class="text-2xl font-bold text-white">Live GTM Sales Copilot</h2>
           <p class="text-sm text-gray-400 max-w-3xl">
@@ -130,6 +397,24 @@ const benchmarks = data.benchmarkComparison;
         </div>
 
         <div id="copilot-output" class="mt-6 hidden"></div>
+      </section>
+
+      <!-- OpenAI Snapshot -->
+      <section class="mb-12 bg-gray-900 rounded-xl border border-gray-800 p-6">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-3 h-3 rounded-full bg-green-400 inline-block"></span>
+          <h2 class="text-xl font-bold text-white">OpenAI — Current Position</h2>
+        </div>
+        <p class="text-gray-300 text-sm leading-relaxed">{data.openai.headline}</p>
+        <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {data.openai.pricing.map((p) => (
+            <div class="bg-gray-800 rounded-lg p-3 border border-gray-700">
+              <div class="text-xs text-gray-400 font-mono truncate">{p.model}</div>
+              <div class="mt-1 text-sm font-bold text-green-400">${p.input} in</div>
+              <div class="text-sm text-gray-300">${p.output} out</div>
+            </div>
+          ))}
+        </div>
       </section>
 
       <!-- Charts Row -->
@@ -236,6 +521,9 @@ const benchmarks = data.benchmarkComparison;
           </table>
         </div>
       </section>
+
+        </div>
+      </details>
 
     </div>
   </main>
