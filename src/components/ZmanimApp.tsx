@@ -279,6 +279,16 @@ function FullscreenClock({
   const nowMs = now.getTime();
   const sorted = [...zmanim].filter(z => z.time).sort((a, b) => a.time!.getTime() - b.time!.getTime());
   const nextZman = sorted.find(z => z.time!.getTime() > nowMs);
+  const prevZman = [...sorted].reverse().find(z => z.time!.getTime() <= nowMs);
+
+  // Only show the key zmanim for a clean board display
+  const BOARD_KEYS = [
+    'alotHaShachar', 'misheyakir', 'sunrise',
+    'sofZmanShmaMGA', 'sofZmanShma', 'sofZmanTfilla',
+    'chatzot', 'minchaGedola', 'minchaKetana',
+    'plagHaMincha', 'sunset', 'tzeit7083deg',
+  ];
+  const boardZmanim = BOARD_KEYS.map(k => sorted.find(z => z.key === k)).filter(Boolean) as ZmanItem[];
 
   const timeStr = now.toLocaleTimeString('en-US', {
     timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
@@ -289,78 +299,152 @@ function FullscreenClock({
     timeZone: tz, weekday: 'long', month: 'long', day: 'numeric',
   });
 
-  // Split zmanim into left (dawn/morning) and right (afternoon/evening/night) columns
-  const leftZmanim  = sorted.filter(z => ['dawn','morning'].includes(z.category));
-  const rightZmanim = sorted.filter(z => ['afternoon','evening','night'].includes(z.category));
+  // Progress bar: dawn to nightfall
+  const dawn  = zmanim.find(z => z.key === 'alotHaShachar')?.time;
+  const night = zmanim.find(z => z.key === 'tzeit7083deg')?.time;
+  const dayPct = dawn && night
+    ? Math.min(100, Math.max(0, ((nowMs - dawn.getTime()) / (night.getTime() - dawn.getTime())) * 100))
+    : null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black text-white flex flex-col select-none" style={{ fontFamily: 'Inter, sans-serif' }}>
-      {/* Exit button */}
+    <div
+      className="fixed inset-0 z-50 flex flex-col select-none"
+      style={{
+        fontFamily: "'Inter', 'SF Pro Display', sans-serif",
+        background: 'radial-gradient(ellipse at 50% 0%, #0d0d14 0%, #080808 60%, #000 100%)',
+        color: '#fff',
+      }}
+    >
+      {/* Invisible exit zone — tap anywhere in top-right corner */}
       <button
         onClick={onExit}
-        className="absolute top-5 right-5 text-white/20 hover:text-white/50 transition-colors z-10"
+        className="absolute top-0 right-0 w-16 h-16 z-20 opacity-0"
         aria-label="Exit fullscreen"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 9L3 3m0 0l6 0M3 3v6M15 9l6-6m0 0l-6 0m6 0v6M9 15l-6 6m0 0l6 0m-6 0v-6M15 15l6 6m0 0l-6 0m6 0v-6" />
-        </svg>
-      </button>
+      />
 
-      {/* Location top-center */}
-      <p className="absolute top-5 left-1/2 -translate-x-1/2 text-white/15 text-xs tracking-widest uppercase">{location.label}</p>
+      {/* ── HEADER ── */}
+      <div className="flex items-center justify-between px-10 pt-8 pb-0">
+        <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+          {location.label}
+        </p>
+        {parsha && (
+          <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '0.7rem', letterSpacing: '0.12em' }}>
+            {parsha}
+          </p>
+        )}
+      </div>
 
-      {/* Main layout: left zmanim | clock | right zmanim */}
-      <div className="flex-1 flex items-center justify-center gap-0">
-
-        {/* Left column — dawn/morning */}
-        <div className="flex-1 flex flex-col items-end pr-8 gap-3 max-w-[200px]">
-          {leftZmanim.map(z => {
-            const isPast = z.time && z.time.getTime() <= nowMs;
-            const isNext = z.key === nextZman?.key;
-            return (
-              <div key={z.key} className={`text-right transition-opacity ${isPast && !isNext ? 'opacity-15' : isNext ? 'opacity-100' : 'opacity-40'}`}>
-                <p className={`text-xs font-mono tabular-nums ${isNext ? 'text-white' : 'text-white/60'}`}>{fmt(z.time, tz)}</p>
-                <p className={`text-xs mt-0.5 ${isNext ? 'text-white/60' : 'text-white/25'}`}>{z.heLabel}</p>
-              </div>
-            );
-          })}
+      {/* ── CLOCK ── */}
+      <div className="flex flex-col items-center justify-center pt-6 pb-2">
+        <div className="flex items-end" style={{ fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+          <span style={{ fontSize: 'clamp(80px, 18vw, 180px)', fontWeight: 100, letterSpacing: '-0.04em', color: '#fff' }}>{hh}</span>
+          <span style={{ fontSize: 'clamp(80px, 18vw, 180px)', fontWeight: 100, color: 'rgba(255,255,255,0.12)', margin: '0 4px' }}>:</span>
+          <span style={{ fontSize: 'clamp(80px, 18vw, 180px)', fontWeight: 100, letterSpacing: '-0.04em', color: '#fff' }}>{mm}</span>
+          <span style={{ fontSize: 'clamp(24px,4vw,44px)', fontWeight: 100, color: 'rgba(255,255,255,0.18)', marginBottom: '14px', marginLeft: '10px' }}>:{ss}</span>
         </div>
 
-        {/* Center clock */}
-        <div className="flex flex-col items-center gap-2 px-4">
-          <div className="flex items-end" style={{ fontVariantNumeric: 'tabular-nums' }}>
-            <span className="text-[clamp(72px,16vw,160px)] font-thin leading-none tracking-tighter text-white">{hh}</span>
-            <span className="text-[clamp(72px,16vw,160px)] font-thin leading-none tracking-tighter text-white/15 mx-1">:</span>
-            <span className="text-[clamp(72px,16vw,160px)] font-thin leading-none tracking-tighter text-white">{mm}</span>
-            <span className="text-[clamp(22px,4vw,40px)] font-thin leading-none tracking-tighter text-white/15 mb-4 ml-2">:{ss}</span>
-          </div>
-          <p className="text-white/20 text-sm font-light tracking-wide">{dateStr}</p>
-          {hebrewDate && <p className="text-white/15 text-xs">{hebrewDate}{parsha ? ` · ${parsha}` : ''}</p>}
-          {nextZman && (
-            <div className="mt-3 text-center">
-              <p className="text-white/20 text-xs">{nextZman.heLabel} · {fmt(nextZman.time, tz)}</p>
-              <p className="text-white/15 text-xs font-mono">{countdown(nextZman.time!.getTime() - nowMs)}</p>
-            </div>
+        {/* Date + Hebrew date */}
+        <div className="flex items-center gap-4 mt-2">
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem', fontWeight: 300, letterSpacing: '0.05em' }}>{dateStr}</p>
+          {hebrewDate && (
+            <>
+              <span style={{ color: 'rgba(255,255,255,0.12)' }}>·</span>
+              <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.85rem' }}>{hebrewDate}</p>
+            </>
           )}
-          {/* Day bar */}
-          <div className="w-56 mt-4">
-            <DayBar zmanim={zmanim} now={now} tz={tz} />
+        </div>
+      </div>
+
+      {/* ── NEXT ZMAN HIGHLIGHT ── */}
+      {nextZman && (
+        <div className="flex flex-col items-center py-4">
+          <div style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '16px',
+            padding: '12px 32px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '20px',
+          }}>
+            <div className="text-center">
+              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '2px' }}>Next</p>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem' }}>{nextZman.label}</p>
+              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.75rem' }}>{nextZman.heLabel}</p>
+            </div>
+            <div style={{ width: '1px', height: '36px', background: 'rgba(255,255,255,0.08)' }} />
+            <div className="text-center">
+              <p style={{ color: '#fff', fontSize: '1.4rem', fontFamily: 'monospace', fontWeight: 300, letterSpacing: '0.05em' }}>{fmt(nextZman.time, tz)}</p>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', fontFamily: 'monospace', marginTop: '2px' }}>
+                in {countdown(nextZman.time!.getTime() - nowMs)}
+              </p>
+            </div>
+            {prevZman && (
+              <>
+                <div style={{ width: '1px', height: '36px', background: 'rgba(255,255,255,0.06)' }} />
+                <div className="text-center">
+                  <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '2px' }}>Previous</p>
+                  <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>{prevZman.label}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.75rem', fontFamily: 'monospace' }}>{fmt(prevZman.time, tz)}</p>
+                </div>
+              </>
+            )}
           </div>
         </div>
+      )}
 
-        {/* Right column — afternoon/evening/night */}
-        <div className="flex-1 flex flex-col items-start pl-8 gap-3 max-w-[200px]">
-          {rightZmanim.map(z => {
-            const isPast = z.time && z.time.getTime() <= nowMs;
-            const isNext = z.key === nextZman?.key;
-            return (
-              <div key={z.key} className={`transition-opacity ${isPast && !isNext ? 'opacity-15' : isNext ? 'opacity-100' : 'opacity-40'}`}>
-                <p className={`text-xs font-mono tabular-nums ${isNext ? 'text-white' : 'text-white/60'}`}>{fmt(z.time, tz)}</p>
-                <p className={`text-xs mt-0.5 ${isNext ? 'text-white/60' : 'text-white/25'}`}>{z.heLabel}</p>
-              </div>
-            );
-          })}
+      {/* ── DAY PROGRESS BAR ── */}
+      {dayPct !== null && (
+        <div className="px-12 py-1">
+          <div style={{ height: '2px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'visible', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${dayPct}%`, background: 'rgba(255,255,255,0.25)', borderRadius: '2px', transition: 'width 1s linear' }} />
+          </div>
         </div>
+      )}
+
+      {/* ── ZMANIM GRID ── */}
+      <div className="flex-1 grid px-10 py-4" style={{
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: '2px 0',
+        alignContent: 'center',
+      }}>
+        {boardZmanim.map(z => {
+          const isPast = z.time && z.time.getTime() <= nowMs;
+          const isNext = z.key === nextZman?.key;
+          return (
+            <div
+              key={z.key}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '12px',
+                background: isNext ? 'rgba(255,255,255,0.06)' : 'transparent',
+                border: isNext ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
+                opacity: isPast && !isNext ? 0.2 : 1,
+                transition: 'all 0.3s ease',
+              }}
+            >
+              <p style={{
+                color: isNext ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)',
+                fontSize: '0.65rem',
+                letterSpacing: '0.08em',
+                marginBottom: '3px',
+                textTransform: 'uppercase',
+              }}>{z.label}</p>
+              <p style={{
+                color: isNext ? '#fff' : isPast ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)',
+                fontSize: '1rem',
+                fontFamily: 'monospace',
+                fontWeight: isNext ? 400 : 300,
+                letterSpacing: '0.04em',
+              }}>{fmt(z.time, tz)}</p>
+              <p style={{
+                color: 'rgba(255,255,255,0.15)',
+                fontSize: '0.6rem',
+                marginTop: '1px',
+              }}>{z.heLabel}</p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
