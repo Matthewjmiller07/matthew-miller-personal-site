@@ -478,7 +478,7 @@ export default function ZmanimApp() {
       {!fullscreen && (<>
 
       {/* Top bar */}
-      <div className="absolute top-5 left-0 right-0 flex items-center justify-between px-5">
+      <div className="absolute top-5 left-0 right-0 flex items-center justify-between px-5 z-10" onClick={e => e.stopPropagation()}>
         {/* Location pill */}
         <button
           onClick={() => setShowLocPicker(v => !v)}
