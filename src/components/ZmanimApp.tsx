@@ -491,17 +491,18 @@ export default function ZmanimApp() {
           {location.label}
         </button>
 
-        {/* Fullscreen button */}
-        <button
-          onClick={enterFullscreen}
-          className="text-white/20 hover:text-white/50 transition-colors"
-          aria-label="Fullscreen"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5" />
-          </svg>
-        </button>
       </div>
+
+      {/* Fullscreen button — bottom-right, away from site navbar */}
+      <button
+        onClick={e => { e.stopPropagation(); enterFullscreen(); }}
+        className="absolute bottom-6 right-6 z-10 text-white/20 hover:text-white/50 transition-colors"
+        aria-label="Fullscreen"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5" />
+        </svg>
+      </button>
 
       {/* Location picker dropdown */}
       {showLocPicker && (
