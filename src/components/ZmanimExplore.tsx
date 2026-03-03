@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -388,6 +388,97 @@ function DaylightView({ location }: { location: LocationInfo }) {
 
 // ── Tab: Map ──────────────────────────────────────────────────────────────────
 
+// Color interpolation: early = violet, late = amber
+function dotColor(p: number): string {
+  const r = Math.round(167 + (251 - 167) * p);
+  const g = Math.round(139 + (191 - 139) * p);
+  const b = Math.round(250 + (36 - 250) * p);
+  return `rgb(${r},${g},${b})`;
+}
+
+function LeafletMap({ cityData }: { cityData: { city: LocationInfo; mins: number }[] }) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const leafletRef = useRef<any>(null);
+
+  const allMins = cityData.map(d => d.mins);
+  const minM = Math.min(...allMins), maxM = Math.max(...allMins);
+  const pct = (m: number) => maxM === minM ? 0.5 : (m - minM) / (maxM - minM);
+
+  useEffect(() => {
+    if (!mapRef.current || cityData.length === 0) return;
+
+    // Lazy-load leaflet only on client
+    import('leaflet').then(L => {
+      // Inject dark tile CSS override once
+      if (!document.getElementById('leaflet-dark-style')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-dark-style';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+
+      // Destroy existing map
+      if (leafletRef.current) {
+        leafletRef.current.remove();
+        leafletRef.current = null;
+      }
+
+      const map = L.map(mapRef.current!, {
+        center: [20, 15],
+        zoom: 2,
+        zoomControl: true,
+        attributionControl: false,
+        scrollWheelZoom: false,
+      });
+      leafletRef.current = map;
+
+      // Dark tile layer
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }).addTo(map);
+
+      // Add markers
+      cityData.forEach(({ city, mins }) => {
+        const p = pct(mins);
+        const color = dotColor(p);
+        const circle = L.circleMarker([city.lat, city.lng], {
+          radius: 10,
+          fillColor: color,
+          fillOpacity: 0.85,
+          color: color,
+          weight: 1,
+          opacity: 0.4,
+        }).addTo(map);
+
+        circle.bindTooltip(
+          `<div style="background:#111;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:6px 10px;color:#fff;font-size:12px;white-space:nowrap">
+            <strong>${city.label}</strong><br/>
+            <span style="font-family:monospace;color:${color}">${minsToTimeStr(mins)}</span>
+          </div>`,
+          { className: 'leaflet-tooltip-clean', sticky: true, opacity: 1 }
+        );
+      });
+    });
+
+    return () => {
+      if (leafletRef.current) {
+        leafletRef.current.remove();
+        leafletRef.current = null;
+      }
+    };
+  }, [cityData]);
+
+  return (
+    <div
+      ref={mapRef}
+      className="w-full rounded-xl overflow-hidden border border-white/5"
+      style={{ height: '260px', background: '#111' }}
+    />
+  );
+}
+
 function MapView() {
   const [zmanKey, setZmanKey] = useState('sunrise');
   const [cityData, setCityData] = useState<{ city: LocationInfo; mins: number }[]>([]);
@@ -409,26 +500,9 @@ function MapView() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Simple world map using SVG — project lat/lng to SVG coords
-  // Mercator-ish: x = (lng + 180) / 360 * W, y = (90 - lat) / 180 * H
-  const W = 500, H = 280;
-  const toSvg = (lat: number, lng: number) => ({
-    x: ((lng + 180) / 360) * W,
-    y: ((90 - lat) / 180) * H,
-  });
-
   const allMins = cityData.map(d => d.mins);
   const minM = Math.min(...allMins), maxM = Math.max(...allMins);
   const pct = (m: number) => maxM === minM ? 0.5 : (m - minM) / (maxM - minM);
-
-  // Color interpolation: early = violet, late = amber
-  const dotColor = (p: number) => {
-    const r = Math.round(167 + (251 - 167) * p);
-    const g = Math.round(139 + (191 - 139) * p);
-    const b = Math.round(250 + (36 - 250) * p);
-    return `rgb(${r},${g},${b})`;
-  };
-
   const zdef = EXPLORE_ZMANIM.find(z => z.key === zmanKey);
 
   return (
@@ -447,49 +521,19 @@ function MapView() {
         </select>
       </div>
       {loading ? (
-        <div className="h-48 flex items-center justify-center text-white/20 text-sm">Loading…</div>
+        <div className="h-64 flex items-center justify-center text-white/20 text-sm">Loading…</div>
       ) : (
-        <div className="relative rounded-xl overflow-hidden border border-white/5">
-          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto bg-white/3">
-            {/* Simple world outline using a rough polygon — decorative only */}
-            <rect width={W} height={H} fill="transparent" />
-            {/* Grid lines */}
-            {[-60,-30,0,30,60].map(lat => {
-              const y = toSvg(lat, 0).y;
-              return <line key={lat} x1={0} y1={y} x2={W} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth={1} />;
-            })}
-            {[-120,-60,0,60,120].map(lng => {
-              const x = toSvg(0, lng).x;
-              return <line key={lng} x1={x} y1={0} x2={x} y2={H} stroke="rgba(255,255,255,0.04)" strokeWidth={1} />;
-            })}
-            {/* Equator */}
-            <line x1={0} y1={toSvg(0,0).y} x2={W} y2={toSvg(0,0).y} stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
-            {/* City dots */}
-            {cityData.map(({ city, mins }) => {
-              const { x, y } = toSvg(city.lat, city.lng);
-              const p = pct(mins);
-              const color = dotColor(p);
-              return (
-                <g key={city.label}>
-                  <circle cx={x} cy={y} r={14} fill={color} fillOpacity={0.08} />
-                  <circle cx={x} cy={y} r={5} fill={color} fillOpacity={0.85} />
-                  <text x={x} y={y - 10} textAnchor="middle" fontSize={9} fill="rgba(255,255,255,0.5)">{city.label}</text>
-                  <text x={x} y={y + 18} textAnchor="middle" fontSize={8} fill={color} fillOpacity={0.8}>{minsToTimeStr(mins)}</text>
-                </g>
-              );
-            })}
-          </svg>
-          {/* Legend */}
-          <div className="flex items-center gap-2 px-3 py-2 border-t border-white/5">
-            <span className="text-xs text-white/30">Earlier</span>
-            <div className="flex-1 h-1.5 rounded-full" style={{ background: 'linear-gradient(to right, rgb(167,139,250), rgb(251,191,36))' }} />
-            <span className="text-xs text-white/30">Later</span>
-          </div>
-        </div>
+        <LeafletMap cityData={cityData} />
       )}
+      {/* Legend */}
+      <div className="flex items-center gap-2 mt-2 mb-3">
+        <span className="text-xs text-white/30">Earlier</span>
+        <div className="flex-1 h-1.5 rounded-full" style={{ background: 'linear-gradient(to right, rgb(167,139,250), rgb(251,191,36))' }} />
+        <span className="text-xs text-white/30">Later</span>
+      </div>
       {/* City table */}
       {!loading && (
-        <div className="mt-3 space-y-0.5 max-h-40 overflow-y-auto">
+        <div className="space-y-0.5 max-h-36 overflow-y-auto">
           {[...cityData].sort((a, b) => a.mins - b.mins).map(({ city, mins }, i) => (
             <div key={city.label} className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-white/3 transition-colors">
               <div className="flex items-center gap-2">

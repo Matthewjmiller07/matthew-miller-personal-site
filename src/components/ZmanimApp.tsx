@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import ZmanimExplore from './ZmanimExplore';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -187,14 +187,16 @@ function DayBar({ zmanim, now, tz }: { zmanim: ZmanItem[]; now: Date; tz: string
 // ── Zmanim Detail Panel ──────────────────────────────────────────────────────
 
 function ZmanimPanel({
-  zmanim, now, tz, onClose, location
+  zmanim, now, tz, onClose, location, selectedDate, onDateChange
 }: {
   zmanim: ZmanItem[]; now: Date; tz: string; onClose: () => void; location: LocationInfo;
+  selectedDate: string; onDateChange: (d: string) => void;
 }) {
   const [tab, setTab] = useState<'today' | 'explore'>('today');
   const nowMs = now.getTime();
+  const isToday = selectedDate === now.toLocaleDateString('en-CA', { timeZone: tz });
   const sorted = [...zmanim].filter(z => z.time).sort((a, b) => a.time!.getTime() - b.time!.getTime());
-  const nextKey = sorted.find(z => z.time!.getTime() > nowMs)?.key;
+  const nextKey = isToday ? sorted.find(z => z.time!.getTime() > nowMs)?.key : undefined;
 
   return (
     <div
@@ -205,20 +207,30 @@ function ZmanimPanel({
       <div className="relative w-full sm:max-w-lg bg-[#0a0a0a] border border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-white/5 flex-shrink-0">
           <div className="flex gap-4">
-            <button onClick={() => setTab('today')} className={`text-sm font-medium transition-colors ${tab === 'today' ? 'text-white' : 'text-white/30 hover:text-white/50'}`}>Today</button>
+            <button onClick={() => setTab('today')} className={`text-sm font-medium transition-colors ${tab === 'today' ? 'text-white' : 'text-white/30 hover:text-white/50'}`}>Zmanim</button>
             <button onClick={() => setTab('explore')} className={`text-sm font-medium transition-colors ${tab === 'explore' ? 'text-white' : 'text-white/30 hover:text-white/50'}`}>Explore</button>
           </div>
-          <button onClick={onClose} className="text-white/30 hover:text-white/60 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-3">
+            {tab === 'today' && (
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={e => onDateChange(e.target.value)}
+                className="bg-white/5 border border-white/10 text-white/60 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-white/30 [color-scheme:dark]"
+              />
+            )}
+            <button onClick={onClose} className="text-white/30 hover:text-white/60 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div className="overflow-y-auto flex-1 px-6 py-4">
           {tab === 'today' ? (
             <div className="space-y-0.5">
               {sorted.map(z => {
-                const isPast = z.time!.getTime() <= nowMs;
+                const isPast = isToday && z.time!.getTime() <= nowMs;
                 const isNext = z.key === nextKey;
                 const msLeft = z.time!.getTime() - nowMs;
                 return (
@@ -256,40 +268,149 @@ function ZmanimPanel({
   );
 }
 
+// ── Fullscreen Zmanim Overlay ─────────────────────────────────────────────────
+
+function FullscreenClock({
+  now, zmanim, tz, hebrewDate, parsha, location, onExit
+}: {
+  now: Date; zmanim: ZmanItem[]; tz: string;
+  hebrewDate: string; parsha: string; location: LocationInfo; onExit: () => void;
+}) {
+  const nowMs = now.getTime();
+  const sorted = [...zmanim].filter(z => z.time).sort((a, b) => a.time!.getTime() - b.time!.getTime());
+  const nextZman = sorted.find(z => z.time!.getTime() > nowMs);
+
+  const timeStr = now.toLocaleTimeString('en-US', {
+    timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  });
+  const [hh, mm, ss] = timeStr.split(':');
+
+  const dateStr = now.toLocaleDateString('en-US', {
+    timeZone: tz, weekday: 'long', month: 'long', day: 'numeric',
+  });
+
+  // Split zmanim into left (dawn/morning) and right (afternoon/evening/night) columns
+  const leftZmanim  = sorted.filter(z => ['dawn','morning'].includes(z.category));
+  const rightZmanim = sorted.filter(z => ['afternoon','evening','night'].includes(z.category));
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black text-white flex flex-col select-none" style={{ fontFamily: 'Inter, sans-serif' }}>
+      {/* Exit button */}
+      <button
+        onClick={onExit}
+        className="absolute top-5 right-5 text-white/20 hover:text-white/50 transition-colors z-10"
+        aria-label="Exit fullscreen"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 9L3 3m0 0l6 0M3 3v6M15 9l6-6m0 0l-6 0m6 0v6M9 15l-6 6m0 0l6 0m-6 0v-6M15 15l6 6m0 0l-6 0m6 0v-6" />
+        </svg>
+      </button>
+
+      {/* Location top-center */}
+      <p className="absolute top-5 left-1/2 -translate-x-1/2 text-white/15 text-xs tracking-widest uppercase">{location.label}</p>
+
+      {/* Main layout: left zmanim | clock | right zmanim */}
+      <div className="flex-1 flex items-center justify-center gap-0">
+
+        {/* Left column — dawn/morning */}
+        <div className="flex-1 flex flex-col items-end pr-8 gap-3 max-w-[200px]">
+          {leftZmanim.map(z => {
+            const isPast = z.time && z.time.getTime() <= nowMs;
+            const isNext = z.key === nextZman?.key;
+            return (
+              <div key={z.key} className={`text-right transition-opacity ${isPast && !isNext ? 'opacity-15' : isNext ? 'opacity-100' : 'opacity-40'}`}>
+                <p className={`text-xs font-mono tabular-nums ${isNext ? 'text-white' : 'text-white/60'}`}>{fmt(z.time, tz)}</p>
+                <p className={`text-xs mt-0.5 ${isNext ? 'text-white/60' : 'text-white/25'}`}>{z.heLabel}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Center clock */}
+        <div className="flex flex-col items-center gap-2 px-4">
+          <div className="flex items-end" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            <span className="text-[clamp(72px,16vw,160px)] font-thin leading-none tracking-tighter text-white">{hh}</span>
+            <span className="text-[clamp(72px,16vw,160px)] font-thin leading-none tracking-tighter text-white/15 mx-1">:</span>
+            <span className="text-[clamp(72px,16vw,160px)] font-thin leading-none tracking-tighter text-white">{mm}</span>
+            <span className="text-[clamp(22px,4vw,40px)] font-thin leading-none tracking-tighter text-white/15 mb-4 ml-2">:{ss}</span>
+          </div>
+          <p className="text-white/20 text-sm font-light tracking-wide">{dateStr}</p>
+          {hebrewDate && <p className="text-white/15 text-xs">{hebrewDate}{parsha ? ` · ${parsha}` : ''}</p>}
+          {nextZman && (
+            <div className="mt-3 text-center">
+              <p className="text-white/20 text-xs">{nextZman.heLabel} · {fmt(nextZman.time, tz)}</p>
+              <p className="text-white/15 text-xs font-mono">{countdown(nextZman.time!.getTime() - nowMs)}</p>
+            </div>
+          )}
+          {/* Day bar */}
+          <div className="w-56 mt-4">
+            <DayBar zmanim={zmanim} now={now} tz={tz} />
+          </div>
+        </div>
+
+        {/* Right column — afternoon/evening/night */}
+        <div className="flex-1 flex flex-col items-start pl-8 gap-3 max-w-[200px]">
+          {rightZmanim.map(z => {
+            const isPast = z.time && z.time.getTime() <= nowMs;
+            const isNext = z.key === nextZman?.key;
+            return (
+              <div key={z.key} className={`transition-opacity ${isPast && !isNext ? 'opacity-15' : isNext ? 'opacity-100' : 'opacity-40'}`}>
+                <p className={`text-xs font-mono tabular-nums ${isNext ? 'text-white' : 'text-white/60'}`}>{fmt(z.time, tz)}</p>
+                <p className={`text-xs mt-0.5 ${isNext ? 'text-white/60' : 'text-white/25'}`}>{z.heLabel}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ─────────────────────────────────────────────────────────────────
 
 export default function ZmanimApp() {
-  const [now, setNow]           = useState(new Date());
-  const [location, setLocation] = useState<LocationInfo>(PRESET_LOCATIONS[0]);
-  const [zmanim, setZmanim]     = useState<ZmanItem[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [now, setNow]             = useState(new Date());
+  const [location, setLocation]   = useState<LocationInfo>(PRESET_LOCATIONS[0]);
+  const [zmanim, setZmanim]       = useState<ZmanItem[]>([]);
+  const [loading, setLoading]     = useState(true);
   const [showPanel, setShowPanel] = useState(false);
   const [showLocPicker, setShowLocPicker] = useState(false);
-  const [locating, setLocating] = useState(false);
+  const [locating, setLocating]   = useState(false);
   const [hebrewDate, setHebrewDate] = useState('');
-  const [parsha, setParsha]     = useState('');
+  const [parsha, setParsha]       = useState('');
+  const [fullscreen, setFullscreen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const fetchZmanim = useCallback(async (loc: LocationInfo) => {
+  // Init selectedDate to today in location's tz once location is set
+  useEffect(() => {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: location.tzid });
+    setSelectedDate(today);
+  }, [location.tzid]);
+
+  const fetchZmanim = useCallback(async (loc: LocationInfo, date: string) => {
+    if (!date) return;
     setLoading(true);
     try {
-      const d = new Date().toLocaleDateString('en-CA', { timeZone: loc.tzid });
       const [zmRes, hdRes] = await Promise.all([
-        fetch(`/api/zmanim?lat=${loc.lat}&lng=${loc.lng}&tzid=${encodeURIComponent(loc.tzid)}&date=${d}`).then(r => r.json()),
-        fetch(`https://www.hebcal.com/converter?cfg=json&date=${d}&g2h=1&strict=1`).then(r => r.json()),
+        fetch(`/api/zmanim?lat=${loc.lat}&lng=${loc.lng}&tzid=${encodeURIComponent(loc.tzid)}&date=${date}`).then(r => r.json()),
+        fetch(`https://www.hebcal.com/converter?cfg=json&date=${date}&g2h=1&strict=1`).then(r => r.json()),
       ]);
       const parsed = parseHebcalTimes(zmRes);
       setZmanim(ZMAN_DEFS.map(def => ({ ...def, time: parsed[def.key] ?? null })));
       if (hdRes.hebrew) setHebrewDate(hdRes.hebrew);
       if (hdRes.events?.length) setParsha(hdRes.events[0]);
+      else setParsha('');
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchZmanim(location); }, [location, fetchZmanim]);
+  useEffect(() => {
+    if (selectedDate) fetchZmanim(location, selectedDate);
+  }, [location, selectedDate, fetchZmanim]);
 
   const handleGeolocate = () => {
     if (!navigator.geolocation) return;
@@ -323,24 +444,48 @@ export default function ZmanimApp() {
     timeZone: location.tzid, weekday: 'long', month: 'long', day: 'numeric',
   });
 
+  if (fullscreen) {
+    return (
+      <FullscreenClock
+        now={now} zmanim={zmanim} tz={location.tzid}
+        hebrewDate={hebrewDate} parsha={parsha}
+        location={location} onExit={() => setFullscreen(false)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center select-none" style={{ fontFamily: 'Inter, sans-serif' }}>
 
-      {/* Location pill */}
-      <button
-        onClick={() => setShowLocPicker(v => !v)}
-        className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-white/25 hover:text-white/50 transition-colors text-xs tracking-wide"
-      >
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        {location.label}
-      </button>
+      {/* Top bar */}
+      <div className="absolute top-5 left-0 right-0 flex items-center justify-between px-5">
+        {/* Location pill */}
+        <button
+          onClick={() => setShowLocPicker(v => !v)}
+          className="flex items-center gap-1.5 text-white/25 hover:text-white/50 transition-colors text-xs tracking-wide"
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          {location.label}
+        </button>
+
+        {/* Fullscreen button */}
+        <button
+          onClick={() => setFullscreen(true)}
+          className="text-white/20 hover:text-white/50 transition-colors"
+          aria-label="Fullscreen"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5" />
+          </svg>
+        </button>
+      </div>
 
       {/* Location picker dropdown */}
       {showLocPicker && (
-        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40 bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl p-3 min-w-[220px]">
+        <div className="absolute top-14 left-5 z-40 bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl p-3 min-w-[220px]">
           {PRESET_LOCATIONS.map(loc => (
             <button
               key={loc.label}
@@ -372,16 +517,10 @@ export default function ZmanimApp() {
       <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => setShowPanel(true)}>
         {/* Digital time */}
         <div className="flex items-end gap-0" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          <span className="text-[clamp(64px,15vw,120px)] font-thin leading-none tracking-tighter text-white">
-            {hh}
-          </span>
+          <span className="text-[clamp(64px,15vw,120px)] font-thin leading-none tracking-tighter text-white">{hh}</span>
           <span className="text-[clamp(64px,15vw,120px)] font-thin leading-none tracking-tighter text-white/20 mx-0.5">:</span>
-          <span className="text-[clamp(64px,15vw,120px)] font-thin leading-none tracking-tighter text-white">
-            {mm}
-          </span>
-          <span className="text-[clamp(20px,4vw,36px)] font-thin leading-none tracking-tighter text-white/20 mb-3 ml-2">
-            :{ss}
-          </span>
+          <span className="text-[clamp(64px,15vw,120px)] font-thin leading-none tracking-tighter text-white">{mm}</span>
+          <span className="text-[clamp(20px,4vw,36px)] font-thin leading-none tracking-tighter text-white/20 mb-3 ml-2">:{ss}</span>
         </div>
 
         {/* Date + Hebrew */}
@@ -428,6 +567,8 @@ export default function ZmanimApp() {
           tz={location.tzid}
           onClose={() => setShowPanel(false)}
           location={location}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
         />
       )}
     </div>
