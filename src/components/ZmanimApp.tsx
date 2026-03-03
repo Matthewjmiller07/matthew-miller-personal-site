@@ -380,11 +380,30 @@ export default function ZmanimApp() {
   const [parsha, setParsha]       = useState('');
   const [fullscreen, setFullscreen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Sync React state with actual browser fullscreen changes (e.g. Esc key)
+  useEffect(() => {
+    const onFsChange = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
+
+  const enterFullscreen = () => {
+    const el = rootRef.current;
+    if (!el) return;
+    if (el.requestFullscreen) el.requestFullscreen();
+  };
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else setFullscreen(false);
+  };
 
   // Init selectedDate to today in location's tz once location is set
   useEffect(() => {
@@ -444,18 +463,19 @@ export default function ZmanimApp() {
     timeZone: location.tzid, weekday: 'long', month: 'long', day: 'numeric',
   });
 
-  if (fullscreen) {
-    return (
-      <FullscreenClock
-        now={now} zmanim={zmanim} tz={location.tzid}
-        hebrewDate={hebrewDate} parsha={parsha}
-        location={location} onExit={() => setFullscreen(false)}
-      />
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center select-none" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div ref={rootRef} className="min-h-screen bg-black text-white flex flex-col items-center justify-center select-none" style={{ fontFamily: 'Inter, sans-serif' }}>
+
+      {/* Fullscreen clock overlay — rendered inside rootRef so requestFullscreen captures it */}
+      {fullscreen && (
+        <FullscreenClock
+          now={now} zmanim={zmanim} tz={location.tzid}
+          hebrewDate={hebrewDate} parsha={parsha}
+          location={location} onExit={exitFullscreen}
+        />
+      )}
+
+      {!fullscreen && (<>
 
       {/* Top bar */}
       <div className="absolute top-5 left-0 right-0 flex items-center justify-between px-5">
@@ -473,7 +493,7 @@ export default function ZmanimApp() {
 
         {/* Fullscreen button */}
         <button
-          onClick={() => setFullscreen(true)}
+          onClick={enterFullscreen}
           className="text-white/20 hover:text-white/50 transition-colors"
           aria-label="Fullscreen"
         >
@@ -571,6 +591,7 @@ export default function ZmanimApp() {
           onDateChange={setSelectedDate}
         />
       )}
+      </>)}
     </div>
   );
 }
