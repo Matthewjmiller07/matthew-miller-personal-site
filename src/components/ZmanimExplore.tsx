@@ -86,6 +86,46 @@ function monthDates(year: number): string[] {
   return Array.from({ length: 12 }, (_, m) => new Date(year, m, 15).toISOString().slice(0, 10));
 }
 
+function daysInMonth(year: number, month: number): string[] {
+  const days = new Date(year, month + 1, 0).getDate();
+  return Array.from({ length: days }, (_, d) => {
+    const dt = new Date(year, month, d + 1);
+    return dt.toISOString().slice(0, 10);
+  });
+}
+
+function allDaysOfYear(year: number): string[] {
+  const days: string[] = [];
+  for (let m = 0; m < 12; m++) {
+    const count = new Date(year, m + 1, 0).getDate();
+    for (let d = 1; d <= count; d++) {
+      days.push(new Date(year, m, d).toISOString().slice(0, 10));
+    }
+  }
+  return days;
+}
+
+// Fetch zman + daylight for a batch of dates (chunked to avoid overwhelming the API)
+async function fetchBatchZman(loc: LocationInfo, dates: string[], key: string, chunkSize = 8): Promise<number[]> {
+  const results: number[] = [];
+  for (let i = 0; i < dates.length; i += chunkSize) {
+    const chunk = dates.slice(i, i + chunkSize);
+    const vals = await Promise.all(chunk.map(d => fetchZmanForDate(loc, d, key)));
+    results.push(...vals);
+  }
+  return results;
+}
+
+async function fetchBatchDaylight(loc: LocationInfo, dates: string[], chunkSize = 8): Promise<number[]> {
+  const results: number[] = [];
+  for (let i = 0; i < dates.length; i += chunkSize) {
+    const chunk = dates.slice(i, i + chunkSize);
+    const vals = await Promise.all(chunk.map(d => fetchDaylightForDate(loc, d)));
+    results.push(...vals);
+  }
+  return results;
+}
+
 // ── Tooltip styles ───────────────────────────────────────────────────────────
 
 const tooltipStyle = {
@@ -128,87 +168,177 @@ function DurTooltip({ active, payload, label }: any) {
   );
 }
 
-// ── Tab: Year View ────────────────────────────────────────────────────────────
+// ── Tab: Year View (with day-level drill-down) ────────────────────────────────
 
 function YearView({ location }: { location: LocationInfo }) {
-  const [zmanKey, setZmanKey] = useState('sunrise');
-  const [data, setData] = useState<MonthPoint[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [zmanKey, setZmanKey]         = useState('sunrise');
+  const [monthData, setMonthData]     = useState<MonthPoint[]>([]);
+  const [dayData, setDayData]         = useState<{ day: string; dayNum: number; value: number }[]>([]);
+  const [drillMonth, setDrillMonth]   = useState<number | null>(null); // 0-based month index
+  const [loadingMonth, setLoadingMonth] = useState(false);
+  const [loadingDay, setLoadingDay]   = useState(false);
+  const year = new Date().getFullYear();
+  const zdef = EXPLORE_ZMANIM.find(z => z.key === zmanKey);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const dates = monthDates(new Date().getFullYear());
+  const loadMonths = useCallback(async () => {
+    setLoadingMonth(true);
+    const dates = monthDates(year);
     try {
       const mins = await Promise.all(dates.map(d => fetchZmanForDate(location, d, zmanKey)));
-      setData(dates.map((_, i) => ({ month: MONTHS[i], monthIdx: i, value: mins[i] })));
-    } finally { setLoading(false); }
-  }, [location, zmanKey]);
+      setMonthData(dates.map((_, i) => ({ month: MONTHS[i], monthIdx: i, value: mins[i] })));
+    } finally { setLoadingMonth(false); }
+  }, [location, zmanKey, year]);
 
-  useEffect(() => { load(); }, [load]);
+  const loadDays = useCallback(async (monthIdx: number) => {
+    setLoadingDay(true);
+    const dates = daysInMonth(year, monthIdx);
+    try {
+      const mins = await Promise.all(dates.map(d => fetchZmanForDate(location, d, zmanKey)));
+      setDayData(dates.map((d, i) => ({ day: d, dayNum: i + 1, value: mins[i] })));
+    } finally { setLoadingDay(false); }
+  }, [location, zmanKey, year]);
 
-  const zdef = EXPLORE_ZMANIM.find(z => z.key === zmanKey);
+  useEffect(() => { loadMonths(); setDrillMonth(null); }, [loadMonths]);
+  useEffect(() => { if (drillMonth !== null) loadDays(drillMonth); }, [drillMonth, loadDays]);
+
+  const statsFor = (vals: number[]) => {
+    const v = vals.filter(Boolean);
+    const min = Math.min(...v), max = Math.max(...v);
+    return { min, max, range: max - min };
+  };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div>
-          <p className="text-white text-sm font-medium">{zdef?.label}</p>
-          <p className="text-white/30 text-xs">{zdef?.heLabel} · {location.label} · {new Date().getFullYear()}</p>
+        <div className="flex items-center gap-2">
+          {drillMonth !== null && (
+            <button
+              onClick={() => setDrillMonth(null)}
+              className="text-white/30 hover:text-white/70 transition-colors text-xs flex items-center gap-1"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              All months
+            </button>
+          )}
+          <div>
+            <p className="text-white text-sm font-medium">
+              {drillMonth !== null ? `${MONTHS[drillMonth]} ${year} · ${zdef?.label}` : zdef?.label}
+            </p>
+            <p className="text-white/30 text-xs">
+              {drillMonth !== null ? 'Daily view · click month to zoom out' : `${location.label} · ${year} · click a point to drill into days`}
+            </p>
+          </div>
         </div>
         <select
           value={zmanKey}
-          onChange={e => setZmanKey(e.target.value)}
+          onChange={e => { setZmanKey(e.target.value); setDrillMonth(null); }}
           className="bg-white/5 border border-white/10 text-white/70 text-xs rounded-lg px-3 py-1.5 focus:outline-none"
         >
           {EXPLORE_ZMANIM.map(z => <option key={z.key} value={z.key}>{z.label}</option>)}
         </select>
       </div>
-      {loading ? (
-        <div className="h-52 flex items-center justify-center text-white/20 text-sm">Loading…</div>
-      ) : (
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="zmanGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#ffffff" stopOpacity={0.15} />
-                <stop offset="95%" stopColor="#ffffff" stopOpacity={0.01} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-            <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis
-              domain={['auto', 'auto']}
-              tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }}
-              axisLine={false} tickLine={false}
-              tickFormatter={minsToTimeStr}
-              width={52}
-            />
-            <Tooltip content={<TimeTooltip />} />
-            <Area
-              type="monotone" dataKey="value" name={zdef?.label}
-              stroke="rgba(255,255,255,0.7)" strokeWidth={1.5}
-              fill="url(#zmanGrad)" dot={{ r: 3, fill: '#fff', fillOpacity: 0.6 }}
-              activeDot={{ r: 5, fill: '#fff', stroke: 'rgba(255,255,255,0.3)', strokeWidth: 2 }}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+
+      {/* Monthly chart */}
+      {drillMonth === null && (
+        <>
+          {loadingMonth ? (
+            <div className="h-52 flex items-center justify-center text-white/20 text-sm">Loading…</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart
+                data={monthData}
+                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                onClick={e => { if (e?.activePayload?.[0]) setDrillMonth((e.activePayload[0].payload as MonthPoint).monthIdx as number); }}
+                style={{ cursor: 'pointer' }}
+              >
+                <defs>
+                  <linearGradient id="zmanGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0.01} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis domain={['auto','auto']} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={minsToTimeStr} width={52} />
+                <Tooltip content={<TimeTooltip />} />
+                <Area type="monotone" dataKey="value" name={zdef?.label}
+                  stroke="rgba(255,255,255,0.7)" strokeWidth={1.5}
+                  fill="url(#zmanGrad)"
+                  dot={{ r: 4, fill: '#fff', fillOpacity: 0.6, cursor: 'pointer' }}
+                  activeDot={{ r: 6, fill: '#fff', stroke: 'rgba(255,255,255,0.3)', strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+          {!loadingMonth && monthData.length > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {(['earliest','latest','range'] as const).map(stat => {
+                const vals = monthData.map(d => d.value as number).filter(Boolean);
+                const { min, max } = statsFor(vals);
+                const minM = monthData.find(d => d.value === min), maxM = monthData.find(d => d.value === max);
+                return (
+                  <div key={stat} className="bg-white/3 rounded-xl p-2.5 text-center border border-white/5">
+                    <p className="text-white/30 text-xs mb-1 capitalize">{stat}</p>
+                    {stat === 'earliest' && <><p className="text-white text-sm font-mono">{minsToTimeStr(min)}</p><p className="text-white/30 text-xs">{minM?.month}</p></>}
+                    {stat === 'latest'   && <><p className="text-white text-sm font-mono">{minsToTimeStr(max)}</p><p className="text-white/30 text-xs">{maxM?.month}</p></>}
+                    {stat === 'range'    && <><p className="text-white text-sm font-mono">{Math.floor((max-min)/60)}h {(max-min)%60}m</p><p className="text-white/30 text-xs">variation</p></>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <p className="text-white/15 text-xs text-center mt-3">Tap any point to see daily breakdown</p>
+        </>
       )}
-      {!loading && data.length > 0 && (
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {(['earliest', 'latest', 'range'] as const).map(stat => {
-            const vals = data.map(d => d.value as number).filter(Boolean);
-            const min = Math.min(...vals), max = Math.max(...vals);
-            const minM = data.find(d => d.value === min), maxM = data.find(d => d.value === max);
-            return (
-              <div key={stat} className="bg-white/3 rounded-xl p-2.5 text-center border border-white/5">
-                <p className="text-white/30 text-xs mb-1 capitalize">{stat}</p>
-                {stat === 'earliest' && <><p className="text-white text-sm font-mono">{minsToTimeStr(min)}</p><p className="text-white/30 text-xs">{minM?.month}</p></>}
-                {stat === 'latest'   && <><p className="text-white text-sm font-mono">{minsToTimeStr(max)}</p><p className="text-white/30 text-xs">{maxM?.month}</p></>}
-                {stat === 'range'    && <><p className="text-white text-sm font-mono">{Math.floor((max - min) / 60)}h {(max - min) % 60}m</p><p className="text-white/30 text-xs">variation</p></>}
-              </div>
-            );
-          })}
-        </div>
+
+      {/* Daily drill-down chart */}
+      {drillMonth !== null && (
+        <>
+          {loadingDay ? (
+            <div className="h-52 flex items-center justify-center text-white/20 text-sm">Loading daily data…</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={dayData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="dayGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.01} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="dayNum" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false}
+                  tickFormatter={v => v % 5 === 0 || v === 1 ? String(v) : ''} />
+                <YAxis domain={['auto','auto']} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={minsToTimeStr} width={52} />
+                <Tooltip content={<TimeTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)' }} />
+                <Area type="monotone" dataKey="value" name={zdef?.label}
+                  stroke="rgba(167,139,250,0.9)" strokeWidth={1.5}
+                  fill="url(#dayGrad)"
+                  dot={{ r: 2, fill: '#a78bfa', fillOpacity: 0.7 }}
+                  activeDot={{ r: 5, fill: '#a78bfa', stroke: 'rgba(167,139,250,0.3)', strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+          {!loadingDay && dayData.length > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {(['earliest','latest','range'] as const).map(stat => {
+                const vals = dayData.map(d => d.value).filter(Boolean);
+                const { min, max } = statsFor(vals);
+                const minD = dayData.find(d => d.value === min), maxD = dayData.find(d => d.value === max);
+                return (
+                  <div key={stat} className="bg-white/3 rounded-xl p-2.5 text-center border border-white/5">
+                    <p className="text-white/30 text-xs mb-1 capitalize">{stat}</p>
+                    {stat === 'earliest' && <><p className="text-white text-sm font-mono">{minsToTimeStr(min)}</p><p className="text-white/30 text-xs">Day {minD?.dayNum}</p></>}
+                    {stat === 'latest'   && <><p className="text-white text-sm font-mono">{minsToTimeStr(max)}</p><p className="text-white/30 text-xs">Day {maxD?.dayNum}</p></>}
+                    {stat === 'range'    && <><p className="text-white text-sm font-mono">{max - min}m</p><p className="text-white/30 text-xs">variation</p></>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -656,9 +786,213 @@ function SeasonalWheel({ location }: { location: LocationInfo }) {
   );
 }
 
+// ── Tab: Heatmap ──────────────────────────────────────────────────────────────
+
+function HeatmapView({ location }: { location: LocationInfo }) {
+  const [zmanKey, setZmanKey] = useState('sunrise');
+  const [cells, setCells] = useState<{ date: string; month: number; day: number; value: number }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hovered, setHovered] = useState<{ date: string; value: number } | null>(null);
+  const year = new Date().getFullYear();
+  const zdef = EXPLORE_ZMANIM.find(z => z.key === zmanKey);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    // Sample every 3rd day to keep API calls manageable (~120 calls)
+    const allDays = allDaysOfYear(year);
+    const sampled = allDays.filter((_, i) => i % 3 === 0);
+    try {
+      const vals = await fetchBatchZman(location, sampled, zmanKey, 10);
+      setCells(sampled.map((d, i) => {
+        const dt = new Date(d + 'T12:00:00');
+        return { date: d, month: dt.getMonth(), day: dt.getDate(), value: vals[i] };
+      }));
+    } finally { setLoading(false); }
+  }, [location, zmanKey, year]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const vals = cells.map(c => c.value).filter(Boolean);
+  const minV = Math.min(...vals), maxV = Math.max(...vals);
+  const pct = (v: number) => maxV === minV ? 0.5 : (v - minV) / (maxV - minV);
+
+  // Color: dark blue (early) → gold (late)
+  const cellColor = (v: number) => {
+    if (!v) return 'rgba(255,255,255,0.03)';
+    const p = pct(v);
+    const r = Math.round(30  + (251 - 30)  * p);
+    const g = Math.round(80  + (191 - 80)  * p);
+    const b = Math.round(200 + (36  - 200) * p);
+    return `rgb(${r},${g},${b})`;
+  };
+
+  // Group by month for rendering
+  const byMonth = MONTHS.map((m, mi) => ({
+    month: m,
+    cells: cells.filter(c => c.month === mi).sort((a, b) => a.day - b.day),
+  }));
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <p className="text-white text-sm font-medium">Year Heatmap · {zdef?.label}</p>
+          <p className="text-white/30 text-xs">{location.label} · {year} · every 3rd day sampled</p>
+        </div>
+        <select
+          value={zmanKey}
+          onChange={e => setZmanKey(e.target.value)}
+          className="bg-white/5 border border-white/10 text-white/70 text-xs rounded-lg px-3 py-1.5 focus:outline-none"
+        >
+          {EXPLORE_ZMANIM.map(z => <option key={z.key} value={z.key}>{z.label}</option>)}
+        </select>
+      </div>
+
+      {loading ? (
+        <div className="h-48 flex items-center justify-center text-white/20 text-sm">Loading heatmap…</div>
+      ) : (
+        <div className="space-y-1.5 overflow-x-auto">
+          {byMonth.map(({ month, cells: mCells }) => (
+            <div key={month} className="flex items-center gap-1.5">
+              <span className="text-white/20 text-xs w-6 shrink-0">{month}</span>
+              <div className="flex gap-0.5 flex-wrap">
+                {mCells.map(c => (
+                  <div
+                    key={c.date}
+                    className="rounded-sm cursor-default transition-transform hover:scale-150"
+                    style={{ width: 8, height: 8, background: cellColor(c.value) }}
+                    onMouseEnter={() => setHovered({ date: c.date, value: c.value })}
+                    onMouseLeave={() => setHovered(null)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Hovered cell info */}
+      <div className="h-6 mt-2 flex items-center justify-center">
+        {hovered ? (
+          <p className="text-white/50 text-xs font-mono">
+            {hovered.date} → {minsToTimeStr(hovered.value)}
+          </p>
+        ) : (
+          <p className="text-white/15 text-xs">Hover a cell to see the time</p>
+        )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-2 mt-1">
+        <span className="text-xs text-white/25">Earlier</span>
+        <div className="flex-1 h-1.5 rounded-full" style={{ background: 'linear-gradient(to right, rgb(30,80,200), rgb(251,191,36))' }} />
+        <span className="text-xs text-white/25">Later</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Tab: Shaot Zmaniot ────────────────────────────────────────────────────────
+
+function ShaotZmaniotView({ location }: { location: LocationInfo }) {
+  const [data, setData] = useState<{ month: string; shaahMins: number; chatzotMins: number }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const year = new Date().getFullYear();
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const dates = monthDates(year);
+    try {
+      const rows = await Promise.all(dates.map(async (d, i) => {
+        const [sunrise, sunset, chatzot] = await Promise.all([
+          fetchZmanForDate(location, d, 'sunrise'),
+          fetchZmanForDate(location, d, 'sunset'),
+          fetchZmanForDate(location, d, 'chatzot'),
+        ]);
+        // Halachic hour = (sunset - sunrise) / 12
+        const shaahMins = sunrise && sunset ? Math.round((sunset - sunrise) / 12) : 0;
+        return { month: MONTHS[i], shaahMins, chatzotMins: chatzot };
+      }));
+      setData(rows);
+    } finally { setLoading(false); }
+  }, [location, year]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const ShaahTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const shaah = payload.find((p: any) => p.dataKey === 'shaahMins');
+    return (
+      <div style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '8px 12px', fontSize: 12 }}>
+        <p className="text-white/50 text-xs mb-1">{label}</p>
+        {shaah && <p className="text-white font-mono">{shaah.value}m per halachic hour</p>}
+        <p className="text-white/40 text-xs">{shaah ? `= ${(shaah.value / 60).toFixed(2)}h` : ''}</p>
+      </div>
+    );
+  };
+
+  // Equinox reference: 60 min shaah
+  return (
+    <div>
+      <div className="mb-4">
+        <p className="text-white text-sm font-medium">Halachic Hour Length</p>
+        <p className="text-white/30 text-xs">{location.label} · {year} · shaah zmanit = 1/12 of daylight</p>
+      </div>
+      {loading ? (
+        <div className="h-52 flex items-center justify-center text-white/20 text-sm">Loading…</div>
+      ) : (
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="shaahGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+            <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis
+              domain={['auto', 'auto']}
+              tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }}
+              axisLine={false} tickLine={false}
+              tickFormatter={v => `${v}m`}
+              width={36}
+            />
+            <Tooltip content={<ShaahTooltip />} />
+            <ReferenceLine y={60} stroke="rgba(255,255,255,0.12)" strokeDasharray="4 4"
+              label={{ value: '60m (equinox)', fill: 'rgba(255,255,255,0.2)', fontSize: 9, position: 'insideTopRight' }} />
+            <Area type="monotone" dataKey="shaahMins" name="Shaah Zmanit"
+              stroke="rgba(245,158,11,0.9)" strokeWidth={1.5}
+              fill="url(#shaahGrad)"
+              dot={{ r: 3, fill: '#f59e0b', fillOpacity: 0.7 }}
+              activeDot={{ r: 5, fill: '#f59e0b', strokeWidth: 0 }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+      {!loading && data.length > 0 && (
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {[
+            { label: 'Longest hour', val: Math.max(...data.map(d => d.shaahMins)), sub: data.find(d => d.shaahMins === Math.max(...data.map(d => d.shaahMins)))?.month },
+            { label: 'Shortest hour', val: Math.min(...data.filter(d => d.shaahMins > 0).map(d => d.shaahMins)), sub: data.find(d => d.shaahMins === Math.min(...data.filter(d => d.shaahMins > 0).map(d => d.shaahMins)))?.month },
+            { label: 'Range', val: Math.max(...data.map(d => d.shaahMins)) - Math.min(...data.filter(d => d.shaahMins > 0).map(d => d.shaahMins)), sub: 'minutes difference' },
+          ].map(s => (
+            <div key={s.label} className="bg-white/3 rounded-xl p-2.5 text-center border border-white/5">
+              <p className="text-white/30 text-xs mb-1">{s.label}</p>
+              <p className="text-white text-sm font-mono">{s.val}m</p>
+              <p className="text-white/30 text-xs">{s.sub}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-white/15 text-xs text-center mt-3">At the equinox each halachic hour = exactly 60 minutes</p>
+    </div>
+  );
+}
+
 // ── Main Export ───────────────────────────────────────────────────────────────
 
-type ExplorTab = 'year' | 'compare' | 'daylight' | 'map' | 'wheel';
+type ExplorTab = 'year' | 'compare' | 'daylight' | 'map' | 'wheel' | 'heatmap' | 'shaot';
 
 const TABS: { id: ExplorTab; label: string }[] = [
   { id: 'year',    label: 'Year' },
@@ -666,6 +1000,8 @@ const TABS: { id: ExplorTab; label: string }[] = [
   { id: 'daylight',label: 'Daylight' },
   { id: 'map',     label: 'Map' },
   { id: 'wheel',   label: 'Wheel' },
+  { id: 'heatmap', label: 'Heatmap' },
+  { id: 'shaot',   label: 'Shaot' },
 ];
 
 export default function ZmanimExplore({ location }: { location: LocationInfo }) {
@@ -673,13 +1009,13 @@ export default function ZmanimExplore({ location }: { location: LocationInfo }) 
 
   return (
     <div>
-      {/* Sub-tabs */}
-      <div className="flex gap-1 mb-5 bg-white/3 rounded-xl p-1">
+      {/* Sub-tabs — scrollable row for mobile */}
+      <div className="flex gap-1 mb-5 bg-white/3 rounded-xl p-1 overflow-x-auto">
         {TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 text-xs py-1.5 rounded-lg transition-all ${
+            className={`shrink-0 text-xs py-1.5 px-2.5 rounded-lg transition-all ${
               tab === t.id ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'
             }`}
           >
@@ -693,6 +1029,8 @@ export default function ZmanimExplore({ location }: { location: LocationInfo }) 
       {tab === 'daylight' && <DaylightView location={location} />}
       {tab === 'map'      && <MapView />}
       {tab === 'wheel'    && <SeasonalWheel location={location} />}
+      {tab === 'heatmap'  && <HeatmapView location={location} />}
+      {tab === 'shaot'    && <ShaotZmaniotView location={location} />}
     </div>
   );
 }
