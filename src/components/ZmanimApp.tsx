@@ -308,12 +308,19 @@ function FullscreenClock({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col select-none"
+      className="flex flex-col select-none"
       style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100%',
+        height: '100dvh',
+        zIndex: 9999,
         fontFamily: "'Inter', 'SF Pro Display', sans-serif",
         background: 'radial-gradient(ellipse at 50% 0%, #0d0d14 0%, #080808 60%, #000 100%)',
         color: '#fff',
-      }}
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+      } as React.CSSProperties}
     >
       {/* Invisible exit zone — tap anywhere in top-right corner */}
       <button
@@ -323,33 +330,33 @@ function FullscreenClock({
       />
 
       {/* ── HEADER ── */}
-      <div className="flex items-center justify-between px-10 pt-8 pb-0">
-        <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+      <div className="flex items-center justify-between px-5 sm:px-10 pt-5 sm:pt-8 pb-0">
+        <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
           {location.label}
         </p>
         {parsha && (
-          <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '0.7rem', letterSpacing: '0.12em' }}>
+          <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: '0.65rem', letterSpacing: '0.1em', maxWidth: '45%', textAlign: 'right' }}>
             {parsha}
           </p>
         )}
       </div>
 
       {/* ── CLOCK ── */}
-      <div className="flex flex-col items-center justify-center pt-6 pb-2">
+      <div className="flex flex-col items-center justify-center pt-3 sm:pt-6 pb-1 sm:pb-2">
         <div className="flex items-end" style={{ fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-          <span style={{ fontSize: 'clamp(80px, 18vw, 180px)', fontWeight: 100, letterSpacing: '-0.04em', color: '#fff' }}>{hh}</span>
-          <span style={{ fontSize: 'clamp(80px, 18vw, 180px)', fontWeight: 100, color: 'rgba(255,255,255,0.12)', margin: '0 4px' }}>:</span>
-          <span style={{ fontSize: 'clamp(80px, 18vw, 180px)', fontWeight: 100, letterSpacing: '-0.04em', color: '#fff' }}>{mm}</span>
-          <span style={{ fontSize: 'clamp(24px,4vw,44px)', fontWeight: 100, color: 'rgba(255,255,255,0.18)', marginBottom: '14px', marginLeft: '10px' }}>:{ss}</span>
+          <span style={{ fontSize: 'clamp(64px, 20vw, 180px)', fontWeight: 100, letterSpacing: '-0.04em', color: '#fff' }}>{hh}</span>
+          <span style={{ fontSize: 'clamp(64px, 20vw, 180px)', fontWeight: 100, color: 'rgba(255,255,255,0.12)', margin: '0 3px' }}>:</span>
+          <span style={{ fontSize: 'clamp(64px, 20vw, 180px)', fontWeight: 100, letterSpacing: '-0.04em', color: '#fff' }}>{mm}</span>
+          <span style={{ fontSize: 'clamp(20px, 4vw, 44px)', fontWeight: 100, color: 'rgba(255,255,255,0.18)', marginBottom: '10px', marginLeft: '6px' }}>:{ss}</span>
         </div>
 
         {/* Date + Hebrew date */}
-        <div className="flex items-center gap-4 mt-2">
-          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem', fontWeight: 300, letterSpacing: '0.05em' }}>{dateStr}</p>
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 mt-1 sm:mt-2 px-4 text-center">
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', fontWeight: 300, letterSpacing: '0.04em' }}>{dateStr}</p>
           {hebrewDate && (
             <>
-              <span style={{ color: 'rgba(255,255,255,0.12)' }}>·</span>
-              <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.85rem' }}>{hebrewDate}</p>
+              <span className="hidden sm:inline" style={{ color: 'rgba(255,255,255,0.12)' }}>·</span>
+              <p style={{ color: 'rgba(255,255,255,0.22)', fontSize: '0.8rem' }}>{hebrewDate}</p>
             </>
           )}
         </div>
@@ -357,35 +364,39 @@ function FullscreenClock({
 
       {/* ── NEXT ZMAN HIGHLIGHT ── */}
       {nextZman && (
-        <div className="flex flex-col items-center py-4">
+        <div className="flex flex-col items-center py-2 sm:py-4 px-4">
           <div style={{
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: '16px',
-            padding: '12px 32px',
+            padding: '10px 20px',
             display: 'flex',
             alignItems: 'center',
-            gap: '20px',
+            gap: '16px',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            width: '100%',
+            maxWidth: '480px',
           }}>
             <div className="text-center">
-              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '2px' }}>Next</p>
+              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '2px' }}>Next</p>
               <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem' }}>{nextZman.label}</p>
-              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.75rem' }}>{nextZman.heLabel}</p>
+              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.72rem' }}>{nextZman.heLabel}</p>
             </div>
-            <div style={{ width: '1px', height: '36px', background: 'rgba(255,255,255,0.08)' }} />
+            <div style={{ width: '1px', height: '36px', background: 'rgba(255,255,255,0.08)', flexShrink: 0 }} />
             <div className="text-center">
-              <p style={{ color: '#fff', fontSize: '1.4rem', fontFamily: 'monospace', fontWeight: 300, letterSpacing: '0.05em' }}>{fmt(nextZman.time, tz)}</p>
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', fontFamily: 'monospace', marginTop: '2px' }}>
+              <p style={{ color: '#fff', fontSize: 'clamp(1.1rem, 4vw, 1.4rem)', fontFamily: 'monospace', fontWeight: 300, letterSpacing: '0.05em' }}>{fmt(nextZman.time, tz)}</p>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', fontFamily: 'monospace', marginTop: '2px' }}>
                 in {countdown(nextZman.time!.getTime() - nowMs)}
               </p>
             </div>
             {prevZman && (
               <>
-                <div style={{ width: '1px', height: '36px', background: 'rgba(255,255,255,0.06)' }} />
+                <div style={{ width: '1px', height: '36px', background: 'rgba(255,255,255,0.06)', flexShrink: 0 }} />
                 <div className="text-center">
-                  <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '2px' }}>Previous</p>
+                  <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '2px' }}>Prev</p>
                   <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>{prevZman.label}</p>
-                  <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.75rem', fontFamily: 'monospace' }}>{fmt(prevZman.time, tz)}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.72rem', fontFamily: 'monospace' }}>{fmt(prevZman.time, tz)}</p>
                 </div>
               </>
             )}
@@ -403,11 +414,11 @@ function FullscreenClock({
       )}
 
       {/* ── ZMANIM GRID ── */}
-      <div className="flex-1 grid px-10 py-4" style={{
-        gridTemplateColumns: 'repeat(4, 1fr)',
+      <div className="flex-1 grid px-4 sm:px-10 py-2 sm:py-4" style={{
+        gridTemplateColumns: 'repeat(2, 1fr)',
         gap: '2px 0',
-        alignContent: 'center',
-      }}>
+        alignContent: 'start',
+      }} data-grid-responsive>
         {boardZmanim.map(z => {
           const isPast = z.time && z.time.getTime() <= nowMs;
           const isNext = z.key === nextZman?.key;
@@ -473,20 +484,50 @@ export default function ZmanimApp() {
 
   // Sync React state with actual browser fullscreen changes (e.g. Esc key)
   useEffect(() => {
-    const onFsChange = () => setFullscreen(!!document.fullscreenElement);
+    const onFsChange = () => {
+      if (!document.fullscreenElement) setFullscreen(false);
+    };
     document.addEventListener('fullscreenchange', onFsChange);
-    return () => document.removeEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+    };
   }, []);
+
+  // Lock body scroll when in fullscreen (needed for iOS fallback)
+  useEffect(() => {
+    if (fullscreen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [fullscreen]);
 
   const enterFullscreen = () => {
     const el = rootRef.current;
-    if (!el) return;
-    if (el.requestFullscreen) el.requestFullscreen();
+    if (!el) { setFullscreen(true); return; }
+    // Try native fullscreen API (desktop + Android Chrome)
+    const reqFs = (el as any).requestFullscreen ||
+                  (el as any).webkitRequestFullscreen ||
+                  (el as any).mozRequestFullScreen;
+    if (reqFs) {
+      reqFs.call(el).catch(() => setFullscreen(true));
+    } else {
+      // iOS Safari fallback — pure React state
+      setFullscreen(true);
+    }
   };
 
   const exitFullscreen = () => {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else setFullscreen(false);
+    const exitFs = (document as any).exitFullscreen ||
+                   (document as any).webkitExitFullscreen ||
+                   (document as any).mozCancelFullScreen;
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      exitFs?.call(document);
+    }
+    setFullscreen(false);
   };
 
   // Init selectedDate to today in location's tz once location is set
