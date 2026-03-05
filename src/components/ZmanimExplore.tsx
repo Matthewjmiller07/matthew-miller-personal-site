@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  LineChart, Line, AreaChart, Area, BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, ReferenceLine
 } from 'recharts';
@@ -990,32 +990,259 @@ function ShaotZmaniotView({ location }: { location: LocationInfo }) {
   );
 }
 
-// ── Main Export ───────────────────────────────────────────────────────────────
+// ── Tab: Day Timeline ─────────────────────────────────────────────────────────
+// Horizontal stacked bar: shows the halachic day segments for each month
 
-type ExplorTab = 'year' | 'compare' | 'daylight' | 'map' | 'wheel' | 'heatmap' | 'shaot';
+function DayTimelineView({ location }: { location: LocationInfo }) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const year = new Date().getFullYear();
 
-const TABS: { id: ExplorTab; label: string }[] = [
-  { id: 'year',    label: 'Year' },
-  { id: 'compare', label: 'Compare' },
-  { id: 'daylight',label: 'Daylight' },
-  { id: 'map',     label: 'Map' },
-  { id: 'wheel',   label: 'Wheel' },
-  { id: 'heatmap', label: 'Heatmap' },
-  { id: 'shaot',   label: 'Shaot' },
-];
+  const load = useCallback(async () => {
+    setLoading(true);
+    const dates = monthDates(year);
+    try {
+      const rows = await Promise.all(dates.map(async (d, i) => {
+        const res = await fetch(`/api/zmanim?lat=${location.lat}&lng=${location.lng}&tzid=${encodeURIComponent(location.tzid)}&date=${d}`);
+        const json = await res.json();
+        const t = json?.times ?? {};
+        const toMins = (key: string) => {
+          const v = t[key]; if (!v) return null;
+          const local = new Date(new Date(v).toLocaleString('en-US', { timeZone: location.tzid }));
+          return local.getHours() * 60 + local.getMinutes();
+        };
+        const alot     = toMins('alotHaShachar') ?? 0;
+        const sunrise  = toMins('sunrise') ?? 0;
+        const chatzot  = toMins('chatzot') ?? 0;
+        const sunset   = toMins('sunset') ?? 0;
+        const tzeit    = toMins('tzeit7083deg') ?? 0;
+        const midnight = 1440;
+        return {
+          month: MONTHS[i],
+          night1:   alot,
+          dawn:     sunrise - alot,
+          morning:  chatzot - sunrise,
+          afternoon: sunset - chatzot,
+          evening:  tzeit - sunset,
+          night2:   midnight - tzeit,
+        };
+      }));
+      setData(rows);
+    } finally { setLoading(false); }
+  }, [location, year]);
 
-export default function ZmanimExplore({ location }: { location: LocationInfo }) {
-  const [tab, setTab] = useState<ExplorTab>('year');
+  useEffect(() => { load(); }, [load]);
+
+  const segments = [
+    { key: 'night1',    label: 'Night (pre-dawn)', color: 'rgba(30,30,80,0.9)' },
+    { key: 'dawn',      label: 'Dawn',             color: 'rgba(167,139,250,0.7)' },
+    { key: 'morning',   label: 'Morning',           color: 'rgba(251,191,36,0.55)' },
+    { key: 'afternoon', label: 'Afternoon',         color: 'rgba(245,158,11,0.45)' },
+    { key: 'evening',   label: 'Evening',           color: 'rgba(249,115,22,0.6)' },
+    { key: 'night2',    label: 'Night',             color: 'rgba(30,30,80,0.9)' },
+  ];
+
+  const SegTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '8px 12px', fontSize: 12 }}>
+        <p className="text-white/50 text-xs mb-1">{label}</p>
+        {payload.map((p: any) => p.value > 0 && (
+          <div key={p.dataKey} className="flex items-center gap-2 text-xs">
+            <span className="w-2 h-2 rounded-sm inline-block" style={{ background: p.fill }} />
+            <span className="text-white/70">{p.name}:</span>
+            <span className="text-white font-mono">{p.value}m</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div>
-      {/* Sub-tabs — scrollable row for mobile */}
-      <div className="flex gap-1 mb-5 bg-white/3 rounded-xl p-1 overflow-x-auto">
+      <div className="mb-4">
+        <p className="text-white text-sm font-medium">Day Segments Timeline</p>
+        <p className="text-white/30 text-xs">{location.label} · {year} · halachic periods across the year</p>
+      </div>
+      {loading ? (
+        <div className="h-52 flex items-center justify-center text-white/20 text-sm">Loading…</div>
+      ) : (
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barSize={18}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+            <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false}
+              tickFormatter={v => `${Math.floor(v/60)}h`} width={28} />
+            <Tooltip content={<SegTooltip />} />
+            {segments.map(s => (
+              <Bar key={s.key} dataKey={s.key} name={s.label} stackId="day" fill={s.color} radius={[0,0,0,0]} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+      <div className="flex flex-wrap gap-3 mt-3 justify-center">
+        {segments.map(s => (
+          <div key={s.key} className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: s.color }} />
+            <span className="text-white/30 text-xs">{s.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Tab: Zman Drift ───────────────────────────────────────────────────────────
+// How many minutes does each zman shift day-to-day through the year?
+
+function ZmanDriftView({ location }: { location: LocationInfo }) {
+  const [zmanKey, setZmanKey] = useState('sunrise');
+  const [data, setData] = useState<{ month: string; drift: number }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const year = new Date().getFullYear();
+  const zdef = EXPLORE_ZMANIM.find(z => z.key === zmanKey);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    // Fetch the 1st and last day of each month, compute daily drift rate
+    const pairs = MONTHS.map((_, m) => {
+      const first = new Date(year, m, 1).toISOString().slice(0, 10);
+      const last  = new Date(year, m + 1, 0).toISOString().slice(0, 10);
+      return [first, last];
+    });
+    try {
+      const rows = await Promise.all(pairs.map(async ([first, last], i) => {
+        const [v1, v2] = await Promise.all([
+          fetchZmanForDate(location, first, zmanKey),
+          fetchZmanForDate(location, last,  zmanKey),
+        ]);
+        const days = new Date(year, i + 1, 0).getDate();
+        const drift = v1 && v2 ? parseFloat(((v2 - v1) / days).toFixed(2)) : 0;
+        return { month: MONTHS[i], drift };
+      }));
+      setData(rows);
+    } finally { setLoading(false); }
+  }, [location, zmanKey, year]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const DriftTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const v = payload[0]?.value;
+    return (
+      <div style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '8px 12px', fontSize: 12 }}>
+        <p className="text-white/50 text-xs mb-1">{label}</p>
+        <p className="text-white font-mono">{v > 0 ? '+' : ''}{v} min/day</p>
+        <p className="text-white/40 text-xs">{v > 0 ? 'Getting later' : v < 0 ? 'Getting earlier' : 'Stable'}</p>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <p className="text-white text-sm font-medium">Daily Drift Rate</p>
+          <p className="text-white/30 text-xs">{location.label} · {year} · minutes shifted per day</p>
+        </div>
+        <select
+          value={zmanKey}
+          onChange={e => setZmanKey(e.target.value)}
+          className="bg-white/5 border border-white/10 text-white/70 text-xs rounded-lg px-3 py-1.5 focus:outline-none"
+        >
+          {EXPLORE_ZMANIM.map(z => <option key={z.key} value={z.key}>{z.label}</option>)}
+        </select>
+      </div>
+      {loading ? (
+        <div className="h-52 flex items-center justify-center text-white/20 text-sm">Loading…</div>
+      ) : (
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+            <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false}
+              tickFormatter={v => `${v}m`} width={32} />
+            <Tooltip content={<DriftTooltip />} />
+            <ReferenceLine y={0} stroke="rgba(255,255,255,0.15)" />
+            <Bar dataKey="drift" name={`${zdef?.label} drift`} radius={[3,3,0,0]}>
+              {data.map((d, i) => (
+                <Cell key={i} fill={d.drift >= 0 ? 'rgba(52,211,153,0.7)' : 'rgba(248,113,113,0.7)'} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+      <p className="text-white/15 text-xs text-center mt-3">
+        Green = zman getting later · Red = getting earlier · Near zero = near solstice/equinox
+      </p>
+    </div>
+  );
+}
+
+// ── Main Export ───────────────────────────────────────────────────────────────
+
+type ExplorTab = 'year' | 'compare' | 'daylight' | 'map' | 'wheel' | 'heatmap' | 'shaot' | 'timeline' | 'drift';
+
+const TABS: { id: ExplorTab; label: string }[] = [
+  { id: 'year',     label: 'Year' },
+  { id: 'compare',  label: 'Compare' },
+  { id: 'daylight', label: 'Daylight' },
+  { id: 'map',      label: 'Map' },
+  { id: 'wheel',    label: 'Wheel' },
+  { id: 'heatmap',  label: 'Heatmap' },
+  { id: 'shaot',    label: 'Shaot' },
+  { id: 'timeline', label: 'Timeline' },
+  { id: 'drift',    label: 'Drift' },
+];
+
+export default function ZmanimExplore({
+  location,
+  allLocations,
+  onLocationChange,
+}: {
+  location: LocationInfo;
+  allLocations?: LocationInfo[];
+  onLocationChange?: (loc: LocationInfo) => void;
+}) {
+  const [tab, setTab] = useState<ExplorTab>('year');
+
+  const cities = allLocations ?? ALL_CITIES;
+
+  return (
+    <div className="max-w-4xl mx-auto">
+
+      {/* ── Persistent city switcher ── */}
+      {onLocationChange && (
+        <div className="mb-6">
+          <p className="text-white/20 text-xs uppercase tracking-widest mb-2">Location</p>
+          <div className="flex flex-wrap gap-2">
+            {cities.map(loc => {
+              const active = loc.label === location.label;
+              return (
+                <button
+                  key={loc.label}
+                  onClick={() => onLocationChange(loc)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+                    active
+                      ? 'bg-white text-black border-white font-medium'
+                      : 'border-white/15 text-white/40 hover:text-white/70 hover:border-white/30'
+                  }`}
+                >
+                  {loc.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Sub-tabs — scrollable row for mobile ── */}
+      <div className="flex gap-1 mb-6 bg-white/3 rounded-xl p-1 overflow-x-auto">
         {TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`shrink-0 text-xs py-1.5 px-2.5 rounded-lg transition-all ${
+            className={`shrink-0 text-xs py-1.5 px-3 rounded-lg transition-all whitespace-nowrap ${
               tab === t.id ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'
             }`}
           >
@@ -1024,13 +1251,18 @@ export default function ZmanimExplore({ location }: { location: LocationInfo }) 
         ))}
       </div>
 
-      {tab === 'year'     && <YearView location={location} />}
-      {tab === 'compare'  && <CityCompare currentLocation={location} />}
-      {tab === 'daylight' && <DaylightView location={location} />}
-      {tab === 'map'      && <MapView />}
-      {tab === 'wheel'    && <SeasonalWheel location={location} />}
-      {tab === 'heatmap'  && <HeatmapView location={location} />}
-      {tab === 'shaot'    && <ShaotZmaniotView location={location} />}
+      {/* ── Tab content ── */}
+      <div className="bg-white/3 rounded-2xl border border-white/5 p-5">
+        {tab === 'year'     && <YearView location={location} />}
+        {tab === 'compare'  && <CityCompare currentLocation={location} />}
+        {tab === 'daylight' && <DaylightView location={location} />}
+        {tab === 'map'      && <MapView />}
+        {tab === 'wheel'    && <SeasonalWheel location={location} />}
+        {tab === 'heatmap'  && <HeatmapView location={location} />}
+        {tab === 'shaot'    && <ShaotZmaniotView location={location} />}
+        {tab === 'timeline' && <DayTimelineView location={location} />}
+        {tab === 'drift'    && <ZmanDriftView location={location} />}
+      </div>
     </div>
   );
 }

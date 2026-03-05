@@ -192,7 +192,6 @@ function ZmanimPanel({
   zmanim: ZmanItem[]; now: Date; tz: string; onClose: () => void; location: LocationInfo;
   selectedDate: string; onDateChange: (d: string) => void;
 }) {
-  const [tab, setTab] = useState<'today' | 'explore'>('today');
   const nowMs = now.getTime();
   const isToday = selectedDate === now.toLocaleDateString('en-CA', { timeZone: tz });
   const sorted = [...zmanim].filter(z => z.time).sort((a, b) => a.time!.getTime() - b.time!.getTime());
@@ -206,19 +205,14 @@ function ZmanimPanel({
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full sm:max-w-lg bg-[#0a0a0a] border border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-white/5 flex-shrink-0">
-          <div className="flex gap-4">
-            <button onClick={() => setTab('today')} className={`text-sm font-medium transition-colors ${tab === 'today' ? 'text-white' : 'text-white/30 hover:text-white/50'}`}>Zmanim</button>
-            <button onClick={() => setTab('explore')} className={`text-sm font-medium transition-colors ${tab === 'explore' ? 'text-white' : 'text-white/30 hover:text-white/50'}`}>Explore</button>
-          </div>
+          <p className="text-white text-sm font-medium">Zmanim</p>
           <div className="flex items-center gap-3">
-            {tab === 'today' && (
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={e => onDateChange(e.target.value)}
-                className="bg-white/5 border border-white/10 text-white/60 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-white/30 [color-scheme:dark]"
-              />
-            )}
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={e => onDateChange(e.target.value)}
+              className="bg-white/5 border border-white/10 text-white/60 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-white/30 [color-scheme:dark]"
+            />
             <button onClick={onClose} className="text-white/30 hover:text-white/60 transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
@@ -227,41 +221,35 @@ function ZmanimPanel({
           </div>
         </div>
         <div className="overflow-y-auto flex-1 px-6 py-4">
-          {tab === 'today' ? (
-            <div className="space-y-0.5">
-              {sorted.map(z => {
-                const isPast = isToday && z.time!.getTime() <= nowMs;
-                const isNext = z.key === nextKey;
-                const msLeft = z.time!.getTime() - nowMs;
-                return (
-                  <div
-                    key={z.key}
-                    className={`flex items-center justify-between py-3 px-3 rounded-xl transition-colors ${
-                      isNext ? 'bg-white/5' : ''
-                    }`}
-                  >
-                    <div>
-                      <div className={`text-sm ${isPast && !isNext ? 'text-white/25' : 'text-white/80'}`}>{z.label}</div>
-                      <div className={`text-xs mt-0.5 ${isPast && !isNext ? 'text-white/15' : 'text-white/30'}`}>{z.heLabel}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className={`text-sm font-mono tabular-nums ${isNext ? 'text-white' : isPast ? 'text-white/25' : 'text-white/60'}`}>
-                        {fmt(z.time, tz)}
-                      </div>
-                      {isNext && msLeft > 0 && (
-                        <div className="text-xs text-white/40 font-mono">{countdown(msLeft)}</div>
-                      )}
-                      {isPast && !isNext && (
-                        <div className="text-xs text-white/15 font-mono">{countdown(nowMs - z.time!.getTime())} ago</div>
-                      )}
-                    </div>
+          <div className="space-y-0.5">
+            {sorted.map(z => {
+              const isPast = isToday && z.time!.getTime() <= nowMs;
+              const isNext = z.key === nextKey;
+              const msLeft = z.time!.getTime() - nowMs;
+              return (
+                <div
+                  key={z.key}
+                  className={`flex items-center justify-between py-3 px-3 rounded-xl transition-colors ${isNext ? 'bg-white/5' : ''}`}
+                >
+                  <div>
+                    <div className={`text-sm ${isPast && !isNext ? 'text-white/25' : 'text-white/80'}`}>{z.label}</div>
+                    <div className={`text-xs mt-0.5 ${isPast && !isNext ? 'text-white/15' : 'text-white/30'}`}>{z.heLabel}</div>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <ZmanimExplore location={location} />
-          )}
+                  <div className="text-right">
+                    <div className={`text-sm font-mono tabular-nums ${isNext ? 'text-white' : isPast ? 'text-white/25' : 'text-white/60'}`}>
+                      {fmt(z.time, tz)}
+                    </div>
+                    {isNext && msLeft > 0 && (
+                      <div className="text-xs text-white/40 font-mono">{countdown(msLeft)}</div>
+                    )}
+                    {isPast && !isNext && (
+                      <div className="text-xs text-white/15 font-mono">{countdown(nowMs - z.time!.getTime())} ago</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -475,6 +463,7 @@ export default function ZmanimApp() {
   const [parsha, setParsha]       = useState('');
   const [fullscreen, setFullscreen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
+  const [view, setView] = useState<'clock' | 'explore'>('clock');
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -602,7 +591,7 @@ export default function ZmanimApp() {
 
       {!fullscreen && (<>
 
-      {/* Top bar */}
+      {/* ── Shared top bar ── */}
       <div className="absolute top-5 left-0 right-0 flex items-center justify-between px-5 z-10" onClick={e => e.stopPropagation()}>
         {/* Location pill */}
         <button
@@ -616,22 +605,22 @@ export default function ZmanimApp() {
           {location.label}
         </button>
 
+        {/* Clock / Explore toggle */}
+        <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
+          <button
+            onClick={() => setView('clock')}
+            className={`text-xs px-3 py-1 rounded-md transition-all ${view === 'clock' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'}`}
+          >Clock</button>
+          <button
+            onClick={() => setView('explore')}
+            className={`text-xs px-3 py-1 rounded-md transition-all ${view === 'explore' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'}`}
+          >Explore</button>
+        </div>
       </div>
-
-      {/* Fullscreen button — bottom-right, away from site navbar */}
-      <button
-        onClick={e => { e.stopPropagation(); enterFullscreen(); }}
-        className="absolute bottom-6 right-6 z-10 text-white/20 hover:text-white/50 transition-colors"
-        aria-label="Fullscreen"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5" />
-        </svg>
-      </button>
 
       {/* Location picker dropdown */}
       {showLocPicker && (
-        <div className="absolute top-14 left-5 z-40 bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl p-3 min-w-[220px]">
+        <div className="absolute top-14 left-5 z-40 bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl p-3 min-w-[220px]" onClick={e => e.stopPropagation()}>
           {PRESET_LOCATIONS.map(loc => (
             <button
               key={loc.label}
@@ -659,64 +648,73 @@ export default function ZmanimApp() {
         </div>
       )}
 
-      {/* Main clock */}
-      <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => setShowPanel(true)}>
-        {/* Digital time */}
-        <div className="flex items-end gap-0" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          <span className="text-[clamp(64px,15vw,120px)] font-thin leading-none tracking-tighter text-white">{hh}</span>
-          <span className="text-[clamp(64px,15vw,120px)] font-thin leading-none tracking-tighter text-white/20 mx-0.5">:</span>
-          <span className="text-[clamp(64px,15vw,120px)] font-thin leading-none tracking-tighter text-white">{mm}</span>
-          <span className="text-[clamp(20px,4vw,36px)] font-thin leading-none tracking-tighter text-white/20 mb-3 ml-2">:{ss}</span>
+      {/* ── CLOCK VIEW ── */}
+      {view === 'clock' && (<>
+        {/* Fullscreen button */}
+        <button
+          onClick={e => { e.stopPropagation(); enterFullscreen(); }}
+          className="absolute bottom-6 right-6 z-10 text-white/20 hover:text-white/50 transition-colors"
+          aria-label="Fullscreen"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5" />
+          </svg>
+        </button>
+
+        {/* Main clock */}
+        <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => setShowPanel(true)}>
+          <div className="flex items-end gap-0" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            <span className="text-[clamp(64px,15vw,120px)] font-thin leading-none tracking-tighter text-white">{hh}</span>
+            <span className="text-[clamp(64px,15vw,120px)] font-thin leading-none tracking-tighter text-white/20 mx-0.5">:</span>
+            <span className="text-[clamp(64px,15vw,120px)] font-thin leading-none tracking-tighter text-white">{mm}</span>
+            <span className="text-[clamp(20px,4vw,36px)] font-thin leading-none tracking-tighter text-white/20 mb-3 ml-2">:{ss}</span>
+          </div>
+          <div className="text-center mt-1 space-y-0.5">
+            <p className="text-white/25 text-sm font-light tracking-wide">{dateStr}</p>
+            {hebrewDate && <p className="text-white/20 text-xs">{hebrewDate}{parsha ? ` · ${parsha}` : ''}</p>}
+          </div>
+          {!loading && zmanim.length > 0 && (
+            <div className="w-64 mt-6">
+              <DayBar zmanim={zmanim} now={now} tz={location.tzid} />
+            </div>
+          )}
+          {!loading && (
+            <div className="mt-6 flex items-center gap-8 text-center">
+              {prevZman && (
+                <div className="opacity-40">
+                  <p className="text-xs text-white/40 mb-0.5">{prevZman.heLabel}</p>
+                  <p className="text-sm font-mono text-white/50">{fmt(prevZman.time, location.tzid)}</p>
+                </div>
+              )}
+              {nextZman && (
+                <div>
+                  <p className="text-xs text-white/40 mb-0.5">{nextZman.heLabel}</p>
+                  <p className="text-lg font-mono text-white/90">{fmt(nextZman.time, location.tzid)}</p>
+                  <p className="text-xs text-white/30 font-mono mt-0.5">{countdown(nextZman.time!.getTime() - nowMs)}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <p className="mt-8 text-white/10 text-xs tracking-widest uppercase">tap for all zmanim</p>
         </div>
 
-        {/* Date + Hebrew */}
-        <div className="text-center mt-1 space-y-0.5">
-          <p className="text-white/25 text-sm font-light tracking-wide">{dateStr}</p>
-          {hebrewDate && <p className="text-white/20 text-xs">{hebrewDate}{parsha ? ` · ${parsha}` : ''}</p>}
+        {showPanel && (
+          <ZmanimPanel
+            zmanim={zmanim} now={now} tz={location.tzid}
+            onClose={() => setShowPanel(false)}
+            location={location}
+            selectedDate={selectedDate} onDateChange={setSelectedDate}
+          />
+        )}
+      </>)}
+
+      {/* ── EXPLORE VIEW — full page ── */}
+      {view === 'explore' && (
+        <div className="w-full min-h-screen pt-16 pb-8 px-4 sm:px-8 overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <ZmanimExplore location={location} allLocations={PRESET_LOCATIONS} onLocationChange={setLocation} />
         </div>
-
-        {/* Day progress bar */}
-        {!loading && zmanim.length > 0 && (
-          <div className="w-64 mt-6">
-            <DayBar zmanim={zmanim} now={now} tz={location.tzid} />
-          </div>
-        )}
-
-        {/* Next / Prev zman */}
-        {!loading && (
-          <div className="mt-6 flex items-center gap-8 text-center">
-            {prevZman && (
-              <div className="opacity-40">
-                <p className="text-xs text-white/40 mb-0.5">{prevZman.heLabel}</p>
-                <p className="text-sm font-mono text-white/50">{fmt(prevZman.time, location.tzid)}</p>
-              </div>
-            )}
-            {nextZman && (
-              <div>
-                <p className="text-xs text-white/40 mb-0.5">{nextZman.heLabel}</p>
-                <p className="text-lg font-mono text-white/90">{fmt(nextZman.time, location.tzid)}</p>
-                <p className="text-xs text-white/30 font-mono mt-0.5">{countdown(nextZman.time!.getTime() - nowMs)}</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tap hint */}
-        <p className="mt-8 text-white/10 text-xs tracking-widest uppercase">tap for all zmanim</p>
-      </div>
-
-      {/* Detail panel */}
-      {showPanel && (
-        <ZmanimPanel
-          zmanim={zmanim}
-          now={now}
-          tz={location.tzid}
-          onClose={() => setShowPanel(false)}
-          location={location}
-          selectedDate={selectedDate}
-          onDateChange={setSelectedDate}
-        />
       )}
+
       </>)}
     </div>
   );
