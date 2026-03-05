@@ -34,16 +34,27 @@ const EXPLORE_ZMANIM = [
 ];
 
 const ALL_CITIES: LocationInfo[] = [
-  { lat: 41.8781, lng: -87.6298,  tzid: 'America/Chicago',    label: 'Chicago' },
-  { lat: 40.7128, lng: -74.0060,  tzid: 'America/New_York',   label: 'New York' },
-  { lat: 31.7683, lng: 35.2137,   tzid: 'Asia/Jerusalem',     label: 'Jerusalem' },
-  { lat: 34.0522, lng: -118.2437, tzid: 'America/Los_Angeles',label: 'Los Angeles' },
-  { lat: 51.5074, lng: -0.1278,   tzid: 'Europe/London',      label: 'London' },
-  { lat: 25.7617, lng: -80.1918,  tzid: 'America/New_York',   label: 'Miami' },
-  { lat: 43.6532, lng: -79.3832,  tzid: 'America/Toronto',    label: 'Toronto' },
-  { lat: 32.0853, lng: 34.7818,   tzid: 'Asia/Jerusalem',     label: 'Tel Aviv' },
-  { lat: 48.8566, lng: 2.3522,    tzid: 'Europe/Paris',       label: 'Paris' },
-  { lat: -33.8688,lng: 151.2093,  tzid: 'Australia/Sydney',   label: 'Sydney' },
+  { lat: 41.8781,  lng: -87.6298,  tzid: 'America/Chicago',       label: 'Chicago' },
+  { lat: 40.7128,  lng: -74.0060,  tzid: 'America/New_York',      label: 'New York' },
+  { lat: 31.7683,  lng: 35.2137,   tzid: 'Asia/Jerusalem',        label: 'Jerusalem' },
+  { lat: 34.0522,  lng: -118.2437, tzid: 'America/Los_Angeles',   label: 'Los Angeles' },
+  { lat: 51.5074,  lng: -0.1278,   tzid: 'Europe/London',         label: 'London' },
+  { lat: 25.7617,  lng: -80.1918,  tzid: 'America/New_York',      label: 'Miami' },
+  { lat: 43.6532,  lng: -79.3832,  tzid: 'America/Toronto',       label: 'Toronto' },
+  { lat: 32.0853,  lng: 34.7818,   tzid: 'Asia/Jerusalem',        label: 'Tel Aviv' },
+  { lat: 48.8566,  lng: 2.3522,    tzid: 'Europe/Paris',          label: 'Paris' },
+  { lat: -33.8688, lng: 151.2093,  tzid: 'Australia/Sydney',      label: 'Sydney' },
+  { lat: 37.7749,  lng: -122.4194, tzid: 'America/Los_Angeles',   label: 'San Francisco' },
+  { lat: 29.7604,  lng: -95.3698,  tzid: 'America/Chicago',       label: 'Houston' },
+  { lat: 33.4484,  lng: -112.0740, tzid: 'America/Phoenix',       label: 'Phoenix' },
+  { lat: 52.5200,  lng: 13.4050,   tzid: 'Europe/Berlin',         label: 'Berlin' },
+  { lat: 55.7558,  lng: 37.6173,   tzid: 'Europe/Moscow',         label: 'Moscow' },
+  { lat: 35.6762,  lng: 139.6503,  tzid: 'Asia/Tokyo',            label: 'Tokyo' },
+  { lat: 1.3521,   lng: 103.8198,  tzid: 'Asia/Singapore',        label: 'Singapore' },
+  { lat: 19.0760,  lng: 72.8777,   tzid: 'Asia/Kolkata',          label: 'Mumbai' },
+  { lat: -34.6037, lng: -58.3816,  tzid: 'America/Argentina/Buenos_Aires', label: 'Buenos Aires' },
+  { lat: 59.9311,  lng: 10.7579,   tzid: 'Europe/Oslo',           label: 'Oslo' },
+  { lat: 64.1355,  lng: -21.8954,  tzid: 'Atlantic/Reykjavik',    label: 'Reykjavik' },
 ];
 
 const CITY_COLORS = [
@@ -990,6 +1001,164 @@ function ShaotZmaniotView({ location }: { location: LocationInfo }) {
   );
 }
 
+// ── Tab: Multi Zman Overlay ───────────────────────────────────────────────────
+
+function MultiZmanView({ location }: { location: LocationInfo }) {
+  const DEFAULT_KEYS = ['sunrise', 'sofZmanShma', 'chatzot', 'minchaKetana', 'sunset'];
+  const [selected, setSelected] = useState<string[]>(DEFAULT_KEYS);
+  const [data, setData] = useState<MonthPoint[]>([]);
+  const [loading, setLoading] = useState(false);
+  const year = new Date().getFullYear();
+
+  const toggle = (key: string) =>
+    setSelected(prev => prev.includes(key) ? (prev.length > 1 ? prev.filter(k => k !== key) : prev) : [...prev, key]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const dates = monthDates(year);
+    try {
+      const results = await Promise.all(selected.map(k =>
+        Promise.all(dates.map(d => fetchZmanForDate(location, d, k)))
+      ));
+      setData(dates.map((_, i) => {
+        const pt: MonthPoint = { month: MONTHS[i], monthIdx: i };
+        selected.forEach((k, ki) => { pt[k] = results[ki][i]; });
+        return pt;
+      }));
+    } finally { setLoading(false); }
+  }, [location, selected, year]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const ZMAN_COLORS = ['#a78bfa','#34d399','#f59e0b','#60a5fa','#f87171','#fb923c','#4ade80','#e879f9'];
+
+  return (
+    <div>
+      <div className="mb-5">
+        <p className="text-white text-sm font-medium mb-1">Multi-Zman Overlay</p>
+        <p className="text-white/30 text-xs mb-3">{location.label} · {year} · compare multiple zmanim on one chart</p>
+        <div className="flex flex-wrap gap-1.5">
+          {EXPLORE_ZMANIM.map((z, i) => (
+            <button
+              key={z.key}
+              onClick={() => toggle(z.key)}
+              className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                selected.includes(z.key)
+                  ? 'border-transparent text-black font-medium'
+                  : 'border-white/10 text-white/30 hover:text-white/60'
+              }`}
+              style={selected.includes(z.key) ? { background: ZMAN_COLORS[i % ZMAN_COLORS.length] } : {}}
+            >
+              {z.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {loading ? (
+        <div className="h-56 flex items-center justify-center text-white/20 text-sm">Loading…</div>
+      ) : (
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+            <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis domain={['auto','auto']} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={minsToTimeStr} width={52} />
+            <Tooltip content={<TimeTooltip />} />
+            {selected.map((k, i) => {
+              const zdef = EXPLORE_ZMANIM.find(z => z.key === k);
+              return (
+                <Line key={k} type="monotone" dataKey={k} name={zdef?.label}
+                  stroke={ZMAN_COLORS[EXPLORE_ZMANIM.findIndex(z => z.key === k) % ZMAN_COLORS.length]}
+                  strokeWidth={1.5} dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+              );
+            })}
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
+
+// ── Tab: Latitude Effect ──────────────────────────────────────────────────────
+// Pick a date and see how a zman varies across latitudes
+
+function LatitudeEffectView() {
+  const [zmanKey, setZmanKey] = useState('sunrise');
+  const [date, setDate] = useState(() => monthDates(new Date().getFullYear())[5]); // mid-June default
+  const [data, setData] = useState<{ city: string; lat: number; value: number }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const zdef = EXPLORE_ZMANIM.find(z => z.key === zmanKey);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    // Sort cities by latitude for clean chart
+    const sorted = [...ALL_CITIES].sort((a, b) => b.lat - a.lat);
+    try {
+      const vals = await Promise.all(sorted.map(c => fetchZmanForDate(c, date, zmanKey)));
+      setData(sorted.map((c, i) => ({ city: c.label, lat: c.lat, value: vals[i] })));
+    } finally { setLoading(false); }
+  }, [zmanKey, date]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const LatTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const item = data.find(d => d.city === label);
+    return (
+      <div style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '8px 12px', fontSize: 12 }}>
+        <p className="text-white font-medium text-xs">{label}</p>
+        <p className="text-white/50 text-xs">lat {item?.lat.toFixed(1)}°</p>
+        <p className="text-white font-mono mt-1">{minsToTimeStr(payload[0]?.value)}</p>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <div>
+          <p className="text-white text-sm font-medium">Latitude Effect</p>
+          <p className="text-white/30 text-xs">How {zdef?.label} varies across latitudes on the same date</p>
+        </div>
+        <div className="flex gap-2 items-center flex-wrap">
+          <select
+            value={zmanKey}
+            onChange={e => setZmanKey(e.target.value)}
+            className="bg-white/5 border border-white/10 text-white/70 text-xs rounded-lg px-3 py-1.5 focus:outline-none"
+          >
+            {EXPLORE_ZMANIM.map(z => <option key={z.key} value={z.key}>{z.label}</option>)}
+          </select>
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="bg-white/5 border border-white/10 text-white/60 text-xs rounded-lg px-2 py-1.5 focus:outline-none [color-scheme:dark]"
+          />
+        </div>
+      </div>
+      {loading ? (
+        <div className="h-56 flex items-center justify-center text-white/20 text-sm">Loading…</div>
+      ) : (
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={data} layout="vertical" margin={{ top: 4, right: 60, left: 80, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+            <XAxis type="number" domain={['auto','auto']} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={minsToTimeStr} />
+            <YAxis type="category" dataKey="city" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }} axisLine={false} tickLine={false} width={76} />
+            <Tooltip content={<LatTooltip />} />
+            <Bar dataKey="value" name={zdef?.label} radius={[0,3,3,0]}>
+              {data.map((d, i) => (
+                <Cell key={i} fill={`hsl(${220 + i * 12}, 70%, ${45 + i * 2}%)`} fillOpacity={0.8} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+      <p className="text-white/15 text-xs text-center mt-3">Cities sorted north → south · try the June solstice vs December solstice</p>
+    </div>
+  );
+}
+
 // ── Tab: Day Timeline ─────────────────────────────────────────────────────────
 // Horizontal stacked bar: shows the halachic day segments for each month
 
@@ -1181,18 +1350,20 @@ function ZmanDriftView({ location }: { location: LocationInfo }) {
 
 // ── Main Export ───────────────────────────────────────────────────────────────
 
-type ExplorTab = 'year' | 'compare' | 'daylight' | 'map' | 'wheel' | 'heatmap' | 'shaot' | 'timeline' | 'drift';
+type ExplorTab = 'year' | 'compare' | 'daylight' | 'map' | 'wheel' | 'heatmap' | 'shaot' | 'timeline' | 'drift' | 'multi' | 'latitude';
 
-const TABS: { id: ExplorTab; label: string }[] = [
-  { id: 'year',     label: 'Year' },
-  { id: 'compare',  label: 'Compare' },
-  { id: 'daylight', label: 'Daylight' },
-  { id: 'map',      label: 'Map' },
-  { id: 'wheel',    label: 'Wheel' },
-  { id: 'heatmap',  label: 'Heatmap' },
-  { id: 'shaot',    label: 'Shaot' },
-  { id: 'timeline', label: 'Timeline' },
-  { id: 'drift',    label: 'Drift' },
+const TABS: { id: ExplorTab; label: string; desc: string }[] = [
+  { id: 'year',     label: 'Year',       desc: 'Zman across 12 months, drill into days' },
+  { id: 'multi',    label: 'Overlay',    desc: 'Multiple zmanim on one chart' },
+  { id: 'compare',  label: 'Cities',     desc: 'Compare cities side by side' },
+  { id: 'daylight', label: 'Daylight',   desc: 'Daylight hours throughout the year' },
+  { id: 'timeline', label: 'Timeline',   desc: 'Halachic day segments stacked' },
+  { id: 'drift',    label: 'Drift',      desc: 'How fast each zman shifts day to day' },
+  { id: 'shaot',    label: 'Shaot',      desc: 'Halachic hour length across the year' },
+  { id: 'heatmap',  label: 'Heatmap',    desc: 'Calendar heat map colored by time' },
+  { id: 'latitude', label: 'Latitude',   desc: 'How zmanim vary by latitude' },
+  { id: 'wheel',    label: 'Wheel',      desc: 'Polar seasonal sunrise/sunset wheel' },
+  { id: 'map',      label: 'Map',        desc: 'World map of zmanim times' },
 ];
 
 export default function ZmanimExplore({
@@ -1205,64 +1376,185 @@ export default function ZmanimExplore({
   onLocationChange?: (loc: LocationInfo) => void;
 }) {
   const [tab, setTab] = useState<ExplorTab>('year');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<LocationInfo[]>([]);
+  const [searching, setSearching] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const cities = allLocations ?? ALL_CITIES;
 
-  return (
-    <div className="max-w-4xl mx-auto">
+  // Geocode search via Nominatim + timeapi.io
+  const runSearch = useCallback(async (q: string) => {
+    if (!q.trim() || q.length < 2) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`
+      ).then(r => r.json());
+      const results: LocationInfo[] = await Promise.all(
+        geoRes.slice(0, 5).map(async (r: any) => {
+          const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
+          let tzid = 'UTC';
+          try {
+            const tzRes = await fetch(
+              `https://timeapi.io/api/timezone/coordinate?latitude=${lat}&longitude=${lng}`
+            ).then(r => r.json());
+            tzid = tzRes.timeZone || 'UTC';
+          } catch {}
+          const label = r.address?.city || r.address?.town || r.address?.village || r.display_name.split(',')[0];
+          return { lat, lng, tzid, label };
+        })
+      );
+      setSearchResults(results);
+    } catch {
+      setSearchResults([]);
+    } finally { setSearching(false); }
+  }, []);
 
-      {/* ── Persistent city switcher ── */}
+  useEffect(() => {
+    const t = setTimeout(() => runSearch(searchQuery), 400);
+    return () => clearTimeout(t);
+  }, [searchQuery, runSearch]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchResults([]);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const selectLocation = (loc: LocationInfo) => {
+    onLocationChange?.(loc);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const activeTab = TABS.find(t => t.id === tab);
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-8">
+
+      {/* ── Header ── */}
+      <div className="pt-2">
+        <h2 className="text-white text-2xl font-light tracking-tight mb-1">Explore Zmanim</h2>
+        <p className="text-white/30 text-sm">Visualize halachic times across dates, locations, and seasons</p>
+      </div>
+
+      {/* ── Location section ── */}
       {onLocationChange && (
-        <div className="mb-6">
-          <p className="text-white/20 text-xs uppercase tracking-widest mb-2">Location</p>
-          <div className="flex flex-wrap gap-2">
-            {cities.map(loc => {
-              const active = loc.label === location.label;
-              return (
-                <button
-                  key={loc.label}
-                  onClick={() => onLocationChange(loc)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                    active
-                      ? 'bg-white text-black border-white font-medium'
-                      : 'border-white/15 text-white/40 hover:text-white/70 hover:border-white/30'
-                  }`}
-                >
-                  {loc.label}
-                </button>
-              );
-            })}
+        <div className="bg-white/3 rounded-2xl border border-white/5 p-6">
+          <div className="flex items-start gap-6 flex-wrap">
+            {/* Active location display */}
+            <div className="min-w-[140px]">
+              <p className="text-white/20 text-xs uppercase tracking-widest mb-1">Viewing</p>
+              <p className="text-white text-lg font-light">{location.label}</p>
+              <p className="text-white/25 text-xs font-mono mt-0.5">{location.lat.toFixed(2)}° {location.lng.toFixed(2)}°</p>
+            </div>
+
+            <div className="flex-1 min-w-[200px] space-y-3">
+              {/* Search box */}
+              <div ref={searchRef} className="relative">
+                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 focus-within:border-white/25 transition-colors">
+                  <svg className="w-3.5 h-3.5 text-white/30 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Search any city…"
+                    className="bg-transparent text-white text-xs flex-1 outline-none placeholder-white/20"
+                  />
+                  {searching && (
+                    <svg className="w-3 h-3 text-white/30 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                  )}
+                </div>
+                {searchResults.length > 0 && (
+                  <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                    {searchResults.map((r, i) => (
+                      <button
+                        key={i}
+                        onClick={() => selectLocation(r)}
+                        className="w-full text-left px-4 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-between gap-2"
+                      >
+                        <span>{r.label}</span>
+                        <span className="text-white/20 text-xs font-mono">{r.lat.toFixed(1)}°, {r.lng.toFixed(1)}°</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Preset city pills */}
+              <div className="flex flex-wrap gap-1.5">
+                {cities.map(loc => {
+                  const active = loc.label === location.label;
+                  return (
+                    <button
+                      key={loc.label}
+                      onClick={() => selectLocation(loc)}
+                      className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                        active
+                          ? 'bg-white text-black border-white font-medium'
+                          : 'border-white/10 text-white/35 hover:text-white/65 hover:border-white/25'
+                      }`}
+                    >
+                      {loc.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ── Sub-tabs — scrollable row for mobile ── */}
-      <div className="flex gap-1 mb-6 bg-white/3 rounded-xl p-1 overflow-x-auto">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`shrink-0 text-xs py-1.5 px-3 rounded-lg transition-all whitespace-nowrap ${
-              tab === t.id ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* ── Tab grid ── */}
+      <div>
+        <p className="text-white/20 text-xs uppercase tracking-widest mb-3">Visualizations</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`text-left px-4 py-3 rounded-xl border transition-all ${
+                tab === t.id
+                  ? 'bg-white/8 border-white/20 text-white'
+                  : 'border-white/5 text-white/40 hover:text-white/70 hover:border-white/12 hover:bg-white/3'
+              }`}
+            >
+              <p className={`text-xs font-medium mb-0.5 ${tab === t.id ? 'text-white' : 'text-white/50'}`}>{t.label}</p>
+              <p className="text-white/25 text-xs leading-tight">{t.desc}</p>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ── Tab content ── */}
-      <div className="bg-white/3 rounded-2xl border border-white/5 p-5">
+      {/* ── Active tab content ── */}
+      <div className="bg-white/3 rounded-2xl border border-white/5 p-6 md:p-8">
+        <div className="mb-6 pb-5 border-b border-white/5">
+          <p className="text-white/20 text-xs uppercase tracking-widest">{activeTab?.label}</p>
+        </div>
         {tab === 'year'     && <YearView location={location} />}
+        {tab === 'multi'    && <MultiZmanView location={location} />}
         {tab === 'compare'  && <CityCompare currentLocation={location} />}
         {tab === 'daylight' && <DaylightView location={location} />}
-        {tab === 'map'      && <MapView />}
-        {tab === 'wheel'    && <SeasonalWheel location={location} />}
-        {tab === 'heatmap'  && <HeatmapView location={location} />}
-        {tab === 'shaot'    && <ShaotZmaniotView location={location} />}
         {tab === 'timeline' && <DayTimelineView location={location} />}
         {tab === 'drift'    && <ZmanDriftView location={location} />}
+        {tab === 'shaot'    && <ShaotZmaniotView location={location} />}
+        {tab === 'heatmap'  && <HeatmapView location={location} />}
+        {tab === 'latitude' && <LatitudeEffectView />}
+        {tab === 'wheel'    && <SeasonalWheel location={location} />}
+        {tab === 'map'      && <MapView />}
       </div>
+
     </div>
   );
 }
