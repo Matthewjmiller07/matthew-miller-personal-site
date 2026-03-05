@@ -605,17 +605,18 @@ export default function ZmanimApp() {
           {location.label}
         </button>
 
-        {/* Clock / Explore toggle */}
-        <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
-          <button
-            onClick={() => setView('clock')}
-            className={`text-xs px-3 py-1 rounded-md transition-all ${view === 'clock' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'}`}
-          >Clock</button>
-          <button
-            onClick={() => setView('explore')}
-            className={`text-xs px-3 py-1 rounded-md transition-all ${view === 'explore' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'}`}
-          >Explore</button>
-        </div>
+      </div>
+
+      {/* Clock / Explore toggle — fixed bottom-center, clear of navbar */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/60 backdrop-blur border border-white/10 rounded-full px-1 py-1" onClick={e => e.stopPropagation()}>
+        <button
+          onClick={() => setView('clock')}
+          className={`text-xs px-4 py-1.5 rounded-full transition-all ${view === 'clock' ? 'bg-white/15 text-white' : 'text-white/30 hover:text-white/60'}`}
+        >Clock</button>
+        <button
+          onClick={() => setView('explore')}
+          className={`text-xs px-4 py-1.5 rounded-full transition-all ${view === 'explore' ? 'bg-white/15 text-white' : 'text-white/30 hover:text-white/60'}`}
+        >Explore</button>
       </div>
 
       {/* Location picker dropdown */}
@@ -653,7 +654,7 @@ export default function ZmanimApp() {
         {/* Fullscreen button */}
         <button
           onClick={e => { e.stopPropagation(); enterFullscreen(); }}
-          className="absolute bottom-6 right-6 z-10 text-white/20 hover:text-white/50 transition-colors"
+          className="fixed bottom-20 right-6 z-10 text-white/20 hover:text-white/50 transition-colors"
           aria-label="Fullscreen"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
