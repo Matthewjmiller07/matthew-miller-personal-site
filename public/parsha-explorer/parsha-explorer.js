@@ -9,6 +9,7 @@ let activeFilters = {}; // Track active filters
 let sortOrders = {}; // Track sort order for each type (A-Z, Z-A, by count)
 let chartInstance = null;
 let adverbCounts = {};
+let prepositionCounts = {};
 
 const highlightMap = {
     "HN": "highlight-hn",
@@ -859,6 +860,7 @@ async function loadAliyaRange(startRef = null, endRef = null, parsha = null) {
     resetFilters(); // Reset filters at the start of loading a new Aliya range
     properNounCounts = {};
     verbCounts = {};
+    prepositionCounts = {};
 
     // Retrieve the selected Parsha if not provided
     if (!parsha) {
@@ -992,6 +994,11 @@ if (parsha) {
   adverbCounts[lemma] = (adverbCounts[lemma] || 0) + 1;
 }
 
+    if (morphCode && /^HR(\b|\/|$)/.test(morphCode)) {
+  wordSpan.classList.add('highlight-preposition');
+  prepositionCounts[lemma] = (prepositionCounts[lemma] || 0) + 1;
+}
+
     wordSpan.onclick = async () => {
         const wordInfo = verseDiv.querySelector('.word-info');
         wordInfo.innerHTML = `
@@ -1045,7 +1052,7 @@ if (parsha) {
     initializeWordCounts();
     calculateLemmaUsagePercentage();
 
-    if (Object.keys(properNounCounts).length > 0 || Object.keys(verbCounts).length > 0 || Object.keys(adverbCounts).length > 0) {
+    if (Object.keys(properNounCounts).length > 0 || Object.keys(verbCounts).length > 0 || Object.keys(adverbCounts).length > 0 || Object.keys(prepositionCounts).length > 0) {
         updateChart();
     } else {
         console.warn("No proper nouns, verbs, or adverbs found in the selected range.");
@@ -1072,7 +1079,8 @@ async function loadVerse() {
     resetFilters(); // Reset filters at the start of loading new verses
     properNounCounts = {};
     verbCounts = {};
-    adverbCounts = {}; 
+    adverbCounts = {};
+    prepositionCounts = {};
 
     const rangeInput = document.getElementById('verseRange').value.trim();
     const bookSelect = document.getElementById('bookSelect').value;
@@ -1182,6 +1190,11 @@ async function loadVerse() {
   adverbCounts[lemma] = (adverbCounts[lemma] || 0) + 1;
 }
 
+    if (morphCode && /^HR(\b|\/|$)/.test(morphCode)) {
+  wordSpan.classList.add('highlight-preposition');
+  prepositionCounts[lemma] = (prepositionCounts[lemma] || 0) + 1;
+}
+
     wordSpan.onclick = async () => {
         const wordInfo = verseDiv.querySelector('.word-info');
         wordInfo.innerHTML = `
@@ -1232,7 +1245,7 @@ async function loadVerse() {
     
     calculateLemmaUsagePercentage();
 
-    if (Object.keys(properNounCounts).length > 0 || Object.keys(verbCounts).length > 0 || Object.keys(adverbCounts).length > 0) {
+    if (Object.keys(properNounCounts).length > 0 || Object.keys(verbCounts).length > 0 || Object.keys(adverbCounts).length > 0 || Object.keys(prepositionCounts).length > 0) {
         updateChart();
     }
 
@@ -1453,6 +1466,11 @@ function updateChart() {
         .filter(([lemma]) => !lemma.includes("+"))
         .forEach(([lemma, frequency]) => addToConsolidatedData(lemma, frequency));
     chartLabel = 'Adverb Frequency';
+} else if (chartTypeSelect === "prepositions") {
+    Object.entries(prepositionCounts)
+        .filter(([lemma]) => !lemma.includes("+"))
+        .forEach(([lemma, frequency]) => addToConsolidatedData(lemma, frequency));
+    chartLabel = 'Preposition Frequency';
 }
 
     const sortedData = Object.values(consolidatedData).sort((a, b) => b.frequency - a.frequency);
@@ -1647,7 +1665,7 @@ async function initializeWordCounts() {
     await loadLemmaData(); // Ensure BDB data is loaded
 
     // Add 'highlight-adverb' to the filterTypes array:
-    const filterTypes = ["highlight-noun", "highlight-proper-noun", "construct-noun", "highlight-verb", "highlight-adverb"]; 
+    const filterTypes = ["highlight-noun", "highlight-proper-noun", "construct-noun", "highlight-verb", "highlight-adverb", "highlight-preposition"]; 
     
     for (const typeClass of filterTypes) {
         const totalWords = getTotalWords(typeClass); 
@@ -1754,6 +1772,8 @@ function toggleFilter(typeClass) {
                     } else if (typeClass === 'highlight-verb') {
                         wordSpan.style.setProperty('background-color', 'transparent', 'important');
                     } else if (typeClass === 'highlight-adverb') {
+                        wordSpan.style.setProperty('background-color', 'transparent', 'important');
+                    } else if (typeClass === 'highlight-preposition') {
                         wordSpan.style.setProperty('background-color', 'transparent', 'important');
                     } else if (typeClass === 'highlight-proper-noun') {
                         wordSpan.style.setProperty('border', 'none', 'important');
