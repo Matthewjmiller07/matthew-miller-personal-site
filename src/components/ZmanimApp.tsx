@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import ZmanimExplore from './ZmanimExplore';
-import ShulTimes from './ShulTimes';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -465,7 +464,6 @@ export default function ZmanimApp() {
   const [fullscreen, setFullscreen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [view, setView] = useState<'clock' | 'explore'>('clock');
-  const [showShulTimes, setShowShulTimes] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -699,28 +697,7 @@ export default function ZmanimApp() {
             </div>
           )}
           <p className="mt-8 text-white/10 text-xs tracking-widest uppercase">tap for all zmanim</p>
-
-          {/* Shul times toggle */}
-          <button
-            onClick={e => { e.stopPropagation(); setShowShulTimes(v => !v); }}
-            className="mt-4 flex items-center gap-1.5 text-white/20 hover:text-white/45 transition-colors text-xs"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-            {showShulTimes ? 'Hide shul times' : 'Adas Yeshurun times'}
-          </button>
         </div>
-
-        {/* Shul times panel — slides in below clock */}
-        {showShulTimes && (
-          <div
-            className="absolute bottom-20 left-1/2 -translate-x-1/2 w-full max-w-xs bg-[#0d0d0d] border border-white/8 rounded-2xl shadow-2xl p-5 z-30"
-            onClick={e => e.stopPropagation()}
-          >
-            <ShulTimes tz={location.tzid} now={now} />
-          </div>
-        )}
 
         {showPanel && (
           <ZmanimPanel
