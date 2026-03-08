@@ -28,8 +28,9 @@ interface HebcalResponse {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const ZMAN_DEFS: { key: string; label: string; heLabel: string; category: ZmanItem['category'] }[] = [
-  { key: 'alotHaShachar',  label: 'Alot HaShachar',      heLabel: 'עלות השחר',        category: 'dawn' },
-  { key: 'misheyakir',     label: 'Misheyakir',           heLabel: 'משיכיר',           category: 'dawn' },
+  { key: 'alotHaShachar',       label: 'Alot HaShachar',        heLabel: 'עלות השחר',       category: 'dawn' },
+  { key: 'misheyakir',           label: 'Misheyakir',            heLabel: 'משיכיר',          category: 'dawn' },
+  { key: 'misheyakirMachmir',    label: 'Misheyakir Machmir',    heLabel: 'משיכיר מחמיר',    category: 'dawn' },
   { key: 'sunrise',        label: 'Sunrise',              heLabel: 'הנץ החמה',         category: 'morning' },
   { key: 'sofZmanShmaMGA', label: "Shema (MG\"A)",        heLabel: 'שמע מג"א',         category: 'morning' },
   { key: 'sofZmanShma',    label: "Shema (GR\"A)",        heLabel: 'שמע גר"א',         category: 'morning' },

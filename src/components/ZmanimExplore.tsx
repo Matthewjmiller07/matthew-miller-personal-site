@@ -23,14 +23,17 @@ interface MonthPoint {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const EXPLORE_ZMANIM = [
-  { key: 'sunrise',      label: 'Sunrise',        heLabel: 'הנץ החמה' },
-  { key: 'sofZmanShma',  label: 'Latest Shema',   heLabel: 'סוף זמן שמע' },
-  { key: 'sofZmanTfila', label: 'Latest Tefila',  heLabel: 'סוף זמן תפילה' },
-  { key: 'chatzot',      label: 'Chatzot',        heLabel: 'חצות' },
-  { key: 'minchaKetana', label: 'Mincha Ketana',  heLabel: 'מנחה קטנה' },
-  { key: 'plagHaMincha', label: 'Plag HaMincha',  heLabel: 'פלג המנחה' },
-  { key: 'sunset',       label: 'Sunset',         heLabel: 'שקיעה' },
-  { key: 'tzeit7083deg', label: 'Tzeit',          heLabel: 'צאת הכוכבים' },
+  { key: 'alotHaShachar',       label: 'Alot HaShachar',     heLabel: 'עלות השחר' },
+  { key: 'misheyakir',          label: 'Misheyakir',         heLabel: 'משיכיר' },
+  { key: 'misheyakirMachmir',   label: 'Misheyakir Machmir', heLabel: 'משיכיר מחמיר' },
+  { key: 'sunrise',             label: 'Sunrise',            heLabel: 'הנץ החמה' },
+  { key: 'sofZmanShma',         label: 'Latest Shema',       heLabel: 'סוף זמן שמע' },
+  { key: 'sofZmanTfila',        label: 'Latest Tefila',      heLabel: 'סוף זמן תפילה' },
+  { key: 'chatzot',             label: 'Chatzot',            heLabel: 'חצות' },
+  { key: 'minchaKetana',        label: 'Mincha Ketana',      heLabel: 'מנחה קטנה' },
+  { key: 'plagHaMincha',        label: 'Plag HaMincha',      heLabel: 'פלג המנחה' },
+  { key: 'sunset',              label: 'Sunset',             heLabel: 'שקיעה' },
+  { key: 'tzeit7083deg',        label: 'Tzeit',              heLabel: 'צאת הכוכבים' },
 ];
 
 const ALL_CITIES: LocationInfo[] = [
