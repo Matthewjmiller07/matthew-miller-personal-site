@@ -214,7 +214,7 @@ function ZmanimPanel({
               onChange={e => onDateChange(e.target.value)}
               className="bg-white/5 border border-white/10 text-white/60 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-white/30 [color-scheme:dark]"
             />
-            <button onClick={onClose} className="text-white/30 hover:text-white/60 transition-colors">
+            <button onClick={onClose} className="text-white/40 hover:text-white transition-colors p-1">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -251,6 +251,18 @@ function ZmanimPanel({
               );
             })}
           </div>
+        </div>
+        {/* Sticky back button */}
+        <div className="flex-shrink-0 px-6 py-4 border-t border-white/5">
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-2xl bg-white/8 hover:bg-white/12 text-white/70 hover:text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Clock
+          </button>
         </div>
       </div>
     </div>
@@ -863,23 +875,6 @@ export default function ZmanimApp() {
             </div>
           )}
 
-          {/* GPS */}
-          <div className="border-t border-white/5 mt-3 pt-3 space-y-1">
-            <button
-              onClick={handleGeolocate}
-              disabled={locating}
-              className="w-full text-left px-3 py-2 rounded-xl text-xs text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="3" strokeWidth="2"/>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
-              </svg>
-              {locating ? 'Locating…' : 'Use my location'}
-            </button>
-            {locError && (
-              <p className="text-red-400/70 text-xs px-3 leading-snug">{locError}</p>
-            )}
-          </div>
           </div>
           )}
         </div>
@@ -947,7 +942,16 @@ export default function ZmanimApp() {
 
       {/* ── EXPLORE VIEW — full page ── */}
       {view === 'explore' && (
-        <div className="w-full min-h-screen pt-16 pb-8 px-4 sm:px-8 overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="w-full min-h-screen pt-4 pb-24 px-4 sm:px-8 overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => setView('clock')}
+            className="flex items-center gap-2 text-white/40 hover:text-white/80 text-sm transition-colors mb-6 group"
+          >
+            <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Clock
+          </button>
           <ZmanimExplore location={location} allLocations={PRESET_LOCATIONS} onLocationChange={setLocation} />
         </div>
       )}
