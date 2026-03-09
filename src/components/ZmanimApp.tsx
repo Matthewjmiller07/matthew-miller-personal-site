@@ -323,12 +323,17 @@ function FullscreenClock({
         WebkitOverflowScrolling: 'touch',
       } as React.CSSProperties}
     >
-      {/* Invisible exit zone — tap anywhere in top-right corner */}
+      {/* Exit fullscreen button — visible, top-right */}
       <button
         onClick={onExit}
-        className="absolute top-0 right-0 w-16 h-16 z-20 opacity-0"
+        className="absolute top-4 right-4 z-20 flex items-center gap-1.5 text-white/30 hover:text-white/70 transition-colors bg-white/5 hover:bg-white/10 px-3 py-2 rounded-full text-xs"
         aria-label="Exit fullscreen"
-      />
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        Exit
+      </button>
 
       {/* ── HEADER ── */}
       <div className="flex items-center justify-between px-5 sm:px-10 pt-5 sm:pt-8 pb-0">
