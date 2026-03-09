@@ -452,20 +452,118 @@ function FullscreenClock({
 
 // ── Main App ─────────────────────────────────────────────────────────────────
 
+function getInitialStateFromParams(): { location: LocationInfo; date: string; view: 'clock' | 'explore' } {
+  if (typeof window === 'undefined') return { location: PRESET_LOCATIONS[0], date: '', view: 'clock' };
+  const p = new URLSearchParams(window.location.search);
+  const lat  = parseFloat(p.get('lat') ?? '');
+  const lng  = parseFloat(p.get('lng') ?? '');
+  const tzid = p.get('tzid') ?? '';
+  const label = p.get('label') ?? '';
+  const date  = p.get('date') ?? '';
+  const view  = (p.get('view') === 'explore' ? 'explore' : 'clock') as 'clock' | 'explore';
+  const location = (!isNaN(lat) && !isNaN(lng) && tzid)
+    ? { lat, lng, tzid, label: label || `${lat.toFixed(3)}°, ${lng.toFixed(3)}°` }
+    : PRESET_LOCATIONS[0];
+  return { location, date, view };
+}
+
 export default function ZmanimApp() {
+  const initParams = getInitialStateFromParams();
   const [now, setNow]             = useState(new Date());
-  const [location, setLocation]   = useState<LocationInfo>(PRESET_LOCATIONS[0]);
+  const [location, setLocation]   = useState<LocationInfo>(initParams.location);
   const [zmanim, setZmanim]       = useState<ZmanItem[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showPanel, setShowPanel] = useState(false);
   const [showLocPicker, setShowLocPicker] = useState(false);
   const [locating, setLocating]   = useState(false);
+  const [locSearch, setLocSearch] = useState('');
+  const [locResults, setLocResults] = useState<LocationInfo[]>([]);
+  const [locSearching, setLocSearching] = useState(false);
+  const [latInput, setLatInput]   = useState('');
+  const [lngInput, setLngInput]   = useState('');
+  const [locTab, setLocTab]       = useState<'search' | 'coords'>('search');
+  const [locError, setLocError]   = useState('');
+  const locSearchRef = useRef<HTMLDivElement>(null);
   const [hebrewDate, setHebrewDate] = useState('');
   const [parsha, setParsha]       = useState('');
   const [fullscreen, setFullscreen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState('');
-  const [view, setView] = useState<'clock' | 'explore'>('clock');
+  const [selectedDate, setSelectedDate] = useState(initParams.date);
+  const [view, setView] = useState<'clock' | 'explore'>(initParams.view);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // Sync state → URL so the current view/location/date is always shareable
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const p = new URLSearchParams();
+    p.set('lat',   location.lat.toString());
+    p.set('lng',   location.lng.toString());
+    p.set('tzid',  location.tzid);
+    p.set('label', location.label);
+    if (selectedDate) p.set('date', selectedDate);
+    if (view !== 'clock') p.set('view', view);
+    const newUrl = `${window.location.pathname}?${p.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+  }, [location, selectedDate, view]);
+
+  const runLocSearch = useCallback(async (q: string) => {
+    if (!q.trim() || q.length < 2) { setLocResults([]); return; }
+    setLocSearching(true);
+    try {
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`
+      ).then(r => r.json());
+      const results: LocationInfo[] = await Promise.all(
+        (geoRes as any[]).slice(0, 5).map(async (r: any) => {
+          const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
+          let tzid = 'UTC';
+          try {
+            const tz = await fetch(`https://timeapi.io/api/timezone/coordinate?latitude=${lat}&longitude=${lng}`).then(r => r.json());
+            tzid = tz.timeZone || 'UTC';
+          } catch {}
+          const city = r.address?.city || r.address?.town || r.address?.village;
+          const state = r.address?.state;
+          const country = r.address?.country;
+          const label = city && state ? `${city}, ${state}` : city && country ? `${city}, ${country}` : r.display_name.split(',')[0];
+          return { lat, lng, tzid, label };
+        })
+      );
+      setLocResults(results);
+    } catch { setLocResults([]); }
+    finally { setLocSearching(false); }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => runLocSearch(locSearch), 400);
+    return () => clearTimeout(t);
+  }, [locSearch, runLocSearch]);
+
+  const applyLocation = (loc: LocationInfo) => {
+    setLocation(loc);
+    setShowLocPicker(false);
+    setLocSearch('');
+    setLocResults([]);
+    setLatInput('');
+    setLngInput('');
+  };
+
+  const applyCoords = async () => {
+    const lat = parseFloat(latInput), lng = parseFloat(lngInput);
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+    setLocating(true);
+    try {
+      const [tzRes, geoRes] = await Promise.all([
+        fetch(`https://timeapi.io/api/timezone/coordinate?latitude=${lat}&longitude=${lng}`).then(r => r.json()),
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`).then(r => r.json()),
+      ]);
+      const tzid = tzRes.timeZone || 'UTC';
+      const city = geoRes.address?.city || geoRes.address?.town || geoRes.address?.village;
+      const state = geoRes.address?.state;
+      const country = geoRes.address?.country;
+      const label = city && state ? `${city}, ${state}` : city && country ? `${city}, ${country}` : `${lat.toFixed(3)}°, ${lng.toFixed(3)}°`;
+      applyLocation({ lat, lng, tzid, label });
+    } catch { applyLocation({ lat, lng, tzid: 'UTC', label: `${lat.toFixed(3)}°, ${lng.toFixed(3)}°` }); }
+    finally { setLocating(false); }
+  };
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -547,21 +645,47 @@ export default function ZmanimApp() {
   }, [location, selectedDate, fetchZmanim]);
 
   const handleGeolocate = () => {
-    if (!navigator.geolocation) return;
+    setLocError('');
+    if (!navigator.geolocation) {
+      setLocError('Geolocation not supported by your browser');
+      return;
+    }
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(async pos => {
-      try {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        const [tzRes, geoRes] = await Promise.all([
-          fetch(`https://timeapi.io/api/timezone/coordinate?latitude=${lat}&longitude=${lng}`).then(r => r.json()),
-          fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`).then(r => r.json()),
-        ]);
-        const tzid  = tzRes.timeZone || 'UTC';
-        const label = geoRes.address?.city || geoRes.address?.town || 'My Location';
-        setLocation({ lat, lng, tzid, label });
-        setShowLocPicker(false);
-      } finally { setLocating(false); }
-    }, () => setLocating(false));
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        try {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          const [tzRes, geoRes] = await Promise.all([
+            fetch(`https://timeapi.io/api/timezone/coordinate?latitude=${lat}&longitude=${lng}`).then(r => r.json()),
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`).then(r => r.json()),
+          ]);
+          const tzid  = tzRes.timeZone || 'UTC';
+          const city = geoRes.address?.city || geoRes.address?.town || geoRes.address?.village;
+          const state = geoRes.address?.state || geoRes.address?.region;
+          const country = geoRes.address?.country;
+          let label = 'My Location';
+          if (city && state) label = `${city}, ${state}`;
+          else if (city && country) label = `${city}, ${country}`;
+          else if (city) label = city;
+          else if (country) label = country;
+          applyLocation({ lat, lng, tzid, label });
+        } catch {
+          setLocError('Could not resolve location details.');
+        } finally {
+          setLocating(false);
+        }
+      },
+      err => {
+        const msgs: Record<number, string> = {
+          1: 'Permission denied — enable location access in your browser.',
+          2: 'Position unavailable.',
+          3: 'Request timed out.',
+        };
+        setLocError(msgs[err.code] || 'Could not get your location.');
+        setLocating(false);
+      },
+      { timeout: 10000, enableHighAccuracy: false }
+    );
   };
 
   const nowMs = now.getTime();
@@ -592,22 +716,6 @@ export default function ZmanimApp() {
 
       {!fullscreen && (<>
 
-      {/* ── Shared top bar ── */}
-      <div className="absolute top-5 left-0 right-0 flex items-center justify-between px-5 z-10" onClick={e => e.stopPropagation()}>
-        {/* Location pill */}
-        <button
-          onClick={() => setShowLocPicker(v => !v)}
-          className="flex items-center gap-1.5 text-white/25 hover:text-white/50 transition-colors text-xs tracking-wide"
-        >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          {location.label}
-        </button>
-
-      </div>
-
       {/* Clock / Explore toggle — fixed bottom-center, clear of navbar */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/60 backdrop-blur border border-white/10 rounded-full px-1 py-1" onClick={e => e.stopPropagation()}>
         <button
@@ -620,25 +728,147 @@ export default function ZmanimApp() {
         >Explore</button>
       </div>
 
-      {/* Location picker dropdown */}
-      {showLocPicker && (
-        <div className="absolute top-14 left-5 z-40 bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl p-3 min-w-[220px]" onClick={e => e.stopPropagation()}>
-          {PRESET_LOCATIONS.map(loc => (
+      {/* ── LOCATION BAR (inline above clock) ── */}
+      {view === 'clock' && (
+        <div className="relative flex items-center justify-between w-full max-w-sm px-2 mb-2" onClick={e => e.stopPropagation()}>
+          {/* Location pill */}
+          <button
+            onClick={() => setShowLocPicker(v => !v)}
+            className="flex items-center gap-2 text-white/30 hover:text-white/60 transition-colors text-xs tracking-wide px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 bg-white/5 cursor-pointer"
+          >
+            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="font-medium">{location.label}</span>
+          </button>
+
+          {/* Dropdown */}
+          {showLocPicker && (
+          <div
+            ref={locSearchRef}
+            className="absolute top-full mt-2 left-0 z-[60] bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl p-4 w-[300px]"
+            onClick={e => e.stopPropagation()}
+          >
+          {/* Tabs */}
+          <div className="flex gap-1 mb-3">
             <button
-              key={loc.label}
-              onClick={() => { setLocation(loc); setShowLocPicker(false); }}
-              className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-colors ${
-                loc.label === location.label ? 'text-white bg-white/8' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+              onClick={() => setLocTab('search')}
+              className={`flex-1 text-xs py-1.5 rounded-lg transition-colors ${
+                locTab === 'search' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'
               }`}
-            >
-              {loc.label}
-            </button>
-          ))}
-          <div className="border-t border-white/5 mt-2 pt-2">
+            >City Search</button>
+            <button
+              onClick={() => setLocTab('coords')}
+              className={`flex-1 text-xs py-1.5 rounded-lg transition-colors ${
+                locTab === 'coords' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'
+              }`}
+            >Lat / Lng</button>
+          </div>
+
+          {locTab === 'search' && (
+            <div className="space-y-2">
+              {/* Search input */}
+              <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 focus-within:border-white/25 transition-colors">
+                <svg className="w-3.5 h-3.5 text-white/30 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  autoFocus
+                  type="text"
+                  value={locSearch}
+                  onChange={e => setLocSearch(e.target.value)}
+                  placeholder="Search any city…"
+                  className="bg-transparent text-white text-xs flex-1 outline-none placeholder-white/20"
+                />
+                {locSearching && (
+                  <svg className="w-3 h-3 text-white/30 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                )}
+              </div>
+
+              {/* Search results */}
+              {locResults.length > 0 && (
+                <div className="border border-white/8 rounded-xl overflow-hidden">
+                  {locResults.map((r, i) => (
+                    <button
+                      key={i}
+                      onClick={() => applyLocation(r)}
+                      className="w-full text-left px-3 py-2 text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-between gap-2 border-b border-white/5 last:border-0"
+                    >
+                      <span>{r.label}</span>
+                      <span className="text-white/20 font-mono shrink-0">{r.lat.toFixed(1)}°, {r.lng.toFixed(1)}°</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Presets */}
+              {locResults.length === 0 && (
+                <div className="space-y-0.5">
+                  {PRESET_LOCATIONS.map(loc => (
+                    <button
+                      key={loc.label}
+                      onClick={() => applyLocation(loc)}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-colors flex items-center justify-between ${
+                        loc.label === location.label ? 'text-white bg-white/8' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                      }`}
+                    >
+                      <span>{loc.label}</span>
+                      {loc.label === location.label && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {locTab === 'coords' && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-white/30 text-xs block mb-1">Latitude</label>
+                  <input
+                    type="number"
+                    value={latInput}
+                    onChange={e => setLatInput(e.target.value)}
+                    placeholder="40.7128"
+                    min="-90" max="90" step="0.0001"
+                    className="w-full bg-white/5 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none focus:border-white/30 placeholder-white/20 [appearance:textfield]"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/30 text-xs block mb-1">Longitude</label>
+                  <input
+                    type="number"
+                    value={lngInput}
+                    onChange={e => setLngInput(e.target.value)}
+                    placeholder="-74.0060"
+                    min="-180" max="180" step="0.0001"
+                    className="w-full bg-white/5 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none focus:border-white/30 placeholder-white/20 [appearance:textfield]"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={applyCoords}
+                disabled={locating || !latInput || !lngInput}
+                className="w-full py-2 rounded-xl text-xs bg-white/10 text-white hover:bg-white/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {locating ? 'Looking up…' : 'Set Location'}
+              </button>
+            </div>
+          )}
+
+          {/* GPS */}
+          <div className="border-t border-white/5 mt-3 pt-3 space-y-1">
             <button
               onClick={handleGeolocate}
               disabled={locating}
-              className="w-full text-left px-3 py-2 rounded-xl text-sm text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors flex items-center gap-2"
+              className="w-full text-left px-3 py-2 rounded-xl text-xs text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="3" strokeWidth="2"/>
@@ -646,7 +876,12 @@ export default function ZmanimApp() {
               </svg>
               {locating ? 'Locating…' : 'Use my location'}
             </button>
+            {locError && (
+              <p className="text-red-400/70 text-xs px-3 leading-snug">{locError}</p>
+            )}
           </div>
+          </div>
+          )}
         </div>
       )}
 

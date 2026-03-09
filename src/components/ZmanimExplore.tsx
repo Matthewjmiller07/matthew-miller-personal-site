@@ -1436,6 +1436,60 @@ export default function ZmanimExplore({
     setSearchResults([]);
   };
 
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      return;
+    }
+    setSearching(true);
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        try {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          const [tzRes, geoRes] = await Promise.all([
+            fetch(`https://timeapi.io/api/timezone/coordinate?latitude=${lat}&longitude=${lng}`).then(r => r.json()),
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`).then(r => r.json()),
+          ]);
+          const tzid  = tzRes.timeZone || 'UTC';
+          const city = geoRes.address?.city || geoRes.address?.town || geoRes.address?.village;
+          const state = geoRes.address?.state || geoRes.address?.region;
+          const country = geoRes.address?.country;
+          
+          let label = 'My Location';
+          if (city && state) label = `${city}, ${state}`;
+          else if (city && country) label = `${city}, ${country}`;
+          else if (city) label = city;
+          else if (country) label = country;
+          
+          selectLocation({ lat, lng, tzid, label });
+        } catch (error) {
+          console.error('Error getting location details:', error);
+          alert('Could not get location details. Please try again.');
+        } finally { 
+          setSearching(false); 
+        }
+      },
+      error => {
+        console.error('Geolocation error:', error);
+        let message = 'Could not get your location.';
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            message = 'Location access denied. Please enable location permissions.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            message = 'Location information unavailable.';
+            break;
+          case error.TIMEOUT:
+            message = 'Location request timed out.';
+            break;
+        }
+        alert(message);
+        setSearching(false);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
   const activeTab = TABS.find(t => t.id === tab);
 
   return (
@@ -1493,6 +1547,21 @@ export default function ZmanimExplore({
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Location actions */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleUseMyLocation}
+                  disabled={searching}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3" strokeWidth="2"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+                  </svg>
+                  {searching ? 'Locating…' : 'Use My Location'}
+                </button>
               </div>
 
               {/* Preset city pills */}
