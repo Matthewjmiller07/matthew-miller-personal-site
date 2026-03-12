@@ -1,13 +1,5 @@
 ---
 import Layout from '../layouts/Layout.astro';
-
-// Password protection
-const password = "RJD2026";
-const urlPassword = Astro.url.searchParams.get('pw');
-
-if (urlPassword !== password) {
-  return Astro.redirect('/?error=access_denied&return=' + encodeURIComponent(Astro.url.pathname));
-}
 ---
 
 <Layout
@@ -18,7 +10,68 @@ if (urlPassword !== password) {
     { src: 'https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js' }
   ]}
 >
-<main class="min-h-screen bg-gray-950 text-gray-100 px-4 py-10 max-w-7xl mx-auto space-y-10">
+<style>
+  .password-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  .password-form {
+    background: #111827;
+    padding: 2rem;
+    border-radius: 1rem;
+    border: 1px solid #374151;
+    max-width: 400px;
+    width: 90%;
+  }
+</style>
+
+<div id="passwordOverlay" class="password-overlay">
+  <div class="password-form">
+    <h2 class="text-2xl font-bold text-white mb-4 text-center">Access Required</h2>
+    <p class="text-gray-400 mb-6 text-center">Enter password to view Rabbi Dweck Analytics Dashboard</p>
+    <form onsubmit="checkPassword(event)">
+      <input 
+        type="password" 
+        id="passwordInput"
+        placeholder="Enter password"
+        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 mb-4"
+        required
+      >
+      <button 
+        type="submit"
+        class="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 rounded-lg transition-colors"
+      >
+        Access Dashboard
+      </button>
+    </form>
+    <p id="error" class="text-red-500 text-sm mt-4 text-center hidden">Incorrect password</p>
+  </div>
+</div>
+
+<script is:inline>
+function checkPassword(event) {
+  event.preventDefault();
+  const password = document.getElementById('passwordInput').value;
+  const correctPassword = 'RJD2026';
+  
+  if (password === correctPassword) {
+    document.getElementById('passwordOverlay').style.display = 'none';
+    document.getElementById('dashboardContent').style.display = 'block';
+  } else {
+    document.getElementById('error').classList.remove('hidden');
+  }
+}
+</script>
+
+<main class="min-h-screen bg-gray-950 text-gray-100 px-4 py-10 max-w-7xl mx-auto space-y-10" style="display: none;" id="dashboardContent">
 
   <!-- Header -->
   <header class="text-center space-y-3">
