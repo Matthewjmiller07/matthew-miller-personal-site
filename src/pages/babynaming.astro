@@ -1,0 +1,183 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const DAILY_ROOM_URL = import.meta.env.BABYNAMING_ROOM_URL || 'https://theothermatthewmiller.daily.co/Baby';
+---
+
+<Layout
+    title="Baby Naming Ceremony | Matthew Miller"
+    description="Join the live baby naming celebration. Participate with video, audio, and chat."
+>
+    <div class="min-h-[calc(100vh-4rem)] bg-gray-950 text-white flex flex-col">
+        <div class="container mx-auto px-4 py-8 flex flex-col flex-1">
+            <div class="text-center mb-6">
+                <h1 class="text-4xl font-extrabold tracking-tight sm:text-5xl text-white">
+                    Baby Naming Ceremony
+                </h1>
+                <p class="mt-3 text-lg text-gray-400">
+                    Live celebration — join with video, audio, and chat
+                </p>
+                <!-- Admin login button -->
+                <button
+                    id="admin-toggle-btn"
+                    class="mt-4 text-xs text-gray-600 hover:text-gray-400 transition-colors underline"
+                >
+                    Host login
+                </button>
+            </div>
+
+            <!-- Admin login panel (hidden by default) -->
+            <div id="admin-panel" class="hidden mb-4 max-w-sm mx-auto bg-gray-900 border border-gray-700 rounded-lg p-4">
+                <p class="text-sm text-gray-300 mb-3 font-semibold">Enter host password to join as admin</p>
+                <div class="flex gap-2">
+                    <input
+                        id="admin-password"
+                        type="password"
+                        placeholder="Password"
+                        class="flex-1 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                    />
+                    <button
+                        id="admin-submit-btn"
+                        class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded transition-colors"
+                    >
+                        Join as Host
+                    </button>
+                </div>
+                <p id="admin-error" class="hidden mt-2 text-xs text-red-400">Incorrect password. Try again.</p>
+                <p id="admin-success" class="hidden mt-2 text-xs text-green-400">Joined as host!</p>
+            </div>
+
+            <!-- Guest join panel (shown when not yet joined) -->
+            <div id="guest-panel" class="mb-4 max-w-sm mx-auto bg-gray-900 border border-gray-700 rounded-lg p-4">
+                <p class="text-sm text-gray-300 mb-3 font-semibold">Enter your name to join the celebration</p>
+                <div class="flex gap-2">
+                    <input
+                        id="guest-name"
+                        type="text"
+                        placeholder="Your name"
+                        class="flex-1 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
+                    />
+                    <button
+                        id="guest-join-btn"
+                        class="bg-pink-600 hover:bg-pink-700 text-white text-sm px-4 py-2 rounded transition-colors"
+                    >
+                        Join
+                    </button>
+                </div>
+                <p id="guest-error" class="hidden mt-2 text-xs text-red-400">Please enter your name.</p>
+            </div>
+
+            <div class="flex-1 rounded-xl overflow-hidden shadow-2xl border border-gray-800" style="min-height: 600px;">
+                <iframe
+                    id="daily-iframe"
+                    src=""
+                    allow="camera; microphone; fullscreen; speaker; display-capture"
+                    style="width: 100%; height: 100%; min-height: 600px; border: none;"
+                    title="Baby Naming Ceremony"
+                ></iframe>
+            </div>
+
+            <script define:vars={{ DAILY_ROOM_URL }}>
+                const toggleBtn = document.getElementById('admin-toggle-btn');
+                const adminPanel = document.getElementById('admin-panel');
+                const submitBtn = document.getElementById('admin-submit-btn');
+                const passwordInput = document.getElementById('admin-password');
+                const errorMsg = document.getElementById('admin-error');
+                const successMsg = document.getElementById('admin-success');
+                const iframe = document.getElementById('daily-iframe');
+
+                const guestPanel = document.getElementById('guest-panel');
+                const guestNameInput = document.getElementById('guest-name');
+                const guestJoinBtn = document.getElementById('guest-join-btn');
+                const guestError = document.getElementById('guest-error');
+
+                // Guest join: build URL with user_name query param so Daily pre-fills their name
+                function joinAsGuest(name) {
+                    const url = new URL(DAILY_ROOM_URL);
+                    url.searchParams.set('user_name', name);
+                    iframe.src = url.toString();
+                    guestPanel.classList.add('hidden');
+                }
+
+                guestJoinBtn.addEventListener('click', () => {
+                    const name = guestNameInput.value.trim();
+                    if (!name) {
+                        guestError.classList.remove('hidden');
+                        return;
+                    }
+                    guestError.classList.add('hidden');
+                    joinAsGuest(name);
+                });
+
+                guestNameInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') guestJoinBtn.click();
+                });
+
+                // Admin login functionality
+                toggleBtn.addEventListener('click', () => {
+                    adminPanel.classList.toggle('hidden');
+                    passwordInput.focus();
+                });
+
+                async function attemptAdminLogin() {
+                    const password = passwordInput.value;
+                    if (!password) return;
+
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Checking...';
+                    errorMsg.classList.add('hidden');
+                    successMsg.classList.add('hidden');
+
+                    try {
+                        const res = await fetch('/api/babynaming-token', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ password }),
+                        });
+                        const data = await res.json();
+
+                        if (res.ok && data.token) {
+                            // Use the minted meeting token to enter the private room as owner
+                            iframe.src = `${DAILY_ROOM_URL}?t=${data.token}`;
+                            guestPanel.classList.add('hidden');
+                            successMsg.classList.remove('hidden');
+                            toggleBtn.textContent = '✓ Joined as Host';
+                            toggleBtn.classList.remove('text-gray-600');
+                            toggleBtn.classList.add('text-green-500');
+                            setTimeout(() => adminPanel.classList.add('hidden'), 1500);
+                        } else {
+                            errorMsg.classList.remove('hidden');
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Join as Host';
+                        }
+                    } catch {
+                        errorMsg.textContent = 'Network error. Try again.';
+                        errorMsg.classList.remove('hidden');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Join as Host';
+                    }
+                }
+
+                submitBtn.addEventListener('click', attemptAdminLogin);
+                passwordInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') attemptAdminLogin();
+                });
+            </script>
+
+            <div class="mt-6 grid md:grid-cols-3 gap-4 text-sm text-gray-400">
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                    <div class="text-white font-semibold mb-1">👶 About This Celebration</div>
+                    <p>A live baby naming ceremony with family and friends near and far.</p>
+                </div>
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                    <div class="text-white font-semibold mb-1">🎥 Participating</div>
+                    <p>Enable your camera and mic to share in the simcha live.</p>
+                </div>
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                    <div class="text-white font-semibold mb-1">💬 Chat</div>
+                    <p>Use the built-in chat to send mazal tov wishes or just watch along.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</Layout>
