@@ -1,0 +1,649 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Yom Haatzmaut — Reel Carousel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  @font-face {
+    font-family: 'Brand';
+    src: url('/fonts/brand.ttf') format('truetype');
+    font-display: swap;
+  }
+  html, body { margin: 0; padding: 0; background: #0b1020; font-family: Inter, system-ui, sans-serif; overflow: hidden; height: 100%; }
+  * { box-sizing: border-box; }
+
+  .stage {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(1200px 800px at 50% 40%, #1a2340 0%, #0b1020 60%, #050814 100%);
+  }
+  .carousel-wrap {
+    position: relative;
+  }
+  .carousel-viewport {
+    position: relative; width: 1080px; height: 1920px;
+    overflow: hidden;
+    border-radius: 36px;
+    box-shadow:
+      0 40px 120px rgba(0,0,0,0.5),
+      0 8px 30px rgba(0,0,0,0.3),
+      inset 0 0 0 8px rgba(255,255,255,0.06);
+    background: #000;
+  }
+  .track {
+    position: absolute; inset: 0;
+    display: flex;
+    transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+  .slide { flex: 0 0 1080px; height: 1920px; }
+
+  .nav {
+    position: absolute;
+    top: 50%; transform: translateY(-50%);
+    width: 72px; height: 72px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #F5F1E8;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 28px;
+    transition: all 200ms;
+    z-index: 10;
+  }
+  .nav:hover { background: rgba(255,255,255,0.16); transform: translateY(-50%) scale(1.05); }
+  .nav:disabled { opacity: 0.3; cursor: not-allowed; }
+  .nav.prev { left: -110px; }
+  .nav.next { right: -110px; }
+
+  .dots {
+    position: absolute;
+    bottom: -60px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 10px;
+    z-index: 10;
+  }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    cursor: pointer; transition: all 200ms;
+    border: none; padding: 0;
+  }
+  .dot.active { background: #F5F1E8; width: 32px; border-radius: 6px; }
+  .dot:hover { background: rgba(255,255,255,0.5); }
+
+  .meta {
+    position: fixed; top: 24px; left: 24px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; color: rgba(245,241,232,0.5);
+    letter-spacing: 2px; text-transform: uppercase;
+    z-index: 20;
+  }
+  .counter {
+    position: fixed; top: 24px; right: 24px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; color: rgba(245,241,232,0.7);
+    letter-spacing: 2px;
+    z-index: 20;
+  }
+  .hint {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(245,241,232,0.35);
+    letter-spacing: 2px; text-transform: uppercase;
+    z-index: 20;
+  }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+// ── Palette & constants ──────────────────────────────────────────────────────
+const BLUE   = '#0038B8';
+const DEEP   = '#001A57';
+const OFF    = '#F5F1E8';
+const PAPER  = '#FAF7EF';
+const STONE  = '#D9CFB8';
+const INK    = '#0B1020';
+const ACCENT = '#C9A961';
+
+const W = 1080, H = 1920;
+
+// ── Shared chrome ────────────────────────────────────────────────────────────
+const Slide = ({ bg = OFF, color = INK, children, style = {} }) => (
+  <div style={{
+    position: 'relative', width: W, height: H, background: bg, color,
+    overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif',
+    ...style,
+  }}>{children}</div>
+);
+
+const TopBar = ({ color = BLUE, idx, total }) => (
+  <>
+    <div style={{
+      position: 'absolute', top: 64, left: 64, right: 64,
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      fontFamily: 'JetBrains Mono, monospace', fontSize: 20, letterSpacing: 3,
+      color, textTransform: 'uppercase', fontWeight: 500,
+    }}>
+      <span>YOM HAATZMAUT · 5786</span>
+      <span>{String(idx+1).padStart(2,'0')} / {String(total).padStart(2,'0')}</span>
+    </div>
+    <div style={{
+      position: 'absolute', top: 120, left: 64, right: 64,
+      display: 'flex', gap: 6,
+    }}>
+      {Array.from({length: total}).map((_,i) => (
+        <div key={i} style={{
+          flex: 1, height: 3,
+          background: i <= idx ? color : `${color}33`,
+          borderRadius: 2,
+        }}/>
+      ))}
+    </div>
+  </>
+);
+
+const Footer = ({ color = BLUE, text = 'From a teaching by R. Joseph Dweck' }) => (
+  <div style={{
+    position: 'absolute', bottom: 64, left: 64, right: 64,
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    fontFamily: 'JetBrains Mono, monospace', fontSize: 17, letterSpacing: 2,
+    color, opacity: 0.7, textTransform: 'uppercase',
+  }}>
+    <span>{text}</span>
+    <span>→ swipe</span>
+  </div>
+);
+
+// ── 01 — Cover ───────────────────────────────────────────────────────────────
+const S01 = ({ idx, total }) => (
+  <Slide bg={OFF}>
+    <TopBar idx={idx} total={total} />
+    <div style={{ position: 'absolute', left: 0, top: 380, width: W, height: 40, background: BLUE }}/>
+    <div style={{ position: 'absolute', left: 0, bottom: 380, width: W, height: 40, background: BLUE }}/>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, top: 560,
+      fontFamily: 'Brand, Georgia, serif', fontSize: 180, lineHeight: 0.88,
+      color: INK, letterSpacing: -5,
+    }}>
+      Why<br/>
+      every Jew<br/>
+      should be<br/>
+      <span style={{ color: BLUE }}>fixated</span><br/>
+      on Israel.
+    </div>
+    <div style={{
+      position: 'absolute', left: 80, top: 200,
+      fontFamily: 'JetBrains Mono, monospace', fontSize: 20, letterSpacing: 3, color: BLUE,
+    }}>A TEACHING IN 9 PARTS →</div>
+    <Footer />
+  </Slide>
+);
+
+// ── 02 — The verse ───────────────────────────────────────────────────────────
+const S02 = ({ idx, total }) => (
+  <Slide bg={PAPER}>
+    <TopBar idx={idx} total={total} />
+    <div style={{
+      position: 'absolute', left: 80, top: 260,
+      fontFamily: 'JetBrains Mono, monospace', fontSize: 22, letterSpacing: 3, color: BLUE,
+    }}>DEUTERONOMY 11:12</div>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, top: 360,
+      fontFamily: 'Brand, Georgia, serif', fontSize: 88, lineHeight: 1.05,
+      color: INK, letterSpacing: -1.5,
+    }}>
+      <span style={{ color: BLUE }}>"The eyes of the Lord your God</span><br/>
+      <span style={{ color: BLUE }}>are upon it</span> — from the beginning<br/>
+      of the year to the end of the year."
+    </div>
+
+    <svg width={W} height="400" style={{ position: 'absolute', left: 0, bottom: 280 }}>
+      <circle cx={W/2} cy="200" r="140" fill="none" stroke={BLUE} strokeWidth="2"/>
+      <circle cx={W/2} cy="200" r="80"  fill="none" stroke={BLUE} strokeWidth="2"/>
+      <circle cx={W/2} cy="200" r="32"  fill={BLUE}/>
+      {[0,60,120,180,240,300].map(a => (
+        <line key={a}
+          x1={W/2 + Math.cos(a*Math.PI/180)*155} y1={200 + Math.sin(a*Math.PI/180)*155}
+          x2={W/2 + Math.cos(a*Math.PI/180)*180} y2={200 + Math.sin(a*Math.PI/180)*180}
+          stroke={BLUE} strokeWidth="2"/>
+      ))}
+    </svg>
+    <div style={{
+      position: 'absolute', left: 80, right: 80, bottom: 180,
+      fontFamily: 'Brand, Georgia, serif', fontSize: 42, lineHeight: 1.2, color: INK, fontStyle: 'italic',
+    }}>
+      God is fixated on the land.<br/>We should be like Him.
+    </div>
+    <Footer />
+  </Slide>
+);
+
+// ── 03 — The miracle ─────────────────────────────────────────────────────────
+const S03 = ({ idx, total }) => (
+  <Slide bg={BLUE} color={OFF}>
+    <TopBar color={OFF} idx={idx} total={total} />
+
+    <div style={{
+      position: 'absolute', left: 80, top: 280,
+      fontFamily: 'JetBrains Mono, monospace', fontSize: 22, letterSpacing: 3, color: OFF, opacity: 0.7,
+    }}>IN ALL OF JEWISH HISTORY</div>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, top: 380,
+      fontFamily: 'Brand, Georgia, serif', fontSize: 160, lineHeight: 0.9,
+      color: OFF, letterSpacing: -4,
+    }}>
+      the greatest<br/>
+      miracle<br/>
+      our people<br/>
+      has ever<br/>
+      seen.
+    </div>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, bottom: 240,
+      fontSize: 28, lineHeight: 1.4, color: OFF, opacity: 0.9, fontWeight: 300,
+    }}>
+      Not just one miracle among many — but a contender<br/>
+      for the greatest. And we sometimes get stuck there.
+    </div>
+    <Footer color={OFF} />
+  </Slide>
+);
+
+// ── 04 — Don't get stuck ─────────────────────────────────────────────────────
+const S04 = ({ idx, total }) => (
+  <Slide bg={OFF}>
+    <TopBar idx={idx} total={total} />
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, top: 260,
+      fontFamily: 'Brand, Georgia, serif', fontSize: 130, lineHeight: 0.9,
+      color: INK, letterSpacing: -3,
+    }}>
+      The story<br/>is not<br/>
+      <span style={{ fontStyle: 'italic', color: BLUE }}>over.</span>
+    </div>
+
+    <svg width={W} height="500" style={{ position: 'absolute', left: 0, top: 920 }}>
+      {Array.from({length: 14}).map((_, i) => {
+        const y = 40 + i * 30;
+        const d = [];
+        for (let x = 0; x <= W; x += 16) {
+          const yy = y + Math.sin(x*0.006 + i*0.5) * 18;
+          d.push(`${x === 0 ? 'M' : 'L'}${x},${yy}`);
+        }
+        return <path key={i} d={d.join(' ')} stroke={BLUE} strokeOpacity={0.35 + (i%3)*0.2} strokeWidth="1.5" fill="none"/>;
+      })}
+    </svg>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, bottom: 180,
+      fontSize: 32, lineHeight: 1.35, color: INK, fontWeight: 400, maxWidth: 900,
+    }}>
+      Every day that passes, the story is unfolding.<br/>
+      <span style={{ color: BLUE, fontWeight: 500 }}>If you don't look, you miss it.</span>
+    </div>
+    <Footer />
+  </Slide>
+);
+
+// ── 05 — The repository ──────────────────────────────────────────────────────
+const nations = [
+  'Aleppo','Baghdad','Warsaw','Tehran','Fez','Salonika','Vilna',
+  'Cairo','Bukhara','Amsterdam','Cochin','Kyiv','Marrakesh',
+  'Addis Ababa','Tunis','Lublin','Istanbul','Sana\'a','Riga',
+  'Berlin','Damascus','Odessa','Kraków','Córdoba','London',
+  'Tangier','Tashkent','Rome','Buenos Aires','Melbourne',
+];
+const S05 = ({ idx, total }) => (
+  <Slide bg={PAPER}>
+    <TopBar idx={idx} total={total} />
+    <div style={{
+      position: 'absolute', left: 80, top: 260,
+      fontFamily: 'JetBrains Mono, monospace', fontSize: 22, letterSpacing: 3, color: BLUE,
+    }}>MOSHE, DEUT. 30</div>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, top: 360,
+      fontFamily: 'Brand, Georgia, serif', fontSize: 110, lineHeight: 0.95,
+      color: INK, letterSpacing: -2,
+    }}>
+      "He will gather you<br/>
+      from <span style={{ color: BLUE, fontStyle: 'italic' }}>all</span> the nations."
+    </div>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, top: 900,
+      fontSize: 26, color: INK, opacity: 0.7, lineHeight: 1.5, marginBottom: 24,
+    }}>
+      Which nations? All of them.
+    </div>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, top: 980,
+      display: 'flex', flexWrap: 'wrap', gap: '14px 22px',
+      fontFamily: 'JetBrains Mono, monospace', fontSize: 26, lineHeight: 1.5, color: INK,
+    }}>
+      {nations.map((n, i) => (
+        <span key={n}>
+          {n}{i < nations.length - 1 && <span style={{ color: BLUE, marginLeft: 22, opacity: 0.5 }}>·</span>}
+        </span>
+      ))}
+    </div>
+    <Footer />
+  </Slide>
+);
+
+// ── 06 — Absorb & bring it home ──────────────────────────────────────────────
+const S06 = ({ idx, total }) => (
+  <Slide bg={OFF}>
+    <TopBar idx={idx} total={total} />
+
+    <div style={{
+      position: 'absolute', left: 80, top: 280,
+      fontFamily: 'JetBrains Mono, monospace', fontSize: 22, letterSpacing: 3, color: BLUE,
+    }}>EXILE WAS NOT A PENALTY BOX</div>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, top: 380,
+      fontFamily: 'Brand, Georgia, serif', fontSize: 96, lineHeight: 1.0,
+      color: INK, letterSpacing: -1.6,
+    }}>
+      You were there<br/>
+      to <span style={{ color: BLUE }}>absorb</span> what<br/>
+      was there —<br/>
+      and <span style={{ fontStyle: 'italic' }}>bring it home.</span>
+    </div>
+
+    <svg width={W} height="320" style={{ position: 'absolute', left: 0, bottom: 260 }}>
+      <path d={`M 340 60 L 340 20 L 740 20 L 740 60`} stroke={BLUE} strokeWidth="3" fill="none"/>
+      <path d={`M 280 60 L 800 60 L 760 280 L 320 280 Z`} stroke={BLUE} strokeWidth="3" fill={`${BLUE}15`}/>
+      <text x={W/2} y="190" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="38" fill={BLUE} letterSpacing="4">
+        EVERY STORY
+      </text>
+    </svg>
+    <Footer />
+  </Slide>
+);
+
+// ── 07 — Bring your story to the table ──────────────────────────────────────
+const S07 = ({ idx, total }) => (
+  <Slide bg={DEEP} color={OFF}>
+    <TopBar color={OFF} idx={idx} total={total} />
+
+    <svg width={W} height="720" style={{ position: 'absolute', left: 0, top: 640 }}>
+      <ellipse cx={W/2} cy="360" rx="420" ry="200" fill="none" stroke={OFF} strokeWidth="2"/>
+      <ellipse cx={W/2} cy="360" rx="380" ry="165" fill={OFF} opacity="0.08"/>
+      {Array.from({length: 16}).map((_, i) => {
+        const t = (i / 16) * Math.PI * 2;
+        const x = W/2 + Math.cos(t) * 500;
+        const y = 360 + Math.sin(t) * 300;
+        return <circle key={i} cx={x} cy={y} r="16" fill={OFF}/>;
+      })}
+      <circle cx={W/2} cy="60" r="26" fill={ACCENT} stroke={OFF} strokeWidth="3"/>
+      <text x={W/2} y="115" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="22" fill={ACCENT} letterSpacing="3">
+        YOUR SEAT
+      </text>
+    </svg>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, top: 260,
+      fontFamily: 'Brand, Georgia, serif', fontSize: 130, lineHeight: 0.9,
+      color: OFF, letterSpacing: -3,
+    }}>
+      Bring your<br/>story to the<br/>
+      <span style={{ color: ACCENT, fontStyle: 'italic' }}>table.</span>
+    </div>
+
+    <Footer color={OFF} />
+  </Slide>
+);
+
+// ── 08 — Beautiful struggle ──────────────────────────────────────────────────
+const S08 = ({ idx, total }) => (
+  <Slide bg={OFF}>
+    <TopBar idx={idx} total={total} />
+
+    <svg width={W} height={H} style={{ position: 'absolute', inset: 0 }}>
+      {Array.from({length: 34}).map((_, i) => {
+        const r = 80 + i * 28;
+        const rot = (i * 19) % 360;
+        return (
+          <circle key={i} cx={W/2} cy={H/2 + 120} r={r}
+            fill="none"
+            stroke={i % 4 === 0 ? BLUE : INK}
+            strokeOpacity={i % 4 === 0 ? 0.25 : 0.08}
+            strokeWidth={i % 4 === 0 ? 1.5 : 1}
+            strokeDasharray={`${280 + i*10} ${500}`}
+            transform={`rotate(${rot} ${W/2} ${H/2 + 120})`}
+          />
+        );
+      })}
+    </svg>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, top: 320,
+      fontFamily: 'Brand, Georgia, serif', fontSize: 180, lineHeight: 0.88,
+      color: INK, letterSpacing: -5, fontStyle: 'italic',
+    }}>
+      A<br/>beautiful<br/>
+      <span style={{ color: BLUE }}>struggle.</span>
+    </div>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, bottom: 200,
+      fontSize: 30, lineHeight: 1.4, color: INK, fontWeight: 400, maxWidth: 900,
+    }}>
+      A nation coming into itself —<br/>
+      holding every strength it acquired<br/>
+      in a hundred lands.
+    </div>
+    <Footer />
+  </Slide>
+);
+
+// ── 09 — Don't fight it ──────────────────────────────────────────────────────
+const S09 = ({ idx, total }) => (
+  <Slide bg={BLUE} color={OFF}>
+    <TopBar color={OFF} idx={idx} total={total} />
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, top: 300,
+      fontFamily: 'Brand, Georgia, serif', fontSize: 220, lineHeight: 0.88,
+      color: OFF, letterSpacing: -6,
+    }}>
+      Don't<br/>
+      <span style={{ fontStyle: 'italic', color: ACCENT }}>fight it.</span>
+    </div>
+
+    <svg width={W} height="520" style={{ position: 'absolute', left: 0, top: 1040 }}>
+      {Array.from({length: 16}).map((_, i) => {
+        const y = 40 + i * 28;
+        const d = [];
+        for (let x = 0; x <= W; x += 16) {
+          const yy = y + Math.sin(x*0.006 + i*0.4) * 20 * (1 - x/1400);
+          d.push(`${x === 0 ? 'M' : 'L'}${x},${yy}`);
+        }
+        return <path key={i} d={d.join(' ')} stroke={OFF} strokeOpacity={0.35 + (i%3)*0.2} strokeWidth="1.5" fill="none"/>;
+      })}
+      <circle cx={W-60} cy="260" r="18" fill={ACCENT}/>
+    </svg>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, bottom: 200,
+      fontSize: 32, lineHeight: 1.35, color: OFF, fontWeight: 400, maxWidth: 900,
+    }}>
+      Follow the gaze. Watch the land.<br/>
+      The desire of God always stands.
+    </div>
+    <Footer color={OFF} />
+  </Slide>
+);
+
+// ── 10 — Closing ─────────────────────────────────────────────────────────────
+const S10 = ({ idx, total }) => (
+  <Slide bg={OFF}>
+    <TopBar idx={idx} total={total} />
+
+    <div style={{
+      position: 'absolute', left: 80, top: 280,
+      fontFamily: 'JetBrains Mono, monospace', fontSize: 22, letterSpacing: 3, color: BLUE,
+    }}>78 YEARS HOME</div>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, top: 360,
+      fontFamily: 'Brand, Georgia, serif', fontSize: 98, lineHeight: 1.0,
+      color: INK, letterSpacing: -1.6,
+    }}>
+      We are living<br/>
+      in the most<br/>
+      <span style={{ color: BLUE, fontStyle: 'italic' }}>astonishing</span><br/>
+      time<br/>in Jewish history.
+    </div>
+
+    <div style={{
+      position: 'absolute', right: 60, bottom: 220,
+      fontFamily: 'Brand, Georgia, serif', fontSize: 360, lineHeight: 0.8,
+      color: BLUE, opacity: 0.12, letterSpacing: -10,
+    }}>78</div>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, bottom: 320,
+      fontSize: 30, lineHeight: 1.4, color: INK, fontWeight: 400, maxWidth: 860,
+    }}>
+      Step back. Fixate your gaze.
+    </div>
+
+    <div style={{
+      position: 'absolute', left: 80, right: 80, bottom: 160,
+      padding: '28px 32px',
+      background: BLUE, color: OFF, borderRadius: 4,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    }}>
+      <div>
+        <div style={{
+          fontFamily: 'JetBrains Mono, monospace', fontSize: 18, letterSpacing: 3,
+          opacity: 0.7, marginBottom: 6,
+        }}>MORE TEACHINGS →</div>
+        <div style={{
+          fontFamily: 'Brand, Georgia, serif', fontSize: 42, letterSpacing: -0.5, lineHeight: 1,
+        }}>Download the app</div>
+        <div style={{
+          fontFamily: 'Brand, Georgia, serif', fontSize: 28, fontStyle: 'italic',
+          opacity: 0.9, marginTop: 6,
+        }}>RabbiJosephDweck.com</div>
+      </div>
+      <div style={{
+        width: 84, height: 84, borderRadius: '50%',
+        background: ACCENT, color: DEEP,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 44, fontWeight: 300,
+      }}>→</div>
+    </div>
+
+    <Footer text="yom haatzmaut · 5786 / 2026" />
+  </Slide>
+);
+
+const SLIDES = [S01, S02, S03, S04, S05, S06, S07, S08, S09, S10];
+
+// ── App shell ────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'yom-reel-idx';
+
+function useScaleToFit(baseW, baseH, pad = 80) {
+  const [scale, setScale] = React.useState(1);
+  React.useEffect(() => {
+    const onResize = () => {
+      const availW = window.innerWidth - pad * 2;
+      const availH = window.innerHeight - pad * 2;
+      setScale(Math.min(availW / baseW, availH / baseH, 1));
+    };
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [baseW, baseH, pad]);
+  return scale;
+}
+
+function App() {
+  const total = SLIDES.length;
+  const [idx, setIdx] = React.useState(() => {
+    const saved = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
+    return isNaN(saved) ? 0 : Math.max(0, Math.min(saved, total - 1));
+  });
+  React.useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, String(idx));
+  }, [idx]);
+
+  const scale = useScaleToFit(1080, 1920, 120);
+
+  const go = (n) => setIdx(Math.max(0, Math.min(total - 1, n)));
+  const next = () => go(idx + 1);
+  const prev = () => go(idx - 1);
+
+  React.useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { next(); e.preventDefault(); }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { prev(); e.preventDefault(); }
+      if (e.key === 'Home') go(0);
+      if (e.key === 'End') go(total - 1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [idx, total]);
+
+  const touchRef = React.useRef({});
+  const onTouchStart = (e) => { touchRef.current.x = e.touches[0].clientX; };
+  const onTouchEnd = (e) => {
+    const dx = e.changedTouches[0].clientX - (touchRef.current.x || 0);
+    if (Math.abs(dx) > 50) dx < 0 ? next() : prev();
+  };
+
+  return (
+    <>
+      <div className="meta">Yom Haatzmaut · 5786 · Reel/Story 1080×1920</div>
+      <div className="counter">{String(idx+1).padStart(2,'0')} / {String(total).padStart(2,'0')}</div>
+      <div className="hint">← → arrows · swipe · click dots</div>
+
+      <div className="stage">
+        <div className="carousel-wrap" style={{
+          transform: `scale(${scale})`,
+          transformOrigin: 'center',
+        }}>
+          <div className="carousel-viewport" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+            <div className="track" style={{ transform: `translateX(-${idx * 1080}px)`, width: total * 1080 }}>
+              {SLIDES.map((S, i) => (
+                <div key={i} className="slide">
+                  <S idx={i} total={total}/>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button className="nav prev" onClick={prev} disabled={idx === 0} aria-label="Previous">←</button>
+          <button className="nav next" onClick={next} disabled={idx === total - 1} aria-label="Next">→</button>
+
+          <div className="dots">
+            {SLIDES.map((_, i) => (
+              <button key={i} className={`dot ${i === idx ? 'active' : ''}`} onClick={() => go(i)} aria-label={`Go to slide ${i+1}`}/>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

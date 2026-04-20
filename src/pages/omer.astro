@@ -1,0 +1,403 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Omer Counter"
+  description="Count the Omer according to Rabbi Hershel Schachter's approach — larger number first, following contemporary linguistic convention."
+>
+  <main class="container mx-auto px-4 sm:px-6 py-10 max-w-3xl">
+
+    <header class="text-center mb-8">
+      <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-5xl mb-3">
+        ספירת העומר
+      </h1>
+      <p class="text-lg text-gray-700 dark:text-gray-300">Counting the Omer</p>
+      <p class="mt-2 text-sm italic text-gray-500 dark:text-gray-400">
+        According to Rabbi Hershel Schachter's approach of
+        <span class="font-hebrew not-italic text-gray-700 dark:text-gray-300 mx-1" dir="rtl">מָר כִּי אַתְרֵיהּ</span>
+        — each according to their place
+      </p>
+    </header>
+
+    <!-- Main Counter Card -->
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6 sm:p-8 mb-6">
+
+      <!-- Status note -->
+      <p id="omerInstructionNote" class="text-sm text-gray-500 dark:text-gray-400 text-center mb-5 min-h-[1.5rem]">
+        Loading…
+      </p>
+
+      <!-- Date picker + nav -->
+      <div class="flex items-center justify-center gap-3 mb-6">
+        <button id="prevDay" aria-label="Previous Day"
+          class="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-cyan-100 dark:hover:bg-cyan-900 text-gray-700 dark:text-gray-200 text-lg transition-colors">
+          ←
+        </button>
+        <input type="date" id="datePicker"
+          class="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        <button id="nextDay" aria-label="Next Day"
+          class="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-cyan-100 dark:hover:bg-cyan-900 text-gray-700 dark:text-gray-200 text-lg transition-colors">
+          →
+        </button>
+      </div>
+
+      <!-- Omer output -->
+      <div id="omerOutput" class="text-center">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Hebrew date -->
+      <p id="hebrewDate" class="text-center text-xs text-gray-400 dark:text-gray-500 mt-4"></p>
+
+      <!-- Action buttons -->
+      <div id="actions" class="flex flex-wrap justify-center gap-3 mt-6"></div>
+    </div>
+
+    <!-- Explanation Section (collapsible) -->
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <button id="toggleExplanation"
+        class="w-full flex justify-between items-center px-6 py-4 text-left font-semibold text-gray-800 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+        <span>Rabbi Schachter's Approach — Background &amp; Sources</span>
+        <span id="toggleIcon" class="text-cyan-500 text-xl transition-transform duration-200">﹢</span>
+      </button>
+      <div id="explanationContent" class="hidden px-6 pb-6 text-sm text-gray-700 dark:text-gray-300 space-y-4 leading-relaxed">
+
+        <p>Rabbi Hershel Schachter, Rosh Yeshiva at RIETS, addresses the proper formulation when counting the Omer, drawing on a Talmudic passage in Tractate Yoma that shows how regional linguistic patterns should influence ritual declarations.</p>
+
+        <h3 class="font-semibold text-gray-900 dark:text-white text-base mt-4">The Talmudic Background</h3>
+        <p>Tractate Yoma 55a describes the Kohen Gadol's counting of blood sprinklings on Yom Kippur:</p>
+
+        <div class="font-hebrew bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 text-base leading-loose" dir="rtl">
+          תָּנוּ רַבָּנַן: אַחַת, אַחַת וְאַחַת, אַחַת וּשְׁתַּיִם, אַחַת וְשָׁלֹשׁ... דִּבְרֵי רַבִּי מֵאִיר. רַבִּי יְהוּדָה אוֹמֵר: אַחַת, שְׁתַּיִם וְאַחַת, שָׁלֹשׁ וְאַחַת...
+        </div>
+
+        <p>The Gemara then reconciles this dispute:</p>
+
+        <div class="font-hebrew bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 text-base leading-loose" dir="rtl">
+          וְלָא פְּלִיגִי: מָר כִּי אַתְרֵיהּ וּמָר כִּי אַתְרֵיהּ.
+        </div>
+
+        <p>"They do not disagree — one speaks according to his place, one according to his place." The formulation follows regional counting conventions.</p>
+
+        <h3 class="font-semibold text-gray-900 dark:text-white text-base mt-4">The Magen Avraham's Application</h3>
+        <p>The Magen Avraham (Orach Chaim 489:5) applies this principle to Omer counting:</p>
+
+        <div class="font-hebrew bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 text-base leading-loose" dir="rtl">
+          יאמר לעולם מנין המועט קודם... מיהו ביומא דף נ"ה איתא דהכל לפי מנהג המדינה בחשבונם
+        </div>
+
+        <p>He notes that in his region, even in secular speech, the smaller number was said first — validating the "one and twenty" formulation for his time and place.</p>
+
+        <h3 class="font-semibold text-gray-900 dark:text-white text-base mt-4">Rabbi Schachter's Modern Application</h3>
+        <p>Rabbi Schachter observes that the Magen Avraham's reasoning was based on Yiddish usage, where the smaller number came first (<em>ein un tsvantsik</em>). Today, both modern Hebrew and English place the larger number first ("twenty-one"). Applying <span class="font-hebrew" dir="rtl">מָר כִּי אַתְרֵיהּ</span> today means saying "twenty-one days" rather than "one and twenty days."</p>
+
+        <div class="grid sm:grid-cols-2 gap-4 mt-2">
+          <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">
+            <h4 class="font-semibold mb-2 text-gray-900 dark:text-white">Traditional (smaller first)</h4>
+            <div class="font-hebrew text-base leading-loose" dir="rtl">היום אֶחָד וְעֶשְׂרִים יוֹם, שֶׁהֵם שְׁלשָׁה שָׁבוּעוֹת בָּעֹֽמֶר</div>
+            <p class="text-xs mt-2 text-gray-500 dark:text-gray-400">Follows Yiddish: <em>ein un tsvantsik</em></p>
+          </div>
+          <div class="bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-lg p-4">
+            <h4 class="font-semibold mb-2 text-cyan-700 dark:text-cyan-300">Rav Schachter (larger first)</h4>
+            <div class="font-hebrew text-base leading-loose" dir="rtl">היום עֶשְׂרִים וְאֶחָד יוֹם, שֶׁהֵם שְׁלֹשָׁה שָׁבוּעוֹת בָּעֹמֶר</div>
+            <p class="text-xs mt-2 text-gray-500 dark:text-gray-400">Follows modern Hebrew &amp; English: twenty-one</p>
+          </div>
+        </div>
+
+        <p class="text-xs text-gray-400 dark:text-gray-500 pt-2 border-t border-slate-200 dark:border-slate-600">
+          Based on Rav Hershel Schachter's teachings. Sources: Tractate Yoma 55a; Magen Avraham, Orach Chaim 489:5.
+        </p>
+      </div>
+    </div>
+
+  </main>
+</Layout>
+
+<style>
+  .font-hebrew {
+    font-family: 'Times New Roman', 'David CLM', serif;
+  }
+</style>
+
+<script>
+  const startDates: Record<number, string> = {
+    2024: '2024-04-23',
+    2025: '2025-04-13', 2026: '2026-04-02', 2027: '2027-04-22', 2028: '2028-04-11',
+    2029: '2029-03-31', 2030: '2030-04-18', 2031: '2031-04-08', 2032: '2032-03-27',
+    2033: '2033-04-14', 2034: '2034-04-04', 2035: '2035-04-24', 2036: '2036-04-12',
+    2037: '2037-03-31', 2038: '2038-04-20', 2039: '2039-04-09', 2040: '2040-03-29',
+    2041: '2041-04-16', 2042: '2042-04-05', 2043: '2043-04-25', 2044: '2044-04-12',
+    2045: '2045-04-02', 2046: '2046-04-21', 2047: '2047-04-11', 2048: '2048-03-29',
+    2049: '2049-04-17', 2050: '2050-04-07', 2051: '2051-03-28', 2052: '2052-04-14',
+    2053: '2053-04-03', 2054: '2054-04-23', 2055: '2055-04-13', 2056: '2056-04-01',
+    2057: '2057-04-19', 2058: '2058-04-09', 2059: '2059-03-29', 2060: '2060-04-15',
+    2061: '2061-04-05', 2062: '2062-04-25', 2063: '2063-04-14', 2064: '2064-04-01',
+    2065: '2065-04-21', 2066: '2066-04-10', 2067: '2067-03-31', 2068: '2068-04-17',
+    2069: '2069-04-06', 2070: '2070-03-27', 2071: '2071-04-14', 2072: '2072-04-03',
+    2073: '2073-04-22', 2074: '2074-04-12', 2075: '2075-03-31', 2076: '2076-04-18',
+    2077: '2077-04-08',
+  };
+
+  // Rav Schachter format: larger number first (modern convention)
+  const omerCounts: string[] = [
+    "הַיּוֹם יוֹם אֶחָד בָּעֹֽמֶר",
+    "הַיּוֹם שְׁנֵי יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם שְׁלשָׁה יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם אַרְבָּעָה יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם חֲמִשָּׁה יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם שִׁשָּׁה יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם שִׁבְעָה יָמִים שֶׁהֵם שָׁבוּעַ אֶחָד בָּעֹֽמֶר",
+    "הַיּוֹם שְׁמוֹנָה יָמִים שֶׁהֵם שָׁבוּעַ אֶחָד וְיוֹם אֶחָד בָּעֹֽמֶר",
+    "הַיּוֹם תִּשְׁעָה יָמִים שֶׁהֵם שָׁבוּעַ אֶחָד וּשְׁנֵי יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם עֲשָׂרָה יָמִים שֶׁהֵם שָׁבוּעַ אֶחָד וּשְׁלוֹשָׁה יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם אַחַד עָשָׂר יוֹם שֶׁהֵם שָׁבוּעַ אֶחָד וְאַרְבָּעָה יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם שְׁנֵים עָשָׂר יוֹם שֶׁהֵם שָׁבוּעַ אֶחָד וַחֲמִשָּׁה יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם שְׁלשָׁה עָשָׂר יוֹם שֶׁהֵם שָׁבוּעַ אֶחָד וְשִׁשָּׁה יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם אַרְבָּעָה עָשָׂר יוֹם שֶׁהֵם שְׁנֵי שָׁבוּעוֹת בָּעֹמֶר",
+    "הַיּוֹם חֲמִשָּׁה עָשָׂר יוֹם שֶׁהֵם שְׁנֵי שָׁבוּעוֹת וְיוֹם אֶחָד בָּעֹֽמֶר",
+    "הַיּוֹם שִׁשָּׁה עָשָׂר יוֹם שֶׁהֵם שְׁנֵי שָׁבוּעוֹת וּשְׁנֵי יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם שִׁבְעָה עָשָׂר יוֹם שֶׁהֵם שְׁנֵי שָׁבוּעוֹת וּשְׁלוֹשָׁה יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם שְׁמוֹנָה עָשָׂר יוֹם שֶׁהֵם שְׁנֵי שָׁבוּעוֹת וְאַרְבָּעָה יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם תִּשְׁעָה עָשָׂר יוֹם שֶׁהֵם שְׁנֵי שָׁבוּעוֹת וַחֲמִשָּׁה יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם עֶשְׂרִים יוֹם שֶׁהֵם שְׁנֵי שָׁבוּעוֹת וְשִׁשָּׁה יָמִים בָּעֹֽמֶר",
+    "הַיּוֹם עֶשְׂרִים וְאֶחָד יוֹם שֶׁהֵם שְׁלֹשָׁה שָׁבוּעוֹת בָּעֹמֶר",
+    "הַיּוֹם עֶשְׂרִים וּשְׁנַיִם יוֹם שֶׁהֵם שְׁלֹשָׁה שָׁבוּעוֹת וְיוֹם אֶחָד בָּעֹמֶר",
+    "הַיּוֹם עֶשְׂרִים וּשְׁלוֹשָׁה יוֹם שֶׁהֵם שְׁלֹשָׁה שָׁבוּעוֹת וּשְׁנֵי יָמִים בָּעֹמֶר",
+    "הַיּוֹם עֶשְׂרִים וְאַרְבָּעָה יוֹם שֶׁהֵם שְׁלֹשָׁה שָׁבוּעוֹת וּשְׁלוֹשָׁה יָמִים בָּעֹמֶר",
+    "הַיּוֹם עֶשְׂרִים וַחֲמִשָּׁה יוֹם שֶׁהֵם שְׁלֹשָׁה שָׁבוּעוֹת וְאַרְבָּעָה יָמִים בָּעֹמֶר",
+    "הַיּוֹם עֶשְׂרִים וְשִׁשָּׁה יוֹם שֶׁהֵם שְׁלֹשָׁה שָׁבוּעוֹת וַחֲמִשָּׁה יָמִים בָּעֹמֶר",
+    "הַיּוֹם עֶשְׂרִים וְשִׁבְעָה יוֹם שֶׁהֵם שְׁלֹשָׁה שָׁבוּעוֹת וְשִׁשָּׁה יָמִים בָּעֹמֶר",
+    "הַיּוֹם עֶשְׂרִים וּשְׁמוֹנָה יוֹם שֶׁהֵם אַרְבָּעָה שָׁבוּעוֹת בָּעֹמֶר",
+    "הַיּוֹם עֶשְׂרִים וְתִשְׁעָה יוֹם שֶׁהֵם אַרְבָּעָה שָׁבוּעוֹת וְיוֹם אֶחָד בָּעֹמֶר",
+    "הַיּוֹם שְׁלוֹשִׁים יוֹם שֶׁהֵם אַרְבָּעָה שָׁבוּעוֹת וּשְׁנֵי יָמִים בָּעֹמֶר",
+    "הַיּוֹם שְׁלוֹשִׁים וְאֶחָד יוֹם שֶׁהֵם אַרְבָּעָה שָׁבוּעוֹת וּשְׁלוֹשָׁה יָמִים בָּעֹמֶר",
+    "הַיּוֹם שְׁלוֹשִׁים וּשְׁנַיִם יוֹם שֶׁהֵם אַרְבָּעָה שָׁבוּעוֹת וְאַרְבָּעָה יָמִים בָּעֹמֶר",
+    "הַיּוֹם שְׁלוֹשִׁים וּשְׁלוֹשָׁה יוֹם שֶׁהֵם אַרְבָּעָה שָׁבוּעוֹת וַחֲמִשָּׁה יָמִים בָּעֹמֶר",
+    "הַיּוֹם שְׁלוֹשִׁים וְאַרְבָּעָה יוֹם שֶׁהֵם אַרְבָּעָה שָׁבוּעוֹת וְשִׁשָּׁה יָמִים בָּעֹמֶר",
+    "הַיּוֹם שְׁלוֹשִׁים וַחֲמִשָּׁה יוֹם שֶׁהֵם חֲמִשָּׁה שָׁבוּעוֹת בָּעֹמֶר",
+    "הַיּוֹם שְׁלוֹשִׁים וְשִׁשָּׁה יוֹם שֶׁהֵם חֲמִשָּׁה שָׁבוּעוֹת וְיוֹם אֶחָד בָּעֹמֶר",
+    "הַיּוֹם שְׁלוֹשִׁים וְשִׁבְעָה יוֹם שֶׁהֵם חֲמִשָּׁה שָׁבוּעוֹת וּשְׁנֵי יָמִים בָּעֹמֶר",
+    "הַיּוֹם שְׁלוֹשִׁים וּשְׁמוֹנָה יוֹם שֶׁהֵם חֲמִשָּׁה שָׁבוּעוֹת וּשְׁלוֹשָׁה יָמִים בָּעֹמֶר",
+    "הַיּוֹם שְׁלוֹשִׁים וְתִשְׁעָה יוֹם שֶׁהֵם חֲמִשָּׁה שָׁבוּעוֹת וְאַרְבָּעָה יָמִים בָּעֹמֶר",
+    "הַיּוֹם אַרְבָּעִים יוֹם שֶׁהֵם חֲמִשָּׁה שָׁבוּעוֹת וַחֲמִשָּׁה יָמִים בָּעֹמֶר",
+    "הַיּוֹם אַרְבָּעִים וְאֶחָד יוֹם שֶׁהֵם חֲמִשָּׁה שָׁבוּעוֹת וְשִׁשָּׁה יָמִים בָּעֹמֶר",
+    "הַיּוֹם אַרְבָּעִים וּשְׁנַיִם יוֹם שֶׁהֵם שִׁשָּׁה שָׁבוּעוֹת בָּעֹמֶר",
+    "הַיּוֹם אַרְבָּעִים וּשְׁלוֹשָׁה יוֹם שֶׁהֵם שִׁשָּׁה שָׁבוּעוֹת וְיוֹם אֶחָד בָּעֹמֶר",
+    "הַיּוֹם אַרְבָּעִים וְאַרְבָּעָה יוֹם שֶׁהֵם שִׁשָּׁה שָׁבוּעוֹת וּשְׁנֵי יָמִים בָּעֹמֶר",
+    "הַיּוֹם אַרְבָּעִים וַחֲמִשָּׁה יוֹם שֶׁהֵם שִׁשָּׁה שָׁבוּעוֹת וּשְׁלוֹשָׁה יָמִים בָּעֹמֶר",
+    "הַיּוֹם אַרְבָּעִים וְשִׁשָּׁה יוֹם שֶׁהֵם שִׁשָּׁה שָׁבוּעוֹת וְאַרְבָּעָה יָמִים בָּעֹמֶר",
+    "הַיּוֹם אַרְבָּעִים וְשִׁבְעָה יוֹם שֶׁהֵם שִׁשָּׁה שָׁבוּעוֹת וַחֲמִשָּׁה יָמִים בָּעֹמֶר",
+    "הַיּוֹם אַרְבָּעִים וּשְׁמוֹנָה יוֹם שֶׁהֵם שִׁשָּׁה שָׁבוּעוֹת וְשִׁשָּׁה יָמִים בָּעֹמֶר",
+    "הַיּוֹם אַרְבָּעִים וְתִשְׁעָה יוֹם שֶׁהֵם שִׁבְעָה שָׁבוּעוֹת בָּעֹֽמֶר",
+  ];
+
+  declare global {
+    interface Window { __userLat: number | null; __userLng: number | null; }
+  }
+  window.__userLat = null;
+  window.__userLng = null;
+
+  async function fetchSunset(lat: number, lng: number, date: Date): Promise<Date | null> {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    try {
+      const res = await fetch(`https://www.hebcal.com/zmanim?cfg=json&latitude=${lat}&longitude=${lng}&date=${y}-${m}-${d}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.times?.sunset ? new Date(data.times.sunset) : null;
+    } catch { return null; }
+  }
+
+  async function fetchHebrewDate(date: Date): Promise<string> {
+    try {
+      const res = await fetch(`https://www.hebcal.com/converter?cfg=json&gy=${date.getFullYear()}&gm=${date.getMonth()+1}&gd=${date.getDate()}&g2h=1`);
+      if (!res.ok) return '';
+      const data = await res.json();
+      return `${data.hebrew} · ${data.hd} ${data.hm} ${data.hy}`;
+    } catch { return ''; }
+  }
+
+  async function updateOutput(pickerDateInput: Date) {
+    const now = new Date();
+    const pickerDate = new Date(pickerDateInput.getFullYear(), pickerDateInput.getMonth(), pickerDateInput.getDate());
+
+    const noteEl = document.getElementById('omerInstructionNote')!;
+    const outputEl = document.getElementById('omerOutput')!;
+    const actionsEl = document.getElementById('actions')!;
+    const hebrewDateEl = document.getElementById('hebrewDate')!;
+
+    noteEl.textContent = 'Calculating…';
+    outputEl.innerHTML = '';
+    actionsEl.innerHTML = '';
+    hebrewDateEl.textContent = '';
+
+    const FALLBACK_HOUR = 20;
+    let isAfterSunset = false;
+    let usedFallback = false;
+
+    const lat = window.__userLat;
+    const lng = window.__userLng;
+
+    if (lat !== null && lng !== null) {
+      const sunset = await fetchSunset(lat, lng, pickerDate);
+      if (sunset) {
+        isAfterSunset = now >= sunset;
+      } else {
+        usedFallback = true;
+        const fallback = new Date(pickerDate); fallback.setHours(FALLBACK_HOUR, 0, 0, 0);
+        isAfterSunset = now >= fallback;
+      }
+    } else {
+      usedFallback = true;
+      const fallback = new Date(pickerDate); fallback.setHours(FALLBACK_HOUR, 0, 0, 0);
+      isAfterSunset = now >= fallback;
+    }
+
+    const effectiveDate = new Date(pickerDate);
+    if (!isAfterSunset) effectiveDate.setDate(effectiveDate.getDate() - 1);
+
+    const year = effectiveDate.getFullYear();
+    const startStr = startDates[year];
+
+    if (!startStr) {
+      outputEl.innerHTML = `<p class="text-gray-500 dark:text-gray-400">Omer dates not available for ${year}.</p>`;
+      return;
+    }
+
+    const [sy, sm, sd] = startStr.split('-').map(Number);
+    const startDate = new Date(sy, sm - 1, sd);
+    const effNorm = new Date(effectiveDate.getFullYear(), effectiveDate.getMonth(), effectiveDate.getDate());
+    const dayOfOmer = Math.floor((effNorm.getTime() - startDate.getTime()) / 86400000) + 1;
+
+    if (dayOfOmer < 1 || dayOfOmer > 49) {
+      outputEl.innerHTML = `<p class="text-gray-500 dark:text-gray-400 text-center py-4">Not within the Omer period.</p>`;
+      const fallbackNote = usedFallback ? ` (using ${FALLBACK_HOUR}:00 fallback)` : '';
+      noteEl.textContent = `${pickerDate.toLocaleDateString()} is not during the Omer.${fallbackNote}`;
+      return;
+    }
+
+    // Status note
+    const fallbackNote = usedFallback ? ` (sunset estimated at ${FALLBACK_HOUR}:00)` : '';
+    if (isAfterSunset) {
+      noteEl.textContent = `After sunset on ${pickerDate.toLocaleDateString()} — tonight's count:${fallbackNote}`;
+    } else {
+      noteEl.textContent = `Before sunset on ${pickerDate.toLocaleDateString()} — last night's count:${fallbackNote}`;
+    }
+
+    // Progress bar
+    const pct = Math.round((dayOfOmer / 49) * 100);
+
+    const countText = omerCounts[dayOfOmer - 1];
+
+    outputEl.innerHTML = `
+      <div class="mb-5">
+        <div class="text-6xl font-bold text-cyan-600 dark:text-cyan-400 mb-1">${dayOfOmer}</div>
+        <div class="text-sm text-gray-400 dark:text-gray-500 uppercase tracking-widest">of 49 days</div>
+      </div>
+      <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mb-6 overflow-hidden">
+        <div class="bg-cyan-500 h-2 rounded-full transition-all duration-500" style="width:${pct}%"></div>
+      </div>
+      <div class="font-hebrew text-2xl sm:text-3xl leading-relaxed text-gray-900 dark:text-white mb-2 px-2" dir="rtl" lang="he">
+        ${countText}
+      </div>
+      <div class="font-hebrew text-sm text-gray-500 dark:text-gray-400 italic mt-1" dir="rtl" lang="he">
+        הָרַחֲמָן הוּא יַחֲזִיר לָנוּ עֲבוֹדַת בֵּית הַמִּקְדָּשׁ לִמְקוֹמָהּ בִּמְהֵרָה בְיָמֵינוּ אָמֵן
+      </div>
+    `;
+
+    const hebrewStr = await fetchHebrewDate(effectiveDate);
+    if (hebrewStr) hebrewDateEl.textContent = hebrewStr;
+
+    // Share text
+    const brachaText = `בָּרוּךְ אַתָּה יְהֹוָה אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם אֲשֶׁר קִדְּשָׁנוּ בְּמִצְוֹתָיו וְצִוָּנוּ עַל סְפִירַת הָעֹמֶר`;
+    let shareText: string;
+    if (isAfterSunset) {
+      shareText = `Day ${dayOfOmer} of the Omer — time to count!\n\n${brachaText}\n\n${countText}\n\nהָרַחֲמָן הוּא יַחֲזִיר לָנוּ עֲבוֹדַת בֵּית הַמִּקְדָּשׁ לִמְקוֹמָהּ בִּמְהֵרָה בְיָמֵינוּ אָמֵן`;
+    } else {
+      const displayDate = effectiveDate.toLocaleDateString();
+      shareText = `Omer Day ${dayOfOmer} (from the evening of ${displayDate}):\n\n${countText}\n\nIf you haven't yet counted, you can still count without a bracha until sunset today.`;
+    }
+
+    const encoded = encodeURIComponent(shareText);
+    const isoDate = effectiveDate.toISOString().slice(0, 10).replace(/-/g, '');
+    const calLink = `https://calendar.google.com/calendar/r/eventedit?text=Omer+Day+${dayOfOmer}&dates=${isoDate}T190000Z/${isoDate}T193000Z`;
+
+    actionsEl.innerHTML = `
+      <a href="https://wa.me/?text=${encoded}" target="_blank" rel="noopener noreferrer"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Share on WhatsApp
+      </a>
+      <a href="${calLink}" target="_blank" rel="noopener noreferrer"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Add to Calendar
+      </a>
+      <button id="copyBtn"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+        Copy Text
+      </button>
+    `;
+
+    document.getElementById('copyBtn')?.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(shareText);
+      const btn = document.getElementById('copyBtn');
+      if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg> Copy Text`; }, 2000); }
+    });
+  }
+
+  function getLocalDate(pickerVal: Date): Date {
+    return new Date(pickerVal.getUTCFullYear(), pickerVal.getUTCMonth(), pickerVal.getUTCDate());
+  }
+
+  function initializePage() {
+    const today = new Date();
+    const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const picker = document.getElementById('datePicker') as HTMLInputElement;
+    picker.valueAsDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        window.__userLat = pos.coords.latitude;
+        window.__userLng = pos.coords.longitude;
+        updateOutput(todayLocal);
+      },
+      () => { updateOutput(todayLocal); },
+      { timeout: 8000 }
+    );
+  }
+
+  document.addEventListener('astro:page-load', () => {
+    initializePage();
+
+    const picker = document.getElementById('datePicker') as HTMLInputElement;
+    picker.addEventListener('change', e => {
+      const val = (e.target as HTMLInputElement).valueAsDate;
+      if (val) updateOutput(getLocalDate(val));
+    });
+
+    document.getElementById('prevDay')?.addEventListener('click', () => {
+      const current = getLocalDate(picker.valueAsDate!);
+      current.setDate(current.getDate() - 1);
+      picker.valueAsDate = new Date(Date.UTC(current.getFullYear(), current.getMonth(), current.getDate()));
+      updateOutput(current);
+    });
+
+    document.getElementById('nextDay')?.addEventListener('click', () => {
+      const current = getLocalDate(picker.valueAsDate!);
+      current.setDate(current.getDate() + 1);
+      picker.valueAsDate = new Date(Date.UTC(current.getFullYear(), current.getMonth(), current.getDate()));
+      updateOutput(current);
+    });
+
+    document.getElementById('toggleExplanation')?.addEventListener('click', () => {
+      const content = document.getElementById('explanationContent')!;
+      const icon = document.getElementById('toggleIcon')!;
+      const hidden = content.classList.toggle('hidden');
+      icon.textContent = hidden ? '﹢' : '﹣';
+    });
+  });
+</script>
