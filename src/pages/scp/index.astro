@@ -1,0 +1,340 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import scpData from '../../data/scp.json';
+import shiur1Transcript from '../../data/scp-shiur-1-transcript.json';
+
+const { series, shiurim } = scpData;
+
+// Map shiur IDs to their pre-baked transcript JSON
+const transcriptMap: Record<string, typeof shiur1Transcript> = {
+  'shiur-1': shiur1Transcript,
+};
+
+// Running totals
+const totalJokes = shiurim.reduce((sum, s) => sum + (s.jokes?.length ?? 0), 0);
+const allFoods = shiurim.flatMap(s =>
+  (s.disgracefulFoods ?? []).map(f => ({ ...f, shiurNumber: s.number }))
+);
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+---
+
+<Layout
+  title="SCP — Semicha Chaburah Program"
+  description="Shiurim, transcripts, and notes from the Semicha Chaburah Program with Rabbi Leibtag, covering Yoreh Deah."
+>
+  <main class="container mx-auto px-4 sm:px-6 py-10 max-w-4xl">
+
+    <!-- Header -->
+    <header class="mb-10">
+      <div class="flex flex-wrap items-center gap-6 mb-6">
+        <img
+          src={series.imageUrl}
+          alt="SCP Podcast Cover"
+          class="w-32 h-32 rounded-xl shadow-lg object-cover"
+        />
+        <div class="flex-1">
+          <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-1">
+            {series.title}
+          </h1>
+          <p class="text-lg text-gray-600 dark:text-gray-400">{series.subtitle}</p>
+        </div>
+        <a
+          href="/scp/feed.xml"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors"
+          title="Subscribe in your podcast app"
+        >
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20C4.98 20 4 19.01 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
+          </svg>
+          Subscribe (RSS)
+        </a>
+      </div>
+      <p class="text-gray-700 dark:text-gray-300 leading-relaxed max-w-2xl">
+        {series.description}
+      </p>
+    </header>
+
+    <!-- Running Tallies -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+      <!-- Jokes tally -->
+      <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-3xl" aria-hidden="true">😄</span>
+          <div>
+            <div class="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{totalJokes}</div>
+            <div class="text-sm font-semibold text-yellow-700 dark:text-yellow-400 uppercase tracking-wide">
+              Jokes Cracked
+            </div>
+          </div>
+        </div>
+        <ul class="space-y-2 mt-2" id="jokes-list">
+          {shiurim.flatMap(s =>
+            (s.jokes ?? []).map(j => (
+              <li class="text-sm text-gray-700 dark:text-gray-300 border-l-2 border-yellow-400 pl-3">
+                <span class="font-mono text-xs text-gray-500 dark:text-gray-500 mr-1">#{s.number} @{j.timestamp}</span>
+                {j.text}
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
+
+      <!-- Disgraceful foods tally -->
+      <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-3xl" aria-hidden="true">🍽️</span>
+          <div>
+            <div class="text-2xl font-bold text-red-700 dark:text-red-400">{allFoods.length}</div>
+            <div class="text-sm font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">
+              Disgraced Foods
+            </div>
+          </div>
+        </div>
+        <ul class="space-y-2 mt-2">
+          {allFoods.map(f => (
+            <li class="text-sm text-gray-700 dark:text-gray-300 border-l-2 border-red-400 pl-3">
+              <span class="font-semibold text-gray-900 dark:text-white">{f.food}</span>
+              <span class="font-mono text-xs text-gray-500 dark:text-gray-500 ml-1">(#{f.shiurNumber})</span>
+              <span class="text-gray-500 dark:text-gray-400"> — {f.context}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    <!-- Shiurim -->
+    {shiurim.map(shiur => {
+      const transcript = transcriptMap[shiur.id] ?? [];
+      return (
+        <article class="mb-12 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <!-- Shiur header -->
+          <div class="bg-slate-50 dark:bg-slate-900/50 px-6 py-5 border-b border-slate-200 dark:border-slate-700">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="inline-block bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 text-xs font-bold px-2 py-0.5 rounded">
+                    Shiur {shiur.number}
+                  </span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{formatDate(shiur.date)}</span>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">{shiur.title}</h2>
+                <p class="text-sm font-hebrew text-gray-500 dark:text-gray-400 mt-0.5" dir="rtl">{shiur.hebrewTitle}</p>
+              </div>
+              <div class="text-sm text-gray-500 dark:text-gray-400 font-mono">{shiur.duration}</div>
+            </div>
+            <p class="mt-3 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{shiur.description}</p>
+            <!-- Topic chips -->
+            {shiur.topics && (
+              <div class="flex flex-wrap gap-1 mt-3">
+                {shiur.topics.map(t => (
+                  <span class="text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full">{t}</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <!-- Audio player -->
+          <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            {shiur.audioFile ? (
+              <div>
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Audio</p>
+                <audio
+                  id={`audio-${shiur.id}`}
+                  controls
+                  class="w-full"
+                  preload="metadata"
+                  src={shiur.audioFile}
+                >
+                  <p class="text-sm text-gray-500">Your browser does not support the audio element.
+                    <a href={shiur.audioFile} class="text-cyan-600 underline">Download MP3</a>
+                  </p>
+                </audio>
+              </div>
+            ) : (
+              <p class="text-sm text-gray-500 dark:text-gray-400 italic">
+                Audio coming soon
+              </p>
+            )}
+          </div>
+
+          <!-- Notes + per-shiur jokes/foods -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-700 border-b border-slate-200 dark:border-slate-700">
+            <!-- Notes -->
+            <div class="px-5 py-4">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Notes</p>
+              {shiur.notesFile ? (
+                <a
+                  href={shiur.notesFile}
+                  target="_blank"
+                  rel="noopener"
+                  class="inline-flex items-center gap-1.5 text-sm text-cyan-600 dark:text-cyan-400 hover:underline font-medium"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                  Download Notes (PDF)
+                </a>
+              ) : (
+                <p class="text-sm text-gray-400 italic">Notes coming soon</p>
+              )}
+            </div>
+
+            <!-- Jokes this shiur -->
+            <div class="px-5 py-4">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                😄 Jokes ({shiur.jokes?.length ?? 0})
+              </p>
+              {(shiur.jokes?.length ?? 0) > 0 ? (
+                <ul class="space-y-1.5">
+                  {shiur.jokes!.map(j => (
+                    <li class="text-xs text-gray-600 dark:text-gray-400">
+                      <button
+                        class="font-mono text-cyan-600 dark:text-cyan-400 hover:underline mr-1 timestamp-btn"
+                        data-audio={`audio-${shiur.id}`}
+                        data-seconds={j.timestampSeconds}
+                        type="button"
+                      >{j.timestamp}</button>
+                      {j.text}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p class="text-xs text-gray-400 italic">None yet</p>
+              )}
+            </div>
+
+            <!-- Disgraceful foods this shiur -->
+            <div class="px-5 py-4">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                🍽️ Disgraced Foods ({shiur.disgracefulFoods?.length ?? 0})
+              </p>
+              {(shiur.disgracefulFoods?.length ?? 0) > 0 ? (
+                <ul class="space-y-1.5">
+                  {shiur.disgracefulFoods!.map(f => (
+                    <li class="text-xs text-gray-600 dark:text-gray-400">
+                      <button
+                        class="font-mono text-cyan-600 dark:text-cyan-400 hover:underline mr-1 timestamp-btn"
+                        data-audio={`audio-${shiur.id}`}
+                        data-seconds={f.timestampSeconds}
+                        type="button"
+                      >{f.timestamp}</button>
+                      <strong class="text-gray-800 dark:text-gray-200">{f.food}</strong> — {f.context}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p class="text-xs text-gray-400 italic">None yet</p>
+              )}
+            </div>
+          </div>
+
+          <!-- Transcript -->
+          <div class="px-6 py-4">
+            <button
+              id={`toggle-${shiur.id}`}
+              class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors mb-3"
+              aria-expanded="false"
+              aria-controls={`transcript-${shiur.id}`}
+              type="button"
+            >
+              <svg id={`chevron-${shiur.id}`} class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+              Transcript ({transcript.length} paragraphs)
+              <a
+                href={shiur.transcriptFile}
+                download
+                class="ml-2 text-xs text-cyan-600 dark:text-cyan-400 underline font-normal"
+                onclick="event.stopPropagation()"
+              >↓ .srt</a>
+            </button>
+
+            <div
+              id={`transcript-${shiur.id}`}
+              class="hidden"
+            >
+              <!-- Search -->
+              <div class="mb-3">
+                <input
+                  type="search"
+                  id={`search-${shiur.id}`}
+                  placeholder="Search transcript…"
+                  class="w-full sm:w-64 px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  data-target={`transcript-body-${shiur.id}`}
+                />
+              </div>
+
+              <div
+                id={`transcript-body-${shiur.id}`}
+                class="h-96 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 space-y-3 text-sm leading-relaxed"
+              >
+                {transcript.map(para => (
+                  <div
+                    class="transcript-para group flex gap-3"
+                    data-text={para.text.toLowerCase()}
+                  >
+                    <button
+                      class="timestamp-btn shrink-0 font-mono text-xs text-cyan-600 dark:text-cyan-400 hover:underline pt-0.5"
+                      data-audio={`audio-${shiur.id}`}
+                      data-seconds={para.startSeconds}
+                      type="button"
+                    >{para.start}</button>
+                    <p class="text-gray-700 dark:text-gray-300">{para.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </article>
+      );
+    })}
+
+  </main>
+</Layout>
+
+<script>
+  // Timestamp click → seek audio
+  document.querySelectorAll<HTMLButtonElement>('.timestamp-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const audioId = btn.dataset.audio;
+      const seconds = parseFloat(btn.dataset.seconds ?? '0');
+      if (!audioId) return;
+      const audio = document.getElementById(audioId) as HTMLAudioElement | null;
+      if (!audio) return;
+      audio.currentTime = seconds;
+      audio.play();
+      audio.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  });
+
+  // Transcript toggle
+  document.querySelectorAll<HTMLButtonElement>('[id^="toggle-"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.id.replace('toggle-', '');
+      const panel = document.getElementById(`transcript-${id}`);
+      const chevron = document.getElementById(`chevron-${id}`);
+      if (!panel) return;
+      const open = panel.classList.toggle('hidden');
+      btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+      chevron?.classList.toggle('rotate-90', !open);
+    });
+  });
+
+  // Transcript search
+  document.querySelectorAll<HTMLInputElement>('[id^="search-"]').forEach(input => {
+    input.addEventListener('input', () => {
+      const q = input.value.toLowerCase().trim();
+      const targetId = input.dataset.target;
+      if (!targetId) return;
+      const container = document.getElementById(targetId);
+      if (!container) return;
+      container.querySelectorAll<HTMLElement>('.transcript-para').forEach(para => {
+        const text = para.dataset.text ?? '';
+        para.style.display = !q || text.includes(q) ? '' : 'none';
+      });
+    });
+  });
+</script>
