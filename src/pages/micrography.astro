@@ -1,0 +1,877 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Micrography Art Generator"
+  description="Transform any image and Sefaria text into beautiful micrography art. Upload an image, select a Hebrew text reference, and create stunning text-based artwork."
+>
+  <style>
+    .micrography-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+    
+    .hero-section {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      color: white;
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+    
+    .hero-section h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: 2.2rem;
+      font-weight: 700;
+    }
+    
+    .hero-section p {
+      margin: 0;
+      font-size: 1.1rem;
+      opacity: 0.95;
+    }
+    
+    .control-panel {
+      background: white;
+      dark: bg-gray-800;
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      margin-bottom: 2rem;
+    }
+    
+    .control-section {
+      margin-bottom: 1.5rem;
+    }
+    
+    .control-section:last-child {
+      margin-bottom: 0;
+    }
+    
+    .section-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #667eea;
+      margin-bottom: 0.75rem;
+    }
+    
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+    
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    
+    .file-input-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1rem 1.5rem;
+      border: 2px dashed #cbd5e0;
+      border-radius: 12px;
+      background: #f7fafc;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #4a5568;
+      font-weight: 500;
+    }
+    
+    .file-input-label:hover {
+      border-color: #667eea;
+      background: #edf2f7;
+    }
+    
+    .file-input-wrapper.has-file .file-input-label {
+      border-color: #48bb78;
+      background: #f0fff4;
+      color: #22543d;
+    }
+    
+    .text-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+      background: white;
+      color: #2d3748;
+    }
+    
+    .text-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+    }
+    
+    .text-input::placeholder {
+      color: #a0aec0;
+    }
+    
+    .density-slider {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #e2e8f0;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    
+    .density-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .density-slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .density-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #718096;
+      margin-top: 0.25rem;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 0.875rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .btn-secondary {
+      background: white;
+      color: #4a5568;
+      border: 2px solid #e2e8f0;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .btn-secondary:hover {
+      border-color: #667eea;
+      color: #667eea;
+      background: #f7fafc;
+    }
+    
+    .result-container {
+      background: white;
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      display: none;
+    }
+    
+    .result-container.visible {
+      display: block;
+    }
+    
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    
+    .result-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #2d3748;
+    }
+    
+    .canvas-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 200px;
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 1rem;
+      overflow: auto;
+    }
+    
+    #resultCanvas {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .preview-container {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .preview-box {
+      flex: 1;
+      min-width: 200px;
+      max-width: 300px;
+    }
+    
+    .preview-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #718096;
+      margin-bottom: 0.5rem;
+    }
+    
+    .preview-image {
+      width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .progress-container {
+      display: none;
+      margin-top: 1rem;
+    }
+    
+    .progress-container.visible {
+      display: block;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      width: 0%;
+      transition: width 0.1s ease;
+    }
+    
+    .progress-text {
+      text-align: center;
+      font-size: 0.875rem;
+      color: #4a5568;
+      margin-top: 0.5rem;
+    }
+    
+    .error-message {
+      background: #fed7d7;
+      color: #742a2a;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      display: none;
+      font-size: 0.9rem;
+    }
+    
+    .error-message.visible {
+      display: block;
+    }
+    
+    .text-preview {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      max-height: 150px;
+      overflow-y: auto;
+      display: none;
+      direction: rtl;
+      text-align: right;
+      font-family: "FrankRuehl", "Noto Sans Hebrew", "David", serif;
+    }
+    
+    .text-preview.visible {
+      display: block;
+    }
+    
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    
+    @media (min-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    
+    .actions-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 1.5rem;
+    }
+    
+    .dark .control-panel,
+    .dark .result-container {
+      background: #1f2937;
+    }
+    
+    .dark .text-input {
+      background: #111827;
+      border-color: #374151;
+      color: #f9fafb;
+    }
+    
+    .dark .text-input::placeholder {
+      color: #6b7280;
+    }
+    
+    .dark .file-input-label {
+      background: #1f2937;
+      border-color: #4b5563;
+      color: #d1d5db;
+    }
+    
+    .dark .file-input-label:hover {
+      border-color: #667eea;
+      background: #374151;
+    }
+    
+    .dark .file-input-wrapper.has-file .file-input-label {
+      background: #064e3b;
+      border-color: #10b981;
+      color: #6ee7b7;
+    }
+    
+    .dark .section-title {
+      color: #a78bfa;
+    }
+    
+    .dark .btn-secondary {
+      background: #1f2937;
+      border-color: #4b5563;
+      color: #d1d5db;
+    }
+    
+    .dark .btn-secondary:hover {
+      border-color: #a78bfa;
+      color: #a78bfa;
+    }
+    
+    .dark .result-title {
+      color: #f9fafb;
+    }
+    
+    .dark .canvas-container {
+      background: #111827;
+    }
+    
+    .dark .text-preview {
+      background: #111827;
+      border-color: #374151;
+      color: #d1d5db;
+    }
+    
+    .dark .density-slider {
+      background: #374151;
+    }
+    
+    .dark .progress-bar {
+      background: #374151;
+    }
+  </style>
+
+  <div class="micrography-container">
+    <div class="hero-section">
+      <h1>Micrography Art Generator</h1>
+      <p>Transform any image and Hebrew text from Sefaria into beautiful micrography art. Each pixel becomes a letter, creating stunning text-based imagery.</p>
+    </div>
+
+    <div class="control-panel">
+      <div class="grid-2">
+        <div class="control-section">
+          <div class="section-title">1. Upload Image</div>
+          <div class="file-input-wrapper" id="fileWrapper">
+            <input type="file" id="imageInput" accept="image/*" />
+            <div class="file-input-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span id="fileLabelText">Choose an image...</span>
+            </div>
+          </div>
+          <div id="imagePreview" class="preview-container" style="margin-top: 1rem;"></div>
+        </div>
+
+        <div class="control-section">
+          <div class="section-title">2. Select Text Source</div>
+          <input type="text" id="textRef" class="text-input" placeholder="e.g., Genesis 1:1-3 or Exodus 20" />
+          <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #718096;">
+            Enter a Sefaria reference like <strong>Genesis 1:1</strong>, <strong>Psalms 23</strong>, or <strong>Exodus 20:1-14</strong>
+          </div>
+          <div style="margin-top: 0.75rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; color: #4a5568;">
+              <input type="checkbox" id="removeVowels" checked style="width: 18px; height: 18px; accent-color: #667eea;" />
+              Remove vowels and cantillation marks
+            </label>
+          </div>
+          <div id="textPreview" class="text-preview"></div>
+        </div>
+      </div>
+
+      <div class="control-section" style="margin-top: 1.5rem;">
+        <div class="section-title">3. Adjust Settings</div>
+        <div style="margin-bottom: 0.5rem; font-weight: 500; color: #4a5568;">
+          Density: <span id="densityValue">5</span> (lower = more detailed)
+        </div>
+        <input type="range" id="densitySlider" class="density-slider" min="2" max="12" value="5" />
+        <div class="density-labels">
+          <span>Fine (2)</span>
+          <span>Medium (5)</span>
+          <span>Coarse (12)</span>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button id="generateBtn" class="btn-primary" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Generate Micrography
+        </button>
+        <button id="fetchTextBtn" class="btn-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Preview Text
+        </button>
+        <button id="loadSampleBtn" class="btn-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Load Sample Image
+        </button>
+      </div>
+
+      <div id="errorMessage" class="error-message"></div>
+      
+      <div id="progressContainer" class="progress-container">
+        <div class="progress-bar">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <div id="progressText" class="progress-text">Processing...</div>
+      </div>
+    </div>
+
+    <div id="resultContainer" class="result-container">
+      <div class="result-header">
+        <div class="result-title">Your Micrography Art</div>
+        <button id="downloadBtn" class="btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Image
+        </button>
+      </div>
+      <div class="canvas-container">
+        <canvas id="resultCanvas"></canvas>
+      </div>
+      <div id="textUsed" style="margin-top: 1rem; font-size: 0.85rem; color: #718096; text-align: center;"></div>
+    </div>
+  </div>
+
+  <!-- Hidden canvas for processing -->
+  <canvas id="processCanvas" style="display: none;"></canvas>
+
+  <script>
+    // State
+    let currentImage = null;
+    let currentText = '';
+    let isProcessing = false;
+
+    // DOM elements
+    const imageInput = document.getElementById('imageInput');
+    const fileWrapper = document.getElementById('fileWrapper');
+    const fileLabelText = document.getElementById('fileLabelText');
+    const imagePreview = document.getElementById('imagePreview');
+    const textRef = document.getElementById('textRef');
+    const removeVowels = document.getElementById('removeVowels');
+    const textPreview = document.getElementById('textPreview');
+    const densitySlider = document.getElementById('densitySlider');
+    const densityValue = document.getElementById('densityValue');
+    const generateBtn = document.getElementById('generateBtn');
+    const fetchTextBtn = document.getElementById('fetchTextBtn');
+    const loadSampleBtn = document.getElementById('loadSampleBtn');
+    const errorMessage = document.getElementById('errorMessage');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const resultContainer = document.getElementById('resultContainer');
+    const resultCanvas = document.getElementById('resultCanvas');
+    const processCanvas = document.getElementById('processCanvas');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const textUsed = document.getElementById('textUsed');
+
+    // Sample image data - a simple geometric pattern
+    const sampleImageData = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23667eea"/><stop offset="50%" style="stop-color:%23764ba2"/><stop offset="100%" style="stop-color:%23f093fb"/></linearGradient></defs><rect width="300" height="400" fill="url(%23g1)"/><circle cx="150" cy="120" r="80" fill="white" opacity="0.9"/><circle cx="150" cy="120" r="60" fill="url(%23g1)" opacity="0.8"/><ellipse cx="150" cy="280" rx="100" ry="60" fill="white" opacity="0.6"/><ellipse cx="150" cy="280" rx="70" ry="40" fill="url(%23g1)" opacity="0.7"/></svg>')}`;
+
+    // Event listeners
+    imageInput.addEventListener('change', handleImageUpload);
+    densitySlider.addEventListener('input', (e) => {
+      densityValue.textContent = e.target.value;
+    });
+    generateBtn.addEventListener('click', generateMicrography);
+    fetchTextBtn.addEventListener('click', fetchAndPreviewText);
+    loadSampleBtn.addEventListener('click', loadSampleImage);
+    downloadBtn.addEventListener('click', downloadResult);
+
+    async function loadSampleImage() {
+      try {
+        const img = new Image();
+        img.onload = () => {
+          currentImage = img;
+          updateFileLabel('Sample image loaded');
+          showImagePreview(img);
+          checkCanGenerate();
+        };
+        img.src = sampleImageData;
+      } catch (err) {
+        showError('Failed to load sample image');
+      }
+    }
+
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        showError('Please upload an image file');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          currentImage = img;
+          updateFileLabel(file.name);
+          showImagePreview(img);
+          checkCanGenerate();
+          hideError();
+        };
+        img.onerror = () => {
+          showError('Failed to load image');
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function updateFileLabel(text) {
+      fileLabelText.textContent = text;
+      fileWrapper.classList.add('has-file');
+    }
+
+    function showImagePreview(img) {
+      imagePreview.innerHTML = `
+        <div class="preview-box">
+          <div class="preview-label">Preview (${img.naturalWidth}x${img.naturalHeight})</div>
+          <img src="${img.src}" class="preview-image" alt="Preview" />
+        </div>
+      `;
+    }
+
+    async function fetchAndPreviewText() {
+      const ref = textRef.value.trim();
+      if (!ref) {
+        showError('Please enter a text reference');
+        return;
+      }
+
+      fetchTextBtn.disabled = true;
+      fetchTextBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="20"/></svg>
+        Loading...
+      `;
+
+      try {
+        const text = await fetchSefariaText(ref);
+        currentText = text;
+        textPreview.textContent = text.substring(0, 500) + (text.length > 500 ? '...' : '');
+        textPreview.classList.add('visible');
+        checkCanGenerate();
+        hideError();
+      } catch (err) {
+        showError('Failed to fetch text: ' + err.message);
+      } finally {
+        fetchTextBtn.disabled = false;
+        fetchTextBtn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Preview Text
+        `;
+      }
+    }
+
+    async function fetchSefariaText(ref) {
+      const encodedRef = encodeURIComponent(ref);
+      const response = await fetch(`https://www.sefaria.org/api/texts/${encodedRef}?context=0`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.he || !Array.isArray(data.he)) {
+        throw new Error('No Hebrew text found for this reference');
+      }
+      
+      let text = data.he.join(' ');
+      
+      // Replace Hebrew hyphen with space
+      text = text.replace(/\u05BE/g, ' ');
+      
+      // Remove vowels and cantillation if requested
+      if (removeVowels.checked) {
+        // Remove cantillation marks and vowels (Unicode range \u0591-\u05C7, excluding Hebrew letters)
+        text = text.replace(/[\u0591-\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]/g, '');
+      }
+      
+      // Remove punctuation and special chars
+      text = text.replace(/[^\u05D0-\u05EA\s]/g, '');
+      
+      // Remove extra whitespace
+      text = text.replace(/\s+/g, ' ').trim();
+      
+      return text;
+    }
+
+    function checkCanGenerate() {
+      generateBtn.disabled = !(currentImage && currentText);
+    }
+
+    async function generateMicrography() {
+      if (!currentImage || !currentText || isProcessing) return;
+
+      isProcessing = true;
+      generateBtn.disabled = true;
+      generateBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="20"/></svg>
+        Generating...
+      `;
+      progressContainer.classList.add('visible');
+      resultContainer.classList.remove('visible');
+      hideError();
+
+      try {
+        await processImage();
+        resultContainer.classList.add('visible');
+        textUsed.textContent = `Text used (${currentText.length} characters): ${currentText.substring(0, 100)}${currentText.length > 100 ? '...' : ''}`;
+        
+        // Smooth scroll to result
+        resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (err) {
+        showError('Error generating micrography: ' + err.message);
+      } finally {
+        isProcessing = false;
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Generate Micrography
+        `;
+        progressContainer.classList.remove('visible');
+      }
+    }
+
+    async function processImage() {
+      const sampleDensity = parseInt(densitySlider.value);
+      const fontSize = 12;
+      const fontDrawSize = 14;
+      const imgMargin = 10;
+
+      // Resize image for processing
+      let { width, height } = await resizeImage(currentImage);
+      
+      // Calculate output size
+      const outputWidth = Math.floor(width * fontSize / sampleDensity) + imgMargin;
+      const outputHeight = Math.floor(height * fontSize / sampleDensity) + imgMargin;
+
+      // Setup process canvas for reading pixels
+      const pCtx = processCanvas.getContext('2d');
+      processCanvas.width = width;
+      processCanvas.height = height;
+      pCtx.drawImage(currentImage, 0, 0, width, height);
+
+      // Setup result canvas for drawing
+      const rCtx = resultCanvas.getContext('2d');
+      resultCanvas.width = outputWidth;
+      resultCanvas.height = outputHeight;
+      
+      // Fill background
+      rCtx.fillStyle = '#787878';
+      rCtx.fillRect(0, 0, outputWidth, outputHeight);
+
+      // Get image data
+      const imageData = pCtx.getImageData(0, 0, width, height);
+      const pixels = imageData.data;
+
+      // Set font for Hebrew text (right-to-left)
+      rCtx.font = `${fontDrawSize}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
+      rCtx.textAlign = 'right';
+      rCtx.textBaseline = 'top';
+
+      // Process pixels and draw text
+      let textIndex = 0;
+      const totalPixels = Math.ceil(height / sampleDensity) * Math.ceil(width / sampleDensity);
+      let processedPixels = 0;
+
+      // Process in chunks for UI responsiveness
+      const chunkSize = 1000;
+      
+      await new Promise((resolve, reject) => {
+        function processChunk() {
+          try {
+            const chunkEnd = Math.min(processedPixels + chunkSize, totalPixels);
+            
+            for (let i = processedPixels; i < chunkEnd; i++) {
+              const row = Math.floor(i / Math.ceil(width / sampleDensity));
+              const col = i % Math.ceil(width / sampleDensity);
+              
+              const y = row * sampleDensity;
+              const x = width - 1 - (col * sampleDensity); // Right to left for Hebrew
+              
+              if (y >= height || x < 0) continue;
+              
+              const pixelIndex = (y * width + x) * 4;
+              const r = pixels[pixelIndex];
+              const g = pixels[pixelIndex + 1];
+              const b = pixels[pixelIndex + 2];
+              
+              // Skip if pixel is white
+              let color = `rgb(${r}, ${g}, ${b})`;
+              if (r > 250 && g > 250 && b > 250) {
+                color = 'rgb(0, 0, 0)';
+              }
+              
+              // Draw character
+              if (textIndex < currentText.length) {
+                const char = currentText[textIndex];
+                const drawX = col * fontSize + imgMargin / 2;
+                const drawY = row * fontSize + imgMargin / 2;
+                
+                rCtx.fillStyle = color;
+                rCtx.fillText(char, drawX, drawY);
+                
+                textIndex++;
+              }
+            }
+            
+            processedPixels = chunkEnd;
+            
+            // Update progress
+            const progress = Math.round((processedPixels / totalPixels) * 100);
+            progressFill.style.width = `${progress}%`;
+            progressText.textContent = `Processing... ${progress}%`;
+            
+            if (processedPixels < totalPixels) {
+              setTimeout(processChunk, 0);
+            } else {
+              resolve();
+            }
+          } catch (err) {
+            reject(err);
+          }
+        }
+        
+        processChunk();
+      });
+    }
+
+    function resizeImage(img) {
+      return new Promise((resolve) => {
+        const maxWidth = 300;
+        const maxHeight = 400;
+        
+        let width = img.naturalWidth;
+        let height = img.naturalHeight;
+        
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round(height * (maxWidth / width));
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round(width * (maxHeight / height));
+            height = maxHeight;
+          }
+        }
+        
+        resolve({ width, height });
+      });
+    }
+
+    function downloadResult() {
+      const link = document.createElement('a');
+      link.download = `micrography-${Date.now()}.png`;
+      link.href = resultCanvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function showError(msg) {
+      errorMessage.textContent = msg;
+      errorMessage.classList.add('visible');
+    }
+
+    function hideError() {
+      errorMessage.classList.remove('visible');
+    }
+
+    // Load sample text on page load
+    textRef.value = 'Genesis 1:1-5';
+  </script>
+</Layout>
