@@ -27,124 +27,140 @@ function formatDate(iso: string) {
 >
   <main class="container mx-auto px-4 sm:px-6 py-10 max-w-4xl">
 
-    <!-- Header -->
-    <header class="mb-10">
-      <div class="flex flex-wrap items-center gap-6 mb-6">
-        <img
-          src={series.imageUrl}
-          alt="SCP Podcast Cover"
-          class="w-32 h-32 rounded-xl shadow-lg object-cover"
-        />
-        <div class="flex-1">
-          <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-1">
-            {series.title}
-          </h1>
-          <p class="text-lg text-gray-600 dark:text-gray-400">{series.subtitle}</p>
-        </div>
-        <a
-          href="/scp/feed.xml"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors"
-          title="Subscribe in your podcast app"
-        >
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20C4.98 20 4 19.01 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
-          </svg>
-          Subscribe (RSS)
-        </a>
-      </div>
-      <p class="text-gray-700 dark:text-gray-300 leading-relaxed max-w-2xl">
-        {series.description}
-      </p>
-
-      <!-- Subscribe Instructions -->
-      <div class="mt-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide mb-3">Subscribe in Podcast Apps</h3>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-          RSS Feed: <code class="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-xs">{series.feedUrl}</code>
-        </p>
-        <div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-          <p><strong>Apple Podcasts (Mac/iTunes):</strong> File → Add Show by URL → paste feed → Subscribe</p>
-          <p><strong>Apple Podcasts (iOS):</strong> Library → ⋯ → Follow a Show by URL → paste feed → Follow</p>
-          <p><strong>Pocket Casts:</strong> Discover → paste feed in Search → click artwork → Subscribe</p>
-          <p><strong>Overcast:</strong> + → Add URL → paste feed → Done</p>
-          <p><strong>Castbox/Podcast Addict:</strong> Discover → paste feed in Search → Subscribe</p>
-        </div>
-      </div>
-    </header>
-
-    <!-- Running Tallies (hidden by default, password protected) -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 hidden" id="running-tallies">
-      <!-- Jokes tally -->
-      <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl p-5">
-        <div class="flex items-center gap-3 mb-3">
-          <span class="text-3xl" aria-hidden="true">😄</span>
-          <div>
-            <div class="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{totalJokes}</div>
-            <div class="text-sm font-semibold text-yellow-700 dark:text-yellow-400 uppercase tracking-wide">
-              Jokes Cracked
-            </div>
-          </div>
-        </div>
-        <ul class="space-y-2 mt-2" id="jokes-list">
-          {shiurim.flatMap(s =>
-            (s.jokes ?? []).map(j => (
-              <li class="text-sm text-gray-700 dark:text-gray-300 border-l-2 border-yellow-400 pl-3">
-                <span class="font-mono text-xs text-gray-500 dark:text-gray-500 mr-1">#{s.number} @{j.timestamp}</span>
-                {j.text}
-              </li>
-            ))
-          )}
-        </ul>
-      </div>
-
-      <!-- Disgraceful foods tally -->
-      <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-5">
-        <div class="flex items-center gap-3 mb-3">
-          <span class="text-3xl" aria-hidden="true">🍽️</span>
-          <div>
-            <div class="text-2xl font-bold text-red-700 dark:text-red-400">{allFoods.length}</div>
-            <div class="text-sm font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">
-              Disgraced Foods
-            </div>
-          </div>
-        </div>
-        <ul class="space-y-2 mt-2">
-          {allFoods.map(f => (
-            <li class="text-sm text-gray-700 dark:text-gray-300 border-l-2 border-red-400 pl-3">
-              <span class="font-semibold text-gray-900 dark:text-white">{f.food}</span>
-              <span class="font-mono text-xs text-gray-500 dark:text-gray-500 ml-1">(#{f.shiurNumber})</span>
-              <span class="text-gray-500 dark:text-gray-400"> — {f.context}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-
     <!-- Password Form (shows when not authenticated) -->
     <section class="mb-10" id="password-section">
-      <div class="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-700 rounded-xl p-6">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">🔐 Easter Egg</h3>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Enter the secret password to unlock the jokes and disgraceful foods tally.</p>
-        <form id="password-form" class="flex gap-2">
-          <input
-            type="password"
-            id="password-input"
-            placeholder="Enter password..."
-            class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+      <div class="bg-gradient-to-r from-slate-800 to-slate-900 dark:from-slate-700 dark:to-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl p-8 max-w-md mx-auto">
+        <div class="text-center">
+          <img
+            src={series.imageUrl}
+            alt="SCP Podcast Cover"
+            class="w-24 h-24 rounded-xl shadow-lg object-cover mx-auto mb-4"
           />
-          <button
-            type="submit"
-            class="px-6 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold transition-colors"
-          >
-            Unlock
-          </button>
-        </form>
-        <p id="password-error" class="text-sm text-red-600 dark:text-red-400 mt-2 hidden">Incorrect password</p>
+          <h1 class="text-2xl font-bold text-white mb-1">{series.title}</h1>
+          <p class="text-sm text-gray-400 mb-6">{series.subtitle}</p>
+          <form id="password-form" class="space-y-4">
+            <input
+              type="password"
+              id="password-input"
+              placeholder="Enter password to access..."
+              class="w-full px-4 py-3 rounded-lg border border-gray-600 bg-slate-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            />
+            <button
+              type="submit"
+              class="w-full px-6 py-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold transition-colors"
+            >
+              Access Shiurim
+            </button>
+          </form>
+          <p id="password-error" class="text-sm text-red-400 mt-4 hidden">Incorrect password</p>
+        </div>
       </div>
     </section>
 
-    <!-- Shiurim -->
-    {shiurim.map(shiur => {
+    <!-- Main Content (hidden until password) -->
+    <div id="main-content" class="hidden">
+      <!-- Header -->
+      <header class="mb-10">
+        <div class="flex flex-wrap items-center gap-6 mb-6">
+          <img
+            src={series.imageUrl}
+            alt="SCP Podcast Cover"
+            class="w-32 h-32 rounded-xl shadow-lg object-cover"
+          />
+          <div class="flex-1">
+            <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-1">
+              {series.title}
+            </h1>
+            <p class="text-lg text-gray-600 dark:text-gray-400">{series.subtitle}</p>
+          </div>
+          <a
+            href="/scp/feed.xml"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors"
+            title="Subscribe in your podcast app"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20C4.98 20 4 19.01 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
+            </svg>
+            Subscribe (RSS)
+          </a>
+        </div>
+        <p class="text-gray-700 dark:text-gray-300 leading-relaxed max-w-2xl">
+          {series.description}
+        </p>
+
+        <!-- Subscribe Instructions -->
+        <div class="mt-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide mb-3">Subscribe in Podcast Apps</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            RSS Feed: <code class="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-xs">{series.feedUrl}</code>
+          </p>
+          <div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+            <p><strong>Apple Podcasts (Mac/iTunes):</strong> File → Add Show by URL → paste feed → Subscribe</p>
+            <p><strong>Apple Podcasts (iOS):</strong> Library → ⋯ → Follow a Show by URL → paste feed → Follow</p>
+            <p><strong>Pocket Casts:</strong> Discover → paste feed in Search → click artwork → Subscribe</p>
+            <p><strong>Overcast:</strong> + → Add URL → paste feed → Done</p>
+            <p><strong>Castbox/Podcast Addict:</strong> Discover → paste feed in Search → Subscribe</p>
+          </div>
+        </div>
+      </header>
+
+      <!-- Hidden Easter Egg Trigger -->
+      <div class="mb-10 text-center">
+        <button id="easter-egg-trigger" class="text-xs text-gray-300 dark:text-gray-600 hover:text-gray-400 dark:hover:text-gray-500 transition-colors">
+          &nbsp;
+        </button>
+      </div>
+
+      <!-- Running Tallies (easter egg, completely hidden) -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 hidden" id="running-tallies">
+        <!-- Jokes tally -->
+        <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="text-3xl" aria-hidden="true">😄</span>
+            <div>
+              <div class="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{totalJokes}</div>
+              <div class="text-sm font-semibold text-yellow-700 dark:text-yellow-400 uppercase tracking-wide">
+                Jokes Cracked
+              </div>
+            </div>
+          </div>
+          <ul class="space-y-2 mt-2" id="jokes-list">
+            {shiurim.flatMap(s =>
+              (s.jokes ?? []).map(j => (
+                <li class="text-sm text-gray-700 dark:text-gray-300 border-l-2 border-yellow-400 pl-3">
+                  <span class="font-mono text-xs text-gray-500 dark:text-gray-500 mr-1">#{s.number} @{j.timestamp}</span>
+                  {j.text}
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+
+        <!-- Disgraceful foods tally -->
+        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="text-3xl" aria-hidden="true">🍽️</span>
+            <div>
+              <div class="text-2xl font-bold text-red-700 dark:text-red-400">{allFoods.length}</div>
+              <div class="text-sm font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">
+                Disgraced Foods
+              </div>
+            </div>
+          </div>
+          <ul class="space-y-2 mt-2">
+            {allFoods.map(f => (
+              <li class="text-sm text-gray-700 dark:text-gray-300 border-l-2 border-red-400 pl-3">
+                <span class="font-semibold text-gray-900 dark:text-white">{f.food}</span>
+                <span class="font-mono text-xs text-gray-500 dark:text-gray-500 ml-1">(#{f.shiurNumber})</span>
+                <span class="text-gray-500 dark:text-gray-400"> — {f.context}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <!-- Shiurim -->
+      {shiurim.map(shiur => {
       const transcript = transcriptMap[shiur.id] ?? [];
       return (
         <article class="mb-12 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -329,6 +345,7 @@ function formatDate(iso: string) {
         </article>
       );
     })}
+    </div>
 
   </main>
 </Layout>
@@ -336,14 +353,18 @@ function formatDate(iso: string) {
 <script>
   // Check if already authenticated
   const isAuthenticated = sessionStorage.getItem('scp_authenticated') === 'true';
+  const easterEggUnlocked = sessionStorage.getItem('scp_easter_egg') === 'true';
 
   if (isAuthenticated) {
-    document.getElementById('running-tallies')?.classList.remove('hidden');
     document.getElementById('password-section')?.classList.add('hidden');
-    document.querySelectorAll('.shiur-jokes, .shiur-foods').forEach(el => el.classList.remove('hidden'));
+    document.getElementById('main-content')?.classList.remove('hidden');
+    if (easterEggUnlocked) {
+      document.getElementById('running-tallies')?.classList.remove('hidden');
+      document.querySelectorAll('.shiur-jokes, .shiur-foods').forEach(el => el.classList.remove('hidden'));
+    }
   }
 
-  // Password form submission
+  // Password form submission - unlocks main content
   const passwordForm = document.getElementById('password-form');
   const passwordInput = document.getElementById('password-input') as HTMLInputElement;
   const passwordError = document.getElementById('password-error');
@@ -354,13 +375,26 @@ function formatDate(iso: string) {
 
     if (password === 'SCPKINS') {
       sessionStorage.setItem('scp_authenticated', 'true');
-      document.getElementById('running-tallies')?.classList.remove('hidden');
       document.getElementById('password-section')?.classList.add('hidden');
-      document.querySelectorAll('.shiur-jokes, .shiur-foods').forEach(el => el.classList.remove('hidden'));
+      document.getElementById('main-content')?.classList.remove('hidden');
       passwordError?.classList.add('hidden');
     } else {
       passwordError?.classList.remove('hidden');
       passwordInput.value = '';
+    }
+  });
+
+  // Easter egg: click the invisible trigger 3 times to unlock jokes/foods
+  let triggerClicks = 0;
+  const easterEggTrigger = document.getElementById('easter-egg-trigger');
+  
+  easterEggTrigger?.addEventListener('click', () => {
+    triggerClicks++;
+    if (triggerClicks >= 3) {
+      sessionStorage.setItem('scp_easter_egg', 'true');
+      document.getElementById('running-tallies')?.classList.remove('hidden');
+      document.querySelectorAll('.shiur-jokes, .shiur-foods').forEach(el => el.classList.remove('hidden'));
+      triggerClicks = 0;
     }
   });
 
