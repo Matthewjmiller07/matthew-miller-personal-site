@@ -191,7 +191,7 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
       margin: 10px 0;
     }
     #sefaria-game-root .or-divider hr { flex: 1; border-color: #ccc; }
-    #sefaria-game-root .or-text { white-space: nowrap; color: #888; font-size: 0.9em; }
+    #sefaria-game-root .or-text { white-space: nowrap; color: #4a5568; font-size: 0.9em; }
 
     #sefaria-game-root .form-input { margin-bottom: 10px; }
     #sefaria-game-root .form-input label { display: block; margin-bottom: 4px; color: #4a69bd; font-weight: bold; }
@@ -274,6 +274,14 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
 
   <!-- Global styles for dynamically-injected game content (not scoped by Astro) -->
   <style is:global>
+    #game-container .blank-wrapper {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin: 0 4px;
+      vertical-align: middle;
+    }
+
     #game-container input.blank {
       display: inline-block;
       width: auto;
@@ -281,7 +289,7 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
       border: 2px solid #cbd5e0;
       border-bottom: 3px solid #667eea;
       padding: 6px 10px;
-      margin: 0 6px;
+      margin: 0;
       vertical-align: middle;
       font-size: 1.05em;
       text-align: center;
@@ -318,6 +326,45 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
       background: linear-gradient(180deg, #fed7d7 0%, #fc8181 100%);
       border-color: #f56565;
       color: #742a2a;
+    }
+
+    #game-container .check-blank-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      margin: 0;
+      border: none;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+      vertical-align: middle;
+    }
+
+    #game-container .check-blank-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+    }
+
+    #game-container .check-blank-btn:active {
+      transform: scale(0.95);
+    }
+
+    #game-container .check-blank-btn.checked {
+      background: #48bb78;
+      cursor: default;
+    }
+
+    #game-container .check-blank-btn.checked:hover {
+      transform: none;
+      box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
     }
     #game-container div {
       margin-bottom: 8px;
@@ -376,7 +423,7 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
       </form>
       <div id="login-error"></div>
       <div style="margin-top: 15px; text-align: center;">
-        <p style="color: #888; margin-bottom: 10px;">Or sign in with:</p>
+        <p style="color: #4a5568; margin-bottom: 10px; font-weight: 500;">Or sign in with:</p>
         <button id="google-signin-button" style="background: #fff; color: #757575; border: 1px solid #ddd; padding: 10px 20px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; font-weight: 500;">
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -411,7 +458,7 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
 
     <div id="memorized-texts">
       <h2>Played Before? Find Your Memorized Texts Here:</h2>
-      <div id="memorized-status" style="color:#888;font-size:0.9em;margin-bottom:6px;"></div>
+      <div id="memorized-status" style="color:#4a5568;font-size:0.9em;margin-bottom:6px;"></div>
       <ol id="memorized-list"></ol>
       <button id="toggleVizButton">Show/Hide Visualization</button>
       <div id="memorizationViz" style="display: none;"></div>
@@ -1136,7 +1183,7 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
           if (blankInterval === 1) {
             words.forEach(word => {
               blankNumber++;
-              gameContent += `<input type="text" class="blank" data-index="${blankNumber}" /> `;
+              gameContent += `<span class="blank-wrapper"><input type="text" class="blank" data-index="${blankNumber}" /><button class="check-blank-btn" data-blank="${blankNumber}" title="Check this answer">&#10003;</button></span> `;
               correctWords.push(word);
             });
           } else {
@@ -1149,7 +1196,7 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
             }
             words.forEach((word, idx) => {
               if (isBlanked[idx]) {
-                blankNumber++; gameContent += `<input type="text" class="blank" data-index="${blankNumber}" /> `;
+                blankNumber++; gameContent += `<span class="blank-wrapper"><input type="text" class="blank" data-index="${blankNumber}" /><button class="check-blank-btn" data-blank="${blankNumber}" title="Check this answer">&#10003;</button></span> `;
                 correctWords.push(word);
               } else { gameContent += word + ' '; }
             });
@@ -1164,6 +1211,20 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
         document.querySelectorAll('.blank').forEach(blank => {
           blank.value = ''; blank.disabled = false;
           blank.style.backgroundColor = ''; blank.style.color = '';
+          blank.classList.remove('correct', 'incorrect');
+          blank.style.opacity = '1';
+          blank.title = '';
+        });
+
+        // Add event listeners for individual blank check buttons
+        document.querySelectorAll('.check-blank-btn').forEach(btn => {
+          btn.classList.remove('checked');
+          btn.innerHTML = '&#10003;';
+          btn.title = 'Check this answer';
+          btn.onclick = function() {
+            const blankIndex = parseInt(this.getAttribute('data-blank'));
+            checkIndividualBlank(blankIndex);
+          };
         });
 
         answersChecked = false;
@@ -1177,6 +1238,39 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
         const q = document.getElementById('text-input').value;
         if (q) displayPlacesOnMap(searchBiblicalReferences(q));
       });
+    }
+
+    function checkIndividualBlank(blankIndex) {
+      if (!gameStarted) return;
+
+      const blank = document.querySelector(`.blank[data-index="${blankIndex}"]`);
+      if (!blank || blank.disabled) return;
+
+      const userAnswer = stripVowels(blank.value.trim());
+      const correctAnswer = correctWords[blankIndex - 1];
+      const sanitized = stripHtml(correctAnswer);
+      const isCorrect = isAcceptableAnswer(userAnswer, correctAnswer);
+
+      // Visual feedback
+      blank.classList.remove('correct', 'incorrect');
+      blank.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      // Show tooltip with result
+      const resultText = isCorrect ? '✓ Correct!' : `✗ Correct: ${sanitized}`;
+      blank.title = resultText;
+
+      // Mark button as checked
+      const checkBtn = document.querySelector(`.check-blank-btn[data-blank="${blankIndex}"]`);
+      if (checkBtn) {
+        checkBtn.classList.add('checked');
+        checkBtn.innerHTML = isCorrect ? '✓' : '✗';
+        checkBtn.title = resultText;
+      }
+
+      // If correct, optionally disable the blank
+      if (isCorrect) {
+        blank.style.opacity = '0.8';
+      }
     }
 
     function checkAnswers() {
@@ -1194,15 +1288,24 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
           const sanitized = stripHtml(correctAnswer);
           const correct = isAcceptableAnswer(userAnswer, correctAnswer);
           const resultText = `Blank #${blankIndex + 1} - ${correct ? 'Correct!' : 'Incorrect!'} Your answer: ${userAnswer}; Correct answer: ${sanitized}.`;
-          const color = correct ? '#28a745' : '#dc3545';
+
+          // Apply CSS classes for visual feedback
+          blank.classList.remove('correct', 'incorrect');
+          blank.classList.add(correct ? 'correct' : 'incorrect');
+
+          // Update check button
+          const checkBtn = document.querySelector(`.check-blank-btn[data-blank="${blankIndex + 1}"]`);
+          if (checkBtn) {
+            checkBtn.classList.add('checked');
+            checkBtn.innerHTML = correct ? '✓' : '✗';
+            checkBtn.title = resultText;
+          }
 
           if (displayInBlanks) {
             blank.setAttribute('dir', 'ltr');
             blank.value = resultText;
-            blank.style.backgroundColor = color; blank.style.color = 'white';
-            blank.style.borderRadius = '4px'; blank.style.padding = '2px 4px';
-            blank.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
           } else {
+            const color = correct ? '#28a745' : '#dc3545';
             comparisonContent += `<div style="background-color:${color};color:white;border-radius:4px;padding:2px 4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${resultText}</div>`;
           }
           blank.disabled = true;
