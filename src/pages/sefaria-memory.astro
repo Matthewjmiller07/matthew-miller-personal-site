@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
 ---
 
 <Layout
@@ -517,6 +518,11 @@ import Layout from '../layouts/Layout.astro';
     updateAliyahOptions();
   </script>
 
+  <!-- Bridge server-side env var to window for the module script below -->
+  <script is:inline define:vars={{ firebaseApiKey }}>
+    window.__FIREBASE_API_KEY = firebaseApiKey;
+  </script>
+
   <!-- Main game logic -->
   <script is:inline type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -538,7 +544,7 @@ import Layout from '../layouts/Layout.astro';
     } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyCgS1ZUsvyMfQtsDSWsMlW46Hl18K8Dat0",
+      apiKey: window.__FIREBASE_API_KEY,
       authDomain: "memory-ef03e.firebaseapp.com",
       projectId: "memory-ef03e",
       storageBucket: "memory-ef03e.appspot.com",
