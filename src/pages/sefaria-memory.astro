@@ -1360,24 +1360,49 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
       displayInBlanks = !displayInBlanks;
 
       if (!displayInBlanks) {
-        let content = '';
+        // Show comparison view: Your answer vs Correct answer
+        let content = '<div style="display: flex; flex-direction: column; gap: 12px;">';
         blanks.forEach((blank, i) => {
-          content += `<div>${blank.value}</div>`;
+          const userAnswer = originalAnswers && originalAnswers[i] ? originalAnswers[i] : blank.value;
+          const correctAnswer = correctWords[i] ? stripHtml(correctWords[i]) : '';
+          const isCorrect = blank.classList.contains('correct');
+          const isIncorrect = blank.classList.contains('incorrect');
+          const statusIcon = isCorrect ? '✓' : (isIncorrect ? '✗' : '?');
+          const statusColor = isCorrect ? '#48bb78' : (isIncorrect ? '#f56565' : '#a0aec0');
+
+          content += `
+            <div style="background: #f7fafc; border-radius: 8px; padding: 12px 16px; border-left: 4px solid ${statusColor};">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                <span style="font-size: 1.2em; color: ${statusColor}; font-weight: bold;">${statusIcon}</span>
+                <strong style="color: #2d3748;">Blank #${i + 1}</strong>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="color: #4a5568;"><strong>Your answer:</strong> <span style="color: ${isIncorrect ? '#e53e3e' : '#2d3748'};">${userAnswer || '(empty)'}</span></div>
+                <div style="color: #4a5568;"><strong>Correct answer:</strong> <span style="color: #38a169; font-weight: 500;">${correctAnswer}</span></div>
+              </div>
+            </div>
+          `;
           blank.value = `Blank #${i + 1}`;
           blank.style.backgroundColor = ''; blank.style.color = '';
           blank.removeAttribute('dir');
         });
+        content += '</div>';
         container.innerHTML = content;
       } else {
-        const divs = container.querySelectorAll('div');
-        divs.forEach((div, i) => {
-          blanks[i].setAttribute('dir', 'ltr');
-          blanks[i].value = div.textContent;
-          const correct = div.textContent.includes('Correct!');
-          blanks[i].style.backgroundColor = correct ? '#28a745' : '#dc3545';
-          blanks[i].style.color = 'white';
-          blanks[i].style.borderRadius = '4px'; blanks[i].style.padding = '2px 4px';
-          blanks[i].style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        // Restore blanks view
+        const savedAnswers = container.querySelectorAll('div > div');
+        blanks.forEach((blank, i) => {
+          const userAnswer = originalAnswers && originalAnswers[i] ? originalAnswers[i] : '';
+          const isCorrect = blank.classList.contains('correct');
+          const isIncorrect = blank.classList.contains('incorrect');
+
+          blank.setAttribute('dir', 'rtl');
+          blank.value = userAnswer;
+          if (isCorrect) {
+            blank.classList.add('correct');
+          } else if (isIncorrect) {
+            blank.classList.add('incorrect');
+          }
         });
         container.innerHTML = '';
       }
