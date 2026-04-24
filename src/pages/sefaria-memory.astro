@@ -558,6 +558,10 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    // startup diagnostics
+    console.log('[SefariaMemory] API key present:', !!window.__FIREBASE_API_KEY);
+    console.log('[SefariaMemory] projectId:', firebaseConfig.projectId);
+
     // ── Auth ──────────────────────────────────────────────────────────────────
 
     function signUp(email, password) {
@@ -1066,7 +1070,16 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
             scoreEl.innerText += ' — Log in to save your progress!';
           } else {
             scoreEl.innerText += ' — Saving to your account…';
+            const saveTimeout = setTimeout(() => {
+              if (scoreEl.innerText.includes('Saving to your account')) {
+                scoreEl.innerText = scoreEl.innerText.replace(
+                  'Saving to your account…',
+                  'Save timed out — open browser console (F12) for errors'
+                );
+              }
+            }, 8000);
             addMemorizedText(textInput, (err) => {
+              clearTimeout(saveTimeout);
               if (err) {
                 scoreEl.innerText = scoreEl.innerText.replace('Saving to your account…', `Save failed: ${err.message}`);
                 console.error('addMemorizedText error:', err);
