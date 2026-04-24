@@ -287,6 +287,7 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
 
     <div id="memorized-texts">
       <h2>Played Before? Find Your Memorized Texts Here:</h2>
+      <div id="memorized-status" style="color:#888;font-size:0.9em;margin-bottom:6px;"></div>
       <ol id="memorized-list"></ol>
       <button id="toggleVizButton">Show/Hide Visualization</button>
       <div id="memorizationViz" style="display: none;"></div>
@@ -1129,7 +1130,12 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
       if (user) {
         getDocs(query(collection(db, "memorizedTexts"), where("uid", "==", user.uid)))
           .then(snap => { const texts = []; snap.forEach(d => texts.push(d.data().text)); callback(texts); })
-          .catch(() => callback([]));
+          .catch(err => {
+            console.error("Firestore read error:", err.code, err.message);
+            const list = document.getElementById('memorized-list');
+            list.innerHTML = `<li style="color:red;">Could not load memorized texts: ${err.message}</li>`;
+            callback([]);
+          });
       } else { callback([]); }
     }
 
@@ -1140,20 +1146,51 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
     }
 
     function parseAndAddVerses(book, chapterVerseRange, versesSet) {
-      const [chapter, verseRange] = chapterVerseRange.split(':');
+      // normalize em-dash to hyphen
+      const range = chapterVerseRange.replace(/–/g, '-');
+      // multi-chapter range: e.g. "1:1-2:3"
+      const multiChapter = range.match(/^(\d+):(\d+)-(\d+):(\d+)$/);
+      if (multiChapter) {
+        const [, ch1, v1, ch2, v2] = multiChapter.map(Number);
+        for (let ch = ch1; ch <= ch2; ch++) {
+          const chStr = String(ch);
+          const maxVerse = bibleandMishnahStructure[book]?.[chStr] || 200;
+          const startV = ch === ch1 ? v1 : 1;
+          const endV = ch === ch2 ? v2 : maxVerse;
+          for (let v = startV; v <= endV; v++) versesSet.add(`${ch}:${v}`);
+        }
+        return;
+      }
+      // single-chapter range: e.g. "1:1-5" or "1:1"
+      const [chapter, verseRange] = range.split(':');
       if (!verseRange) return;
       const [start, end] = verseRange.split('-').map(Number);
       for (let v = start; v <= (end || start); v++) versesSet.add(`${chapter}:${v}`);
     }
 
+    function parseBookFromText(text) {
+      // match multi-word book names before trying single-word split
+      for (const book of biblicalBooks) {
+        if (text.startsWith(book + ' ')) return { book, rest: text.slice(book.length + 1) };
+      }
+      return null;
+    }
+
     function displayMemorizedTexts(memorizedTexts) {
       const list = document.getElementById('memorized-list');
+      const status = document.getElementById('memorized-status');
       list.innerHTML = '';
       globalMemorizedVersesByBook.clear();
       biblicalBooks.forEach(book => globalMemorizedVersesByBook.set(book, new Set()));
-      (memorizedTexts || []).forEach(text => {
-        const [book, cvr] = text.split(' ');
-        if (biblicalBooks.includes(book) && cvr) parseAndAddVerses(book, cvr, globalMemorizedVersesByBook.get(book));
+
+      const texts = memorizedTexts || [];
+      if (status) status.textContent = auth.currentUser
+        ? `Loaded ${texts.length} saved text(s) from your account.`
+        : 'Log in to see your memorized texts.';
+
+      texts.forEach(text => {
+        const parsed = parseBookFromText(text);
+        if (parsed && parsed.rest) parseAndAddVerses(parsed.book, parsed.rest, globalMemorizedVersesByBook.get(parsed.book));
       });
       globalMemorizedVersesByBook.forEach((versesSet, book) => {
         const total = countTotalVersesInBook(book);
