@@ -519,21 +519,16 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
     updateAliyahOptions();
   </script>
 
-  <!-- Bridge server-side env var to window for the module script below -->
-  <script is:inline define:vars={{ firebaseApiKey }}>
-    window.__FIREBASE_API_KEY = firebaseApiKey;
-  </script>
-
-  <!-- Main game logic -->
+  <!-- Firebase initialization and game logic -->
   <script is:inline type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import {
       getAuth,
       createUserWithEmailAndPassword,
       signInWithEmailAndPassword,
       onAuthStateChanged,
       signOut
-    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import {
       getFirestore,
       collection,
@@ -541,11 +536,12 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
       getDocs,
       query,
       where,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+      serverTimestamp,
+      connectFirestoreEmulator
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
-      apiKey: window.__FIREBASE_API_KEY,
+      apiKey: "AIzaSyCgS1ZUsvyMfQtsDSWsMlW46Hl18K8Dat0",
       authDomain: "memory-ef03e.firebaseapp.com",
       projectId: "memory-ef03e",
       storageBucket: "memory-ef03e.appspot.com",
@@ -554,12 +550,12 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
       measurementId: "G-FSB2B3JM0M"
     };
 
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // startup diagnostics
-    console.log('[SefariaMemory] API key present:', !!window.__FIREBASE_API_KEY);
+    console.log('[SefariaMemory] API key present:', !!firebaseConfig.apiKey);
     console.log('[SefariaMemory] projectId:', firebaseConfig.projectId);
 
     // ── Auth ──────────────────────────────────────────────────────────────────
@@ -601,6 +597,11 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
         document.getElementById('register-container').style.display = 'none';
         document.getElementById('user-info').style.display = 'block';
         getMemorizedTexts(displayMemorizedTexts);
+      } else {
+        document.getElementById('login-container').style.display = 'block';
+        document.getElementById('register-container').style.display = 'block';
+        document.getElementById('user-info').style.display = 'none';
+        displayMemorizedTexts([]);
       }
     });
 
@@ -1311,6 +1312,5 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
 
     parseURL();
     initializeMap();
-    getMemorizedTexts(displayMemorizedTexts);
   </script>
 </Layout>
