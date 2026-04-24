@@ -1061,7 +1061,21 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
 
         if (score === blanks.length) {
           const textInput = document.getElementById('text-input').value;
-          addMemorizedText(textInput, () => getMemorizedTexts(displayMemorizedTexts));
+          const scoreEl = document.getElementById('score');
+          if (!auth.currentUser) {
+            scoreEl.innerText += ' — Log in to save your progress!';
+          } else {
+            scoreEl.innerText += ' — Saving to your account…';
+            addMemorizedText(textInput, (err) => {
+              if (err) {
+                scoreEl.innerText = scoreEl.innerText.replace('Saving to your account…', `Save failed: ${err.message}`);
+                console.error('addMemorizedText error:', err);
+              } else {
+                scoreEl.innerText = scoreEl.innerText.replace('Saving to your account…', 'Saved!');
+                getMemorizedTexts(displayMemorizedTexts);
+              }
+            });
+          }
         }
       } else if (!gameStarted) {
         alert("Please start the game first.");
@@ -1116,13 +1130,10 @@ const firebaseApiKey = import.meta.env.FIREBASE_API_KEY ?? '';
 
     function addMemorizedText(text, callback) {
       const user = auth.currentUser;
-      if (user) {
-        addDoc(collection(db, "memorizedTexts"), { uid: user.uid, text, createdAt: serverTimestamp() })
-          .then(ref => callback(null, ref.id))
-          .catch(err => callback(err, null));
-      } else {
-        callback(new Error("User is not logged in."), null);
-      }
+      if (!user) { callback(new Error("Not logged in")); return; }
+      addDoc(collection(db, "memorizedTexts"), { uid: user.uid, text, createdAt: serverTimestamp() })
+        .then(() => callback(null))
+        .catch(err => { console.error("Firestore write error:", err.code, err.message); callback(err); });
     }
 
     function getMemorizedTexts(callback) {
