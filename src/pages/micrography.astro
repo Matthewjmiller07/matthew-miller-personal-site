@@ -801,8 +801,9 @@ import Layout from '../layouts/Layout.astro';
 
       // Set font for Hebrew text (right-to-left)
       rCtx.font = `${fontDrawSize}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
-      rCtx.textAlign = 'right';
+      rCtx.textAlign = 'left';  // Changed: align left so we can position chars RTL
       rCtx.textBaseline = 'top';
+      rCtx.direction = 'rtl';  // Enable RTL text direction
 
       // Process pixels and draw text
       let textIndex = 0;
@@ -837,17 +838,16 @@ import Layout from '../layouts/Layout.astro';
                 color = 'rgb(0, 0, 0)';
               }
               
-              // Draw character
-              if (textIndex < currentText.length) {
-                const char = currentText[textIndex];
-                const drawX = col * fontSize + imgMargin / 2;
-                const drawY = row * fontSize + imgMargin / 2;
-                
-                rCtx.fillStyle = color;
-                rCtx.fillText(char, drawX, drawY);
-                
-                textIndex++;
-              }
+              // Draw character - loop text if we run out
+              const char = currentText[textIndex % currentText.length];
+              // Draw from right to left: start from right edge and go left
+              const drawX = outputWidth - (col * fontSize) - imgMargin / 2 - fontSize;
+              const drawY = row * fontSize + imgMargin / 2;
+              
+              rCtx.fillStyle = color;
+              rCtx.fillText(char, drawX, drawY);
+              
+              textIndex++;
             }
             
             processedPixels = chunkEnd;
