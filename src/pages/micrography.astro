@@ -60,6 +60,74 @@ import Layout from '../layouts/Layout.astro';
       margin-bottom: 0.75rem;
     }
     
+    .tab-bar {
+      display: flex;
+      border-bottom: 2px solid #e2e8f0;
+      margin-bottom: 1rem;
+      gap: 0;
+    }
+    
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 0.6rem 1.1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #718096;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.15s ease;
+    }
+    
+    .tab-btn:hover { color: #667eea; }
+    
+    .tab-btn.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+    
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    
+    .custom-textarea {
+      width: 100%;
+      min-height: 110px;
+      padding: 0.75rem 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1rem;
+      resize: vertical;
+      transition: all 0.2s ease;
+      background: white;
+      color: #2d3748;
+      font-family: "Noto Sans Hebrew", "FrankRuehl", "David", inherit;
+    }
+    
+    .custom-textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+    }
+    
+    .custom-textarea::placeholder { color: #a0aec0; }
+    
+    .text-char-count {
+      font-size: 0.78rem;
+      color: #a0aec0;
+      text-align: right;
+      margin-top: 0.25rem;
+    }
+    
+    .dark .tab-bar { border-color: #374151; }
+    .dark .tab-btn { color: #9ca3af; }
+    .dark .tab-btn.active { color: #a78bfa; border-bottom-color: #a78bfa; }
+    .dark .custom-textarea {
+      background: #111827;
+      border-color: #374151;
+      color: #f9fafb;
+    }
+    
     .file-input-wrapper {
       position: relative;
       display: inline-block;
@@ -456,18 +524,33 @@ import Layout from '../layouts/Layout.astro';
         </div>
 
         <div class="control-section">
-          <div class="section-title">2. Select Text Source</div>
-          <input type="text" id="textRef" class="text-input" placeholder="e.g., Genesis 1:1-3 or Exodus 20" />
-          <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #718096;">
-            Enter a Sefaria reference like <strong>Genesis 1:1</strong>, <strong>Psalms 23</strong>, or <strong>Exodus 20:1-14</strong>
+          <div class="section-title">2. Text Source</div>
+          
+          <div class="tab-bar">
+            <button class="tab-btn active" data-tab="sefaria">Sefaria Reference</button>
+            <button class="tab-btn" data-tab="custom">Custom Text</button>
           </div>
-          <div style="margin-top: 0.75rem;">
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; color: #4a5568;">
-              <input type="checkbox" id="removeVowels" checked style="width: 18px; height: 18px; accent-color: #667eea;" />
-              Remove vowels and cantillation marks
-            </label>
+          
+          <!-- Sefaria tab -->
+          <div class="tab-panel active" id="tab-sefaria">
+            <input type="text" id="textRef" class="text-input" placeholder="e.g., Genesis, Psalms 23, Exodus 20:1-14" />
+            <div style="margin-top: 0.4rem; font-size: 0.82rem; color: #718096;">
+              Whole book: <strong>Genesis</strong> &nbsp;·&nbsp; Chapter: <strong>Psalms 23</strong> &nbsp;·&nbsp; Verse: <strong>Genesis 1:1</strong> &nbsp;·&nbsp; Range: <strong>Exodus 20:1-14</strong>
+            </div>
+            <div style="margin-top: 0.75rem;">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; color: #4a5568;">
+                <input type="checkbox" id="removeVowels" checked style="width: 18px; height: 18px; accent-color: #667eea;" />
+                Remove vowels &amp; cantillation marks
+              </label>
+            </div>
+            <div id="textPreview" class="text-preview"></div>
           </div>
-          <div id="textPreview" class="text-preview"></div>
+          
+          <!-- Custom text tab -->
+          <div class="tab-panel" id="tab-custom">
+            <textarea id="customTextInput" class="custom-textarea" placeholder="Type or paste any text here — English, Hebrew, or any language..."></textarea>
+            <div class="text-char-count"><span id="charCount">0</span> characters</div>
+          </div>
         </div>
       </div>
 
@@ -498,6 +581,7 @@ import Layout from '../layouts/Layout.astro';
           Load Sample Image
         </button>
       </div>
+      <div id="fetchStatus" style="font-size:0.85rem; color:#718096; margin-top:0.5rem; min-height:1.2em;"></div>
 
       <div id="errorMessage" class="error-message"></div>
       
@@ -532,6 +616,7 @@ import Layout from '../layouts/Layout.astro';
     let currentImage = null;
     let currentText = '';
     let isProcessing = false;
+    let activeTab = 'sefaria'; // 'sefaria' | 'custom'
 
     // DOM elements
     const imageInput = document.getElementById('imageInput');
@@ -541,12 +626,15 @@ import Layout from '../layouts/Layout.astro';
     const textRef = document.getElementById('textRef');
     const removeVowels = document.getElementById('removeVowels');
     const textPreview = document.getElementById('textPreview');
+    const customTextInput = document.getElementById('customTextInput');
+    const charCount = document.getElementById('charCount');
     const densitySlider = document.getElementById('densitySlider');
     const densityValue = document.getElementById('densityValue');
     const generateBtn = document.getElementById('generateBtn');
     const fetchTextBtn = document.getElementById('fetchTextBtn');
     const loadSampleBtn = document.getElementById('loadSampleBtn');
     const errorMessage = document.getElementById('errorMessage');
+    const fetchStatus = document.getElementById('fetchStatus');
     const progressContainer = document.getElementById('progressContainer');
     const progressFill = document.getElementById('progressFill');
     const progressText = document.getElementById('progressText');
@@ -559,6 +647,29 @@ import Layout from '../layouts/Layout.astro';
     // Sample image data - a simple geometric pattern
     const sampleImageData = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23667eea"/><stop offset="50%" style="stop-color:%23764ba2"/><stop offset="100%" style="stop-color:%23f093fb"/></linearGradient></defs><rect width="300" height="400" fill="url(%23g1)"/><circle cx="150" cy="120" r="80" fill="white" opacity="0.9"/><circle cx="150" cy="120" r="60" fill="url(%23g1)" opacity="0.8"/><ellipse cx="150" cy="280" rx="100" ry="60" fill="white" opacity="0.6"/><ellipse cx="150" cy="280" rx="70" ry="40" fill="url(%23g1)" opacity="0.7"/></svg>')}`;
 
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        activeTab = btn.dataset.tab;
+        document.getElementById(`tab-${activeTab}`).classList.add('active');
+        // Show/hide fetch button
+        fetchTextBtn.style.display = activeTab === 'sefaria' ? '' : 'none';
+        currentText = '';
+        checkCanGenerate();
+      });
+    });
+    
+    // Custom text character counter + live enable
+    customTextInput.addEventListener('input', () => {
+      const val = customTextInput.value;
+      charCount.textContent = val.length;
+      currentText = val.trim();
+      checkCanGenerate();
+    });
+
     // Event listeners
     imageInput.addEventListener('change', handleImageUpload);
     densitySlider.addEventListener('input', (e) => {
@@ -568,6 +679,12 @@ import Layout from '../layouts/Layout.astro';
     fetchTextBtn.addEventListener('click', fetchAndPreviewText);
     loadSampleBtn.addEventListener('click', loadSampleImage);
     downloadBtn.addEventListener('click', downloadResult);
+    
+    // Enable generate button as soon as image is loaded (text fetched on generate click)
+    textRef.addEventListener('input', () => {
+      currentText = ''; // clear cached text when ref changes
+      checkCanGenerate();
+    });
 
     async function loadSampleImage() {
       try {
@@ -633,107 +750,124 @@ import Layout from '../layouts/Layout.astro';
       }
 
       fetchTextBtn.disabled = true;
-      fetchTextBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="20"/></svg>
-        Loading...
-      `;
+      fetchTextBtn.textContent = 'Loading...';
+      fetchStatus.textContent = 'Fetching from Sefaria...';
+      hideError();
 
       try {
         const text = await fetchSefariaText(ref);
         currentText = text;
-        textPreview.textContent = text.substring(0, 500) + (text.length > 500 ? '...' : '');
+        textPreview.textContent = text.substring(0, 600) + (text.length > 600 ? '...' : '');
         textPreview.classList.add('visible');
+        fetchStatus.textContent = `✓ Loaded ${text.length.toLocaleString()} characters`;
         checkCanGenerate();
-        hideError();
       } catch (err) {
-        showError('Failed to fetch text: ' + err.message);
+        currentText = '';
+        fetchStatus.textContent = '';
+        showError(err.message);
       } finally {
         fetchTextBtn.disabled = false;
-        fetchTextBtn.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          Preview Text
-        `;
+        fetchTextBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Preview Text`;
       }
     }
 
     async function fetchSefariaText(ref) {
-      const encodedRef = encodeURIComponent(ref);
+      const encodedRef = encodeURIComponent(ref.trim());
       
-      // Try v2 API first (data.he)
-      let response = await fetch(`https://www.sefaria.org/api/texts/${encodedRef}?context=0`);
+      // Use v2 API with padding=0 for clean response
+      const url = `https://www.sefaria.org/api/texts/${encodedRef}?context=0&pad=0&commentary=0`;
+      const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`Sefaria API error (${response.status}) — check your reference`);
       }
       
-      let data = await response.json();
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Collect all Hebrew text — flatten deeply nested arrays
       let hebrewText = null;
-      
-      // Handle v2 API format (data.he)
-      if (data.he && Array.isArray(data.he) && data.he.length > 0) {
+      if (data.he) {
         hebrewText = data.he;
-      }
-      // Handle v3 API format (data.versions array)
-      else if (data.versions && Array.isArray(data.versions)) {
-        const hebrewVersion = data.versions.find(v => v.language === 'he' || v.actualLanguage === 'he');
-        if (hebrewVersion && hebrewVersion.text) {
-          hebrewText = hebrewVersion.text;
-        }
+      } else if (data.versions) {
+        const hv = data.versions.find(v => v.language === 'he' || v.actualLanguage === 'he');
+        if (hv) hebrewText = hv.text;
       }
       
-      if (!hebrewText || hebrewText.length === 0) {
-        throw new Error('No Hebrew text found for this reference');
+      if (!hebrewText || (Array.isArray(hebrewText) && hebrewText.length === 0)) {
+        throw new Error('No Hebrew text found — try a more specific reference like "Genesis 1" or "Psalms 23"');
+      }
+
+      // Deep-flatten any nesting level (whole book = 3 levels deep)
+      function deepFlatten(arr) {
+        if (!Array.isArray(arr)) return arr ? [arr] : [];
+        return arr.flatMap(item => Array.isArray(item) ? deepFlatten(item) : [item]);
       }
       
-      // Handle nested array structure (sections with verses)
-      let text;
-      if (Array.isArray(hebrewText[0])) {
-        text = hebrewText.flat().join(' ');
-      } else {
-        text = hebrewText.join(' ');
-      }
+      let verses = deepFlatten(hebrewText).filter(Boolean);
+      let text = verses.join(' ');
       
-      // Replace Hebrew hyphen with space
+      // Strip HTML tags Sefaria sometimes includes
+      text = text.replace(/<[^>]+>/g, ' ');
+      
+      // Replace Hebrew hyphen maqaf with space
       text = text.replace(/\u05BE/g, ' ');
       
-      // Remove vowels and cantillation if requested
       if (removeVowels.checked) {
-        // Remove cantillation marks and vowels (Unicode range \u0591-\u05C7, excluding Hebrew letters)
         text = text.replace(/[\u0591-\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]/g, '');
       }
       
-      // Remove punctuation and special chars
+      // Keep Hebrew letters only (strip punctuation, latin, numbers)
       text = text.replace(/[^\u05D0-\u05EA\s]/g, '');
-      
-      // Remove extra whitespace
       text = text.replace(/\s+/g, ' ').trim();
+      
+      if (!text) throw new Error('Text was empty after processing — try a different reference');
       
       return text;
     }
 
     function checkCanGenerate() {
-      generateBtn.disabled = !(currentImage && currentText);
+      if (activeTab === 'custom') {
+        generateBtn.disabled = !(currentImage && customTextInput.value.trim().length > 0);
+      } else {
+        // Sefaria: enable if image loaded and ref field has something (text will fetch on click)
+        generateBtn.disabled = !(currentImage && textRef.value.trim().length > 0);
+      }
     }
 
     async function generateMicrography() {
       if (!currentImage || isProcessing) return;
       
-      // Auto-fetch text if not already loaded
-      if (!currentText) {
+      if (activeTab === 'custom') {
+        currentText = customTextInput.value.trim();
+        if (!currentText) {
+          showError('Please enter some text first');
+          customTextInput.focus();
+          return;
+        }
+      } else {
+        // Sefaria: fetch/re-fetch if ref changed or text not loaded
         const ref = textRef.value.trim();
         if (!ref) {
           showError('Please enter a text reference first');
           textRef.focus();
           return;
         }
-        try {
-          showError('Fetching text...');
-          const text = await fetchSefariaText(ref);
-          currentText = text;
-          hideError();
-        } catch (err) {
-          showError('Failed to fetch text: ' + err.message);
-          return;
+        if (!currentText) {
+          try {
+            fetchStatus.textContent = 'Fetching text from Sefaria...';
+            const text = await fetchSefariaText(ref);
+            currentText = text;
+            fetchStatus.textContent = `✓ Loaded ${text.length.toLocaleString()} characters`;
+            hideError();
+          } catch (err) {
+            fetchStatus.textContent = '';
+            showError('Failed to fetch text: ' + err.message);
+            return;
+          }
         }
       }
 
@@ -799,15 +933,19 @@ import Layout from '../layouts/Layout.astro';
       const imageData = pCtx.getImageData(0, 0, width, height);
       const pixels = imageData.data;
 
-      // Set font for Hebrew text (right-to-left)
+      // Detect if text is Hebrew (RTL) or LTR
+      const isHebrew = activeTab === 'sefaria' || /[\u05D0-\u05EA]/.test(currentText.slice(0, 100));
+      
+      // Set font — Hebrew-capable font stack for all cases
       rCtx.font = `${fontDrawSize}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
-      rCtx.textAlign = 'left';  // Changed: align left so we can position chars RTL
+      rCtx.textAlign = 'left';
       rCtx.textBaseline = 'top';
-      rCtx.direction = 'rtl';  // Enable RTL text direction
+      rCtx.direction = isHebrew ? 'rtl' : 'ltr';
 
       // Process pixels and draw text
       let textIndex = 0;
-      const totalPixels = Math.ceil(height / sampleDensity) * Math.ceil(width / sampleDensity);
+      const colCount = Math.ceil(width / sampleDensity);
+      const totalPixels = Math.ceil(height / sampleDensity) * colCount;
       let processedPixels = 0;
 
       // Process in chunks for UI responsiveness
@@ -819,13 +957,16 @@ import Layout from '../layouts/Layout.astro';
             const chunkEnd = Math.min(processedPixels + chunkSize, totalPixels);
             
             for (let i = processedPixels; i < chunkEnd; i++) {
-              const row = Math.floor(i / Math.ceil(width / sampleDensity));
-              const col = i % Math.ceil(width / sampleDensity);
+              const row = Math.floor(i / colCount);
+              const col = i % colCount;
               
+              // For RTL Hebrew: sample pixels right-to-left; for LTR: left-to-right
               const y = row * sampleDensity;
-              const x = width - 1 - (col * sampleDensity); // Right to left for Hebrew
+              const x = isHebrew
+                ? width - 1 - (col * sampleDensity)
+                : col * sampleDensity;
               
-              if (y >= height || x < 0) continue;
+              if (y >= height || x < 0 || x >= width) continue;
               
               const pixelIndex = (y * width + x) * 4;
               const r = pixels[pixelIndex];
@@ -840,8 +981,10 @@ import Layout from '../layouts/Layout.astro';
               
               // Draw character - loop text if we run out
               const char = currentText[textIndex % currentText.length];
-              // Draw from right to left: start from right edge and go left
-              const drawX = outputWidth - (col * fontSize) - imgMargin / 2 - fontSize;
+              // RTL: draw from right edge leftward; LTR: draw from left edge rightward
+              const drawX = isHebrew
+                ? outputWidth - (col * fontSize) - imgMargin / 2 - fontSize
+                : col * fontSize + imgMargin / 2;
               const drawY = row * fontSize + imgMargin / 2;
               
               rCtx.fillStyle = color;
@@ -911,22 +1054,7 @@ import Layout from '../layouts/Layout.astro';
       errorMessage.classList.remove('visible');
     }
 
-    // Load sample text on page load
+    // Load sample reference on page load
     textRef.value = 'Genesis 1:1-5';
-    
-    // Auto-enable generate button when both image and ref are present
-    textRef.addEventListener('input', checkCanGenerate);
-    textRef.addEventListener('blur', async () => {
-      if (currentImage && textRef.value.trim() && !currentText) {
-        // Silently pre-fetch text when user tabs out with valid ref
-        try {
-          const text = await fetchSefariaText(textRef.value.trim());
-          currentText = text;
-          checkCanGenerate();
-        } catch (e) {
-          // Silent fail - user can click Preview Text to see error
-        }
-      }
-    });
   </script>
 </Layout>
