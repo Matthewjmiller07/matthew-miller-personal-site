@@ -1016,6 +1016,17 @@ import Layout from '../layouts/Layout.astro';
         .replace(/\s+/g, ' ').trim();
     }
 
+    // Cache the verse database after first load
+    let nameVersesDB = null;
+
+    async function loadNameVersesDB() {
+      if (nameVersesDB) return nameVersesDB;
+      const resp = await fetch('/name-verses.json');
+      if (!resp.ok) throw new Error(`Could not load verse database (HTTP ${resp.status})`);
+      nameVersesDB = await resp.json();
+      return nameVersesDB;
+    }
+
     async function findNameVerse() {
       const name = hebrewNameInput.value.trim();
       if (!name) {
@@ -1023,7 +1034,6 @@ import Layout from '../layouts/Layout.astro';
         return;
       }
 
-      // Get only Hebrew letters from name
       const hebrewOnly = name.replace(/[^\u05D0-\u05EA]/g, '');
       if (hebrewOnly.length === 0) {
         nameVerseResults.innerHTML = '<div style="color:#e53e3e;">Please enter your name in Hebrew letters</div>';
@@ -1037,35 +1047,12 @@ import Layout from '../layouts/Layout.astro';
       findVerseBtn.disabled = true;
 
       try {
-        const targetUrl = `https://www.toratemetfreeware.com/online/f_00720_all.html`;
-        // Use a CORS proxy since the target site doesn't allow cross-origin requests
-        const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
-        const resp = await fetch(proxyUrl);
-        if (!resp.ok) throw new Error(`Could not load verse database (HTTP ${resp.status})`);
-        const html = await resp.text();
+        const db = await loadNameVersesDB();
 
-        // Parse all bold verse entries: **[ref]** verse text
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const allText = doc.body.innerText || doc.body.textContent;
-
-        // Extract lines like: [ספר פרק-X-Y] verse
-        const versePattern = /\[([^\]]+)\]\s*([^\n\[]+)/g;
-        let match;
-        const matches = [];
-        while ((match = versePattern.exec(allText)) !== null) {
-          const ref = match[1].trim();
-          const verse = match[2].trim();
-          if (!verse || verse.length < 5) continue;
-          // Get Hebrew letters only
-          const hebrewChars = verse.replace(/[^\u05D0-\u05EA]/g, '');
-          if (hebrewChars.length === 0) continue;
-          const vFirst = normalizeHebrew(hebrewChars[0]);
-          const vLast = normalizeHebrew(hebrewChars[hebrewChars.length - 1]);
-          if (vFirst === firstLetter && vLast === lastLetter) {
-            matches.push({ ref, verse });
-          }
-        }
+        const matches = db.filter(v =>
+          normalizeHebrew(v.startLetter) === firstLetter &&
+          normalizeHebrew(v.endLetter) === lastLetter
+        );
 
         if (matches.length === 0) {
           nameVerseResults.innerHTML = `
@@ -1074,28 +1061,28 @@ import Layout from '../layouts/Layout.astro';
               Try a different form of your name.
             </div>`;
         } else {
-          const display = matches.slice(0, 8);
+          const display = matches.slice(0, 10);
           let html = `<div style="font-size:0.85rem; color:#4a5568; margin-bottom:0.5rem;">
             Found <strong>${matches.length}</strong> verse${matches.length > 1 ? 's' : ''} for 
             <strong>${firstLetter}...${lastLetter}</strong> — click one to use it:
           </div>`;
           display.forEach((v, i) => {
+            const refStr = `${v.ref.book} ${v.ref.chapter}:${v.ref.verse}`;
             html += `
               <div class="verse-option" data-index="${i}" style="
                 border:1px solid #e2e8f0; border-radius:8px; padding:0.6rem 0.8rem;
                 margin-bottom:0.5rem; cursor:pointer; transition:all 0.15s;
                 background:white; direction:rtl; text-align:right; font-size:0.92rem; line-height:1.6;
               ">
-                <div style="font-size:0.75rem; color:#718096; direction:ltr; text-align:left; margin-bottom:0.2rem;">${v.ref}</div>
-                <div style="color:#2d3748;">${v.verse}</div>
+                <div style="font-size:0.75rem; color:#718096; direction:ltr; text-align:left; margin-bottom:0.2rem;">${refStr}</div>
+                <div style="color:#2d3748;">${v.text}</div>
               </div>`;
           });
-          if (matches.length > 8) {
-            html += `<div style="font-size:0.82rem; color:#718096;">...and ${matches.length - 8} more</div>`;
+          if (matches.length > 10) {
+            html += `<div style="font-size:0.82rem; color:#718096; margin-top:0.3rem;">...and ${matches.length - 10} more</div>`;
           }
           nameVerseResults.innerHTML = html;
 
-          // Click handler for each verse option
           nameVerseResults.querySelectorAll('.verse-option').forEach((el, i) => {
             el.addEventListener('mouseenter', () => el.style.borderColor = '#667eea');
             el.addEventListener('mouseleave', () => {
@@ -1110,9 +1097,12 @@ import Layout from '../layouts/Layout.astro';
               el.classList.add('selected');
               el.style.background = '#eef2ff';
               el.style.borderColor = '#667eea';
-              // Set as current text (strip nikud for fill)
-              currentText = stripNikud(display[i].verse);
-              fetchStatus.textContent = `✓ Using: ${display[i].ref} (${currentText.length} chars)`;
+              // Use pre-stripped textNoNikud if available, else strip on the fly
+              currentText = display[i].textNoNikud
+                ? display[i].textNoNikud.replace(/[^\u05D0-\u05EA\s]/g, '').replace(/\s+/g, ' ').trim()
+                : stripNikud(display[i].text);
+              const refStr = `${display[i].ref.book} ${display[i].ref.chapter}:${display[i].ref.verse}`;
+              fetchStatus.textContent = `✓ ${refStr} (${currentText.length} chars)`;
               checkCanGenerate();
             });
           });
@@ -1120,12 +1110,7 @@ import Layout from '../layouts/Layout.astro';
       } catch (err) {
         nameVerseResults.innerHTML = `
           <div style="color:#e53e3e; font-size:0.85rem; line-height:1.6;">
-            <strong>Could not load verse database:</strong> ${err.message}<br/>
-            <span style="color:#718096;">
-              Try using the Sefaria Reference tab instead, or visit
-              <a href="https://www.toratemetfreeware.com/online/f_00720_all.html" target="_blank" style="color:#667eea;">Torat Emet</a>
-              directly to find your verse.
-            </span>
+            <strong>Error:</strong> ${err.message}
           </div>`;
       } finally {
         findVerseBtn.disabled = false;
