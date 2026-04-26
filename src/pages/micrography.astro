@@ -649,6 +649,7 @@ import Layout from '../layouts/Layout.astro';
           
           <div class="tab-bar">
             <button class="tab-btn active" data-tab="sefaria">Sefaria Reference</button>
+            <button class="tab-btn" data-tab="nameverse">Name Verse ✡</button>
             <button class="tab-btn" data-tab="custom">Custom Text</button>
           </div>
           
@@ -665,6 +666,18 @@ import Layout from '../layouts/Layout.astro';
               </label>
             </div>
             <div id="textPreview" class="text-preview"></div>
+          </div>
+
+          <!-- Name Verse tab -->
+          <div class="tab-panel" id="tab-nameverse">
+            <div style="font-size:0.85rem; color:#4a5568; margin-bottom:0.6rem; line-height:1.5;">
+              <strong>סגולה:</strong> Find a verse that begins with the first letter of your Hebrew name and ends with the last letter — to be said before <em>יהיו לרצון</em> in Shemoneh Esrei.
+            </div>
+            <input type="text" id="hebrewNameInput" class="text-input" placeholder="שמך בעברית, e.g. מתתיהו, רחל, דוד..." dir="rtl" style="font-size:1.2rem; text-align:right;" />
+            <button id="findVerseBtn" class="btn-secondary" style="margin-top:0.6rem; width:100%;">
+              🔍 Find Name Verse
+            </button>
+            <div id="nameVerseResults" style="margin-top:0.75rem;"></div>
           </div>
           
           <!-- Custom text tab -->
@@ -743,7 +756,7 @@ import Layout from '../layouts/Layout.astro';
     let currentImage = null;
     let currentText = '';
     let isProcessing = false;
-    let activeTab = 'sefaria';   // 'sefaria' | 'custom'
+    let activeTab = 'sefaria';   // 'sefaria' | 'nameverse' | 'custom'
     let sourceMode = 'image';    // 'image' | 'word'
 
     // DOM elements
@@ -760,6 +773,9 @@ import Layout from '../layouts/Layout.astro';
     const textPreview = document.getElementById('textPreview');
     const customTextInput = document.getElementById('customTextInput');
     const charCount = document.getElementById('charCount');
+    const hebrewNameInput = document.getElementById('hebrewNameInput');
+    const findVerseBtn = document.getElementById('findVerseBtn');
+    const nameVerseResults = document.getElementById('nameVerseResults');
     const densitySlider = document.getElementById('densitySlider');
     const densityValue = document.getElementById('densityValue');
     const generateBtn = document.getElementById('generateBtn');
@@ -806,12 +822,20 @@ import Layout from '../layouts/Layout.astro';
         btn.classList.add('active');
         activeTab = btn.dataset.tab;
         document.getElementById(`tab-${activeTab}`).classList.add('active');
-        // Show/hide fetch button
+        // Show/hide fetch button (only for sefaria tab)
         fetchTextBtn.style.display = activeTab === 'sefaria' ? '' : 'none';
-        currentText = '';
+        if (activeTab !== 'nameverse') currentText = '';
         checkCanGenerate();
       });
     });
+
+    // Name verse lookup
+    hebrewNameInput.addEventListener('input', () => {
+      nameVerseResults.innerHTML = '';
+      if (activeTab === 'nameverse') { currentText = ''; checkCanGenerate(); }
+    });
+
+    findVerseBtn.addEventListener('click', () => findNameVerse());
     
     // Custom text character counter + live enable
     customTextInput.addEventListener('input', () => {
@@ -980,13 +1004,146 @@ import Layout from '../layouts/Layout.astro';
       return text;
     }
 
+    // Map final (sofit) letters to their base form for matching
+    const sofitMap = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' };
+    function normalizeHebrew(ch) { return sofitMap[ch] || ch; }
+
+    // Strip nikud/cantillation from a verse for use as fill text
+    function stripNikud(text) {
+      return text
+        .replace(/[\u0591-\u05C7]/g, '') // cantillation + vowels
+        .replace(/[^\u05D0-\u05EA\s]/g, '')
+        .replace(/\s+/g, ' ').trim();
+    }
+
+    async function findNameVerse() {
+      const name = hebrewNameInput.value.trim();
+      if (!name) {
+        nameVerseResults.innerHTML = '<div style="color:#e53e3e;">Please enter your Hebrew name</div>';
+        return;
+      }
+
+      // Get only Hebrew letters from name
+      const hebrewOnly = name.replace(/[^\u05D0-\u05EA]/g, '');
+      if (hebrewOnly.length === 0) {
+        nameVerseResults.innerHTML = '<div style="color:#e53e3e;">Please enter your name in Hebrew letters</div>';
+        return;
+      }
+
+      const firstLetter = normalizeHebrew(hebrewOnly[0]);
+      const lastLetter = normalizeHebrew(hebrewOnly[hebrewOnly.length - 1]);
+
+      nameVerseResults.innerHTML = '<div style="color:#718096; font-size:0.85rem;">Searching...</div>';
+      findVerseBtn.disabled = true;
+
+      try {
+        const targetUrl = `https://www.toratemetfreeware.com/online/f_00720_all.html`;
+        // Use a CORS proxy since the target site doesn't allow cross-origin requests
+        const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
+        const resp = await fetch(proxyUrl);
+        if (!resp.ok) throw new Error(`Could not load verse database (HTTP ${resp.status})`);
+        const html = await resp.text();
+
+        // Parse all bold verse entries: **[ref]** verse text
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const allText = doc.body.innerText || doc.body.textContent;
+
+        // Extract lines like: [ספר פרק-X-Y] verse
+        const versePattern = /\[([^\]]+)\]\s*([^\n\[]+)/g;
+        let match;
+        const matches = [];
+        while ((match = versePattern.exec(allText)) !== null) {
+          const ref = match[1].trim();
+          const verse = match[2].trim();
+          if (!verse || verse.length < 5) continue;
+          // Get Hebrew letters only
+          const hebrewChars = verse.replace(/[^\u05D0-\u05EA]/g, '');
+          if (hebrewChars.length === 0) continue;
+          const vFirst = normalizeHebrew(hebrewChars[0]);
+          const vLast = normalizeHebrew(hebrewChars[hebrewChars.length - 1]);
+          if (vFirst === firstLetter && vLast === lastLetter) {
+            matches.push({ ref, verse });
+          }
+        }
+
+        if (matches.length === 0) {
+          nameVerseResults.innerHTML = `
+            <div style="color:#e53e3e; font-size:0.9rem;">
+              No verses found starting with <strong>${firstLetter}</strong> and ending with <strong>${lastLetter}</strong>.
+              Try a different form of your name.
+            </div>`;
+        } else {
+          const display = matches.slice(0, 8);
+          let html = `<div style="font-size:0.85rem; color:#4a5568; margin-bottom:0.5rem;">
+            Found <strong>${matches.length}</strong> verse${matches.length > 1 ? 's' : ''} for 
+            <strong>${firstLetter}...${lastLetter}</strong> — click one to use it:
+          </div>`;
+          display.forEach((v, i) => {
+            html += `
+              <div class="verse-option" data-index="${i}" style="
+                border:1px solid #e2e8f0; border-radius:8px; padding:0.6rem 0.8rem;
+                margin-bottom:0.5rem; cursor:pointer; transition:all 0.15s;
+                background:white; direction:rtl; text-align:right; font-size:0.92rem; line-height:1.6;
+              ">
+                <div style="font-size:0.75rem; color:#718096; direction:ltr; text-align:left; margin-bottom:0.2rem;">${v.ref}</div>
+                <div style="color:#2d3748;">${v.verse}</div>
+              </div>`;
+          });
+          if (matches.length > 8) {
+            html += `<div style="font-size:0.82rem; color:#718096;">...and ${matches.length - 8} more</div>`;
+          }
+          nameVerseResults.innerHTML = html;
+
+          // Click handler for each verse option
+          nameVerseResults.querySelectorAll('.verse-option').forEach((el, i) => {
+            el.addEventListener('mouseenter', () => el.style.borderColor = '#667eea');
+            el.addEventListener('mouseleave', () => {
+              el.style.borderColor = el.classList.contains('selected') ? '#667eea' : '#e2e8f0';
+            });
+            el.addEventListener('click', () => {
+              nameVerseResults.querySelectorAll('.verse-option').forEach(e => {
+                e.classList.remove('selected');
+                e.style.background = 'white';
+                e.style.borderColor = '#e2e8f0';
+              });
+              el.classList.add('selected');
+              el.style.background = '#eef2ff';
+              el.style.borderColor = '#667eea';
+              // Set as current text (strip nikud for fill)
+              currentText = stripNikud(display[i].verse);
+              fetchStatus.textContent = `✓ Using: ${display[i].ref} (${currentText.length} chars)`;
+              checkCanGenerate();
+            });
+          });
+        }
+      } catch (err) {
+        nameVerseResults.innerHTML = `
+          <div style="color:#e53e3e; font-size:0.85rem; line-height:1.6;">
+            <strong>Could not load verse database:</strong> ${err.message}<br/>
+            <span style="color:#718096;">
+              Try using the Sefaria Reference tab instead, or visit
+              <a href="https://www.toratemetfreeware.com/online/f_00720_all.html" target="_blank" style="color:#667eea;">Torat Emet</a>
+              directly to find your verse.
+            </span>
+          </div>`;
+      } finally {
+        findVerseBtn.disabled = false;
+      }
+    }
+
     function checkCanGenerate() {
       const hasShape = sourceMode === 'word'
         ? shapeWord.value.trim().length > 0
         : currentImage !== null;
-      const hasFillText = activeTab === 'custom'
-        ? customTextInput.value.trim().length > 0
-        : textRef.value.trim().length > 0;
+      let hasFillText;
+      if (activeTab === 'custom') {
+        hasFillText = customTextInput.value.trim().length > 0;
+      } else if (activeTab === 'nameverse') {
+        hasFillText = currentText.length > 0; // set after verse selected
+      } else {
+        hasFillText = textRef.value.trim().length > 0;
+      }
       generateBtn.disabled = !(hasShape && hasFillText);
     }
 
@@ -1011,6 +1168,12 @@ import Layout from '../layouts/Layout.astro';
           customTextInput.focus();
           return;
         }
+      } else if (activeTab === 'nameverse') {
+        if (!currentText) {
+          showError('Please find and select a name verse first');
+          return;
+        }
+        // currentText already set when user clicked a verse option
       } else {
         // Sefaria: fetch/re-fetch if ref changed or text not loaded
         const ref = textRef.value.trim();
