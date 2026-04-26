@@ -1267,7 +1267,7 @@ import Layout from '../layouts/Layout.astro';
       const pixels = imageData.data;
 
       // Detect if text is Hebrew (RTL) or LTR
-      const isHebrew = activeTab === 'sefaria' || /[\u05D0-\u05EA]/.test(currentText.slice(0, 100));
+      const isHebrew = activeTab === 'sefaria' || activeTab === 'nameverse' || /[\u05D0-\u05EA]/.test(currentText.slice(0, 100));
       
       // Force LTR + left-align so each char sits exactly at its cell's left edge
       rCtx.font = `${fontDrawSize}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
@@ -1313,10 +1313,12 @@ import Layout from '../layouts/Layout.astro';
               }
               
               // Draw character - loop text if we run out
-              // For Hebrew: iterate col right→left (already handled in x sampling),
-              // draw at left edge of each cell — direction='ltr' so no anchor confusion
               const char = currentText[textIndex % currentText.length];
-              const drawX = col * fontSize + imgMargin / 2;
+              // Hebrew: col 0 = rightmost pixel sample → draw at right edge of canvas
+              // LTR:    col 0 = leftmost pixel sample → draw at left edge
+              const drawX = isHebrew
+                ? outputWidth - (col + 1) * fontSize - imgMargin / 2
+                : col * fontSize + imgMargin / 2;
               const drawY = row * fontSize + imgMargin / 2;
               
               rCtx.fillStyle = color;
@@ -1355,7 +1357,7 @@ import Layout from '../layouts/Layout.astro';
       const padding = 40;
 
       // Detect if fill text is Hebrew (RTL)
-      const isHebrew = activeTab === 'sefaria' || /[\u05D0-\u05EA]/.test(currentText.slice(0, 100));
+      const isHebrew = activeTab === 'sefaria' || activeTab === 'nameverse' || /[\u05D0-\u05EA]/.test(currentText.slice(0, 100));
       // Detect if the shape word itself is Hebrew/RTL
       const shapeIsHebrew = /[\u05D0-\u05EA]/.test(word);
 
