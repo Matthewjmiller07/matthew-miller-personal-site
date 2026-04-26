@@ -128,6 +128,80 @@ import Layout from '../layouts/Layout.astro';
       color: #f9fafb;
     }
     
+    .source-tab-bar {
+      display: flex;
+      border-bottom: 2px solid #e2e8f0;
+      margin-bottom: 1rem;
+      gap: 0;
+    }
+    
+    .source-tab-btn {
+      background: none;
+      border: none;
+      padding: 0.55rem 1rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #718096;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.15s ease;
+    }
+    
+    .source-tab-btn:hover { color: #667eea; }
+    
+    .source-tab-btn.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+    
+    .source-panel { display: none; }
+    .source-panel.active { display: block; }
+    
+    .shape-word-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-align: center;
+      transition: all 0.2s ease;
+      background: white;
+      color: #2d3748;
+    }
+    
+    .shape-word-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+    }
+    
+    .shape-word-input::placeholder { color: #c0c0c0; font-size: 1.2rem; font-weight: 400; }
+    
+    .shape-options {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .shape-options label {
+      font-size: 0.85rem;
+      color: #4a5568;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+    }
+    
+    .dark .source-tab-bar { border-color: #374151; }
+    .dark .source-tab-btn { color: #9ca3af; }
+    .dark .source-tab-btn.active { color: #a78bfa; border-bottom-color: #a78bfa; }
+    .dark .shape-word-input { background: #111827; border-color: #374151; color: #f9fafb; }
+    
     .file-input-wrapper {
       position: relative;
       display: inline-block;
@@ -512,15 +586,51 @@ import Layout from '../layouts/Layout.astro';
     <div class="control-panel">
       <div class="grid-2">
         <div class="control-section">
-          <div class="section-title">1. Upload Image</div>
-          <div class="file-input-wrapper" id="fileWrapper">
-            <input type="file" id="imageInput" accept="image/*" />
-            <div class="file-input-label">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span id="fileLabelText">Choose an image...</span>
+          <div class="section-title">1. Shape Source</div>
+          
+          <div class="source-tab-bar">
+            <button class="source-tab-btn active" data-source="image">Upload Image</button>
+            <button class="source-tab-btn" data-source="word">Word / Name</button>
+          </div>
+          
+          <!-- Image source panel -->
+          <div class="source-panel active" id="source-image">
+            <div class="file-input-wrapper" id="fileWrapper">
+              <input type="file" id="imageInput" accept="image/*" />
+              <div class="file-input-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span id="fileLabelText">Choose an image...</span>
+              </div>
+            </div>
+            <div id="imagePreview" class="preview-container" style="margin-top: 1rem;"></div>
+          </div>
+          
+          <!-- Word/Name shape panel -->
+          <div class="source-panel" id="source-word">
+            <input type="text" id="shapeWord" class="shape-word-input" placeholder="Matthew, אמת, שלום..." maxlength="40" />
+            <div style="margin-top: 0.5rem; font-size: 0.82rem; color: #718096;">
+              Type a name, word, or phrase — the fill text will form these letters
+            </div>
+            <div class="shape-options">
+              <label>
+                Font size:
+                <select id="shapeFontSize" style="margin-left:0.3rem; padding:0.2rem 0.4rem; border-radius:6px; border:1px solid #e2e8f0; font-size:0.85rem;">
+                  <option value="200">Small</option>
+                  <option value="320" selected>Medium</option>
+                  <option value="480">Large</option>
+                  <option value="640">X-Large</option>
+                </select>
+              </label>
+              <label>
+                BG:
+                <input type="color" id="shapeBgColor" value="#ffffff" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:0;" />
+              </label>
+              <label>
+                Text color:
+                <input type="color" id="shapeTextColor" value="#1a1a2e" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:0;" />
+              </label>
             </div>
           </div>
-          <div id="imagePreview" class="preview-container" style="margin-top: 1rem;"></div>
         </div>
 
         <div class="control-section">
@@ -616,13 +726,18 @@ import Layout from '../layouts/Layout.astro';
     let currentImage = null;
     let currentText = '';
     let isProcessing = false;
-    let activeTab = 'sefaria'; // 'sefaria' | 'custom'
+    let activeTab = 'sefaria';   // 'sefaria' | 'custom'
+    let sourceMode = 'image';    // 'image' | 'word'
 
     // DOM elements
     const imageInput = document.getElementById('imageInput');
     const fileWrapper = document.getElementById('fileWrapper');
     const fileLabelText = document.getElementById('fileLabelText');
     const imagePreview = document.getElementById('imagePreview');
+    const shapeWord = document.getElementById('shapeWord');
+    const shapeFontSize = document.getElementById('shapeFontSize');
+    const shapeBgColor = document.getElementById('shapeBgColor');
+    const shapeTextColor = document.getElementById('shapeTextColor');
     const textRef = document.getElementById('textRef');
     const removeVowels = document.getElementById('removeVowels');
     const textPreview = document.getElementById('textPreview');
@@ -647,7 +762,24 @@ import Layout from '../layouts/Layout.astro';
     // Sample image data - a simple geometric pattern
     const sampleImageData = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23667eea"/><stop offset="50%" style="stop-color:%23764ba2"/><stop offset="100%" style="stop-color:%23f093fb"/></linearGradient></defs><rect width="300" height="400" fill="url(%23g1)"/><circle cx="150" cy="120" r="80" fill="white" opacity="0.9"/><circle cx="150" cy="120" r="60" fill="url(%23g1)" opacity="0.8"/><ellipse cx="150" cy="280" rx="100" ry="60" fill="white" opacity="0.6"/><ellipse cx="150" cy="280" rx="70" ry="40" fill="url(%23g1)" opacity="0.7"/></svg>')}`;
 
-    // Tab switching
+    // Source tab switching (Image vs Word/Name)
+    document.querySelectorAll('.source-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.source-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.source-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        sourceMode = btn.dataset.source;
+        document.getElementById(`source-${sourceMode}`).classList.add('active');
+        // Hide Load Sample in word mode
+        loadSampleBtn.style.display = sourceMode === 'word' ? 'none' : '';
+        checkCanGenerate();
+      });
+    });
+    
+    // Shape word input — enable generate as you type
+    shapeWord.addEventListener('input', checkCanGenerate);
+
+    // Fill text tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -830,17 +962,29 @@ import Layout from '../layouts/Layout.astro';
     }
 
     function checkCanGenerate() {
-      if (activeTab === 'custom') {
-        generateBtn.disabled = !(currentImage && customTextInput.value.trim().length > 0);
-      } else {
-        // Sefaria: enable if image loaded and ref field has something (text will fetch on click)
-        generateBtn.disabled = !(currentImage && textRef.value.trim().length > 0);
-      }
+      const hasShape = sourceMode === 'word'
+        ? shapeWord.value.trim().length > 0
+        : currentImage !== null;
+      const hasFillText = activeTab === 'custom'
+        ? customTextInput.value.trim().length > 0
+        : textRef.value.trim().length > 0;
+      generateBtn.disabled = !(hasShape && hasFillText);
     }
 
     async function generateMicrography() {
-      if (!currentImage || isProcessing) return;
+      if (isProcessing) return;
       
+      // Validate shape source
+      if (sourceMode === 'word' && !shapeWord.value.trim()) {
+        showError('Please enter a word or name');
+        shapeWord.focus();
+        return;
+      }
+      if (sourceMode === 'image' && !currentImage) {
+        showError('Please upload an image first');
+        return;
+      }
+
       if (activeTab === 'custom') {
         currentText = customTextInput.value.trim();
         if (!currentText) {
@@ -882,7 +1026,11 @@ import Layout from '../layouts/Layout.astro';
       hideError();
 
       try {
-        await processImage();
+        if (sourceMode === 'word') {
+          await processShape();
+        } else {
+          await processImage();
+        }
         resultContainer.classList.add('visible');
         textUsed.textContent = `Text used (${currentText.length} characters): ${currentText.substring(0, 100)}${currentText.length > 100 ? '...' : ''}`;
         
@@ -1010,6 +1158,113 @@ import Layout from '../layouts/Layout.astro';
           }
         }
         
+        processChunk();
+      });
+    }
+
+    async function processShape() {
+      const word = shapeWord.value.trim();
+      const fillFontSize = parseInt(densitySlider.value) <= 4 ? 8 : parseInt(densitySlider.value) <= 7 ? 10 : 12;
+      const shapePx = parseInt(shapeFontSize.value);
+      const bgColor = shapeBgColor.value;
+      const fillColor = shapeTextColor.value;
+      const padding = 40;
+
+      // Detect if fill text is Hebrew (RTL)
+      const isHebrew = activeTab === 'sefaria' || /[\u05D0-\u05EA]/.test(currentText.slice(0, 100));
+      // Detect if the shape word itself is Hebrew/RTL
+      const shapeIsHebrew = /[\u05D0-\u05EA]/.test(word);
+
+      // Step 1: render the shape word onto a temp canvas to get its mask
+      const maskCanvas = document.createElement('canvas');
+      const mCtx = maskCanvas.getContext('2d');
+      const shapeFont = shapeIsHebrew
+        ? `bold ${shapePx}px "Noto Sans Hebrew", "FrankRuehl", serif`
+        : `bold ${shapePx}px "Georgia", "Times New Roman", serif`;
+      mCtx.font = shapeFont;
+      const measured = mCtx.measureText(word);
+      const maskW = Math.ceil(measured.width) + padding * 2;
+      const maskH = shapePx + padding * 2;
+      maskCanvas.width = maskW;
+      maskCanvas.height = maskH;
+
+      // Fill background
+      mCtx.fillStyle = bgColor;
+      mCtx.fillRect(0, 0, maskW, maskH);
+
+      // Draw word big
+      mCtx.font = shapeFont;
+      mCtx.fillStyle = '#000000';
+      mCtx.textBaseline = 'alphabetic';
+      mCtx.direction = shapeIsHebrew ? 'rtl' : 'ltr';
+      const textX = shapeIsHebrew ? maskW - padding : padding;
+      mCtx.fillText(word, textX, shapePx + padding * 0.6);
+
+      // Step 2: read mask pixels
+      const maskData = mCtx.getImageData(0, 0, maskW, maskH);
+      const mPx = maskData.data;
+
+      // Step 3: set up result canvas (scale up for fill chars)
+      const scale = fillFontSize;
+      const cols = Math.ceil(maskW / scale);
+      const rows = Math.ceil(maskH / scale);
+      const outW = cols * scale + 4;
+      const outH = rows * scale + 4;
+
+      const rCtx = resultCanvas.getContext('2d');
+      resultCanvas.width = outW;
+      resultCanvas.height = outH;
+      rCtx.fillStyle = bgColor;
+      rCtx.fillRect(0, 0, outW, outH);
+
+      rCtx.font = `${scale + 2}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
+      rCtx.textBaseline = 'top';
+      rCtx.direction = isHebrew ? 'rtl' : 'ltr';
+
+      // Step 4: for each cell, check if mask pixel is dark (inside letter shape)
+      let textIndex = 0;
+      const total = rows * cols;
+      let done = 0;
+
+      await new Promise((resolve, reject) => {
+        function processChunk() {
+          try {
+            const end = Math.min(done + 800, total);
+            for (let i = done; i < end; i++) {
+              const row = Math.floor(i / cols);
+              const col = i % cols;
+
+              // Sample center of this cell from the mask
+              const maskX = Math.min(col * scale + Math.floor(scale / 2), maskW - 1);
+              const maskY = Math.min(row * scale + Math.floor(scale / 2), maskH - 1);
+              const idx = (maskY * maskW + maskX) * 4;
+              const r = mPx[idx], g = mPx[idx + 1], b = mPx[idx + 2];
+              const brightness = (r + g + b) / 3;
+
+              // Only draw where the letter is dark (inside the shape)
+              if (brightness < 128) {
+                const char = currentText[textIndex % currentText.length];
+                const drawX = isHebrew
+                  ? outW - col * scale - 2
+                  : col * scale + 2;
+                const drawY = row * scale + 2;
+                rCtx.fillStyle = fillColor;
+                rCtx.fillText(char, drawX, drawY);
+                textIndex++;
+              }
+            }
+            done = end;
+            progressFill.style.width = `${Math.round(done / total * 100)}%`;
+            progressText.textContent = `Processing... ${Math.round(done / total * 100)}%`;
+            if (done < total) {
+              setTimeout(processChunk, 0);
+            } else {
+              resolve();
+            }
+          } catch (err) {
+            reject(err);
+          }
+        }
         processChunk();
       });
     }
