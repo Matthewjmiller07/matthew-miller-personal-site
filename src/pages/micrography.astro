@@ -1084,11 +1084,11 @@ import Layout from '../layouts/Layout.astro';
       // Detect if text is Hebrew (RTL) or LTR
       const isHebrew = activeTab === 'sefaria' || /[\u05D0-\u05EA]/.test(currentText.slice(0, 100));
       
-      // Set font — Hebrew-capable font stack for all cases
+      // Force LTR + left-align so each char sits exactly at its cell's left edge
       rCtx.font = `${fontDrawSize}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
       rCtx.textAlign = 'left';
       rCtx.textBaseline = 'top';
-      rCtx.direction = isHebrew ? 'rtl' : 'ltr';
+      rCtx.direction = 'ltr';
 
       // Process pixels and draw text
       let textIndex = 0;
@@ -1128,11 +1128,10 @@ import Layout from '../layouts/Layout.astro';
               }
               
               // Draw character - loop text if we run out
+              // For Hebrew: iterate col right→left (already handled in x sampling),
+              // draw at left edge of each cell — direction='ltr' so no anchor confusion
               const char = currentText[textIndex % currentText.length];
-              // RTL: draw from right edge leftward; LTR: draw from left edge rightward
-              const drawX = isHebrew
-                ? outputWidth - (col * fontSize) - imgMargin / 2 - fontSize
-                : col * fontSize + imgMargin / 2;
+              const drawX = col * fontSize + imgMargin / 2;
               const drawY = row * fontSize + imgMargin / 2;
               
               rCtx.fillStyle = color;
@@ -1217,11 +1216,14 @@ import Layout from '../layouts/Layout.astro';
       rCtx.fillStyle = bgColor;
       rCtx.fillRect(0, 0, outW, outH);
 
+      // Always left-align and position chars by exact cell — avoids RTL direction bugs
       rCtx.font = `${scale + 2}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
       rCtx.textBaseline = 'top';
-      rCtx.direction = isHebrew ? 'rtl' : 'ltr';
+      rCtx.textAlign = 'left';
+      rCtx.direction = 'ltr'; // force LTR so drawX is always the left edge of the char
 
       // Step 4: for each cell, check if mask pixel is dark (inside letter shape)
+      // For Hebrew fill text we iterate columns right-to-left so reading order is RTL
       let textIndex = 0;
       const total = rows * cols;
       let done = 0;
@@ -1232,7 +1234,8 @@ import Layout from '../layouts/Layout.astro';
             const end = Math.min(done + 800, total);
             for (let i = done; i < end; i++) {
               const row = Math.floor(i / cols);
-              const col = i % cols;
+              // Hebrew fill: iterate cols right→left so text reads RTL naturally
+              const col = isHebrew ? (cols - 1 - (i % cols)) : (i % cols);
 
               // Sample center of this cell from the mask
               const maskX = Math.min(col * scale + Math.floor(scale / 2), maskW - 1);
@@ -1244,10 +1247,9 @@ import Layout from '../layouts/Layout.astro';
               // Only draw where the letter is dark (inside the shape)
               if (brightness < 128) {
                 const char = currentText[textIndex % currentText.length];
-                const drawX = isHebrew
-                  ? outW - col * scale - 2
-                  : col * scale + 2;
-                const drawY = row * scale + 2;
+                // Always draw at the left edge of the cell
+                const drawX = col * scale + 1;
+                const drawY = row * scale + 1;
                 rCtx.fillStyle = fillColor;
                 rCtx.fillText(char, drawX, drawY);
                 textIndex++;
