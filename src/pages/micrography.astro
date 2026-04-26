@@ -689,7 +689,55 @@ import Layout from '../layouts/Layout.astro';
       </div>
 
       <div class="control-section" style="margin-top: 1.5rem;">
-        <div class="section-title">3. Adjust Settings</div>
+        <div class="section-title">3. Color Replace <span style="font-size:0.78rem; font-weight:400; color:#718096;">(image mode only)</span></div>
+        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.9rem; color:#4a5568; margin-bottom:0.75rem;">
+          <input type="checkbox" id="enableColorReplace" style="width:18px;height:18px;accent-color:#667eea;" />
+          Replace a color in the image
+        </label>
+        <div id="colorReplacePanel" style="display:none;">
+          <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-start;">
+            <div>
+              <div style="font-size:0.82rem; color:#718096; margin-bottom:0.3rem;">Target color</div>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <input type="color" id="targetColor" value="#ffffff" style="width:40px;height:32px;border:none;border-radius:6px;cursor:pointer;padding:0;" />
+                <input type="text" id="targetColorHex" value="#ffffff" maxlength="7"
+                  style="width:80px;padding:0.3rem 0.5rem;border:1px solid #e2e8f0;border-radius:6px;font-size:0.85rem;font-family:monospace;" />
+                <button id="eyedropperBtn" title="Pick color from image" style="
+                  padding:0.3rem 0.6rem; border:1px solid #e2e8f0; border-radius:6px;
+                  background:white; cursor:pointer; font-size:0.85rem; color:#4a5568;
+                  display:flex; align-items:center; gap:0.3rem;
+                ">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13.5V20a2 2 0 0 0 2 2h.5"/><path d="M22 13.5V20a2 2 0 0 1-2 2h-.5"/><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M7 9.5L2 12"/><path d="M17 9.5L22 12"/><path d="M12 17v5"/></svg>
+                  Eyedropper
+                </button>
+              </div>
+              <div style="font-size:0.78rem; color:#718096; margin-top:0.3rem;">Or click the image preview to sample</div>
+            </div>
+            <div>
+              <div style="font-size:0.82rem; color:#718096; margin-bottom:0.3rem;">Replace with</div>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;color:#4a5568;cursor:pointer;">
+                  <input type="radio" name="replaceWith" id="replaceWithTransparent" value="transparent" checked style="accent-color:#667eea;" />
+                  Transparent
+                </label>
+                <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;color:#4a5568;cursor:pointer;">
+                  <input type="radio" name="replaceWith" id="replaceWithColor" value="color" style="accent-color:#667eea;" />
+                  Color:
+                  <input type="color" id="replaceColor" value="#000000" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:0;" />
+                </label>
+              </div>
+            </div>
+            <div style="width:100%;">
+              <div style="font-size:0.82rem; color:#718096; margin-bottom:0.3rem;">Tolerance: <span id="toleranceValue">30</span></div>
+              <input type="range" id="toleranceSlider" min="0" max="128" value="30" style="width:100%;" />
+            </div>
+          </div>
+          <div id="colorReplacePreview" style="margin-top:0.75rem; font-size:0.82rem; color:#718096;"></div>
+        </div>
+      </div>
+
+      <div class="control-section" style="margin-top: 1.5rem;">
+        <div class="section-title">4. Adjust Settings</div>
         <div style="margin-bottom: 0.5rem; font-weight: 500; color: #4a5568;">
           Density: <span id="densityValue">5</span> (lower = more detailed)
         </div>
@@ -793,6 +841,15 @@ import Layout from '../layouts/Layout.astro';
     const textUsed = document.getElementById('textUsed');
     const transparentBg = document.getElementById('transparentBg');
     const canvasContainer = resultCanvas.closest('.canvas-container');
+    const enableColorReplace = document.getElementById('enableColorReplace');
+    const colorReplacePanel = document.getElementById('colorReplacePanel');
+    const targetColorPicker = document.getElementById('targetColor');
+    const targetColorHex = document.getElementById('targetColorHex');
+    const eyedropperBtn = document.getElementById('eyedropperBtn');
+    const toleranceSlider = document.getElementById('toleranceSlider');
+    const toleranceValue = document.getElementById('toleranceValue');
+    const replaceColor = document.getElementById('replaceColor');
+    const colorReplacePreview = document.getElementById('colorReplacePreview');
 
     // Sample image data - a simple geometric pattern
     const sampleImageData = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23667eea"/><stop offset="50%" style="stop-color:%23764ba2"/><stop offset="100%" style="stop-color:%23f093fb"/></linearGradient></defs><rect width="300" height="400" fill="url(%23g1)"/><circle cx="150" cy="120" r="80" fill="white" opacity="0.9"/><circle cx="150" cy="120" r="60" fill="url(%23g1)" opacity="0.8"/><ellipse cx="150" cy="280" rx="100" ry="60" fill="white" opacity="0.6"/><ellipse cx="150" cy="280" rx="70" ry="40" fill="url(%23g1)" opacity="0.7"/></svg>')}`;
@@ -912,7 +969,7 @@ import Layout from '../layouts/Layout.astro';
       imagePreview.innerHTML = `
         <div class="preview-box">
           <div class="preview-label">Preview (${img.naturalWidth}x${img.naturalHeight})</div>
-          <img src="${img.src}" class="preview-image" alt="Preview" />
+          <img src="${img.src}" class="preview-image" alt="Preview" style="cursor:crosshair;" title="Click to sample a color" />
         </div>
       `;
     }
@@ -1247,6 +1304,38 @@ import Layout from '../layouts/Layout.astro';
         rCtx.fillRect(0, 0, outputWidth, outputHeight);
       }
 
+      // Apply color replacement if enabled
+      if (enableColorReplace.checked) {
+        const imgData = pCtx.getImageData(0, 0, width, height);
+        const d = imgData.data;
+        const tHex = targetColorPicker.value;
+        const tR = parseInt(tHex.slice(1, 3), 16);
+        const tG = parseInt(tHex.slice(3, 5), 16);
+        const tB = parseInt(tHex.slice(5, 7), 16);
+        const tol = parseInt(toleranceSlider.value);
+        const useTransparent = document.querySelector('input[name="replaceWith"]:checked').value === 'transparent';
+        let rR = 0, rG = 0, rB = 0;
+        if (!useTransparent) {
+          const rHex = replaceColor.value;
+          rR = parseInt(rHex.slice(1, 3), 16);
+          rG = parseInt(rHex.slice(3, 5), 16);
+          rB = parseInt(rHex.slice(5, 7), 16);
+        }
+        for (let k = 0; k < d.length; k += 4) {
+          const dist = Math.sqrt(
+            (d[k] - tR) ** 2 + (d[k+1] - tG) ** 2 + (d[k+2] - tB) ** 2
+          );
+          if (dist <= tol) {
+            if (useTransparent) {
+              d[k] = 255; d[k+1] = 255; d[k+2] = 255; d[k+3] = 0;
+            } else {
+              d[k] = rR; d[k+1] = rG; d[k+2] = rB;
+            }
+          }
+        }
+        pCtx.putImageData(imgData, 0, 0);
+      }
+
       // Get image data
       const imageData = pCtx.getImageData(0, 0, width, height);
       const pixels = imageData.data;
@@ -1488,6 +1577,68 @@ import Layout from '../layouts/Layout.astro';
     // Toggle checkerboard preview when transparent option changes
     transparentBg.addEventListener('change', () => {
       canvasContainer.classList.toggle('transparent-preview', transparentBg.checked);
+    });
+
+    // Color replace UI wiring
+    enableColorReplace.addEventListener('change', () => {
+      colorReplacePanel.style.display = enableColorReplace.checked ? '' : 'none';
+    });
+
+    toleranceSlider.addEventListener('input', () => {
+      toleranceValue.textContent = toleranceSlider.value;
+    });
+
+    // Sync color picker ↔ hex input
+    targetColorPicker.addEventListener('input', () => {
+      targetColorHex.value = targetColorPicker.value;
+    });
+    targetColorHex.addEventListener('input', () => {
+      if (/^#[0-9a-fA-F]{6}$/.test(targetColorHex.value)) {
+        targetColorPicker.value = targetColorHex.value;
+      }
+    });
+
+    // Eyedropper: use native EyeDropper API if available, else click-on-image
+    eyedropperBtn.addEventListener('click', async () => {
+      if (window.EyeDropper) {
+        try {
+          const dropper = new EyeDropper();
+          const result = await dropper.open();
+          targetColorPicker.value = result.sRGBHex;
+          targetColorHex.value = result.sRGBHex;
+        } catch {}
+      } else {
+        colorReplacePreview.textContent = 'Eyedropper not supported — click directly on the image preview to pick a color';
+        colorReplacePanel.dataset.pickMode = '1';
+      }
+    });
+
+    // Click-on-image-preview to sample color
+    imagePreview.addEventListener('click', (e) => {
+      if (!currentImage) return;
+      const img = imagePreview.querySelector('img') || imagePreview.querySelector('canvas');
+      if (!img) return;
+      const rect = img.getBoundingClientRect();
+      const scaleX = currentImage.naturalWidth / rect.width;
+      const scaleY = currentImage.naturalHeight / rect.height;
+      const px = Math.floor((e.clientX - rect.left) * scaleX);
+      const py = Math.floor((e.clientY - rect.top) * scaleY);
+      // Draw to temp canvas to sample pixel
+      const tc = document.createElement('canvas');
+      tc.width = currentImage.naturalWidth;
+      tc.height = currentImage.naturalHeight;
+      const tx = tc.getContext('2d');
+      tx.drawImage(currentImage, 0, 0);
+      const [r, g, b] = tx.getImageData(px, py, 1, 1).data;
+      const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+      targetColorPicker.value = hex;
+      targetColorHex.value = hex;
+      colorReplacePreview.textContent = `Sampled: ${hex} at (${px}, ${py})`;
+      colorReplacePanel.dataset.pickMode = '0';
+      if (!enableColorReplace.checked) {
+        enableColorReplace.checked = true;
+        colorReplacePanel.style.display = '';
+      }
     });
 
     // Load sample reference on page load
