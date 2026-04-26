@@ -562,6 +562,17 @@ import Layout from '../layouts/Layout.astro';
       background: #111827;
     }
     
+    /* Checkerboard to show transparency */
+    .canvas-container.transparent-preview {
+      background-image: linear-gradient(45deg, #ccc 25%, transparent 25%),
+                        linear-gradient(-45deg, #ccc 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #ccc 75%),
+                        linear-gradient(-45deg, transparent 75%, #ccc 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+      background-color: #fff;
+    }
+    
     .dark .text-preview {
       background: #111827;
       border-color: #374151;
@@ -675,6 +686,12 @@ import Layout from '../layouts/Layout.astro';
           <span>Medium (5)</span>
           <span>Coarse (12)</span>
         </div>
+        <div style="margin-top: 0.75rem;">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; color: #4a5568;">
+            <input type="checkbox" id="transparentBg" style="width: 18px; height: 18px; accent-color: #667eea;" />
+            Transparent background (PNG)
+          </label>
+        </div>
       </div>
 
       <div class="actions-row">
@@ -758,6 +775,8 @@ import Layout from '../layouts/Layout.astro';
     const processCanvas = document.getElementById('processCanvas');
     const downloadBtn = document.getElementById('downloadBtn');
     const textUsed = document.getElementById('textUsed');
+    const transparentBg = document.getElementById('transparentBg');
+    const canvasContainer = resultCanvas.closest('.canvas-container');
 
     // Sample image data - a simple geometric pattern
     const sampleImageData = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23667eea"/><stop offset="50%" style="stop-color:%23764ba2"/><stop offset="100%" style="stop-color:%23f093fb"/></linearGradient></defs><rect width="300" height="400" fill="url(%23g1)"/><circle cx="150" cy="120" r="80" fill="white" opacity="0.9"/><circle cx="150" cy="120" r="60" fill="url(%23g1)" opacity="0.8"/><ellipse cx="150" cy="280" rx="100" ry="60" fill="white" opacity="0.6"/><ellipse cx="150" cy="280" rx="70" ry="40" fill="url(%23g1)" opacity="0.7"/></svg>')}`;
@@ -1032,6 +1051,7 @@ import Layout from '../layouts/Layout.astro';
           await processImage();
         }
         resultContainer.classList.add('visible');
+        canvasContainer.classList.toggle('transparent-preview', transparentBg.checked);
         textUsed.textContent = `Text used (${currentText.length} characters): ${currentText.substring(0, 100)}${currentText.length > 100 ? '...' : ''}`;
         
         // Smooth scroll to result
@@ -1074,8 +1094,10 @@ import Layout from '../layouts/Layout.astro';
       resultCanvas.height = outputHeight;
       
       // Fill background
-      rCtx.fillStyle = '#787878';
-      rCtx.fillRect(0, 0, outputWidth, outputHeight);
+      if (!transparentBg.checked) {
+        rCtx.fillStyle = '#787878';
+        rCtx.fillRect(0, 0, outputWidth, outputHeight);
+      }
 
       // Get image data
       const imageData = pCtx.getImageData(0, 0, width, height);
@@ -1213,8 +1235,10 @@ import Layout from '../layouts/Layout.astro';
       const rCtx = resultCanvas.getContext('2d');
       resultCanvas.width = outW;
       resultCanvas.height = outH;
-      rCtx.fillStyle = bgColor;
-      rCtx.fillRect(0, 0, outW, outH);
+      if (!transparentBg.checked) {
+        rCtx.fillStyle = bgColor;
+        rCtx.fillRect(0, 0, outW, outH);
+      }
 
       // Always left-align and position chars by exact cell — avoids RTL direction bugs
       rCtx.font = `${scale + 2}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
@@ -1298,7 +1322,7 @@ import Layout from '../layouts/Layout.astro';
     function downloadResult() {
       const link = document.createElement('a');
       link.download = `micrography-${Date.now()}.png`;
-      link.href = resultCanvas.toDataURL('image/png');
+      link.href = resultCanvas.toDataURL('image/png'); // always PNG to preserve transparency
       link.click();
     }
 
@@ -1310,6 +1334,11 @@ import Layout from '../layouts/Layout.astro';
     function hideError() {
       errorMessage.classList.remove('visible');
     }
+
+    // Toggle checkerboard preview when transparent option changes
+    transparentBg.addEventListener('change', () => {
+      canvasContainer.classList.toggle('transparent-preview', transparentBg.checked);
+    });
 
     // Load sample reference on page load
     textRef.value = 'Genesis 1:1-5';
