@@ -1285,12 +1285,6 @@ import Layout from '../layouts/Layout.astro';
       const rCtx = resultCanvas.getContext('2d');
       resultCanvas.width = outputWidth;
       resultCanvas.height = outputHeight;
-      
-      // Fill background
-      if (!transparentBg.checked) {
-        rCtx.fillStyle = '#787878';
-        rCtx.fillRect(0, 0, outputWidth, outputHeight);
-      }
 
       // Parse color replace settings once (used inside loop)
       const colorReplaceEnabled = enableColorReplace.checked;
@@ -1301,6 +1295,15 @@ import Layout from '../layouts/Layout.astro';
         crTargetG = parseInt(tHex.slice(3, 5), 16);
         crTargetB = parseInt(tHex.slice(5, 7), 16);
         crTol = parseInt(toleranceSlider.value);
+        // Draw the original image at full quality as the base layer.
+        // Micrography text will be drawn on top for matched pixels only.
+        rCtx.drawImage(currentImage, imgMargin / 2, imgMargin / 2, outputWidth - imgMargin, outputHeight - imgMargin);
+      } else {
+        // Normal mode: fill background
+        if (!transparentBg.checked) {
+          rCtx.fillStyle = '#787878';
+          rCtx.fillRect(0, 0, outputWidth, outputHeight);
+        }
       }
 
       // Get image data
@@ -1358,17 +1361,14 @@ import Layout from '../layouts/Layout.astro';
                   (r - crTargetR) ** 2 + (g - crTargetG) ** 2 + (b - crTargetB) ** 2
                 );
                 if (dist <= crTol) {
-                  // Matched → draw micrography character in the pixel's color
+                  // Matched → erase the base image at this cell, draw micrography character
+                  rCtx.clearRect(drawX, drawY, fontSize, fontSize);
                   const char = currentText[textIndex % currentText.length];
                   rCtx.fillStyle = `rgb(${r},${g},${b})`;
                   rCtx.fillText(char, drawX, drawY);
                   textIndex++;
-                } else {
-                  // Not matched → draw solid pixel-color rectangle to preserve original
-                  const alpha = pixels[(y * width + x) * 4 + 3] / 255;
-                  rCtx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
-                  rCtx.fillRect(drawX, drawY, fontSize, fontSize);
                 }
+                // Not matched → leave base image as-is (no action)
               } else {
                 // Normal mode: all pixels become micrography
                 let color = `rgb(${r},${g},${b})`;
