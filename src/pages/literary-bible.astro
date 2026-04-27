@@ -149,12 +149,24 @@ const TANACH_BOOKS = {
             'Ecclesiastes','Esther','Daniel','Ezra','Nehemiah','1 Chronicles','2 Chronicles'],
 };
 
+// Normalize book names that may come from Supabase without spaces
+const BOOK_NAME_FIX = {
+  'SongofSongs':   'Song of Songs',
+  'SongOfSongs':   'Song of Songs',
+  '1Samuel':       '1 Samuel',
+  '2Samuel':       '2 Samuel',
+  '1Kings':        '1 Kings',
+  '2Kings':        '2 Kings',
+  '1Chronicles':   '1 Chronicles',
+  '2Chronicles':   '2 Chronicles',
+};
+
 // Sefaria uses slightly different names for some books
 const SEFARIA_BOOK_MAP = {
-  '1 Samuel': 'I_Samuel', '2 Samuel': 'II_Samuel',
-  '1 Kings': 'I_Kings',   '2 Kings': 'II_Kings',
-  '1 Chronicles': 'I_Chronicles', '2 Chronicles': 'II_Chronicles',
-  'Song of Songs': 'Song_of_Songs',
+  '1 Samuel':    'I_Samuel',    '2 Samuel':    'II_Samuel',
+  '1 Kings':     'I_Kings',     '2 Kings':     'II_Kings',
+  '1 Chronicles':'I_Chronicles','2 Chronicles':'II_Chronicles',
+  'Song of Songs':'Song_of_Songs',
 };
 
 // Canonical biblical book order for sorting
@@ -272,7 +284,8 @@ async function loadFromSupabase() {
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     if (!res.ok) throw new Error(`Supabase error ${res.status}`);
-    allRows = await res.json();
+    const raw = await res.json();
+    allRows = raw.map(r => ({ ...r, book: BOOK_NAME_FIX[r.book] || r.book }));
     updateDeviceCounts(allRows);
     clearStatus();
   } catch (e) {
