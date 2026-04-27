@@ -1268,12 +1268,10 @@ import Layout from '../layouts/Layout.astro';
       const fontDrawSize = 14;
       const imgMargin = 10;
 
-      // Resize image for processing
+      const colorReplaceEnabled = enableColorReplace.checked;
+
+      // Resize image for pixel sampling
       let { width, height } = await resizeImage(currentImage);
-      
-      // Calculate output size
-      const outputWidth = Math.floor(width * fontSize / sampleDensity) + imgMargin;
-      const outputHeight = Math.floor(height * fontSize / sampleDensity) + imgMargin;
 
       // Setup process canvas for reading pixels
       const pCtx = processCanvas.getContext('2d');
@@ -1281,25 +1279,32 @@ import Layout from '../layouts/Layout.astro';
       processCanvas.height = height;
       pCtx.drawImage(currentImage, 0, 0, width, height);
 
-      // Setup result canvas for drawing
+      // Setup result canvas
       const rCtx = resultCanvas.getContext('2d');
-      resultCanvas.width = outputWidth;
-      resultCanvas.height = outputHeight;
 
-      // Parse color replace settings once (used inside loop)
-      const colorReplaceEnabled = enableColorReplace.checked;
+      let outputWidth, outputHeight;
       let crTargetR = 0, crTargetG = 0, crTargetB = 0, crTol = 0;
+
       if (colorReplaceEnabled) {
+        // Color replace mode: output = original image size so base stays full-res
+        outputWidth = currentImage.naturalWidth;
+        outputHeight = currentImage.naturalHeight;
+        resultCanvas.width = outputWidth;
+        resultCanvas.height = outputHeight;
+        // Draw full-quality original as base layer
+        rCtx.drawImage(currentImage, 0, 0, outputWidth, outputHeight);
+
         const tHex = targetColorPicker.value;
         crTargetR = parseInt(tHex.slice(1, 3), 16);
         crTargetG = parseInt(tHex.slice(3, 5), 16);
         crTargetB = parseInt(tHex.slice(5, 7), 16);
         crTol = parseInt(toleranceSlider.value);
-        // Draw the original image at full quality as the base layer.
-        // Micrography text will be drawn on top for matched pixels only.
-        rCtx.drawImage(currentImage, imgMargin / 2, imgMargin / 2, outputWidth - imgMargin, outputHeight - imgMargin);
       } else {
-        // Normal mode: fill background
+        // Normal mode: output = scaled-down text grid
+        outputWidth = Math.floor(width * fontSize / sampleDensity) + imgMargin;
+        outputHeight = Math.floor(height * fontSize / sampleDensity) + imgMargin;
+        resultCanvas.width = outputWidth;
+        resultCanvas.height = outputHeight;
         if (!transparentBg.checked) {
           rCtx.fillStyle = '#787878';
           rCtx.fillRect(0, 0, outputWidth, outputHeight);
@@ -1313,8 +1318,12 @@ import Layout from '../layouts/Layout.astro';
       // Detect if text is Hebrew (RTL) or LTR
       const isHebrew = activeTab === 'sefaria' || activeTab === 'nameverse' || /[\u05D0-\u05EA]/.test(currentText.slice(0, 100));
       
-      // Force LTR + left-align so each char sits exactly at its cell's left edge
-      rCtx.font = `${fontDrawSize}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
+      // Font sized to sampleDensity in color-replace mode so chars fill the sampled area
+      const crFontSize = colorReplaceEnabled
+        ? Math.round(sampleDensity * currentImage.naturalWidth / width)
+        : fontDrawSize;
+
+      rCtx.font = `${colorReplaceEnabled ? crFontSize : fontDrawSize}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
       rCtx.textAlign = 'left';
       rCtx.textBaseline = 'top';
       rCtx.direction = 'ltr';
@@ -1324,6 +1333,10 @@ import Layout from '../layouts/Layout.astro';
       const colCount = Math.ceil(width / sampleDensity);
       const totalPixels = Math.ceil(height / sampleDensity) * colCount;
       let processedPixels = 0;
+
+      // Scale factors from sampled-image coords → output canvas coords (color replace mode)
+      const scaleX = currentImage.naturalWidth / width;
+      const scaleY = currentImage.naturalHeight / height;
 
       // Process in chunks for UI responsiveness
       const chunkSize = 1000;
@@ -1349,11 +1362,6 @@ import Layout from '../layouts/Layout.astro';
               const r = pixels[pixelIndex];
               const g = pixels[pixelIndex + 1];
               const b = pixels[pixelIndex + 2];
-              
-              const drawX = isHebrew
-                ? outputWidth - (col + 1) * fontSize - imgMargin / 2
-                : col * fontSize + imgMargin / 2;
-              const drawY = row * fontSize + imgMargin / 2;
 
               if (colorReplaceEnabled) {
                 // Check if this pixel matches the target color
@@ -1361,15 +1369,24 @@ import Layout from '../layouts/Layout.astro';
                   (r - crTargetR) ** 2 + (g - crTargetG) ** 2 + (b - crTargetB) ** 2
                 );
                 if (dist <= crTol) {
-                  // Matched → erase the base image at this cell, draw micrography character
-                  rCtx.clearRect(drawX, drawY, fontSize, fontSize);
+                  // Map sampled coords → full-res output coords
+                  const drawX = isHebrew
+                    ? outputWidth - (col * sampleDensity + sampleDensity) * scaleX
+                    : x * scaleX;
+                  const drawY = y * scaleY;
+                  // Clear base image in this cell, draw micrography character
+                  rCtx.clearRect(drawX, drawY, crFontSize, crFontSize);
                   const char = currentText[textIndex % currentText.length];
                   rCtx.fillStyle = `rgb(${r},${g},${b})`;
                   rCtx.fillText(char, drawX, drawY);
                   textIndex++;
                 }
-                // Not matched → leave base image as-is (no action)
+                // Not matched → base image shows through unchanged
               } else {
+                const drawX = isHebrew
+                  ? outputWidth - (col + 1) * fontSize - imgMargin / 2
+                  : col * fontSize + imgMargin / 2;
+                const drawY = row * fontSize + imgMargin / 2;
                 // Normal mode: all pixels become micrography
                 let color = `rgb(${r},${g},${b})`;
                 if (r > 250 && g > 250 && b > 250) color = 'rgb(0,0,0)';
