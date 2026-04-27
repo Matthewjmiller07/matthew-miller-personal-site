@@ -1325,11 +1325,11 @@ import Layout from '../layouts/Layout.astro';
       const scaleX = currentImage.naturalWidth / width;
       const scaleY = currentImage.naturalHeight / height;
 
-      // In color-replace mode, cell size on the output canvas = sampleDensity * scale
-      const crCellW = colorReplaceEnabled ? Math.round(sampleDensity * scaleX) : fontSize;
-      const crCellH = colorReplaceEnabled ? Math.round(sampleDensity * scaleY) : fontSize;
-      // Font slightly smaller than cell so text is readable
-      const crFontSize = colorReplaceEnabled ? Math.max(8, Math.round(crCellH * 0.85)) : fontDrawSize;
+      // In color-replace mode: use tiny font for dense artistic micrography
+      const crFontSize = colorReplaceEnabled ? 7 : fontDrawSize;
+      // Cell size matches font for tight packing
+      const crCellW = colorReplaceEnabled ? crFontSize : fontSize;
+      const crCellH = colorReplaceEnabled ? crFontSize : fontSize;
 
       rCtx.font = `${crFontSize}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
       rCtx.textAlign = 'left';
@@ -1338,8 +1338,18 @@ import Layout from '../layouts/Layout.astro';
 
       // Process pixels and draw text
       let textIndex = 0;
-      const colCount = Math.ceil(width / sampleDensity);
-      const totalPixels = Math.ceil(height / sampleDensity) * colCount;
+      let colCount, totalPixels;
+
+      if (colorReplaceEnabled) {
+        // Dense grid: iterate at font-size intervals on output canvas
+        colCount = Math.ceil(outputWidth / crCellW);
+        totalPixels = Math.ceil(outputHeight / crCellH) * colCount;
+      } else {
+        // Normal mode: sample at density intervals
+        colCount = Math.ceil(width / sampleDensity);
+        totalPixels = Math.ceil(height / sampleDensity) * colCount;
+      }
+
       let processedPixels = 0;
 
       // Process in chunks for UI responsiveness
@@ -1353,46 +1363,54 @@ import Layout from '../layouts/Layout.astro';
             for (let i = processedPixels; i < chunkEnd; i++) {
               const row = Math.floor(i / colCount);
               const col = i % colCount;
-              
-              // For RTL Hebrew: sample pixels right-to-left; for LTR: left-to-right
-              const y = row * sampleDensity;
-              const x = isHebrew
-                ? width - 1 - (col * sampleDensity)
-                : col * sampleDensity;
-              
-              if (y >= height || x < 0 || x >= width) continue;
-              
-              const pixelIndex = (y * width + x) * 4;
-              const r = pixels[pixelIndex];
-              const g = pixels[pixelIndex + 1];
-              const b = pixels[pixelIndex + 2];
 
               if (colorReplaceEnabled) {
-                // Check if this pixel matches the target color
+                // Dense mode: position on output canvas, sample corresponding base image pixel
+                const drawX = col * crCellW;
+                const drawY = row * crCellH;
+                // Map output coords back to sampled image coords
+                const sampleX = Math.floor(drawX / scaleX);
+                const sampleY = Math.floor(drawY / scaleY);
+                if (sampleX >= width || sampleY >= height) continue;
+
+                const pixelIndex = (sampleY * width + sampleX) * 4;
+                const r = pixels[pixelIndex];
+                const g = pixels[pixelIndex + 1];
+                const b = pixels[pixelIndex + 2];
+
                 const dist = Math.sqrt(
                   (r - crTargetR) ** 2 + (g - crTargetG) ** 2 + (b - crTargetB) ** 2
                 );
                 if (dist <= crTol) {
-                  // Map sampled pixel coords → full-res output coords
-                  const drawX = isHebrew
-                    ? outputWidth - (col * sampleDensity + sampleDensity) * scaleX
-                    : x * scaleX;
-                  const drawY = y * scaleY;
-                  // Erase base image in this cell with white, then draw character in pixel color
-                  rCtx.fillStyle = '#ffffff';
-                  rCtx.fillRect(drawX, drawY, crCellW, crCellH);
-                  rCtx.fillStyle = `rgb(${r},${g},${b})`;
+                  // Darken the pixel color for contrast (multiply by 0.6)
+                  const darkR = Math.floor(r * 0.6);
+                  const darkG = Math.floor(g * 0.6);
+                  const darkB = Math.floor(b * 0.6);
+                  rCtx.fillStyle = `rgb(${darkR},${darkG},${darkB})`;
                   const char = currentText[textIndex % currentText.length];
                   rCtx.fillText(char, drawX, drawY);
                   textIndex++;
                 }
-                // Not matched → base image shows through unchanged
+                // Not matched → base image shows through
               } else {
+                // Normal mode: sample at density intervals
+                const y = row * sampleDensity;
+                const x = isHebrew
+                  ? width - 1 - (col * sampleDensity)
+                  : col * sampleDensity;
+                
+                if (y >= height || x < 0 || x >= width) continue;
+                
+                const pixelIndex = (y * width + x) * 4;
+                const r = pixels[pixelIndex];
+                const g = pixels[pixelIndex + 1];
+                const b = pixels[pixelIndex + 2];
+
                 const drawX = isHebrew
                   ? outputWidth - (col + 1) * fontSize - imgMargin / 2
                   : col * fontSize + imgMargin / 2;
                 const drawY = row * fontSize + imgMargin / 2;
-                // Normal mode: all pixels become micrography
+
                 let color = `rgb(${r},${g},${b})`;
                 if (r > 250 && g > 250 && b > 250) color = 'rgb(0,0,0)';
                 const char = currentText[textIndex % currentText.length];
