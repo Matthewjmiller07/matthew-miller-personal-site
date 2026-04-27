@@ -112,12 +112,12 @@ import Layout from '../layouts/Layout.astro';
   .device-pill { color: #1a1a1a; }
   .verse-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
   .verse-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
-  .highlight { font-weight: 700; border-radius: 3px; padding: 0 2px; }
-  .source-block { font-size: 0.85rem; margin-top: 0.5rem; }
-  .source-block a { color: #6A0DAD; text-decoration: none; }
+  .highlight { font-weight: 700; border-radius: 3px; padding: 1px 4px; display: inline; }
+  sup.note { font-size: 0.6em; vertical-align: super; line-height: 0; margin-right: 1px; font-weight: 400; }
+  .source-block { font-size: 0.82rem; margin-top: 0.6rem; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.5rem; }
+  .source-block a { color: #a78bfa; text-decoration: none; }
   .source-block a:hover { text-decoration: underline; }
-  sup.note { font-size: 0.65em; vertical-align: super; }
-  .hebrew-text { font-family: 'Noto Sans Hebrew', serif; font-size: 1.15rem; direction: rtl; line-height: 2; }
+  .hebrew-text { font-family: 'Noto Sans Hebrew', 'SBL Hebrew', serif; font-size: 1.2rem; direction: rtl; line-height: 2.2; }
 </style>
 
 <script>
@@ -151,11 +151,21 @@ const TANACH_BOOKS = {
 
 // Sefaria uses slightly different names for some books
 const SEFARIA_BOOK_MAP = {
-  '1 Samuel': 'I Samuel', '2 Samuel': 'II Samuel',
-  '1 Kings': 'I Kings',   '2 Kings': 'II Kings',
-  '1 Chronicles': 'I Chronicles', '2 Chronicles': 'II Chronicles',
-  'Song of Songs': 'Song of Songs',
+  '1 Samuel': 'I_Samuel', '2 Samuel': 'II_Samuel',
+  '1 Kings': 'I_Kings',   '2 Kings': 'II_Kings',
+  '1 Chronicles': 'I_Chronicles', '2 Chronicles': 'II_Chronicles',
+  'Song of Songs': 'Song_of_Songs',
 };
+
+// Canonical biblical book order for sorting
+const BOOK_ORDER = [
+  'Genesis','Exodus','Leviticus','Numbers','Deuteronomy',
+  'Joshua','Judges','1 Samuel','2 Samuel','1 Kings','2 Kings',
+  'Isaiah','Jeremiah','Ezekiel','Hosea','Joel','Amos','Obadiah',
+  'Jonah','Micah','Nahum','Habakkuk','Zephaniah','Haggai','Zechariah','Malachi',
+  'Psalms','Proverbs','Job','Song of Songs','Ruth','Lamentations',
+  'Ecclesiastes','Esther','Daniel','Ezra','Nehemiah','1 Chronicles','2 Chronicles',
+];
 
 const BOOK_TO_SECTION = {};
 for (const [section, books] of Object.entries(TANACH_BOOKS)) {
@@ -274,19 +284,17 @@ async function loadFromSupabase() {
 async function getVerseText(book, chapter, verse) {
   const key = `${book} ${chapter}:${verse}`;
   if (verseTextCache[key] !== undefined) return verseTextCache[key];
-  const sefariaBook = SEFARIA_BOOK_MAP[book] || book;
-  const ref = encodeURIComponent(`${sefariaBook} ${chapter}:${verse}`);
+  const sefariaBook = (SEFARIA_BOOK_MAP[book] || book).replace(/ /g, '_');
+  const ref = encodeURIComponent(`${sefariaBook}.${chapter}.${verse}`);
   try {
-    const res = await fetch(`https://www.sefaria.org/api/v3/texts/${ref}?version=primary`);
+    const res = await fetch(`https://www.sefaria.org/api/v3/texts/${ref}?version=primary&fill_in_missing_segments=0`);
     if (!res.ok) throw new Error('not found');
     const data = await res.json();
-    // v3 API: versions array, find Hebrew
     let text = '';
     if (data.versions && data.versions.length) {
       const heb = data.versions.find(v => v.language === 'he') || data.versions[0];
       const raw = heb.text;
       text = Array.isArray(raw) ? raw.join(' ') : (raw || '');
-      // strip HTML tags
       text = text.replace(/<[^>]+>/g, '');
     }
     verseTextCache[key] = text;
@@ -338,7 +346,7 @@ function filterByRange(rows, rangeStr) {
   });
 }
 
-// ─── Group rows by verse key ─────────────────────────────────────────────────
+// ─── Group rows by verse key, sorted by biblical order ──────────────────────
 function groupByVerse(rows) {
   const map = new Map();
   for (const row of rows) {
@@ -346,7 +354,12 @@ function groupByVerse(rows) {
     if (!map.has(key)) map.set(key, { book: row.book, chapter: row.chapter, verse: row.verse, devices: [] });
     map.get(key).devices.push({ device: row.device?.toLowerCase(), words: row.words, sources: row.sources, urls: row.urls });
   }
-  return [...map.values()];
+  return [...map.values()].sort((a, b) => {
+    const ai = BOOK_ORDER.indexOf(a.book), bi = BOOK_ORDER.indexOf(b.book);
+    if (ai !== bi) return ai - bi;
+    if (a.chapter !== b.chapter) return a.chapter - b.chapter;
+    return a.verse - b.verse;
+  });
 }
 
 // ─── Render ──────────────────────────────────────────────────────────────────
@@ -369,6 +382,9 @@ async function render() {
   }
 
   clearStatus();
+
+  // Update pill counts to reflect current filter (not total corpus)
+  updateDeviceCounts(filtered);
 
   const deviceCounts = {};
   const cards = grouped.map(v => {
@@ -413,7 +429,7 @@ async function render() {
           </div>
         </div>
         ${hebrewText
-          ? `<p class="hebrew-text text-primary-light dark:text-primary-dark mb-2">${hebrewText || ''}</p>`
+          ? `<p class="hebrew-text text-primary-light dark:text-primary-dark mb-3">${hebrewText}</p>`
           : `<p class="text-xs text-secondary-light dark:text-secondary-dark italic mb-2">Hebrew text unavailable</p>`
         }
         ${footnotes.length ? `<div class="source-block">${footnotes.join('<br>')}</div>` : ''}
@@ -434,7 +450,7 @@ async function render() {
   updateChart(deviceCounts);
 }
 
-// ─── Device count badges ─────────────────────────────────────────────────────
+// ─── Device count badges — updates based on currently filtered rows ──────────
 function updateDeviceCounts(rows) {
   const counts = {};
   for (const r of rows) {
@@ -445,7 +461,7 @@ function updateDeviceCounts(rows) {
     const d = btn.dataset.device;
     if (!d) return;
     const badge = btn.querySelector('.count-badge');
-    if (badge) badge.textContent = counts[d] ? ` (${counts[d]})` : '';
+    if (badge) badge.textContent = counts[d] ? ` (${counts[d]})` : ' (0)';
   });
 }
 
