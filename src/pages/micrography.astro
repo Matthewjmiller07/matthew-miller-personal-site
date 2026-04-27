@@ -717,7 +717,10 @@ import Layout from '../layouts/Layout.astro';
               <div style="font-size:0.78rem; color:#718096; margin-top:0.3rem;">Or click the image preview to sample a color</div>
             </div>
             <div style="width:100%;">
-              <div style="font-size:0.82rem; color:#718096; margin-bottom:0.3rem;">Tolerance: <span id="toleranceValue">30</span></div>
+              <div style="font-size:0.82rem; color:#718096; margin-bottom:0.3rem;">
+                Match strictness: <span id="toleranceValue">30</span>
+                <span style="font-size:0.75rem; color:#a0aec0;">(0 = exact color only &nbsp;·&nbsp; 50 = similar shades &nbsp;·&nbsp; 128 = broad range)</span>
+              </div>
               <input type="range" id="toleranceSlider" min="0" max="128" value="30" style="width:100%;" />
             </div>
           </div>
@@ -1317,13 +1320,18 @@ import Layout from '../layouts/Layout.astro';
 
       // Detect if text is Hebrew (RTL) or LTR
       const isHebrew = activeTab === 'sefaria' || activeTab === 'nameverse' || /[\u05D0-\u05EA]/.test(currentText.slice(0, 100));
-      
-      // Font sized to sampleDensity in color-replace mode so chars fill the sampled area
-      const crFontSize = colorReplaceEnabled
-        ? Math.round(sampleDensity * currentImage.naturalWidth / width)
-        : fontDrawSize;
 
-      rCtx.font = `${colorReplaceEnabled ? crFontSize : fontDrawSize}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
+      // Scale factors from sampled-image coords → output canvas coords (color replace mode)
+      const scaleX = currentImage.naturalWidth / width;
+      const scaleY = currentImage.naturalHeight / height;
+
+      // In color-replace mode, cell size on the output canvas = sampleDensity * scale
+      const crCellW = colorReplaceEnabled ? Math.round(sampleDensity * scaleX) : fontSize;
+      const crCellH = colorReplaceEnabled ? Math.round(sampleDensity * scaleY) : fontSize;
+      // Font slightly smaller than cell so text is readable
+      const crFontSize = colorReplaceEnabled ? Math.max(8, Math.round(crCellH * 0.85)) : fontDrawSize;
+
+      rCtx.font = `${crFontSize}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
       rCtx.textAlign = 'left';
       rCtx.textBaseline = 'top';
       rCtx.direction = 'ltr';
@@ -1333,10 +1341,6 @@ import Layout from '../layouts/Layout.astro';
       const colCount = Math.ceil(width / sampleDensity);
       const totalPixels = Math.ceil(height / sampleDensity) * colCount;
       let processedPixels = 0;
-
-      // Scale factors from sampled-image coords → output canvas coords (color replace mode)
-      const scaleX = currentImage.naturalWidth / width;
-      const scaleY = currentImage.naturalHeight / height;
 
       // Process in chunks for UI responsiveness
       const chunkSize = 1000;
@@ -1369,15 +1373,17 @@ import Layout from '../layouts/Layout.astro';
                   (r - crTargetR) ** 2 + (g - crTargetG) ** 2 + (b - crTargetB) ** 2
                 );
                 if (dist <= crTol) {
-                  // Map sampled coords → full-res output coords
+                  // Map sampled pixel coords → full-res output coords
                   const drawX = isHebrew
                     ? outputWidth - (col * sampleDensity + sampleDensity) * scaleX
                     : x * scaleX;
                   const drawY = y * scaleY;
-                  // Clear base image in this cell, draw micrography character
-                  rCtx.clearRect(drawX, drawY, crFontSize, crFontSize);
-                  const char = currentText[textIndex % currentText.length];
+                  // Fill cell with the sampled pixel color (covers base image cleanly)
                   rCtx.fillStyle = `rgb(${r},${g},${b})`;
+                  rCtx.fillRect(drawX, drawY, crCellW, crCellH);
+                  // Draw micrography character in a contrasting dark color
+                  rCtx.fillStyle = `rgba(0,0,0,0.75)`;
+                  const char = currentText[textIndex % currentText.length];
                   rCtx.fillText(char, drawX, drawY);
                   textIndex++;
                 }
