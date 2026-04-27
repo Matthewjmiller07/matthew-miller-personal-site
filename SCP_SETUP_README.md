@@ -173,6 +173,31 @@ If using service account, the Rabbi needs to:
 2. Right-click the SCP folder → **Share**
 3. Add the service account email with **Viewer** access
 
+## GitHub Actions Automation (Auto-Sync + Auto-Deploy)
+
+The easiest setup: GitHub Actions checks for new shiurim every hour and auto-deploys.
+
+### 1. Add Secrets to GitHub
+
+Go to **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
+
+| Secret Name | Value |
+|-------------|-------|
+| `GOOGLE_DRIVE_SCP_FOLDER_ID` | Your Drive folder ID (e.g., `1xsWSHOQGk8aO3u2Qq1qVEG2-fhjvhHe6`) |
+| `GOOGLE_DRIVE_API_KEY` | Your API key (if using public folder) |
+| `GOOGLE_SERVICE_ACCOUNT_KEY` | Service account JSON (if using private folder) |
+
+### 2. How It Works
+
+- **Every hour**: GitHub Actions runs `sync-scp-drive.js`
+- **If new shiurim found**: Commits changes to `scp.json` + downloaded files
+- **Auto-deploy**: Netlify auto-deploys when GitHub Actions pushes the commit (usually within 1-2 minutes)
+
+### 3. Manual Trigger
+
+You can also run the workflow manually:
+- Go to **Actions** → **Sync SCP from Google Drive** → **Run workflow**
+
 ## Troubleshooting
 
 **"Skipping Drive sync" message**: Set `GOOGLE_DRIVE_SCP_FOLDER_ID` in your `.env` or Netlify env vars
@@ -184,3 +209,5 @@ If using service account, the Rabbi needs to:
 **Files not downloading**: Check that folders are named like `Shiur #1: ...`, `shiur-2`, etc. (script extracts number from folder name)
 
 **Build fails on Netlify**: Check build logs - the sync runs before Astro build, so any sync errors will show up there
+
+**GitHub Actions not running**: Check that secrets are set correctly in **Settings** → **Secrets and variables** → **Actions**

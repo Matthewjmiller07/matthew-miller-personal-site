@@ -14,6 +14,7 @@ const DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_SCP_FOLDER_ID;
 const SERVICE_ACCOUNT_KEY = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
 const API_KEY = process.env.GOOGLE_DRIVE_API_KEY;  // For public folders
 const OUTPUT_DIR = './public/scp';
+const DATA_FILE = './src/data/scp.json';
 
 if (!DRIVE_FOLDER_ID) {
   console.log('⚠️  GOOGLE_DRIVE_SCP_FOLDER_ID not set. Skipping Drive sync.');
@@ -181,6 +182,156 @@ async function findAllShiurFolders(drive, folderId, auth, depth = 0) {
   return results;
 }
 
+async function loadExistingScpData() {
+  try {
+    const content = await fs.readFile(DATA_FILE, 'utf8');
+    return JSON.parse(content);
+  } catch {
+    // Return default structure if file doesn't exist
+    return {
+      series: {
+        title: "SCP — Semichas Chaver Program",
+        subtitle: "Yoreh Deah with Rabbi Leibtag",
+        instructor: "Rabbi Leibtag",
+        description: "Shiurim covering Yoreh Deah",
+        imageUrl: "/scp/cover.jpg",
+        feedUrl: "https://theothermatthewmiller.com/scp/feed.xml",
+        siteUrl: "https://theothermatthewmiller.com/scp"
+      },
+      shiurim: []
+    };
+  }
+}
+
+async function getAudioDuration(audioPath) {
+  try {
+    // Try ffprobe first
+    const { exec } = await import('child_process');
+    const util = await import('util');
+    const execPromise = util.promisify(exec);
+
+    const { stdout } = await execPromise(
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${audioPath}"`,
+      { timeout: 10000 }
+    );
+    const seconds = parseFloat(stdout.trim());
+    if (!isNaN(seconds)) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return {
+        duration: `${mins}:${secs.toString().padStart(2, '0')}`,
+        durationSeconds: Math.floor(seconds)
+      };
+    }
+  } catch {
+    // ffprobe not available or failed
+  }
+  return null;
+}
+
+function formatDateForShiur(date) {
+  return date.toISOString().split('T')[0];
+}
+
+async function updateScpData(shiurFolders) {
+  const data = await loadExistingScpData();
+  const existingIds = new Set(data.shiurim.map(s => s.id));
+  let added = 0;
+  let updated = 0;
+
+  for (const { shiurNum } of shiurFolders) {
+    const shiurId = `shiur-${shiurNum}`;
+    const shiurDir = path.join(OUTPUT_DIR, shiurId);
+
+    // Check what files exist locally
+    let audioFile = null;
+    let notesFile = null;
+    let transcriptFile = null;
+
+    try {
+      const files = await fs.readdir(shiurDir);
+      for (const file of files) {
+        const lower = file.toLowerCase();
+        if (lower.startsWith('audio')) {
+          audioFile = `/scp/${shiurId}/${file}`;
+        } else if (lower === 'notes.pdf') {
+          notesFile = `/scp/${shiurId}/${file}`;
+        } else if (lower === 'transcript.srt') {
+          transcriptFile = `/scp/${shiurId}/${file}`;
+        }
+      }
+    } catch {
+      // Directory doesn't exist yet
+      continue;
+    }
+
+    // Skip if no audio file (required minimum)
+    if (!audioFile) continue;
+
+    // Get audio duration if available
+    let durationInfo = null;
+    const localAudioPath = path.join(shiurDir, path.basename(audioFile));
+    if (fssync.existsSync(localAudioPath)) {
+      durationInfo = await getAudioDuration(localAudioPath);
+    }
+
+    if (existingIds.has(shiurId)) {
+      // Update existing shiur with any new files found
+      const existing = data.shiurim.find(s => s.id === shiurId);
+      let changed = false;
+
+      if (audioFile && !existing.audioFile) {
+        existing.audioFile = audioFile;
+        changed = true;
+      }
+      if (notesFile && !existing.notesFile) {
+        existing.notesFile = notesFile;
+        changed = true;
+      }
+      if (transcriptFile && !existing.transcriptFile) {
+        existing.transcriptFile = transcriptFile;
+        changed = true;
+      }
+      if (durationInfo && !existing.duration) {
+        existing.duration = durationInfo.duration;
+        existing.durationSeconds = durationInfo.durationSeconds;
+        changed = true;
+      }
+
+      if (changed) updated++;
+    } else {
+      // Create new shiur entry
+      const today = new Date();
+      data.shiurim.push({
+        id: shiurId,
+        number: parseInt(shiurNum, 10),
+        title: `Shiur ${shiurNum}`,
+        hebrewTitle: "",
+        date: formatDateForShiur(today),
+        description: "",
+        audioFile: audioFile,
+        notesFile: notesFile || undefined,
+        transcriptFile: transcriptFile || undefined,
+        duration: durationInfo?.duration || "0:00",
+        durationSeconds: durationInfo?.durationSeconds || 0,
+        topics: [],
+        jokes: [],
+        disgracefulFoods: []
+      });
+      added++;
+    }
+  }
+
+  // Sort shiurim by number
+  data.shiurim.sort((a, b) => a.number - b.number);
+
+  // Write updated data file
+  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
+  await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+
+  return { added, updated, total: data.shiurim.length };
+}
+
 async function main() {
   console.log('🎧 Syncing SCP files from Google Drive...');
 
@@ -205,7 +356,14 @@ async function main() {
     await syncShiurFolder(drive, folder.id, shiurNum, auth);
   }
 
-  console.log('✅ SCP sync complete!');
+  // Update scp.json with new shiurim
+  console.log('\n📝 Updating scp.json...');
+  const { added, updated, total } = await updateScpData(shiurFolders);
+  if (added > 0) console.log(`  ➕ Added ${added} new shiurim`);
+  if (updated > 0) console.log(`  🔄 Updated ${updated} existing shiurim`);
+  console.log(`  📊 Total: ${total} shiurim in catalog`);
+
+  console.log('\n✅ SCP sync complete!');
 }
 
 main().catch(err => {
