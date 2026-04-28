@@ -154,6 +154,37 @@ import Layout from '../layouts/Layout.astro';
   .source-block a { color: #a78bfa; text-decoration: none; }
   .source-block a:hover { text-decoration: underline; }
   .hebrew-text { font-family: 'Noto Serif Hebrew', 'Frank Ruhl Libre', 'SBL Hebrew', serif; font-size: 1.2rem; direction: rtl; line-height: 2.8; }
+  /* Notes tooltip */
+  .has-note { position: relative; }
+  .note-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: rgba(0,0,0,0.25); color: #fff;
+    font-size: 9px; font-weight: 700; font-family: sans-serif;
+    cursor: help; margin-left: 3px; vertical-align: middle;
+    flex-shrink: 0;
+  }
+  .note-tooltip {
+    visibility: hidden; opacity: 0;
+    position: absolute; z-index: 50;
+    bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    width: max-content; max-width: 260px;
+    background: #1e1b4b; color: #e0e7ff;
+    font-size: 0.75rem; line-height: 1.5;
+    padding: 8px 10px; border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    font-family: sans-serif; text-align: left; direction: ltr;
+  }
+  .note-tooltip::after {
+    content: '';
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #1e1b4b;
+  }
+  .has-note:hover .note-tooltip,
+  .has-note:focus-within .note-tooltip { visibility: visible; opacity: 1; }
 </style>
 
 <script>
@@ -355,7 +386,7 @@ async function loadFromSupabase() {
   setStatus('Loading literary devices…');
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/${TABLE}?select=book,chapter,verse,device,words,sources,urls,created_at&order=created_at.desc`,
+      `${SUPABASE_URL}/rest/v1/${TABLE}?select=book,chapter,verse,device,words,sources,urls,notes,created_at&order=created_at.desc`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     if (!res.ok) throw new Error(`Supabase error ${res.status}`);
@@ -476,7 +507,7 @@ function groupByVerse(rows) {
     const key = `${row.book}|${row.chapter}|${row.verse}`;
     if (!map.has(key)) map.set(key, { book: row.book, chapter: row.chapter, verse: row.verse, devices: [], newestAt: row.created_at });
     const entry = map.get(key);
-    entry.devices.push({ device: row.device?.toLowerCase(), words: row.words, sources: row.sources, urls: row.urls });
+    entry.devices.push({ device: row.device?.toLowerCase(), words: row.words, sources: row.sources, urls: row.urls, notes: row.notes });
     // track the most recent created_at for the verse
     if (row.created_at && (!entry.newestAt || row.created_at > entry.newestAt)) entry.newestAt = row.created_at;
   }
@@ -599,7 +630,11 @@ async function render() {
             ${dateStr ? `<span class="text-xs text-secondary-light dark:text-secondary-dark">Added ${dateStr}</span>` : ''}
           </div>
           <div class="flex gap-1 flex-wrap">
-            ${v.devices.map(d => `<span class="text-xs px-2 py-0.5 rounded-full font-medium border" style="background:${deviceColor(d.device||'')}">${d.device}</span>`).join('')}
+            ${v.devices.map(d => {
+              const c = deviceColor(d.device||'');
+              const noteHtml = d.notes ? `<span class="has-note" style="display:inline-flex;align-items:center;gap:2px"><span class="note-icon" tabindex="0">i</span><span class="note-tooltip">${d.notes.replace(/</g,'&lt;')}</span></span>` : '';
+              return `<span class="text-xs px-2 py-0.5 rounded-full font-medium border inline-flex items-center gap-1" style="background:${c}">${d.device}${noteHtml}</span>`;
+            }).join('')}
           </div>
         </div>
         ${hebrewText
@@ -937,7 +972,11 @@ async function renderBrowseChapter(book, chapter) {
         <div class="flex items-start justify-between gap-3 mb-2">
           <a href="${sefariaUrl}?verse=${verseNum}" target="_blank" rel="noopener" class="text-xs font-semibold text-accent hover:underline">${verseNum}</a>
           <div class="flex gap-1 flex-wrap">
-            ${devices.map(d => `<span class="text-xs px-2 py-0.5 rounded-full font-medium border" style="background:${deviceColor(d.device?.toLowerCase()||'')}">${d.device}</span>`).join('')}
+            ${devices.map(d => {
+              const c = deviceColor(d.device?.toLowerCase()||'');
+              const noteHtml = d.notes ? `<span class="has-note" style="display:inline-flex;align-items:center;gap:2px"><span class="note-icon" tabindex="0">i</span><span class="note-tooltip">${d.notes.replace(/</g,'&lt;')}</span></span>` : '';
+              return `<span class="text-xs px-2 py-0.5 rounded-full font-medium border inline-flex items-center gap-1" style="background:${c}">${d.device}${noteHtml}</span>`;
+            }).join('')}
           </div>
         </div>
         <p class="hebrew-text text-primary-light dark:text-primary-dark mb-2">${hebrewText}</p>
