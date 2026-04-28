@@ -187,8 +187,10 @@ import Layout from '../layouts/Layout.astro';
     position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
     border: 5px solid transparent; border-top-color: #1e1b4b;
   }
+  .note-tooltip { visibility: hidden; opacity: 0; }
   .has-note:hover .note-tooltip,
-  .has-note:focus-within .note-tooltip { visibility: visible !important; opacity: 1 !important; }
+  .has-note:focus-within .note-tooltip,
+  .note-tooltip.visible { visibility: visible; opacity: 1; }
 </style>
 
 <script>
@@ -638,7 +640,7 @@ async function render() {
               const c = deviceColor(d.device||'');
               const badge = `<span class="text-xs px-2 py-0.5 rounded-full font-medium border" style="background:${c};color:#111">${d.device}</span>`;
               if (!d.notes) return badge;
-              return `<span class="has-note">${badge}<span class="note-icon" tabindex="0">i</span><span class="note-tooltip" style="visibility:hidden;opacity:0;position:absolute;z-index:100;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);white-space:normal;width:220px;background:#1e1b4b;color:#e0e7ff;font-size:0.72rem;line-height:1.5;padding:7px 10px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.5);pointer-events:none;transition:opacity 0.15s ease;font-family:sans-serif;text-align:left;direction:ltr">${d.notes.replace(/</g,'&lt;')}<span style="position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1e1b4b"></span></span></span>`;
+              return `<span class="has-note">${badge}<span class="note-icon" tabindex="0">i</span><span class="note-tooltip" style="position:absolute;z-index:100;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);white-space:normal;width:220px;background:#1e1b4b;color:#e0e7ff;font-size:0.72rem;line-height:1.5;padding:7px 10px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.5);pointer-events:none;transition:opacity 0.15s ease;font-family:sans-serif;text-align:left;direction:ltr">${d.notes.replace(/</g,'&lt;')}<span style="position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1e1b4b"></span></span></span>`;
             }).join('')}
           </div>
         </div>
@@ -817,7 +819,7 @@ chartToggle.addEventListener('click', () => {
 // ─── Tooltip: click to open, click outside to close ─────────────────────────
 let openTip = null;
 function closeOpenTip() {
-  if (openTip) { openTip.style.visibility = 'hidden'; openTip.style.opacity = '0'; openTip = null; }
+  if (openTip) { openTip.classList.remove('visible'); openTip = null; }
 }
 versesEl.addEventListener('click', e => {
   const icon = e.target.closest('.note-icon');
@@ -826,11 +828,11 @@ versesEl.addEventListener('click', e => {
   const tip = icon.parentElement?.querySelector('.note-tooltip');
   if (!tip) return;
   if (openTip && openTip !== tip) closeOpenTip();
-  const isOpen = tip.style.visibility === 'visible';
+  const isOpen = tip.classList.contains('visible');
   if (isOpen) {
-    tip.style.visibility = 'hidden'; tip.style.opacity = '0'; openTip = null;
+    tip.classList.remove('visible'); openTip = null;
   } else {
-    tip.style.visibility = 'visible'; tip.style.opacity = '1'; openTip = tip;
+    tip.classList.add('visible'); openTip = tip;
   }
 });
 document.addEventListener('click', () => closeOpenTip());
@@ -1002,7 +1004,7 @@ async function renderBrowseChapter(book, chapter) {
               const c = deviceColor(d.device?.toLowerCase()||'');
               const badge = `<span class="text-xs px-2 py-0.5 rounded-full font-medium border" style="background:${c};color:#111">${d.device}</span>`;
               if (!d.notes) return badge;
-              return `<span class="has-note">${badge}<span class="note-icon" tabindex="0">i</span><span class="note-tooltip" style="visibility:hidden;opacity:0;position:absolute;z-index:100;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);white-space:normal;width:220px;background:#1e1b4b;color:#e0e7ff;font-size:0.72rem;line-height:1.5;padding:7px 10px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.5);pointer-events:none;transition:opacity 0.15s ease;font-family:sans-serif;text-align:left;direction:ltr">${d.notes.replace(/</g,'&lt;')}<span style="position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1e1b4b"></span></span></span>`;
+              return `<span class="has-note">${badge}<span class="note-icon" tabindex="0">i</span><span class="note-tooltip" style="position:absolute;z-index:100;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);white-space:normal;width:220px;background:#1e1b4b;color:#e0e7ff;font-size:0.72rem;line-height:1.5;padding:7px 10px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.5);pointer-events:none;transition:opacity 0.15s ease;font-family:sans-serif;text-align:left;direction:ltr">${d.notes.replace(/</g,'&lt;')}<span style="position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1e1b4b"></span></span></span>`;
             }).join('')}
           </div>
         </div>
