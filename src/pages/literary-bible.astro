@@ -91,21 +91,9 @@ import Layout from '../layouts/Layout.astro';
       <button id="sortNewest"   class="sort-btn px-3 py-1 rounded-full border border-border-light dark:border-border-dark text-xs font-semibold transition-all">Recently Added</button>
     </div>
 
-    <!-- Device filter pills -->
+    <!-- Device filter pills — populated dynamically from Supabase -->
     <div id="deviceFilters" class="flex flex-wrap gap-2 justify-center">
       <button data-device="" class="device-pill active px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#e2e8f0;color:#1a1a1a">All</button>
-      <button data-device="waw-explicativum"   class="device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#90EE90">Waw Explicativum <span class="count-badge"></span></button>
-      <button data-device="hendiadys"          class="device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#ADD8E6">Hendiadys <span class="count-badge"></span></button>
-      <button data-device="synecdoche"         class="device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#FFA07A">Synecdoche <span class="count-badge"></span></button>
-      <button data-device="hapax"              class="device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#87CEFA">Hapax <span class="count-badge"></span></button>
-      <button data-device="merism"             class="device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#FFB6C1">Merism <span class="count-badge"></span></button>
-      <button data-device="wordplay"           class="device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#FFFACD">Wordplay <span class="count-badge"></span></button>
-      <button data-device="euphemism"          class="device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#E0FFFF">Euphemism <span class="count-badge"></span></button>
-      <button data-device="simile"             class="device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#DDA0DD">Simile <span class="count-badge"></span></button>
-      <button data-device="ambiguity"          class="device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#FA8072">Ambiguity <span class="count-badge"></span></button>
-      <button data-device="melitza"            class="device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#C8A2C8">Melitza <span class="count-badge"></span></button>
-      <button data-device="metaphor"           class="device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#FFDAB9">Metaphor <span class="count-badge"></span></button>
-      <button data-device="sarcasm"            class="device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#FFD700">Sarcasm <span class="count-badge"></span></button>
     </div>
 
     <!-- Chart toggle -->
@@ -174,7 +162,7 @@ const SUPABASE_URL  = import.meta.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY  = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 const TABLE         = 'literary_bible';
 
-// ─── Device colours ────────────────────────────────────────────────────────
+// ─── Device colours — known devices get fixed colours; unknowns pull from palette
 const DEVICE_COLORS = {
   'waw-explicativum': '#90EE90',
   'hendiadys':        '#ADD8E6',
@@ -189,6 +177,19 @@ const DEVICE_COLORS = {
   'metaphor':         '#FFDAB9',
   'sarcasm':          '#FFD700',
 };
+const COLOR_PALETTE = [
+  '#B5EAD7','#FFDAC1','#C7CEEA','#E2F0CB','#FFD700','#D4A5A5',
+  '#A8D8EA','#FCE4EC','#F0E6FF','#D5F5E3','#FAD7A0','#AED6F1',
+];
+function deviceColor(device) {
+  if (DEVICE_COLORS[device]) return DEVICE_COLORS[device];
+  // Deterministic color from palette based on name hash
+  let hash = 0;
+  for (const ch of device) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff;
+  const color = COLOR_PALETTE[hash % COLOR_PALETTE.length];
+  DEVICE_COLORS[device] = color; // cache it
+  return color;
+}
 
 // ─── Tanach book lists ──────────────────────────────────────────────────────
 const TANACH_BOOKS = {
@@ -360,11 +361,46 @@ async function loadFromSupabase() {
     if (!res.ok) throw new Error(`Supabase error ${res.status}`);
     const raw = await res.json();
     allRows = raw.map(r => ({ ...r, book: BOOK_NAME_FIX[r.book] || r.book }));
+    buildDevicePills(allRows);
     updateDeviceCounts(allRows);
     clearStatus();
   } catch (e) {
     setStatus(`Error loading data: ${e.message}`);
   }
+}
+
+// ─── Build device pills from live data ──────────────────────────────────────
+function buildDevicePills(rows) {
+  const container = document.getElementById('deviceFilters');
+  // Collect unique devices sorted alphabetically
+  const devices = [...new Set(rows.map(r => r.device?.toLowerCase()).filter(Boolean))].sort();
+  // Remove any previously generated pills (keep the All button)
+  container.querySelectorAll('.device-pill:not([data-device=""])').forEach(el => el.remove());
+  devices.forEach(device => {
+    const color = deviceColor(device);
+    const label = device.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const btn = document.createElement('button');
+    btn.dataset.device = device;
+    btn.className = 'device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all';
+    btn.style.background = color;
+    btn.style.color = '#1a1a1a';
+    btn.innerHTML = `${label} <span class="count-badge"></span>`;
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.device-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeDevice = device;
+      syncURL(); render();
+    });
+    container.appendChild(btn);
+  });
+  // Re-attach All button listener (since it's static HTML)
+  const allBtn = container.querySelector('[data-device=""]');
+  allBtn.onclick = () => {
+    container.querySelectorAll('.device-pill').forEach(b => b.classList.remove('active'));
+    allBtn.classList.add('active');
+    activeDevice = '';
+    syncURL(); render();
+  };
 }
 
 // ─── Sefaria text fetch (per verse, cached) ──────────────────────────────────
@@ -563,7 +599,7 @@ async function render() {
             ${dateStr ? `<span class="text-xs text-secondary-light dark:text-secondary-dark">Added ${dateStr}</span>` : ''}
           </div>
           <div class="flex gap-1 flex-wrap">
-            ${v.devices.map(d => `<span class="text-xs px-2 py-0.5 rounded-full font-medium border" style="background:${DEVICE_COLORS[d.device]||'#eee'}">${d.device}</span>`).join('')}
+            ${v.devices.map(d => `<span class="text-xs px-2 py-0.5 rounded-full font-medium border" style="background:${deviceColor(d.device||'')}">${d.device}</span>`).join('')}
           </div>
         </div>
         ${hebrewText
@@ -715,14 +751,7 @@ aliyaSel.addEventListener('change', () => {
   syncURL(); render();
 });
 
-document.querySelectorAll('.device-pill').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.device-pill').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    activeDevice = btn.dataset.device;
-    syncURL(); render();
-  });
-});
+// Device pill listeners are attached dynamically in buildDevicePills()
 
 // ─── Sort buttons ───────────────────────────────────────────────────────────
 document.getElementById('sortBiblical').addEventListener('click', () => {
@@ -864,7 +893,7 @@ async function renderBrowseChapter(book, chapter) {
     const footnotes = [];
 
     devices.forEach((d, idx) => {
-      const color = DEVICE_COLORS[d.device?.toLowerCase()] || '#eee';
+      const color = deviceColor(d.device?.toLowerCase() || '');
       const noteN = idx + 1;
       if (d.words && hebrewText) {
         const strippedTarget = stripMarks(d.words);
@@ -908,7 +937,7 @@ async function renderBrowseChapter(book, chapter) {
         <div class="flex items-start justify-between gap-3 mb-2">
           <a href="${sefariaUrl}?verse=${verseNum}" target="_blank" rel="noopener" class="text-xs font-semibold text-accent hover:underline">${verseNum}</a>
           <div class="flex gap-1 flex-wrap">
-            ${devices.map(d => `<span class="text-xs px-2 py-0.5 rounded-full font-medium border" style="background:${DEVICE_COLORS[d.device?.toLowerCase()]||'#eee'}">${d.device}</span>`).join('')}
+            ${devices.map(d => `<span class="text-xs px-2 py-0.5 rounded-full font-medium border" style="background:${deviceColor(d.device?.toLowerCase()||'')}">${d.device}</span>`).join('')}
           </div>
         </div>
         <p class="hebrew-text text-primary-light dark:text-primary-dark mb-2">${hebrewText}</p>
