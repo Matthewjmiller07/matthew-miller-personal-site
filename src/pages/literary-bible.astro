@@ -162,11 +162,13 @@ import Layout from '../layouts/Layout.astro';
   }
   .note-icon {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 14px; height: 14px; border-radius: 50%;
-    background: rgba(0,0,0,0.3); color: #fff;
-    font-size: 9px; font-weight: 700; font-family: sans-serif;
-    cursor: help; flex-shrink: 0; line-height: 1;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: rgba(0,0,0,0.35); color: #fff;
+    font-size: 11px; font-weight: 700; font-family: sans-serif;
+    cursor: pointer; flex-shrink: 0; line-height: 1;
+    user-select: none;
   }
+  .note-icon:hover { background: rgba(0,0,0,0.55); }
   .note-tooltip {
     visibility: hidden; opacity: 0;
     position: absolute; z-index: 100;
@@ -812,31 +814,26 @@ chartToggle.addEventListener('click', () => {
   chartToggle.textContent = hidden ? 'Show Chart' : 'Hide Chart';
 });
 
-// ─── Tooltip show/hide via event delegation ──────────────────────────────────
-versesEl.addEventListener('mouseover', e => {
+// ─── Tooltip: click to open, click outside to close ─────────────────────────
+let openTip = null;
+function closeOpenTip() {
+  if (openTip) { openTip.style.visibility = 'hidden'; openTip.style.opacity = '0'; openTip = null; }
+}
+versesEl.addEventListener('click', e => {
   const icon = e.target.closest('.note-icon');
-  if (!icon) return;
+  if (!icon) { closeOpenTip(); return; }
+  e.stopPropagation();
   const tip = icon.parentElement?.querySelector('.note-tooltip');
-  if (tip) { tip.style.visibility = 'visible'; tip.style.opacity = '1'; }
+  if (!tip) return;
+  if (openTip && openTip !== tip) closeOpenTip();
+  const isOpen = tip.style.visibility === 'visible';
+  if (isOpen) {
+    tip.style.visibility = 'hidden'; tip.style.opacity = '0'; openTip = null;
+  } else {
+    tip.style.visibility = 'visible'; tip.style.opacity = '1'; openTip = tip;
+  }
 });
-versesEl.addEventListener('mouseout', e => {
-  const icon = e.target.closest('.note-icon');
-  if (!icon) return;
-  const tip = icon.parentElement?.querySelector('.note-tooltip');
-  if (tip) { tip.style.visibility = 'hidden'; tip.style.opacity = '0'; }
-});
-versesEl.addEventListener('focusin', e => {
-  const icon = e.target.closest('.note-icon');
-  if (!icon) return;
-  const tip = icon.parentElement?.querySelector('.note-tooltip');
-  if (tip) { tip.style.visibility = 'visible'; tip.style.opacity = '1'; }
-});
-versesEl.addEventListener('focusout', e => {
-  const icon = e.target.closest('.note-icon');
-  if (!icon) return;
-  const tip = icon.parentElement?.querySelector('.note-tooltip');
-  if (tip) { tip.style.visibility = 'hidden'; tip.style.opacity = '0'; }
-});
+document.addEventListener('click', () => closeOpenTip());
 
 // ─── Browse mode ─────────────────────────────────────────────────────────────
 const modeDevicesBtn  = document.getElementById('modeDevices');
