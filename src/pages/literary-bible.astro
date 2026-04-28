@@ -312,6 +312,28 @@ let activeSort    = 'biblical'; // 'biblical' | 'newest'
 let chartInstance = null;
 const verseTextCache = {};  // Sefaria text cache: "Book Chapter:Verse" → hebrew string
 
+// ─── URL param sync ──────────────────────────────────────────────────────────
+let browseMode = false; // declared early so syncURL can reference it
+
+function syncURL() {
+  const p = new URLSearchParams();
+  if (activeDevice)  p.set('device',  activeDevice);
+  if (activeSection) p.set('section', activeSection);
+  if (activeBook)    p.set('book',    activeBook);
+  if (activeParsha)  p.set('parsha',  activeParsha);
+  if (activeAliya)   p.set('aliya',   activeAliya);
+  if (activeSort !== 'biblical') p.set('sort', activeSort);
+  if (browseMode) {
+    p.set('mode', 'browse');
+    const bb = document.getElementById('browseBook')?.value;
+    const bc = document.getElementById('browseChapter')?.value;
+    if (bb) p.set('bbook', bb);
+    if (bc) p.set('bchapter', bc);
+  }
+  const qs = p.toString();
+  history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+}
+
 // ─── DOM refs ───────────────────────────────────────────────────────────────
 const sectionSel  = document.getElementById('sectionSelect');
 const bookSel     = document.getElementById('bookSelect');
@@ -668,7 +690,7 @@ sectionSel.addEventListener('change', () => {
   parshaWrap.style.display = 'none';
   aliyaWrap.style.display  = 'none';
   bookSel.value = ''; parshaSel.value = ''; aliyaSel.value = '';
-  render();
+  syncURL(); render();
 });
 
 bookSel.addEventListener('change', () => {
@@ -676,7 +698,7 @@ bookSel.addEventListener('change', () => {
   activeParsha = activeAliya = '';
   parshaSel.value = ''; aliyaSel.value = '';
   populateParshaSelect(activeBook);
-  render();
+  syncURL(); render();
 });
 
 parshaSel.addEventListener('change', () => {
@@ -685,12 +707,12 @@ parshaSel.addEventListener('change', () => {
   aliyaSel.value = '';
   if (activeParsha) populateAliyaSelect(activeParsha);
   else aliyaWrap.style.display = 'none';
-  render();
+  syncURL(); render();
 });
 
 aliyaSel.addEventListener('change', () => {
   activeAliya = aliyaSel.value;
-  render();
+  syncURL(); render();
 });
 
 document.querySelectorAll('.device-pill').forEach(btn => {
@@ -698,7 +720,7 @@ document.querySelectorAll('.device-pill').forEach(btn => {
     document.querySelectorAll('.device-pill').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     activeDevice = btn.dataset.device;
-    render();
+    syncURL(); render();
   });
 });
 
@@ -708,14 +730,14 @@ document.getElementById('sortBiblical').addEventListener('click', () => {
   document.getElementById('sortBiblical').classList.add('bg-indigo-500','text-white','border-indigo-400');
   document.getElementById('sortBiblical').classList.remove('bg-transparent');
   document.getElementById('sortNewest').classList.remove('bg-indigo-500','text-white','border-indigo-400');
-  render();
+  syncURL(); render();
 });
 document.getElementById('sortNewest').addEventListener('click', () => {
   activeSort = 'newest';
   document.getElementById('sortNewest').classList.add('bg-indigo-500','text-white','border-indigo-400');
   document.getElementById('sortNewest').classList.remove('bg-transparent');
   document.getElementById('sortBiblical').classList.remove('bg-indigo-500','text-white','border-indigo-400');
-  render();
+  syncURL(); render();
 });
 
 chartToggle.addEventListener('click', () => {
@@ -724,7 +746,6 @@ chartToggle.addEventListener('click', () => {
 });
 
 // ─── Browse mode ─────────────────────────────────────────────────────────────
-let browseMode = false;
 const modeDevicesBtn  = document.getElementById('modeDevices');
 const modeBrowseBtn   = document.getElementById('modeBrowse');
 const browseControls  = document.getElementById('browseControls');
@@ -773,8 +794,8 @@ function setMode(browse) {
   }
 }
 
-modeDevicesBtn.addEventListener('click', () => setMode(false));
-modeBrowseBtn.addEventListener('click',  () => setMode(true));
+modeDevicesBtn.addEventListener('click', () => { setMode(false); syncURL(); });
+modeBrowseBtn.addEventListener('click',  () => { setMode(true);  syncURL(); });
 
 browseBookSel.addEventListener('change', () => {
   const book = browseBookSel.value;
@@ -787,11 +808,13 @@ browseBookSel.addEventListener('change', () => {
     o.value = i; o.textContent = `Chapter ${i}`;
     browseChapterSel.appendChild(o);
   }
+  syncURL();
 });
 
 browseChapterSel.addEventListener('change', () => {
   const book = browseBookSel.value;
   const chapter = parseInt(browseChapterSel.value, 10);
+  syncURL();
   if (!book || !chapter) return;
   renderBrowseChapter(book, chapter);
 });
@@ -896,17 +919,70 @@ async function renderBrowseChapter(book, chapter) {
   versesEl.innerHTML = `<h2 class="text-lg font-bold text-primary-light dark:text-primary-dark mb-4">${book} ${chapter}</h2>` + cards;
 }
 
+// ─── Restore state from URL params ──────────────────────────────────────────
+function restoreFromURL() {
+  const p = new URLSearchParams(location.search);
+  activeDevice  = p.get('device')  || '';
+  activeSection = p.get('section') || '';
+  activeBook    = p.get('book')    || '';
+  activeParsha  = p.get('parsha')  || '';
+  activeAliya   = p.get('aliya')   || '';
+  activeSort    = p.get('sort')    || 'biblical';
+
+  // Restore section + book + parsha + aliya selects
+  if (activeSection) { sectionSel.value = activeSection; populateBookSelect(activeSection); }
+  if (activeBook)    { bookSel.value = activeBook; populateParshaSelect(activeBook); }
+  if (activeParsha)  { parshaSel.value = activeParsha; populateAliyaSelect(activeParsha); }
+  if (activeAliya)   { aliyaSel.value = activeAliya; }
+
+  // Restore device pill active state
+  document.querySelectorAll('.device-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.device === activeDevice);
+  });
+
+  // Restore sort buttons
+  if (activeSort === 'newest') {
+    document.getElementById('sortNewest').classList.add('bg-indigo-500','text-white','border-indigo-400');
+    document.getElementById('sortBiblical').classList.remove('bg-indigo-500','text-white','border-indigo-400');
+  }
+
+  // Restore browse mode
+  const mode = p.get('mode');
+  if (mode === 'browse') {
+    setMode(true);
+    const bb = p.get('bbook');
+    const bc = p.get('bchapter');
+    if (bb) {
+      browseBookSel.value = bb;
+      // populate chapter select
+      const maxCh = BOOK_CHAPTERS[bb] || 50;
+      browseChapterSel.innerHTML = '<option value="">Select a chapter…</option>';
+      for (let i = 1; i <= maxCh; i++) {
+        const o = document.createElement('option');
+        o.value = i; o.textContent = `Chapter ${i}`;
+        browseChapterSel.appendChild(o);
+      }
+      browseChapterSel.disabled = false;
+      if (bc) {
+        browseChapterSel.value = bc;
+        renderBrowseChapter(bb, parseInt(bc, 10));
+      }
+    }
+  }
+}
+
 // ─── Init ────────────────────────────────────────────────────────────────────
 (async () => {
   // Chart.js must be loaded
   if (typeof Chart === 'undefined') {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-    s.onload = async () => { await loadFromSupabase(); render(); };
+    s.onload = async () => { await loadFromSupabase(); restoreFromURL(); if (!browseMode) render(); };
     document.head.appendChild(s);
   } else {
     await loadFromSupabase();
-    render();
+    restoreFromURL();
+    if (!browseMode) render();
   }
 })();
 </script>
