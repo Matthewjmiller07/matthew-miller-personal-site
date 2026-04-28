@@ -84,6 +84,13 @@ import Layout from '../layouts/Layout.astro';
       </div>
     </div>
 
+    <!-- Sort control -->
+    <div id="sortControl" class="flex justify-end items-center gap-2 text-sm text-primary-light dark:text-primary-dark">
+      <span class="font-medium">Sort:</span>
+      <button id="sortBiblical" class="sort-btn px-3 py-1 rounded-full border border-indigo-400 bg-indigo-500 text-white text-xs font-semibold transition-all">Biblical Order</button>
+      <button id="sortNewest"   class="sort-btn px-3 py-1 rounded-full border border-border-light dark:border-border-dark text-xs font-semibold transition-all">Recently Added</button>
+    </div>
+
     <!-- Device filter pills -->
     <div id="deviceFilters" class="flex flex-wrap gap-2 justify-center">
       <button data-device="" class="device-pill active px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#e2e8f0;color:#1a1a1a">All</button>
@@ -301,6 +308,7 @@ let activeSection = '';
 let activeBook    = '';
 let activeParsha  = '';
 let activeAliya   = '';
+let activeSort    = 'biblical'; // 'biblical' | 'newest'
 let chartInstance = null;
 const verseTextCache = {};  // Sefaria text cache: "Book Chapter:Verse" → hebrew string
 
@@ -324,7 +332,7 @@ async function loadFromSupabase() {
   setStatus('Loading literary devices…');
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/${TABLE}?select=book,chapter,verse,device,words,sources,urls&order=book,chapter,verse`,
+      `${SUPABASE_URL}/rest/v1/${TABLE}?select=book,chapter,verse,device,words,sources,urls,created_at&order=created_at.desc`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     if (!res.ok) throw new Error(`Supabase error ${res.status}`);
@@ -408,15 +416,24 @@ function groupByVerse(rows) {
   const map = new Map();
   for (const row of rows) {
     const key = `${row.book}|${row.chapter}|${row.verse}`;
-    if (!map.has(key)) map.set(key, { book: row.book, chapter: row.chapter, verse: row.verse, devices: [] });
-    map.get(key).devices.push({ device: row.device?.toLowerCase(), words: row.words, sources: row.sources, urls: row.urls });
+    if (!map.has(key)) map.set(key, { book: row.book, chapter: row.chapter, verse: row.verse, devices: [], newestAt: row.created_at });
+    const entry = map.get(key);
+    entry.devices.push({ device: row.device?.toLowerCase(), words: row.words, sources: row.sources, urls: row.urls });
+    // track the most recent created_at for the verse
+    if (row.created_at && (!entry.newestAt || row.created_at > entry.newestAt)) entry.newestAt = row.created_at;
   }
-  return [...map.values()].sort((a, b) => {
-    const ai = BOOK_ORDER.indexOf(a.book), bi = BOOK_ORDER.indexOf(b.book);
-    if (ai !== bi) return ai - bi;
-    if (a.chapter !== b.chapter) return a.chapter - b.chapter;
-    return a.verse - b.verse;
-  });
+  const verses = [...map.values()];
+  if (activeSort === 'newest') {
+    verses.sort((a, b) => (b.newestAt || '').localeCompare(a.newestAt || ''));
+  } else {
+    verses.sort((a, b) => {
+      const ai = BOOK_ORDER.indexOf(a.book), bi = BOOK_ORDER.indexOf(b.book);
+      if (ai !== bi) return ai - bi;
+      if (a.chapter !== b.chapter) return a.chapter - b.chapter;
+      return a.verse - b.verse;
+    });
+  }
+  return verses;
 }
 
 // ─── Render ──────────────────────────────────────────────────────────────────
@@ -513,12 +530,16 @@ async function render() {
     const sefariaRef = encodeURIComponent(`${SEFARIA_BOOK_MAP[v.book] || v.book} ${v.chapter}:${v.verse}`);
     const sefariaUrl = `https://www.sefaria.org/${sefariaRef}`;
 
+    const dateStr = v.newestAt ? new Date(v.newestAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
     return `
       <div class="verse-card bg-card-bg-light dark:bg-card-bg-dark border border-border-light dark:border-border-dark rounded-xl shadow-sm p-5"
            data-ref="${ref}">
         <div class="flex items-start justify-between gap-3 mb-3">
-          <a href="${sefariaUrl}" target="_blank" rel="noopener"
-             class="text-sm font-semibold text-accent hover:underline">${ref}</a>
+          <div class="flex flex-col gap-0.5">
+            <a href="${sefariaUrl}" target="_blank" rel="noopener"
+               class="text-sm font-semibold text-accent hover:underline">${ref}</a>
+            ${dateStr ? `<span class="text-xs text-secondary-light dark:text-secondary-dark">Added ${dateStr}</span>` : ''}
+          </div>
           <div class="flex gap-1 flex-wrap">
             ${v.devices.map(d => `<span class="text-xs px-2 py-0.5 rounded-full font-medium border" style="background:${DEVICE_COLORS[d.device]||'#eee'}">${d.device}</span>`).join('')}
           </div>
@@ -679,6 +700,22 @@ document.querySelectorAll('.device-pill').forEach(btn => {
     activeDevice = btn.dataset.device;
     render();
   });
+});
+
+// ─── Sort buttons ───────────────────────────────────────────────────────────
+document.getElementById('sortBiblical').addEventListener('click', () => {
+  activeSort = 'biblical';
+  document.getElementById('sortBiblical').classList.add('bg-indigo-500','text-white','border-indigo-400');
+  document.getElementById('sortBiblical').classList.remove('bg-transparent');
+  document.getElementById('sortNewest').classList.remove('bg-indigo-500','text-white','border-indigo-400');
+  render();
+});
+document.getElementById('sortNewest').addEventListener('click', () => {
+  activeSort = 'newest';
+  document.getElementById('sortNewest').classList.add('bg-indigo-500','text-white','border-indigo-400');
+  document.getElementById('sortNewest').classList.remove('bg-transparent');
+  document.getElementById('sortBiblical').classList.remove('bg-indigo-500','text-white','border-indigo-400');
+  render();
 });
 
 chartToggle.addEventListener('click', () => {
