@@ -155,24 +155,27 @@ import Layout from '../layouts/Layout.astro';
   .source-block a:hover { text-decoration: underline; }
   .hebrew-text { font-family: 'Noto Serif Hebrew', 'Frank Ruhl Libre', 'SBL Hebrew', serif; font-size: 1.2rem; direction: rtl; line-height: 2.8; }
   /* Notes tooltip */
-  .has-note { position: relative; }
+  .has-note {
+    position: relative;
+    display: inline-flex; align-items: center;
+    overflow: visible;
+  }
   .note-icon {
     display: inline-flex; align-items: center; justify-content: center;
     width: 14px; height: 14px; border-radius: 50%;
-    background: rgba(0,0,0,0.25); color: #fff;
+    background: rgba(0,0,0,0.3); color: #fff;
     font-size: 9px; font-weight: 700; font-family: sans-serif;
-    cursor: help; margin-left: 3px; vertical-align: middle;
-    flex-shrink: 0;
+    cursor: help; flex-shrink: 0; line-height: 1;
   }
   .note-tooltip {
     visibility: hidden; opacity: 0;
-    position: absolute; z-index: 50;
-    bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
-    width: max-content; max-width: 260px;
+    position: absolute; z-index: 100;
+    bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    white-space: normal; width: 220px;
     background: #1e1b4b; color: #e0e7ff;
-    font-size: 0.75rem; line-height: 1.5;
-    padding: 8px 10px; border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    font-size: 0.72rem; line-height: 1.5;
+    padding: 7px 10px; border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
     pointer-events: none;
     transition: opacity 0.15s ease;
     font-family: sans-serif; text-align: left; direction: ltr;
@@ -180,8 +183,7 @@ import Layout from '../layouts/Layout.astro';
   .note-tooltip::after {
     content: '';
     position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: #1e1b4b;
+    border: 5px solid transparent; border-top-color: #1e1b4b;
   }
   .has-note:hover .note-tooltip,
   .has-note:focus-within .note-tooltip { visibility: visible; opacity: 1; }
@@ -414,7 +416,7 @@ function buildDevicePills(rows) {
     btn.dataset.device = device;
     btn.className = 'device-pill px-4 py-1.5 rounded-full text-sm font-medium border transition-all';
     btn.style.background = color;
-    btn.style.color = '#1a1a1a';
+    btn.style.color = '#111';
     btn.innerHTML = `${label} <span class="count-badge"></span>`;
     btn.addEventListener('click', () => {
       container.querySelectorAll('.device-pill').forEach(b => b.classList.remove('active'));
@@ -632,8 +634,9 @@ async function render() {
           <div class="flex gap-1 flex-wrap">
             ${v.devices.map(d => {
               const c = deviceColor(d.device||'');
-              const noteHtml = d.notes ? `<span class="has-note" style="display:inline-flex;align-items:center;gap:2px"><span class="note-icon" tabindex="0">i</span><span class="note-tooltip">${d.notes.replace(/</g,'&lt;')}</span></span>` : '';
-              return `<span class="text-xs px-2 py-0.5 rounded-full font-medium border inline-flex items-center gap-1" style="background:${c}">${d.device}${noteHtml}</span>`;
+              const badge = `<span class="text-xs px-2 py-0.5 rounded-full font-medium border" style="background:${c};color:#111">${d.device}</span>`;
+              if (!d.notes) return badge;
+              return `<span class="has-note">${badge}<span class="note-icon" tabindex="0">i</span><span class="note-tooltip">${d.notes.replace(/</g,'&lt;')}</span></span>`;
             }).join('')}
           </div>
         </div>
@@ -974,8 +977,9 @@ async function renderBrowseChapter(book, chapter) {
           <div class="flex gap-1 flex-wrap">
             ${devices.map(d => {
               const c = deviceColor(d.device?.toLowerCase()||'');
-              const noteHtml = d.notes ? `<span class="has-note" style="display:inline-flex;align-items:center;gap:2px"><span class="note-icon" tabindex="0">i</span><span class="note-tooltip">${d.notes.replace(/</g,'&lt;')}</span></span>` : '';
-              return `<span class="text-xs px-2 py-0.5 rounded-full font-medium border inline-flex items-center gap-1" style="background:${c}">${d.device}${noteHtml}</span>`;
+              const badge = `<span class="text-xs px-2 py-0.5 rounded-full font-medium border" style="background:${c};color:#111">${d.device}</span>`;
+              if (!d.notes) return badge;
+              return `<span class="has-note">${badge}<span class="note-icon" tabindex="0">i</span><span class="note-tooltip">${d.notes.replace(/</g,'&lt;')}</span></span>`;
             }).join('')}
           </div>
         </div>
