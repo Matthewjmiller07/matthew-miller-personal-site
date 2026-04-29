@@ -6,26 +6,597 @@ import Layout from '../layouts/Layout.astro';
   title="Literary Bible"
   description="Explore literary devices in the Hebrew Bible — color-coded verses with device annotations pulled from Supabase, and live text from the Sefaria API."
 >
-  <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-8">
 
-    <header class="max-w-3xl mx-auto text-center space-y-3">
-      <p class="text-sm uppercase tracking-[0.3em] text-secondary-light dark:text-secondary-dark">Interactive Study Tool</p>
-      <h1 class="text-3xl sm:text-4xl font-extrabold text-primary-light dark:text-primary-dark">
-        Literary Bible
-      </h1>
-      <p class="text-base sm:text-lg text-secondary-light dark:text-secondary-dark">
-        Color-coded literary devices in Tanakh — annotations from my research database, verse text pulled live from Sefaria.
-      </p>
+<style is:global>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Cormorant+SC:wght@400;500;600&display=swap');
+
+  /* ── Page-level reset ── */
+  body:has(.lb-page) {
+    background: #0c0b09 !important;
+    padding: 0 !important;
+  }
+
+  .lb-page {
+    --lb-bg:           #0c0b09;
+    --lb-surface:      #141210;
+    --lb-surface-up:   #1c1a15;
+    --lb-border:       rgba(201,162,87,0.15);
+    --lb-border-hi:    rgba(201,162,87,0.42);
+    --lb-text:         #e8d4aa;
+    --lb-muted:        #8a7a5a;
+    --lb-faint:        #4a4030;
+    --lb-gold:         #c9a257;
+    --lb-gold-dim:     rgba(201,162,87,0.65);
+    --lb-display:      'Cormorant Garamond', Georgia, serif;
+    --lb-sc:           'Cormorant SC', Georgia, serif;
+    --lb-mono:         'JetBrains Mono', monospace;
+    --lb-heb:          'Noto Serif Hebrew', 'Frank Ruhl Libre', serif;
+
+    min-height: 100vh;
+    background: var(--lb-bg);
+    color: var(--lb-text);
+    position: relative;
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Noise grain */
+  .lb-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 1;
+  }
+
+  .lb-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 3.5rem 1.5rem 7rem;
+  }
+
+  /* ── Global color override for elements the Tailwind base layer touches ── */
+  .lb-page h1, .lb-page h2, .lb-page h3 { color: var(--lb-text); }
+  .lb-page p  { color: var(--lb-text); }
+  .lb-page span, .lb-page div, .lb-page label, .lb-page button { color: inherit; }
+  .lb-page a  { color: var(--lb-gold); }
+
+  /* ── Header ── */
+  .lb-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid var(--lb-border);
+    animation: lbUp 0.9s ease both;
+  }
+
+  .lb-eyebrow {
+    font-family: var(--lb-sc);
+    font-size: 0.65rem;
+    letter-spacing: 0.38em;
+    color: var(--lb-gold);
+    margin-bottom: 1.1rem;
+  }
+
+  .lb-title {
+    font-family: var(--lb-display);
+    font-size: clamp(3rem, 9vw, 6rem);
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--lb-text);
+    margin: 0 0 1.1rem;
+  }
+
+  .lb-title em {
+    font-style: italic;
+    color: var(--lb-gold);
+  }
+
+  .lb-subtitle {
+    font-family: var(--lb-display);
+    font-size: 1.05rem;
+    font-style: italic;
+    font-weight: 300;
+    color: var(--lb-muted);
+    line-height: 1.65;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  /* ── Controls card ── */
+  .lb-controls {
+    background: var(--lb-surface);
+    border: 1px solid var(--lb-border);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    animation: lbUp 0.9s 0.08s ease both;
+  }
+
+  .lb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+
+  .lb-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-family: var(--lb-sc);
+    font-size: 0.63rem;
+    letter-spacing: 0.22em;
+    color: var(--lb-muted);
+    text-transform: uppercase;
+  }
+
+  .lb-select {
+    background: var(--lb-bg);
+    border: 1px solid var(--lb-border);
+    color: var(--lb-text);
+    padding: 0.45rem 2rem 0.45rem 0.75rem;
+    font-family: var(--lb-display);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23c9a257' opacity='0.55'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+    border-radius: 0;
+  }
+
+  .lb-select:focus { border-color: var(--lb-gold-dim); }
+  .lb-select option { background: #1a1710; color: var(--lb-text); }
+  .lb-select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Mode tabs ── */
+  .lb-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--lb-border);
+    margin-bottom: 1.75rem;
+    animation: lbUp 0.9s 0.13s ease both;
+  }
+
+  .lb-tab {
+    font-family: var(--lb-sc);
+    font-size: 0.65rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--lb-muted);
+    background: none;
+    border: none;
+    padding: 0.7rem 1.2rem 0.6rem;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+  }
+
+  .lb-tab::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0; right: 0;
+    height: 1px;
+    background: var(--lb-gold);
+    transform: scaleX(0);
+    transition: transform 0.22s ease;
+    transform-origin: left;
+  }
+
+  /* Active state driven by Tailwind classes the JS adds */
+  .lb-page .lb-tab.active,
+  .lb-page .lb-tab.bg-indigo-500 {
+    color: var(--lb-gold) !important;
+  }
+  .lb-page .lb-tab.active::after,
+  .lb-page .lb-tab.bg-indigo-500::after { transform: scaleX(1); }
+  .lb-page .lb-tab.bg-indigo-500 { background: none !important; }
+  .lb-page .lb-tab.text-indigo-400 { color: var(--lb-muted) !important; }
+  .lb-page .lb-tab.text-white { color: var(--lb-gold) !important; }
+  .lb-tab:hover { color: var(--lb-text); }
+
+  /* ── Browse controls ── */
+  .lb-browse-panel {
+    background: var(--lb-surface);
+    border: 1px solid var(--lb-border);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.75rem;
+  }
+
+  /* ── Sort row ── */
+  .lb-sort-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    margin-bottom: 1.5rem;
+    font-family: var(--lb-sc);
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--lb-muted);
+    text-transform: uppercase;
+  }
+
+  .lb-sort-btn {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--lb-muted);
+    font-family: var(--lb-sc);
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 0.28rem 0.75rem;
+    cursor: pointer;
+    border-radius: 0;
+    transition: all 0.15s;
+  }
+  .lb-sort-btn:hover { color: var(--lb-text); border-color: var(--lb-border); }
+  /* Tailwind active classes added by JS */
+  .lb-page .lb-sort-btn.bg-indigo-500,
+  .lb-page .lb-sort-btn.border-indigo-400 {
+    background: none !important;
+    border-color: var(--lb-border-hi) !important;
+    color: var(--lb-gold) !important;
+  }
+  .lb-page .lb-sort-btn.text-white { color: var(--lb-gold) !important; }
+
+  /* ── Device filter pills ── */
+  .lb-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 2rem;
+    animation: lbUp 0.9s 0.18s ease both;
+  }
+
+  /* Pills keep their JS-set background color, but we refine typography */
+  .device-pill {
+    font-family: var(--lb-sc) !important;
+    font-size: 0.6rem !important;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    border-radius: 1px !important;
+    padding: 0.28rem 0.85rem !important;
+    cursor: pointer;
+    transition: box-shadow 0.15s, opacity 0.15s;
+    border: 1px solid rgba(0,0,0,0.2) !important;
+    line-height: 1;
+  }
+  .device-pill[data-device=""] {
+    background: var(--lb-surface-up) !important;
+    color: var(--lb-text) !important;
+    border-color: var(--lb-border) !important;
+  }
+  .device-pill.active {
+    outline: 1.5px solid var(--lb-gold) !important;
+    outline-offset: 2px;
+    opacity: 1;
+  }
+  .device-pill:not(.active) { opacity: 0.8; }
+  .device-pill:hover { opacity: 1; }
+
+  /* ── Chart toggle ── */
+  .lb-chart-btn {
+    display: block;
+    margin: 0 auto 1.5rem;
+    background: none;
+    border: 1px solid var(--lb-border);
+    color: var(--lb-muted);
+    font-family: var(--lb-sc);
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    padding: 0.4rem 1.2rem;
+    cursor: pointer;
+    border-radius: 0;
+    transition: all 0.15s;
+  }
+  .lb-chart-btn:hover { border-color: var(--lb-border-hi); color: var(--lb-gold); }
+
+  /* ── Chart container ── */
+  .lb-chart-box {
+    background: var(--lb-surface);
+    border: 1px solid var(--lb-border);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── Status bar ── */
+  .lb-status {
+    text-align: center;
+    font-family: var(--lb-display);
+    font-style: italic;
+    font-size: 0.9rem;
+    color: var(--lb-muted);
+    padding: 1.5rem 0;
+  }
+
+  /* ── Verses container ── */
+  #versesContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  #versesContainer > p {
+    font-family: var(--lb-display) !important;
+    font-style: italic !important;
+    color: var(--lb-muted) !important;
+    text-align: center;
+    padding: 4rem 0;
+  }
+
+  /* ── Verse cards ── */
+  .verse-card {
+    background: var(--lb-surface) !important;
+    border: none !important;
+    border-bottom: 1px solid var(--lb-border) !important;
+    border-radius: 0 !important;
+    padding: 2rem 0 !important;
+    box-shadow: none !important;
+    transition: background 0.18s !important;
+    animation: lbUp 0.45s ease both;
+  }
+  .verse-card:hover {
+    background: var(--lb-surface-up) !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  .verse-card:first-child { border-top: 1px solid var(--lb-border) !important; }
+
+  /* Reference link inside JS-generated cards */
+  .lb-page .text-accent,
+  .lb-page a.text-accent { color: var(--lb-gold) !important; }
+  .lb-page .text-accent:hover { text-decoration: underline; }
+
+  /* "Added date" text */
+  .lb-page .text-secondary-light { color: var(--lb-faint) !important; }
+  .lb-page .text-xs.text-secondary-light { font-family: var(--lb-sc) !important; letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.58rem !important; }
+
+  /* Badges inside verse cards */
+  .verse-card [style*="background"] {
+    border-radius: 1px !important;
+    font-family: var(--lb-sc) !important;
+    font-size: 0.58rem !important;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.18rem 0.6rem !important;
+  }
+
+  /* "ref" link font */
+  .lb-page .text-sm.font-semibold.text-accent {
+    font-family: var(--lb-mono) !important;
+    font-size: 0.72rem !important;
+    font-weight: 400 !important;
+  }
+
+  /* Hebrew text */
+  .hebrew-text {
+    font-family: var(--lb-heb) !important;
+    font-size: 1.4rem !important;
+    direction: rtl;
+    line-height: 2.7 !important;
+    color: var(--lb-text) !important;
+  }
+
+  /* Word highlights */
+  .highlight {
+    border-bottom: 2px solid currentColor !important;
+    padding-bottom: 1px;
+    border-radius: 0 !important;
+    background: transparent !important;
+    font-weight: 700;
+    display: inline;
+  }
+
+  sup.note {
+    font-family: var(--lb-mono) !important;
+    font-size: 0.48em !important;
+    vertical-align: super;
+    line-height: 0;
+    margin-right: 2px;
+    font-weight: 400;
+    color: var(--lb-gold);
+  }
+
+  /* Source footnotes */
+  .source-block {
+    font-family: var(--lb-display) !important;
+    font-size: 0.78rem !important;
+    font-style: italic;
+    line-height: 1.9 !important;
+    color: var(--lb-muted) !important;
+    margin-top: 1rem !important;
+    padding-top: 0.75rem !important;
+    border-top: 1px solid var(--lb-border) !important;
+    background: none !important;
+  }
+
+  .source-block a { color: var(--lb-gold-dim) !important; text-decoration: none; }
+  .source-block a:hover { text-decoration: underline; }
+
+  /* Suggest button */
+  .lb-page .suggest-btn {
+    background: none !important;
+    border: 1px solid var(--lb-border) !important;
+    color: var(--lb-muted) !important;
+    font-family: var(--lb-sc) !important;
+    font-size: 0.58rem !important;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 0.28rem 0.8rem !important;
+    border-radius: 0 !important;
+    transition: all 0.15s;
+  }
+  .lb-page .suggest-btn:hover {
+    border-color: var(--lb-border-hi) !important;
+    color: var(--lb-gold) !important;
+    background: none !important;
+  }
+
+  /* Tooltip */
+  .has-note {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    overflow: visible;
+  }
+
+  .note-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: rgba(201,162,87,0.18);
+    color: var(--lb-gold) !important;
+    font-size: 9px;
+    font-weight: 500;
+    font-family: var(--lb-mono);
+    cursor: pointer;
+    flex-shrink: 0;
+    line-height: 1;
+    user-select: none;
+    transition: background 0.15s;
+    margin-left: 2px;
+  }
+
+  .note-icon:hover { background: rgba(201,162,87,0.32); }
+
+  .note-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    z-index: 100;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: normal;
+    width: 220px;
+    background: #1a1710;
+    color: var(--lb-text) !important;
+    font-family: var(--lb-display) !important;
+    font-style: italic;
+    font-size: 0.74rem !important;
+    line-height: 1.6;
+    padding: 8px 12px;
+    border: 1px solid var(--lb-border-hi);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    text-align: left;
+    direction: ltr;
+    border-radius: 0;
+  }
+
+  .note-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%; left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #1a1710;
+  }
+
+  .note-tooltip.visible,
+  .has-note:hover .note-tooltip,
+  .has-note:focus-within .note-tooltip { visibility: visible; opacity: 1; }
+
+  /* Browse chapter heading */
+  #versesContainer h2 {
+    font-family: var(--lb-display) !important;
+    font-weight: 400;
+    font-size: 1.6rem !important;
+    color: var(--lb-text) !important;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--lb-border);
+  }
+
+  /* Verse number link in browse mode */
+  .lb-page a.text-xs.font-semibold.text-accent {
+    font-family: var(--lb-mono) !important;
+    font-size: 0.68rem !important;
+    font-weight: 400 !important;
+  }
+
+  /* Suggestion form */
+  .lb-form {
+    position: fixed;
+    left: 1rem;
+    top: 33%;
+    width: 20rem;
+    max-width: 90vw;
+    z-index: 50;
+    background: var(--lb-surface);
+    border: 1px solid var(--lb-border-hi);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.7);
+    padding: 1rem;
+  }
+
+  .lb-close {
+    position: absolute;
+    top: 0.5rem; right: 0.5rem;
+    background: none;
+    border: 1px solid var(--lb-border);
+    color: var(--lb-muted) !important;
+    font-family: var(--lb-sc);
+    font-size: 0.58rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 0.22rem 0.55rem;
+    cursor: pointer;
+    border-radius: 0;
+    transition: all 0.15s;
+  }
+  .lb-close:hover { border-color: var(--lb-border-hi); color: var(--lb-gold) !important; }
+
+  /* Staggered card animation */
+  @keyframes lbUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  #versesContainer .verse-card:nth-child(1)  { animation-delay: 0.00s; }
+  #versesContainer .verse-card:nth-child(2)  { animation-delay: 0.04s; }
+  #versesContainer .verse-card:nth-child(3)  { animation-delay: 0.08s; }
+  #versesContainer .verse-card:nth-child(4)  { animation-delay: 0.12s; }
+  #versesContainer .verse-card:nth-child(5)  { animation-delay: 0.16s; }
+  #versesContainer .verse-card:nth-child(6)  { animation-delay: 0.20s; }
+  #versesContainer .verse-card:nth-child(7)  { animation-delay: 0.24s; }
+  #versesContainer .verse-card:nth-child(8)  { animation-delay: 0.28s; }
+
+  @media (max-width: 600px) {
+    .lb-inner { padding: 2rem 1.25rem 5rem; }
+    .lb-title { font-size: 3rem; }
+    .verse-card { padding: 1.5rem 0 !important; }
+  }
+</style>
+
+<main class="lb-page">
+  <div class="lb-inner">
+
+    <header class="lb-header">
+      <p class="lb-eyebrow">Interactive Study Tool</p>
+      <h1 class="lb-title">Literary <em>Bible</em></h1>
+      <p class="lb-subtitle">Color-coded literary devices in Tanakh — annotations from my research database, verse text pulled live from Sefaria.</p>
     </header>
 
-    <!-- Controls -->
-    <section class="bg-card-bg-light dark:bg-card-bg-dark border border-border-light dark:border-border-dark rounded-xl shadow-md p-5 space-y-4">
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Filters -->
+    <section class="lb-controls">
+      <div class="lb-grid">
 
-        <label class="flex flex-col gap-1 text-sm font-medium text-primary-light dark:text-primary-dark">
+        <label class="lb-label">
           Section
-          <select id="sectionSelect"
-            class="rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-900 px-3 py-2 text-sm text-primary-light dark:text-primary-dark">
+          <select id="sectionSelect" class="lb-select">
             <option value="">All Sections</option>
             <option value="Torah">Torah</option>
             <option value="Neviim">Neviim</option>
@@ -33,26 +604,23 @@ import Layout from '../layouts/Layout.astro';
           </select>
         </label>
 
-        <label class="flex flex-col gap-1 text-sm font-medium text-primary-light dark:text-primary-dark">
+        <label class="lb-label">
           Book
-          <select id="bookSelect"
-            class="rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-900 px-3 py-2 text-sm text-primary-light dark:text-primary-dark">
+          <select id="bookSelect" class="lb-select">
             <option value="">All Books</option>
           </select>
         </label>
 
-        <label class="flex flex-col gap-1 text-sm font-medium text-primary-light dark:text-primary-dark" id="parshaLabelWrap" style="display:none">
+        <label class="lb-label" id="parshaLabelWrap" style="display:none">
           Parsha
-          <select id="parshaSelect"
-            class="rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-900 px-3 py-2 text-sm text-primary-light dark:text-primary-dark">
+          <select id="parshaSelect" class="lb-select">
             <option value="">All Parshiot</option>
           </select>
         </label>
 
-        <label class="flex flex-col gap-1 text-sm font-medium text-primary-light dark:text-primary-dark" id="aliyaLabelWrap" style="display:none">
+        <label class="lb-label" id="aliyaLabelWrap" style="display:none">
           Aliya
-          <select id="aliyaSelect"
-            class="rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-900 px-3 py-2 text-sm text-primary-light dark:text-primary-dark">
+          <select id="aliyaSelect" class="lb-select">
             <option value="">All Aliyot</option>
           </select>
         </label>
@@ -60,138 +628,69 @@ import Layout from '../layouts/Layout.astro';
       </div>
     </section>
 
-    <!-- Mode toggle -->
-    <div class="flex justify-center gap-3">
-      <button id="modeDevices" class="mode-btn px-5 py-2 rounded-full text-sm font-semibold border-2 border-indigo-500 bg-indigo-500 text-white transition-all">Devices Only</button>
-      <button id="modeBrowse"  class="mode-btn px-5 py-2 rounded-full text-sm font-semibold border-2 border-indigo-500 text-indigo-400 bg-transparent transition-all">Browse Full Text</button>
+    <!-- Mode tabs -->
+    <div class="lb-tabs">
+      <button id="modeDevices" class="lb-tab mode-btn active">Devices Only</button>
+      <button id="modeBrowse"  class="lb-tab mode-btn">Browse Full Text</button>
     </div>
 
-    <!-- Browse mode controls (hidden by default) -->
-    <div id="browseControls" class="hidden bg-card-bg-light dark:bg-card-bg-dark border border-border-light dark:border-border-dark rounded-xl shadow-md p-5">
-      <div class="grid gap-4 sm:grid-cols-2">
-        <label class="flex flex-col gap-1 text-sm font-medium text-primary-light dark:text-primary-dark">
+    <!-- Browse controls (hidden by default) -->
+    <div id="browseControls" class="lb-browse-panel hidden">
+      <div class="lb-grid">
+        <label class="lb-label">
           Book
-          <select id="browseBook" class="rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-900 px-3 py-2 text-sm text-primary-light dark:text-primary-dark">
+          <select id="browseBook" class="lb-select">
             <option value="">Select a book…</option>
           </select>
         </label>
-        <label class="flex flex-col gap-1 text-sm font-medium text-primary-light dark:text-primary-dark">
+        <label class="lb-label">
           Chapter
-          <select id="browseChapter" class="rounded border border-border-light dark:border-border-dark bg-white dark:bg-slate-900 px-3 py-2 text-sm text-primary-light dark:text-primary-dark" disabled>
+          <select id="browseChapter" class="lb-select" disabled>
             <option value="">Select a chapter…</option>
           </select>
         </label>
       </div>
     </div>
 
-    <!-- Sort control -->
-    <div id="sortControl" class="flex justify-end items-center gap-2 text-sm text-primary-light dark:text-primary-dark">
-      <span class="font-medium">Sort:</span>
-      <button id="sortBiblical" class="sort-btn px-3 py-1 rounded-full border border-indigo-400 bg-indigo-500 text-white text-xs font-semibold transition-all">Biblical Order</button>
-      <button id="sortNewest"   class="sort-btn px-3 py-1 rounded-full border border-border-light dark:border-border-dark text-xs font-semibold transition-all">Recently Added</button>
+    <!-- Sort -->
+    <div id="sortControl" class="lb-sort-row">
+      <span>Sort:</span>
+      <button id="sortBiblical" class="lb-sort-btn sort-btn">Biblical Order</button>
+      <button id="sortNewest"   class="lb-sort-btn sort-btn">Recently Added</button>
     </div>
 
-    <!-- Device filter pills — populated dynamically from Supabase -->
-    <div id="deviceFilters" class="flex flex-wrap gap-2 justify-center">
-      <button data-device="" class="device-pill active px-4 py-1.5 rounded-full text-sm font-medium border transition-all" style="background:#e2e8f0;color:#1a1a1a">All</button>
+    <!-- Device filter pills -->
+    <div id="deviceFilters" class="lb-pills">
+      <button data-device="" class="device-pill active" style="background:#e2e8f0;color:#1a1a1a">All</button>
     </div>
 
     <!-- Chart toggle -->
     <div class="flex justify-center">
-      <button id="toggleChartBtn"
-        class="px-4 py-2 rounded-lg border border-border-light dark:border-border-dark text-sm font-medium text-primary-light dark:text-primary-dark hover:bg-hover-light dark:hover:bg-hover-dark transition-colors">
-        Show Chart
-      </button>
+      <button id="toggleChartBtn" class="lb-chart-btn">Show Chart</button>
     </div>
-    <div id="chartContainer" class="hidden bg-card-bg-light dark:bg-card-bg-dark border border-border-light dark:border-border-dark rounded-xl shadow-md p-5">
+    <div id="chartContainer" class="lb-chart-box hidden">
       <canvas id="deviceChart"></canvas>
     </div>
 
-    <!-- Status / loading -->
-    <div id="statusBar" class="text-center text-sm text-secondary-light dark:text-secondary-dark hidden">
+    <!-- Status -->
+    <div id="statusBar" class="lb-status hidden">
       <span id="statusMsg">Loading…</span>
     </div>
 
-    <!-- Verses output -->
-    <div id="versesContainer" class="space-y-4">
-      <p class="text-center text-secondary-light dark:text-secondary-dark">Select filters above to explore literary devices.</p>
+    <!-- Verses -->
+    <div id="versesContainer">
+      <p>Select filters above to explore literary devices.</p>
     </div>
 
     <!-- Suggestion form (floating) -->
-    <div id="formContainer" class="fixed left-4 top-1/3 w-80 max-w-[90vw] z-50 hidden bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-border-light dark:border-border-dark p-4">
-      <button id="closeFormBtn" class="absolute top-2 right-2 text-xs bg-red-500 text-white px-2 py-1 rounded">Close</button>
-      <iframe id="suggestionForm" src="" frameborder="0" class="w-full h-72 rounded-lg mt-4"></iframe>
+    <div id="formContainer" class="lb-form hidden">
+      <button id="closeFormBtn" class="lb-close">Close</button>
+      <iframe id="suggestionForm" src="" frameborder="0" class="w-full h-72 mt-4"></iframe>
     </div>
 
-  </main>
+  </div>
+</main>
 </Layout>
-
-<style>
-  .device-pill.active {
-    outline: 2px solid #6366f1;
-    outline-offset: 2px;
-  }
-  .device-pill { color: #1a1a1a; }
-  .verse-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
-  .verse-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
-  .highlight {
-    border-bottom: 3px solid currentColor;
-    padding-bottom: 1px;
-    border-radius: 0;
-    background: transparent !important;
-    font-weight: 700;
-    display: inline;
-  }
-  sup.note {
-    font-size: 0.55em;
-    vertical-align: super;
-    line-height: 0;
-    margin-right: 2px;
-    font-weight: 400;
-    font-family: sans-serif;
-  }
-  .source-block { font-size: 0.82rem; margin-top: 0.6rem; line-height: 1.7; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.5rem; }
-  .source-block a { color: #a78bfa; text-decoration: none; }
-  .source-block a:hover { text-decoration: underline; }
-  .hebrew-text { font-family: 'Noto Serif Hebrew', 'Frank Ruhl Libre', 'SBL Hebrew', serif; font-size: 1.2rem; direction: rtl; line-height: 2.8; }
-  /* Notes tooltip */
-  .has-note {
-    position: relative;
-    display: inline-flex; align-items: center;
-    overflow: visible;
-  }
-  .note-icon {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 18px; height: 18px; border-radius: 50%;
-    background: rgba(0,0,0,0.35); color: #fff;
-    font-size: 11px; font-weight: 700; font-family: sans-serif;
-    cursor: pointer; flex-shrink: 0; line-height: 1;
-    user-select: none;
-  }
-  .note-icon:hover { background: rgba(0,0,0,0.55); }
-  .note-tooltip {
-    visibility: hidden; opacity: 0;
-    position: absolute; z-index: 100;
-    bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
-    white-space: normal; width: 220px;
-    background: #1e1b4b; color: #e0e7ff;
-    font-size: 0.72rem; line-height: 1.5;
-    padding: 7px 10px; border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-    pointer-events: none;
-    transition: opacity 0.15s ease;
-    font-family: sans-serif; text-align: left; direction: ltr;
-  }
-  .note-tooltip::after {
-    content: '';
-    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-    border: 5px solid transparent; border-top-color: #1e1b4b;
-  }
-  .note-tooltip { visibility: hidden; opacity: 0; }
-  .has-note:hover .note-tooltip,
-  .has-note:focus-within .note-tooltip,
-  .note-tooltip.visible { visibility: visible; opacity: 1; }
-</style>
 
 <script>
 // ─── Config ────────────────────────────────────────────────────────────────
@@ -340,18 +839,18 @@ const BOOK_TO_PARSHAS = {
 };
 
 // ─── State ──────────────────────────────────────────────────────────────────
-let allRows = [];          // raw rows from Supabase
-let activeDevice = '';     // '' = all
+let allRows = [];
+let activeDevice = '';
 let activeSection = '';
 let activeBook    = '';
 let activeParsha  = '';
 let activeAliya   = '';
-let activeSort    = 'biblical'; // 'biblical' | 'newest'
+let activeSort    = 'biblical';
 let chartInstance = null;
-const verseTextCache = {};  // Sefaria text cache: "Book Chapter:Verse" → hebrew string
+const verseTextCache = {};
 
 // ─── URL param sync ──────────────────────────────────────────────────────────
-let browseMode = false; // declared early so syncURL can reference it
+let browseMode = false;
 
 function syncURL() {
   const p = new URLSearchParams();
@@ -409,9 +908,7 @@ async function loadFromSupabase() {
 // ─── Build device pills from live data ──────────────────────────────────────
 function buildDevicePills(rows) {
   const container = document.getElementById('deviceFilters');
-  // Collect unique devices sorted alphabetically
   const devices = [...new Set(rows.map(r => r.device?.toLowerCase()).filter(Boolean))].sort();
-  // Remove any previously generated pills (keep the All button)
   container.querySelectorAll('.device-pill:not([data-device=""])').forEach(el => el.remove());
   devices.forEach(device => {
     const color = deviceColor(device);
@@ -430,7 +927,6 @@ function buildDevicePills(rows) {
     });
     container.appendChild(btn);
   });
-  // Re-attach All button listener (since it's static HTML)
   const allBtn = container.querySelector('[data-device=""]');
   allBtn.onclick = () => {
     container.querySelectorAll('.device-pill').forEach(b => b.classList.remove('active'));
@@ -440,7 +936,7 @@ function buildDevicePills(rows) {
   };
 }
 
-// ─── Sefaria text fetch (per verse, cached) ──────────────────────────────────
+// ─── Sefaria text fetch ──────────────────────────────────────────────────────
 async function getVerseText(book, chapter, verse) {
   const key = `${book} ${chapter}:${verse}`;
   if (verseTextCache[key] !== undefined) return verseTextCache[key];
@@ -468,27 +964,18 @@ async function getVerseText(book, chapter, verse) {
 // ─── Filtering ───────────────────────────────────────────────────────────────
 function getFilteredRows() {
   let rows = allRows;
-
-  if (activeDevice) {
-    rows = rows.filter(r => r.device?.toLowerCase() === activeDevice);
-  }
-
+  if (activeDevice) rows = rows.filter(r => r.device?.toLowerCase() === activeDevice);
   if (activeSection) {
     const books = TANACH_BOOKS[activeSection] || [];
     rows = rows.filter(r => books.includes(r.book));
   }
-
-  if (activeBook) {
-    rows = rows.filter(r => r.book === activeBook);
-  }
-
+  if (activeBook) rows = rows.filter(r => r.book === activeBook);
   if (activeParsha && PARSHAS[activeParsha]) {
     const range = activeAliya && PARSHAS[activeParsha][activeAliya]
       ? PARSHAS[activeParsha][activeAliya]
       : PARSHAS[activeParsha]['Whole Parsha'];
     if (range) rows = filterByRange(rows, range);
   }
-
   return rows;
 }
 
@@ -506,7 +993,7 @@ function filterByRange(rows, rangeStr) {
   });
 }
 
-// ─── Group rows by verse key, sorted by biblical order ──────────────────────
+// ─── Group by verse ──────────────────────────────────────────────────────────
 function groupByVerse(rows) {
   const map = new Map();
   for (const row of rows) {
@@ -514,7 +1001,6 @@ function groupByVerse(rows) {
     if (!map.has(key)) map.set(key, { book: row.book, chapter: row.chapter, verse: row.verse, devices: [], newestAt: row.created_at });
     const entry = map.get(key);
     entry.devices.push({ device: row.device?.toLowerCase(), words: row.words, sources: row.sources, urls: row.urls, notes: row.notes });
-    // track the most recent created_at for the verse
     if (row.created_at && (!entry.newestAt || row.created_at > entry.newestAt)) entry.newestAt = row.created_at;
   }
   const verses = [...map.values()];
@@ -544,15 +1030,12 @@ async function render() {
 
   setStatus(`Loading ${grouped.length} verse${grouped.length !== 1 ? 's' : ''} from Sefaria…`);
 
-  // Fetch all verse texts in parallel (up to 10 at once to avoid hammering Sefaria)
   const BATCH = 10;
   for (let i = 0; i < grouped.length; i += BATCH) {
     await Promise.all(grouped.slice(i, i + BATCH).map(v => getVerseText(v.book, v.chapter, v.verse)));
   }
 
   clearStatus();
-
-  // Update pill counts to reflect current filter (not total corpus)
   updateDeviceCounts(filtered);
 
   const deviceCounts = {};
@@ -560,12 +1043,10 @@ async function render() {
     const ref = `${v.book} ${v.chapter}:${v.verse}`;
     let hebrewText = verseTextCache[ref] || '';
 
-    // Strip Hebrew cantillation/vowel marks for fuzzy matching
-    const CANTILLATION = /[\u0591-\u05C7\uFB1D-\uFB4E]/g;
+    const CANTILLATION = /[֑-ׇיִ-פֿ]/g;
     function stripMarks(s) { return s ? s.replace(CANTILLATION, '') : ''; }
     function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
-    // Build highlighted text and source footnotes
     let noteIdx = v.devices.length;
     const footnotes = [];
     for (const d of v.devices) {
@@ -576,10 +1057,8 @@ async function render() {
         const strippedText   = stripMarks(hebrewText);
         const re = new RegExp(escapeRe(strippedTarget), 'g');
         let match;
-        // rebuild by walking original + stripped in parallel
         const origChars  = [...hebrewText];
         const stripChars = [...strippedText];
-        // map stripped index → original index
         const stripToOrig = [];
         let si = 0, oi = 0;
         while (oi < origChars.length) {
@@ -588,7 +1067,6 @@ async function render() {
           }
           oi++;
         }
-        // find all match ranges in stripped text
         const ranges = [];
         while ((match = re.exec(strippedText)) !== null) {
           const sStart = match.index;
@@ -657,7 +1135,6 @@ async function render() {
 
   versesEl.innerHTML = cards;
 
-  // Attach suggest-btn listeners
   versesEl.querySelectorAll('.suggest-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
@@ -668,7 +1145,7 @@ async function render() {
   updateChart(deviceCounts);
 }
 
-// ─── Device count badges — updates based on currently filtered rows ──────────
+// ─── Device count badges ─────────────────────────────────────────────────────
 function updateDeviceCounts(rows) {
   const counts = {};
   for (const r of rows) {
@@ -705,7 +1182,10 @@ function updateChart(counts) {
     options: {
       responsive: true,
       plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1, color: '#8a7a5a' }, grid: { color: 'rgba(201,162,87,0.08)' } },
+        x: { ticks: { color: '#8a7a5a' }, grid: { color: 'rgba(201,162,87,0.08)' } }
+      }
     }
   });
 }
@@ -793,8 +1273,6 @@ aliyaSel.addEventListener('change', () => {
   syncURL(); render();
 });
 
-// Device pill listeners are attached dynamically in buildDevicePills()
-
 // ─── Sort buttons ───────────────────────────────────────────────────────────
 document.getElementById('sortBiblical').addEventListener('click', () => {
   activeSort = 'biblical';
@@ -816,7 +1294,7 @@ chartToggle.addEventListener('click', () => {
   chartToggle.textContent = hidden ? 'Show Chart' : 'Hide Chart';
 });
 
-// ─── Tooltip: click to open, click outside to close ─────────────────────────
+// ─── Tooltip ────────────────────────────────────────────────────────────────
 let openTip = null;
 function closeOpenTip() {
   if (openTip) { openTip.classList.remove('visible'); openTip = null; }
@@ -845,14 +1323,12 @@ const deviceFiltersEl = document.getElementById('deviceFilters');
 const browseBookSel   = document.getElementById('browseBook');
 const browseChapterSel= document.getElementById('browseChapter');
 
-// Populate browse book select with all books in order
 BOOK_ORDER.forEach(b => {
   const o = document.createElement('option');
   o.value = b; o.textContent = b;
   browseBookSel.appendChild(o);
 });
 
-// Chapter counts per book (max chapters)
 const BOOK_CHAPTERS = {
   Genesis:46,Exodus:40,Leviticus:27,Numbers:36,Deuteronomy:34,
   Joshua:24,Judges:21,'1 Samuel':31,'2 Samuel':24,'1 Kings':22,'2 Kings':25,
@@ -934,8 +1410,7 @@ async function renderBrowseChapter(book, chapter) {
     return;
   }
 
-  // Build a lookup of devices for this book/chapter from allRows
-  const CANTILLATION = /[\u0591-\u05C7\uFB1D-\uFB4E]/g;
+  const CANTILLATION = /[֑-ׇיִ-פֿ]/g;
   function stripMarks(s) { return s ? s.replace(CANTILLATION, '') : ''; }
   function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
@@ -1016,7 +1491,7 @@ async function renderBrowseChapter(book, chapter) {
   versesEl.innerHTML = `<h2 class="text-lg font-bold text-primary-light dark:text-primary-dark mb-4">${book} ${chapter}</h2>` + cards;
 }
 
-// ─── Restore state from URL params ──────────────────────────────────────────
+// ─── Restore state from URL ──────────────────────────────────────────────────
 function restoreFromURL() {
   const p = new URLSearchParams(location.search);
   activeDevice  = p.get('device')  || '';
@@ -1026,24 +1501,23 @@ function restoreFromURL() {
   activeAliya   = p.get('aliya')   || '';
   activeSort    = p.get('sort')    || 'biblical';
 
-  // Restore section + book + parsha + aliya selects
   if (activeSection) { sectionSel.value = activeSection; populateBookSelect(activeSection); }
   if (activeBook)    { bookSel.value = activeBook; populateParshaSelect(activeBook); }
   if (activeParsha)  { parshaSel.value = activeParsha; populateAliyaSelect(activeParsha); }
   if (activeAliya)   { aliyaSel.value = activeAliya; }
 
-  // Restore device pill active state
   document.querySelectorAll('.device-pill').forEach(b => {
     b.classList.toggle('active', b.dataset.device === activeDevice);
   });
 
-  // Restore sort buttons
   if (activeSort === 'newest') {
     document.getElementById('sortNewest').classList.add('bg-indigo-500','text-white','border-indigo-400');
     document.getElementById('sortBiblical').classList.remove('bg-indigo-500','text-white','border-indigo-400');
+  } else {
+    document.getElementById('sortBiblical').classList.add('bg-indigo-500','text-white','border-indigo-400');
+    document.getElementById('sortNewest').classList.remove('bg-indigo-500','text-white','border-indigo-400');
   }
 
-  // Restore browse mode
   const mode = p.get('mode');
   if (mode === 'browse') {
     setMode(true);
@@ -1051,7 +1525,6 @@ function restoreFromURL() {
     const bc = p.get('bchapter');
     if (bb) {
       browseBookSel.value = bb;
-      // populate chapter select
       const maxCh = BOOK_CHAPTERS[bb] || 50;
       browseChapterSel.innerHTML = '<option value="">Select a chapter…</option>';
       for (let i = 1; i <= maxCh; i++) {
@@ -1070,7 +1543,6 @@ function restoreFromURL() {
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 (async () => {
-  // Chart.js must be loaded
   if (typeof Chart === 'undefined') {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
