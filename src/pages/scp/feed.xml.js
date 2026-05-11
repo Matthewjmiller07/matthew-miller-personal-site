@@ -16,7 +16,7 @@ function escapeXml(str) {
 export async function GET() {
   const { series, shiurim } = scpData;
 
-  const items = shiurim.map(shiur => {
+  const items = shiurim.filter(s => s.audioFile).map(shiur => {
     const audioUrl = shiur.audioFile
       ? `${SITE_URL}${shiur.audioFile}`
       : null;
@@ -42,7 +42,7 @@ export async function GET() {
       <link>${SITE_URL}/scp</link>
       <itunes:title>${escapeXml(`Shiur ${shiur.number}: ${shiur.title}`)}</itunes:title>
       <itunes:summary><![CDATA[${shiur.description}]]></itunes:summary>
-      <itunes:duration>${escapeXml(shiur.duration)}</itunes:duration>
+      ${shiur.duration ? `<itunes:duration>${escapeXml(shiur.duration)}</itunes:duration>` : ''}
       <itunes:episode>${shiur.number}</itunes:episode>
       <itunes:episodeType>full</itunes:episodeType>
       ${audioUrl ? `<enclosure url="${escapeXml(audioUrl)}" type="audio/mpeg" length="0"/>` : ''}

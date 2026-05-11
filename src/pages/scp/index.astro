@@ -6,13 +6,11 @@ import shiur2Transcript from '../../data/scp-shiur-2-transcript.json';
 
 const { series, shiurim } = scpData;
 
-// Map shiur IDs to their pre-baked transcript JSON
 const transcriptMap: Record<string, typeof shiur1Transcript> = {
   'shiur-1': shiur1Transcript,
   'shiur-2': shiur2Transcript,
 };
 
-// Running totals
 const totalJokes = shiurim.reduce((sum, s) => sum + (s.jokes?.length ?? 0), 0);
 const allFoods = shiurim.flatMap(s =>
   (s.disgracefulFoods ?? []).map(f => ({ ...f, shiurNumber: s.number }))
@@ -20,6 +18,14 @@ const allFoods = shiurim.flatMap(s =>
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function youtubeEmbedUrl(videoUrl: string | null) {
+  if (!videoUrl) return null;
+  // Accept either a full YouTube URL or just a video ID
+  const match = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/);
+  const id = match ? match[1] : videoUrl;
+  return `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`;
 }
 ---
 
@@ -29,7 +35,7 @@ function formatDate(iso: string) {
 >
   <main class="container mx-auto px-4 sm:px-6 py-10 max-w-4xl">
 
-    <!-- Password Form (shows when not authenticated) -->
+    <!-- Password Form -->
     <section class="mb-10" id="password-section">
       <div class="bg-gradient-to-r from-slate-800 to-slate-900 dark:from-slate-700 dark:to-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl p-8 max-w-md mx-auto">
         <div class="text-center">
@@ -59,7 +65,7 @@ function formatDate(iso: string) {
       </div>
     </section>
 
-    <!-- Main Content (hidden until password) -->
+    <!-- Main Content -->
     <div id="main-content" class="hidden">
       <!-- Header -->
       <header class="mb-10">
@@ -106,24 +112,21 @@ function formatDate(iso: string) {
         </div>
       </header>
 
-      <!-- Hidden Easter Egg Trigger -->
+      <!-- Easter Egg Trigger -->
       <div class="mb-10 text-center">
         <button id="easter-egg-trigger" class="text-xs text-gray-300 dark:text-gray-600 hover:text-gray-400 dark:hover:text-gray-500 transition-colors">
           &nbsp;
         </button>
       </div>
 
-      <!-- Running Tallies (easter egg, completely hidden) -->
+      <!-- Running Tallies (easter egg) -->
       <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 hidden" id="running-tallies">
-        <!-- Jokes tally -->
         <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl p-5">
           <div class="flex items-center gap-3 mb-3">
             <span class="text-3xl" aria-hidden="true">😄</span>
             <div>
               <div class="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{totalJokes}</div>
-              <div class="text-sm font-semibold text-yellow-700 dark:text-yellow-400 uppercase tracking-wide">
-                Jokes Cracked
-              </div>
+              <div class="text-sm font-semibold text-yellow-700 dark:text-yellow-400 uppercase tracking-wide">Jokes Cracked</div>
             </div>
           </div>
           <ul class="space-y-2 mt-2" id="jokes-list">
@@ -137,16 +140,12 @@ function formatDate(iso: string) {
             )}
           </ul>
         </div>
-
-        <!-- Disgraceful foods tally -->
         <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-5">
           <div class="flex items-center gap-3 mb-3">
             <span class="text-3xl" aria-hidden="true">🍽️</span>
             <div>
               <div class="text-2xl font-bold text-red-700 dark:text-red-400">{allFoods.length}</div>
-              <div class="text-sm font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">
-                Disgraced Foods
-              </div>
+              <div class="text-sm font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">Disgraced Foods</div>
             </div>
           </div>
           <ul class="space-y-2 mt-2">
@@ -163,42 +162,43 @@ function formatDate(iso: string) {
 
       <!-- Shiurim -->
       {shiurim.map(shiur => {
-      const transcript = transcriptMap[shiur.id] ?? [];
-      return (
-        <article class="mb-12 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <!-- Shiur header -->
-          <div class="bg-slate-50 dark:bg-slate-900/50 px-6 py-5 border-b border-slate-200 dark:border-slate-700">
-            <div class="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="inline-block bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 text-xs font-bold px-2 py-0.5 rounded">
-                    Shiur {shiur.number}
-                  </span>
-                  <span class="text-xs text-gray-500 dark:text-gray-400">{formatDate(shiur.date)}</span>
-                </div>
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white">{shiur.title}</h2>
-                <p class="text-sm font-hebrew text-gray-500 dark:text-gray-400 mt-0.5" dir="rtl">{shiur.hebrewTitle}</p>
-              </div>
-              <div class="text-sm text-gray-500 dark:text-gray-400 font-mono">{shiur.duration}</div>
-            </div>
-            <p class="mt-3 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{shiur.description}</p>
-            <!-- Topic chips -->
-            {shiur.topics && (
-              <div class="flex flex-wrap gap-1 mt-3">
-                {shiur.topics.map(t => (
-                  <span class="text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full">{t}</span>
-                ))}
-              </div>
-            )}
-          </div>
+        const transcript = transcriptMap[shiur.id] ?? [];
+        const embedUrl = youtubeEmbedUrl(shiur.videoUrl ?? null);
+        return (
+          <article class="mb-12 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
 
-          <!-- Audio player -->
-          <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <!-- Shiur header -->
+            <div class="bg-slate-50 dark:bg-slate-900/50 px-6 py-5 border-b border-slate-200 dark:border-slate-700">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="inline-block bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 text-xs font-bold px-2 py-0.5 rounded">
+                      Shiur {shiur.number}
+                    </span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{formatDate(shiur.date)}</span>
+                  </div>
+                  <h2 class="text-xl font-bold text-gray-900 dark:text-white">{shiur.title}</h2>
+                  <p class="text-sm font-hebrew text-gray-500 dark:text-gray-400 mt-0.5" dir="rtl">{shiur.hebrewTitle}</p>
+                </div>
+                {shiur.duration && (
+                  <div class="text-sm text-gray-500 dark:text-gray-400 font-mono">{shiur.duration}</div>
+                )}
+              </div>
+              <p class="mt-3 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{shiur.description}</p>
+              {shiur.topics && (
+                <div class="flex flex-wrap gap-1 mt-3">
+                  {shiur.topics.map(t => (
+                    <span class="text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full">{t}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <!-- Audio player -->
             {shiur.audioFile ? (
-              <div>
+              <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                 <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Audio</p>
                 <div class="flex items-center gap-2">
-                  <!-- Rewind buttons -->
                   <button
                     type="button"
                     class="audio-seek-btn p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition-colors"
@@ -223,7 +223,6 @@ function formatDate(iso: string) {
                     </svg>
                     <span class="text-[10px] font-semibold">15</span>
                   </button>
-
                   <audio
                     id={`audio-${shiur.id}`}
                     controls
@@ -235,8 +234,6 @@ function formatDate(iso: string) {
                       <a href={shiur.audioFile} class="text-cyan-600 underline">Download MP3</a>
                     </p>
                   </audio>
-
-                  <!-- Fast forward buttons -->
                   <button
                     type="button"
                     class="audio-seek-btn p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition-colors"
@@ -264,154 +261,293 @@ function formatDate(iso: string) {
                 </div>
               </div>
             ) : (
-              <p class="text-sm text-gray-500 dark:text-gray-400 italic">
-                Audio coming soon
-              </p>
-            )}
-          </div>
-
-          <!-- Notes + per-shiur jokes/foods -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-700 border-b border-slate-200 dark:border-slate-700">
-            <!-- Notes -->
-            <div class="px-5 py-4">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Notes</p>
-              {shiur.notesFile ? (
-                <a
-                  href={shiur.notesFile}
-                  target="_blank"
-                  rel="noopener"
-                  class="inline-flex items-center gap-1.5 text-sm text-cyan-600 dark:text-cyan-400 hover:underline font-medium"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              <div class="px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20">
+                <div class="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-500">
+                  <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                   </svg>
-                  Download Notes (PDF)
-                </a>
-              ) : (
-                <p class="text-sm text-gray-400 italic">Notes coming soon</p>
-              )}
-            </div>
-
-            <!-- Jokes this shiur (hidden by default) -->
-            <div class="px-5 py-4 shiur-jokes hidden">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                😄 Jokes ({shiur.jokes?.length ?? 0})
-              </p>
-              {(shiur.jokes?.length ?? 0) > 0 ? (
-                <ul class="space-y-1.5">
-                  {shiur.jokes!.map(j => (
-                    <li class="text-xs text-gray-600 dark:text-gray-400">
-                      <button
-                        class="font-mono text-cyan-600 dark:text-cyan-400 hover:underline mr-1 timestamp-btn"
-                        data-audio={`audio-${shiur.id}`}
-                        data-seconds={j.timestampSeconds}
-                        type="button"
-                      >{j.timestamp}</button>
-                      {j.text}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p class="text-xs text-gray-400 italic">None yet</p>
-              )}
-            </div>
-
-            <!-- Disgraceful foods this shiur (hidden by default) -->
-            <div class="px-5 py-4 shiur-foods hidden">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                🍽️ Disgraced Foods ({shiur.disgracefulFoods?.length ?? 0})
-              </p>
-              {(shiur.disgracefulFoods?.length ?? 0) > 0 ? (
-                <ul class="space-y-1.5">
-                  {shiur.disgracefulFoods!.map(f => (
-                    <li class="text-xs text-gray-600 dark:text-gray-400">
-                      <button
-                        class="font-mono text-cyan-600 dark:text-cyan-400 hover:underline mr-1 timestamp-btn"
-                        data-audio={`audio-${shiur.id}`}
-                        data-seconds={f.timestampSeconds}
-                        type="button"
-                      >{f.timestamp}</button>
-                      <strong class="text-gray-800 dark:text-gray-200">{f.food}</strong> — {f.context}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p class="text-xs text-gray-400 italic">None yet</p>
-              )}
-            </div>
-          </div>
-
-          <!-- Transcript (only show if available) -->
-          {transcript.length > 0 && (
-            <div class="px-6 py-4">
-              <button
-                id={`toggle-${shiur.id}`}
-                class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors mb-3"
-                aria-expanded="false"
-                aria-controls={`transcript-${shiur.id}`}
-                type="button"
-              >
-                <svg id={`chevron-${shiur.id}`} class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-                Transcript ({transcript.length} paragraphs)
-                {shiur.transcriptFile && (
-                  <a
-                    href={shiur.transcriptFile}
-                    download
-                    class="ml-2 text-xs text-cyan-600 dark:text-cyan-400 underline font-normal"
-                    onclick="event.stopPropagation()"
-                  >↓ .srt</a>
-                )}
-              </button>
-
-              <div
-                id={`transcript-${shiur.id}`}
-                class="hidden"
-              >
-                <!-- Search -->
-                <div class="mb-3">
-                  <input
-                    type="search"
-                    id={`search-${shiur.id}`}
-                    placeholder="Search transcript…"
-                    class="w-full sm:w-64 px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    data-target={`transcript-body-${shiur.id}`}
-                  />
-                </div>
-
-                <div
-                  id={`transcript-body-${shiur.id}`}
-                  class="h-96 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 space-y-3 text-sm leading-relaxed"
-                >
-                  {transcript.map(para => (
-                    <div
-                      class="transcript-para group flex gap-3"
-                      data-text={para.text.toLowerCase()}
-                    >
-                      <button
-                        class="timestamp-btn shrink-0 font-mono text-xs text-cyan-600 dark:text-cyan-400 hover:underline pt-0.5"
-                        data-audio={`audio-${shiur.id}`}
-                        data-seconds={para.startSeconds}
-                        type="button"
-                      >{para.start}</button>
-                      <p class="text-gray-700 dark:text-gray-300">{para.text}</p>
-                    </div>
-                  ))}
+                  <span class="italic">Recording unavailable — notes are the primary resource for this shiur.</span>
                 </div>
               </div>
-            </div>
-          )}
-        </article>
-      );
-    })}
+            )}
+
+            <!-- Video embed (if available) -->
+            {embedUrl && (
+              <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Video</p>
+                <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-900 shadow-md">
+                  <iframe
+                    src={embedUrl}
+                    class="absolute inset-0 w-full h-full"
+                    allowfullscreen
+                    title={`Video: ${shiur.title}`}
+                    loading="lazy"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  />
+                </div>
+              </div>
+            )}
+
+            <!-- Notes section -->
+            {shiur.notesFile && (
+              <div class="border-b border-slate-200 dark:border-slate-700">
+                <!-- Notes header bar -->
+                <div class="flex items-center gap-3 px-6 py-4">
+                  <svg class="w-4 h-4 text-cyan-500 dark:text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                  <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex-1">Notes</p>
+                  <div class="flex items-center gap-2">
+                    <a
+                      href={shiur.notesFile}
+                      target="_blank"
+                      rel="noopener"
+                      class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 hover:border-cyan-300 dark:hover:border-cyan-600 transition-all"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                      </svg>
+                      Download PDF
+                    </a>
+                    <button
+                      id={`notes-toggle-${shiur.id}`}
+                      class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 hover:border-cyan-300 dark:hover:border-cyan-600 transition-all"
+                      aria-expanded="false"
+                      type="button"
+                    >
+                      <svg id={`notes-chevron-${shiur.id}`} class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                      </svg>
+                      View Inline
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Key takeaways (summary bullets) -->
+                {shiur.notesSummary && shiur.notesSummary.length > 0 && (
+                  <div class="px-6 pb-4">
+                    <div class="bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                      <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">Key Takeaways</p>
+                      <ul class="space-y-2">
+                        {shiur.notesSummary.map(point => (
+                          <li class="flex gap-2.5 text-sm text-gray-700 dark:text-gray-300 leading-snug">
+                            <span class="text-cyan-500 dark:text-cyan-400 mt-0.5 shrink-0">▸</span>
+                            <span>{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                <!-- Inline PDF viewer (hidden by default) -->
+                <div id={`notes-pdf-${shiur.id}`} class="hidden px-6 pb-5">
+                  <div class="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-center justify-between bg-slate-100 dark:bg-slate-700 px-4 py-2 border-b border-slate-200 dark:border-slate-600">
+                      <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Shiur {shiur.number} Notes</span>
+                      <a
+                        href={shiur.notesFile}
+                        target="_blank"
+                        rel="noopener"
+                        class="text-xs text-cyan-600 dark:text-cyan-400 hover:underline"
+                      >
+                        Open in new tab ↗
+                      </a>
+                    </div>
+                    <iframe
+                      src={shiur.notesFile}
+                      class="w-full h-[750px] bg-white"
+                      title={`Shiur ${shiur.number} Notes`}
+                    >
+                      <div class="p-6 text-center text-sm text-gray-500">
+                        Your browser cannot display this PDF.
+                        <a href={shiur.notesFile} class="text-cyan-600 underline ml-1" target="_blank">Open in new tab</a>
+                      </div>
+                    </iframe>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <!-- Easter egg: per-shiur jokes / foods (hidden by default) -->
+            {((shiur.jokes?.length ?? 0) > 0 || (shiur.disgracefulFoods?.length ?? 0) > 0) && (
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-700 border-b border-slate-200 dark:border-slate-700 shiur-easter-egg hidden">
+                <div class="px-5 py-4 shiur-jokes">
+                  <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                    😄 Jokes ({shiur.jokes?.length ?? 0})
+                  </p>
+                  {(shiur.jokes?.length ?? 0) > 0 ? (
+                    <ul class="space-y-1.5">
+                      {shiur.jokes!.map(j => (
+                        <li class="text-xs text-gray-600 dark:text-gray-400">
+                          <button
+                            class="font-mono text-cyan-600 dark:text-cyan-400 hover:underline mr-1 timestamp-btn"
+                            data-audio={`audio-${shiur.id}`}
+                            data-seconds={j.timestampSeconds}
+                            type="button"
+                          >{j.timestamp}</button>
+                          {j.text}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p class="text-xs text-gray-400 italic">None yet</p>
+                  )}
+                </div>
+                <div class="px-5 py-4 shiur-foods">
+                  <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                    🍽️ Disgraced Foods ({shiur.disgracefulFoods?.length ?? 0})
+                  </p>
+                  {(shiur.disgracefulFoods?.length ?? 0) > 0 ? (
+                    <ul class="space-y-1.5">
+                      {shiur.disgracefulFoods!.map(f => (
+                        <li class="text-xs text-gray-600 dark:text-gray-400">
+                          <button
+                            class="font-mono text-cyan-600 dark:text-cyan-400 hover:underline mr-1 timestamp-btn"
+                            data-audio={`audio-${shiur.id}`}
+                            data-seconds={f.timestampSeconds}
+                            type="button"
+                          >{f.timestamp}</button>
+                          <strong class="text-gray-800 dark:text-gray-200">{f.food}</strong> — {f.context}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p class="text-xs text-gray-400 italic">None yet</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <!-- Transcript -->
+            {transcript.length > 0 && (
+              <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                <button
+                  id={`toggle-${shiur.id}`}
+                  class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors mb-3"
+                  aria-expanded="false"
+                  aria-controls={`transcript-${shiur.id}`}
+                  type="button"
+                >
+                  <svg id={`chevron-${shiur.id}`} class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                  Transcript ({transcript.length} paragraphs)
+                  {shiur.transcriptFile && (
+                    <a
+                      href={shiur.transcriptFile}
+                      download
+                      class="ml-2 text-xs text-cyan-600 dark:text-cyan-400 underline font-normal"
+                      onclick="event.stopPropagation()"
+                    >↓ .srt</a>
+                  )}
+                </button>
+                <div id={`transcript-${shiur.id}`} class="hidden">
+                  <div class="mb-3">
+                    <input
+                      type="search"
+                      id={`search-${shiur.id}`}
+                      placeholder="Search transcript…"
+                      class="w-full sm:w-64 px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      data-target={`transcript-body-${shiur.id}`}
+                    />
+                  </div>
+                  <div
+                    id={`transcript-body-${shiur.id}`}
+                    class="h-96 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 space-y-3 text-sm leading-relaxed"
+                  >
+                    {transcript.map(para => (
+                      <div class="transcript-para group flex gap-3" data-text={para.text.toLowerCase()}>
+                        <button
+                          class="timestamp-btn shrink-0 font-mono text-xs text-cyan-600 dark:text-cyan-400 hover:underline pt-0.5"
+                          data-audio={`audio-${shiur.id}`}
+                          data-seconds={para.startSeconds}
+                          type="button"
+                        >{para.start}</button>
+                        <p class="text-gray-700 dark:text-gray-300">{para.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <!-- Quiz section -->
+            {(shiur as any).quiz && (shiur as any).quiz.length > 0 && (
+              <div class="px-6 py-4">
+                <button
+                  id={`quiz-toggle-${shiur.id}`}
+                  class="w-full flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
+                  aria-expanded="false"
+                  type="button"
+                >
+                  <svg id={`quiz-chevron-${shiur.id}`} class="w-4 h-4 transition-transform shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                  <span>Quiz Yourself</span>
+                  <span class="text-xs font-normal text-gray-400 dark:text-gray-500 ml-1">({(shiur as any).quiz.length} questions, AI-generated)</span>
+                  <span id={`quiz-score-${shiur.id}`} class="ml-auto text-xs font-semibold text-cyan-600 dark:text-cyan-400"></span>
+                </button>
+
+                <div id={`quiz-body-${shiur.id}`} class="hidden mt-5 space-y-5">
+                  {(shiur as any).quiz.map((q: any, qi: number) => (
+                    <div
+                      class="quiz-question rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+                      data-shiur={shiur.id}
+                      data-qi={qi}
+                    >
+                      <div class="bg-slate-50 dark:bg-slate-900/50 px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                        <p class="text-sm font-medium text-gray-800 dark:text-gray-100 leading-snug">
+                          <span class="text-cyan-500 dark:text-cyan-400 font-bold mr-1.5">{qi + 1}.</span>
+                          {q.q}
+                        </p>
+                      </div>
+                      <div class="p-3 space-y-2">
+                        {q.options.map((opt: string, oi: number) => (
+                          <button
+                            type="button"
+                            class="quiz-option w-full text-left px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/50 text-sm text-gray-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-cyan-300 dark:hover:border-cyan-600 transition-all cursor-pointer"
+                            data-option={oi}
+                            data-correct={q.correct}
+                            data-shiur={shiur.id}
+                            data-qi={qi}
+                          >
+                            <span class="font-semibold text-gray-400 dark:text-gray-500 mr-2 text-xs">{['A', 'B', 'C', 'D'][oi]}.</span>
+                            {opt}
+                          </button>
+                        ))}
+                        <div class="quiz-explanation hidden mt-2 px-3.5 py-3 rounded-lg bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                          <span class="font-semibold text-sky-700 dark:text-sky-400 text-xs uppercase tracking-wide block mb-1">Explanation</span>
+                          {q.explanation}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div class="flex items-center justify-between pt-1 pb-2">
+                    <div id={`quiz-result-${shiur.id}`} class="text-sm text-gray-500 dark:text-gray-400"></div>
+                    <button
+                      type="button"
+                      class="quiz-reset-btn text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 underline"
+                      data-shiur={shiur.id}
+                    >
+                      Reset quiz
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </article>
+        );
+      })}
     </div>
 
   </main>
 </Layout>
 
 <script>
-  // Check if already authenticated
+  // Auth
   const isAuthenticated = sessionStorage.getItem('scp_authenticated') === 'true';
   const easterEggUnlocked = sessionStorage.getItem('scp_easter_egg') === 'true';
 
@@ -420,40 +556,33 @@ function formatDate(iso: string) {
     document.getElementById('main-content')?.classList.remove('hidden');
     if (easterEggUnlocked) {
       document.getElementById('running-tallies')?.classList.remove('hidden');
-      document.querySelectorAll('.shiur-jokes, .shiur-foods').forEach(el => el.classList.remove('hidden'));
+      document.querySelectorAll('.shiur-easter-egg').forEach(el => el.classList.remove('hidden'));
     }
   }
 
-  // Password form submission - unlocks main content
-  const passwordForm = document.getElementById('password-form');
-  const passwordInput = document.getElementById('password-input') as HTMLInputElement;
-  const passwordError = document.getElementById('password-error');
-
-  passwordForm?.addEventListener('submit', (e) => {
+  document.getElementById('password-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const password = passwordInput.value;
-
-    if (password === 'SCPKINS') {
+    const input = document.getElementById('password-input') as HTMLInputElement;
+    const error = document.getElementById('password-error');
+    if (input.value === 'SCPKINS') {
       sessionStorage.setItem('scp_authenticated', 'true');
       document.getElementById('password-section')?.classList.add('hidden');
       document.getElementById('main-content')?.classList.remove('hidden');
-      passwordError?.classList.add('hidden');
+      error?.classList.add('hidden');
     } else {
-      passwordError?.classList.remove('hidden');
-      passwordInput.value = '';
+      error?.classList.remove('hidden');
+      input.value = '';
     }
   });
 
-  // Easter egg: click the invisible trigger 3 times to unlock jokes/foods
+  // Easter egg
   let triggerClicks = 0;
-  const easterEggTrigger = document.getElementById('easter-egg-trigger');
-  
-  easterEggTrigger?.addEventListener('click', () => {
+  document.getElementById('easter-egg-trigger')?.addEventListener('click', () => {
     triggerClicks++;
     if (triggerClicks >= 3) {
       sessionStorage.setItem('scp_easter_egg', 'true');
       document.getElementById('running-tallies')?.classList.remove('hidden');
-      document.querySelectorAll('.shiur-jokes, .shiur-foods').forEach(el => el.classList.remove('hidden'));
+      document.querySelectorAll('.shiur-easter-egg').forEach(el => el.classList.remove('hidden'));
       triggerClicks = 0;
     }
   });
@@ -472,7 +601,7 @@ function formatDate(iso: string) {
     });
   });
 
-  // Audio seek buttons (rewind/fast forward 15s/30s)
+  // Audio seek buttons
   document.querySelectorAll<HTMLButtonElement>('.audio-seek-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const audioId = btn.dataset.audio;
@@ -480,9 +609,7 @@ function formatDate(iso: string) {
       if (!audioId) return;
       const audio = document.getElementById(audioId) as HTMLAudioElement | null;
       if (!audio) return;
-      // Calculate new time, clamping to valid range
-      const newTime = Math.max(0, Math.min(audio.duration || Infinity, audio.currentTime + seekSeconds));
-      audio.currentTime = newTime;
+      audio.currentTime = Math.max(0, Math.min(audio.duration || Infinity, audio.currentTime + seekSeconds));
     });
   });
 
@@ -493,9 +620,9 @@ function formatDate(iso: string) {
       const panel = document.getElementById(`transcript-${id}`);
       const chevron = document.getElementById(`chevron-${id}`);
       if (!panel) return;
-      const open = panel.classList.toggle('hidden');
-      btn.setAttribute('aria-expanded', open ? 'false' : 'true');
-      chevron?.classList.toggle('rotate-90', !open);
+      const nowHidden = panel.classList.toggle('hidden');
+      btn.setAttribute('aria-expanded', nowHidden ? 'false' : 'true');
+      chevron?.classList.toggle('rotate-90', !nowHidden);
     });
   });
 
@@ -505,12 +632,133 @@ function formatDate(iso: string) {
       const q = input.value.toLowerCase().trim();
       const targetId = input.dataset.target;
       if (!targetId) return;
-      const container = document.getElementById(targetId);
-      if (!container) return;
-      container.querySelectorAll<HTMLElement>('.transcript-para').forEach(para => {
-        const text = para.dataset.text ?? '';
-        para.style.display = !q || text.includes(q) ? '' : 'none';
+      document.getElementById(targetId)
+        ?.querySelectorAll<HTMLElement>('.transcript-para')
+        .forEach(para => {
+          para.style.display = !q || (para.dataset.text ?? '').includes(q) ? '' : 'none';
+        });
+    });
+  });
+
+  // Notes inline toggle
+  document.querySelectorAll<HTMLButtonElement>('[id^="notes-toggle-"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.id.replace('notes-toggle-', '');
+      const pdfEl = document.getElementById(`notes-pdf-${id}`);
+      const chevron = document.getElementById(`notes-chevron-${id}`);
+      if (!pdfEl) return;
+      const nowHidden = pdfEl.classList.toggle('hidden');
+      btn.setAttribute('aria-expanded', nowHidden ? 'false' : 'true');
+      chevron?.classList.toggle('rotate-90', !nowHidden);
+      if (!nowHidden) pdfEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  });
+
+  // Quiz
+  const quizState: Record<string, { answered: number; correct: number }> = {};
+
+  function updateQuizScore(shiurId: string, total: number) {
+    const state = quizState[shiurId] ?? { answered: 0, correct: 0 };
+    const scoreEl = document.getElementById(`quiz-score-${shiurId}`);
+    const resultEl = document.getElementById(`quiz-result-${shiurId}`);
+    if (scoreEl) {
+      scoreEl.textContent = state.answered > 0 ? `${state.correct}/${state.answered}` : '';
+    }
+    if (resultEl && state.answered === total) {
+      const pct = Math.round((state.correct / total) * 100);
+      resultEl.textContent = pct === 100
+        ? `Perfect score! ${state.correct}/${total}`
+        : `${state.correct}/${total} correct (${pct}%)`;
+    }
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.quiz-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const shiurId = btn.dataset.shiur!;
+      const qi = btn.dataset.qi!;
+      const optionIdx = parseInt(btn.dataset.option!);
+      const correctIdx = parseInt(btn.dataset.correct!);
+
+      const questionEl = btn.closest('.quiz-question') as HTMLElement;
+      if (!questionEl) return;
+
+      // Already answered?
+      if (questionEl.dataset.answered === 'true') return;
+      questionEl.dataset.answered = 'true';
+
+      const allOptions = questionEl.querySelectorAll<HTMLButtonElement>('.quiz-option');
+      const explanationEl = questionEl.querySelector<HTMLElement>('.quiz-explanation');
+
+      // Lock options
+      allOptions.forEach(opt => {
+        opt.classList.remove('hover:bg-slate-50', 'dark:hover:bg-slate-700/50', 'hover:border-cyan-300', 'dark:hover:border-cyan-600', 'cursor-pointer');
+        opt.style.cursor = 'default';
       });
+
+      // Highlight correct answer
+      allOptions[correctIdx]?.classList.add(
+        'bg-emerald-50', 'dark:bg-emerald-900/20',
+        'border-emerald-400', 'dark:border-emerald-500',
+        '!text-emerald-800', 'dark:!text-emerald-200'
+      );
+
+      // Highlight wrong selection
+      if (optionIdx !== correctIdx) {
+        btn.classList.add(
+          'bg-red-50', 'dark:bg-red-900/20',
+          'border-red-400', 'dark:border-red-500',
+          '!text-red-800', 'dark:!text-red-200'
+        );
+      }
+
+      // Show explanation
+      explanationEl?.classList.remove('hidden');
+
+      // Update score
+      if (!quizState[shiurId]) quizState[shiurId] = { answered: 0, correct: 0 };
+      quizState[shiurId].answered++;
+      if (optionIdx === correctIdx) quizState[shiurId].correct++;
+
+      const total = document.querySelectorAll(`.quiz-question[data-shiur="${shiurId}"]`).length;
+      updateQuizScore(shiurId, total);
+    });
+  });
+
+  // Quiz toggle
+  document.querySelectorAll<HTMLButtonElement>('[id^="quiz-toggle-"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.id.replace('quiz-toggle-', '');
+      const body = document.getElementById(`quiz-body-${id}`);
+      const chevron = document.getElementById(`quiz-chevron-${id}`);
+      if (!body) return;
+      const nowHidden = body.classList.toggle('hidden');
+      btn.setAttribute('aria-expanded', nowHidden ? 'false' : 'true');
+      chevron?.classList.toggle('rotate-90', !nowHidden);
+    });
+  });
+
+  // Quiz reset
+  document.querySelectorAll<HTMLButtonElement>('.quiz-reset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const shiurId = btn.dataset.shiur!;
+
+      document.querySelectorAll<HTMLElement>(`.quiz-question[data-shiur="${shiurId}"]`).forEach(qEl => {
+        qEl.dataset.answered = '';
+        qEl.querySelectorAll<HTMLButtonElement>('.quiz-option').forEach(opt => {
+          opt.classList.remove(
+            'bg-emerald-50', 'dark:bg-emerald-900/20', 'border-emerald-400', 'dark:border-emerald-500', '!text-emerald-800', 'dark:!text-emerald-200',
+            'bg-red-50', 'dark:bg-red-900/20', 'border-red-400', 'dark:border-red-500', '!text-red-800', 'dark:!text-red-200'
+          );
+          opt.classList.add('hover:bg-slate-50', 'dark:hover:bg-slate-700/50', 'hover:border-cyan-300', 'dark:hover:border-cyan-600', 'cursor-pointer');
+          opt.style.cursor = '';
+        });
+        qEl.querySelector<HTMLElement>('.quiz-explanation')?.classList.add('hidden');
+      });
+
+      quizState[shiurId] = { answered: 0, correct: 0 };
+      updateQuizScore(shiurId, document.querySelectorAll(`.quiz-question[data-shiur="${shiurId}"]`).length);
+      const resultEl = document.getElementById(`quiz-result-${shiurId}`);
+      if (resultEl) resultEl.textContent = '';
     });
   });
 </script>
