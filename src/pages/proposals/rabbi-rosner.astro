@@ -1,0 +1,714 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const gifs = [
+  { file: 'quote-naase-venishma.gif',      hebrew: 'נַעֲשֶׂה וְנִשְׁמָע',           label: 'Na\'aseh VeNishma',          shiur: 'Shavuot',         color: '#4a90d9' },
+  { file: 'quote-kaish-echad.gif',         hebrew: 'כְּאִישׁ אֶחָד בְּלֵב אֶחָד',    label: 'One Heart, One People',      shiur: 'Shavuot',         color: '#4a90d9' },
+  { file: 'quote-achdus-two-types.gif',    hebrew: 'אַחְדּוּת מִתּוֹךְ חֲזוֹן',       label: 'Two Types of Unity',         shiur: 'Shavuot',         color: '#4a90d9' },
+  { file: 'quote-vayedaber-bamidbar.gif',  hebrew: 'בְּמִדְבַּר סִינַי',              label: 'Torah in the Wilderness',    shiur: 'Parshas Bamidbar', color: '#c9a227' },
+  { file: 'quote-kochav-matara.gif',       hebrew: 'אֵין כּוֹכָב בְּלֹא מַטָּרָה',   label: 'No Star Without Purpose',    shiur: 'Parshas Bamidbar', color: '#c9a227' },
+  { file: 'quote-sdei-chemed-silence.gif', hebrew: 'הַכּוֹבֵשׁ אֶת פִּיו',            label: 'The Power of Silence',       shiur: 'Parshas Bamidbar', color: '#c9a227' },
+];
+
+const clips = [
+  { hook: 'You were born for a reason nobody else can fulfill.', timestamp: '40:01', shiur: 'Parshas Bamidbar', id: 'bam-star' },
+  { hook: 'He was falsely accused. He stayed silent. Then THIS happened.', timestamp: '45:00', shiur: 'Parshas Bamidbar', id: 'bam-silence' },
+  { hook: 'Why did they say WE and not I?', timestamp: '0:12', shiur: 'Shavuot', id: 'shav-naase' },
+  { hook: 'The nations thought Matan Torah was a FLOOD.', timestamp: '1:31', shiur: 'Shavuot', id: 'shav-mabul' },
+  { hook: 'How do you find ORDER in the wilderness?', timestamp: '19:56', shiur: 'Parshas Bamidbar', id: 'bam-hefker' },
+  { hook: 'There are 2 types of unity. Only ONE has ever happened.', timestamp: '2:48', shiur: 'Shavuot', id: 'shav-achdus' },
+];
+
+const deliverables = [
+  { icon: '🎬', title: 'Short-Form Video Clips', desc: '9:16 social shorts with b-roll, captions, opening and closing cards — ready for Instagram Reels, TikTok, and YouTube Shorts.' },
+  { icon: '✨', title: 'Animated Quote Cards', desc: 'GIF and MP4 quote cards for each shiur — key phrases in Hebrew and English, branded for sharing.' },
+  { icon: '📄', title: 'Branded Study Materials', desc: 'Beautifully designed PDF shiur notes and study guides — the kind of materials talmidim print, keep, and pass on.' },
+  { icon: '🌐', title: 'Shiur Website', desc: 'A dedicated site for browsing, listening, and studying — searchable by parsha, topic, or source. Built fast, mobile-first.' },
+  { icon: '📬', title: 'Weekly Email Digest', desc: 'Automated parsha email with the week\'s highlights, study questions, and direct links to the audio — sent to your list.' },
+  { icon: '⚡', title: 'Ongoing Content System', desc: 'Once set up, each new shiur flows automatically into study notes, social clips, and the weekly email. Less work, more reach.' },
+];
+---
+
+<Layout
+  title="Content & Website Proposal — Rabbi Shalom Rosner | Matthew Miller"
+  description="A proposal to build Rabbi Shalom Rosner's digital presence — social content, study materials, and a dedicated shiur website."
+>
+
+<style is:global>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+  .rr-page {
+    --gold: #c9a227;
+    --gold-light: #e8d07a;
+    --gold-dim: #4a3c10;
+    --sapphire: #4a90d9;
+    --bg: #07070f;
+    --bg-card: #0d0d1a;
+    --bg-lift: #13132a;
+    --text: #f0ece4;
+    --muted: #6a6a8a;
+    --rule: rgba(201,162,39,0.18);
+    --font-display: 'Cormorant Garamond', 'Times New Roman', serif;
+    --font-body: 'Outfit', sans-serif;
+  }
+
+  .rr-page * { box-sizing: border-box; }
+
+  .rr-display { font-family: var(--font-display); }
+  .rr-body    { font-family: var(--font-body); }
+
+  /* Scrolling Hebrew ticker */
+  @keyframes rr-ticker {
+    from { transform: translateY(0); }
+    to   { transform: translateY(-50%); }
+  }
+  .rr-ticker-inner { animation: rr-ticker 28s linear infinite; }
+
+  /* GIF card hover */
+  .rr-gif-card {
+    transition: transform 0.35s cubic-bezier(.22,.68,0,1.2), box-shadow 0.35s ease;
+  }
+  .rr-gif-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 24px 60px rgba(201,162,39,0.18), 0 4px 20px rgba(0,0,0,0.6);
+  }
+
+  /* Clip card */
+  .rr-clip-card {
+    transition: transform 0.3s ease, background 0.3s ease;
+  }
+  .rr-clip-card:hover {
+    transform: translateY(-3px);
+    background: #13132a;
+  }
+
+  /* Shimmer line */
+  @keyframes rr-shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+  }
+  .rr-shimmer {
+    background: linear-gradient(90deg, var(--gold-dim), var(--gold), var(--gold-light), var(--gold), var(--gold-dim));
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rr-shimmer 4s linear infinite;
+  }
+
+  /* Fade-in on scroll */
+  .rr-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .rr-reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Phone frame */
+  .rr-phone {
+    border-radius: 2.4rem;
+    border: 3px solid rgba(255,255,255,0.12);
+    overflow: hidden;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04), inset 0 0 0 1px rgba(255,255,255,0.04);
+  }
+</style>
+
+<main class="rr-page rr-body min-h-screen" style="background: #07070f; color: #f0ece4;">
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       HERO
+  ══════════════════════════════════════════════════════════════════════ -->
+  <section style="min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; position: relative; overflow: hidden;" class="max-lg:block">
+
+    <!-- Left: text -->
+    <div style="display: flex; flex-direction: column; justify-content: center; padding: 80px 64px; position: relative; z-index: 2;">
+      <!-- Top badge -->
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 48px;">
+        <img src="/images/logo.png" alt="Matthew Miller" style="width: 44px; height: 44px; border-radius: 50%;" />
+        <span style="color: var(--muted); font-size: 13px; letter-spacing: 3px; text-transform: uppercase; font-family: var(--font-body);">Content Proposal</span>
+        <span style="color: var(--rule); font-size: 20px;">×</span>
+        <span style="color: var(--gold); font-size: 13px; letter-spacing: 2px; font-family: var(--font-body);">Rabbi Shalom Rosner</span>
+      </div>
+
+      <!-- Eyebrow Hebrew -->
+      <p style="font-family: 'Arial Hebrew', serif; direction: rtl; color: var(--gold); font-size: 22px; margin-bottom: 16px; opacity: 0.9;">
+        תוֹרָה לְדוֹר הַדִּיגִיטָלִי
+      </p>
+
+      <!-- Main headline -->
+      <h1 class="rr-display" style="font-size: clamp(3.2rem, 5.5vw, 5.5rem); font-weight: 600; line-height: 1.05; margin-bottom: 28px; letter-spacing: -0.02em;">
+        Torah for the<br/>
+        <span class="rr-shimmer">Digital Age.</span>
+      </h1>
+
+      <p style="font-size: 1.15rem; line-height: 1.75; color: rgba(240,236,228,0.72); max-width: 440px; margin-bottom: 44px;">
+        I've taken two of Rabbi Rosner's shiurim and turned them into animated quote cards,
+        short-form video clips, branded study materials, and a full content pipeline —
+        entirely from the audio and transcript.
+      </p>
+
+      <!-- Stats row -->
+      <div style="display: flex; gap: 36px; margin-bottom: 48px; flex-wrap: wrap;">
+        {[['6', 'Animated Quote Cards'], ['10', 'Short Clips Built'], ['2', 'Shiur Study Guides'], ['2', 'Shiurim Processed']].map(([n, l]) => (
+          <div>
+            <p class="rr-display" style="font-size: 2.4rem; font-weight: 600; color: var(--gold); line-height: 1;">{n}</p>
+            <p style="font-size: 11px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 3px;">{l}</p>
+          </div>
+        ))}
+      </div>
+
+      <!-- CTAs -->
+      <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+        <a href="#assets" style="padding: 14px 32px; background: var(--gold); color: #07070f; border-radius: 8px; font-weight: 600; font-size: 0.9rem; text-decoration: none; letter-spacing: 0.5px; transition: background 0.2s ease;"
+           onmouseover="this.style.background='#e8d07a'" onmouseout="this.style.background='#c9a227'">
+          See the Work ↓
+        </a>
+        <a href="mailto:matthewjmiller07@gmail.com?subject=Rabbi Rosner — Content Proposal" style="padding: 14px 32px; border: 1px solid rgba(201,162,39,0.35); color: var(--gold); border-radius: 8px; font-weight: 500; font-size: 0.9rem; text-decoration: none; transition: background 0.2s ease;"
+           onmouseover="this.style.background='rgba(201,162,39,0.08)'" onmouseout="this.style.background='transparent'">
+          Let's Talk
+        </a>
+      </div>
+    </div>
+
+    <!-- Right: scrolling ticker + GIF preview -->
+    <div style="position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;" class="max-lg:hidden">
+
+      <!-- Background glow -->
+      <div style="position: absolute; inset: 0; background: radial-gradient(ellipse 80% 80% at 60% 40%, rgba(201,162,39,0.06), transparent 70%);"></div>
+
+      <!-- Hebrew ticker column (left of GIFs) -->
+      <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 48px; overflow: hidden; display: flex; flex-direction: column; align-items: center; padding: 16px 0;">
+        <div class="rr-ticker-inner" style="display: flex; flex-direction: column; align-items: center; gap: 24px;">
+          {['פרשת', 'במדבר', 'חג', 'השבועות', 'תורה', 'נַעֲשֶׂה', 'וְנִשְׁמָע', 'כּוֹכָב', 'דְּגָלִים', 'אַחְדּוּת', 'פרשת', 'במדבר', 'חג', 'השבועות', 'תורה', 'נַעֲשֶׂה', 'וְנִשְׁמָע', 'כּוֹכָב', 'דְּגָלִים', 'אַחְדּוּת'].map(w => (
+            <span style="font-family: 'Arial Hebrew', serif; font-size: 10px; color: rgba(201,162,39,0.25); writing-mode: vertical-rl; letter-spacing: 2px;">{w}</span>
+          ))}
+        </div>
+      </div>
+
+      <!-- GIF preview — 2 stacked, large enough to read -->
+      <div style="display: flex; flex-direction: column; gap: 16px; padding: 48px 48px 48px 48px; width: 100%; max-width: 560px;">
+        {gifs.slice(0, 2).map((g, i) => (
+          <div class="rr-gif-card" style={`border-radius: 12px; overflow: hidden; border: 1px solid ${g.color}30; box-shadow: 0 12px 40px rgba(0,0,0,0.55); ${i === 1 ? 'margin-left: 32px;' : 'margin-right: 32px;'}`}>
+            <img
+              src={`/proposals/rabbi-rosner/${g.file}`}
+              alt={g.label}
+              style="width: 100%; height: auto; display: block;"
+              loading="lazy"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Thin gold bottom rule -->
+    <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: 0.3;"></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       QUOTE CARD GIFs
+  ══════════════════════════════════════════════════════════════════════ -->
+  <section id="assets" style="padding: 100px 0; background: var(--bg);">
+    <div style="max-width: 1100px; margin: 0 auto; padding: 0 40px;">
+
+      <!-- Section header -->
+      <div class="rr-reveal" style="text-align: center; margin-bottom: 64px;">
+        <p style="color: var(--gold); font-size: 11px; letter-spacing: 5px; text-transform: uppercase; font-family: var(--font-body); margin-bottom: 16px;">Asset 01 · Animated Quote Cards</p>
+        <h2 class="rr-display" style="font-size: clamp(2.2rem, 4vw, 3.6rem); font-weight: 500; line-height: 1.15; margin-bottom: 20px;">
+          Six quotes. <em>Six GIFs.</em><br/>Ready to post.
+        </h2>
+        <p style="color: var(--muted); font-size: 1rem; max-width: 560px; margin: 0 auto; line-height: 1.7;">
+          Each one is a short looping animation — Hebrew text, English translation,
+          attribution. Ready to share on WhatsApp, Instagram, or anywhere else.
+        </p>
+      </div>
+
+      <!-- GIF Stack — one per row, full width so text is legible -->
+      <div style="display: flex; flex-direction: column; gap: 32px;" class="rr-reveal">
+        {gifs.map((g) => (
+          <div class="rr-gif-card" style={`background: var(--bg-card); border-radius: 16px; overflow: hidden; border: 1px solid ${g.color}22;`}>
+            <!-- GIF — full width -->
+            <div style="position: relative; width: 100%;">
+              <img
+                src={`/proposals/rabbi-rosner/${g.file}`}
+                alt={g.label}
+                style="width: 100%; height: auto; display: block;"
+              />
+              <!-- Shiur badge -->
+              <div style={`position: absolute; top: 14px; left: 14px; background: rgba(5,13,26,0.72); border: 1px solid ${g.color}55; backdrop-filter: blur(10px); border-radius: 20px; padding: 4px 14px;`}>
+                <span style={`font-size: 11px; font-family: var(--font-body); color: ${g.color}; letter-spacing: 1px; text-transform: uppercase; font-weight: 600;`}>{g.shiur}</span>
+              </div>
+            </div>
+            <!-- Label strip -->
+            <div style={`padding: 14px 20px; display: flex; align-items: center; gap: 16px; border-top: 1px solid ${g.color}18;`}>
+              <p style="font-family: 'Arial Hebrew', serif; direction: rtl; font-size: 22px; color: var(--text); opacity: 0.9; margin: 0; flex-shrink: 0;">{g.hebrew}</p>
+              <div style={`width: 1px; height: 22px; background: ${g.color}30; flex-shrink: 0;`}></div>
+              <p style={`font-size: 14px; color: ${g.color}; font-family: var(--font-body); margin: 0;`}>{g.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <!-- Download note -->
+      <p class="rr-reveal" style="text-align: center; margin-top: 36px; color: var(--muted); font-size: 13px;">
+        These six are from two shiurim. The same can be done for any shiur, any parsha.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SHORT CLIPS SHOWCASE
+  ══════════════════════════════════════════════════════════════════════ -->
+  <section style="padding: 100px 0; background: linear-gradient(180deg, var(--bg) 0%, #0a0a18 100%); border-top: 1px solid var(--rule);">
+    <div style="max-width: 1100px; margin: 0 auto; padding: 0 40px;">
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;" class="max-lg:block">
+
+        <!-- Left: phones -->
+        <div class="rr-reveal" style="display: flex; gap: 20px; justify-content: center; align-items: flex-end;">
+          <!-- Phone 1 -->
+          <div class="rr-phone" style="width: 160px; background: #0a0a14;">
+            <div style="background: #050510; padding: 10px 8px; text-align: center;">
+              <div style="width: 40px; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; margin: 0 auto 8px;"></div>
+              <div style="background: #0d1117; border-radius: 8px; padding: 10px 8px; border: 1px solid rgba(201,162,39,0.2);">
+                <div style="color: var(--gold); font-family: 'Arial Hebrew', serif; font-size: 13px; direction: rtl; margin-bottom: 6px; line-height: 1.4; text-align: center;">נַעֲשֶׂה<br/>וְנִשְׁמָע</div>
+                <div style="height: 1px; background: rgba(201,162,39,0.3); margin: 6px 0;"></div>
+                <div style="color: rgba(255,255,255,0.7); font-size: 8px; font-family: var(--font-body); text-align: center; font-style: italic; line-height: 1.5;">We will do,<br/>and we will hear.</div>
+                <div style="color: rgba(74,144,217,0.8); font-size: 7px; margin-top: 6px; text-align: center; font-family: var(--font-body); letter-spacing: 1px; text-transform: uppercase;">Shavuos · Reb Bunim</div>
+              </div>
+            </div>
+            <div style="background: #030308; padding: 12px 10px; text-align: center;">
+              <div style="font-family: var(--font-body); font-size: 8px; color: rgba(201,162,39,0.7); letter-spacing: 1px; text-transform: uppercase;">TheOtherMatthewMiller.com</div>
+            </div>
+          </div>
+
+          <!-- Phone 2 (taller, centered) -->
+          <div class="rr-phone" style="width: 180px; background: #050510; margin-bottom: -20px;">
+            <!-- top card area -->
+            <div style="background: linear-gradient(180deg, #0d1117 0%, #050510 100%); padding: 14px 10px;">
+              <div style="background: rgba(201,162,39,0.06); border: 1px solid rgba(201,162,39,0.18); border-radius: 8px; padding: 12px 10px; text-align: center;">
+                <p style="font-family: var(--font-body); font-size: 8px; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">Parshas Bamidbar</p>
+                <div style="font-family: 'Arial Hebrew', serif; direction: rtl; font-size: 15px; color: #f0ece4; margin-bottom: 6px; line-height: 1.4;">אֵין כּוֹכָב<br/>בְּלֹא מַטָּרָה</div>
+                <div style="height: 1px; background: rgba(201,162,39,0.25); margin: 8px 0;"></div>
+                <p style="font-family: var(--font-body); font-size: 8.5px; font-style: italic; color: rgba(240,236,228,0.75); line-height: 1.5;">There is no star<br/>without a purpose.</p>
+                <p style="font-family: var(--font-body); font-size: 7px; color: rgba(201,162,39,0.7); margin-top: 6px; letter-spacing: 1px; text-transform: uppercase;">Rabbi Shalom Rosner</p>
+              </div>
+            </div>
+            <!-- progress bar -->
+            <div style="height: 2px; background: rgba(255,255,255,0.06);">
+              <div style="height: 100%; width: 45%; background: var(--gold);"></div>
+            </div>
+            <!-- closing card -->
+            <div style="background: #030308; padding: 12px 10px; text-align: center; border-top: 1px solid rgba(201,162,39,0.08);">
+              <img src="/images/logo.png" alt="Matthew Miller" style="width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 4px;" />
+              <div style="font-family: var(--font-body); font-size: 7px; color: rgba(201,162,39,0.7); letter-spacing: 1px;">TheOtherMatthewMiller.com</div>
+            </div>
+          </div>
+
+          <!-- Phone 3 -->
+          <div class="rr-phone" style="width: 160px; background: #050d1a;">
+            <div style="background: #050d1a; padding: 10px 8px; text-align: center;">
+              <div style="width: 40px; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; margin: 0 auto 8px;"></div>
+              <div style="background: #07131f; border-radius: 8px; padding: 10px 8px; border: 1px solid rgba(74,144,217,0.2);">
+                <div style="color: rgba(74,144,217,0.9); font-family: var(--font-body); font-size: 8px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px;">Two Types of Unity</div>
+                <div style="font-family: 'Arial Hebrew', serif; direction: rtl; font-size: 11px; color: #f0ece4; line-height: 1.5; margin-bottom: 6px;">אַחְדּוּת מִתּוֹךְ<br/>חֲזוֹן מְשׁוּתָּף</div>
+                <div style="height: 1px; background: rgba(74,144,217,0.3); margin: 6px 0;"></div>
+                <div style="color: rgba(255,255,255,0.65); font-size: 7.5px; font-family: var(--font-body); font-style: italic; line-height: 1.5; text-align: center;">Unity from<br/>shared vision.</div>
+                <div style="color: rgba(74,144,217,0.8); font-size: 7px; margin-top: 5px; text-align: center; font-family: var(--font-body); text-transform: uppercase; letter-spacing: 1px;">Rav Meir Shapiro</div>
+              </div>
+            </div>
+            <div style="background: #020509; padding: 10px 10px; text-align: center;">
+              <div style="font-family: var(--font-body); font-size: 7px; color: rgba(74,144,217,0.7); letter-spacing: 1px; text-transform: uppercase;">TheOtherMatthewMiller.com</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: text -->
+        <div class="rr-reveal">
+          <p style="color: var(--gold); font-size: 11px; letter-spacing: 5px; text-transform: uppercase; font-family: var(--font-body); margin-bottom: 20px;">Asset 02 · Social Shorts</p>
+          <h2 class="rr-display" style="font-size: clamp(2rem, 3.5vw, 3.2rem); font-weight: 500; line-height: 1.2; margin-bottom: 24px;">
+            10 short clips,<br/>cut and packaged<br/><em>from your shiurim.</em>
+          </h2>
+          <p style="color: rgba(240,236,228,0.7); line-height: 1.8; margin-bottom: 28px; font-size: 0.95rem;">
+            Each 9:16 clip has an opening hook card, your lecture audio with live captions,
+            b-roll or lecture video in the background, and a branded closing card with
+            TheOtherMatthewMiller.com — ready for Reels, Shorts, and TikTok.
+          </p>
+          <!-- Clip hooks list -->
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            {clips.slice(0,4).map(c => (
+              <div class="rr-clip-card" style={`background: var(--bg-card); border-radius: 10px; padding: 12px 16px; border-left: 3px solid ${c.shiur === 'Shavuot' ? 'var(--sapphire)' : 'var(--gold)'}; display: flex; justify-content: space-between; align-items: center; gap: 12px;`}>
+                <p style="font-size: 0.88rem; color: var(--text); line-height: 1.5; margin: 0; font-style: italic;">"{c.hook}"</p>
+                <div style="text-align: right; flex-shrink: 0;">
+                  <p style="font-size: 10px; font-family: monospace; color: var(--muted);">{c.timestamp}</p>
+                </div>
+              </div>
+            ))}
+            <p style="color: var(--muted); font-size: 12px; padding-left: 4px;">+ 6 more clips ready to render</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       STUDY MATERIALS / PDFs
+  ══════════════════════════════════════════════════════════════════════ -->
+  <section style="padding: 100px 0; background: #0a0a18; border-top: 1px solid var(--rule);">
+    <div style="max-width: 1100px; margin: 0 auto; padding: 0 40px;">
+
+      <div class="rr-reveal" style="text-align: center; margin-bottom: 64px;">
+        <p style="color: var(--gold); font-size: 11px; letter-spacing: 5px; text-transform: uppercase; font-family: var(--font-body); margin-bottom: 16px;">Asset 03 · Study Materials</p>
+        <h2 class="rr-display" style="font-size: clamp(2.2rem, 4vw, 3.6rem); font-weight: 500; line-height: 1.15; margin-bottom: 20px;">
+          Shiur highlights.<br/><em>Beautifully typeset.</em>
+        </h2>
+        <p style="color: var(--muted); font-size: 1rem; max-width: 540px; margin: 0 auto; line-height: 1.7;">
+          Full standalone shiur notes — 8 pages each, with Hebrew sources, substantive
+          commentary, and clean branding. The kind of material talmidim print, keep, and share.
+        </p>
+      </div>
+
+      <div class="rr-reveal" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; max-width: 860px; margin: 0 auto;">
+        {[
+          {
+            title: 'Parshas Bamidbar · Shiur Notes',
+            hebrew: 'פרשת במדבר — תשע״ט',
+            desc: '6 themes across 8 pages — Every star has a purpose, Order in the wilderness, The silence of the Sdei Chemed, and more. Full Hebrew sources with commentary.',
+            file: 'bamidbar-5779.pdf',
+            pages: '8 pages',
+            color: '#c9a227',
+            themes: ['Every Sefer Has Its Soul', 'Bitachon Unlocks Torah', 'Order in the Wilderness', 'Flags Like Angels', 'No Star Without Purpose', 'Silence of the Sdei Chemed'],
+          },
+          {
+            title: 'Chag HaShavuos · Shiur Notes',
+            hebrew: 'חַג הַשָּׁבוּעוֹת',
+            desc: '6 themes across 8 pages — Na\'aseh VeNishma, two types of Achdus, Ruth and the willing convert, why we stay awake. Full Hebrew sources with commentary.',
+            file: 'shavuot.pdf',
+            pages: '8 pages',
+            color: '#4a90d9',
+            themes: ['The Holiday Without a Date', 'Na\'aseh VeNishma', 'K\'Ish Echad B\'Lev Echad', 'Ruth and the Willing Convert', 'The Night of Shavuos', 'The Sinaitic Covenant'],
+          },
+        ].map(doc => (
+          <a href={`/proposals/rabbi-rosner/${doc.file}`} target="_blank" rel="noopener"
+             style={`display: block; background: var(--bg-card); border-radius: 20px; padding: 32px; border: 1px solid ${doc.color}18; text-decoration: none; transition: all 0.35s ease; position: relative; overflow: hidden;`}
+             onmouseover={`this.style.transform='translateY(-5px)'; this.style.borderColor='${doc.color}45'; this.style.boxShadow='0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px ${doc.color}20'`}
+             onmouseout={`this.style.transform='translateY(0)'; this.style.borderColor='${doc.color}18'; this.style.boxShadow='none'`}>
+            <!-- Top accent bar -->
+            <div style={`position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, ${doc.color}, ${doc.color}60);`}></div>
+
+            <!-- Hebrew title -->
+            <p style={`font-family: 'Arial Hebrew', serif; direction: rtl; font-size: 20px; color: ${doc.color}; margin-bottom: 4px; opacity: 0.95; line-height: 1.4;`}>{doc.hebrew}</p>
+
+            <!-- Pages badge -->
+            <div style={`display: inline-block; background: ${doc.color}12; border: 1px solid ${doc.color}28; border-radius: 4px; padding: 2px 10px; font-size: 10px; color: ${doc.color}; letter-spacing: 1.5px; text-transform: uppercase; font-family: var(--font-body); margin-bottom: 14px;`}>{doc.pages} · PDF</div>
+
+            <h3 style={`font-family: var(--font-display); font-size: 1.3rem; color: var(--text); margin-bottom: 12px; font-weight: 500; line-height: 1.3;`}>{doc.title}</h3>
+            <p style="font-size: 0.84rem; color: var(--muted); line-height: 1.7; margin-bottom: 18px;">{doc.desc}</p>
+
+            <!-- Theme list -->
+            <div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 20px;">
+              {doc.themes.map((t, i) => (
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style={`width: 4px; height: 4px; border-radius: 50%; background: ${doc.color}; flex-shrink: 0; opacity: 0.7;`}></div>
+                  <span style="font-size: 11.5px; color: rgba(240,236,228,0.55); font-family: var(--font-body);">{t}</span>
+                </div>
+              ))}
+            </div>
+
+            <p style={`font-size: 11px; color: ${doc.color}; letter-spacing: 1.5px; font-family: var(--font-body); text-transform: uppercase;`}>Open PDF →</p>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       THE VISION — WEBSITE
+  ══════════════════════════════════════════════════════════════════════ -->
+  <section style="padding: 100px 0; background: var(--bg); border-top: 1px solid var(--rule);">
+    <div style="max-width: 1100px; margin: 0 auto; padding: 0 40px;">
+
+      <div class="rr-reveal" style="text-align: center; margin-bottom: 72px;">
+        <p style="color: var(--gold); font-size: 11px; letter-spacing: 5px; text-transform: uppercase; font-family: var(--font-body); margin-bottom: 16px;">The Vision</p>
+        <h2 class="rr-display" style="font-size: clamp(2.2rem, 4vw, 3.8rem); font-weight: 500; line-height: 1.1; margin-bottom: 20px;">
+          A full digital presence<br/><em>worthy of the Torah you teach.</em>
+        </h2>
+        <p style="color: var(--muted); font-size: 1rem; max-width: 600px; margin: 0 auto; line-height: 1.75;">
+          Beyond the assets already built: a dedicated website, automated content pipeline,
+          and weekly email — so each shiur reaches more people, more beautifully,
+          with less effort from you.
+        </p>
+      </div>
+
+      <!-- Mockup: shiur website preview -->
+      <div class="rr-reveal" style="border-radius: 20px; overflow: hidden; border: 1px solid var(--rule); box-shadow: 0 40px 80px rgba(0,0,0,0.6); margin-bottom: 72px;">
+        <!-- Browser chrome -->
+        <div style="background: #111120; padding: 12px 18px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--rule);">
+          <div style="display: flex; gap: 7px;">
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: #febc2e;"></div>
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
+          </div>
+          <div style="flex: 1; background: #0a0a18; border-radius: 6px; padding: 5px 14px; font-family: monospace; font-size: 12px; color: var(--muted);">
+            rosner.torah / parsha / bamidbar
+          </div>
+        </div>
+
+        <!-- Simulated website -->
+        <div style="background: #0a0a14;">
+          <!-- Nav -->
+          <div style="background: #07070f; padding: 14px 36px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--rule);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--gold); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #07070f; font-weight: 700;">ש</div>
+              <span style="font-family: var(--font-display); font-size: 1.1rem; color: var(--text);">Rabbi Shalom Rosner</span>
+            </div>
+            <div style="display: flex; gap: 28px; font-size: 13px; color: var(--muted); font-family: var(--font-body);">
+              <span>Shiurim</span><span>Parsha</span><span>Topics</span><span>About</span>
+            </div>
+            <button style="background: var(--gold); color: #07070f; border: none; border-radius: 6px; padding: 7px 18px; font-size: 12px; font-family: var(--font-body); font-weight: 600; cursor: pointer;">Subscribe</button>
+          </div>
+
+          <!-- Hero strip -->
+          <div style="padding: 48px 36px; background: linear-gradient(135deg, #0d0d20 0%, #07070f 100%); display: flex; gap: 48px; align-items: center;">
+            <div style="flex: 1;">
+              <p style="font-family: 'Arial Hebrew', serif; direction: rtl; color: var(--gold); font-size: 20px; margin-bottom: 10px;">פרשת במדבר · תשע״ט</p>
+              <h3 style="font-family: var(--font-display); font-size: 2.2rem; color: var(--text); margin-bottom: 12px; font-weight: 500; line-height: 1.2;">Parshas Bamidbar</h3>
+              <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.7; max-width: 480px;">Order in the wilderness. Every sefer has its soul. No star without a purpose. 51 minutes of Torah — six unforgettable themes.</p>
+              <div style="display: flex; gap: 10px;">
+                <button style="background: var(--gold); color: #07070f; border: none; border-radius: 6px; padding: 8px 20px; font-size: 12px; font-weight: 600; cursor: pointer;">▶ Listen</button>
+                <button style="background: transparent; border: 1px solid var(--rule); color: var(--muted); border-radius: 6px; padding: 8px 20px; font-size: 12px; cursor: pointer;">Study Notes PDF</button>
+              </div>
+            </div>
+            <!-- Waveform placeholder -->
+            <div style="width: 220px; flex-shrink: 0; background: var(--bg-card); border-radius: 12px; padding: 16px; border: 1px solid var(--rule);">
+              <p style="font-size: 10px; color: var(--muted); margin-bottom: 10px; font-family: var(--font-body);">51:51 · Bamidbar 5779</p>
+              <div style="display: flex; align-items: flex-end; gap: 2px; height: 40px; margin-bottom: 10px;">
+                {Array.from({length: 40}).map((_, i) => (
+                  <div style={`flex: 1; border-radius: 1px; background: ${i < 18 ? 'var(--gold)' : 'rgba(201,162,39,0.25)'}; height: ${20 + Math.sin(i * 0.7) * 14 + Math.cos(i * 1.3) * 8}px;`}></div>
+                ))}
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); font-family: monospace;">
+                <span>19:56</span><span>51:51</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Shiur cards row -->
+          <div style="padding: 24px 36px; border-top: 1px solid var(--rule);">
+            <p style="font-size: 11px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 16px; font-family: var(--font-body);">More Shiurim</p>
+            <div style="display: flex; gap: 12px; overflow: hidden;">
+              {['Shavuos · Na\'aseh VeNishma', 'Naso 5782', 'Beha\'aloscha 5781', 'Shelach 5780'].map((s, i) => (
+                <div style="background: var(--bg-card); border-radius: 10px; padding: 14px; border: 1px solid var(--rule); flex: 1; min-width: 160px;">
+                  <div style={`width: 100%; height: 4px; border-radius: 2px; margin-bottom: 10px; background: ${i === 0 ? 'var(--sapphire)' : 'var(--gold-dim)'};`}></div>
+                  <p style="font-size: 12px; color: var(--text); font-family: var(--font-body);">{s}</p>
+                  <p style="font-size: 10px; color: var(--muted); margin-top: 4px; font-family: var(--font-body);">▶ Listen</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       DISTRIBUTION + PODCAST BRANDING
+  ══════════════════════════════════════════════════════════════════════ -->
+  <section style="padding: 100px 0; background: var(--bg); border-top: 1px solid var(--rule);">
+    <div style="max-width: 1100px; margin: 0 auto; padding: 0 40px;">
+
+      <div class="rr-reveal" style="text-align: center; margin-bottom: 72px;">
+        <p style="color: var(--gold); font-size: 11px; letter-spacing: 5px; text-transform: uppercase; font-family: var(--font-body); margin-bottom: 16px;">Asset 04 · Distribution & Podcast Branding</p>
+        <h2 class="rr-display" style="font-size: clamp(2.2rem, 4vw, 3.6rem); font-weight: 500; line-height: 1.1; margin-bottom: 20px;">
+          Three shows. One voice.<br/><em>One brand.</em>
+        </h2>
+        <p style="color: var(--muted); font-size: 1rem; max-width: 560px; margin: 0 auto; line-height: 1.75;">
+          Your Torah is already reaching thousands across Spotify — but each show looks like it was designed separately. Unified branding makes the whole library feel intentional, recognizable, and worth following.
+        </p>
+      </div>
+
+      <!-- New unified thumbnails — 4 across -->
+      <div class="rr-reveal" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px;">
+        {[
+          { title: 'Famous Gemaras',    sub: 'with Rabbi Shalom Rosner', url: 'https://open.spotify.com/show/2buoohtYtFXdBPF8WY96ow', img: '/proposals/rabbi-rosner/thumb-gemaras.webp',  color: '#c9a227', badge: 'Existing Show' },
+          { title: 'On The Parsha',     sub: 'Rabbi Shalom Rosner',      url: 'https://open.spotify.com/show/2sUgnlWQix7528PVLnP2FT', img: '/proposals/rabbi-rosner/thumb-parsha.webp',   color: '#c9a227', badge: 'Existing Show' },
+          { title: 'On Nach',           sub: 'Rabbi Shalom Rosner',      url: 'https://open.spotify.com/show/2Lcx3RpqaD31Wgx9ySDHGq', img: '/proposals/rabbi-rosner/thumb-nach.webp',     color: '#4a90d9', badge: 'Existing Show' },
+          { title: 'Machshava Minute',  sub: 'Daily Jewish Thought',     url: '#',                                                      img: '/proposals/rabbi-rosner/thumb-machshava.webp', color: '#c9a227', badge: 'New Concept' },
+        ].map(show => (
+          <div class="rr-gif-card" style={`background: var(--bg-card); border-radius: 14px; overflow: hidden; border: 1px solid ${show.color}22;`}>
+            <div style="position: relative; aspect-ratio: 1/1; overflow: hidden;">
+              <img src={show.img} alt={show.title} style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+              <div style={`position: absolute; top: 10px; left: 10px; background: rgba(5,5,15,0.75); border: 1px solid ${show.color}55; backdrop-filter: blur(8px); border-radius: 20px; padding: 3px 10px;`}>
+                <span style={`font-size: 9px; font-family: var(--font-body); color: ${show.color}; letter-spacing: 1px; text-transform: uppercase; font-weight: 600;`}>{show.badge}</span>
+              </div>
+            </div>
+            <div style="padding: 12px 14px 14px;">
+              <p style="font-size: 13px; color: var(--text); font-family: var(--font-display); font-weight: 500; margin-bottom: 2px;">{show.title}</p>
+              <p style="font-size: 11px; color: var(--muted); font-family: var(--font-body);">{show.sub}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p class="rr-reveal" style="text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 48px;">
+        New unified cover art generated from Rabbi Rosner's photo · consistent across all shows
+      </p>
+
+      <!-- New show + unified branding callout -->
+      <div class="rr-reveal" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 72px;">
+
+        <!-- Machshava Minute concept card -->
+        <div style="background: linear-gradient(135deg, #0d0d20 0%, #050d1a 100%); border-radius: 20px; padding: 36px; border: 1px solid rgba(201,162,39,0.25); position: relative; overflow: hidden;">
+          <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--gold), var(--sapphire));"></div>
+          <p style="color: var(--gold); font-size: 10px; letter-spacing: 4px; text-transform: uppercase; font-family: var(--font-body); margin-bottom: 16px;">New Show · Draft Concept</p>
+          <p style="font-family: 'Arial Hebrew', serif; direction: rtl; font-size: 32px; color: var(--text); margin-bottom: 4px;">מחשבה</p>
+          <h3 class="rr-display" style="font-size: 1.8rem; font-weight: 500; color: var(--text); margin-bottom: 12px; line-height: 1.2;">The Machshava<br/>Minute</h3>
+          <p style="color: var(--muted); font-size: 0.9rem; line-height: 1.75; margin-bottom: 20px;">
+            A daily 60-second thought on emunah, hashkafah, and how to live as a Jew in the modern world. Short enough to listen before davening. Deep enough to carry through the day.
+          </p>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--gold); animation: pulse 2s infinite;"></div>
+            <span style="font-size: 12px; color: var(--gold); font-family: var(--font-body); letter-spacing: 1px;">Spotify-ready on launch day</span>
+          </div>
+        </div>
+
+        <!-- Unified branding benefits -->
+        <div style="background: var(--bg-card); border-radius: 20px; padding: 36px; border: 1px solid var(--rule);">
+          <p style="color: var(--sapphire); font-size: 10px; letter-spacing: 4px; text-transform: uppercase; font-family: var(--font-body); margin-bottom: 20px;">What Unified Branding Does</p>
+          <div style="display: flex; flex-direction: column; gap: 18px;">
+            {[
+              ['One recognizable face across all shows', 'Listeners who find you on one show follow the others'],
+              ['Consistent thumbnail design language', 'Your library looks like a network, not a collection of experiments'],
+              ['New show launches with existing credibility', 'Machshava Minute inherits the brand equity of your other shows on day one'],
+              ['Shareable, screenshot-worthy cover art', 'The kind people actually post in WhatsApp groups'],
+            ].map(([title, desc]) => (
+              <div style="display: flex; gap: 14px; align-items: flex-start;">
+                <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--gold); flex-shrink: 0; margin-top: 6px;"></div>
+                <div>
+                  <p style="font-size: 14px; color: var(--text); font-family: var(--font-body); margin-bottom: 3px; font-weight: 500;">{title}</p>
+                  <p style="font-size: 12px; color: var(--muted); line-height: 1.6;">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <!-- Distribution capabilities -->
+      <div class="rr-reveal" style="background: linear-gradient(135deg, rgba(201,162,39,0.05), rgba(74,144,217,0.03)); border-radius: 20px; padding: 48px; border: 1px solid var(--rule);">
+        <p style="color: var(--gold); font-size: 10px; letter-spacing: 4px; text-transform: uppercase; font-family: var(--font-body); margin-bottom: 20px; text-align: center;">Distribution Services</p>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;">
+          {[
+            { platform: 'Spotify', desc: 'Full RSS setup, metadata, chapters, show art' },
+            { platform: 'Apple Podcasts', desc: 'Review-ready submission with correct tags' },
+            { platform: 'YouTube Podcast', desc: 'Audio + branded still image, auto-upload' },
+            { platform: 'WhatsApp / Email', desc: 'Each episode clipped and formatted for direct sharing' },
+          ].map(p => (
+            <div style="text-align: center;">
+              <p style="font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; font-family: var(--font-body);">{p.platform}</p>
+              <p style="font-size: 12px; color: var(--muted); line-height: 1.6;">{p.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       DELIVERABLES
+  ══════════════════════════════════════════════════════════════════════ -->
+  <section style="padding: 100px 0; background: #0a0a18; border-top: 1px solid var(--rule);">
+    <div style="max-width: 1100px; margin: 0 auto; padding: 0 40px;">
+
+      <div class="rr-reveal" style="text-align: center; margin-bottom: 64px;">
+        <p style="color: var(--gold); font-size: 11px; letter-spacing: 5px; text-transform: uppercase; font-family: var(--font-body); margin-bottom: 16px;">What's Possible</p>
+        <h2 class="rr-display" style="font-size: clamp(2.2rem, 4vw, 3.4rem); font-weight: 500; line-height: 1.15;">
+          Everything in one pipeline.
+        </h2>
+      </div>
+
+      <div class="rr-reveal" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;" class="max-md:grid-cols-2 max-sm:grid-cols-1">
+        {deliverables.map((d, i) => (
+          <div style={`background: var(--bg-card); border-radius: 16px; padding: 28px 24px; border: 1px solid var(--rule); transition: border-color 0.3s ease;`}
+               onmouseover="this.style.borderColor='rgba(201,162,39,0.35)'" onmouseout="this.style.borderColor='var(--rule)'">
+            <div style="font-size: 28px; margin-bottom: 14px;">{d.icon}</div>
+            <h3 style="font-family: var(--font-display); font-size: 1.15rem; color: var(--text); margin-bottom: 8px; font-weight: 500;">{d.title}</h3>
+            <p style="font-size: 0.85rem; color: var(--muted); line-height: 1.7;">{d.desc}</p>
+          </div>
+        ))}
+      </div>
+
+      <!-- The pitch line -->
+      <div class="rr-reveal" style="margin-top: 64px; padding: 48px; background: linear-gradient(135deg, rgba(201,162,39,0.06), rgba(74,144,217,0.04)); border-radius: 20px; border: 1px solid rgba(201,162,39,0.2); text-align: center;">
+        <p class="rr-display" style="font-size: clamp(1.4rem, 2.5vw, 2rem); color: var(--text); line-height: 1.5; margin-bottom: 8px; font-style: italic;">
+          "Your Torah deserves to be heard by everyone it can reach.<br/>
+          Let's build the infrastructure to make that happen."
+        </p>
+        <p style="color: var(--muted); font-size: 0.85rem; font-family: var(--font-body);">— Matthew Miller</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ABOUT / CTA
+  ══════════════════════════════════════════════════════════════════════ -->
+  <section style="padding: 100px 0; background: var(--bg); border-top: 1px solid var(--rule);">
+    <div style="max-width: 680px; margin: 0 auto; padding: 0 40px; text-align: center;">
+
+      <img src="/images/logo.png" alt="Matthew Miller" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 28px; display: block; border: 2px solid rgba(201,162,39,0.3);" />
+
+      <h3 class="rr-display" style="font-size: 2rem; color: var(--text); margin-bottom: 8px; font-weight: 500;">Matthew Miller</h3>
+      <p style="color: var(--gold); font-size: 13px; letter-spacing: 2px; text-transform: uppercase; font-family: var(--font-body); margin-bottom: 20px;">
+        AI · Content · Web Development · Jewish Studies
+      </p>
+      <p style="color: rgba(240,236,228,0.65); line-height: 1.8; margin-bottom: 40px; font-size: 0.95rem;">
+        Former Principal Analyst at G2. Builder of Torah apps, Jewish learning tools,
+        and educational content systems. I understand the shiurim because I listen to them —
+        and I know how to package Torah for the platforms where people actually are.
+      </p>
+
+      <!-- Links -->
+      <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
+        <a href="mailto:matthewjmiller07@gmail.com?subject=Rabbi Rosner — Let's Build This"
+           style="display: inline-block; padding: 16px 48px; background: var(--gold); color: #07070f; border-radius: 10px; font-weight: 700; font-size: 0.95rem; text-decoration: none; font-family: var(--font-body); letter-spacing: 0.5px; transition: background 0.2s ease;"
+           onmouseover="this.style.background='#e8d07a'" onmouseout="this.style.background='#c9a227'">
+          matthewjmiller07@gmail.com
+        </a>
+        <div style="display: flex; gap: 20px; margin-top: 8px;">
+          <a href="/services" style="font-size: 13px; color: var(--muted); text-decoration: none; hover:color: var(--text);">View Services →</a>
+          <a href="https://theothermatthewmiller.com" style="font-size: 13px; color: var(--muted); text-decoration: none;">TheOtherMatthewMiller.com →</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Footer strip -->
+  <div style="padding: 24px 40px; background: #04040a; border-top: 1px solid var(--rule); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <img src="/images/logo.png" alt="" style="width: 24px; height: 24px; border-radius: 50%;" />
+      <span style="font-size: 12px; color: var(--muted); font-family: var(--font-body);">TheOtherMatthewMiller.com</span>
+    </div>
+    <div style="font-family: 'Arial Hebrew', serif; direction: rtl; font-size: 14px; color: rgba(201,162,39,0.4);">
+      ״וַיְדַבֵּר ה׳ אֶל-מֹשֶׁה בְּמִדְבַּר סִינַי״
+    </div>
+    <span style="font-size: 12px; color: var(--muted); font-family: var(--font-body);">Proposal · Rabbi Shalom Rosner · 2025</span>
+  </div>
+
+</main>
+
+<script>
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.rr-reveal');
+  const observer = new IntersectionObserver(
+    entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+    { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+  );
+  reveals.forEach(el => observer.observe(el));
+</script>
+
+</Layout>
