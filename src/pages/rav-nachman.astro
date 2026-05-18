@@ -1,0 +1,318 @@
+---
+import Layout from '../layouts/Layout.astro';
+import annotationData from '../data/rav_nachman_annotations.json';
+
+const thesis = (annotationData as any).thesis_assessment ?? {};
+const stats = (annotationData as any).stats ?? {};
+const schema = (annotationData as any).annotation_schema ?? {};
+const allAnnotations: any[] = (annotationData as any).annotations ?? [];
+const labelDefs: Record<string, any> = schema.labels ?? {};
+
+function stripHtml(str: string): string {
+  return (str ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+interface StanceCfg {
+  color: string;
+  bg: string;
+  border: string;
+  headerBg: string;
+  label: string;
+}
+
+const stanceConfig: Record<string, StanceCfg> = {
+  'supports qualified anti-intellectual reading': {
+    color: 'text-red-700 dark:text-red-300',
+    bg: 'bg-red-50 dark:bg-red-950',
+    border: 'border-red-300 dark:border-red-700',
+    headerBg: 'bg-red-100 dark:bg-red-900',
+    label: 'Supports thesis',
+  },
+  'counterevidence to broad anti-intellectual reading': {
+    color: 'text-green-700 dark:text-green-300',
+    bg: 'bg-green-50 dark:bg-green-950',
+    border: 'border-green-300 dark:border-green-700',
+    headerBg: 'bg-green-100 dark:bg-green-900',
+    label: 'Counters thesis',
+  },
+  'complicates / mixed': {
+    color: 'text-amber-700 dark:text-amber-300',
+    bg: 'bg-amber-50 dark:bg-amber-950',
+    border: 'border-amber-300 dark:border-amber-700',
+    headerBg: 'bg-amber-100 dark:bg-amber-900',
+    label: 'Mixed',
+  },
+};
+
+const bySection: Record<string, any[]> = {};
+for (const ann of allAnnotations) {
+  const sec = ann.section_key || 'Main Lessons';
+  if (!bySection[sec]) bySection[sec] = [];
+  bySection[sec].push(ann);
+}
+const sectionOrder = ['Introduction', 'A Pleasant Song', 'Part I', 'Part II', 'Additions from Manuscript'];
+const orderedSections = [
+  ...sectionOrder.filter(s => bySection[s]),
+  ...Object.keys(bySection).filter(s => !sectionOrder.includes(s) && bySection[s]),
+];
+
+const totalAnnotations = stats.annotations_total ?? allAnnotations.length;
+const byStance = stats.annotations_by_stance ?? {};
+const supportsCount = byStance['supports qualified anti-intellectual reading'] ?? 0;
+const countersCount = byStance['counterevidence to broad anti-intellectual reading'] ?? 0;
+const mixedCount = byStance['complicates / mixed'] ?? 0;
+const segmentsScanned: number = stats.hebrew_segments_scanned ?? 0;
+---
+
+<Layout
+  title="Rav Nachman — Likutei Moharan | The Other Matthew Miller"
+  description="Annotated study of Likutei Moharan examining Rebbe Nachman's nuanced stance on intellect, external wisdom, and faith."
+>
+  <main class="min-h-screen bg-gray-50 dark:bg-gray-900">
+
+    <!-- Hero -->
+    <div class="bg-gradient-to-br from-cyan-900 via-cyan-800 to-teal-900 text-white py-16 px-4">
+      <div class="max-w-4xl mx-auto text-center">
+        <p class="text-cyan-300 text-sm font-medium tracking-widest uppercase mb-3">Source Sheet</p>
+        <h1 class="text-5xl font-bold mb-2 font-hebrew">ליקוטי מוהר״ן</h1>
+        <p class="text-2xl text-cyan-200 italic mb-1">Likutei Moharan</p>
+        <p class="text-cyan-300 mb-8">Rebbe Nachman of Breslov</p>
+        <div class="inline-block bg-white/10 border border-white/20 rounded-xl px-6 py-4 backdrop-blur-sm">
+          <p class="text-sm text-cyan-100 font-semibold">Anti-Intellectual Thesis — Annotated Analysis</p>
+          <p class="text-xs text-cyan-300 mt-1">{totalAnnotations} annotated passages · {segmentsScanned.toLocaleString()} segments scanned</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 py-10 space-y-14">
+
+      <!-- Thesis Assessment -->
+      <section>
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5 pb-2 border-b-2 border-cyan-500">
+          Thesis Assessment
+        </h2>
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-md border border-gray-200 dark:border-gray-700 space-y-5">
+          <div class="flex flex-wrap gap-3">
+            <span class="px-3 py-1.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-full text-sm font-medium line-through opacity-60 select-none">
+              "{thesis.too_blunt_label}"
+            </span>
+            <span class="px-3 py-1.5 bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 rounded-full text-sm font-semibold">
+              "{thesis.best_short_label}"
+            </span>
+          </div>
+          <p class="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">
+            {thesis.why}
+          </p>
+          {thesis.recommended_claim_text && (
+            <blockquote class="border-l-4 border-cyan-500 pl-5 italic text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+              {thesis.recommended_claim_text}
+            </blockquote>
+          )}
+        </div>
+      </section>
+
+      <!-- Stats -->
+      <section>
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5 pb-2 border-b-2 border-cyan-500">
+          At a Glance
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { value: totalAnnotations, label: 'Annotations', color: 'text-cyan-600 dark:text-cyan-400', border: 'border-cyan-200 dark:border-cyan-800' },
+            { value: supportsCount, label: 'Support thesis', color: 'text-red-600 dark:text-red-400', border: 'border-red-200 dark:border-red-800' },
+            { value: countersCount, label: 'Counter thesis', color: 'text-green-600 dark:text-green-400', border: 'border-green-200 dark:border-green-800' },
+            { value: mixedCount, label: 'Mixed / nuanced', color: 'text-amber-600 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800' },
+          ].map(stat => (
+            <div class={`bg-white dark:bg-gray-800 rounded-xl p-5 shadow text-center border ${stat.border}`}>
+              <p class={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- PDF Viewer -->
+      <section>
+        <div class="flex items-center justify-between mb-5 pb-2 border-b-2 border-cyan-500">
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Annotated PDF</h2>
+          <a
+            href="/Rav%20Nachman/likutei_moharan_annotated.pdf"
+            download="likutei_moharan_annotated.pdf"
+            class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2 shadow"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download PDF
+          </a>
+        </div>
+        <div class="rounded-xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700" style="height:720px">
+          <iframe
+            src="/Rav%20Nachman/likutei_moharan_annotated.pdf"
+            class="w-full h-full border-0"
+            title="Likutei Moharan Annotated PDF"
+            loading="lazy"
+          ></iframe>
+        </div>
+        <p class="text-xs text-gray-400 mt-2 text-center">
+          If the PDF does not display,
+          <a href="/Rav%20Nachman/likutei_moharan_annotated.pdf" class="underline text-cyan-600 dark:text-cyan-400">open it directly</a>.
+        </p>
+      </section>
+
+      <!-- Annotation Labels Legend -->
+      <section>
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5 pb-2 border-b-2 border-cyan-500">
+          Annotation Labels
+        </h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{schema.important_caveat}</p>
+        <div class="grid md:grid-cols-2 gap-3">
+          {Object.entries(labelDefs).map(([key, info]) => {
+            const isCounter = (info as any).stance === 'counter';
+            return (
+              <div class={`rounded-lg p-4 border ${isCounter ? 'bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800'}`}>
+                <p class={`text-xs font-bold font-mono uppercase tracking-wide mb-1 ${isCounter ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>{key}</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{(info as any).description}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <!-- Annotation Browser -->
+      <section>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-2 border-b-2 border-cyan-500">
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Annotation Browser</h2>
+          <div class="flex gap-2 flex-wrap" id="filter-bar">
+            <button class="filter-btn px-3 py-1.5 text-sm rounded-full border border-gray-400 dark:border-gray-500 bg-gray-800 text-white dark:bg-gray-100 dark:text-gray-900 font-medium transition-colors" data-filter="all">
+              All <span class="opacity-60 text-xs">({totalAnnotations})</span>
+            </button>
+            <button class="filter-btn px-3 py-1.5 text-sm rounded-full border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 transition-colors" data-filter="supports qualified anti-intellectual reading">
+              Supports <span class="opacity-60 text-xs">({supportsCount})</span>
+            </button>
+            <button class="filter-btn px-3 py-1.5 text-sm rounded-full border border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950 transition-colors" data-filter="counterevidence to broad anti-intellectual reading">
+              Counters <span class="opacity-60 text-xs">({countersCount})</span>
+            </button>
+            <button class="filter-btn px-3 py-1.5 text-sm rounded-full border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950 transition-colors" data-filter="complicates / mixed">
+              Mixed <span class="opacity-60 text-xs">({mixedCount})</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="annotation-list" class="space-y-10">
+          {orderedSections.map(section => {
+            const anns = (bySection[section] ?? [])
+              .slice()
+              .sort((a: any, b: any) => (b.relevance_score ?? 0) - (a.relevance_score ?? 0));
+            return (
+              <div class="section-group" data-section={section}>
+                <h3 class="text-base font-semibold text-cyan-700 dark:text-cyan-400 mb-4 flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-cyan-500 inline-block shrink-0"></span>
+                  {section || 'Main Lessons'}
+                  <span class="text-xs font-normal text-gray-400">({anns.length})</span>
+                </h3>
+                <div class="space-y-4 section-cards">
+                  {anns.map((ann: any) => {
+                    const cfg: StanceCfg = stanceConfig[ann.stance as string] ?? stanceConfig['complicates / mixed'];
+                    const enText = stripHtml(ann.en_text ?? '');
+                    const heText = (ann.he_text ?? '').slice(0, 220);
+                    const score: number = ann.relevance_score ?? 0;
+                    const stars = '★'.repeat(score) + '☆'.repeat(Math.max(0, 5 - score));
+                    const labels: string[] = ann.labels ?? [];
+                    const note: string = ann.annotation_note ?? '';
+                    return (
+                      <div
+                        class={`annotation-card rounded-xl border overflow-hidden shadow-sm ${cfg.border}`}
+                        data-stance={ann.stance}
+                      >
+                        <!-- Header -->
+                        <div class={`flex items-center justify-between px-4 py-2.5 ${cfg.headerBg} border-b ${cfg.border}`}>
+                          <div class="flex items-center gap-3 min-w-0">
+                            <span class={`text-xs font-bold uppercase tracking-wide shrink-0 ${cfg.color}`}>{cfg.label}</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400 truncate">{ann.ref}</span>
+                          </div>
+                          <span class={`text-xs tracking-wider shrink-0 ml-2 ${cfg.color}`} title={`Relevance: ${score}/5`}>{stars}</span>
+                        </div>
+
+                        <!-- Bilingual body -->
+                        <div class={`grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-700 ${cfg.bg}`}>
+                          <!-- Hebrew (RTL) -->
+                          <div class="p-4 text-right" dir="rtl" lang="he">
+                            <p class="font-hebrew text-base leading-relaxed text-gray-800 dark:text-gray-200">
+                              {heText}{heText.length < (ann.he_text ?? '').length ? '…' : ''}
+                            </p>
+                          </div>
+                          <!-- English -->
+                          <div class="p-4">
+                            <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                              {enText.length > 450 ? enText.slice(0, 450) + '…' : enText}
+                            </p>
+                          </div>
+                        </div>
+
+                        <!-- Footer: labels + note -->
+                        <div class={`px-4 pb-3 pt-2 ${cfg.bg} border-t ${cfg.border} flex flex-col gap-1.5`}>
+                          <div class="flex flex-wrap gap-1.5">
+                            {labels.map((lbl: string) => (
+                              <span class={`inline-block text-xs font-mono px-2 py-0.5 rounded border ${cfg.border} ${cfg.color} bg-white/40 dark:bg-black/20`}>
+                                {lbl}
+                              </span>
+                            ))}
+                          </div>
+                          {note && (
+                            <p class="text-xs text-gray-500 dark:text-gray-400 italic leading-relaxed">
+                              {note.length > 200 ? note.slice(0, 200) + '…' : note}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+    </div>
+  </main>
+</Layout>
+
+<script>
+  const filterBtns = document.querySelectorAll<HTMLButtonElement>('.filter-btn');
+  const cards = document.querySelectorAll<HTMLElement>('.annotation-card');
+  const sectionGroups = document.querySelectorAll<HTMLElement>('.section-group');
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const filter = btn.dataset.filter!;
+
+      // Reset all buttons
+      filterBtns.forEach(b => {
+        b.classList.remove('bg-gray-800', 'text-white', 'dark:bg-gray-100', 'dark:text-gray-900', 'font-medium');
+        b.classList.add('font-normal');
+      });
+      btn.classList.add('bg-gray-800', 'text-white', 'dark:bg-gray-100', 'dark:text-gray-900', 'font-medium');
+      btn.classList.remove('font-normal');
+
+      // Filter cards
+      cards.forEach(card => {
+        card.style.display = (filter === 'all' || card.dataset.stance === filter) ? '' : 'none';
+      });
+
+      // Hide empty sections
+      sectionGroups.forEach(group => {
+        const anyVisible = Array.from(group.querySelectorAll<HTMLElement>('.annotation-card'))
+          .some(c => c.style.display !== 'none');
+        group.style.display = anyVisible ? '' : 'none';
+      });
+    });
+  });
+</script>
+
+<style>
+  .font-hebrew {
+    font-family: 'SBL Hebrew', 'Ezra SIL', 'Arial Hebrew', 'David', serif;
+  }
+</style>
