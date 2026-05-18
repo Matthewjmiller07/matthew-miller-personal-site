@@ -1,277 +1,120 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import annotationData from '../data/rav_nachman_annotations.json';
+import annotationsMeta from '../data/rav_nachman_annotations.json';
 
-const thesis = (annotationData as any).thesis_assessment ?? {};
-const stats = (annotationData as any).stats ?? {};
-const schema = (annotationData as any).annotation_schema ?? {};
-const allAnnotations: any[] = (annotationData as any).annotations ?? [];
-const labelDefs: Record<string, any> = schema.labels ?? {};
-
-function stripHtml(str: string): string {
-  return (str ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-interface StanceCfg {
-  color: string;
-  bg: string;
-  border: string;
-  headerBg: string;
-  label: string;
-}
-
-const stanceConfig: Record<string, StanceCfg> = {
-  'supports qualified anti-intellectual reading': {
-    color: 'text-red-700 dark:text-red-300',
-    bg: 'bg-red-50 dark:bg-red-950',
-    border: 'border-red-300 dark:border-red-700',
-    headerBg: 'bg-red-100 dark:bg-red-900',
-    label: 'Supports thesis',
-  },
-  'counterevidence to broad anti-intellectual reading': {
-    color: 'text-green-700 dark:text-green-300',
-    bg: 'bg-green-50 dark:bg-green-950',
-    border: 'border-green-300 dark:border-green-700',
-    headerBg: 'bg-green-100 dark:bg-green-900',
-    label: 'Counters thesis',
-  },
-  'complicates / mixed': {
-    color: 'text-amber-700 dark:text-amber-300',
-    bg: 'bg-amber-50 dark:bg-amber-950',
-    border: 'border-amber-300 dark:border-amber-700',
-    headerBg: 'bg-amber-100 dark:bg-amber-900',
-    label: 'Mixed',
-  },
-};
-
-const bySection: Record<string, any[]> = {};
-for (const ann of allAnnotations) {
-  const sec = ann.section_key || 'Main Lessons';
-  if (!bySection[sec]) bySection[sec] = [];
-  bySection[sec].push(ann);
-}
-const sectionOrder = ['Introduction', 'A Pleasant Song', 'Part I', 'Part II', 'Additions from Manuscript'];
-const orderedSections = [
-  ...sectionOrder.filter(s => bySection[s]),
-  ...Object.keys(bySection).filter(s => !sectionOrder.includes(s) && bySection[s]),
-];
-
-const totalAnnotations = stats.annotations_total ?? allAnnotations.length;
+const thesis = (annotationsMeta as any).thesis_assessment ?? {};
+const stats = (annotationsMeta as any).stats ?? {};
+const totalAnnotations: number = stats.annotations_total ?? 0;
 const byStance = stats.annotations_by_stance ?? {};
-const supportsCount = byStance['supports qualified anti-intellectual reading'] ?? 0;
-const countersCount = byStance['counterevidence to broad anti-intellectual reading'] ?? 0;
-const mixedCount = byStance['complicates / mixed'] ?? 0;
+const supportsCount: number = byStance['supports qualified anti-intellectual reading'] ?? 0;
+const countersCount: number = byStance['counterevidence to broad anti-intellectual reading'] ?? 0;
+const mixedCount: number = byStance['complicates / mixed'] ?? 0;
 const segmentsScanned: number = stats.hebrew_segments_scanned ?? 0;
 ---
 
 <Layout
   title="Rav Nachman — Likutei Moharan | The Other Matthew Miller"
-  description="Annotated study of Likutei Moharan examining Rebbe Nachman's nuanced stance on intellect, external wisdom, and faith."
+  description="Full annotated text of Likutei Moharan — Rebbe Nachman of Breslov — with 256 inline annotations examining his stance on intellect, external wisdom, and faith."
 >
   <main class="min-h-screen bg-gray-50 dark:bg-gray-900">
 
     <!-- Hero -->
-    <div class="bg-gradient-to-br from-cyan-900 via-cyan-800 to-teal-900 text-white py-16 px-4">
-      <div class="max-w-4xl mx-auto text-center">
-        <p class="text-cyan-300 text-sm font-medium tracking-widest uppercase mb-3">Source Sheet</p>
-        <h1 class="text-5xl font-bold mb-2 font-hebrew">ליקוטי מוהר״ן</h1>
-        <p class="text-2xl text-cyan-200 italic mb-1">Likutei Moharan</p>
-        <p class="text-cyan-300 mb-8">Rebbe Nachman of Breslov</p>
-        <div class="inline-block bg-white/10 border border-white/20 rounded-xl px-6 py-4 backdrop-blur-sm">
-          <p class="text-sm text-cyan-100 font-semibold">Anti-Intellectual Thesis — Annotated Analysis</p>
-          <p class="text-xs text-cyan-300 mt-1">{totalAnnotations} annotated passages · {segmentsScanned.toLocaleString()} segments scanned</p>
+    <div class="bg-gradient-to-br from-cyan-900 via-cyan-800 to-teal-900 text-white py-14 px-4">
+      <div class="max-w-5xl mx-auto text-center">
+        <p class="text-cyan-300 text-xs font-medium tracking-widest uppercase mb-3">Source Sheet</p>
+        <h1 class="text-5xl font-bold mb-1 font-hebrew" dir="rtl">ליקוטי מוהר״ן</h1>
+        <p class="text-xl text-cyan-200 italic mb-1">Likutei Moharan</p>
+        <p class="text-cyan-300 mb-6">Rebbe Nachman of Breslov</p>
+        <div class="inline-flex flex-wrap justify-center gap-4 text-xs text-cyan-300">
+          <span>{totalAnnotations} annotated passages</span>
+          <span>·</span>
+          <span>{segmentsScanned.toLocaleString()} segments</span>
+          <span>·</span>
+          <span>286 lessons · Part I + Part II</span>
         </div>
       </div>
     </div>
 
-    <div class="max-w-4xl mx-auto px-4 py-10 space-y-14">
+    <!-- Page nav -->
+    <div class="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+      <div class="max-w-5xl mx-auto px-4 flex gap-1 overflow-x-auto py-2 text-sm font-medium">
+        <a href="#thesis" class="px-3 py-1.5 rounded-md whitespace-nowrap text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">Thesis</a>
+        <a href="#pdf" class="px-3 py-1.5 rounded-md whitespace-nowrap text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">PDF</a>
+        <a href="#reader" class="px-3 py-1.5 rounded-md whitespace-nowrap text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">Full Text ↓</a>
+        <div class="ml-auto flex items-center gap-2">
+          <a
+            href="/Rav%20Nachman/likutei_moharan_annotated.pdf"
+            download
+            class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-md whitespace-nowrap transition-colors text-xs"
+          >Download PDF</a>
+        </div>
+      </div>
+    </div>
 
-      <!-- Thesis Assessment -->
-      <section>
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5 pb-2 border-b-2 border-cyan-500">
-          Thesis Assessment
-        </h2>
-        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-md border border-gray-200 dark:border-gray-700 space-y-5">
+    <div class="max-w-5xl mx-auto px-4 py-10 space-y-14">
+
+      <!-- Thesis -->
+      <section id="thesis">
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5 pb-2 border-b-2 border-cyan-500">Thesis Assessment</h2>
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow border border-gray-200 dark:border-gray-700 space-y-4">
           <div class="flex flex-wrap gap-3">
-            <span class="px-3 py-1.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-full text-sm font-medium line-through opacity-60 select-none">
-              "{thesis.too_blunt_label}"
-            </span>
-            <span class="px-3 py-1.5 bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 rounded-full text-sm font-semibold">
-              "{thesis.best_short_label}"
-            </span>
+            <span class="px-3 py-1.5 bg-red-50 dark:bg-red-900/40 text-red-500 dark:text-red-400 rounded-full text-sm line-through opacity-60">"{thesis.too_blunt_label}"</span>
+            <span class="px-3 py-1.5 bg-cyan-50 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 rounded-full text-sm font-semibold">"{thesis.best_short_label}"</span>
           </div>
-          <p class="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">
-            {thesis.why}
-          </p>
+          <p class="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">{thesis.why}</p>
           {thesis.recommended_claim_text && (
-            <blockquote class="border-l-4 border-cyan-500 pl-5 italic text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-              {thesis.recommended_claim_text}
-            </blockquote>
+            <blockquote class="border-l-4 border-cyan-500 pl-5 italic text-gray-600 dark:text-gray-400 text-sm leading-relaxed">{thesis.recommended_claim_text}</blockquote>
           )}
         </div>
-      </section>
-
-      <!-- Stats -->
-      <section>
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5 pb-2 border-b-2 border-cyan-500">
-          At a Glance
-        </h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { value: totalAnnotations, label: 'Annotations', color: 'text-cyan-600 dark:text-cyan-400', border: 'border-cyan-200 dark:border-cyan-800' },
-            { value: supportsCount, label: 'Support thesis', color: 'text-red-600 dark:text-red-400', border: 'border-red-200 dark:border-red-800' },
-            { value: countersCount, label: 'Counter thesis', color: 'text-green-600 dark:text-green-400', border: 'border-green-200 dark:border-green-800' },
-            { value: mixedCount, label: 'Mixed / nuanced', color: 'text-amber-600 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800' },
-          ].map(stat => (
-            <div class={`bg-white dark:bg-gray-800 rounded-xl p-5 shadow text-center border ${stat.border}`}>
-              <p class={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{stat.label}</p>
+        <!-- Stats row -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5">
+          {([
+            { v: totalAnnotations, label: 'Annotations', cls: 'text-cyan-600 dark:text-cyan-400', b: 'border-cyan-200 dark:border-cyan-800' },
+            { v: supportsCount,    label: 'Support thesis',   cls: 'text-red-600 dark:text-red-400',   b: 'border-red-200 dark:border-red-800' },
+            { v: countersCount,    label: 'Counter thesis',   cls: 'text-green-600 dark:text-green-400', b: 'border-green-200 dark:border-green-800' },
+            { v: mixedCount,       label: 'Mixed',            cls: 'text-amber-600 dark:text-amber-400', b: 'border-amber-200 dark:border-amber-800' },
+          ] as const).map(s => (
+            <div class={`bg-white dark:bg-gray-800 rounded-xl p-4 text-center border shadow-sm ${s.b}`}>
+              <p class={`text-2xl font-bold ${s.cls}`}>{s.v}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <!-- PDF Viewer -->
-      <section>
-        <div class="flex items-center justify-between mb-5 pb-2 border-b-2 border-cyan-500">
-          <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Annotated PDF</h2>
-          <a
-            href="/Rav%20Nachman/likutei_moharan_annotated.pdf"
-            download="likutei_moharan_annotated.pdf"
-            class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2 shadow"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Download PDF
-          </a>
-        </div>
-        <div class="rounded-xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700" style="height:720px">
-          <iframe
-            src="/Rav%20Nachman/likutei_moharan_annotated.pdf"
-            class="w-full h-full border-0"
-            title="Likutei Moharan Annotated PDF"
-            loading="lazy"
-          ></iframe>
+      <!-- PDF viewer -->
+      <section id="pdf">
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5 pb-2 border-b-2 border-cyan-500">Annotated PDF</h2>
+        <div class="rounded-xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700" style="height:680px">
+          <iframe src="/Rav%20Nachman/likutei_moharan_annotated.pdf" class="w-full h-full border-0" title="Likutei Moharan Annotated PDF" loading="lazy"></iframe>
         </div>
         <p class="text-xs text-gray-400 mt-2 text-center">
-          If the PDF does not display,
-          <a href="/Rav%20Nachman/likutei_moharan_annotated.pdf" class="underline text-cyan-600 dark:text-cyan-400">open it directly</a>.
+          Can't see it? <a href="/Rav%20Nachman/likutei_moharan_annotated.pdf" class="underline text-cyan-600 dark:text-cyan-400">Open PDF directly</a>.
         </p>
       </section>
 
-      <!-- Annotation Labels Legend -->
-      <section>
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5 pb-2 border-b-2 border-cyan-500">
-          Annotation Labels
-        </h2>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{schema.important_caveat}</p>
-        <div class="grid md:grid-cols-2 gap-3">
-          {Object.entries(labelDefs).map(([key, info]) => {
-            const isCounter = (info as any).stance === 'counter';
-            return (
-              <div class={`rounded-lg p-4 border ${isCounter ? 'bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800'}`}>
-                <p class={`text-xs font-bold font-mono uppercase tracking-wide mb-1 ${isCounter ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>{key}</p>
-                <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{(info as any).description}</p>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <!-- Annotation Browser -->
-      <section>
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-2 border-b-2 border-cyan-500">
-          <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Annotation Browser</h2>
-          <div class="flex gap-2 flex-wrap" id="filter-bar">
-            <button class="filter-btn px-3 py-1.5 text-sm rounded-full border border-gray-400 dark:border-gray-500 bg-gray-800 text-white dark:bg-gray-100 dark:text-gray-900 font-medium transition-colors" data-filter="all">
-              All <span class="opacity-60 text-xs">({totalAnnotations})</span>
-            </button>
-            <button class="filter-btn px-3 py-1.5 text-sm rounded-full border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 transition-colors" data-filter="supports qualified anti-intellectual reading">
-              Supports <span class="opacity-60 text-xs">({supportsCount})</span>
-            </button>
-            <button class="filter-btn px-3 py-1.5 text-sm rounded-full border border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950 transition-colors" data-filter="counterevidence to broad anti-intellectual reading">
-              Counters <span class="opacity-60 text-xs">({countersCount})</span>
-            </button>
-            <button class="filter-btn px-3 py-1.5 text-sm rounded-full border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950 transition-colors" data-filter="complicates / mixed">
-              Mixed <span class="opacity-60 text-xs">({mixedCount})</span>
-            </button>
+      <!-- Full Text Reader -->
+      <section id="reader">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-2 border-b-2 border-cyan-500">
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Full Text</h2>
+          <!-- Filter + controls (populated by JS) -->
+          <div class="flex flex-wrap gap-2 items-center" id="reader-controls">
+            <span class="text-xs text-gray-400 dark:text-gray-500" id="reader-status">Loading…</span>
           </div>
         </div>
 
-        <div id="annotation-list" class="space-y-10">
-          {orderedSections.map(section => {
-            const anns = (bySection[section] ?? [])
-              .slice()
-              .sort((a: any, b: any) => (b.relevance_score ?? 0) - (a.relevance_score ?? 0));
-            return (
-              <div class="section-group" data-section={section}>
-                <h3 class="text-base font-semibold text-cyan-700 dark:text-cyan-400 mb-4 flex items-center gap-2">
-                  <span class="w-2 h-2 rounded-full bg-cyan-500 inline-block shrink-0"></span>
-                  {section || 'Main Lessons'}
-                  <span class="text-xs font-normal text-gray-400">({anns.length})</span>
-                </h3>
-                <div class="space-y-4 section-cards">
-                  {anns.map((ann: any) => {
-                    const cfg: StanceCfg = stanceConfig[ann.stance as string] ?? stanceConfig['complicates / mixed'];
-                    const enText = stripHtml(ann.en_text ?? '');
-                    const heText = (ann.he_text ?? '').slice(0, 220);
-                    const score: number = ann.relevance_score ?? 0;
-                    const stars = '★'.repeat(score) + '☆'.repeat(Math.max(0, 5 - score));
-                    const labels: string[] = ann.labels ?? [];
-                    const note: string = ann.annotation_note ?? '';
-                    return (
-                      <div
-                        class={`annotation-card rounded-xl border overflow-hidden shadow-sm ${cfg.border}`}
-                        data-stance={ann.stance}
-                      >
-                        <!-- Header -->
-                        <div class={`flex items-center justify-between px-4 py-2.5 ${cfg.headerBg} border-b ${cfg.border}`}>
-                          <div class="flex items-center gap-3 min-w-0">
-                            <span class={`text-xs font-bold uppercase tracking-wide shrink-0 ${cfg.color}`}>{cfg.label}</span>
-                            <span class="text-xs text-gray-500 dark:text-gray-400 truncate">{ann.ref}</span>
-                          </div>
-                          <span class={`text-xs tracking-wider shrink-0 ml-2 ${cfg.color}`} title={`Relevance: ${score}/5`}>{stars}</span>
-                        </div>
+        <!-- Chapter tabs -->
+        <div class="flex gap-1 overflow-x-auto pb-1 mb-4" id="chapter-tabs"></div>
 
-                        <!-- Bilingual body -->
-                        <div class={`grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-700 ${cfg.bg}`}>
-                          <!-- Hebrew (RTL) -->
-                          <div class="p-4 text-right" dir="rtl" lang="he">
-                            <p class="font-hebrew text-base leading-relaxed text-gray-800 dark:text-gray-200">
-                              {heText}{heText.length < (ann.he_text ?? '').length ? '…' : ''}
-                            </p>
-                          </div>
-                          <!-- English -->
-                          <div class="p-4">
-                            <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                              {enText.length > 450 ? enText.slice(0, 450) + '…' : enText}
-                            </p>
-                          </div>
-                        </div>
-
-                        <!-- Footer: labels + note -->
-                        <div class={`px-4 pb-3 pt-2 ${cfg.bg} border-t ${cfg.border} flex flex-col gap-1.5`}>
-                          <div class="flex flex-wrap gap-1.5">
-                            {labels.map((lbl: string) => (
-                              <span class={`inline-block text-xs font-mono px-2 py-0.5 rounded border ${cfg.border} ${cfg.color} bg-white/40 dark:bg-black/20`}>
-                                {lbl}
-                              </span>
-                            ))}
-                          </div>
-                          {note && (
-                            <p class="text-xs text-gray-500 dark:text-gray-400 italic leading-relaxed">
-                              {note.length > 200 ? note.slice(0, 200) + '…' : note}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+        <!-- Lesson list -->
+        <div id="reader-content" class="space-y-2">
+          <div class="flex items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+            <svg class="animate-spin w-6 h-6 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Loading full text…
+          </div>
         </div>
       </section>
 
@@ -280,39 +123,265 @@ const segmentsScanned: number = stats.hebrew_segments_scanned ?? 0;
 </Layout>
 
 <script>
-  const filterBtns = document.querySelectorAll<HTMLButtonElement>('.filter-btn');
-  const cards = document.querySelectorAll<HTMLElement>('.annotation-card');
-  const sectionGroups = document.querySelectorAll<HTMLElement>('.section-group');
+// ── Types ──────────────────────────────────────────────────────────────────────
+interface Annotation {
+  id: string;
+  ref: string;
+  labels: string[];
+  stance: string;
+  relevance_score: number;
+  en_text: string;
+  he_text: string;
+  annotation_note: string;
+}
+interface Segment { text: string; he: string; annotation: Annotation | null; }
+interface Section { section_num: number | null; segments: Segment[]; }
+interface Lesson { lesson_num: number | null; title: string; sections: Section[]; }
+interface Chapter { chapter: string; lessons: Lesson[]; }
+interface ReaderData {
+  thesis: Record<string, string>;
+  stats: Record<string, any>;
+  schema: Record<string, any>;
+  chapters: Chapter[];
+}
 
-  filterBtns.forEach(btn => {
+// ── Config ─────────────────────────────────────────────────────────────────────
+const STANCE: Record<string, { border: string; bg: string; badge: string; label: string }> = {
+  'supports qualified anti-intellectual reading': {
+    border: 'border-l-4 border-red-400 dark:border-red-600',
+    bg:     'bg-red-50 dark:bg-red-950/60',
+    badge:  'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300',
+    label:  'Supports thesis',
+  },
+  'counterevidence to broad anti-intellectual reading': {
+    border: 'border-l-4 border-green-400 dark:border-green-600',
+    bg:     'bg-green-50 dark:bg-green-950/60',
+    badge:  'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',
+    label:  'Counters thesis',
+  },
+  'complicates / mixed': {
+    border: 'border-l-4 border-amber-400 dark:border-amber-600',
+    bg:     'bg-amber-50 dark:bg-amber-950/60',
+    badge:  'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300',
+    label:  'Mixed',
+  },
+};
+const DEFAULT_STANCE = STANCE['complicates / mixed'];
+
+function stripHtml(s: string): string {
+  return (s ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function stars(n: number): string {
+  return '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n));
+}
+
+// ── Render helpers ─────────────────────────────────────────────────────────────
+
+function renderAnnotationBadge(ann: Annotation): string {
+  const cfg = STANCE[ann.stance] ?? DEFAULT_STANCE;
+  const lbls = (ann.labels ?? []).map(l =>
+    `<span class="inline-block text-xs font-mono px-1.5 py-0.5 rounded bg-white/50 dark:bg-black/20 border border-current opacity-80">${l}</span>`
+  ).join(' ');
+  const note = ann.annotation_note
+    ? `<p class="text-xs italic text-gray-500 dark:text-gray-400 mt-1">${stripHtml(ann.annotation_note).slice(0, 200)}</p>`
+    : '';
+  return `
+    <details class="ann-detail mt-2 rounded-lg overflow-hidden border ${cfg.border.replace('border-l-4 ', '')} text-sm">
+      <summary class="flex items-center gap-2 px-3 py-2 cursor-pointer list-none ${cfg.bg} select-none">
+        <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold ${cfg.badge}">${cfg.label}</span>
+        <span class="text-gray-500 dark:text-gray-400 text-xs truncate flex-1">${ann.ref}</span>
+        <span class="text-xs opacity-60 shrink-0">${stars(ann.relevance_score)}</span>
+        <svg class="w-3.5 h-3.5 shrink-0 opacity-50 transition-transform ann-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </summary>
+      <div class="${cfg.bg} px-3 pb-3 pt-2 space-y-2">
+        <div class="grid md:grid-cols-2 gap-3">
+          <div dir="rtl" lang="he" class="text-right">
+            <p class="font-hebrew text-sm leading-relaxed text-gray-800 dark:text-gray-200">${(ann.he_text ?? '').slice(0, 300)}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">${stripHtml(ann.en_text ?? '').slice(0, 400)}</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-1">${lbls}</div>
+        ${note}
+      </div>
+    </details>`;
+}
+
+function renderSegment(seg: Segment, filter: string): string {
+  const ann = seg.annotation;
+  const show = filter === 'all' || (ann && ann.stance === filter) || (!ann && filter === 'all');
+  if (!show && filter !== 'all' && !ann) return '';
+
+  const cfg = ann ? (STANCE[ann.stance] ?? DEFAULT_STANCE) : null;
+  const wrapClass = cfg
+    ? `pl-3 ${cfg.border} ${cfg.bg} rounded-r-lg`
+    : 'pl-3 border-l-4 border-transparent';
+
+  const heShort = (seg.he || '').slice(0, ann ? 300 : 100);
+  const enText = stripHtml(seg.text || '');
+
+  return `
+    <div class="segment ${wrapClass} py-2 mb-1" data-stance="${ann?.stance ?? ''}">
+      <div class="grid md:grid-cols-2 gap-3">
+        <div dir="rtl" lang="he" class="text-right">
+          <p class="font-hebrew text-sm leading-loose text-gray-700 dark:text-gray-300">${heShort}</p>
+        </div>
+        <div>
+          <p class="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">${enText}</p>
+        </div>
+      </div>
+      ${ann ? renderAnnotationBadge(ann) : ''}
+    </div>`;
+}
+
+function renderLesson(lesson: Lesson, filter: string, openByDefault: boolean): string {
+  const annCount = lesson.sections.flatMap(s => s.segments).filter(s => s.annotation).length;
+  const annBadge = annCount > 0
+    ? `<span class="ml-2 inline-block px-1.5 py-0.5 text-xs rounded-full bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300 font-medium">${annCount} ann.</span>`
+    : '';
+
+  const segsHtml = lesson.sections.map(sec => {
+    const secLabel = sec.section_num != null && lesson.sections.length > 1
+      ? `<p class="text-xs text-gray-400 dark:text-gray-600 font-mono mb-1 mt-3">§${sec.section_num}</p>` : '';
+    const segs = sec.segments.map(s => renderSegment(s, filter)).join('');
+    return segs ? secLabel + segs : '';
+  }).join('');
+
+  if (!segsHtml.trim() && filter !== 'all') return '';
+
+  const id = `lesson-${lesson.lesson_num ?? lesson.title.replace(/\s+/g, '-')}`;
+  const open = openByDefault ? 'open' : '';
+
+  return `
+    <details class="lesson-item bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm" id="${id}" ${open}>
+      <summary class="flex items-center gap-2 px-5 py-3.5 cursor-pointer list-none select-none hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+        <svg class="w-4 h-4 shrink-0 text-cyan-500 transition-transform lesson-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+        <span class="font-semibold text-gray-800 dark:text-gray-200 text-sm">${lesson.title}</span>
+        ${annBadge}
+      </summary>
+      <div class="px-5 pb-5 pt-2 space-y-0.5 lesson-body">${segsHtml || '<p class="text-xs text-gray-400 italic">No passages match this filter.</p>'}</div>
+    </details>`;
+}
+
+// ── Main ───────────────────────────────────────────────────────────────────────
+
+let readerData: ReaderData | null = null;
+let activeChapter = 0;
+let activeFilter = 'all';
+
+async function loadReader() {
+  const res = await fetch('/Rav%20Nachman/reader.json');
+  readerData = await res.json() as ReaderData;
+  initReader();
+}
+
+function initReader() {
+  if (!readerData) return;
+  buildChapterTabs();
+  buildControls();
+  renderChapter(0);
+}
+
+function buildChapterTabs() {
+  const tabs = document.getElementById('chapter-tabs')!;
+  tabs.innerHTML = readerData!.chapters.map((ch, i) => {
+    const lessonCount = ch.lessons.length;
+    const annCount = ch.lessons.flatMap(l => l.sections).flatMap(s => s.segments).filter(s => s.annotation).length;
+    const active = i === activeChapter;
+    return `<button
+      class="chapter-tab px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors border
+        ${active ? 'bg-cyan-600 text-white border-cyan-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+      data-chapter="${i}">
+      ${ch.chapter} <span class="opacity-60 text-xs">(${lessonCount}${annCount ? ` · ${annCount} ann.` : ''})</span>
+    </button>`;
+  }).join('');
+
+  tabs.querySelectorAll('.chapter-tab').forEach(btn => {
     btn.addEventListener('click', () => {
-      const filter = btn.dataset.filter!;
-
-      // Reset all buttons
-      filterBtns.forEach(b => {
-        b.classList.remove('bg-gray-800', 'text-white', 'dark:bg-gray-100', 'dark:text-gray-900', 'font-medium');
-        b.classList.add('font-normal');
-      });
-      btn.classList.add('bg-gray-800', 'text-white', 'dark:bg-gray-100', 'dark:text-gray-900', 'font-medium');
-      btn.classList.remove('font-normal');
-
-      // Filter cards
-      cards.forEach(card => {
-        card.style.display = (filter === 'all' || card.dataset.stance === filter) ? '' : 'none';
-      });
-
-      // Hide empty sections
-      sectionGroups.forEach(group => {
-        const anyVisible = Array.from(group.querySelectorAll<HTMLElement>('.annotation-card'))
-          .some(c => c.style.display !== 'none');
-        group.style.display = anyVisible ? '' : 'none';
-      });
+      activeChapter = parseInt((btn as HTMLElement).dataset.chapter!);
+      buildChapterTabs();
+      renderChapter(activeChapter);
     });
   });
+}
+
+function buildControls() {
+  const ctrl = document.getElementById('reader-controls')!;
+  const total = readerData!.chapters.reduce((n, ch) =>
+    n + ch.lessons.flatMap(l => l.sections).flatMap(s => s.segments).length, 0);
+  const annTotal = readerData!.chapters.reduce((n, ch) =>
+    n + ch.lessons.flatMap(l => l.sections).flatMap(s => s.segments).filter(s => s.annotation).length, 0);
+
+  ctrl.innerHTML = `
+    <span class="text-xs text-gray-400">${total.toLocaleString()} segments · ${annTotal} annotated</span>
+    <div class="flex gap-1.5 flex-wrap">
+      ${[
+        ['all', 'All', 'border-gray-400 dark:border-gray-500'],
+        ['supports qualified anti-intellectual reading', 'Supports', 'border-red-400 dark:border-red-600 text-red-700 dark:text-red-300'],
+        ['counterevidence to broad anti-intellectual reading', 'Counters', 'border-green-400 dark:border-green-600 text-green-700 dark:text-green-300'],
+        ['complicates / mixed', 'Mixed', 'border-amber-400 dark:border-amber-600 text-amber-700 dark:text-amber-300'],
+      ].map(([val, label, cls]) => `
+        <button class="filter-btn text-xs px-2.5 py-1 rounded-full border ${cls} transition-colors
+          ${activeFilter === val ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900 font-semibold' : ''}"
+          data-filter="${val}">${label}</button>`).join('')}
+    </div>`;
+
+  ctrl.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeFilter = (btn as HTMLElement).dataset.filter!;
+      buildControls();
+      renderChapter(activeChapter);
+    });
+  });
+}
+
+function renderChapter(idx: number) {
+  const content = document.getElementById('reader-content')!;
+  if (!readerData) return;
+  const ch = readerData.chapters[idx];
+  if (!ch) return;
+
+  // Open first lesson by default; open all annotated if filter active
+  const html = ch.lessons.map((les, i) => {
+    const hasAnnotations = les.sections.flatMap(s => s.segments).some(s => s.annotation);
+    const openDefault = i === 0 || (activeFilter !== 'all' && hasAnnotations);
+    return renderLesson(les, activeFilter, openDefault);
+  }).join('');
+
+  content.innerHTML = html || '<p class="text-sm text-gray-400 italic p-4">No passages match this filter in this chapter.</p>';
+
+  // Rotate chevrons on open/close
+  content.querySelectorAll('details.lesson-item').forEach(det => {
+    const chev = det.querySelector<HTMLElement>('.lesson-chevron');
+    if (!chev) return;
+    if ((det as HTMLDetailsElement).open) chev.style.transform = 'rotate(90deg)';
+    det.addEventListener('toggle', () => {
+      chev.style.transform = (det as HTMLDetailsElement).open ? 'rotate(90deg)' : '';
+    });
+  });
+  content.querySelectorAll('details.ann-detail').forEach(det => {
+    const chev = det.querySelector<HTMLElement>('.ann-chevron');
+    if (!chev) return;
+    det.addEventListener('toggle', () => {
+      chev.style.transform = (det as HTMLDetailsElement).open ? 'rotate(180deg)' : '';
+    });
+  });
+}
+
+// kick off
+document.addEventListener('DOMContentLoaded', loadReader);
 </script>
 
 <style>
   .font-hebrew {
     font-family: 'SBL Hebrew', 'Ezra SIL', 'Arial Hebrew', 'David', serif;
   }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::marker { display: none; }
 </style>
