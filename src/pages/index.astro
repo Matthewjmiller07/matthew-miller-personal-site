@@ -117,10 +117,167 @@ import { raiseAllEyebrows } from '../hooks/useGlobalFaceTracker.ts';
                   </div>
                   <div class="tv-stand"></div>
                 </div>
+
+                <div class="mt-10 w-full max-w-3xl mx-auto">
+                  <canvas id="kinetic-text" class="w-full block rounded-xl" style="min-height:80px;"></canvas>
+                </div>
             </div>
         </main>
     </div>
-    
+
+    <script>
+      import { prepareWithSegments, layoutWithLines } from '@chenglou/pretext';
+
+      const canvas = document.getElementById('kinetic-text') as HTMLCanvasElement | null;
+      if (canvas) {
+        const ctx = canvas.getContext('2d')!;
+
+        // Non-breaking spaces keep multi-word phrases from splitting across lines
+        const WORDS = [
+          'AI', 'Analytics', 'Jewish Studies', 'Klezmer',
+          'TypeScript', 'Torah', 'Automation', 'Innovation',
+          'Code', 'Data', 'שלום',
+        ];
+        const SEP = ' · ';
+        const FULL_TEXT = WORDS.join(SEP);
+        const FONT_SIZE = 20;
+        const LINE_HEIGHT = 52;
+        const H_PAD = 28;
+        const V_PAD = 22;
+
+        const PALETTE = [
+          '#38bdf8', '#818cf8', '#34d399',
+          '#fb923c', '#e879f9', '#f472b6', '#fbbf24',
+        ];
+
+        interface WordEntry {
+          text: string;
+          x: number;
+          baseY: number;
+          phase: number;
+          color: string;
+        }
+
+        let words: WordEntry[] = [];
+        let animId = 0;
+        let startTime: number | null = null;
+        let mouse = { x: -9999, y: -9999 };
+        let dpr = 1;
+
+        function isDark() {
+          return document.documentElement.classList.contains('dark');
+        }
+
+        function setup() {
+          cancelAnimationFrame(animId);
+          dpr = window.devicePixelRatio || 1;
+          const W = (canvas!.parentElement?.offsetWidth ?? 700);
+          const font = `500 ${FONT_SIZE}px Inter, system-ui, sans-serif`;
+
+          // Use pretext to measure exact line layout — no DOM reflow
+          const prepared = prepareWithSegments(FULL_TEXT, font);
+          const { lines, height } = layoutWithLines(prepared, W - H_PAD * 2, LINE_HEIGHT);
+
+          const canvasH = height + V_PAD * 3;
+          canvas!.width = Math.round(W * dpr);
+          canvas!.height = Math.round(canvasH * dpr);
+          canvas!.style.width = W + 'px';
+          canvas!.style.height = canvasH + 'px';
+          ctx.scale(dpr, dpr);
+
+          ctx.font = font;
+          words = [];
+          let colorIdx = 0;
+
+          lines.forEach((line, li) => {
+            const baseY = V_PAD * 1.5 + li * LINE_HEIGHT + FONT_SIZE;
+            const lineWidth = ctx.measureText(line.text).width;
+            let x = (W - lineWidth) / 2;
+
+            // Split on separator to get individual word entries
+            const parts = line.text.split(SEP);
+            parts.forEach((part, pi) => {
+              const token = pi < parts.length - 1 ? part + SEP : part;
+              const tokenW = ctx.measureText(token).width;
+              words.push({
+                text: token,
+                x,
+                baseY,
+                phase: colorIdx * 0.65,
+                color: PALETTE[colorIdx % PALETTE.length],
+              });
+              x += tokenW;
+              colorIdx++;
+            });
+          });
+
+          startTime = null;
+          animId = requestAnimationFrame(draw);
+        }
+
+        function draw(ts: number) {
+          if (!startTime) startTime = ts;
+          const t = (ts - startTime) / 1000;
+          const W = canvas!.width / dpr;
+          const H = canvas!.height / dpr;
+
+          ctx.clearRect(0, 0, W, H);
+
+          // Subtle label
+          ctx.save();
+          ctx.font = '400 10px "SF Mono", "Fira Code", ui-monospace, monospace';
+          ctx.fillStyle = isDark()
+            ? 'rgba(148,163,184,0.45)'
+            : 'rgba(100,116,139,0.55)';
+          ctx.textAlign = 'center';
+          ctx.fillText('rendered with @chenglou/pretext · zero dom reflow', W / 2, V_PAD * 0.8);
+          ctx.restore();
+
+          // Words with wave + mouse-proximity lift
+          ctx.font = `500 ${FONT_SIZE}px Inter, system-ui, sans-serif`;
+          ctx.textAlign = 'left';
+
+          words.forEach((w) => {
+            const wave = Math.sin(t * 1.4 + w.phase) * 5;
+            const cx = w.x + ctx.measureText(w.text).width / 2;
+            const dx = cx - mouse.x;
+            const dy = w.baseY - mouse.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const prox = Math.max(0, 1 - dist / 90);
+            const y = w.baseY + wave - prox * 10;
+
+            ctx.shadowColor = w.color;
+            ctx.shadowBlur = 6 + prox * 14;
+            ctx.fillStyle = w.color;
+
+            if (prox > 0.05) {
+              ctx.save();
+              ctx.translate(cx, y);
+              const s = 1 + prox * 0.18;
+              ctx.scale(s, s);
+              ctx.fillText(w.text, -ctx.measureText(w.text).width / 2, 0);
+              ctx.restore();
+            } else {
+              ctx.fillText(w.text, w.x, y);
+            }
+            ctx.shadowBlur = 0;
+          });
+
+          animId = requestAnimationFrame(draw);
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+          const r = canvas!.getBoundingClientRect();
+          mouse.x = (e.clientX - r.left);
+          mouse.y = (e.clientY - r.top);
+        });
+        canvas.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
+
+        window.addEventListener('resize', setup);
+        setup();
+      }
+    </script>
+
     <script>
         // Confetti burst on page load
         (function () {
