@@ -434,8 +434,9 @@ async function transcribeWithSoferAI(audioPath, shiurId) {
   }
 
   const submitData = await submitRes.json();
-  console.log('  Sofer AI submit response:', JSON.stringify(submitData));
-  const transcriptionId = submitData.id || submitData._id || submitData.job_id || submitData.transcription_id;
+  const transcriptionId = typeof submitData === 'string'
+    ? submitData
+    : (submitData.id || submitData._id || submitData.job_id || submitData.transcription_id);
   if (!transcriptionId) {
     throw new Error(`Sofer AI did not return a transcription ID. Response: ${JSON.stringify(submitData)}`);
   }
