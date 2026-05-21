@@ -1,15 +1,16 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import scpData from '../../data/scp.json';
-import shiur1Transcript from '../../data/scp-shiur-1-transcript.json';
-import shiur2Transcript from '../../data/scp-shiur-2-transcript.json';
 
 const { series, shiurim } = scpData;
 
-const transcriptMap: Record<string, typeof shiur1Transcript> = {
-  'shiur-1': shiur1Transcript,
-  'shiur-2': shiur2Transcript,
-};
+// Auto-load all transcript files — new shiurim are picked up automatically
+const transcriptModules = import.meta.glob('../../data/scp-*-transcript.json', { eager: true });
+const transcriptMap: Record<string, { start: string; startSeconds: number; text: string }[]> = {};
+for (const [filePath, mod] of Object.entries(transcriptModules)) {
+  const match = filePath.match(/scp-(shiur-\d+)-transcript\.json$/);
+  if (match) transcriptMap[match[1]] = (mod as { default: typeof transcriptMap[string] }).default;
+}
 
 const totalJokes = shiurim.reduce((sum, s) => sum + (s.jokes?.length ?? 0), 0);
 const allFoods = shiurim.flatMap(s =>

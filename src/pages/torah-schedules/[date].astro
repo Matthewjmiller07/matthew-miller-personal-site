@@ -414,16 +414,20 @@ try {
           <span class="hebrew-ui hidden">{hebrewTranslations['Text Content']}</span>
         </h3>
         
-        <div class="flex space-x-2 english-ui">
-          <button id="bothLangs" class="px-3 py-1 rounded bg-blue-600 text-white text-sm lang-toggle active">Both</button>
-          <button id="hebrewOnly" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm lang-toggle">Hebrew Only</button>
-          <button id="englishOnly" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm lang-toggle">English Only</button>
-        </div>
-        
-        <div class="flex space-x-2 hebrew-ui hidden">
-          <button id="bothLangs" class="px-3 py-1 rounded bg-blue-600 text-white text-sm lang-toggle active">{hebrewTranslations['Both']}</button>
-          <button id="hebrewOnly" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm lang-toggle">{hebrewTranslations['Hebrew Only']}</button>
-          <button id="englishOnly" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm lang-toggle">{hebrewTranslations['English Only']}</button>
+        <div class="flex flex-wrap gap-2 items-center">
+          <select id="translation-select" class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white text-sm">
+            <option value="">Loading translations…</option>
+          </select>
+          <div class="flex space-x-2 english-ui">
+            <button id="bothLangs" class="px-3 py-1 rounded bg-blue-600 text-white text-sm lang-toggle active">Both</button>
+            <button id="hebrewOnly" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm lang-toggle">Hebrew Only</button>
+            <button id="englishOnly" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm lang-toggle">English Only</button>
+          </div>
+          <div class="flex space-x-2 hebrew-ui hidden">
+            <button id="bothLangs" class="px-3 py-1 rounded bg-blue-600 text-white text-sm lang-toggle active">{hebrewTranslations['Both']}</button>
+            <button id="hebrewOnly" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm lang-toggle">{hebrewTranslations['Hebrew Only']}</button>
+            <button id="englishOnly" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white text-sm lang-toggle">{hebrewTranslations['English Only']}</button>
+          </div>
         </div>
       </div>
       
@@ -663,6 +667,9 @@ try {
             } else if (trimmedImage.includes('images/aviya/')) {
               // Path with 'images/aviya/' but missing leading slash
               imageSrc = '/' + trimmedImage;
+            } else if (trimmedImage.startsWith('/')) {
+              // Any other absolute path (e.g. /Learning Images/...)
+              imageSrc = trimmedImage;
             } else {
               // Just the filename - add full path
               imageSrc = `/images/aviya/${trimmedImage}`;
@@ -683,11 +690,10 @@ try {
                   data-image-path={trimmedImage}
                 />
                 {/* Delete button - hidden by default, visible on hover */}
-                <button 
-                  class="delete-image-btn absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md" 
+                <button
+                  class="delete-image-btn absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md"
                   title="Delete image"
                   data-image-path={trimmedImage}
-                  onclick="deleteImage(event, '${dateParam}', '${trimmedImage}')"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -751,6 +757,48 @@ try {
   .grid.single-lang .english-text {
     width: 100%;
     max-width: 100%;
+    display: block;
+  }
+
+  /* Footnote tooltips */
+</style>
+
+<style is:global>
+  .footnote-ref {
+    position: relative;
+    display: inline;
+  }
+  .footnote-ref sup.footnote-marker {
+    cursor: pointer;
+    color: #3b82f6;
+    font-weight: 600;
+    text-decoration: underline dotted;
+  }
+  .footnote-ref i.footnote {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    min-width: 220px;
+    max-width: 340px;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-style: normal;
+    font-size: 0.82em;
+    line-height: 1.5;
+    z-index: 30;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    white-space: normal;
+    color: #1f2937;
+  }
+  .dark .footnote-ref i.footnote {
+    background: #1e293b;
+    border-color: #475569;
+    color: #e2e8f0;
+  }
+  .footnote-ref.open i.footnote {
     display: block;
   }
 </style>
@@ -832,140 +880,186 @@ try {
     // Fetches text content from the Sefaria API with a retry mechanism.
     // Fetches text content from the Sefaria API and dynamically builds verse-by-verse layouts for chapters.
     // Fetches text content from the Sefaria API and dynamically builds verse-by-verse layouts for chapters.
-    async function fetchSefariaTexts() {
-      console.log("Attempting to fetch Sefaria texts with chapter support...");
-      try {
-        const containers = document.querySelectorAll('div[id^="verse-"]');
-        if (containers.length === 0) {
-          console.warn('No verse containers found. Sefaria fetch cannot proceed.');
-          return;
-        }
-        
-        console.log(`Found ${containers.length} reading containers to populate.`);
+    function applyFootnoteStyles(containerEl) {
+      const isDark = document.documentElement.classList.contains('dark');
+      const bg = isDark ? '#1e293b' : '#fff';
+      const border = isDark ? '#475569' : '#d1d5db';
+      const color = isDark ? '#e2e8f0' : '#1f2937';
+      containerEl.querySelectorAll('sup.footnote-marker').forEach(sup => {
+        if (sup.dataset.fnProcessed) return;
+        const footnoteEl = sup.nextElementSibling;
+        if (!footnoteEl || footnoteEl.tagName !== 'I' || !footnoteEl.classList.contains('footnote')) return;
+        sup.dataset.fnProcessed = '1';
+        sup.style.cursor = 'pointer';
+        sup.style.color = '#3b82f6';
+        sup.style.fontWeight = '600';
+        sup.style.textDecoration = 'underline dotted';
+        footnoteEl.style.display = 'none';
+        footnoteEl.style.position = 'fixed';
+        footnoteEl.style.top = 'auto';
+        footnoteEl.style.bottom = 'auto';
+        footnoteEl.style.minWidth = '220px';
+        footnoteEl.style.maxWidth = '360px';
+        footnoteEl.style.background = bg;
+        footnoteEl.style.border = `1px solid ${border}`;
+        footnoteEl.style.borderRadius = '6px';
+        footnoteEl.style.padding = '10px 14px';
+        footnoteEl.style.fontStyle = 'normal';
+        footnoteEl.style.fontSize = '0.84em';
+        footnoteEl.style.lineHeight = '1.6';
+        footnoteEl.style.zIndex = '9999';
+        footnoteEl.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)';
+        footnoteEl.style.whiteSpace = 'normal';
+        footnoteEl.style.color = color;
+        const wrapper = document.createElement('span');
+        wrapper.className = 'footnote-ref';
+        wrapper.style.position = 'relative';
+        wrapper.style.display = 'inline';
+        sup.parentNode.insertBefore(wrapper, sup);
+        wrapper.appendChild(sup);
+        wrapper.appendChild(footnoteEl);
+      });
+    }
 
-        const fetchPromises = Array.from(containers).map(container => {
-          const referenceElement = container.querySelector('h4 .english-ui, h3 .english-ui');
-          if (!referenceElement) return null;
-          
-          const reference = referenceElement.textContent.trim();
-          const apiUrl = `https://www.sefaria.org/api/texts/${reference.replace(/\s/g, '.')}?context=0`;
+    function createVerseHTML(verseReference, hebrewVerse, englishVerse, existingNote) {
+      return `
+        <div class="mb-6 p-4 border border-gray-300 dark:border-gray-700 rounded-lg">
+          <h4 class="text-lg font-semibold mb-2">${verseReference}</h4>
+          <div class="grid md:grid-cols-2 gap-6">
+            <div dir="rtl" lang="he" class="font-serif text-lg leading-relaxed hebrew-text">${hebrewVerse}</div>
+            <div class="font-serif text-lg leading-relaxed english-text">${englishVerse}</div>
+          </div>
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notes for ${verseReference}</label>
+            <textarea
+              class="verse-note w-full h-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-black dark:text-white"
+              data-reference="${verseReference}"
+              placeholder="Add your notes for this verse..."
+            >${existingNote || ''}</textarea>
+            <div class="flex justify-end mt-2">
+              <button class="save-note-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm" data-reference="${verseReference}">Save Note</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
-          return fetch(apiUrl)
-            .then(response => {
-              if (!response.ok) throw new Error(`HTTP ${response.status} for ${reference}`);
-              return response.json();
-            })
-            .then(data => ({ reference, data, container }))
-            .catch(error => ({ reference, error, container }));
-        });
+    // Toggle footnotes on click — position using getBoundingClientRect so fixed works correctly
+    document.addEventListener('click', e => {
+      const marker = e.target.closest('sup.footnote-marker');
+      if (marker) {
+        e.stopPropagation();
+        const wrapper = marker.closest('.footnote-ref');
+        if (wrapper) {
+          const fn = wrapper.querySelector('i.footnote');
+          if (fn) {
+            if (fn.style.display === 'block') {
+              fn.style.display = 'none';
+            } else {
+              // Position below the marker, flipping up if near bottom of viewport
+              const rect = marker.getBoundingClientRect();
+              const spaceBelow = window.innerHeight - rect.bottom;
+              fn.style.display = 'block';
+              const fnH = fn.offsetHeight || 120;
+              if (spaceBelow < fnH + 12) {
+                fn.style.top = 'auto';
+                fn.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+              } else {
+                fn.style.bottom = 'auto';
+                fn.style.top = (rect.bottom + 6) + 'px';
+              }
+              // Horizontal: align to left of marker, clamp to viewport
+              let left = rect.left;
+              const fnW = 340;
+              if (left + fnW > window.innerWidth - 8) left = window.innerWidth - fnW - 8;
+              fn.style.left = Math.max(8, left) + 'px';
+            }
+          }
+        }
+        return;
+      }
+      document.querySelectorAll('.footnote-ref i.footnote').forEach(el => { el.style.display = 'none'; });
+    });
 
-        const results = await Promise.all(fetchPromises.filter(p => p !== null));
-        console.log(`Successfully settled ${results.length} fetches from Sefaria.`);
+    async function fetchSefariaTexts(version = '') {
+      console.log("Attempting to fetch Sefaria texts...", version ? `version: ${version}` : 'default');
+      try {
+        const containers = document.querySelectorAll('div[id^="verse-"]');
+        if (containers.length === 0) {
+          console.warn('No verse containers found. Sefaria fetch cannot proceed.');
+          return;
+        }
 
-        // Now, update the DOM with the results
-        results.forEach(result => {
-          const { reference, data, error, container } = result;
+        const fetchPromises = Array.from(containers).map(container => {
+          const referenceElement = container.querySelector('h4 .english-ui, h3 .english-ui');
+          if (!referenceElement) return null;
 
-          if (error) {
-            container.innerHTML = `<div class="text-red-500 p-4">Error loading text for ${reference}: ${error.message}</div>`;
-            return;
-          }
+          const reference = referenceElement.textContent.trim();
+          const ref = reference.replace(/\s/g, '.');
+          const versionParam = version ? `&ven=${encodeURIComponent(version)}` : '';
+          const apiUrl = `https://www.sefaria.org/api/texts/${ref}?context=0${versionParam}`;
 
-          const isChapter = Array.isArray(data.he) && Array.isArray(data.text);
+          return fetch(apiUrl)
+            .then(response => {
+              if (!response.ok) throw new Error(`HTTP ${response.status} for ${reference}`);
+              return response.json();
+            })
+            .then(data => ({ reference, data, container }))
+            .catch(error => ({ reference, error, container }));
+        });
 
-          if (isChapter) {
-            console.log(`Rendering "${reference}" as a full chapter.`);
-            
-            // *** THE FIX ***
-            // 1. Clear the entire container to remove any old titles or placeholders.
-            container.innerHTML = '';
+        const results = await Promise.all(fetchPromises.filter(p => p !== null));
 
-            // 2. Create a new container element to hold everything.
-            const newContentWrapper = document.createElement('div');
-            
-            // 3. Add the main chapter title ONCE to the new container.
+        results.forEach(result => {
+          const { reference, data, error, container } = result;
+
+          if (error) {
+            container.innerHTML = `<div class="text-red-500 p-4">Error loading text for ${reference}: ${error.message}</div>`;
+            return;
+          }
+
+          const isChapter = Array.isArray(data.he) && Array.isArray(data.text);
+
+          if (isChapter) {
+            container.innerHTML = '';
+            const newContentWrapper = document.createElement('div');
             newContentWrapper.innerHTML = `
               <h3 class="text-xl font-bold mb-4">
                 <span class="english-ui">${reference}</span>
                 <span class="hebrew-ui hidden">${translateReferenceToHebrew(reference)}</span>
               </h3>
             `;
-
-            // 4. Create a sub-container for the list of verses.
             const versesListContainer = document.createElement('div');
             versesListContainer.className = 'space-y-6 mt-4';
-
-            data.he.forEach((hebrewVerse, index) => {
-              const englishVerse = data.text[index];
-              const verseNum = index + 1;
+            const verseHTMLParts = [];
+            data.he.forEach((hebrewVerse, index) => {
+              const verseNum = index + 1;
               const chapterNum = data.sections[0];
-              const verseReference = `${data.book} ${chapterNum}:${verseNum}`;
-              const existingNote = window.currentVerseNotesData[verseReference] || '';
-
-              // Add the HTML for each verse to the list container.
-              versesListContainer.innerHTML += createVerseHTML(verseReference, hebrewVerse, englishVerse, existingNote);
-            });
-            
-            // 5. Append the list of verses to the main wrapper.
+              const verseReference = `${data.book} ${chapterNum}:${verseNum}`;
+              const existingNote = window.currentVerseNotesData[verseReference] || '';
+              verseHTMLParts.push(createVerseHTML(verseReference, hebrewVerse, data.text[index] || '', existingNote));
+            });
+            versesListContainer.innerHTML = verseHTMLParts.join('');
+            applyFootnoteStyles(versesListContainer);
             newContentWrapper.appendChild(versesListContainer);
-
-            // 6. Finally, append the fully constructed wrapper to the now-empty main container.
             container.appendChild(newContentWrapper);
+          } else {
+            const hebrewTextDiv = container.querySelector('.hebrew-text');
+            const englishTextDiv = container.querySelector('.english-text');
+            if (hebrewTextDiv) hebrewTextDiv.innerHTML = data.he || '<i>Text not available.</i>';
+            if (englishTextDiv) {
+              englishTextDiv.innerHTML = data.text || '<i>Text not available.</i>';
+              applyFootnoteStyles(englishTextDiv);
+            }
+          }
+        });
 
-          } else {
-            console.log(`Rendering "${reference}" as a single verse/range.`);
-            // This logic for single verses remains the same.
-            const hebrewTextDiv = container.querySelector('.hebrew-text');
-            const englishTextDiv = container.querySelector('.english-text');
-            if (hebrewTextDiv) hebrewTextDiv.innerHTML = data.he || '<i>Text not available.</i>';
-            if (englishTextDiv) englishTextDiv.innerHTML = data.text || '<i>Text not available.</i>';
-          }
-        });
-
-        console.log('Sefaria text rendering complete.');
-
-      } catch (error) {
-        console.error('A critical error occurred in fetchSefariaTexts:', error);
-      }
-    }
-
-    // *** NEW HELPER FUNCTION ***
-    // Creates the complete HTML for a single verse block.
-    function createVerseHTML(reference, hebrewText, englishText, noteText) {
-      const hebrewReference = translateReferenceToHebrew(reference); // Assumes translateReferenceToHebrew is available
-      return `
-        <div class="verse-block p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-          <h4 class="text-lg font-semibold mb-2">
-            <span class="english-ui">${reference}</span>
-            <span class="hebrew-ui hidden">${hebrewReference}</span>
-          </h4>
-          <div class="grid md:grid-cols-2 gap-6">
-            <div dir="rtl" lang="he" class="font-serif text-lg leading-relaxed hebrew-text">${hebrewText || '<i>Text not available.</i>'}</div>
-            <div class="font-serif text-lg leading-relaxed english-text">${englishText || '<i>Text not available.</i>'}</div>
-          </div>
-          <div class="mt-6">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              <span class="english-ui">Notes for ${reference}</span>
-              <span class="hebrew-ui hidden">הערות ל${hebrewReference}</span>
-            </label>
-            <textarea 
-              class="verse-note w-full h-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-black dark:text-white"
-              data-reference="${reference}"
-              placeholder="Add your notes for this verse..."
-            >${noteText}</textarea>
-            <div class="flex justify-end mt-2">
-              <button 
-                class="save-note-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm" 
-                data-reference="${reference}"
-              >
-                <span class="english-ui">Save Note</span>
-                <span class="hebrew-ui hidden">שמור הערה</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
+        console.log('Sefaria text rendering complete.');
+      } catch (error) {
+        console.error('A critical error occurred in fetchSefariaTexts:', error);
+      }
     }
+
 
     // Loads general and verse-specific notes from your API.
     // Loads general and verse-specific notes from your API.
@@ -1364,143 +1458,238 @@ try {
 
     // Setup image upload functionality
     function setupImageUpload() {
-      const uploadForm = document.getElementById('image-upload-form');
       const fileInput = document.getElementById('image-upload');
-      const uploadStatus = document.getElementById('upload-status');
-      
-      if (!uploadForm || !fileInput) return;
-      
-      uploadForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const file = fileInput.files[0];
-        if (!file) {
-          updateUploadStatus('Please select a file first', 'error');
+      const dragDropArea = document.getElementById('drag-drop-area');
+      const uploadProgress = document.getElementById('upload-progress');
+      const uploadProgressBar = document.getElementById('upload-progress-bar');
+      const uploadPercentage = document.getElementById('upload-percentage');
+      const uploadStatusEl = document.getElementById('upload-status');
+
+      if (!fileInput) return;
+
+      async function uploadFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+          alert('Please select an image file.');
           return;
         }
-        
+
         const formData = new FormData();
         formData.append('image', file);
-        formData.append('date', new URLSearchParams(window.location.search).get('date') || '');
-        
+        formData.append('date', currentDateParam);
+        formData.append('schedule', currentSchedule || 'default');
+
+        if (uploadProgress) uploadProgress.classList.remove('hidden');
+        if (uploadStatusEl) uploadStatusEl.textContent = 'Uploading...';
+        if (uploadProgressBar) uploadProgressBar.style.width = '40%';
+        if (uploadPercentage) uploadPercentage.textContent = '40%';
+
         try {
-          updateUploadStatus('Uploading...', 'info');
           const response = await fetch('/api/upload-image', {
             method: 'POST',
-            body: formData
+            body: formData,
           });
-          
+
+          if (uploadProgressBar) uploadProgressBar.style.width = '90%';
+          if (uploadPercentage) uploadPercentage.textContent = '90%';
+
           const result = await response.json();
-          
+
           if (response.ok && result.success) {
-            updateUploadStatus('Image uploaded successfully!', 'success');
-            // Reload the page to show the new image
-            setTimeout(() => window.location.reload(), 1000);
+            if (uploadProgressBar) uploadProgressBar.style.width = '100%';
+            if (uploadPercentage) uploadPercentage.textContent = '100%';
+            if (uploadStatusEl) uploadStatusEl.textContent = 'Upload complete!';
+            addImageToGallery(result.imageUrl);
+            setTimeout(() => {
+              if (uploadProgress) uploadProgress.classList.add('hidden');
+              if (uploadProgressBar) uploadProgressBar.style.width = '0%';
+            }, 2000);
           } else {
             throw new Error(result.error || 'Failed to upload image');
           }
         } catch (error) {
           console.error('Upload error:', error);
-          updateUploadStatus(`Error: ${error.message}`, 'error');
+          if (uploadStatusEl) {
+            uploadStatusEl.textContent = `Error: ${error.message}`;
+            uploadStatusEl.className = 'text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-red-600 bg-red-200';
+          }
+          setTimeout(() => {
+            if (uploadProgress) uploadProgress.classList.add('hidden');
+          }, 3000);
         }
+      }
+
+      function addImageToGallery(imageUrl) {
+        // Find existing grid or create one
+        let imageGrid = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2');
+        if (!imageGrid) {
+          // Remove "no images" placeholder if present
+          const placeholder = document.querySelector('.mt-10 .bg-gray-100, .mt-10 .bg-gray-800');
+          if (placeholder) placeholder.remove();
+          imageGrid = document.createElement('div');
+          imageGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+          document.querySelector('.mt-10')?.appendChild(imageGrid);
+        }
+
+        const container = document.createElement('div');
+        container.className = 'border dark:border-gray-700 rounded-lg overflow-hidden relative group';
+        container.innerHTML = `
+          <img
+            src="${imageUrl}"
+            alt="Study image"
+            class="w-full h-auto object-cover max-h-96"
+            loading="lazy"
+            style="opacity:1;"
+          />
+          <button
+            class="delete-image-btn absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md"
+            title="Delete image"
+            data-image-path="${imageUrl}"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        `;
+        imageGrid.appendChild(container);
+      }
+
+      // File input change
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) uploadFile(file);
+        fileInput.value = ''; // reset so same file can be re-uploaded
       });
-      
-      function updateUploadStatus(message, type = 'info') {
-        if (!uploadStatus) return;
-        
-        uploadStatus.textContent = message;
-        uploadStatus.className = 'text-sm mt-2';
-        
-        if (type === 'error') {
-          uploadStatus.classList.add('text-red-600', 'dark:text-red-400');
-        } else if (type === 'success') {
-          uploadStatus.classList.add('text-green-600', 'dark:text-green-400');
-        } else {
-          uploadStatus.classList.add('text-blue-600', 'dark:text-blue-400');
-        }
+
+      // Drag and drop
+      if (dragDropArea) {
+        dragDropArea.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          dragDropArea.classList.add('border-blue-400', 'bg-blue-50', 'dark:bg-blue-900/30');
+        });
+        dragDropArea.addEventListener('dragleave', () => {
+          dragDropArea.classList.remove('border-blue-400', 'bg-blue-50', 'dark:bg-blue-900/30');
+        });
+        dragDropArea.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dragDropArea.classList.remove('border-blue-400', 'bg-blue-50', 'dark:bg-blue-900/30');
+          const file = e.dataTransfer.files[0];
+          if (file) uploadFile(file);
+        });
+        dragDropArea.addEventListener('click', () => fileInput.click());
+        dragDropArea.style.cursor = 'pointer';
       }
     }
     
     // --- 3. EXECUTE INITIALIZATION LOGIC ---
     addAllEventListeners();
-    setupImageUpload();
 
-    // Asynchronously load dynamic content
-    (async () => {
+    // Initialize verse notes store so fetchSefariaTexts never hits undefined
+    window.currentVerseNotesData = window.currentVerseNotesData || {};
+
+    // Run Sefaria fetch immediately; load notes in parallel (they're independent)
+    Promise.allSettled([
+      fetchSefariaTexts().catch(e => console.error('Error fetching Sefaria texts:', e)),
+      loadVerseNotes().catch(e => console.error('Error loading verse notes:', e)),
+    ]);
+
+    // Load available English translations from Sefaria for the first reading
+    async function loadTranslationOptions() {
+      const select = document.getElementById('translation-select');
+      if (!select) return;
+      const firstContainer = document.querySelector('div[id^="verse-"]');
+      if (!firstContainer) return;
+      const refEl = firstContainer.querySelector('h4 .english-ui, h3 .english-ui');
+      if (!refEl) return;
+      const ref = refEl.textContent.trim().replace(/\s/g, '.');
       try {
-        console.log('Starting to load verse notes...');
-        await loadVerseNotes();
-      } catch (error) {
-        console.error('Error loading verse notes, continuing with other content:', error);
+        // The text endpoint returns a `versions` array with all available translations
+        const resp = await fetch(`https://www.sefaria.org/api/texts/${ref}?context=0`);
+        if (!resp.ok) throw new Error('texts fetch failed');
+        const data = await resp.json();
+        const englishVersions = Array.isArray(data.versions)
+          ? data.versions.filter(v => v.language === 'en' && v.versionTitle)
+          : [];
+        select.innerHTML = '';
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = `Default — ${data.versionTitle || 'Sefaria'}`;
+        select.appendChild(defaultOpt);
+        englishVersions.forEach(v => {
+          if (v.versionTitle === data.versionTitle) return; // skip default, already listed
+          const opt = document.createElement('option');
+          opt.value = v.versionTitle;
+          const label = v.shortVersionTitle || v.versionTitle;
+          opt.textContent = label.length > 45 ? label.slice(0, 43) + '…' : label;
+          opt.title = v.versionTitle;
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        select.innerHTML = '<option value="">Default (Sefaria)</option>';
+        console.warn('Could not load translation versions:', e);
       }
-      
-      try {
-        console.log('Starting to fetch Sefaria texts...');
-        await fetchSefariaTexts();
-      } catch (error) {
-        console.error('Error fetching Sefaria texts:', error);
-      }
-    })();
+    }
+
+    // Re-fetch verses when translation changes
+    const translationSelect = document.getElementById('translation-select');
+    if (translationSelect) {
+      translationSelect.addEventListener('change', () => {
+        fetchSefariaTexts(translationSelect.value).catch(e => console.error('Error fetching Sefaria texts:', e));
+      });
+    }
+
+    loadTranslationOptions().catch(() => {});
     
-    // Define deleteImage in the global scope so it can be called from the onclick attribute
-    window.deleteImage = async function(event, date, imagePath) {
-      event.preventDefault();
-      if (!confirm('Are you sure you want to delete this image?')) {
-        return;
-      }
-      
-      const imageElement = event.target.closest('.delete-image-btn');
-      const imageContainer = imageElement.closest('.relative');
-      imageContainer.classList.add('opacity-50');
-      imageElement.disabled = true;
-      
+    // Delete image handler (via event delegation so it works for dynamically added images too)
+    document.addEventListener('click', async (e) => {
+      const deleteBtn = e.target.closest('.delete-image-btn');
+      if (!deleteBtn) return;
+
+      e.preventDefault();
+      if (!confirm('Are you sure you want to delete this image?')) return;
+
+      const imagePath = deleteBtn.dataset.imagePath;
+      const imageContainer = deleteBtn.closest('.relative, .border');
+      if (!imageContainer) return;
+
+      imageContainer.style.opacity = '0.5';
+      deleteBtn.disabled = true;
+
       try {
         const response = await fetch('/api/delete-image', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date, imagePath })
+          body: JSON.stringify({
+            date: currentDateParam,
+            imagePath,
+            schedule: currentSchedule || 'default'
+          })
         });
-        
-        if (!response.ok) {
-          throw new Error('Failed to delete image');
-        }
-        
+
         const result = await response.json();
         if (result.success) {
-          // Fade out and remove the image container
-          imageContainer.style.transition = 'opacity 0.5s, transform 0.5s';
+          imageContainer.style.transition = 'opacity 0.4s, transform 0.4s';
           imageContainer.style.opacity = '0';
           imageContainer.style.transform = 'scale(0.9)';
-          
           setTimeout(() => {
             imageContainer.remove();
-            
-            // If no images left, show the 'no images' message
             const imageGrid = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2');
             if (imageGrid && imageGrid.children.length === 0) {
               const noImagesDiv = document.createElement('div');
-              noImagesDiv.className = 'bg-gray-100 dark:bg-gray-800 border border-dashed dark:border-gray-700 rounded-lg p-10 text-center col-span-2';
-              noImagesDiv.innerHTML = `
-                <p class="text-gray-500 dark:text-gray-400">
-                  <span class="english-ui">No images available for this day</span>
-                  <span class="hebrew-ui hidden">אין תמונות זמינות ליום זה</span>
-                </p>
-              `;
+              noImagesDiv.className = 'bg-gray-100 dark:bg-gray-800 border border-dashed dark:border-gray-700 rounded-lg p-10 text-center';
+              noImagesDiv.innerHTML = `<p class="text-gray-500 dark:text-gray-400">No images available for this day</p>`;
               imageGrid.parentNode.replaceChild(noImagesDiv, imageGrid);
             }
-          }, 500);
-          
-          console.log('Image deleted successfully');
+          }, 450);
         } else {
           throw new Error(result.error || 'Unknown error');
         }
       } catch (error) {
         console.error('Error deleting image:', error);
         alert('Failed to delete image: ' + error.message);
-        imageContainer.classList.remove('opacity-50');
-        imageElement.disabled = false;
+        imageContainer.style.opacity = '1';
+        deleteBtn.disabled = false;
       }
-    };
+    });
     
   } // --- END of initializePage ---
     
@@ -1510,10 +1699,6 @@ try {
     // Also run on Astro page load
     document.addEventListener('astro:page-load', initializePage);
     
-    // Expose initializePage for debugging
     window.initializeSchedulePage = initializePage;
-    window.deleteImage = window.deleteImage || function() {
-      console.error('deleteImage not initialized');
-    };
   }); // End DOMContentLoaded
 </script>

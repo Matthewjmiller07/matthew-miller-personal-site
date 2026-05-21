@@ -3,28 +3,19 @@ import Layout from '../../layouts/Layout.astro';
 import { GOOGLE_SHEETS_CONFIG } from '../api/config.js';
 import { listSheets, getSheetData } from '../../utils/googleSheetsClient.js';
 
-// Get all available schedules
 let schedules = [];
 let error = null;
 
 try {
-  // First check if we have a schedules master sheet
   const allSheets = await listSheets(GOOGLE_SHEETS_CONFIG.spreadsheetId);
-  
-  // Check if we have the schedules master sheet
   const schedulesSheet = allSheets.find(sheet => sheet.title === 'schedules');
-  
+
   if (schedulesSheet) {
-    // Get data from the schedules sheet
     const scheduleData = await getSheetData(
       GOOGLE_SHEETS_CONFIG.spreadsheetId,
       'schedules!A:F'
     );
-    
-    // Skip header row
     if (scheduleData && scheduleData.length > 1) {
-      // Extract schedule info from rows
-      // Expected columns: Name, SheetName, CreatedAt, EntryCount, DateRange, Description
       schedules = scheduleData.slice(1).map(row => ({
         name: row[0] || '',
         sheetName: row[1] || '',
@@ -35,7 +26,6 @@ try {
       }));
     }
   } else {
-    // No master schedules sheet, fallback to listing all non-system sheets
     const systemSheets = ['Sheet1', 'schedules'];
     schedules = allSheets
       .filter(sheet => !systemSheets.includes(sheet.title))
@@ -48,8 +38,7 @@ try {
         description: 'Schedule sheet'
       }));
   }
-  
-  // Add the default "Aviya Schedule" as the first option
+
   schedules.unshift({
     name: 'Original Aviya Schedule',
     sheetName: 'default',
@@ -58,12 +47,9 @@ try {
     dateRange: '',
     description: 'The original Aviya Schedule'
   });
-  
 } catch (e) {
   console.error('Error loading schedules:', e);
   error = e.message;
-  
-  // Add the default schedule even if there's an error
   schedules = [{
     name: 'Original Aviya Schedule',
     sheetName: 'default',
@@ -74,78 +60,52 @@ try {
   }];
 }
 
-// Get current date in YYYY-MM-DD format
 const today = new Date().toISOString().split('T')[0];
 ---
 
 <Layout title="Aviya Torah Schedules">
-  <main>
-    <h1 class="text-center mb-4">Aviya Torah Schedules</h1>
-    
-    {error && 
-      <div class="alert alert-danger" role="alert">
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-center mb-8">Aviya Torah Schedules</h1>
+
+    {error &&
+      <div class="bg-red-100 dark:bg-red-900/30 border border-red-400 text-red-800 dark:text-red-300 rounded-lg p-4 mb-6">
         Error loading schedules: {error}
       </div>
     }
-    
-    <div class="container">
-      <div class="row mb-4">
-        <div class="col">
-          <div class="d-flex justify-content-between align-items-center">
-            <h2>Available Schedules</h2>
-            <a href="/torahschedule" class="btn btn-primary">Create New Schedule</a>
-          </div>
-        </div>
-      </div>
 
-      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-semibold">Available Schedules</h2>
+      <a href="/torahschedule" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+        Create New Schedule
+      </a>
+    </div>
+
+    {schedules.length === 0 ? (
+      <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-300 text-blue-800 dark:text-blue-300 rounded-lg p-4">
+        No schedules found. You can create one using the Torah Schedule generator.
+      </div>
+    ) : (
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {schedules.map(schedule => (
-          <div class="col">
-            <div class="card h-100">
-              <div class="card-body">
-                <h5 class="card-title">{schedule.name}</h5>
-                {schedule.description && <p class="card-text">{schedule.description}</p>}
-                
-                <ul class="list-group list-group-flush mb-3">
-                  {schedule.createdAt && (
-                    <li class="list-group-item"><strong>Created:</strong> {schedule.createdAt}</li>
-                  )}
-                  {schedule.entryCount > 0 && (
-                    <li class="list-group-item"><strong>Entries:</strong> {schedule.entryCount}</li>
-                  )}
-                  {schedule.dateRange && (
-                    <li class="list-group-item"><strong>Date Range:</strong> {schedule.dateRange}</li>
-                  )}
-                </ul>
-                
-                <div class="d-grid gap-2">
-                  <a href={`/torah-schedules/${today}?schedule=${schedule.sheetName}`} class="btn btn-outline-primary">
-                    Open Schedule
-                  </a>
-                </div>
-              </div>
-            </div>
+          <div class="border border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-white dark:bg-gray-800 flex flex-col gap-3">
+            <h3 class="text-lg font-semibold">{schedule.name}</h3>
+            {schedule.description && <p class="text-sm text-gray-600 dark:text-gray-400">{schedule.description}</p>}
+
+            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+              {schedule.createdAt && <li><span class="font-medium">Created:</span> {schedule.createdAt}</li>}
+              {schedule.entryCount > 0 && <li><span class="font-medium">Entries:</span> {schedule.entryCount}</li>}
+              {schedule.dateRange && <li><span class="font-medium">Date Range:</span> {schedule.dateRange}</li>}
+            </ul>
+
+            <a
+              href={`/torah-schedules/${today}?schedule=${schedule.sheetName}`}
+              class="mt-auto border border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition"
+            >
+              Open Schedule
+            </a>
           </div>
         ))}
       </div>
-
-      {schedules.length === 0 && (
-        <div class="alert alert-info" role="alert">
-          No schedules found. You can create one using the Torah Schedule generator.
-        </div>
-      )}
-    </div>
+    )}
   </main>
 </Layout>
-
-<style>
-  main {
-    padding: 1rem;
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-  h1 {
-    font-size: 2.5rem;
-    margin-bottom: 1.5rem;
-  }
-</style>

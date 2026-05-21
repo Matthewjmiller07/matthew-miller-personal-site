@@ -13,6 +13,7 @@ import { pipeline } from 'stream/promises';
 const DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_SCP_FOLDER_ID;
 const SERVICE_ACCOUNT_KEY = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
 const API_KEY = process.env.GOOGLE_DRIVE_API_KEY;  // For public folders
+const SOFER_AI_API_KEY = process.env.SOFER_AI_API_KEY;
 const OUTPUT_DIR = './public/scp';
 const DATA_FILE = './src/data/scp.json';
 
@@ -332,6 +333,169 @@ async function updateScpData(shiurFolders) {
   return { added, updated, total: data.shiurim.length };
 }
 
+// ─── Sofer AI Transcription ───────────────────────────────────────────────
+
+function secondsToTimestamp(totalSeconds) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function secondsToSrtTime(totalSeconds) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  const ms = Math.round((totalSeconds % 1) * 1000);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
+}
+
+function groupWordsIntoParagraphs(words, chunkSeconds = 30) {
+  if (!words || words.length === 0) return [];
+
+  const paragraphs = [];
+  let currentWords = [];
+  let chunkStart = words[0].start;
+
+  for (const word of words) {
+    if (word.start - chunkStart >= chunkSeconds && currentWords.length > 0) {
+      const text = currentWords.map(w => w.word).join(' ').trim();
+      paragraphs.push({ start: secondsToTimestamp(chunkStart), startSeconds: Math.floor(chunkStart), text });
+      currentWords = [word];
+      chunkStart = word.start;
+    } else {
+      currentWords.push(word);
+    }
+  }
+
+  if (currentWords.length > 0) {
+    const text = currentWords.map(w => w.word).join(' ').trim();
+    paragraphs.push({ start: secondsToTimestamp(chunkStart), startSeconds: Math.floor(chunkStart), text });
+  }
+
+  return paragraphs;
+}
+
+function paragraphsToSrt(paragraphs) {
+  return paragraphs.map((para, i) => {
+    const endSec = i + 1 < paragraphs.length
+      ? paragraphs[i + 1].startSeconds - 0.001
+      : para.startSeconds + 30;
+    return `${i + 1}\n${secondsToSrtTime(para.startSeconds)} --> ${secondsToSrtTime(endSec)}\n${para.text}`;
+  }).join('\n\n') + '\n';
+}
+
+async function transcribeWithSoferAI(audioPath, shiurId) {
+  if (!SOFER_AI_API_KEY) {
+    console.log('  ⏭️  SOFER_AI_API_KEY not set — skipping auto-transcription');
+    return;
+  }
+
+  const transcriptJsonPath = `./src/data/scp-${shiurId}-transcript.json`;
+  try {
+    await fs.access(transcriptJsonPath);
+    console.log(`  ⏭️  Transcript already exists for ${shiurId}`);
+    return;
+  } catch {
+    // File doesn't exist — proceed with transcription
+  }
+
+  console.log(`  🎙️  Transcribing ${shiurId} with Sofer AI...`);
+
+  const audioBuffer = await fs.readFile(audioPath);
+  const audioBase64 = audioBuffer.toString('base64');
+
+  const submitRes = await fetch('https://api.sofer.ai/v1/transcriptions/', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SOFER_AI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      audio_file: audioBase64,
+      info: {
+        model: 'v1',
+        primary_language: 'en',
+        title: shiurId,
+        num_speakers: 1,
+      },
+    }),
+  });
+
+  if (!submitRes.ok) {
+    const err = await submitRes.text();
+    throw new Error(`Sofer AI submission failed (${submitRes.status}): ${err}`);
+  }
+
+  const { id: transcriptionId } = await submitRes.json();
+  console.log(`  ⏳ Job submitted: ${transcriptionId} — polling for completion...`);
+
+  let status = 'PENDING';
+  let attempts = 0;
+  const maxAttempts = 180; // 15 min max (5s intervals)
+
+  while (!['COMPLETED', 'FAILED', 'CANCELLED'].includes(status) && attempts < maxAttempts) {
+    await new Promise(r => setTimeout(r, 5000));
+    attempts++;
+
+    const statusRes = await fetch(
+      `https://api.sofer.ai/v1/transcriptions/${transcriptionId}/status`,
+      { headers: { 'Authorization': `Bearer ${SOFER_AI_API_KEY}` } }
+    );
+
+    if (statusRes.ok) {
+      const data = await statusRes.json();
+      status = data.status;
+      if (attempts % 12 === 0) console.log(`  ⏳ Still ${status}... (${attempts * 5}s elapsed)`);
+    }
+  }
+
+  if (status !== 'COMPLETED') {
+    throw new Error(`Transcription ended with status ${status} after ${attempts * 5}s`);
+  }
+
+  const fullRes = await fetch(`https://api.sofer.ai/v1/transcriptions/${transcriptionId}`, {
+    headers: { 'Authorization': `Bearer ${SOFER_AI_API_KEY}` },
+  });
+
+  if (!fullRes.ok) {
+    throw new Error(`Failed to retrieve transcript (${fullRes.status})`);
+  }
+
+  const fullData = await fullRes.json();
+  const words = fullData.timestamps || [];
+  const paragraphs = groupWordsIntoParagraphs(words, 30);
+
+  // Save JSON transcript
+  await fs.mkdir('./src/data', { recursive: true });
+  await fs.writeFile(transcriptJsonPath, JSON.stringify(paragraphs, null, 2));
+  console.log(`  ✅ Transcript JSON saved: ${transcriptJsonPath}`);
+
+  // Save SRT file
+  const srtPath = `./public/scp/${shiurId}/transcript.srt`;
+  await fs.writeFile(srtPath, paragraphsToSrt(paragraphs));
+  console.log(`  ✅ SRT saved: ${srtPath}`);
+}
+
+async function transcribeNewShiurim() {
+  if (!SOFER_AI_API_KEY) return;
+
+  const data = await loadExistingScpData();
+
+  for (const shiur of data.shiurim) {
+    if (!shiur.audioFile) continue;
+
+    const audioPath = path.join('./public', shiur.audioFile);
+    if (!fssync.existsSync(audioPath)) continue;
+
+    await transcribeWithSoferAI(audioPath, shiur.id).catch(err => {
+      console.error(`  ❌ Transcription failed for ${shiur.id}: ${err.message}`);
+    });
+  }
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────
+
 async function main() {
   console.log('🎧 Syncing SCP files from Google Drive...');
 
@@ -362,6 +526,10 @@ async function main() {
   if (added > 0) console.log(`  ➕ Added ${added} new shiurim`);
   if (updated > 0) console.log(`  🔄 Updated ${updated} existing shiurim`);
   console.log(`  📊 Total: ${total} shiurim in catalog`);
+
+  // Auto-transcribe any shiurim that have audio but no transcript
+  console.log('\n🎙️  Checking for untranscribed shiurim...');
+  await transcribeNewShiurim();
 
   console.log('\n✅ SCP sync complete!');
 }
