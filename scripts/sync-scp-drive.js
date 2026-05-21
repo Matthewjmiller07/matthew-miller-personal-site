@@ -14,6 +14,7 @@ const DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_SCP_FOLDER_ID;
 const SERVICE_ACCOUNT_KEY = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
 const API_KEY = process.env.GOOGLE_DRIVE_API_KEY;  // For public folders
 const SOFER_AI_API_KEY = process.env.SOFER_AI_API_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OUTPUT_DIR = './public/scp';
 const DATA_FILE = './src/data/scp.json';
 
@@ -487,6 +488,110 @@ async function transcribeWithSoferAI(audioPath, shiurId) {
   const srtPath = `./public/scp/${shiurId}/transcript.srt`;
   await fs.writeFile(srtPath, paragraphsToSrt(paragraphs));
   console.log(`  ✅ SRT saved: ${srtPath}`);
+
+  // Extract jokes and disgraced foods via OpenAI
+  await analyzeTranscriptWithAI(paragraphs, shiurId);
+}
+
+function timestampToSeconds(ts) {
+  const parts = ts.split(':').map(Number);
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return 0;
+}
+
+async function analyzeTranscriptWithAI(paragraphs, shiurId) {
+  if (!OPENAI_API_KEY) {
+    console.log('  ⏭️  OPENAI_API_KEY not set — skipping AI analysis');
+    return;
+  }
+
+  console.log(`  🤖 Analyzing transcript for jokes and disgraced foods...`);
+
+  const transcriptText = paragraphs
+    .map(p => `[${secondsToTimestamp(p.startSeconds)}] ${p.text}`)
+    .join('\n');
+
+  const prompt = `You are analyzing a Torah class transcript for two specific recurring bits:
+
+1. JOKES: The rabbi tells jokes or makes humorous quips. Extract any jokes, puns, or funny remarks.
+2. DISGRACED FOODS: The rabbi singles out specific foods as unworthy, embarrassing, or otherwise "disgraced." This is a recurring gag where certain foods are called out by name.
+
+For each item found, provide the timestamp (HH:MM:SS format from the transcript), the text/food name, and brief context.
+
+Return ONLY valid JSON in this exact format:
+{
+  "jokes": [
+    { "timestamp": "HH:MM:SS", "text": "the joke text" }
+  ],
+  "disgracefulFoods": [
+    { "food": "food name", "timestamp": "HH:MM:SS", "context": "brief quote or context" }
+  ]
+}
+
+If none are found, return empty arrays. Do not include anything outside the JSON object.
+
+TRANSCRIPT:
+${transcriptText}`;
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      response_format: { type: 'json_object' },
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error(`  ❌ OpenAI API error (${res.status}): ${err}`);
+    return;
+  }
+
+  const result = await res.json();
+  const content = result.choices?.[0]?.message?.content;
+  if (!content) {
+    console.error('  ❌ No content in OpenAI response');
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (e) {
+    console.error('  ❌ Failed to parse OpenAI JSON response:', e.message);
+    return;
+  }
+
+  const jokes = (parsed.jokes || []).map(j => ({
+    timestamp: j.timestamp,
+    timestampSeconds: timestampToSeconds(j.timestamp),
+    text: j.text,
+  }));
+  const disgracefulFoods = (parsed.disgracefulFoods || []).map(f => ({
+    food: f.food,
+    timestamp: f.timestamp,
+    timestampSeconds: timestampToSeconds(f.timestamp),
+    context: f.context,
+  }));
+
+  console.log(`  🎭 Found ${jokes.length} joke(s), ${disgracefulFoods.length} disgraced food(s)`);
+
+  // Update scp.json
+  const data = await loadExistingScpData();
+  const shiur = data.shiurim.find(s => s.id === shiurId);
+  if (shiur) {
+    shiur.jokes = jokes;
+    shiur.disgracefulFoods = disgracefulFoods;
+    await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+    console.log(`  ✅ scp.json updated with jokes/foods for ${shiurId}`);
+  }
 }
 
 async function transcribeNewShiurim() {
@@ -506,6 +611,30 @@ async function transcribeNewShiurim() {
     await transcribeWithSoferAI(audioPath, shiur.id).catch(err => {
       console.error(`  ❌ Transcription failed for ${shiur.id}: ${err.message}`);
     });
+  }
+}
+
+async function analyzeUntranscribed() {
+  if (!OPENAI_API_KEY) {
+    console.log('  ⏭️  OPENAI_API_KEY not set — skipping AI analysis');
+    return;
+  }
+
+  const data = await loadExistingScpData();
+  for (const shiur of data.shiurim) {
+    // Only analyze shiurim that have a transcript but no jokes/foods yet
+    const hasTranscript = fssync.existsSync(`./src/data/scp-${shiur.id}-transcript.json`);
+    const alreadyAnalyzed = shiur.jokes?.length > 0 || shiur.disgracefulFoods?.length > 0;
+    if (!hasTranscript || alreadyAnalyzed) continue;
+
+    console.log(`  📖 Loading transcript for ${shiur.id}...`);
+    try {
+      const raw = await fs.readFile(`./src/data/scp-${shiur.id}-transcript.json`, 'utf-8');
+      const paragraphs = JSON.parse(raw);
+      await analyzeTranscriptWithAI(paragraphs, shiur.id);
+    } catch (err) {
+      console.error(`  ❌ Analysis failed for ${shiur.id}: ${err.message}`);
+    }
   }
 }
 
@@ -545,6 +674,10 @@ async function main() {
   // Auto-transcribe any shiurim that have audio but no transcript
   console.log('\n🎙️  Checking for untranscribed shiurim...');
   await transcribeNewShiurim();
+
+  // Analyze transcripts that haven't been processed for jokes/foods yet
+  console.log('\n🤖 Checking for unanalyzed transcripts...');
+  await analyzeUntranscribed();
 
   console.log('\n✅ SCP sync complete!');
 }
