@@ -14,7 +14,7 @@ for (const [filePath, mod] of Object.entries(transcriptModules)) {
 
 const totalJokes = shiurim.reduce((sum, s) => sum + (s.jokes?.length ?? 0), 0);
 const allFoods = shiurim.flatMap(s =>
-  (s.disgracefulFoods ?? []).map(f => ({ ...f, shiurNumber: s.number }))
+  (s.disgracefulFoods ?? []).map(f => ({ ...f, shiurNumber: s.number, shiurId: s.id }))
 );
 
 function formatDate(iso: string) {
@@ -134,7 +134,13 @@ function youtubeEmbedUrl(videoUrl: string | null) {
             {shiurim.flatMap(s =>
               (s.jokes ?? []).map(j => (
                 <li class="text-sm text-gray-700 dark:text-gray-300 border-l-2 border-yellow-400 pl-3">
-                  <span class="font-mono text-xs text-gray-500 dark:text-gray-500 mr-1">#{s.number} @{j.timestamp}</span>
+                  <span class="font-mono text-xs text-gray-500 dark:text-gray-500 mr-1">#{s.number}</span>
+                  <button
+                    class="timestamp-btn font-mono text-xs text-cyan-600 dark:text-cyan-400 hover:underline mr-1"
+                    data-audio={`audio-${s.id}`}
+                    data-seconds={j.timestampSeconds}
+                    type="button"
+                  >▶ {j.timestamp}</button>
                   {j.text}
                 </li>
               ))
@@ -154,7 +160,13 @@ function youtubeEmbedUrl(videoUrl: string | null) {
               <li class="text-sm text-gray-700 dark:text-gray-300 border-l-2 border-red-400 pl-3">
                 <span class="font-semibold text-gray-900 dark:text-white">{f.food}</span>
                 <span class="font-mono text-xs text-gray-500 dark:text-gray-500 ml-1">(#{f.shiurNumber})</span>
-                <span class="text-gray-500 dark:text-gray-400"> — {f.context}</span>
+                <button
+                  class="timestamp-btn font-mono text-xs text-cyan-600 dark:text-cyan-400 hover:underline mx-1"
+                  data-audio={`audio-${f.shiurId}`}
+                  data-seconds={f.timestampSeconds}
+                  type="button"
+                >▶ {f.timestamp}</button>
+                <span class="text-gray-500 dark:text-gray-400">— {f.context}</span>
               </li>
             ))}
           </ul>
