@@ -1,11 +1,8 @@
-import { randomUUID } from 'crypto';
-import { google } from 'googleapis';
-import { PassThrough } from 'stream';
+import { createSign } from 'crypto';
 import path from 'path';
 import { getSheetData, updateSheetData, createSheet, listSheets } from '../../utils/googleSheetsClient.js';
 import { GOOGLE_SHEETS_CONFIG } from './config.js';
 
-const DRIVE_FOLDER_NAME = 'aviya-schedule-images';
 export const IMAGE_UPLOADS_SHEET = 'image-uploads';
 
 async function getCredentials() {
@@ -13,75 +10,87 @@ async function getCredentials() {
     return JSON.parse(process.env.GOOGLE_CREDENTIALS);
   }
   const { default: fs } = await import('fs');
-  const credentialsPath = path.resolve(process.cwd(), 'google-credentials.json');
-  return JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+  const credPath = path.resolve(process.cwd(), 'google-credentials.json');
+  return JSON.parse(fs.readFileSync(credPath, 'utf8'));
 }
 
-async function getGoogleDriveClient() {
-  const credentials = await getCredentials();
-  const auth = new google.auth.JWT({
-    email: credentials.client_email,
-    key: credentials.private_key,
-    scopes: ['https://www.googleapis.com/auth/drive.file']
+async function getDriveToken(credentials) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+  const claims = Buffer.from(JSON.stringify({
+    iss: credentials.client_email,
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  })).toString('base64url');
+
+  const sigInput = `${header}.${claims}`;
+  const sign = createSign('RSA-SHA256');
+  sign.write(sigInput);
+  sign.end();
+  const sig = sign.sign(credentials.private_key, 'base64url');
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth2:grant_type:jwt-bearer',
+      assertion: `${sigInput}.${sig}`,
+    }),
   });
-  await auth.authorize();
-  return google.drive({ version: 'v3', auth });
+  const data = await res.json();
+  if (!data.access_token) throw new Error(`Drive auth failed: ${data.error_description || JSON.stringify(data)}`);
+  return data.access_token;
 }
 
 async function uploadToDrive(buffer, fileName, mimeType) {
-  const drive = await getGoogleDriveClient();
+  const credentials = await getCredentials();
+  const token = await getDriveToken(credentials);
 
-  // Find or create the upload folder
-  const folderSearch = await drive.files.list({
-    q: `name='${DRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-    fields: 'files(id)',
-    spaces: 'drive'
-  });
+  const boundary = `----AviyaBoundary${Date.now()}`;
+  const meta = JSON.stringify({ name: fileName });
 
-  let folderId;
-  if (folderSearch.data.files.length > 0) {
-    folderId = folderSearch.data.files[0].id;
-  } else {
-    const folder = await drive.files.create({
-      requestBody: {
-        name: DRIVE_FOLDER_NAME,
-        mimeType: 'application/vnd.google-apps.folder'
+  const body = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Type: application/json\r\n\r\n${meta}\r\n`, 'utf8'),
+    Buffer.from(`--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`, 'utf8'),
+    buffer,
+    Buffer.from(`\r\n--${boundary}--`, 'utf8'),
+  ]);
+
+  const uploadRes = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': `multipart/related; boundary="${boundary}"`,
       },
-      fields: 'id'
-    });
-    folderId = folder.data.id;
-    await drive.permissions.create({
-      fileId: folderId,
-      requestBody: { role: 'reader', type: 'anyone' }
-    });
-  }
+      body,
+    }
+  );
 
-  // Upload the file as a stream
-  const stream = new PassThrough();
-  stream.end(buffer);
-
-  const uploaded = await drive.files.create({
-    requestBody: { name: fileName, parents: [folderId] },
-    media: { mimeType, body: stream },
-    fields: 'id'
-  });
-
-  const fileId = uploaded.data.id;
+  const uploadData = await uploadRes.json();
+  if (!uploadData.id) throw new Error(`Drive upload failed: ${JSON.stringify(uploadData)}`);
 
   // Make the file publicly readable
-  await drive.permissions.create({
-    fileId,
-    requestBody: { role: 'reader', type: 'anyone' }
+  await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: 'reader', type: 'anyone' }),
   });
 
-  return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  return `https://drive.google.com/uc?export=view&id=${uploadData.id}`;
 }
 
 async function ensureImageUploadsSheet(spreadsheetId) {
-  const sheets = await listSheets(spreadsheetId);
-  const exists = sheets.some(s => s.title === IMAGE_UPLOADS_SHEET);
-  if (!exists) {
-    await createSheet(spreadsheetId, IMAGE_UPLOADS_SHEET, ['Date', 'Schedule', 'Images']);
+  try {
+    const sheets = await listSheets(spreadsheetId);
+    if (!sheets.some(s => s.title === IMAGE_UPLOADS_SHEET)) {
+      await createSheet(spreadsheetId, IMAGE_UPLOADS_SHEET, ['Date', 'Schedule', 'Images']);
+    }
+  } catch (e) {
+    console.warn('Could not ensure image-uploads sheet:', e.message);
   }
 }
 
@@ -92,24 +101,19 @@ async function persistImageUrl(date, imageUrl, schedule) {
   const range = `${IMAGE_UPLOADS_SHEET}!A:C`;
   let rows = [];
   try {
-    const data = await getSheetData(spreadsheetId, range);
-    rows = data || [];
+    rows = (await getSheetData(spreadsheetId, range)) || [];
   } catch {
-    rows = [['Date', 'Schedule', 'Images']];
+    rows = [];
   }
 
   if (rows.length === 0) rows.push(['Date', 'Schedule', 'Images']);
 
-  // Find matching row (skip header)
-  const existingIdx = rows.findIndex((row, i) =>
-    i > 0 && row[0] === date && row[1] === schedule
-  );
-
+  const existingIdx = rows.findIndex((row, i) => i > 0 && row[0] === date && row[1] === schedule);
   if (existingIdx > 0) {
-    let existing = [];
-    try { existing = JSON.parse(rows[existingIdx][2] || '[]'); } catch { existing = []; }
-    existing.push(imageUrl);
-    rows[existingIdx][2] = JSON.stringify(existing);
+    let imgs = [];
+    try { imgs = JSON.parse(rows[existingIdx][2] || '[]'); } catch { imgs = []; }
+    imgs.push(imageUrl);
+    rows[existingIdx][2] = JSON.stringify(imgs);
   } else {
     rows.push([date, schedule, JSON.stringify([imageUrl])]);
   }
@@ -119,37 +123,38 @@ async function persistImageUrl(date, imageUrl, schedule) {
 
 export async function POST({ request }) {
   try {
-    const formData = await request.formData();
-    const date = formData.get('date');
-    const imageFile = formData.get('image');
-    const schedule = formData.get('schedule') || 'default';
+    // Accept JSON body: { image: "data:image/...;base64,...", filename, date, schedule }
+    const body = await request.json();
+    const { image: dataUrl, filename = 'upload.jpg', date, schedule = 'default' } = body;
 
-    if (!date || !imageFile) {
+    if (!date || !dataUrl) {
       return new Response(JSON.stringify({ error: 'Missing date or image' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
+    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
+    if (!match) throw new Error('Invalid image data (expected base64 data URL)');
+
+    const mimeType = match[1];
+    const buffer = Buffer.from(match[2], 'base64');
     const normalizedDate = date.split('T')[0];
-    const buffer = Buffer.from(await imageFile.arrayBuffer());
-    const fileExt = imageFile.name?.split('.').pop() || 'jpg';
-    const fileName = `${normalizedDate}-${schedule}-${Date.now()}-${randomUUID().slice(0, 8)}.${fileExt}`;
-    const mimeType = imageFile.type || 'image/jpeg';
+    const ext = filename.split('.').pop() || mimeType.split('/')[1] || 'jpg';
+    const fileName = `${normalizedDate}-${schedule}-${Date.now()}.${ext}`;
 
     const imageUrl = await uploadToDrive(buffer, fileName, mimeType);
     await persistImageUrl(normalizedDate, imageUrl, schedule);
 
     return new Response(JSON.stringify({ success: true, imageUrl }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     });
-
   } catch (error) {
     console.error('Error uploading image:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 }

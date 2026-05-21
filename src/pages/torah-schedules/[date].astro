@@ -1489,32 +1489,65 @@ try {
 
       if (!fileInput) return;
 
+      // Resize image client-side before upload to stay within Netlify's body limits
+      function resizeImage(file, maxWidth = 1200, quality = 0.82) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          const url = URL.createObjectURL(file);
+          img.onload = () => {
+            URL.revokeObjectURL(url);
+            const scale = Math.min(1, maxWidth / img.width);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.onerror = reject;
+          img.src = url;
+        });
+      }
+
       async function uploadFile(file) {
         if (!file || !file.type.startsWith('image/')) {
           alert('Please select an image file.');
           return;
         }
 
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('date', currentDateParam);
-        formData.append('schedule', currentSchedule || 'default');
-
         if (uploadProgress) uploadProgress.classList.remove('hidden');
-        if (uploadStatusEl) uploadStatusEl.textContent = 'Uploading...';
-        if (uploadProgressBar) uploadProgressBar.style.width = '40%';
-        if (uploadPercentage) uploadPercentage.textContent = '40%';
+        if (uploadStatusEl) uploadStatusEl.textContent = 'Processing image...';
+        if (uploadProgressBar) uploadProgressBar.style.width = '20%';
+        if (uploadPercentage) uploadPercentage.textContent = '20%';
 
         try {
+          // Resize client-side, then send as base64 JSON (avoids FormData/multipart issues on Netlify)
+          const dataUrl = await resizeImage(file);
+
+          if (uploadStatusEl) uploadStatusEl.textContent = 'Uploading...';
+          if (uploadProgressBar) uploadProgressBar.style.width = '40%';
+          if (uploadPercentage) uploadPercentage.textContent = '40%';
+
           const response = await fetch('/api/upload-image', {
             method: 'POST',
-            body: formData,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image: dataUrl,
+              filename: file.name,
+              date: currentDateParam,
+              schedule: currentSchedule || 'default',
+            }),
           });
 
           if (uploadProgressBar) uploadProgressBar.style.width = '90%';
           if (uploadPercentage) uploadPercentage.textContent = '90%';
 
-          const result = await response.json();
+          let result;
+          try {
+            result = await response.json();
+          } catch {
+            const text = await response.text().catch(() => '');
+            throw new Error(`Server returned non-JSON (${response.status}): ${text.slice(0, 100)}`);
+          }
 
           if (response.ok && result.success) {
             if (uploadProgressBar) uploadProgressBar.style.width = '100%';
@@ -1536,7 +1569,7 @@ try {
           }
           setTimeout(() => {
             if (uploadProgress) uploadProgress.classList.add('hidden');
-          }, 3000);
+          }, 4000);
         }
       }
 
