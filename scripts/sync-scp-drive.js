@@ -391,9 +391,9 @@ async function transcribeWithSoferAI(audioPath, shiurId) {
     return;
   }
 
-  // Don't block CI/Netlify builds with long-running transcription
-  if (process.env.CI || process.env.NETLIFY) {
-    console.log(`  ⏭️  CI environment detected — skipping transcription for ${shiurId} (run locally)`);
+  // Don't block Netlify builds with long-running transcription (GitHub Actions is fine — it commits results back)
+  if (process.env.NETLIFY) {
+    console.log(`  ⏭️  Netlify build detected — skipping transcription for ${shiurId} (handled by GitHub Actions)`);
     return;
   }
 
