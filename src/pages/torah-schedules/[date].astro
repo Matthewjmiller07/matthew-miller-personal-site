@@ -251,6 +251,28 @@ try {
     formattedDate = `${monthNames[monthNum-1]} ${dayNum}, ${year}`;
     console.log(`DIRECT string formatting from [${record.Date}] to [${formattedDate}]`);
     
+    // Also load images uploaded via the UI (stored in the image-uploads sheet)
+    try {
+      const uploadRange = `image-uploads!A:C`;
+      const uploadData = await getSheetData(GOOGLE_SHEETS_CONFIG.spreadsheetId, uploadRange);
+      if (uploadData && uploadData.length > 1) {
+        const headers = uploadData[0];
+        const dateIdx = headers.indexOf('Date');
+        const schedIdx = headers.indexOf('Schedule');
+        const imgIdx = headers.indexOf('Images');
+        const matchRow = uploadData.slice(1).find(
+          row => row[dateIdx] === dateParam && row[schedIdx] === scheduleName
+        );
+        if (matchRow && matchRow[imgIdx]) {
+          let uploaded = [];
+          try { uploaded = JSON.parse(matchRow[imgIdx]); } catch {}
+          images = [...images, ...uploaded];
+        }
+      }
+    } catch (e) {
+      console.log('No uploaded images sheet or fetch failed:', e.message);
+    }
+
     // NOTE: We've moved the Sefaria API fetching to client-side JS
     // instead of server-side to avoid async issues in Astro frontmatter
 } catch (error) {

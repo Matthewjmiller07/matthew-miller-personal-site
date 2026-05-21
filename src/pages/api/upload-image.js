@@ -1,10 +1,121 @@
-import fs from 'fs';
-import path from 'path';
-import { parse } from 'csv-parse/sync';
-import { stringify } from 'csv-stringify/sync';
 import { randomUUID } from 'crypto';
-import { getSheetData, sheetValuesToCsv, updateSheetData, csvToSheetValues } from '../../utils/googleSheetsClient.js';
+import { google } from 'googleapis';
+import { PassThrough } from 'stream';
+import path from 'path';
+import { getSheetData, updateSheetData, createSheet, listSheets } from '../../utils/googleSheetsClient.js';
 import { GOOGLE_SHEETS_CONFIG } from './config.js';
+
+const DRIVE_FOLDER_NAME = 'aviya-schedule-images';
+export const IMAGE_UPLOADS_SHEET = 'image-uploads';
+
+async function getCredentials() {
+  if (process.env.GOOGLE_CREDENTIALS) {
+    return JSON.parse(process.env.GOOGLE_CREDENTIALS);
+  }
+  const { default: fs } = await import('fs');
+  const credentialsPath = path.resolve(process.cwd(), 'google-credentials.json');
+  return JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+}
+
+async function getGoogleDriveClient() {
+  const credentials = await getCredentials();
+  const auth = new google.auth.JWT({
+    email: credentials.client_email,
+    key: credentials.private_key,
+    scopes: ['https://www.googleapis.com/auth/drive.file']
+  });
+  await auth.authorize();
+  return google.drive({ version: 'v3', auth });
+}
+
+async function uploadToDrive(buffer, fileName, mimeType) {
+  const drive = await getGoogleDriveClient();
+
+  // Find or create the upload folder
+  const folderSearch = await drive.files.list({
+    q: `name='${DRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    fields: 'files(id)',
+    spaces: 'drive'
+  });
+
+  let folderId;
+  if (folderSearch.data.files.length > 0) {
+    folderId = folderSearch.data.files[0].id;
+  } else {
+    const folder = await drive.files.create({
+      requestBody: {
+        name: DRIVE_FOLDER_NAME,
+        mimeType: 'application/vnd.google-apps.folder'
+      },
+      fields: 'id'
+    });
+    folderId = folder.data.id;
+    await drive.permissions.create({
+      fileId: folderId,
+      requestBody: { role: 'reader', type: 'anyone' }
+    });
+  }
+
+  // Upload the file as a stream
+  const stream = new PassThrough();
+  stream.end(buffer);
+
+  const uploaded = await drive.files.create({
+    requestBody: { name: fileName, parents: [folderId] },
+    media: { mimeType, body: stream },
+    fields: 'id'
+  });
+
+  const fileId = uploaded.data.id;
+
+  // Make the file publicly readable
+  await drive.permissions.create({
+    fileId,
+    requestBody: { role: 'reader', type: 'anyone' }
+  });
+
+  return `https://drive.google.com/uc?export=view&id=${fileId}`;
+}
+
+async function ensureImageUploadsSheet(spreadsheetId) {
+  const sheets = await listSheets(spreadsheetId);
+  const exists = sheets.some(s => s.title === IMAGE_UPLOADS_SHEET);
+  if (!exists) {
+    await createSheet(spreadsheetId, IMAGE_UPLOADS_SHEET, ['Date', 'Schedule', 'Images']);
+  }
+}
+
+async function persistImageUrl(date, imageUrl, schedule) {
+  const spreadsheetId = GOOGLE_SHEETS_CONFIG.spreadsheetId;
+  await ensureImageUploadsSheet(spreadsheetId);
+
+  const range = `${IMAGE_UPLOADS_SHEET}!A:C`;
+  let rows = [];
+  try {
+    const data = await getSheetData(spreadsheetId, range);
+    rows = data || [];
+  } catch {
+    rows = [['Date', 'Schedule', 'Images']];
+  }
+
+  if (rows.length === 0) rows.push(['Date', 'Schedule', 'Images']);
+
+  // Find matching row (skip header)
+  const existingIdx = rows.findIndex((row, i) =>
+    i > 0 && row[0] === date && row[1] === schedule
+  );
+
+  if (existingIdx > 0) {
+    let existing = [];
+    try { existing = JSON.parse(rows[existingIdx][2] || '[]'); } catch { existing = []; }
+    existing.push(imageUrl);
+    rows[existingIdx][2] = JSON.stringify(existing);
+  } else {
+    rows.push([date, schedule, JSON.stringify([imageUrl])]);
+  }
+
+  await updateSheetData(spreadsheetId, range, rows);
+}
 
 export async function POST({ request }) {
   try {
@@ -21,33 +132,15 @@ export async function POST({ request }) {
     }
 
     const normalizedDate = date.split('T')[0];
-
-    // Save image file to disk
-    const uploadsDir = path.join(process.cwd(), 'public', 'images', 'aviya');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
-    const fileExt = imageFile.name.split('.').pop();
-    const fileName = `${Date.now()}-${randomUUID()}.${fileExt}`;
-    const filePath = path.join(uploadsDir, fileName);
     const buffer = Buffer.from(await imageFile.arrayBuffer());
-    fs.writeFileSync(filePath, buffer);
+    const fileExt = imageFile.name?.split('.').pop() || 'jpg';
+    const fileName = `${normalizedDate}-${schedule}-${Date.now()}-${randomUUID().slice(0, 8)}.${fileExt}`;
+    const mimeType = imageFile.type || 'image/jpeg';
 
-    const imageUrl = `/images/aviya/${fileName}`;
+    const imageUrl = await uploadToDrive(buffer, fileName, mimeType);
+    await persistImageUrl(normalizedDate, imageUrl, schedule);
 
-    // Persist the image URL in the correct data store
-    if (schedule === 'default' || !schedule) {
-      await updateCsv(normalizedDate, imageUrl);
-    } else {
-      await updateGoogleSheets(normalizedDate, imageUrl, schedule);
-    }
-
-    return new Response(JSON.stringify({
-      success: true,
-      message: 'Image uploaded successfully',
-      imageUrl,
-    }), {
+    return new Response(JSON.stringify({ success: true, imageUrl }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -58,50 +151,5 @@ export async function POST({ request }) {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
-  }
-}
-
-async function updateCsv(date, imageUrl) {
-  const csvFilePath = path.join(process.cwd(), 'public', 'aviya.csv');
-  const csvContent = fs.readFileSync(csvFilePath, 'utf-8');
-  const records = parse(csvContent, { columns: true, skip_empty_lines: true });
-
-  const record = records.find(r => r.Date === date || r.Date.split('T')[0] === date);
-  if (!record) throw new Error(`Date ${date} not found in CSV`);
-
-  const images = parseImages(record.Images);
-  images.push(imageUrl);
-  record.Images = JSON.stringify(images);
-
-  const columns = Object.keys(records[0]);
-  fs.writeFileSync(csvFilePath, stringify(records, { header: true, columns }));
-}
-
-async function updateGoogleSheets(date, imageUrl, schedule) {
-  const range = `${schedule}!A:Z`;
-  const sheetData = await getSheetData(GOOGLE_SHEETS_CONFIG.spreadsheetId, range);
-  const allRecords = sheetValuesToCsv(sheetData);
-
-  const recordIndex = allRecords.findIndex(r =>
-    r.Date === date || (r.Date && r.Date.split('T')[0] === date)
-  );
-  if (recordIndex === -1) throw new Error(`Date ${date} not found in sheet ${schedule}`);
-
-  const images = parseImages(allRecords[recordIndex].Images);
-  images.push(imageUrl);
-  allRecords[recordIndex].Images = JSON.stringify(images);
-
-  const updatedSheetValues = csvToSheetValues(allRecords);
-  await updateSheetData(GOOGLE_SHEETS_CONFIG.spreadsheetId, range, updatedSheetValues);
-}
-
-function parseImages(raw) {
-  if (!raw) return [];
-  try {
-    if (typeof raw === 'string' && raw.startsWith('[')) return JSON.parse(raw);
-    if (typeof raw === 'string' && raw.includes(',')) return raw.split(',').map(s => s.trim());
-    return raw ? [String(raw).trim()] : [];
-  } catch {
-    return raw ? [String(raw)] : [];
   }
 }
