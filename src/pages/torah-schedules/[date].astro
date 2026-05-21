@@ -680,8 +680,7 @@ try {
             let imageSrc;
             
             // Handle various image path formats
-            if (trimmedImage.startsWith('http') || trimmedImage.startsWith('//')) {
-              // Full URL - leave as is
+            if (trimmedImage.startsWith('data:') || trimmedImage.startsWith('http') || trimmedImage.startsWith('//')) {
               imageSrc = trimmedImage;
             } else if (trimmedImage.startsWith('/images/aviya/')) {
               // Already has the correct path prefix
@@ -786,42 +785,20 @@ try {
 </style>
 
 <style is:global>
-  .footnote-ref {
-    position: relative;
-    display: inline;
+  /* Footnotes render inline, no tooltips */
+  i.footnote {
+    font-style: italic;
+    font-size: 0.8em;
+    color: #6b7280;
   }
-  .footnote-ref sup.footnote-marker {
-    cursor: pointer;
-    color: #3b82f6;
-    font-weight: 600;
-    text-decoration: underline dotted;
+  .dark i.footnote {
+    color: #9ca3af;
   }
-  .footnote-ref i.footnote {
-    display: none;
-    position: absolute;
-    bottom: calc(100% + 6px);
-    left: 0;
-    min-width: 220px;
-    max-width: 340px;
-    background: #fff;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    padding: 10px 12px;
-    font-style: normal;
-    font-size: 0.82em;
-    line-height: 1.5;
-    z-index: 30;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-    white-space: normal;
-    color: #1f2937;
-  }
-  .dark .footnote-ref i.footnote {
-    background: #1e293b;
-    border-color: #475569;
-    color: #e2e8f0;
-  }
-  .footnote-ref.open i.footnote {
-    display: block;
+  i.footnote::before { content: ' ('; }
+  i.footnote::after  { content: ')'; }
+  sup.footnote-marker {
+    font-size: 0.75em;
+    color: #6b7280;
   }
 </style>
 
@@ -902,47 +879,6 @@ try {
     // Fetches text content from the Sefaria API with a retry mechanism.
     // Fetches text content from the Sefaria API and dynamically builds verse-by-verse layouts for chapters.
     // Fetches text content from the Sefaria API and dynamically builds verse-by-verse layouts for chapters.
-    function applyFootnoteStyles(containerEl) {
-      const isDark = document.documentElement.classList.contains('dark');
-      const bg = isDark ? '#1e293b' : '#fff';
-      const border = isDark ? '#475569' : '#d1d5db';
-      const color = isDark ? '#e2e8f0' : '#1f2937';
-      containerEl.querySelectorAll('sup.footnote-marker').forEach(sup => {
-        if (sup.dataset.fnProcessed) return;
-        const footnoteEl = sup.nextElementSibling;
-        if (!footnoteEl || footnoteEl.tagName !== 'I' || !footnoteEl.classList.contains('footnote')) return;
-        sup.dataset.fnProcessed = '1';
-        sup.style.cursor = 'pointer';
-        sup.style.color = '#3b82f6';
-        sup.style.fontWeight = '600';
-        sup.style.textDecoration = 'underline dotted';
-        footnoteEl.style.display = 'none';
-        footnoteEl.style.position = 'fixed';
-        footnoteEl.style.top = 'auto';
-        footnoteEl.style.bottom = 'auto';
-        footnoteEl.style.minWidth = '220px';
-        footnoteEl.style.maxWidth = '360px';
-        footnoteEl.style.background = bg;
-        footnoteEl.style.border = `1px solid ${border}`;
-        footnoteEl.style.borderRadius = '6px';
-        footnoteEl.style.padding = '10px 14px';
-        footnoteEl.style.fontStyle = 'normal';
-        footnoteEl.style.fontSize = '0.84em';
-        footnoteEl.style.lineHeight = '1.6';
-        footnoteEl.style.zIndex = '9999';
-        footnoteEl.style.boxShadow = '0 6px 20px rgba(0,0,0,0.18)';
-        footnoteEl.style.whiteSpace = 'normal';
-        footnoteEl.style.color = color;
-        const wrapper = document.createElement('span');
-        wrapper.className = 'footnote-ref';
-        wrapper.style.position = 'relative';
-        wrapper.style.display = 'inline';
-        sup.parentNode.insertBefore(wrapper, sup);
-        wrapper.appendChild(sup);
-        wrapper.appendChild(footnoteEl);
-      });
-    }
-
     function createVerseHTML(verseReference, hebrewVerse, englishVerse, existingNote) {
       return `
         <div class="mb-6 p-4 border border-gray-300 dark:border-gray-700 rounded-lg">
@@ -966,42 +902,6 @@ try {
       `;
     }
 
-    // Toggle footnotes on click — position using getBoundingClientRect so fixed works correctly
-    document.addEventListener('click', e => {
-      const marker = e.target.closest('sup.footnote-marker');
-      if (marker) {
-        e.stopPropagation();
-        const wrapper = marker.closest('.footnote-ref');
-        if (wrapper) {
-          const fn = wrapper.querySelector('i.footnote');
-          if (fn) {
-            if (fn.style.display === 'block') {
-              fn.style.display = 'none';
-            } else {
-              // Position below the marker, flipping up if near bottom of viewport
-              const rect = marker.getBoundingClientRect();
-              const spaceBelow = window.innerHeight - rect.bottom;
-              fn.style.display = 'block';
-              const fnH = fn.offsetHeight || 120;
-              if (spaceBelow < fnH + 12) {
-                fn.style.top = 'auto';
-                fn.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
-              } else {
-                fn.style.bottom = 'auto';
-                fn.style.top = (rect.bottom + 6) + 'px';
-              }
-              // Horizontal: align to left of marker, clamp to viewport
-              let left = rect.left;
-              const fnW = 340;
-              if (left + fnW > window.innerWidth - 8) left = window.innerWidth - fnW - 8;
-              fn.style.left = Math.max(8, left) + 'px';
-            }
-          }
-        }
-        return;
-      }
-      document.querySelectorAll('.footnote-ref i.footnote').forEach(el => { el.style.display = 'none'; });
-    });
 
     async function fetchSefariaTexts(version = '') {
       console.log("Attempting to fetch Sefaria texts...", version ? `version: ${version}` : 'default');
@@ -1062,17 +962,13 @@ try {
               verseHTMLParts.push(createVerseHTML(verseReference, hebrewVerse, data.text[index] || '', existingNote));
             });
             versesListContainer.innerHTML = verseHTMLParts.join('');
-            applyFootnoteStyles(versesListContainer);
             newContentWrapper.appendChild(versesListContainer);
             container.appendChild(newContentWrapper);
           } else {
             const hebrewTextDiv = container.querySelector('.hebrew-text');
             const englishTextDiv = container.querySelector('.english-text');
             if (hebrewTextDiv) hebrewTextDiv.innerHTML = data.he || '<i>Text not available.</i>';
-            if (englishTextDiv) {
-              englishTextDiv.innerHTML = data.text || '<i>Text not available.</i>';
-              applyFootnoteStyles(englishTextDiv);
-            }
+            if (englishTextDiv) englishTextDiv.innerHTML = data.text || '<i>Text not available.</i>';
           }
         });
 
@@ -1489,8 +1385,8 @@ try {
 
       if (!fileInput) return;
 
-      // Resize image client-side before upload to stay within Netlify's body limits
-      function resizeImage(file, maxWidth = 1200, quality = 0.82) {
+      // Resize client-side to ~400px so the base64 fits in a Google Sheets cell (50K char limit)
+      function resizeImage(file, maxWidth = 400, quality = 0.75) {
         return new Promise((resolve, reject) => {
           const img = new Image();
           const url = URL.createObjectURL(file);
