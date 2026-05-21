@@ -391,6 +391,12 @@ async function transcribeWithSoferAI(audioPath, shiurId) {
     return;
   }
 
+  // Don't block CI/Netlify builds with long-running transcription
+  if (process.env.CI || process.env.NETLIFY) {
+    console.log(`  ⏭️  CI environment detected — skipping transcription for ${shiurId} (run locally)`);
+    return;
+  }
+
   const transcriptJsonPath = `./src/data/scp-${shiurId}-transcript.json`;
   try {
     await fs.access(transcriptJsonPath);
@@ -427,7 +433,12 @@ async function transcribeWithSoferAI(audioPath, shiurId) {
     throw new Error(`Sofer AI submission failed (${submitRes.status}): ${err}`);
   }
 
-  const { id: transcriptionId } = await submitRes.json();
+  const submitData = await submitRes.json();
+  console.log('  Sofer AI submit response:', JSON.stringify(submitData));
+  const transcriptionId = submitData.id || submitData._id || submitData.job_id || submitData.transcription_id;
+  if (!transcriptionId) {
+    throw new Error(`Sofer AI did not return a transcription ID. Response: ${JSON.stringify(submitData)}`);
+  }
   console.log(`  ⏳ Job submitted: ${transcriptionId} — polling for completion...`);
 
   let status = 'PENDING';
