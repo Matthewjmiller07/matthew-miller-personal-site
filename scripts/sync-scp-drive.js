@@ -489,7 +489,10 @@ async function transcribeWithSoferAI(audioPath, shiurId) {
 }
 
 async function transcribeNewShiurim() {
-  if (!SOFER_AI_API_KEY) return;
+  if (!SOFER_AI_API_KEY) {
+    console.log('  ⏭️  SOFER_AI_API_KEY not set — skipping transcription');
+    return;
+  }
 
   const data = await loadExistingScpData();
 
