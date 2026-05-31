@@ -1,338 +1,37 @@
 export const prerender = false;
-import fs from 'fs';
-import path from 'path';
-import { parse } from 'csv-parse/sync';
-import { stringify } from 'csv-stringify/sync';
-import { getSheetData, sheetValuesToCsv, updateSheetData, csvToSheetValues } from '../../utils/googleSheetsClient.js';
-import { GOOGLE_SHEETS_CONFIG, LOCAL_CSV_CONFIG, shouldUseGoogleSheets } from './config.js';
+import { createClient } from '@supabase/supabase-js';
 
-// Environment detection
-const isDev = process.env.NODE_ENV === 'development';
-const isServerless = Boolean(process.env.NETLIFY || process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSION);
-const isServerlessMode = isServerless && !isDev;
-
-// Helper to log more details about the environment
-function logEnvironmentDetails() {
-  console.log('Environment details:');
-  console.log('- CWD:', process.cwd());
-  console.log('- ENV variables:', Object.keys(process.env).filter(key => !key.includes('SECRET') && !key.includes('KEY')).join(', '));
-  console.log('- Platform:', process.platform);
-  console.log('- Is serverless:', isServerless ? 'Yes' : 'No');
-  console.log('- Using Google Sheets:', shouldUseGoogleSheets ? 'Yes' : 'No');
-}
+const supabase = createClient(
+  process.env.PUBLIC_SUPABASE_URL,
+  process.env.PUBLIC_SUPABASE_ANON_KEY
+);
 
 export async function POST({ request }) {
-  // Log environment details to help debug
-  logEnvironmentDetails();
-
   try {
-    // Parse request body
-    const { date, verseNotes, notes, sheet: schedule = 'default' } = await request.json();
-    const normalizedDate = date ? date.split('T')[0] : null; // Ensure we just have YYYY-MM-DD
-    
-    console.log(`Saving notes for date: ${normalizedDate}, schedule: ${schedule}`);
+    const { date, notes, verseNotes, sheet: schedule = 'default' } = await request.json();
 
-    if (!normalizedDate) {
-      return new Response(JSON.stringify({
-        error: 'Date parameter is required'
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
+    if (!date) {
+      return new Response(JSON.stringify({ error: 'Missing date' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`Saving notes for date: ${normalizedDate}`);
-
-    // Determine whether to use Google Sheets or local CSV
-    const useGoogleSheets = shouldUseGoogleSheets;
-    const isServerlessProd = isServerless && !isDev;
-    let saveResult = { success: false };
-
-    console.log('Save environment check:', { isServerless, isDev, isServerlessProd });
-
-    // Always try to save to Google Sheets (CSV option has been removed)
-    try {
-      console.log('Attempting to save data to Google Sheets...');
-      console.log('Google Sheets config:', JSON.stringify({
-        spreadsheetId: GOOGLE_SHEETS_CONFIG.spreadsheetId,
-        range: GOOGLE_SHEETS_CONFIG.range,
-        useInDevelopment: GOOGLE_SHEETS_CONFIG.useInDevelopment,
-        useInProduction: GOOGLE_SHEETS_CONFIG.useInProduction
-      }));
-      
-      saveResult = await saveToGoogleSheets(normalizedDate, verseNotes, notes, schedule);
-      
-      // If we got here, Google Sheets save was successful
-      console.log('Successfully saved to Google Sheets');
-    } catch (error) {
-      console.error('Error saving to Google Sheets:', error);
-      console.error('Stack trace:', error.stack);
-      
-      return new Response(JSON.stringify({
-        success: false,
-        message: `Failed to save to Google Sheets: ${error.message}`,
-        dataSource: 'google-sheets-failed',
-        error: 'Failed to save notes. Please ensure Google Sheets credentials are properly configured.'
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Return the result with enhanced error information
-    const responseBody = {
-      success: saveResult.success,
-      message: saveResult.message,
-      dataSource: saveResult.dataSource
-    };
-    
-    // Include detailed error information if available (for client-side debugging)
-    if (!saveResult.success) {
-      responseBody.error = saveResult.error || 'Unknown error';
-      
-      // Add detailed debugging info if available
-      if (saveResult.details) {
-        responseBody.details = saveResult.details;
-      }
-    }
-    
-    return new Response(JSON.stringify(responseBody), {
-      status: saveResult.success ? 200 : 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-  } catch (error) {
-    console.error('Error in API handler:', error);
-    return new Response(JSON.stringify({
-      error: `API error: ${error.message}`
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-}
-
-// Save to Google Sheets
-async function saveToGoogleSheets(date, verseNotes, notes, schedule = 'default') {
-  try {
-    // Determine which sheet/range to use based on the schedule parameter
-    let range;
-    if (schedule === 'default' || !schedule) {
-      // Default to 'Aviya' sheet if no specific schedule is provided
-      range = 'Aviya!A:Z';
-      console.log('Using default Aviya sheet for saving');
-    } else {
-      // Use the specified sheet name with full column range
-      range = `${schedule}!A:Z`;
-      console.log(`Using custom sheet for saving: ${range}`);
-    }
-      
-    console.log(`Using sheet range: ${range}`);
-    
-    // Get existing data from Google Sheets
-    const sheetData = await getSheetData(
-      GOOGLE_SHEETS_CONFIG.spreadsheetId,
-      range
-    );
-    
-    // Log the raw sheet data for debugging
-    console.log(`Raw sheet data has ${sheetData.length} rows, first row has ${sheetData[0]?.length || 0} columns`);
-    console.log(`Headers: ${JSON.stringify(sheetData[0])}`);
-    
-    // Convert sheet data to CSV-like format
-    const allRecords = sheetValuesToCsv(sheetData);
-    console.log(`Converted to ${allRecords.length} records from Google Sheets`);
-    console.log(`First few records:`, allRecords.slice(0, 3));
-    
-    // Find the record for this date with more flexible matching
-    let recordIndex = allRecords.findIndex(r => {
-      // Direct string comparison
-      if (r.Date === date) return true;
-      
-      // Try normalizing the date (remove time component if present)
-      try {
-        const recordDateStr = r.Date ? r.Date.split('T')[0] : null;
-        return recordDateStr === date;
-      } catch (e) {
-        return false;
-      }
-    });
-    
-    if (recordIndex === -1) {
-      console.log(`No record found for date ${date}, cannot update`);
-      const allDates = allRecords.map(r => r.Date);
-      const uniqueDates = Array.from(new Set(allDates));
-      console.log('--- DEBUGGING DATE MATCH ---');
-      console.log('Searched for date:', JSON.stringify(date), 'type:', typeof date);
-      console.log('All dates in sheet:', allDates);
-      console.log('Unique dates in sheet:', uniqueDates);
-      console.log('Headers:', Object.keys(allRecords[0] || {}));
-      allRecords.forEach((r, idx) => {
-        console.log(`Row ${idx}:`, JSON.stringify(r.Date), 'type:', typeof r.Date);
-      });
-      console.log('--- END DEBUG ---');
-      return { 
-        success: false, 
-        message: `Date ${date} not found in schedule`,
-        dataSource: 'google-sheets' 
-      };
-    }
-    
-    console.log(`Found record for date ${date} at index ${recordIndex}`);
-    console.log(`Current record:`, allRecords[recordIndex]);
-    
-    // Update the record with new notes
-    allRecords[recordIndex].Notes = notes || '';
-    allRecords[recordIndex].VerseNotes = JSON.stringify(verseNotes || {});
-    
-    // Convert back to sheet values format
-    const updatedSheetValues = csvToSheetValues(allRecords);
-    console.log('About to update sheet. Preview of updatedSheetValues[0]:', JSON.stringify(updatedSheetValues[0]));
-    console.log('Preview of updatedSheetValues[last]:', JSON.stringify(updatedSheetValues[updatedSheetValues.length - 1]));
-    console.log('Total rows to write:', updatedSheetValues.length);
-    try {
-      // Write back to Google Sheets
-      await updateSheetData(
-        GOOGLE_SHEETS_CONFIG.spreadsheetId,
-        range,
-        updatedSheetValues
+    const { error } = await supabase
+      .from('schedule_notes')
+      .upsert(
+        { date, schedule, general_notes: notes || '', verse_notes: verseNotes || {}, updated_at: new Date().toISOString() },
+        { onConflict: 'date,schedule' }
       );
-      console.log(`Successfully updated record for date ${date} in sheet: ${range}`);
-      console.log(`Successfully updated record for date ${date} in Google Sheets`);
-      return { 
-        success: true, 
-        message: 'Notes saved to Google Sheets',
-        dataSource: 'google-sheets'
-      };
-    } catch (err) {
-      console.error('Error during updateSheetData:', err);
-      throw err;
-    }
-    
-  } catch (error) {
-    console.error('Error saving to Google Sheets:', error);
-    console.error('Stack trace:', error.stack);
-    
-    // Return a properly formatted error object (not a Response object)
-    // This will be handled by the main API handler
-    return {
-      success: false,
-      message: `Error saving to Google Sheets: ${error.message}`,
-      error: error.message || String(error),
-      dataSource: 'google-sheets-error',
-      // Include detailed error info for debugging
-      details: {
-        stack: error.stack,
-        errorObj: JSON.stringify(error, Object.getOwnPropertyNames(error))
-      }
-    };
-  }
-}
 
-// Save to local CSV
-async function saveToLocalCsv(date, verseNotes, notes) {
-  try {
-    // Try multiple possible file paths
-    const csvPaths = [
-      path.join(process.cwd(), LOCAL_CSV_CONFIG.path),
-      path.join(process.cwd(), 'data', 'aviya.csv'),
-      path.join(process.cwd(), 'public', 'aviya.csv')
-    ];
-    
-    let content = null;
-    let csvFilePath = null;
-    
-    // Try each path until we find one that works
-    for (const tryPath of csvPaths) {
-      try {
-        if (fs.existsSync(tryPath)) {
-          content = fs.readFileSync(tryPath, 'utf8');
-          csvFilePath = tryPath;
-          break;
-        }
-      } catch (err) {
-        console.warn(`Couldn't access path: ${tryPath}`);
-      }
-    }
-    
-    if (!content || !csvFilePath) {
-      console.error('Could not find or read CSV file from any of the expected locations');
-      return { 
-        success: false, 
-        message: 'Could not find or read data file',
-        dataSource: 'local-csv'
-      };
-    }
-    
-    console.log(`Reading and updating local CSV: ${csvFilePath}`);
-    
-    // Parse the CSV content
-    const records = parse(content, {
-      columns: true,
-      skip_empty_lines: true
+    if (error) throw new Error(error.message);
+
+    return new Response(JSON.stringify({ success: true, message: 'Notes saved' }), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
     });
-    
-    // Find the record for this date
-    const recordIndex = records.findIndex(r => r.Date === date);
-    
-    if (recordIndex === -1) {
-      console.log(`No record found for date ${date}, cannot update`);
-      return { 
-        success: false, 
-        message: `Date ${date} not found in schedule`,
-        dataSource: 'local-csv'
-      };
-    }
-    
-    // Update the record with new notes
-    records[recordIndex].Notes = notes || '';
-    records[recordIndex].VerseNotes = JSON.stringify(verseNotes || {});
-    
-    // Write back to CSV
-    const csv = stringify(records, { header: true });
-    
-    // First try to write to the data directory
-    const dataDir = path.join(process.cwd(), 'data');
-    let writeSuccess = false;
-    
-    try {
-      // Create data dir if it doesn't exist
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-      }
-      
-      const dataFile = path.join(dataDir, 'aviya.csv');
-      fs.writeFileSync(dataFile, csv, 'utf8');
-      writeSuccess = true;
-      console.log(`Successfully wrote updated CSV to data directory: ${dataFile}`);
-    } catch (err) {
-      console.warn(`Could not write to data directory, trying original path: ${err.message}`);
-    }
-    
-    // If writing to data dir failed, try writing back to original path
-    if (!writeSuccess) {
-      try {
-        fs.writeFileSync(csvFilePath, csv, 'utf8');
-        writeSuccess = true;
-        console.log(`Successfully wrote updated CSV to original path: ${csvFilePath}`);
-      } catch (err) {
-        console.error(`Could not write to original path: ${err.message}`);
-        return { 
-          success: false, 
-          message: `Failed to write updated CSV: ${err.message}`,
-          dataSource: 'local-csv'
-        };
-      }
-    }
-    
-    return { 
-      success: true, 
-      message: 'Notes saved to local CSV',
-      dataSource: 'local-csv'
-    };
-    
   } catch (error) {
-    console.error('Error saving to local CSV:', error);
-    throw error;
+    console.error('Error saving notes:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
