@@ -26,7 +26,6 @@ export async function GET({ url }) {
     const dateIdx = headers.indexOf('Date');
     const schedIdx = headers.indexOf('Schedule');
     const nameIdx = headers.indexOf('Filename');
-    const idIdx = headers.indexOf('FileId');
     const urlIdx = headers.indexOf('Url');
     const durIdx = headers.indexOf('Duration');
     const tsIdx = headers.indexOf('CreatedAt');
@@ -35,7 +34,6 @@ export async function GET({ url }) {
       .filter(row => row[dateIdx] === date && row[schedIdx] === schedule)
       .map(row => ({
         filename: row[nameIdx] || '',
-        fileId: row[idIdx] || '',
         url: row[urlIdx] || '',
         duration: row[durIdx] || '',
         createdAt: row[tsIdx] || '',
