@@ -263,6 +263,72 @@ export async function listSheets(spreadsheetId) {
   }
 }
 
+// Initialize a Google Drive client for audio uploads
+export async function getGoogleDriveClient() {
+  let credentials;
+  if (process.env.GOOGLE_CREDENTIALS) {
+    credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+  } else {
+    const possiblePaths = [
+      path.resolve(process.cwd(), 'google-credentials.json'),
+      path.resolve(__dirname, '../..', 'google-credentials.json'),
+    ];
+    for (const tryPath of possiblePaths) {
+      if (fs.existsSync(tryPath)) {
+        credentials = JSON.parse(fs.readFileSync(tryPath, 'utf8'));
+        break;
+      }
+    }
+    if (!credentials) throw new Error('Google credentials not found');
+  }
+
+  const auth = new google.auth.JWT({
+    email: credentials.client_email,
+    key: credentials.private_key,
+    scopes: [
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/spreadsheets',
+    ],
+  });
+  await auth.authorize();
+  return google.drive({ version: 'v3', auth });
+}
+
+// Upload a Buffer to Google Drive and return the public URL
+export async function uploadAudioToDrive(audioBuffer, filename, mimeType = 'audio/webm', folderId = null) {
+  const drive = await getGoogleDriveClient();
+  const { Readable } = await import('stream');
+
+  const fileMetadata = { name: filename };
+  if (folderId) fileMetadata.parents = [folderId];
+
+  const media = {
+    mimeType,
+    body: Readable.from(audioBuffer),
+  };
+
+  const file = await drive.files.create({
+    requestBody: fileMetadata,
+    media,
+    fields: 'id, name, webContentLink, webViewLink',
+  });
+
+  const fileId = file.data.id;
+
+  // Make the file publicly readable
+  await drive.permissions.create({
+    fileId,
+    requestBody: { role: 'reader', type: 'anyone' },
+  });
+
+  return {
+    fileId,
+    name: file.data.name,
+    url: `https://drive.google.com/uc?export=download&id=${fileId}`,
+    viewUrl: `https://drive.google.com/file/d/${fileId}/view`,
+  };
+}
+
 // Convert CSV-like data to Google Sheets format (2D array)
 export function csvToSheetValues(csvData) {
   if (!csvData || !csvData.length) return [];

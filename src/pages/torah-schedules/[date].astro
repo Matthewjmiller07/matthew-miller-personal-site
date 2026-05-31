@@ -733,6 +733,40 @@ try {
         </div>
       )}
     </div>
+
+    <!-- Audio Recordings section -->
+    <div class="mt-10" id="recordings-section">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-2xl font-semibold">
+          <span class="english-ui">Audio Recordings</span>
+          <span class="hebrew-ui hidden">הקלטות שמע</span>
+        </h3>
+
+        <button id="record-btn" class="flex items-center gap-2 px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm transition">
+          <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 1a4 4 0 0 1 4 4v7a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm-1 17.93V21H9v2h6v-2h-2v-2.07A8.001 8.001 0 0 0 20 12h-2a6 6 0 0 1-12 0H4a8.001 8.001 0 0 0 7 7.93z"/>
+          </svg>
+          <span id="record-label" class="english-ui">Start Recording</span>
+          <span id="record-timer" class="font-mono text-xs hidden">0:00</span>
+        </button>
+      </div>
+
+      <!-- Recording status indicator -->
+      <div id="recording-indicator" class="hidden flex items-center gap-2 mb-4 text-red-600 dark:text-red-400">
+        <span class="inline-block w-3 h-3 rounded-full bg-red-600 animate-pulse"></span>
+        <span class="text-sm font-medium english-ui">Recording in progress...</span>
+      </div>
+
+      <!-- Upload progress for audio -->
+      <div id="audio-upload-progress" class="hidden mb-4 text-sm text-gray-500 dark:text-gray-400">
+        Saving recording to Google Drive...
+      </div>
+
+      <!-- Recordings list -->
+      <div id="recordings-list" class="space-y-3">
+        <p class="text-gray-400 dark:text-gray-500 text-sm italic" id="no-recordings-msg">No recordings yet for this day.</p>
+      </div>
+    </div>
   </div>
 </Layout>
 
@@ -1652,4 +1686,165 @@ try {
     
     window.initializeSchedulePage = initializePage;
   }); // End DOMContentLoaded
+</script>
+
+<script is:inline>
+  // Audio recording feature
+  document.addEventListener('DOMContentLoaded', function () {
+    const getUrlParams = () => {
+      const pathParts = window.location.pathname.split('/').filter(Boolean);
+      const urlParams = new URLSearchParams(window.location.search);
+      const dateParam = pathParts[pathParts.length - 1];
+      const schedule = urlParams.get('schedule') || 'default';
+      return { dateParam, schedule };
+    };
+
+    const { dateParam, schedule } = getUrlParams();
+
+    const recordBtn = document.getElementById('record-btn');
+    const recordLabel = document.getElementById('record-label');
+    const recordTimer = document.getElementById('record-timer');
+    const recordingIndicator = document.getElementById('recording-indicator');
+    const audioUploadProgress = document.getElementById('audio-upload-progress');
+    const recordingsList = document.getElementById('recordings-list');
+    const noRecordingsMsg = document.getElementById('no-recordings-msg');
+
+    if (!recordBtn) return;
+
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let timerInterval = null;
+    let startTime = null;
+
+    function formatDuration(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function addRecordingToList(rec) {
+      if (noRecordingsMsg) noRecordingsMsg.remove();
+
+      const item = document.createElement('div');
+      item.className = 'flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700';
+
+      const ts = rec.createdAt ? new Date(rec.createdAt).toLocaleString() : '';
+      const dur = rec.duration ? ` · ${formatDuration(parseInt(rec.duration))}` : '';
+      item.innerHTML = `
+        <audio controls src="${rec.url}" class="flex-1 h-8 min-w-0"></audio>
+        <div class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">${ts}${dur}</div>
+        <a href="${rec.viewUrl || rec.url}" target="_blank" rel="noopener noreferrer"
+           class="text-blue-500 hover:text-blue-600 text-xs whitespace-nowrap" title="Open in Drive">
+          Drive
+        </a>
+      `;
+      recordingsList.appendChild(item);
+    }
+
+    async function loadRecordings() {
+      try {
+        const res = await fetch(`/api/load-audio?date=${encodeURIComponent(dateParam)}&schedule=${encodeURIComponent(schedule)}`);
+        const data = await res.json();
+        (data.recordings || []).forEach(addRecordingToList);
+      } catch (e) {
+        console.warn('Could not load recordings:', e);
+      }
+    }
+
+    loadRecordings();
+
+    recordBtn.addEventListener('click', async () => {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        // Stop recording
+        mediaRecorder.stop();
+        return;
+      }
+
+      // Start recording
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+
+        mediaRecorder = new MediaRecorder(stream, { mimeType });
+        audioChunks = [];
+        startTime = Date.now();
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          clearInterval(timerInterval);
+          stream.getTracks().forEach(t => t.stop());
+
+          recordBtn.disabled = true;
+          recordLabel.textContent = 'Saving...';
+          recordTimer.classList.add('hidden');
+          recordingIndicator.classList.add('hidden');
+          audioUploadProgress.classList.remove('hidden');
+
+          const durationSec = Math.round((Date.now() - startTime) / 1000);
+          const blob = new Blob(audioChunks, { type: mimeType });
+
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            try {
+              const res = await fetch('/api/save-audio', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  audio: reader.result,
+                  date: dateParam,
+                  schedule,
+                  duration: durationSec,
+                }),
+              });
+              const result = await res.json();
+              if (result.success) {
+                addRecordingToList({
+                  filename: result.filename,
+                  fileId: result.fileId,
+                  url: result.url,
+                  viewUrl: result.viewUrl,
+                  duration: durationSec,
+                  createdAt: new Date().toISOString(),
+                });
+              } else {
+                alert('Error saving recording: ' + (result.error || 'Unknown error'));
+              }
+            } catch (err) {
+              alert('Error uploading recording: ' + err.message);
+            } finally {
+              audioUploadProgress.classList.add('hidden');
+              recordBtn.disabled = false;
+              recordLabel.textContent = 'Start Recording';
+              recordBtn.classList.remove('bg-gray-500');
+              recordBtn.classList.add('bg-red-600');
+            }
+          };
+          reader.readAsDataURL(blob);
+        };
+
+        mediaRecorder.start();
+
+        // Update UI to show recording state
+        recordLabel.textContent = 'Stop Recording';
+        recordTimer.classList.remove('hidden');
+        recordingIndicator.classList.remove('hidden');
+        recordBtn.classList.remove('bg-red-600');
+        recordBtn.classList.add('bg-gray-500');
+
+        let elapsed = 0;
+        timerInterval = setInterval(() => {
+          elapsed++;
+          recordTimer.textContent = formatDuration(elapsed);
+        }, 1000);
+
+      } catch (err) {
+        alert('Could not access microphone: ' + err.message);
+      }
+    });
+  });
 </script>

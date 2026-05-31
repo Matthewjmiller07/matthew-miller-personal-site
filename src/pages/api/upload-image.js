@@ -1,3 +1,4 @@
+export const prerender = false;
 import { getSheetData, updateSheetData, createSheet, listSheets } from '../../utils/googleSheetsClient.js';
 import { GOOGLE_SHEETS_CONFIG } from './config.js';
 
