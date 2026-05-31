@@ -1711,10 +1711,34 @@ try {
 
     if (!recordBtn) return;
 
+    // Hide record button entirely if MediaRecorder isn't supported
+    if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      recordBtn.title = 'Audio recording not supported in this browser';
+      recordBtn.disabled = true;
+      recordBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
     let mediaRecorder = null;
     let audioChunks = [];
     let timerInterval = null;
     let startTime = null;
+
+    // Pick best supported MIME type — mp4 first for iOS Safari, then webm for Chrome/Firefox
+    function getSupportedMimeType() {
+      const types = [
+        'audio/mp4',
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/ogg',
+      ];
+      for (const type of types) {
+        try {
+          if (MediaRecorder.isTypeSupported(type)) return type;
+        } catch {}
+      }
+      return ''; // let browser decide
+    }
 
     function formatDuration(seconds) {
       const m = Math.floor(seconds / 60);
@@ -1755,19 +1779,18 @@ try {
 
     recordBtn.addEventListener('click', async () => {
       if (mediaRecorder && mediaRecorder.state === 'recording') {
-        // Stop recording
         mediaRecorder.stop();
         return;
       }
 
-      // Start recording
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const mimeType = getSupportedMimeType();
 
-        mediaRecorder = new MediaRecorder(stream, { mimeType });
+        mediaRecorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream);
+
         audioChunks = [];
         startTime = Date.now();
 
@@ -1786,7 +1809,9 @@ try {
           audioUploadProgress.classList.remove('hidden');
 
           const durationSec = Math.round((Date.now() - startTime) / 1000);
-          const blob = new Blob(audioChunks, { type: mimeType });
+          // Use the recorder's actual mimeType — most reliable across browsers
+          const actualMime = mediaRecorder.mimeType || mimeType || 'audio/webm';
+          const blob = new Blob(audioChunks, { type: actualMime });
 
           const reader = new FileReader();
           reader.onloadend = async () => {
@@ -1829,7 +1854,6 @@ try {
 
         mediaRecorder.start();
 
-        // Update UI to show recording state
         recordLabel.textContent = 'Stop Recording';
         recordTimer.classList.remove('hidden');
         recordingIndicator.classList.remove('hidden');
@@ -1843,7 +1867,13 @@ try {
         }, 1000);
 
       } catch (err) {
-        alert('Could not access microphone: ' + err.message);
+        if (err.name === 'NotAllowedError') {
+          alert('Microphone permission denied. Please allow microphone access in your browser settings.');
+        } else if (err.name === 'NotFoundError') {
+          alert('No microphone found. Please connect a microphone and try again.');
+        } else {
+          alert('Could not start recording: ' + err.message);
+        }
       }
     });
   });

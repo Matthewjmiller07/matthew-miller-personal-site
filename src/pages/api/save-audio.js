@@ -35,17 +35,17 @@ export async function POST({ request }) {
       });
     }
 
-    // Parse the base64 data URL: "data:audio/webm;base64,..."
-    const match = dataUrl.match(/^data:(audio\/[^;]+);base64,(.+)$/);
+    // Parse base64 data URL — accept any MIME type (mp4 on iOS, webm on Chrome, etc.)
+    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
     if (!match) {
       return new Response(JSON.stringify({ error: 'Invalid audio data URL' }), {
         status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const mimeType = match[1];
+    const mimeType = match[1] || 'audio/webm';
     const audioBuffer = Buffer.from(match[2], 'base64');
-    const ext = mimeType.includes('webm') ? 'webm' : mimeType.includes('ogg') ? 'ogg' : 'mp4';
+    const ext = mimeType.includes('mp4') ? 'm4a' : mimeType.includes('ogg') ? 'ogg' : 'webm';
     const filename = `recording-${date}-${schedule}-${Date.now()}.${ext}`;
 
     const folderId = process.env.GOOGLE_DRIVE_AUDIO_FOLDER_ID || null;
