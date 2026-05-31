@@ -1809,8 +1809,10 @@ try {
           audioUploadProgress.classList.remove('hidden');
 
           const durationSec = Math.round((Date.now() - startTime) / 1000);
-          // Use the recorder's actual mimeType — most reliable across browsers
-          const actualMime = mediaRecorder.mimeType || mimeType || 'audio/webm';
+          // Use the recorder's actual mimeType with a guaranteed fallback
+          const actualMime = (mediaRecorder.mimeType && mediaRecorder.mimeType !== '')
+            ? mediaRecorder.mimeType
+            : (mimeType || 'audio/webm');
           const blob = new Blob(audioChunks, { type: actualMime });
 
           const reader = new FileReader();
@@ -1868,9 +1870,9 @@ try {
 
       } catch (err) {
         if (err.name === 'NotAllowedError') {
-          alert('Microphone permission denied. Please allow microphone access in your browser settings.');
+          alert('Microphone permission denied. Please allow microphone access in your browser settings and reload the page.');
         } else if (err.name === 'NotFoundError') {
-          alert('No microphone found. Please connect a microphone and try again.');
+          alert('Microphone not accessible. On Mac: check System Settings → Privacy & Security → Microphone and make sure Chrome/Safari is allowed. On phone: close other apps that may be using the mic, then try again.');
         } else {
           alert('Could not start recording: ' + err.message);
         }

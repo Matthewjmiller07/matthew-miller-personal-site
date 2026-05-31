@@ -35,8 +35,8 @@ export async function POST({ request }) {
       });
     }
 
-    // Parse base64 data URL — accept any MIME type (mp4 on iOS, webm on Chrome, etc.)
-    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    // Parse base64 data URL — accept any MIME type including empty (data:;base64,...)
+    const match = dataUrl.match(/^data:([^;]*);base64,(.+)$/);
     if (!match) {
       return new Response(JSON.stringify({ error: 'Invalid audio data URL' }), {
         status: 400, headers: { 'Content-Type': 'application/json' },
