@@ -720,13 +720,22 @@ try {
           <span class="hebrew-ui hidden">הקלטות שמע</span>
         </h3>
 
-        <button id="record-btn" class="flex items-center gap-2 px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm transition">
-          <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 1a4 4 0 0 1 4 4v7a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm-1 17.93V21H9v2h6v-2h-2v-2.07A8.001 8.001 0 0 0 20 12h-2a6 6 0 0 1-12 0H4a8.001 8.001 0 0 0 7 7.93z"/>
-          </svg>
-          <span id="record-label" class="english-ui">Start Recording</span>
-          <span id="record-timer" class="font-mono text-xs hidden">0:00</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <button id="record-btn" class="flex items-center gap-2 px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm transition">
+            <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 1a4 4 0 0 1 4 4v7a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm-1 17.93V21H9v2h6v-2h-2v-2.07A8.001 8.001 0 0 0 20 12h-2a6 6 0 0 1-12 0H4a8.001 8.001 0 0 0 7 7.93z"/>
+            </svg>
+            <span id="record-label" class="english-ui">Start Recording</span>
+            <span id="record-timer" class="font-mono text-xs hidden">0:00</span>
+          </button>
+          <label for="audio-file-upload" class="flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm transition cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
+            </svg>
+            <span class="english-ui">Upload</span>
+          </label>
+          <input type="file" id="audio-file-upload" accept="audio/*" class="hidden" />
+        </div>
       </div>
 
       <!-- Recording status indicator -->
@@ -737,7 +746,7 @@ try {
 
       <!-- Upload progress for audio -->
       <div id="audio-upload-progress" class="hidden mb-4 text-sm text-gray-500 dark:text-gray-400">
-        Saving recording to Google Drive...
+        Saving audio...
       </div>
 
       <!-- Recordings list -->
@@ -1725,16 +1734,24 @@ try {
     }
 
     function addRecordingToList(rec) {
-      if (noRecordingsMsg) noRecordingsMsg.remove();
+      const existingNoMsg = document.getElementById('no-recordings-msg');
+      if (existingNoMsg) existingNoMsg.remove();
 
       const item = document.createElement('div');
       item.className = 'flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700';
+      if (rec.filename) item.dataset.filename = rec.filename;
 
       const ts = rec.createdAt ? new Date(rec.createdAt).toLocaleString() : '';
-      const dur = rec.duration ? ` · ${formatDuration(parseInt(rec.duration))}` : '';
+      const dur = rec.duration && parseInt(rec.duration) > 0 ? ` · ${formatDuration(parseInt(rec.duration))}` : '';
+      const filename = rec.filename || '';
       item.innerHTML = `
         <audio controls src="${rec.url}" class="flex-1 h-8 min-w-0"></audio>
         <div class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">${ts}${dur}</div>
+        <button class="delete-recording-btn flex-shrink-0 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded" title="Delete recording" data-filename="${filename}">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+          </svg>
+        </button>
       `;
       recordingsList.appendChild(item);
     }
@@ -1847,6 +1864,101 @@ try {
           alert('Microphone not accessible. On Mac: check System Settings → Privacy & Security → Microphone and make sure Chrome/Safari is allowed. On phone: close other apps that may be using the mic, then try again.');
         } else {
           alert('Could not start recording: ' + err.message);
+        }
+      }
+    });
+
+    // Upload an existing audio file
+    const audioFileUpload = document.getElementById('audio-file-upload');
+    if (audioFileUpload) {
+      audioFileUpload.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        audioFileUpload.value = '';
+
+        audioUploadProgress.classList.remove('hidden');
+        audioUploadProgress.textContent = 'Reading file...';
+
+        try {
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            audioUploadProgress.textContent = 'Uploading...';
+            try {
+              const res = await fetch('/api/save-audio', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  audio: reader.result,
+                  date: dateParam,
+                  schedule,
+                  duration: 0,
+                }),
+              });
+              const result = await res.json();
+              if (result.success) {
+                addRecordingToList({
+                  filename: result.filename,
+                  url: result.url,
+                  duration: '',
+                  createdAt: new Date().toISOString(),
+                });
+              } else {
+                alert('Error uploading file: ' + (result.error || 'Unknown error'));
+              }
+            } catch (err) {
+              alert('Error uploading file: ' + err.message);
+            } finally {
+              audioUploadProgress.classList.add('hidden');
+            }
+          };
+          reader.readAsDataURL(file);
+        } catch (err) {
+          alert('Error reading file: ' + err.message);
+          audioUploadProgress.classList.add('hidden');
+        }
+      });
+    }
+
+    // Delete a recording
+    document.addEventListener('click', async (e) => {
+      const deleteBtn = e.target.closest('.delete-recording-btn');
+      if (!deleteBtn) return;
+
+      if (!confirm('Delete this recording?')) return;
+
+      const filename = deleteBtn.dataset.filename;
+      if (!filename) return;
+
+      const item = deleteBtn.closest('[data-filename]');
+      if (item) {
+        item.style.opacity = '0.5';
+        deleteBtn.disabled = true;
+      }
+
+      try {
+        const res = await fetch('/api/delete-audio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename }),
+        });
+        const result = await res.json();
+        if (result.success) {
+          item?.remove();
+          if (recordingsList && !recordingsList.querySelector('[data-filename]')) {
+            const msg = document.createElement('p');
+            msg.className = 'text-gray-400 dark:text-gray-500 text-sm italic';
+            msg.id = 'no-recordings-msg';
+            msg.textContent = 'No recordings yet for this day.';
+            recordingsList.appendChild(msg);
+          }
+        } else {
+          throw new Error(result.error || 'Unknown error');
+        }
+      } catch (err) {
+        alert('Error deleting recording: ' + err.message);
+        if (item) {
+          item.style.opacity = '1';
+          deleteBtn.disabled = false;
         }
       }
     });
