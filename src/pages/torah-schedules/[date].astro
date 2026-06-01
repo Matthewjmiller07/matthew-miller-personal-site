@@ -1868,7 +1868,8 @@ try {
       }
     });
 
-    // Upload an existing audio file
+    // Upload an existing audio file — uses a signed URL so the file goes
+    // directly from the browser to Supabase (no serverless body size limit).
     const audioFileUpload = document.getElementById('audio-file-upload');
     if (audioFileUpload) {
       audioFileUpload.addEventListener('change', async (e) => {
@@ -1877,43 +1878,54 @@ try {
         audioFileUpload.value = '';
 
         audioUploadProgress.classList.remove('hidden');
-        audioUploadProgress.textContent = 'Reading file...';
+        audioUploadProgress.textContent = 'Preparing upload...';
 
         try {
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-            audioUploadProgress.textContent = 'Uploading...';
-            try {
-              const res = await fetch('/api/save-audio', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  audio: reader.result,
-                  date: dateParam,
-                  schedule,
-                  duration: 0,
-                }),
-              });
-              const result = await res.json();
-              if (result.success) {
-                addRecordingToList({
-                  filename: result.filename,
-                  url: result.url,
-                  duration: '',
-                  createdAt: new Date().toISOString(),
-                });
-              } else {
-                alert('Error uploading file: ' + (result.error || 'Unknown error'));
-              }
-            } catch (err) {
-              alert('Error uploading file: ' + err.message);
-            } finally {
-              audioUploadProgress.classList.add('hidden');
-            }
-          };
-          reader.readAsDataURL(file);
+          const ext = (file.name.split('.').pop() || 'mp3').toLowerCase();
+
+          // 1. Get a signed upload URL from the server
+          const signRes = await fetch('/api/sign-audio-upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: dateParam, schedule, ext }),
+          });
+          const signData = await signRes.json();
+          if (!signData.signedUrl) throw new Error(signData.error || 'Could not get upload URL');
+
+          // 2. PUT the file directly to Supabase — no 6MB limit
+          audioUploadProgress.textContent = 'Uploading...';
+          const uploadRes = await fetch(signData.signedUrl, {
+            method: 'PUT',
+            body: file,
+            headers: { 'Content-Type': file.type || 'audio/mpeg' },
+          });
+          if (!uploadRes.ok) throw new Error('Upload failed (' + uploadRes.status + ')');
+
+          // 3. Record metadata in Google Sheets
+          audioUploadProgress.textContent = 'Saving...';
+          const metaRes = await fetch('/api/save-audio-meta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date: dateParam,
+              schedule,
+              filename: signData.filename,
+              url: signData.publicUrl,
+              duration: 0,
+            }),
+          });
+          const metaData = await metaRes.json();
+          if (!metaData.success) throw new Error(metaData.error || 'Failed to save metadata');
+
+          addRecordingToList({
+            filename: signData.filename,
+            url: signData.publicUrl,
+            duration: '',
+            createdAt: new Date().toISOString(),
+          });
         } catch (err) {
-          alert('Error reading file: ' + err.message);
+          alert('Error uploading file: ' + err.message);
+        } finally {
           audioUploadProgress.classList.add('hidden');
         }
       });
