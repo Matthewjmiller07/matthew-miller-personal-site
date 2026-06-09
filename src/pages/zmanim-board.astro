@@ -1,0 +1,314 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ZmanimBoard from '../components/ZmanimBoard.tsx';
+
+// The standalone plugin source code shown to visitors
+const pluginCode = `import { useState, useEffect, useRef } from "react";
+// Optional: remove framer-motion dep and swap motion.div → div, AnimatePresence → Fragment
+import { motion, AnimatePresence } from "framer-motion";
+
+const CITIES = [
+  { label: "Jerusalem",        latitude: 31.7683, longitude:  35.2137, tzid: "Asia/Jerusalem" },
+  { label: "Ra'anana / Tel Aviv", latitude: 32.0853, longitude: 34.7818, tzid: "Asia/Jerusalem" },
+  { label: "Bnei Brak",        latitude: 32.0841, longitude:  34.8337, tzid: "Asia/Jerusalem" },
+  { label: "Haifa",            latitude: 32.7940, longitude:  34.9896, tzid: "Asia/Jerusalem" },
+  { label: "Beer Sheva",       latitude: 31.2518, longitude:  34.7913, tzid: "Asia/Jerusalem" },
+  { label: "New York",         latitude: 40.6501, longitude: -73.9496, tzid: "America/New_York" },
+  { label: "Los Angeles",      latitude: 34.0522, longitude: -118.2437, tzid: "America/Los_Angeles" },
+  { label: "Chicago",          latitude: 41.8781, longitude: -87.6298, tzid: "America/Chicago" },
+  { label: "London",           latitude: 51.5074, longitude:  -0.1278, tzid: "Europe/London" },
+  { label: "Toronto",          latitude: 43.6532, longitude: -79.3832, tzid: "America/Toronto" },
+  { label: "Montreal",         latitude: 45.5051, longitude: -73.5540, tzid: "America/Toronto" },
+  { label: "Paris",            latitude: 48.8566, longitude:   2.3522, tzid: "Europe/Paris" },
+  { label: "Melbourne",        latitude: -37.8136, longitude: 144.9631, tzid: "Australia/Melbourne" },
+];
+
+const DAYS_HE = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+const MONTHS_EN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+const BG_URL = "https://theothermatthewmiller.com/images/zmanim-board-bg.png";
+
+function toDateStr(d) {
+  return \`\${d.getFullYear()}-\${String(d.getMonth()+1).padStart(2,"0")}-\${String(d.getDate()).padStart(2,"0")}\`;
+}
+
+function getWeek() {
+  const now = new Date(), day = now.getDay(), sun = new Date(now);
+  sun.setDate(now.getDate() - day);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(sun); d.setDate(sun.getDate() + i); return d;
+  });
+}
+
+// Slice HH:MM from ISO string to avoid local-timezone conversion
+function formatTime(isoStr) {
+  if (!isoStr) return "—";
+  const m = isoStr.match(/T(\\d{2}):(\\d{2})/);
+  return m ? \`\${parseInt(m[1], 10)}:\${m[2]}\` : "—";
+}
+
+export default function ZmanimBoard({ defaultCityIdx = 5 }) {
+  const [cityIdx, setCityIdx] = useState(defaultCityIdx);
+  const [weekData, setWeekData] = useState([]);
+  const [parasha, setParasha] = useState("");
+  const [hebrewDateStr, setHebrewDateStr] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [open, setOpen] = useState(false);
+  const [tick, setTick] = useState(0);
+  const dropRef = useRef(null);
+
+  const city = CITIES[cityIdx], week = getWeek(), todayIdx = new Date().getDay();
+
+  useEffect(() => {
+    const h = (e) => { if (dropRef.current && !dropRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  useEffect(() => {
+    setLoading(true); setError(null); setWeekData([]); setParasha(""); setHebrewDateStr("");
+    const { latitude, longitude, tzid } = city;
+    const zmFetches = week.map(d =>
+      fetch(\`https://www.hebcal.com/zmanim?cfg=json&date=\${toDateStr(d)}&latitude=\${latitude}&longitude=\${longitude}&tzid=\${encodeURIComponent(tzid)}&sec=0\`)
+        .then(r => r.json()).then(j => j.times ?? {}).catch(() => ({}))
+    );
+    const shFetch  = fetch(\`https://www.hebcal.com/shabbat?cfg=json&latitude=\${latitude}&longitude=\${longitude}&tzid=\${encodeURIComponent(tzid)}&b=18&M=on&lg=s\`).then(r=>r.json()).catch(()=>({}));
+    const cvFetch  = fetch(\`https://www.hebcal.com/converter?cfg=json&date=\${toDateStr(week[0])}&g2h=1\`).then(r=>r.json()).catch(()=>({}));
+
+    Promise.all([...zmFetches, shFetch, cvFetch]).then(res => {
+      setWeekData(res.slice(0, 7));
+      setParasha(res[7]?.items?.find(i => i.category === "parashat")?.hebrew || "");
+      setHebrewDateStr(res[8]?.hebrew || "");
+    }).catch(e => { console.error(e); setError("לא ניתן לטעון זמנים"); }).finally(() => setLoading(false));
+  }, [cityIdx, tick]);
+
+  const todayTimes = weekData[todayIdx] || {};
+  const s = week[0], e = week[6];
+  const dateRange = s.getMonth() === e.getMonth()
+    ? \`\${MONTHS_EN[s.getMonth()]} \${s.getDate()}–\${e.getDate()}\`
+    : \`\${MONTHS_EN[s.getMonth()]} \${s.getDate()} – \${MONTHS_EN[e.getMonth()]} \${e.getDate()}\`;
+
+  return (
+    <div style={{ display:"flex", justifyContent:"center", padding:16 }}>
+      <div style={{ position:"relative", width:"100%", maxWidth:400, aspectRatio:"1086/1448" }}>
+
+        <img src={BG_URL} alt="" aria-hidden="true"
+          style={{ position:"absolute", inset:0, width:"100%", height:"100%", display:"block" }} />
+
+        <div style={{ position:"absolute", inset:0, fontFamily:"'Georgia',serif" }}>
+
+          {/* City selector */}
+          <div ref={dropRef} style={{ position:"absolute", top:"26.5%", width:"100%", textAlign:"center", zIndex:20 }}>
+            <button onClick={() => setOpen(o => !o)} style={{
+              background:"rgba(90,15,30,0.85)", color:"#f5e8d0",
+              border:"1px solid rgba(212,165,32,0.5)", borderRadius:3,
+              padding:"2.5% 5%", fontSize:"min(3vw,12px)", cursor:"pointer",
+              fontFamily:"inherit", fontWeight:700,
+            }}>📍 {city.label} ▾</button>
+
+            {open && (
+              <div style={{
+                position:"absolute", top:"110%", left:"50%", transform:"translateX(-50%)",
+                background:"#1e0608", border:"1px solid #8b1a2b", borderRadius:4,
+                zIndex:999, minWidth:190, maxHeight:240, overflowY:"auto",
+                boxShadow:"0 8px 32px rgba(0,0,0,0.7)",
+              }}>
+                {CITIES.map((c, i) => (
+                  <div key={i} onClick={() => { setCityIdx(i); setOpen(false); }} style={{
+                    padding:"7px 16px", color: i===cityIdx ? "#f5c842" : "#f0e8dc",
+                    fontSize:12, cursor:"pointer",
+                    background: i===cityIdx ? "rgba(139,26,43,0.4)" : "transparent",
+                    borderBottom:"1px solid rgba(255,255,255,0.05)",
+                    fontWeight: i===cityIdx ? 700 : 400,
+                  }}>{i===cityIdx ? "✓ " : "  "}{c.label}</div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Main data zone */}
+          <div style={{ position:"absolute", top:"30%", bottom:"20%", left:"15%", right:"15%",
+            display:"flex", flexDirection:"column", alignItems:"center", overflow:"hidden" }}>
+
+            {loading ? (
+              <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"100%",
+                color:"#8b1a2b", fontSize:"min(3.2vw,13px)", direction:"rtl" }}>
+                טוען זמנים…
+              </div>
+            ) : error ? (
+              <div style={{ display:"flex",flexDirection:"column",alignItems:"center",
+                justifyContent:"center",height:"100%",gap:8,direction:"rtl" }}>
+                <div style={{ fontSize:"min(3vw,12px)", color:"#8b1a2b" }}>{error}</div>
+                <button onClick={() => setTick(t=>t+1)} style={{
+                  padding:"4px 12px", fontSize:"min(2.8vw,11px)",
+                  background:"#8b1a2b", color:"white", border:"none",
+                  cursor:"pointer", borderRadius:3, fontFamily:"inherit",
+                }}>נסה שוב</button>
+              </div>
+            ) : (
+              <div style={{ width:"100%", display:"flex", flexDirection:"column",
+                alignItems:"center", gap:"1.5%" }}>
+
+                <div style={{ textAlign:"center", direction:"rtl", lineHeight:1.2 }}>
+                  <div style={{ fontSize:"min(4.5vw,18px)", fontWeight:800, color:"#3a0a14" }}>
+                    {parasha || "פרשת השבוע"}
+                  </div>
+                  {hebrewDateStr && <div style={{ fontSize:"min(2.5vw,10px)", color:"#888" }}>{hebrewDateStr}</div>}
+                  <div style={{ fontSize:"min(3vw,12px)", fontWeight:600, color:"#444", direction:"ltr" }}>{dateRange}</div>
+                </div>
+
+                <div style={{ textAlign:"center" }}>
+                  <div style={{ fontSize:"min(17vw,68px)", fontWeight:900, color:"#111",
+                    lineHeight:1, letterSpacing:-2, fontVariantNumeric:"tabular-nums" }}>
+                    {formatTime(todayTimes.sofZmanShma)}
+                  </div>
+                  <div style={{ fontSize:"min(3vw,12px)", color:"#555" }}>
+                    למג״א {formatTime(todayTimes.sofZmanShmaMGA)}
+                  </div>
+                </div>
+
+                <table style={{ width:"100%", borderCollapse:"collapse",
+                  fontSize:"min(2.8vw,11px)", borderTop:"1.5px solid #3a0a14" }}>
+                  <thead><tr>
+                    {["יום","הנץ","ק״ש","שקיעה"].map((h,i) => (
+                      <th key={i} style={{ padding:"3px 2px", fontWeight:700,
+                        background: i===2 ? "#3a0a14" : "rgba(237,229,211,0.7)",
+                        color: i===2 ? "white" : "#3a0a14",
+                        direction:"rtl", textAlign:"center",
+                        borderBottom:"1.5px solid #3a0a14" }}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {week.map((_, i) => {
+                      const t = weekData[i] || {}, isToday = i===todayIdx, isShabbat = i===6;
+                      return (
+                        <tr key={i} style={{ background: isToday ? "rgba(139,26,43,0.1)" : isShabbat ? "rgba(212,165,32,0.08)" : i%2 ? "rgba(253,250,246,0.6)" : "rgba(255,255,255,0.4)" }}>
+                          <td style={{ padding:"3px 3px", direction:"rtl", textAlign:"center",
+                            fontWeight: isToday?800:isShabbat?700:500,
+                            color: isToday?"#8b1a2b":isShabbat?"#5a3e00":"#222",
+                            borderBottom:"1px solid rgba(200,180,150,0.4)" }}>{DAYS_HE[i]}</td>
+                          <td style={{ padding:"3px 2px", textAlign:"center", color:"#555", borderBottom:"1px solid rgba(200,180,150,0.4)" }}>{formatTime(t.sunrise)}</td>
+                          <td style={{ padding:"3px 2px", textAlign:"center",
+                            background: isToday?"#5a0f1e":"#3a0a14", color:"white",
+                            fontWeight: isToday?900:700, borderBottom:"1px solid #2a0a10" }}>{formatTime(t.sofZmanShma)}</td>
+                          <td style={{ padding:"3px 2px", textAlign:"center", color:"#555", borderBottom:"1px solid rgba(200,180,150,0.4)" }}>{formatTime(t.sunset)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                <div style={{ textAlign:"center", fontSize:"min(2.8vw,11px)", color:"#3a0a14",
+                  lineHeight:2, direction:"rtl", borderTop:"1px solid rgba(139,26,43,0.25)",
+                  paddingTop:"2%", width:"100%" }}>
+                  <div>ס״ז תפילה גר״א &nbsp; {formatTime(todayTimes.sofZmanTfilla)}</div>
+                  <div>ס״ז תפילה מג״א &nbsp; {formatTime(todayTimes.sofZmanTfillaMGA)}</div>
+                </div>
+
+                <div style={{ display:"inline-flex", alignItems:"center", gap:5,
+                  background:"rgba(237,229,211,0.7)", border:"1px solid rgba(194,169,138,0.6)",
+                  borderRadius:20, padding:"2px 10px" }}>
+                  <div style={{ width:6, height:6, borderRadius:"50%",
+                    background:"#22c55e", boxShadow:"0 0 5px #22c55e" }} />
+                  <span style={{ fontSize:"min(2.4vw,9px)", fontWeight:700,
+                    color:"#3a0a14", letterSpacing:0.5 }}>Live · hebcal.com</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Clickable footer overlay → your zmanim page */}
+          <a href="https://theothermatthewmiller.com/zmanim" target="_blank" rel="noopener noreferrer"
+            style={{ position:"absolute", top:"83%", left:"18%", right:"18%", height:"9%",
+              zIndex:10, cursor:"pointer", borderRadius:4 }} />
+        </div>
+      </div>
+    </div>
+  );
+}`;
+---
+
+<Layout
+  title="Sof Zman Krias Shma Board — Widget"
+  description="Live weekly zmanim board for Sof Zman Krias Shma. Embed in any React site. Free to use."
+>
+  <main class="container mx-auto px-4 sm:px-6 py-10 max-w-4xl">
+
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        Sof Zman Krias Shma Board
+      </h1>
+      <p class="text-gray-600 dark:text-gray-400 max-w-2xl">
+        A live weekly zmanim board powered by <a href="https://www.hebcal.com" target="_blank" rel="noopener" class="text-cyan-600 dark:text-cyan-400 hover:underline">hebcal.com</a>.
+        Plug it into any React app in seconds.
+      </p>
+    </header>
+
+    <!-- Live demo -->
+    <section class="mb-12">
+      <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">Live Demo</h2>
+      <div class="max-w-sm mx-auto">
+        <ZmanimBoard client:load defaultCityIdx={5} />
+      </div>
+    </section>
+
+    <!-- Copy-code section -->
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          Plugin Code — drop into any React project
+        </h2>
+        <button
+          id="copy-btn"
+          class="inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white transition-colors"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          <span id="copy-label">Copy code</span>
+        </button>
+      </div>
+
+      <!-- Dependencies note -->
+      <div class="mb-3 flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
+        <span>Dependencies:</span>
+        <code class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">react</code>
+        <code class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">framer-motion</code>
+        <span class="italic">(framer-motion is optional — swap <code>motion.div</code> → <code>div</code> to remove it)</span>
+      </div>
+
+      <div class="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+        <pre
+          id="code-block"
+          class="overflow-x-auto overflow-y-auto max-h-[520px] bg-slate-900 text-slate-100 p-5 text-xs leading-relaxed font-mono"
+        ><code>{pluginCode}</code></pre>
+      </div>
+    </section>
+
+  </main>
+</Layout>
+
+<script>
+  const btn = document.getElementById('copy-btn')!;
+  const label = document.getElementById('copy-label')!;
+  const pre = document.getElementById('code-block')!;
+
+  btn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(pre.textContent ?? '');
+      label.textContent = 'Copied!';
+      btn.classList.replace('bg-cyan-600', 'bg-emerald-600');
+      btn.classList.replace('hover:bg-cyan-700', 'hover:bg-emerald-700');
+      setTimeout(() => {
+        label.textContent = 'Copy code';
+        btn.classList.replace('bg-emerald-600', 'bg-cyan-600');
+        btn.classList.replace('hover:bg-emerald-700', 'hover:bg-cyan-700');
+      }, 2000);
+    } catch {
+      label.textContent = 'Failed';
+      setTimeout(() => { label.textContent = 'Copy code'; }, 2000);
+    }
+  });
+</script>
