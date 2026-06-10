@@ -47,18 +47,18 @@
       max-height: calc(100vw * 1448 / 1086);
     }
 
-    /* Utility controls — bottom-left corner */
+    /* Utility controls — top-right corner, auto-hides */
     #controls {
       position: fixed;
-      bottom: 16px;
-      left: 16px;
+      top: 12px;
+      right: 12px;
       z-index: 50;
       display: flex;
       gap: 8px;
-      opacity: 0.55;
-      transition: opacity .2s;
+      opacity: 1;
+      transition: opacity .5s;
     }
-    #controls:hover { opacity: 1; }
+    #controls.hidden { opacity: 0; pointer-events: none; }
 
     .ctrl-btn {
       display: inline-flex;
@@ -105,19 +105,33 @@
   <script src="/zmanim-widget.js" is:inline></script>
 
   <script>
+    const controls = document.getElementById('controls')!;
     const fsBtn    = document.getElementById('fs-btn')!;
     const fsExpand = document.getElementById('fs-icon-expand')!;
     const fsShrink = document.getElementById('fs-icon-shrink')!;
     const fsLabel  = document.getElementById('fs-label')!;
 
+    // Auto-hide controls after 4 s; any touch/click/move brings them back
+    let hideTimer: ReturnType<typeof setTimeout>;
+    function showControls() {
+      controls.classList.remove('hidden');
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => controls.classList.add('hidden'), 4000);
+    }
+    showControls();
+    document.addEventListener('touchstart', showControls, { passive: true });
+    document.addEventListener('mousemove',  showControls);
+    document.addEventListener('click',      showControls);
+
     function updateFsUI() {
       const inFs = !!document.fullscreenElement;
       fsExpand.style.display = inFs ? 'none' : '';
       fsShrink.style.display = inFs ? ''     : 'none';
-      fsLabel.textContent    = inFs ? 'Exit fullscreen' : 'Fullscreen';
+      fsLabel.textContent    = inFs ? 'Exit' : 'Fullscreen';
     }
 
-    fsBtn.addEventListener('click', () => {
+    fsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(() => {});
       } else {
@@ -126,9 +140,6 @@
     });
 
     document.addEventListener('fullscreenchange', updateFsUI);
-
-    // Auto-enter fullscreen on load if user navigated here intentionally
-    // (browsers require a gesture, so we just make it one click away)
   </script>
 
 </body>
