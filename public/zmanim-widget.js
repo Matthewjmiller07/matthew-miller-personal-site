@@ -232,7 +232,7 @@
     content.appendChild(bigWrap);
 
     // Full week table
-    var tbl=el('table',{style:'width:100%;border-collapse:collapse;font-size:'+(b*.84)+'px;border-top:1.5px solid #3a0a14;flex-shrink:0;'});
+    var tbl=el('table',{style:'width:100%;border-collapse:collapse;font-size:'+(b*.84)+'px;border-top:1.5px solid #3a0a14;flex-shrink:0;direction:rtl;'});
     var thead=el('thead'),hRow=el('tr');
     [{t:'יום',bg:'#ede5d3',c:'#3a0a14'},{t:'הנץ',bg:'#ede5d3',c:'#3a0a14'},
      {t:'ק״ש',bg:'#3a0a14',c:'#fff'},{t:'מג״א',bg:'#5a1a28',c:'#f0d8a8'},{t:'שקיעה',bg:'#ede5d3',c:'#3a0a14'}
