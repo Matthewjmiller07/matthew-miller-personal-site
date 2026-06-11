@@ -1,0 +1,501 @@
+---
+// Coffee in Judaism — live interactive source sheet.
+// Data lives in the dedicated "coffee" Supabase project and is fetched
+// client-side so the page always reflects the current state of the DB.
+// The publishable key below is safe to expose: RLS allows SELECT only.
+import Layout from '../layouts/Layout.astro';
+
+const pageTitle = 'Coffee in Judaism';
+const pageDescription =
+  'A living source sheet on coffee in halacha and Jewish history — berachot, Shabbat, Pesach, bishul akum, chassidut and more, with sources from Sefaria, Hakirah, and OU Kosher.';
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Crimson+Pro:ital,wght@0,300..700;1,300..700&family=Frank+Ruhl+Libre:wght@300..900&display=swap"
+    rel="stylesheet"
+  />
+
+  <div class="kava">
+    <!-- ===== Hero ===== -->
+    <header class="kava-hero">
+      <div class="kava-hero-inner">
+        <p class="kava-kicker">A living source sheet · נלקט מן המקורות</p>
+        <h1 class="kava-title">
+          <span class="kava-title-he">קאווע</span>
+          <span class="kava-title-en">Coffee <em>in</em> Judaism</span>
+        </h1>
+        <p class="kava-lede">
+          From the first Oxford coffeehouse — opened by a Jew in 1650 — to whether your
+          espresso needs a beracha acharona, the humble bean has kept poskim busy for four
+          centuries. Below: the questions, the rulings, and the texts themselves.
+        </p>
+        <div class="kava-cup" aria-hidden="true">
+          <div class="kava-steam"><span></span><span></span><span></span></div>
+          <div class="kava-cup-body">☕</div>
+        </div>
+        <div class="kava-stats" id="kava-stats" aria-live="polite">
+          <span class="kava-stat"><b id="stat-topics">–</b> halachic topics</span>
+          <span class="kava-stat-dot">·</span>
+          <span class="kava-stat"><b id="stat-sources">–</b> sources</span>
+          <span class="kava-stat-dot">·</span>
+          <span class="kava-stat"><b id="stat-shiurim">–</b> shiurim</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="kava-main">
+      <div id="kava-loading" class="kava-loading">Brewing the sources&hellip;</div>
+      <div id="kava-error" class="kava-error" hidden>
+        Couldn&rsquo;t load the database right now. Please try again in a moment.
+      </div>
+
+      <!-- ===== Topics ===== -->
+      <section id="topics-section" class="kava-section" hidden>
+        <h2 class="kava-h2"><span class="kava-h2-num">I.</span> Questions &amp; Rulings</h2>
+        <p class="kava-section-sub">
+          Tap a question to open the ruling, the reasoning, and the sources behind it.
+        </p>
+        <div id="topics-list" class="kava-topics"></div>
+      </section>
+
+      <!-- ===== Source library ===== -->
+      <section id="sources-section" class="kava-section" hidden>
+        <h2 class="kava-h2"><span class="kava-h2-num">II.</span> The Source Library</h2>
+        <p class="kava-section-sub">
+          Every text in the collection. Sources marked
+          <span class="kava-badge kava-badge-claude">✦ added by Claude</span> were researched
+          and added by AI from <a href="https://www.sefaria.org" target="_blank" rel="noopener">Sefaria</a>
+          — always verify inside before relying on them.
+        </p>
+        <div id="source-filters" class="kava-filters" role="group" aria-label="Filter sources"></div>
+        <div id="sources-list" class="kava-sources"></div>
+      </section>
+
+      <!-- ===== Facts ===== -->
+      <section id="facts-section" class="kava-section" hidden>
+        <h2 class="kava-h2"><span class="kava-h2-num">III.</span> Beans of Knowledge</h2>
+        <div id="facts-list" class="kava-facts"></div>
+      </section>
+
+      <!-- ===== Shiurim ===== -->
+      <section id="shiurim-section" class="kava-section" hidden>
+        <h2 class="kava-h2"><span class="kava-h2-num">IV.</span> Shiurim to Sip By</h2>
+        <p class="kava-section-sub">
+          Audio shiurim touching on coffee and its halachot, mostly via
+          <a href="https://www.yutorah.org" target="_blank" rel="noopener">YUTorah</a>.
+        </p>
+        <input
+          id="shiur-search"
+          class="kava-search"
+          type="search"
+          placeholder="Search shiurim by title, rabbi, or tag…"
+          aria-label="Search shiurim"
+        />
+        <div id="shiurim-list" class="kava-shiurim"></div>
+        <button id="shiurim-more" class="kava-more" hidden>Pour another 25 →</button>
+      </section>
+
+      <footer class="kava-colophon">
+        <p>
+          Data lives in a Supabase database and renders live — the sheet grows as the
+          research does. Texts via <a href="https://www.sefaria.org" target="_blank" rel="noopener">Sefaria</a>,
+          <a href="https://hakirah.org" target="_blank" rel="noopener">Hakirah</a>,
+          <a href="https://hebrewbooks.org" target="_blank" rel="noopener">HebrewBooks</a> and
+          <a href="https://archive.org" target="_blank" rel="noopener">the Internet Archive</a>.
+          Nothing here is a psak — ask your rabbi, preferably over a cup.
+        </p>
+      </footer>
+    </main>
+  </div>
+</Layout>
+
+<style is:global>
+  /* ============ Coffee in Judaism — roastery/responsa aesthetic ============ */
+  .kava {
+    --bean-900: #14100d;
+    --bean-800: #1d1713;
+    --bean-700: #2a211b;
+    --bean-600: #3a2d24;
+    --crema: #e9dcc6;
+    --crema-dim: #c9b894;
+    --copper: #c87f3d;
+    --copper-bright: #e09a55;
+    --paper-line: rgba(233, 220, 198, 0.14);
+    font-family: 'Crimson Pro', Georgia, serif;
+    background:
+      radial-gradient(1200px 500px at 70% -10%, rgba(200, 127, 61, 0.13), transparent 60%),
+      radial-gradient(900px 400px at 10% 20%, rgba(200, 127, 61, 0.07), transparent 55%),
+      var(--bean-900);
+    color: var(--crema);
+    min-height: 100vh;
+  }
+  .kava ::selection { background: var(--copper); color: var(--bean-900); }
+  .kava a { color: var(--copper-bright); text-decoration: none; border-bottom: 1px solid rgba(224, 154, 85, 0.35); }
+  .kava a:hover { color: var(--crema); border-bottom-color: var(--crema); }
+
+  /* ---- Hero ---- */
+  .kava-hero { padding: 5.5rem 1.25rem 3.5rem; border-bottom: 1px solid var(--paper-line); position: relative; overflow: hidden; }
+  .kava-hero-inner { max-width: 56rem; margin: 0 auto; text-align: center; position: relative; }
+  .kava-kicker {
+    font-family: 'Fraunces', serif; font-size: 0.8rem; letter-spacing: 0.28em;
+    text-transform: uppercase; color: var(--copper); margin-bottom: 1.75rem;
+  }
+  .kava-title { line-height: 0.95; margin: 0 0 1.5rem; }
+  .kava-title-he {
+    display: block; font-family: 'Frank Ruhl Libre', serif; font-weight: 900;
+    font-size: clamp(4rem, 13vw, 8.5rem); color: var(--crema);
+    text-shadow: 0 1px 0 var(--bean-600), 4px 6px 0 rgba(200, 127, 61, 0.22);
+    direction: rtl;
+  }
+  .kava-title-en {
+    display: block; font-family: 'Fraunces', serif; font-weight: 300;
+    font-size: clamp(1.4rem, 4vw, 2.2rem); letter-spacing: 0.06em;
+    color: var(--crema-dim); margin-top: 0.75rem;
+  }
+  .kava-title-en em { font-style: italic; color: var(--copper-bright); }
+  .kava-lede {
+    max-width: 38rem; margin: 0 auto 2rem; font-size: 1.18rem; line-height: 1.65;
+    color: var(--crema-dim);
+  }
+  .kava-cup { position: relative; height: 4.5rem; margin-bottom: 1rem; }
+  .kava-cup-body { font-size: 2.2rem; filter: sepia(0.4); }
+  .kava-steam { position: absolute; left: 50%; top: -1.4rem; transform: translateX(-50%); display: flex; gap: 6px; }
+  .kava-steam span {
+    width: 3px; height: 22px; border-radius: 3px; background: var(--crema-dim);
+    opacity: 0; animation: kava-rise 2.6s ease-in-out infinite;
+  }
+  .kava-steam span:nth-child(2) { animation-delay: 0.6s; height: 28px; }
+  .kava-steam span:nth-child(3) { animation-delay: 1.2s; }
+  @keyframes kava-rise {
+    0% { opacity: 0; transform: translateY(8px) scaleY(0.6); }
+    35% { opacity: 0.55; }
+    100% { opacity: 0; transform: translateY(-14px) scaleY(1.15); }
+  }
+  .kava-stats { font-family: 'Fraunces', serif; font-size: 0.95rem; color: var(--crema-dim); letter-spacing: 0.04em; }
+  .kava-stats b { color: var(--copper-bright); font-weight: 600; }
+  .kava-stat-dot { margin: 0 0.6rem; color: var(--copper); }
+
+  /* ---- Layout ---- */
+  .kava-main { max-width: 56rem; margin: 0 auto; padding: 1rem 1.25rem 5rem; }
+  .kava-section { margin-top: 4.5rem; }
+  .kava-h2 {
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: clamp(1.7rem, 4vw, 2.3rem);
+    color: var(--crema); margin: 0 0 0.5rem; letter-spacing: 0.01em;
+  }
+  .kava-h2-num { color: var(--copper); font-style: italic; font-weight: 300; margin-right: 0.5rem; }
+  .kava-section-sub { color: var(--crema-dim); margin: 0 0 1.75rem; font-size: 1.05rem; line-height: 1.6; }
+  .kava-loading { text-align: center; padding: 4rem 0; font-family: 'Fraunces', serif; font-style: italic; color: var(--crema-dim); animation: kava-pulse 1.6s ease-in-out infinite; }
+  @keyframes kava-pulse { 50% { opacity: 0.45; } }
+  .kava-error { text-align: center; padding: 3rem 0; color: var(--copper-bright); }
+
+  /* ---- Badges ---- */
+  .kava-badge {
+    display: inline-block; font-family: 'Fraunces', serif; font-size: 0.68rem;
+    letter-spacing: 0.08em; text-transform: uppercase; padding: 0.18rem 0.55rem;
+    border-radius: 999px; border: 1px solid var(--paper-line); color: var(--crema-dim);
+    margin: 0 0.25rem 0.25rem 0; vertical-align: middle;
+  }
+  .kava-badge-claude { border-color: rgba(224, 154, 85, 0.55); color: var(--copper-bright); background: rgba(200, 127, 61, 0.1); }
+  .kava-badge-seph { border-color: rgba(233, 220, 198, 0.4); color: var(--crema); }
+
+  /* ---- Topics (accordion) ---- */
+  .kava-topics { display: flex; flex-direction: column; gap: 0.9rem; }
+  .kava-topic {
+    border: 1px solid var(--paper-line); border-radius: 10px; background: var(--bean-800);
+    overflow: hidden; transition: border-color 0.25s ease;
+  }
+  .kava-topic[open] { border-color: rgba(200, 127, 61, 0.5); }
+  .kava-topic summary {
+    cursor: pointer; list-style: none; padding: 1.1rem 1.3rem; display: flex; gap: 0.9rem;
+    align-items: baseline; font-family: 'Fraunces', serif; font-size: 1.12rem; color: var(--crema);
+  }
+  .kava-topic summary::-webkit-details-marker { display: none; }
+  .kava-topic summary::before { content: '❧'; color: var(--copper); transition: transform 0.25s ease; flex: none; }
+  .kava-topic[open] summary::before { transform: rotate(90deg); }
+  .kava-topic summary:hover { background: var(--bean-700); }
+  .kava-topic-body { padding: 0.25rem 1.3rem 1.3rem 2.8rem; font-size: 1.05rem; line-height: 1.65; }
+  .kava-topic-q { font-style: italic; color: var(--crema-dim); margin: 0 0 0.9rem; }
+  .kava-topic-label {
+    font-family: 'Fraunces', serif; font-size: 0.7rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--copper); display: block; margin: 1.1rem 0 0.3rem;
+  }
+  .kava-topic-srcs { margin: 0.4rem 0 0; padding: 0; list-style: none; }
+  .kava-topic-srcs li { padding: 0.45rem 0; border-top: 1px dashed var(--paper-line); }
+  .kava-topic-srcs .src-note { display: block; font-size: 0.92rem; color: var(--crema-dim); }
+  .kava-seph-note { background: var(--bean-700); border-left: 3px solid var(--copper); padding: 0.7rem 0.9rem; border-radius: 0 8px 8px 0; margin-top: 0.5rem; font-size: 0.98rem; }
+
+  /* ---- Source library ---- */
+  .kava-filters { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1.4rem; }
+  .kava-filter {
+    font-family: 'Fraunces', serif; font-size: 0.78rem; letter-spacing: 0.06em;
+    padding: 0.32rem 0.85rem; border-radius: 999px; border: 1px solid var(--paper-line);
+    background: transparent; color: var(--crema-dim); cursor: pointer; transition: all 0.2s ease;
+  }
+  .kava-filter:hover { border-color: var(--copper); color: var(--crema); }
+  .kava-filter.is-active { background: var(--copper); border-color: var(--copper); color: var(--bean-900); font-weight: 600; }
+  .kava-sources { columns: 2 19rem; column-gap: 1rem; }
+  .kava-source {
+    break-inside: avoid; margin-bottom: 1rem; border: 1px solid var(--paper-line);
+    border-radius: 10px; background: var(--bean-800); padding: 1.05rem 1.15rem;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .kava-source:hover { transform: translateY(-2px); border-color: rgba(200, 127, 61, 0.45); }
+  .kava-source h3 { margin: 0 0 0.15rem; font-family: 'Fraunces', serif; font-size: 1.06rem; font-weight: 600; color: var(--crema); }
+  .kava-source .src-author { font-size: 0.9rem; color: var(--copper-bright); margin: 0 0 0.5rem; font-style: italic; }
+  .kava-source .src-excerpt {
+    font-size: 0.98rem; line-height: 1.55; color: var(--crema-dim); margin: 0 0 0.6rem;
+    border-left: 2px solid var(--bean-600); padding-left: 0.7rem;
+  }
+  .kava-source .src-notes { font-size: 0.9rem; line-height: 1.5; color: var(--crema-dim); opacity: 0.85; margin: 0 0 0.6rem; }
+  .kava-source .src-meta { font-size: 0.8rem; }
+
+  /* ---- Facts ---- */
+  .kava-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
+  .kava-fact {
+    border: 1px dashed rgba(200, 127, 61, 0.45); border-radius: 12px; padding: 1.2rem 1.25rem;
+    background: rgba(200, 127, 61, 0.05); font-size: 1.02rem; line-height: 1.6;
+  }
+  .kava-fact .fact-cat {
+    font-family: 'Fraunces', serif; font-size: 0.68rem; letter-spacing: 0.24em;
+    text-transform: uppercase; color: var(--copper); display: block; margin-bottom: 0.5rem;
+  }
+  .kava-fact .fact-src { display: block; margin-top: 0.6rem; font-size: 0.85rem; }
+
+  /* ---- Shiurim ---- */
+  .kava-search {
+    width: 100%; padding: 0.75rem 1.1rem; border-radius: 10px; margin-bottom: 1.2rem;
+    background: var(--bean-800); border: 1px solid var(--paper-line); color: var(--crema);
+    font-family: 'Crimson Pro', serif; font-size: 1.05rem; outline: none; transition: border-color 0.2s ease;
+  }
+  .kava-search:focus { border-color: var(--copper); }
+  .kava-search::placeholder { color: var(--crema-dim); opacity: 0.7; }
+  .kava-shiurim { display: flex; flex-direction: column; }
+  .kava-shiur { display: flex; gap: 0.9rem; align-items: baseline; padding: 0.7rem 0.3rem; border-top: 1px solid var(--paper-line); }
+  .kava-shiur:hover { background: var(--bean-800); }
+  .kava-shiur .sh-title { flex: 1 1 auto; font-size: 1.02rem; }
+  .kava-shiur .sh-rabbi { flex: none; font-size: 0.88rem; color: var(--copper-bright); font-style: italic; max-width: 13rem; text-align: right; }
+  .kava-more {
+    margin: 1.4rem auto 0; display: block; font-family: 'Fraunces', serif; font-size: 0.9rem;
+    letter-spacing: 0.05em; color: var(--copper-bright); background: none; cursor: pointer;
+    border: 1px solid rgba(200, 127, 61, 0.5); border-radius: 999px; padding: 0.55rem 1.4rem;
+    transition: all 0.2s ease;
+  }
+  .kava-more:hover { background: var(--copper); color: var(--bean-900); }
+  .kava-empty { text-align: center; color: var(--crema-dim); font-style: italic; padding: 1.5rem 0; }
+
+  .kava-colophon {
+    margin-top: 5rem; padding-top: 1.75rem; border-top: 1px solid var(--paper-line);
+    font-size: 0.95rem; color: var(--crema-dim); line-height: 1.65; text-align: center;
+  }
+
+  /* Reveal on load */
+  .kava-section { animation: kava-in 0.6s ease both; }
+  @keyframes kava-in { from { opacity: 0; transform: translateY(14px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .kava-section, .kava-steam span, .kava-loading { animation: none; }
+  }
+</style>
+
+<script>
+  // Live data from the dedicated coffee Supabase project (read-only via RLS).
+  const SB_URL = 'https://knbyyykfwwlgnizutqyb.supabase.co/rest/v1';
+  const SB_KEY = 'sb_publishable_YjxPaHDo9MKw9mLhZ6iCAw_s14txTkG';
+
+  const $ = (id: string) => document.getElementById(id)!;
+
+  const esc = (s: unknown) =>
+    String(s ?? '').replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!
+    );
+
+  async function sb(path: string) {
+    const res = await fetch(`${SB_URL}/${path}`, {
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+    });
+    if (!res.ok) throw new Error(`${path}: ${res.status}`);
+    return res.json();
+  }
+
+  const badge = (tag: string) =>
+    tag === 'claude-added'
+      ? '<span class="kava-badge kava-badge-claude">✦ added by Claude</span>'
+      : tag === 'claude-enriched'
+        ? '<span class="kava-badge kava-badge-claude">✦ enriched by Claude</span>'
+        : `<span class="kava-badge">${esc(tag)}</span>`;
+
+  const linkTo = (url: string | null, label: string) =>
+    url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>` : esc(label);
+
+  function renderTopics(topics: any[], sources: any[], links: any[]) {
+    const srcById = new Map(sources.map((s) => [s.id, s]));
+    $('topics-list').innerHTML = topics
+      .map((t) => {
+        const linked = links
+          .filter((l) => l.halacha_id === t.id)
+          .map((l) => ({ ...l, src: srcById.get(l.source_id) }))
+          .filter((l) => l.src);
+        const claude = (t.tags || []).includes('claude-added');
+        return `
+        <details class="kava-topic">
+          <summary>${esc(t.topic)}</summary>
+          <div class="kava-topic-body">
+            ${t.question ? `<p class="kava-topic-q">${esc(t.question)}</p>` : ''}
+            ${t.ruling ? `<span class="kava-topic-label">Ruling</span><p>${esc(t.ruling)}</p>` : ''}
+            ${t.reasoning ? `<span class="kava-topic-label">Reasoning</span><p>${esc(t.reasoning)}</p>` : ''}
+            ${
+              t.sephardic_ashkenaz_diff && t.sephardic_ashkenaz_notes
+                ? `<span class="kava-topic-label">Sephardic ↔ Ashkenazic</span><div class="kava-seph-note">${esc(t.sephardic_ashkenaz_notes)}</div>`
+                : ''
+            }
+            ${
+              linked.length
+                ? `<span class="kava-topic-label">Sources</span><ul class="kava-topic-srcs">${linked
+                    .map(
+                      (l) => `<li>${linkTo(l.src.url, l.src.short_name)}${
+                        l.relevance_note ? `<span class="src-note">${esc(l.relevance_note)}</span>` : ''
+                      }</li>`
+                    )
+                    .join('')}</ul>`
+                : ''
+            }
+            <div style="margin-top:0.9rem">${(t.tags || []).filter((x: string) => x !== 'claude-added').map(badge).join('')}${claude ? badge('claude-added') : ''}</div>
+            ${t.notes ? `<p class="src-notes" style="font-size:0.88rem;opacity:0.7;margin-top:0.6rem">${esc(t.notes)}</p>` : ''}
+          </div>
+        </details>`;
+      })
+      .join('');
+  }
+
+  function renderSources(sources: any[]) {
+    const tagSet = new Set<string>();
+    sources.forEach((s) => (s.tags || []).forEach((t: string) => tagSet.add(t)));
+    const filters = ['all', 'claude-added', ...[...tagSet].filter((t) => !['claude-added', 'claude-enriched'].includes(t)).sort()];
+    $('source-filters').innerHTML = filters
+      .map(
+        (f) =>
+          `<button class="kava-filter${f === 'all' ? ' is-active' : ''}" data-filter="${esc(f)}">${
+            f === 'all' ? `All (${sources.length})` : f === 'claude-added' ? '✦ added by Claude' : esc(f)
+          }</button>`
+      )
+      .join('');
+
+    const draw = (filter: string) => {
+      const shown = filter === 'all' ? sources : sources.filter((s) => (s.tags || []).includes(filter));
+      $('sources-list').innerHTML = shown.length
+        ? shown
+            .map(
+              (s) => `
+          <article class="kava-source">
+            <h3>${linkTo(s.url, s.short_name)}</h3>
+            <p class="src-author">${esc(s.full_name)}${s.author ? ` — ${esc(s.author)}` : ''}</p>
+            ${s.translation ? `<p class="src-excerpt">${esc(s.translation)}</p>` : ''}
+            ${s.notes ? `<p class="src-notes">${esc(s.notes)}</p>` : ''}
+            <div class="src-meta">${(s.tags || []).map(badge).join('')}${s.language ? badge(s.language) : ''}</div>
+            ${s.source_of_source ? `<p class="src-notes" style="margin-top:0.5rem">Found via: ${esc(s.source_of_source)}</p>` : ''}
+          </article>`
+            )
+            .join('')
+        : '<p class="kava-empty">No sources under that tag yet.</p>';
+    };
+    draw('all');
+
+    $('source-filters').addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('.kava-filter') as HTMLElement | null;
+      if (!btn) return;
+      document.querySelectorAll('.kava-filter').forEach((b) => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      draw(btn.dataset.filter!);
+    });
+  }
+
+  function renderFacts(facts: any[]) {
+    $('facts-list').innerHTML = facts
+      .map(
+        (f) => `
+      <div class="kava-fact">
+        <span class="fact-cat">${esc(f.category || 'fact')}</span>
+        ${esc(f.fact)}
+        ${f.source_url ? `<a class="fact-src" href="${esc(f.source_url)}" target="_blank" rel="noopener">source ↗</a>` : ''}
+        ${(f.tags || []).includes('claude-added') ? `<div style="margin-top:0.5rem">${badge('claude-added')}</div>` : ''}
+      </div>`
+      )
+      .join('');
+  }
+
+  function renderShiurim(shiurim: any[]) {
+    const PAGE = 25;
+    let query = '';
+    let limit = PAGE;
+    const list = $('shiurim-list');
+    const more = $('shiurim-more') as HTMLButtonElement;
+
+    const draw = () => {
+      const q = query.toLowerCase();
+      const matched = q
+        ? shiurim.filter((s) =>
+            [s.title, s.rabbi, ...(s.tags || [])].join(' ').toLowerCase().includes(q)
+          )
+        : shiurim;
+      const shown = matched.slice(0, limit);
+      list.innerHTML = shown.length
+        ? shown
+            .map(
+              (s) => `
+        <div class="kava-shiur">
+          <span class="sh-title">${linkTo(s.url, s.title)}</span>
+          ${s.rabbi ? `<span class="sh-rabbi">${esc(s.rabbi)}</span>` : ''}
+        </div>`
+            )
+            .join('')
+        : '<p class="kava-empty">Nothing matches — try fewer words.</p>';
+      more.hidden = matched.length <= limit;
+      more.textContent = `Pour another ${Math.min(PAGE, matched.length - limit)} → (${matched.length - limit} left)`;
+    };
+
+    ($('shiur-search') as HTMLInputElement).addEventListener('input', (e) => {
+      query = (e.target as HTMLInputElement).value.trim();
+      limit = PAGE;
+      draw();
+    });
+    more.addEventListener('click', () => {
+      limit += PAGE;
+      draw();
+    });
+    draw();
+  }
+
+  async function init() {
+    try {
+      const [topics, sources, links, facts, shiurim] = await Promise.all([
+        sb('coffee_halacha?select=*&order=created_at.asc'),
+        sb('sources?select=*&order=short_name.asc'),
+        sb('halacha_sources?select=*'),
+        sb('coffee_facts?select=*&order=created_at.asc'),
+        sb('shiurim?select=id,title,rabbi,url,tags&order=created_at.desc'),
+      ]);
+
+      $('stat-topics').textContent = String(topics.length);
+      $('stat-sources').textContent = String(sources.length);
+      $('stat-shiurim').textContent = String(shiurim.length);
+
+      renderTopics(topics, sources, links);
+      renderSources(sources);
+      renderFacts(facts);
+      renderShiurim(shiurim);
+
+      $('kava-loading').hidden = true;
+      ['topics-section', 'sources-section', 'facts-section', 'shiurim-section'].forEach(
+        (id) => ($(id).hidden = false)
+      );
+    } catch (err) {
+      console.error('[coffee] load failed:', err);
+      $('kava-loading').hidden = true;
+      $('kava-error').hidden = false;
+    }
+  }
+
+  init();
+</script>
