@@ -36,11 +36,16 @@ jobs:
           SOFER_AI_API_KEY: ${{ secrets.SOFER_AI_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: node scripts/sync-scp-drive.js
-      
+
+      - name: Rebuild semantic search index
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: node scripts/build-search-index.mjs
+
       - name: Check for changes
         id: check-changes
         run: |
-          git add src/data/scp.json src/data/scp-*-transcript.json public/scp/
+          git add src/data/scp.json src/data/scp-*-transcript.json src/data/search-index.json public/scp/
           if git diff --staged --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No new shiurim detected"

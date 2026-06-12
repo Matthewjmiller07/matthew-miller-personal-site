@@ -1,0 +1,237 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Torah Search | The Other Matthew Miller"
+  description="Semantic search across shiurim, the Rav Nachman reader, and writings — find the exact minute something was said."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;600;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <main class="min-h-screen bg-gray-50 dark:bg-gray-900 py-14">
+    <div class="max-w-3xl mx-auto px-4">
+
+      <header class="mb-10">
+        <p class="text-xs uppercase tracking-[0.25em] text-cyan-600 dark:text-cyan-400 mb-3">
+          חפש · Semantic search
+        </p>
+        <h1 class="font-display text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight">
+          Search the Torah I've&nbsp;learned
+        </h1>
+        <p class="mt-3 text-gray-600 dark:text-gray-400 leading-relaxed">
+          Search by <em>meaning</em>, not keywords — across SCP shiurim (down to the minute it was said),
+          the Rav Nachman reader, and writings.
+        </p>
+      </header>
+
+      <div class="relative">
+        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"/>
+        </svg>
+        <input
+          id="search-input"
+          type="search"
+          autocomplete="off"
+          placeholder="Try: when does butter become a problem in a milky pan?"
+          class="w-full pl-12 pr-14 py-4 rounded-2xl text-base bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm transition-colors"
+        />
+        <kbd class="hidden sm:block absolute right-4 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-mono text-gray-400 border border-gray-300 dark:border-gray-600 rounded">/</kbd>
+      </div>
+
+      <div id="example-queries" class="mt-4 flex flex-wrap gap-2">
+        <span class="text-xs text-gray-400 dark:text-gray-500 self-center">Ask about:</span>
+      </div>
+
+      <div id="status" class="mt-10 text-sm text-gray-500 dark:text-gray-400"></div>
+
+      <div id="results" class="mt-2 space-y-4"></div>
+
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .font-display {
+    font-family: 'Frank Ruhl Libre', Georgia, serif;
+  }
+
+  :global(.result-card) {
+    opacity: 0;
+    animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  :global(.thinking-dot) {
+    animation: blink 1.2s infinite both;
+  }
+  :global(.thinking-dot:nth-child(2)) { animation-delay: 0.2s; }
+  :global(.thinking-dot:nth-child(3)) { animation-delay: 0.4s; }
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0.25; }
+    40% { opacity: 1; }
+  }
+</style>
+
+<script>
+  const input = document.getElementById('search-input') as HTMLInputElement;
+  const resultsEl = document.getElementById('results')!;
+  const statusEl = document.getElementById('status')!;
+  const examplesEl = document.getElementById('example-queries')!;
+
+  const EXAMPLES = [
+    'nat bar nat in keilim',
+    'why dairy bread is forbidden',
+    'finding joy in hard times',
+    'kashering a fleishig spoon',
+    'memory and forgetting',
+  ];
+
+  const TYPE_META: Record<string, { label: string; icon: string; badge: string }> = {
+    'shiur': {
+      label: 'Shiur',
+      icon: '🎧',
+      badge: 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300',
+    },
+    'rav-nachman': {
+      label: 'Rav Nachman',
+      icon: '📖',
+      badge: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
+    },
+    'writing': {
+      label: 'Writing',
+      icon: '✍️',
+      badge: 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300',
+    },
+  };
+
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let activeController: AbortController | null = null;
+
+  function setStatus(html: string) {
+    statusEl.innerHTML = html;
+  }
+
+  function showThinking() {
+    setStatus(`
+      <span class="inline-flex items-center gap-2">
+        <span class="font-display italic">Searching the sugya</span>
+        <span class="thinking-dot">●</span><span class="thinking-dot">●</span><span class="thinking-dot">●</span>
+      </span>`);
+  }
+
+  function escapeHtml(s: string) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function render(results: any[], query: string) {
+    resultsEl.innerHTML = '';
+    if (results.length === 0) {
+      setStatus(`Nothing close enough for “${escapeHtml(query)}” — try rephrasing the idea.`);
+      return;
+    }
+    setStatus(`${results.length} passages, ranked by meaning`);
+
+    results.forEach((r, i) => {
+      const meta = TYPE_META[r.type] ?? TYPE_META['writing'];
+      const relevance = Math.max(4, Math.round(((r.score - 0.3) / 0.5) * 100));
+      const timeChip = r.clock
+        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-900 dark:bg-gray-700 text-cyan-300 font-mono text-xs">▶ ${r.clock}</span>`
+        : '';
+
+      const card = document.createElement('a');
+      card.href = r.url;
+      card.className =
+        'result-card block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm hover:shadow-md hover:border-cyan-400 dark:hover:border-cyan-500 transition-all';
+      card.style.animationDelay = `${i * 55}ms`;
+      card.innerHTML = `
+        <div class="flex items-center gap-2 mb-2">
+          <span class="px-2 py-0.5 rounded-md text-xs font-medium ${meta.badge}">${meta.icon} ${meta.label}</span>
+          ${timeChip}
+          <span class="ml-auto hidden sm:flex items-center gap-1.5" title="relevance">
+            <span class="w-16 h-1 rounded bg-gray-100 dark:bg-gray-700 overflow-hidden">
+              <span class="block h-full bg-cyan-500" style="width:${Math.min(100, relevance)}%"></span>
+            </span>
+          </span>
+        </div>
+        <h2 class="font-display font-semibold text-gray-900 dark:text-white">${escapeHtml(r.title)}</h2>
+        <p class="mt-1.5 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">${escapeHtml(r.text)}</p>
+      `;
+      resultsEl.appendChild(card);
+    });
+  }
+
+  async function search(query: string) {
+    activeController?.abort();
+    if (!query.trim()) {
+      resultsEl.innerHTML = '';
+      setStatus('');
+      return;
+    }
+    activeController = new AbortController();
+    showThinking();
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+        signal: activeController.signal,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus(`⚠️ ${escapeHtml(data.error ?? 'Search failed')}`);
+        resultsEl.innerHTML = '';
+        return;
+      }
+      render(data.results, query);
+      const params = new URLSearchParams(location.search);
+      params.set('q', query);
+      history.replaceState(null, '', `?${params}`);
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        setStatus('⚠️ Something went wrong — try again.');
+      }
+    }
+  }
+
+  input.addEventListener('input', () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => search(input.value), 450);
+  });
+
+  // "/" focuses the search box, like the gemara should be
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== input) {
+      e.preventDefault();
+      input.focus();
+    }
+  });
+
+  // Example chips
+  for (const ex of EXAMPLES) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = ex;
+    btn.className =
+      'px-3 py-1 rounded-full text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors';
+    btn.addEventListener('click', () => {
+      input.value = ex;
+      search(ex);
+      input.focus();
+    });
+    examplesEl.appendChild(btn);
+  }
+
+  // Restore query from URL
+  const initial = new URLSearchParams(location.search).get('q');
+  if (initial) {
+    input.value = initial;
+    search(initial);
+  }
+</script>

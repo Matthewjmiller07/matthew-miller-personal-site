@@ -675,6 +675,26 @@ function youtubeEmbedUrl(videoUrl: string | null) {
   const isAuthenticated = sessionStorage.getItem('scp_authenticated') === 'true';
   const easterEggUnlocked = sessionStorage.getItem('scp_easter_egg') === 'true';
 
+  // Deep link from /search: /scp?shiur=shiur-3&t=872 → scroll to shiur, seek audio
+  function handleDeepLink() {
+    const params = new URLSearchParams(location.search);
+    const shiurId = params.get('shiur');
+    if (!shiurId) return;
+    const article = document.getElementById(shiurId);
+    if (!article) return;
+    article.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const t = parseFloat(params.get('t') ?? '');
+    if (!Number.isNaN(t)) {
+      const audio = document.getElementById(`audio-${shiurId}`) as HTMLAudioElement | null;
+      if (audio) {
+        const seek = () => { audio.currentTime = t; };
+        if (audio.readyState >= 1) seek();
+        else audio.addEventListener('loadedmetadata', seek, { once: true });
+        audio.play().catch(() => {}); // autoplay may be blocked; seek still applies
+      }
+    }
+  }
+
   if (isAuthenticated) {
     document.getElementById('password-section')?.classList.add('hidden');
     document.getElementById('main-content')?.classList.remove('hidden');
@@ -682,6 +702,7 @@ function youtubeEmbedUrl(videoUrl: string | null) {
       document.getElementById('running-tallies')?.classList.remove('hidden');
       document.querySelectorAll('.shiur-easter-egg').forEach(el => el.classList.remove('hidden'));
     }
+    handleDeepLink();
   }
 
   document.getElementById('password-form')?.addEventListener('submit', (e) => {
@@ -693,6 +714,7 @@ function youtubeEmbedUrl(videoUrl: string | null) {
       document.getElementById('password-section')?.classList.add('hidden');
       document.getElementById('main-content')?.classList.remove('hidden');
       error?.classList.add('hidden');
+      handleDeepLink();
     } else {
       error?.classList.remove('hidden');
       input.value = '';
