@@ -195,7 +195,7 @@ import Layout from '../layouts/Layout.astro';
                 <!-- QR plaque -->
                 <div class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
                     <h3 class="text-lg font-semibold mb-2">🔳 QR code plaque</h3>
-                    <p class="text-sm text-gray-400 mb-3">A scannable QR code as a printable plaque. Pause the print at the relief layer and swap to a contrasting filament.</p>
+                    <p class="text-sm text-gray-400 mb-3">A scannable QR code as a printable plaque, previewed in its print colors. Multi-filament printer (Bambu AMS etc.)? Download the two-STL version below, import both files as one object, and assign white/black filaments.</p>
                     <div class="space-y-3 text-sm">
                         <input id="qr-text" type="text" value="https://theothermatthewmiller.com" class="w-full rounded bg-gray-800 border border-gray-600 px-2 py-1.5" />
                         <div class="grid grid-cols-3 gap-2">
@@ -207,6 +207,7 @@ import Layout from '../layouts/Layout.astro';
                                 <input id="qr-relief" type="number" value="1.2" min="0.4" step="0.2" class="rounded bg-gray-800 border border-gray-600 px-2 py-1.5" /></label>
                         </div>
                         <button id="qr-btn" class="w-full px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium" type="button">Generate QR plaque</button>
+                        <button id="qr-export2-btn" class="w-full px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-medium disabled:opacity-40" type="button" disabled>⬇️ 2-color STLs (base + code)</button>
                     </div>
                 </div>
                 <!-- Name tag / stamp -->
@@ -315,6 +316,7 @@ import Layout from '../layouts/Layout.astro';
             scene.add(displayGroup);
 
             const modelMat = new THREE.MeshStandardMaterial({ color: 0x7dd3fc, roughness: 0.55, metalness: 0.05, side: THREE.DoubleSide });
+            const vertexColorMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.0, side: THREE.DoubleSide });
             const moldMat = new THREE.MeshStandardMaterial({ color: 0xd9b574, roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide });
             const modelMesh = new THREE.Mesh(new THREE.BufferGeometry(), modelMat);
             const moldMesh = new THREE.Mesh(new THREE.BufferGeometry(), moldMat);
@@ -386,6 +388,7 @@ import Layout from '../layouts/Layout.astro';
                 fileName = name;
                 modelMesh.geometry.dispose();
                 modelMesh.geometry = geom;
+                modelMesh.material = geom.getAttribute('color') ? vertexColorMat : modelMat;
                 clearMold();
                 showView('model');
                 frameCamera(geom);
@@ -634,11 +637,18 @@ import Layout from '../layouts/Layout.astro';
                 return g;
             }
 
-            // strip to non-indexed position-only so mixed geometries merge cleanly
-            function bare(g) {
+            // strip to non-indexed position-only so mixed geometries merge cleanly;
+            // optional rgb gives every vertex that color (for multi-color previews)
+            function bare(g, rgb) {
                 const ni = g.index ? g.toNonIndexed() : g;
                 const out = new THREE.BufferGeometry();
                 out.setAttribute('position', ni.getAttribute('position').clone());
+                if (rgb) {
+                    const n = out.getAttribute('position').count;
+                    const colors = new Float32Array(n * 3);
+                    for (let i = 0; i < n; i++) colors.set(rgb, i * 3);
+                    out.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                }
                 return out;
             }
 
@@ -681,6 +691,7 @@ import Layout from '../layouts/Layout.astro';
                 document.getElementById('workspace').scrollIntoView({ behavior: 'smooth' });
             }
 
+            let qrParts = null; // { base, code } geometries, shared origin, for AMS multi-color
             async function generateQR() {
                 const text = $('qr-text').value.trim();
                 if (!text) return;
@@ -692,10 +703,11 @@ import Layout from '../layouts/Layout.astro';
                 qr.addData(text);
                 qr.make();
                 const n = qr.getModuleCount(), quiet = 2, cell = size / (n + 2 * quiet);
-                const parts = [];
+                const WHITE = [0.93, 0.93, 0.93], BLACK = [0.04, 0.04, 0.04];
                 const base = new THREE.BoxGeometry(size, size, baseH);
                 base.translate(0, 0, baseH / 2);
-                parts.push(bare(base));
+                const baseGeom = bare(base, WHITE);
+                const modParts = [];
                 for (let r = 0; r < n; r++) {
                     for (let c = 0; c < n; c++) {
                         if (!qr.isDark(r, c)) continue;
@@ -705,10 +717,13 @@ import Layout from '../layouts/Layout.astro';
                             size / 2 - (quiet + r + 0.5) * cell,
                             baseH - 0.2 + (relief + 0.2) / 2
                         );
-                        parts.push(bare(b));
+                        modParts.push(bare(b, BLACK));
                     }
                 }
-                setModel(BufferGeometryUtils.mergeGeometries(parts), 'qr-plaque.stl');
+                const codeGeom = BufferGeometryUtils.mergeGeometries(modParts);
+                qrParts = { base: baseGeom, code: codeGeom };
+                $('qr-export2-btn').disabled = false;
+                setModel(BufferGeometryUtils.mergeGeometries([baseGeom, codeGeom]), 'qr-plaque.stl');
                 document.getElementById('workspace').scrollIntoView({ behavior: 'smooth' });
             }
 
@@ -752,6 +767,11 @@ import Layout from '../layouts/Layout.astro';
             const guard = (fn, label) => () => fn().catch(e => { console.error(e); alert(label + ' failed — see console.'); });
             $('litho-btn').addEventListener('click', guard(generateLitho, 'Lithophane'));
             $('qr-btn').addEventListener('click', guard(generateQR, 'QR plaque'));
+            $('qr-export2-btn').addEventListener('click', () => {
+                if (!qrParts) return;
+                downloadSTL(qrParts.base, 'qr-plaque-base-white.stl');
+                setTimeout(() => downloadSTL(qrParts.code, 'qr-plaque-code-black.stl'), 400);
+            });
             $('tag-btn').addEventListener('click', guard(generateTag, 'Tag'));
 
             // ---------- demo castle ----------
