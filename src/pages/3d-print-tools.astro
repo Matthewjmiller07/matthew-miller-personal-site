@@ -1,0 +1,644 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+    title="3D Print Tools"
+    description="Free browser tools for 3D printing: STL viewer and stats, scaling and rotation, print cost estimator, bed-fit checker, filament converter, and a sand castle mold generator that turns any STL into a printable beach mold."
+>
+    <main class="max-w-7xl mx-auto px-4 py-8 text-gray-100">
+        <header class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold">3D Print Tools</h1>
+            <p class="mt-2 text-gray-400 max-w-3xl">
+                A toolbox that runs entirely in your browser — nothing is uploaded anywhere.
+                Load an STL to inspect it, scale it, estimate cost, and (the fun part) turn it into a
+                <strong class="text-amber-300">sand castle mold</strong>: a printable negative you pack with wet sand and flip over at the beach.
+            </p>
+        </header>
+
+        <!-- Upload zone -->
+        <div id="dropzone" class="border-2 border-dashed border-gray-600 hover:border-amber-400 transition-colors rounded-xl p-8 text-center cursor-pointer bg-gray-900/40 mb-8">
+            <p class="text-lg font-medium">Drop an STL file here, or click to choose one</p>
+            <p class="text-sm text-gray-400 mt-1">Binary or ASCII STL · stays on your device</p>
+            <p class="mt-4">
+                <button id="demo-btn" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium" type="button">
+                    No file handy? Load the demo castle 🏰
+                </button>
+            </p>
+            <input id="file-input" type="file" accept=".stl,model/stl" class="hidden" />
+        </div>
+
+        <div id="workspace" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Viewer column -->
+            <div class="lg:sticky lg:top-20 self-start">
+                <div class="rounded-xl overflow-hidden border border-gray-700 bg-gray-900">
+                    <div id="viewer" class="w-full" style="height: 480px;"></div>
+                    <div class="flex flex-wrap items-center gap-2 p-3 border-t border-gray-700 text-sm">
+                        <span class="text-gray-400 mr-1">Viewing:</span>
+                        <button id="view-model-btn" class="px-3 py-1 rounded bg-amber-600 text-white" type="button">Model</button>
+                        <button id="view-mold-btn" class="px-3 py-1 rounded bg-gray-700 text-gray-300 disabled:opacity-40" type="button" disabled>Sand mold</button>
+                        <span class="flex-1"></span>
+                        <span class="text-gray-400 mr-1">Rotate:</span>
+                        <button class="rot-btn px-2 py-1 rounded bg-gray-700 hover:bg-gray-600" data-axis="x" type="button">X 90°</button>
+                        <button class="rot-btn px-2 py-1 rounded bg-gray-700 hover:bg-gray-600" data-axis="y" type="button">Y 90°</button>
+                        <button class="rot-btn px-2 py-1 rounded bg-gray-700 hover:bg-gray-600" data-axis="z" type="button">Z 90°</button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Drag to orbit · scroll to zoom · right-drag to pan. Rotate the model so it stands “up” the way it should sit on the sand before generating a mold.</p>
+            </div>
+
+            <!-- Tools column -->
+            <div class="space-y-6">
+                <!-- Stats -->
+                <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
+                    <h2 class="text-xl font-semibold mb-3">📐 Model stats</h2>
+                    <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                        <dt class="text-gray-400">File</dt><dd id="stat-name" class="text-right font-mono truncate">—</dd>
+                        <dt class="text-gray-400">Size (X × Y × Z)</dt><dd id="stat-dims" class="text-right font-mono">—</dd>
+                        <dt class="text-gray-400">Volume</dt><dd id="stat-volume" class="text-right font-mono">—</dd>
+                        <dt class="text-gray-400">Surface area</dt><dd id="stat-area" class="text-right font-mono">—</dd>
+                        <dt class="text-gray-400">Triangles</dt><dd id="stat-tris" class="text-right font-mono">—</dd>
+                    </dl>
+                    <div class="mt-4">
+                        <h3 class="text-sm font-medium text-gray-300 mb-2">Fits on common printers?</h3>
+                        <ul id="bed-fit" class="text-sm grid grid-cols-1 sm:grid-cols-2 gap-1"></ul>
+                    </div>
+                </section>
+
+                <!-- Scale -->
+                <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
+                    <h2 class="text-xl font-semibold mb-3">📏 Scale &amp; export</h2>
+                    <div class="flex flex-wrap items-end gap-3 text-sm">
+                        <label class="flex flex-col gap-1">
+                            <span class="text-gray-400">Scale by %</span>
+                            <input id="scale-pct" type="number" value="100" min="1" step="1" class="w-28 rounded bg-gray-800 border border-gray-600 px-2 py-1.5" />
+                        </label>
+                        <button id="scale-pct-btn" class="px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600" type="button">Apply %</button>
+                        <label class="flex flex-col gap-1">
+                            <span class="text-gray-400">…or longest side → mm</span>
+                            <input id="scale-target" type="number" min="1" step="1" placeholder="e.g. 150" class="w-28 rounded bg-gray-800 border border-gray-600 px-2 py-1.5" />
+                        </label>
+                        <button id="scale-target-btn" class="px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600" type="button">Resize</button>
+                    </div>
+                    <button id="export-model-btn" class="mt-4 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-medium" type="button">
+                        ⬇️ Download model as STL
+                    </button>
+                    <p class="text-xs text-gray-500 mt-2">Exports include any rotation/scaling you applied here. Units are millimeters (standard STL convention).</p>
+                </section>
+
+                <!-- Sand mold -->
+                <section class="rounded-xl border border-amber-700/60 bg-amber-950/20 p-5">
+                    <h2 class="text-xl font-semibold mb-1">🏖️ Sand castle mold maker</h2>
+                    <p class="text-sm text-gray-400 mb-4">
+                        Generates a printable <em>negative</em> of your model — a bucket-style mold. Pack it with wet sand,
+                        flip it over, lift, and your model appears in sand. The generator views the model from above
+                        (overhangs are automatically filled in, just like a real sand mold requires), and the result
+                        prints flat-side-down with <strong>zero supports</strong>.
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                        <label class="flex flex-col gap-1">
+                            <span class="text-gray-400">Wall thickness (mm)</span>
+                            <input id="mold-wall" type="number" value="4" min="1.2" max="20" step="0.4" class="rounded bg-gray-800 border border-gray-600 px-2 py-1.5" />
+                        </label>
+                        <label class="flex flex-col gap-1">
+                            <span class="text-gray-400">Detail (grid resolution)</span>
+                            <select id="mold-res" class="rounded bg-gray-800 border border-gray-600 px-2 py-1.5">
+                                <option value="96">Low (96)</option>
+                                <option value="160" selected>Medium (160)</option>
+                                <option value="224">High (224)</option>
+                                <option value="288">Very high (288)</option>
+                            </select>
+                        </label>
+                        <label class="flex flex-col gap-1">
+                            <span class="text-gray-400">Smoothing passes</span>
+                            <select id="mold-smooth" class="rounded bg-gray-800 border border-gray-600 px-2 py-1.5">
+                                <option value="0">None</option>
+                                <option value="1" selected>Light</option>
+                                <option value="2">Medium</option>
+                                <option value="4">Heavy</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="flex flex-wrap gap-3 mt-4">
+                        <button id="mold-btn" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium" type="button">🪣 Generate mold</button>
+                        <button id="export-mold-btn" class="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-medium disabled:opacity-40" type="button" disabled>⬇️ Download mold STL</button>
+                    </div>
+                    <p id="mold-info" class="text-sm text-amber-200/80 mt-3"></p>
+                </section>
+
+                <!-- Cost estimator -->
+                <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
+                    <h2 class="text-xl font-semibold mb-3">💰 Print cost &amp; time estimator</h2>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                        <label class="flex flex-col gap-1">
+                            <span class="text-gray-400">Material</span>
+                            <select id="cost-material" class="rounded bg-gray-800 border border-gray-600 px-2 py-1.5">
+                                <option value="1.24" selected>PLA</option>
+                                <option value="1.27">PETG</option>
+                                <option value="1.04">ABS</option>
+                                <option value="1.07">ASA</option>
+                                <option value="1.21">TPU</option>
+                                <option value="1.14">Nylon</option>
+                            </select>
+                        </label>
+                        <label class="flex flex-col gap-1">
+                            <span class="text-gray-400">Infill %</span>
+                            <input id="cost-infill" type="number" value="15" min="0" max="100" step="5" class="rounded bg-gray-800 border border-gray-600 px-2 py-1.5" />
+                        </label>
+                        <label class="flex flex-col gap-1">
+                            <span class="text-gray-400">$ / kg</span>
+                            <input id="cost-price" type="number" value="20" min="1" step="1" class="rounded bg-gray-800 border border-gray-600 px-2 py-1.5" />
+                        </label>
+                        <label class="flex flex-col gap-1">
+                            <span class="text-gray-400">Quality</span>
+                            <select id="cost-quality" class="rounded bg-gray-800 border border-gray-600 px-2 py-1.5">
+                                <option value="24">Draft 0.28mm</option>
+                                <option value="15" selected>Standard 0.2mm</option>
+                                <option value="8">Fine 0.12mm</option>
+                            </select>
+                        </label>
+                    </div>
+                    <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mt-4">
+                        <dt class="text-gray-400">Estimated weight</dt><dd id="cost-weight" class="text-right font-mono">—</dd>
+                        <dt class="text-gray-400">Filament used (1.75mm)</dt><dd id="cost-length" class="text-right font-mono">—</dd>
+                        <dt class="text-gray-400">Material cost</dt><dd id="cost-cost" class="text-right font-mono">—</dd>
+                        <dt class="text-gray-400">Rough print time</dt><dd id="cost-time" class="text-right font-mono">—</dd>
+                    </dl>
+                    <p class="text-xs text-gray-500 mt-2">Rule-of-thumb estimate (walls ≈ 15% of solid volume plus infill). Your slicer has the final word.</p>
+                </section>
+            </div>
+        </div>
+
+        <!-- Standalone tools (work without a model) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+            <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
+                <h2 class="text-xl font-semibold mb-3">🧵 Filament converter (1.75&nbsp;mm)</h2>
+                <div class="flex flex-wrap items-end gap-3 text-sm">
+                    <label class="flex flex-col gap-1">
+                        <span class="text-gray-400">Material</span>
+                        <select id="fil-material" class="rounded bg-gray-800 border border-gray-600 px-2 py-1.5">
+                            <option value="1.24" selected>PLA</option>
+                            <option value="1.27">PETG</option>
+                            <option value="1.04">ABS</option>
+                            <option value="1.07">ASA</option>
+                            <option value="1.21">TPU</option>
+                            <option value="1.14">Nylon</option>
+                        </select>
+                    </label>
+                    <label class="flex flex-col gap-1">
+                        <span class="text-gray-400">Grams</span>
+                        <input id="fil-grams" type="number" value="1000" min="0" step="10" class="w-28 rounded bg-gray-800 border border-gray-600 px-2 py-1.5" />
+                    </label>
+                    <span class="pb-1.5 text-gray-400">⇄</span>
+                    <label class="flex flex-col gap-1">
+                        <span class="text-gray-400">Meters</span>
+                        <input id="fil-meters" type="number" min="0" step="1" class="w-28 rounded bg-gray-800 border border-gray-600 px-2 py-1.5" />
+                    </label>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Handy for “is there enough left on this spool?” moments.</p>
+            </section>
+
+            <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
+                <h2 class="text-xl font-semibold mb-3">🏖️ Sand mold tips</h2>
+                <ul class="text-sm text-gray-300 space-y-1.5 list-disc list-inside">
+                    <li>Slice with 2–3 walls and 5–10% infill — the mold is mostly shell, so it prints fast.</li>
+                    <li>Smoother cavity = cleaner castle: try 0.16&nbsp;mm layers, or sand the inside lightly.</li>
+                    <li>Use wet “drip-castle” sand or kinetic sand. Pack firmly, tap the sides, lift straight up.</li>
+                    <li>A quick spray of water (or a wipe of oil) inside the mold helps release.</li>
+                    <li>PETG or ASA survives a hot beach better than PLA.</li>
+                    <li>Also works with snow, chocolate, and jello — but only food-grade printed parts for the last two!</li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <script is:inline type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/+esm';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js/+esm';
+        import { STLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/STLLoader.js/+esm';
+        import { STLExporter } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/exporters/STLExporter.js/+esm';
+        import * as BufferGeometryUtils from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/utils/BufferGeometryUtils.js/+esm';
+
+        function boot() {
+            const viewerEl = document.getElementById('viewer');
+            if (!viewerEl || viewerEl.dataset.ready) return;
+            viewerEl.dataset.ready = '1';
+            init(viewerEl);
+        }
+
+        function init(viewerEl) {
+            const $ = (id) => document.getElementById(id);
+
+            // ---------- three.js scene ----------
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            viewerEl.appendChild(renderer.domElement);
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+            const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 5000);
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 1.1));
+            const dir = new THREE.DirectionalLight(0xffffff, 1.4);
+            dir.position.set(1, 2, 1.5);
+            scene.add(dir);
+
+            // STL files are Z-up; three.js is Y-up. Display group fixes orientation.
+            const displayGroup = new THREE.Group();
+            displayGroup.rotation.x = -Math.PI / 2;
+            scene.add(displayGroup);
+
+            const modelMat = new THREE.MeshStandardMaterial({ color: 0x7dd3fc, roughness: 0.55, metalness: 0.05, side: THREE.DoubleSide });
+            const moldMat = new THREE.MeshStandardMaterial({ color: 0xd9b574, roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide });
+            const modelMesh = new THREE.Mesh(new THREE.BufferGeometry(), modelMat);
+            const moldMesh = new THREE.Mesh(new THREE.BufferGeometry(), moldMat);
+            moldMesh.visible = false;
+            displayGroup.add(modelMesh, moldMesh);
+
+            let grid = null;
+
+            function resize() {
+                const w = viewerEl.clientWidth, h = viewerEl.clientHeight;
+                if (!w || !h) return;
+                renderer.setSize(w, h);
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+            }
+            window.addEventListener('resize', resize);
+            resize();
+            renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+
+            // ---------- state ----------
+            let geom = null;       // model geometry, STL space (Z-up), base at z=0, XY centered
+            let moldGeom = null;
+            let fileName = 'model.stl';
+            const loader = new STLLoader();
+            const exporter = new STLExporter();
+
+            // ---------- geometry helpers ----------
+            function normalize(g) {
+                g.computeBoundingBox();
+                const bb = g.boundingBox;
+                g.translate(
+                    -(bb.min.x + bb.max.x) / 2,
+                    -(bb.min.y + bb.max.y) / 2,
+                    -bb.min.z
+                );
+                g.computeBoundingBox();
+                return g;
+            }
+
+            function meshVolumeArea(g) {
+                const p = g.getAttribute('position');
+                let vol = 0, area = 0;
+                const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), ab = new THREE.Vector3(), ac = new THREE.Vector3();
+                for (let i = 0; i < p.count; i += 3) {
+                    a.fromBufferAttribute(p, i); b.fromBufferAttribute(p, i + 1); c.fromBufferAttribute(p, i + 2);
+                    vol += a.dot(ab.copy(b).cross(c)) / 6;
+                    area += ab.copy(b).sub(a).cross(ac.copy(c).sub(a)).length() / 2;
+                }
+                return { volume: Math.abs(vol), area };
+            }
+
+            function frameCamera(g) {
+                g.computeBoundingBox();
+                const size = g.boundingBox.getSize(new THREE.Vector3());
+                const d = Math.max(size.x, size.y, size.z);
+                // displayGroup maps STL (x,y,z) -> world (x,z,-y); center the orbit on mid-height
+                controls.target.set(0, size.z / 2, 0);
+                camera.position.set(d * 0.9, d * 0.8, d * 1.1);
+                camera.near = d / 100; camera.far = d * 20;
+                camera.updateProjectionMatrix();
+                if (grid) scene.remove(grid);
+                grid = new THREE.GridHelper(Math.max(size.x, size.y) * 2.5, 20, 0x475569, 0x1e293b);
+                scene.add(grid);
+            }
+
+            function setModel(g, name) {
+                geom = normalize(g.index ? g.toNonIndexed() : g);
+                geom.computeVertexNormals();
+                fileName = name;
+                modelMesh.geometry.dispose();
+                modelMesh.geometry = geom;
+                clearMold();
+                showView('model');
+                frameCamera(geom);
+                $('workspace').classList.remove('hidden');
+                updateStats();
+                resize();
+            }
+
+            function clearMold() {
+                moldGeom = null;
+                $('export-mold-btn').disabled = true;
+                $('view-mold-btn').disabled = true;
+                $('mold-info').textContent = '';
+            }
+
+            function showView(which) {
+                modelMesh.visible = which === 'model';
+                moldMesh.visible = which === 'mold';
+                $('view-model-btn').className = 'px-3 py-1 rounded ' + (which === 'model' ? 'bg-amber-600 text-white' : 'bg-gray-700 text-gray-300');
+                $('view-mold-btn').className = 'px-3 py-1 rounded disabled:opacity-40 ' + (which === 'mold' ? 'bg-amber-600 text-white' : 'bg-gray-700 text-gray-300');
+            }
+
+            // ---------- stats / cost ----------
+            const PRINTERS = [
+                ['Bambu A1 mini', 180, 180, 180],
+                ['Ender 3 / V3 SE', 220, 220, 250],
+                ['Prusa MK4', 250, 210, 220],
+                ['Bambu X1/P1/A1', 256, 256, 256],
+            ];
+            let currentVolumeCm3 = 0;
+
+            function updateStats() {
+                if (!geom) return;
+                geom.computeBoundingBox();
+                const s = geom.boundingBox.getSize(new THREE.Vector3());
+                const { volume, area } = meshVolumeArea(geom);
+                currentVolumeCm3 = volume / 1000;
+                $('stat-name').textContent = fileName;
+                $('stat-dims').textContent = `${s.x.toFixed(1)} × ${s.y.toFixed(1)} × ${s.z.toFixed(1)} mm`;
+                $('stat-volume').textContent = `${currentVolumeCm3.toFixed(1)} cm³`;
+                $('stat-area').textContent = `${(area / 100).toFixed(1)} cm²`;
+                $('stat-tris').textContent = (geom.getAttribute('position').count / 3).toLocaleString();
+                $('scale-target').placeholder = Math.max(s.x, s.y, s.z).toFixed(0);
+                $('bed-fit').innerHTML = PRINTERS.map(([name, x, y, z]) => {
+                    const dims = [s.x, s.y, s.z].sort((a, b) => a - b);
+                    const bed = [x, y, z].sort((a, b) => a - b);
+                    const fits = dims.every((d, i) => d <= bed[i]);
+                    return `<li>${fits ? '✅' : '❌'} <span class="text-gray-300">${name}</span> <span class="text-gray-500">(${x}×${y}×${z})</span></li>`;
+                }).join('');
+                updateCost();
+            }
+
+            function updateCost() {
+                if (!currentVolumeCm3) return;
+                const density = parseFloat($('cost-material').value);
+                const infill = Math.min(100, Math.max(0, parseFloat($('cost-infill').value) || 0)) / 100;
+                const price = parseFloat($('cost-price').value) || 0;
+                const rate = parseFloat($('cost-quality').value);
+                const fillFactor = Math.min(1, 0.15 + 0.85 * infill);
+                const grams = currentVolumeCm3 * density * fillFactor;
+                const meters = grams / density / (Math.PI * 0.0875 * 0.0875) / 100;
+                const hours = grams / rate;
+                $('cost-weight').textContent = `${grams.toFixed(0)} g`;
+                $('cost-length').textContent = `${meters.toFixed(1)} m`;
+                $('cost-cost').textContent = `$${(grams / 1000 * price).toFixed(2)}`;
+                $('cost-time').textContent = hours < 1 ? `${Math.round(hours * 60)} min` : `${Math.floor(hours)} h ${Math.round((hours % 1) * 60)} min`;
+            }
+
+            // ---------- sand mold generation ----------
+            // Render a top-down depth map of the model, then build the inverse
+            // heightfield as a watertight solid. Every column of the result is
+            // solid from the bed up, so it prints with no supports, and the
+            // cavity has no undercuts, so sand releases cleanly.
+            function buildHeightmap(res, wall) {
+                geom.computeBoundingBox();
+                const bb = geom.boundingBox;
+                const sizeX = bb.max.x - bb.min.x, sizeY = bb.max.y - bb.min.y, H = bb.max.z;
+                const w = sizeX + 2 * wall, d = sizeY + 2 * wall;
+
+                const cam = new THREE.OrthographicCamera(-w / 2, w / 2, d / 2, -d / 2, 0.1, H + 1);
+                cam.position.set(0, 0, H + 1);
+                cam.up.set(0, 1, 0);
+                cam.lookAt(0, 0, 0);
+                cam.updateMatrixWorld();
+
+                const depthScene = new THREE.Scene();
+                depthScene.overrideMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, side: THREE.DoubleSide });
+                depthScene.add(new THREE.Mesh(geom, modelMat));
+                const ground = new THREE.Mesh(new THREE.PlaneGeometry(w * 2, d * 2), modelMat);
+                depthScene.add(ground); // z=0 plane: background reads as height 0
+
+                const rt = new THREE.WebGLRenderTarget(res, res);
+                const oldTarget = renderer.getRenderTarget();
+                renderer.setRenderTarget(rt);
+                renderer.render(depthScene, cam);
+                const pixels = new Uint8Array(res * res * 4);
+                renderer.readRenderTargetPixels(rt, 0, 0, res, res, pixels);
+                renderer.setRenderTarget(oldTarget);
+                rt.dispose();
+
+                const near = 0.1, far = H + 1, camZ = H + 1;
+                const heights = new Float32Array(res * res);
+                for (let i = 0; i < res * res; i++) {
+                    const o = i * 4;
+                    // unpack RGBADepthPacking (r = least significant byte, a = most)
+                    const depth = pixels[o] / 4294967296 + pixels[o + 1] / 16777216 + pixels[o + 2] / 65536 + pixels[o + 3] / 256;
+                    const h = camZ - (near + depth * (far - near));
+                    heights[i] = Math.min(H, Math.max(0, h < 0.05 ? 0 : h));
+                }
+                return { heights, res, w, d, H };
+            }
+
+            function blurHeights(hm, passes) {
+                const { res } = hm;
+                let src = hm.heights;
+                for (let p = 0; p < passes; p++) {
+                    const dst = new Float32Array(res * res);
+                    for (let j = 0; j < res; j++) {
+                        for (let i = 0; i < res; i++) {
+                            let sum = 0, n = 0;
+                            for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+                                const ii = i + di, jj = j + dj;
+                                if (ii >= 0 && ii < res && jj >= 0 && jj < res) { sum += src[jj * res + ii]; n++; }
+                            }
+                            dst[j * res + i] = sum / n;
+                        }
+                    }
+                    src = dst;
+                }
+                hm.heights = src;
+            }
+
+            function buildMoldGeometry(hm, wall) {
+                const { heights, res, w, d, H } = hm;
+                const T = H + wall; // total mold height: cavity depth + back plate
+                // outer ring forced to zero so walls are clean rectangles
+                for (let i = 0; i < res; i++) {
+                    heights[i] = 0; heights[(res - 1) * res + i] = 0;
+                    heights[i * res] = 0; heights[i * res + (res - 1)] = 0;
+                }
+                const dx = w / (res - 1), dy = d / (res - 1);
+                const x0 = -w / 2, y0 = -d / 2;
+                const zTop = (i, j) => T - heights[j * res + i]; // inverted model = cavity, facing up
+                const tris = [];
+                const push = (...pts) => { for (const p of pts) tris.push(p[0], p[1], p[2]); };
+
+                // cavity / top surface (outward normal +Z over solid below)
+                for (let j = 0; j < res - 1; j++) {
+                    for (let i = 0; i < res - 1; i++) {
+                        const A = [x0 + i * dx, y0 + j * dy, zTop(i, j)];
+                        const B = [x0 + (i + 1) * dx, y0 + j * dy, zTop(i + 1, j)];
+                        const C = [x0 + (i + 1) * dx, y0 + (j + 1) * dy, zTop(i + 1, j + 1)];
+                        const D = [x0 + i * dx, y0 + (j + 1) * dy, zTop(i, j + 1)];
+                        push(A, B, C); push(A, C, D);
+                    }
+                }
+                // flat bottom plate at z=0 (normal -Z)
+                {
+                    const A = [x0, y0, 0], B = [x0 + w, y0, 0], C = [x0 + w, y0 + d, 0], D = [x0, y0 + d, 0];
+                    push(A, C, B); push(A, D, C);
+                }
+                // side walls (boundary heights are 0, so top edge sits at z=T)
+                for (let i = 0; i < res - 1; i++) {
+                    const xa = x0 + i * dx, xb = x0 + (i + 1) * dx;
+                    // south (y = y0), outward -Y
+                    push([xa, y0, 0], [xb, y0, 0], [xb, y0, T]); push([xa, y0, 0], [xb, y0, T], [xa, y0, T]);
+                    // north (y = y0 + d), outward +Y
+                    const yn = y0 + d;
+                    push([xb, yn, 0], [xa, yn, 0], [xa, yn, T]); push([xb, yn, 0], [xa, yn, T], [xb, yn, T]);
+                }
+                for (let j = 0; j < res - 1; j++) {
+                    const ya = y0 + j * dy, yb = y0 + (j + 1) * dy;
+                    // east (x = x0 + w), outward +X
+                    const xe = x0 + w;
+                    push([xe, ya, 0], [xe, yb, 0], [xe, yb, T]); push([xe, ya, 0], [xe, yb, T], [xe, ya, T]);
+                    // west (x = x0), outward -X
+                    push([x0, yb, 0], [x0, ya, 0], [x0, ya, T]); push([x0, yb, 0], [x0, ya, T], [x0, yb, T]);
+                }
+
+                const g = new THREE.BufferGeometry();
+                g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(tris), 3));
+                g.computeVertexNormals();
+                return g;
+            }
+
+            function generateMold() {
+                if (!geom) return;
+                const wall = Math.max(1.2, parseFloat($('mold-wall').value) || 4);
+                const res = parseInt($('mold-res').value);
+                const smooth = parseInt($('mold-smooth').value);
+                $('mold-info').textContent = 'Generating…';
+                requestAnimationFrame(() => {
+                    try {
+                        const hm = buildHeightmap(res, wall);
+                        if (smooth) blurHeights(hm, smooth);
+                        moldGeom = buildMoldGeometry(hm, wall);
+                        moldMesh.geometry.dispose();
+                        moldMesh.geometry = moldGeom;
+                        $('export-mold-btn').disabled = false;
+                        $('view-mold-btn').disabled = false;
+                        showView('mold');
+                        const { volume } = meshVolumeArea(moldGeom);
+                        $('mold-info').textContent =
+                            `Mold: ${hm.w.toFixed(0)} × ${hm.d.toFixed(0)} × ${(hm.H + wall).toFixed(0)} mm · ` +
+                            `${(volume / 1000).toFixed(0)} cm³ solid (slice at low infill) · ` +
+                            `print as-is, flat side down, no supports.`;
+                    } catch (e) {
+                        console.error(e);
+                        $('mold-info').textContent = 'Mold generation failed — try a lower resolution.';
+                    }
+                });
+            }
+
+            // ---------- demo castle ----------
+            function demoCastle() {
+                const parts = [];
+                const zUp = (g, z) => { g.rotateX(Math.PI / 2); g.translate(0, 0, z); return g; };
+                parts.push(zUp(new THREE.BoxGeometry(84, 5, 84), 2.5)); // base slab
+                for (const sx of [-1, 1]) for (const sy of [-1, 1]) {  // corner towers + roofs
+                    const t = zUp(new THREE.CylinderGeometry(10, 11, 38, 28), 5 + 19); t.translate(sx * 28, sy * 28, 0); parts.push(t);
+                    const r = zUp(new THREE.ConeGeometry(13, 14, 28), 5 + 38 + 7); r.translate(sx * 28, sy * 28, 0); parts.push(r);
+                }
+                for (const s of [-1, 1]) { // curtain walls
+                    const wx = zUp(new THREE.BoxGeometry(56, 24, 7), 5 + 12); wx.translate(0, s * 28, 0); parts.push(wx);
+                    const wy = zUp(new THREE.BoxGeometry(7, 24, 56), 5 + 12); wy.translate(s * 28, 0, 0); parts.push(wy);
+                }
+                parts.push(zUp(new THREE.CylinderGeometry(15, 16, 50, 36), 5 + 25));   // keep
+                parts.push(zUp(new THREE.ConeGeometry(18.5, 18, 36), 5 + 50 + 9));     // keep roof
+                setModel(BufferGeometryUtils.mergeGeometries(parts), 'demo-castle.stl');
+            }
+
+            // ---------- export ----------
+            function downloadSTL(g, name) {
+                const mesh = new THREE.Mesh(g);
+                mesh.updateMatrixWorld();
+                const data = exporter.parse(mesh, { binary: true });
+                const blob = new Blob([data], { type: 'model/stl' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = name;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+            }
+
+            // ---------- wiring ----------
+            const dropzone = $('dropzone'), fileInput = $('file-input');
+            dropzone.addEventListener('click', (e) => { if (e.target.id !== 'demo-btn') fileInput.click(); });
+            dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('border-amber-400'); });
+            dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-amber-400'));
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('border-amber-400');
+                if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+            });
+            fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+
+            async function loadFile(file) {
+                try {
+                    const buf = await file.arrayBuffer();
+                    setModel(loader.parse(buf), file.name);
+                    document.getElementById('workspace').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } catch (e) {
+                    console.error(e);
+                    alert('Could not read that file — is it a valid STL?');
+                }
+            }
+
+            $('demo-btn').addEventListener('click', (e) => { e.stopPropagation(); demoCastle(); });
+            $('view-model-btn').addEventListener('click', () => showView('model'));
+            $('view-mold-btn').addEventListener('click', () => showView('mold'));
+            document.querySelectorAll('.rot-btn').forEach(btn => btn.addEventListener('click', () => {
+                if (!geom) return;
+                const axis = btn.dataset.axis;
+                if (axis === 'x') geom.rotateX(Math.PI / 2);
+                if (axis === 'y') geom.rotateY(Math.PI / 2);
+                if (axis === 'z') geom.rotateZ(Math.PI / 2);
+                normalize(geom);
+                geom.computeVertexNormals();
+                modelMesh.geometry = geom;
+                clearMold();
+                showView('model');
+                frameCamera(geom);
+                updateStats();
+            }));
+            $('scale-pct-btn').addEventListener('click', () => {
+                const pct = parseFloat($('scale-pct').value);
+                if (!geom || !pct || pct <= 0) return;
+                geom.scale(pct / 100, pct / 100, pct / 100);
+                normalize(geom); clearMold(); frameCamera(geom); updateStats();
+                $('scale-pct').value = 100;
+            });
+            $('scale-target-btn').addEventListener('click', () => {
+                const target = parseFloat($('scale-target').value);
+                if (!geom || !target || target <= 0) return;
+                geom.computeBoundingBox();
+                const s = geom.boundingBox.getSize(new THREE.Vector3());
+                const f = target / Math.max(s.x, s.y, s.z);
+                geom.scale(f, f, f);
+                normalize(geom); clearMold(); frameCamera(geom); updateStats();
+            });
+            $('export-model-btn').addEventListener('click', () => { if (geom) downloadSTL(geom, fileName.replace(/\.stl$/i, '') + '-edited.stl'); });
+            $('mold-btn').addEventListener('click', generateMold);
+            $('export-mold-btn').addEventListener('click', () => { if (moldGeom) downloadSTL(moldGeom, fileName.replace(/\.stl$/i, '') + '-sand-mold.stl'); });
+            ['cost-material', 'cost-infill', 'cost-price', 'cost-quality'].forEach(id => $(id).addEventListener('input', updateCost));
+
+            // filament converter
+            const filArea = Math.PI * 0.0875 * 0.0875; // cm² cross-section of 1.75mm filament
+            const filDensity = () => parseFloat($('fil-material').value);
+            const syncFromGrams = () => { const g = parseFloat($('fil-grams').value) || 0; $('fil-meters').value = (g / filDensity() / filArea / 100).toFixed(1); };
+            const syncFromMeters = () => { const m = parseFloat($('fil-meters').value) || 0; $('fil-grams').value = (m * 100 * filArea * filDensity()).toFixed(0); };
+            $('fil-grams').addEventListener('input', syncFromGrams);
+            $('fil-meters').addEventListener('input', syncFromMeters);
+            $('fil-material').addEventListener('change', syncFromGrams);
+            syncFromGrams();
+        }
+
+        boot();
+        document.addEventListener('astro:page-load', boot);
+    </script>
+</Layout>
