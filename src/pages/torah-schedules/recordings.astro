@@ -1,0 +1,202 @@
+---
+export const prerender = false;
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="Torah Recordings" description="Archive of all Torah study recordings, transcripts, and questions">
+  <main class="max-w-3xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Torah Recordings</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">All sessions · transcripts · questions</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="view-all" class="view-btn active px-3 py-1.5 rounded-full text-sm font-medium transition-colors">All</button>
+        <button id="view-questions" class="view-btn px-3 py-1.5 rounded-full text-sm font-medium transition-colors">Questions only</button>
+      </div>
+    </div>
+
+    <div id="loading" class="text-sm text-gray-400 dark:text-gray-500 italic py-8 text-center">Loading recordings…</div>
+    <div id="no-daughter" class="hidden text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
+      To see questions, open any recording day, tap a speaker label, and name it "Daughter" or "Aviya". That label is saved here automatically.
+    </div>
+    <div id="recordings-list" class="space-y-6"></div>
+  </main>
+</Layout>
+
+<style>
+  .view-btn {
+    background: transparent;
+    color: theme('colors.gray.500');
+  }
+  .view-btn.active {
+    background: theme('colors.cyan.600');
+    color: white;
+  }
+  .dark .view-btn {
+    color: theme('colors.gray.400');
+  }
+  .dark .view-btn.active {
+    background: theme('colors.cyan.500');
+    color: white;
+  }
+</style>
+
+<script>
+  const SPEAKER_KEY_PREFIX = 'speaker-labels-';
+
+  function getAllSpeakerLabels() {
+    const merged = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(SPEAKER_KEY_PREFIX)) {
+        try {
+          Object.assign(merged, JSON.parse(localStorage.getItem(key) || '{}'));
+        } catch {}
+      }
+    }
+    return merged;
+  }
+
+  function getDaughterSpeakerId(labels) {
+    return Object.entries(labels).find(([, name]) =>
+      name.toLowerCase().includes('daughter') || name.toLowerCase().includes('aviya')
+    )?.[0] ?? null;
+  }
+
+  function formatDuration(secs) {
+    const m = Math.floor(secs / 60), s = secs % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  function extractQuestions(segments, speakerId) {
+    return segments
+      .filter(s => s.speaker === speakerId)
+      .flatMap(s => s.text.split(/(?<=[.!?])\s+/))
+      .filter(sent => sent.trim().endsWith('?'))
+      .map(sent => sent.trim());
+  }
+
+  function renderSegments(segments, labels) {
+    const colors = { SPEAKER_00: 'blue', SPEAKER_01: 'purple' };
+    return segments.map(seg => {
+      const color = colors[seg.speaker] || 'blue';
+      const label = labels[seg.speaker] || seg.speaker.replace('SPEAKER_', 'Speaker ');
+      const bubble = color === 'blue'
+        ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200'
+        : 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-200';
+      const labelColor = color === 'blue' ? 'text-blue-600 dark:text-blue-400' : 'text-purple-600 dark:text-purple-400';
+      return `<div class="mb-2">
+        <span class="text-xs font-semibold ${labelColor}">${label}</span>
+        <div class="mt-0.5 px-3 py-1.5 rounded-lg border text-sm leading-relaxed ${bubble}">${seg.text}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function buildRecordingCard(rec, labels, daughterSpeakerId, questionsOnly) {
+    const dur = rec.duration && parseInt(rec.duration) > 0 ? formatDuration(parseInt(rec.duration)) : '';
+    const hasSegments = rec.segments?.length > 0;
+    const questions = hasSegments && daughterSpeakerId ? extractQuestions(rec.segments, daughterSpeakerId) : [];
+    const daughterName = daughterSpeakerId ? (labels[daughterSpeakerId] || 'Daughter') : null;
+
+    if (questionsOnly && !questions.length) return null;
+
+    const transcriptHtml = hasSegments
+      ? `<div class="mt-3 space-y-0">${renderSegments(rec.segments, labels)}</div>`
+      : rec.transcript
+        ? `<p class="mt-3 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">${rec.transcript}</p>`
+        : `<p class="mt-3 text-xs text-gray-400 dark:text-gray-500 italic">No transcript yet</p>`;
+
+    const questionsHtml = questions.length ? `
+      <div class="mt-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+        <p class="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">${daughterName}'s Questions</p>
+        <ul class="space-y-1">
+          ${questions.map(q => `<li class="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">• ${q}</li>`).join('')}
+        </ul>
+      </div>` : '';
+
+    const dayLink = `/torah-schedules/${rec.date}${rec.schedule && rec.schedule !== 'default' ? `?schedule=${rec.schedule}` : ''}`;
+
+    return `<div class="border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
+      <div class="flex items-center gap-3 mb-2">
+        <audio controls src="${rec.url}" class="flex-1 h-8 min-w-0"></audio>
+        ${dur ? `<span class="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">${dur}</span>` : ''}
+        <a href="${dayLink}" class="text-xs text-cyan-600 dark:text-cyan-400 hover:underline whitespace-nowrap">Full day →</a>
+      </div>
+      ${questionsHtml}
+      ${questionsOnly ? '' : transcriptHtml}
+    </div>`;
+  }
+
+  function render(recordings, questionsOnly) {
+    const labels = getAllSpeakerLabels();
+    const daughterSpeakerId = getDaughterSpeakerId(labels);
+    const list = document.getElementById('recordings-list');
+    const noDaughter = document.getElementById('no-daughter');
+
+    if (questionsOnly && !daughterSpeakerId) {
+      noDaughter.classList.remove('hidden');
+      list.innerHTML = '';
+      return;
+    }
+    noDaughter.classList.add('hidden');
+
+    // Group by date (already sorted newest-first from API)
+    const byDate = {};
+    for (const rec of recordings) {
+      if (!byDate[rec.date]) byDate[rec.date] = [];
+      byDate[rec.date].push(rec);
+    }
+
+    const html = Object.entries(byDate).map(([date, recs]) => {
+      const cards = recs
+        .map(r => buildRecordingCard(r, labels, daughterSpeakerId, questionsOnly))
+        .filter(Boolean)
+        .join('');
+      if (!cards) return '';
+      return `<div>
+        <div class="flex items-center gap-3 mb-3">
+          <h2 class="text-sm font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap">${formatDate(date)}</h2>
+          <div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+        </div>
+        <div class="space-y-3">${cards}</div>
+      </div>`;
+    }).filter(Boolean).join('');
+
+    list.innerHTML = html || '<p class="text-sm text-gray-400 dark:text-gray-500 italic text-center py-8">No recordings found.</p>';
+  }
+
+  let allRecordings = [];
+  let questionsOnly = false;
+
+  document.getElementById('view-all').addEventListener('click', () => {
+    questionsOnly = false;
+    document.getElementById('view-all').classList.add('active');
+    document.getElementById('view-questions').classList.remove('active');
+    render(allRecordings, false);
+  });
+
+  document.getElementById('view-questions').addEventListener('click', () => {
+    questionsOnly = true;
+    document.getElementById('view-questions').classList.add('active');
+    document.getElementById('view-all').classList.remove('active');
+    render(allRecordings, true);
+  });
+
+  fetch('/api/load-audio?all=true')
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('loading').remove();
+      allRecordings = data.recordings || [];
+      render(allRecordings, questionsOnly);
+    })
+    .catch(() => {
+      document.getElementById('loading').textContent = 'Failed to load recordings.';
+    });
+</script>

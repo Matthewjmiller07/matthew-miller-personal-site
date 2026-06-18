@@ -7,12 +7,7 @@ const AUDIO_SHEET = 'audio-recordings';
 export async function GET({ url }) {
   const date = url.searchParams.get('date');
   const schedule = url.searchParams.get('schedule') || 'default';
-
-  if (!date) {
-    return new Response(JSON.stringify({ error: 'Missing date' }), {
-      status: 400, headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  const all = url.searchParams.get('all') === 'true';
 
   try {
     const rows = await getSheetData(GOOGLE_SHEETS_CONFIG.spreadsheetId, `${AUDIO_SHEET}!A:H`);
@@ -33,13 +28,15 @@ export async function GET({ url }) {
     const diarizationIdx = headers.indexOf('DiarizationJson');
 
     const recordings = rows.slice(1)
-      .filter(row => row[dateIdx] === date && row[schedIdx] === schedule)
+      .filter(row => all ? row[dateIdx] : (row[dateIdx] === date && row[schedIdx] === schedule))
       .map(row => {
         let segments = [];
         if (diarizationIdx >= 0 && row[diarizationIdx]) {
           try { segments = JSON.parse(row[diarizationIdx]); } catch {}
         }
         return {
+          date: row[dateIdx] || '',
+          schedule: row[schedIdx] || '',
           filename: row[nameIdx] || '',
           url: row[urlIdx] || '',
           duration: row[durIdx] || '',
@@ -47,7 +44,8 @@ export async function GET({ url }) {
           transcript: transcriptIdx >= 0 ? (row[transcriptIdx] || '') : '',
           segments,
         };
-      });
+      })
+      .sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
 
     return new Response(JSON.stringify({ recordings }), {
       status: 200, headers: { 'Content-Type': 'application/json' },
