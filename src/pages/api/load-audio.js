@@ -30,6 +30,8 @@ export async function GET({ url }) {
     const durIdx = headers.indexOf('Duration');
     const tsIdx = headers.indexOf('CreatedAt');
 
+    const transcriptIdx = headers.indexOf('Transcript');
+
     const recordings = rows.slice(1)
       .filter(row => row[dateIdx] === date && row[schedIdx] === schedule)
       .map(row => ({
@@ -37,6 +39,7 @@ export async function GET({ url }) {
         url: row[urlIdx] || '',
         duration: row[durIdx] || '',
         createdAt: row[tsIdx] || '',
+        transcript: transcriptIdx >= 0 ? (row[transcriptIdx] || '') : '',
       }));
 
     return new Response(JSON.stringify({ recordings }), {

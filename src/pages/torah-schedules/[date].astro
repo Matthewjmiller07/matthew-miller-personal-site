@@ -1738,29 +1738,64 @@ try {
       if (existingNoMsg) existingNoMsg.remove();
 
       const item = document.createElement('div');
-      item.className = 'flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700';
+      item.className = 'flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700';
       if (rec.filename) item.dataset.filename = rec.filename;
 
       const ts = rec.createdAt ? new Date(rec.createdAt).toLocaleString() : '';
       const dur = rec.duration && parseInt(rec.duration) > 0 ? ` · ${formatDuration(parseInt(rec.duration))}` : '';
       const filename = rec.filename || '';
+      const existingTranscript = rec.transcript ? `<p class="transcript-text text-sm text-gray-700 dark:text-gray-300 leading-relaxed">${rec.transcript}</p>` : '';
+
       item.innerHTML = `
-        <audio controls src="${rec.url}" class="flex-1 h-8 min-w-0"></audio>
-        <div class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">${ts}${dur}</div>
-        <button class="delete-recording-btn flex-shrink-0 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded" title="Delete recording" data-filename="${filename}">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-          </svg>
-        </button>
+        <div class="flex items-center gap-3">
+          <audio controls src="${rec.url}" class="flex-1 h-8 min-w-0"></audio>
+          <div class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">${ts}${dur}</div>
+          <button class="delete-recording-btn flex-shrink-0 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded" title="Delete recording" data-filename="${filename}">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </div>
+        <div class="transcript-area">
+          ${existingTranscript || '<p class="transcript-status text-xs text-gray-400 dark:text-gray-500 italic">Transcribing with Whisper…</p>'}
+        </div>
       `;
       recordingsList.appendChild(item);
+      return item;
+    }
+
+    async function autoTranscribe(item, url, filename) {
+      try {
+        const res = await fetch('/api/transcribe-audio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, date: dateParam, schedule, filename }),
+        });
+        const data = await res.json();
+        const area = item.querySelector('.transcript-area');
+        if (!area) return;
+        if (data.transcript) {
+          area.innerHTML = `<p class="transcript-text text-sm text-gray-700 dark:text-gray-300 leading-relaxed">${data.transcript}</p>`;
+        } else {
+          area.innerHTML = `<p class="text-xs text-red-400 italic">Transcription failed: ${data.error || 'unknown error'}</p>`;
+        }
+      } catch (err) {
+        const area = item.querySelector('.transcript-area');
+        if (area) area.innerHTML = `<p class="text-xs text-red-400 italic">Transcription error: ${err.message}</p>`;
+      }
     }
 
     async function loadRecordings() {
       try {
         const res = await fetch(`/api/load-audio?date=${encodeURIComponent(dateParam)}&schedule=${encodeURIComponent(schedule)}`);
         const data = await res.json();
-        (data.recordings || []).forEach(addRecordingToList);
+        for (const rec of (data.recordings || [])) {
+          const item = addRecordingToList(rec);
+          // Auto-transcribe recordings that don't have a transcript yet
+          if (!rec.transcript) {
+            autoTranscribe(item, rec.url, rec.filename);
+          }
+        }
       } catch (e) {
         console.warn('Could not load recordings:', e);
       }
@@ -1821,12 +1856,14 @@ try {
               });
               const result = await res.json();
               if (result.success) {
-                addRecordingToList({
+                const rec = {
                   filename: result.filename,
                   url: result.url,
                   duration: durationSec,
                   createdAt: new Date().toISOString(),
-                });
+                };
+                const item = addRecordingToList(rec);
+                autoTranscribe(item, result.url, result.filename);
               } else {
                 alert('Error saving recording: ' + (result.error || 'Unknown error'));
               }
@@ -1917,12 +1954,14 @@ try {
           const metaData = await metaRes.json();
           if (!metaData.success) throw new Error(metaData.error || 'Failed to save metadata');
 
-          addRecordingToList({
+          const newRec = {
             filename: signData.filename,
             url: signData.publicUrl,
             duration: '',
             createdAt: new Date().toISOString(),
-          });
+          };
+          const item = addRecordingToList(newRec);
+          autoTranscribe(item, signData.publicUrl, signData.filename);
         } catch (err) {
           alert('Error uploading file: ' + err.message);
         } finally {
