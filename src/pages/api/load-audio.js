@@ -15,7 +15,7 @@ export async function GET({ url }) {
   }
 
   try {
-    const rows = await getSheetData(GOOGLE_SHEETS_CONFIG.spreadsheetId, `${AUDIO_SHEET}!A:G`);
+    const rows = await getSheetData(GOOGLE_SHEETS_CONFIG.spreadsheetId, `${AUDIO_SHEET}!A:H`);
     if (!rows || rows.length <= 1) {
       return new Response(JSON.stringify({ recordings: [] }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
@@ -29,18 +29,25 @@ export async function GET({ url }) {
     const urlIdx = headers.indexOf('Url');
     const durIdx = headers.indexOf('Duration');
     const tsIdx = headers.indexOf('CreatedAt');
-
     const transcriptIdx = headers.indexOf('Transcript');
+    const diarizationIdx = headers.indexOf('DiarizationJson');
 
     const recordings = rows.slice(1)
       .filter(row => row[dateIdx] === date && row[schedIdx] === schedule)
-      .map(row => ({
-        filename: row[nameIdx] || '',
-        url: row[urlIdx] || '',
-        duration: row[durIdx] || '',
-        createdAt: row[tsIdx] || '',
-        transcript: transcriptIdx >= 0 ? (row[transcriptIdx] || '') : '',
-      }));
+      .map(row => {
+        let segments = [];
+        if (diarizationIdx >= 0 && row[diarizationIdx]) {
+          try { segments = JSON.parse(row[diarizationIdx]); } catch {}
+        }
+        return {
+          filename: row[nameIdx] || '',
+          url: row[urlIdx] || '',
+          duration: row[durIdx] || '',
+          createdAt: row[tsIdx] || '',
+          transcript: transcriptIdx >= 0 ? (row[transcriptIdx] || '') : '',
+          segments,
+        };
+      });
 
     return new Response(JSON.stringify({ recordings }), {
       status: 200, headers: { 'Content-Type': 'application/json' },
