@@ -131,7 +131,7 @@ try {
         <div class="flex items-center gap-1.5">
           <span class="text-xs font-semibold ${labelColor}">${label}</span>
           <span class="text-xs text-gray-400 dark:text-gray-500">${formatSegmentTime(t)}</span>
-          <a href="${dayPath}" class="share-segment text-xs opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity ml-1" title="Open at this moment" target="_self">🔗</a>
+          <button class="share-segment text-xs opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity ml-1" title="Copy link to this moment" data-link="${dayPath}">🔗</button>
         </div>
         <div class="mt-0.5 px-3 py-1.5 rounded-lg border text-sm leading-relaxed cursor-pointer hover:opacity-80 transition-opacity ${bubble}">${seg.text}</div>
       </div>`;
@@ -301,6 +301,19 @@ try {
       const { filename, date, schedule, url } = btn.dataset;
       const area = btn.closest('.transcript-area') || btn.parentElement;
       if (area) triggerTranscription(date, schedule || 'default', filename, url, area);
+    });
+
+    // 🔗 button → copy deep link to clipboard
+    list.addEventListener('click', e => {
+      const btn = e.target.closest('.share-segment');
+      if (!btn) return;
+      e.stopPropagation();
+      const link = new URL(btn.dataset.link, window.location.origin).toString();
+      navigator.clipboard.writeText(link).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+      }).catch(() => { prompt('Copy this link:', link); });
     });
 
     // Click a segment bubble → seek audio in the same card and play
