@@ -1868,6 +1868,18 @@ try {
       return item;
     }
 
+    function showTranscribeRetry(area, url, filename, msg) {
+      area.innerHTML = `
+        <p class="text-xs text-red-400 italic mb-1">${msg}</p>
+        <button class="retry-transcribe-btn text-xs text-purple-600 dark:text-purple-400 hover:underline">Retry ↺</button>`;
+      area.querySelector('.retry-transcribe-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        area.innerHTML = '<p class="transcript-status text-xs text-gray-400 dark:text-gray-500 italic">Transcribing with Whisper…</p>';
+        const item = area.closest('[data-filename]') || area.parentElement;
+        autoTranscribe(item, url, filename);
+      });
+    }
+
     async function autoTranscribe(item, url, filename) {
       try {
         const res = await fetch('/api/transcribe-audio', {
@@ -1875,14 +1887,18 @@ try {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url, date: dateParam, schedule, filename }),
         });
-        const data = await res.json();
+        const contentType = res.headers.get('content-type') || '';
         const area = item.querySelector('.transcript-area');
         if (!area) return;
+        if (!contentType.includes('application/json')) {
+          showTranscribeRetry(area, url, filename, 'Timed out — recording may be long. Try again.');
+          return;
+        }
+        const data = await res.json();
         if (data.segments?.length) {
           item._segments = data.segments;
           const labels = getSpeakerLabels();
           area.innerHTML = renderSegments(data.segments, labels);
-          // Add insights panel if not already there
           if (!item.querySelector('.insights-panel')) {
             const panel = document.createElement('div');
             panel.className = 'insights-panel p-2 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800';
@@ -1892,11 +1908,11 @@ try {
         } else if (data.transcript) {
           area.innerHTML = `<p class="transcript-text text-sm text-gray-700 dark:text-gray-300 leading-relaxed">${data.transcript}</p>`;
         } else {
-          area.innerHTML = `<p class="text-xs text-red-400 italic">Transcription failed: ${data.error || 'unknown error'}</p>`;
+          showTranscribeRetry(area, url, filename, `Transcription failed: ${data.error || 'unknown error'}`);
         }
       } catch (err) {
         const area = item.querySelector('.transcript-area');
-        if (area) area.innerHTML = `<p class="text-xs text-red-400 italic">Transcription error: ${err.message}</p>`;
+        if (area) showTranscribeRetry(area, url, filename, `Transcription error: ${err.message}`);
       }
     }
 
