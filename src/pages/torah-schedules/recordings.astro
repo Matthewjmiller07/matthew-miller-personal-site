@@ -81,6 +81,13 @@ try {
     return `${m}:${String(s).padStart(2, '0')}`;
   }
 
+  function formatSegmentTime(secs) {
+    if (secs == null || isNaN(secs) || secs < 0) return '';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
   function formatDate(dateStr) {
     if (!dateStr) return '';
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -109,7 +116,7 @@ try {
       .map(sent => sent.trim());
   }
 
-  function renderSegments(segments, labels) {
+  function renderSegments(segments, labels, recDate, recSchedule, recFilename) {
     const colors = { SPEAKER_00: 'blue', SPEAKER_01: 'purple' };
     return segments.map(seg => {
       const color = colors[seg.speaker] || 'blue';
@@ -118,9 +125,15 @@ try {
         ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200'
         : 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-200';
       const labelColor = color === 'blue' ? 'text-blue-600 dark:text-blue-400' : 'text-purple-600 dark:text-purple-400';
-      return `<div class="mb-2">
-        <span class="text-xs font-semibold ${labelColor}">${label}</span>
-        <div class="mt-0.5 px-3 py-1.5 rounded-lg border text-sm leading-relaxed ${bubble}">${seg.text}</div>
+      const t = seg.start ?? 0;
+      const dayPath = `/torah-schedules/${recDate}${recSchedule && recSchedule !== 'default' ? `?schedule=${encodeURIComponent(recSchedule)}&` : '?'}f=${encodeURIComponent(recFilename)}&t=${t}`;
+      return `<div class="mb-2 segment-block group" data-start="${t}">
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs font-semibold ${labelColor}">${label}</span>
+          <span class="text-xs text-gray-400 dark:text-gray-500">${formatSegmentTime(t)}</span>
+          <a href="${dayPath}" class="share-segment text-xs opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity ml-1" title="Open at this moment" target="_self">🔗</a>
+        </div>
+        <div class="mt-0.5 px-3 py-1.5 rounded-lg border text-sm leading-relaxed cursor-pointer hover:opacity-80 transition-opacity ${bubble}">${seg.text}</div>
       </div>`;
     }).join('');
   }
@@ -200,7 +213,7 @@ try {
 
     const noTranscript = !rec.transcript && !hasSegments;
     const transcriptHtml = hasSegments
-      ? `<div class="mt-3 space-y-0">${renderSegments(rec.segments, labels)}</div>`
+      ? `<div class="mt-3 space-y-0 transcript-segments" data-filename="${rec.filename}" data-url="${rec.url}">${renderSegments(rec.segments, labels, rec.date, rec.schedule, rec.filename)}</div>`
       : rec.transcript
         ? `<p class="mt-3 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">${rec.transcript}</p>`
         : `<div class="mt-2 transcript-area" data-filename="${rec.filename}" data-date="${rec.date}" data-schedule="${rec.schedule}" data-url="${rec.url}">
@@ -288,6 +301,20 @@ try {
       const { filename, date, schedule, url } = btn.dataset;
       const area = btn.closest('.transcript-area') || btn.parentElement;
       if (area) triggerTranscription(date, schedule || 'default', filename, url, area);
+    });
+
+    // Click a segment bubble → seek audio in the same card and play
+    list.addEventListener('click', e => {
+      if (e.target.closest('.share-segment')) return;
+      const block = e.target.closest('.segment-block');
+      if (!block) return;
+      const segContainer = block.closest('.transcript-segments');
+      if (!segContainer) return;
+      const card = segContainer.closest('.border');
+      const audio = card?.querySelector('audio');
+      if (!audio) return;
+      const t = parseFloat(block.dataset.start);
+      if (!isNaN(t)) { audio.currentTime = t; audio.play().catch(() => {}); }
     });
   }
 

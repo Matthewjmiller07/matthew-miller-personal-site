@@ -1688,6 +1688,11 @@ try {
 
     const { dateParam, schedule } = getUrlParams();
 
+    // Deep-link seek: ?f=filename&t=seconds
+    const _searchParams = new URLSearchParams(window.location.search);
+    const seekFile = _searchParams.get('f') || '';
+    const seekTime = parseFloat(_searchParams.get('t') || '');
+
     const recordBtn = document.getElementById('record-btn');
     const recordLabel = document.getElementById('record-label');
     const recordTimer = document.getElementById('record-timer');
@@ -1733,6 +1738,13 @@ try {
       return `${m}:${s.toString().padStart(2, '0')}`;
     }
 
+    function formatSegmentTime(secs) {
+      if (secs == null || isNaN(secs) || secs < 0) return '';
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
     // Speaker label storage keyed per-schedule so "daughter" assignment persists across page reloads
     const SPEAKER_KEY = `speaker-labels-${schedule}`;
     function getSpeakerLabels() {
@@ -1758,9 +1770,14 @@ try {
         const color = colors[seg.speaker] || 'blue';
         const label = labels[seg.speaker] || seg.speaker.replace('SPEAKER_', 'Speaker ');
         const labelColor = color === 'blue' ? colorMap.labelBlue : colorMap.labelPurple;
-        return `<div class="flex flex-col gap-0.5 mb-2">
-          <span class="text-xs font-semibold ${labelColor} speaker-label" data-speaker="${seg.speaker}">${label}</span>
-          <div class="px-3 py-1.5 rounded-lg border text-sm leading-relaxed ${colorMap[color]}">${seg.text}</div>
+        const t = seg.start ?? 0;
+        return `<div class="flex flex-col gap-0.5 mb-2 segment-block group" data-start="${t}">
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-semibold ${labelColor} speaker-label" data-speaker="${seg.speaker}">${label}</span>
+            <span class="text-xs text-gray-400 dark:text-gray-500">${formatSegmentTime(t)}</span>
+            <button class="share-segment text-xs opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity ml-1" title="Copy link to this moment" data-start="${t}">🔗</button>
+          </div>
+          <div class="px-3 py-1.5 rounded-lg border text-sm leading-relaxed cursor-pointer hover:opacity-80 transition-opacity ${colorMap[color]}">${seg.text}</div>
         </div>`;
       }).join('');
     }
@@ -1863,6 +1880,49 @@ try {
           renderInsightsPanel(item, segments, updatedLabels);
         }
       });
+
+      // Click a segment bubble → seek audio to that timestamp and play
+      item.addEventListener('click', e => {
+        if (e.target.closest('.speaker-label') || e.target.closest('.share-segment')) return;
+        const block = e.target.closest('.segment-block');
+        if (!block) return;
+        const audio = item.querySelector('audio');
+        if (!audio) return;
+        const t = parseFloat(block.dataset.start);
+        if (!isNaN(t)) { audio.currentTime = t; audio.play().catch(() => {}); }
+      });
+
+      // Share-segment button → copy deep link to clipboard
+      item.addEventListener('click', e => {
+        const btn = e.target.closest('.share-segment');
+        if (!btn) return;
+        e.stopPropagation();
+        const t = parseFloat(btn.dataset.start);
+        const url = new URL(window.location.href);
+        url.searchParams.set('f', item.dataset.filename || '');
+        url.searchParams.set('t', isNaN(t) ? 0 : t);
+        navigator.clipboard.writeText(url.toString()).then(() => {
+          const orig = btn.textContent;
+          btn.textContent = '✓';
+          setTimeout(() => { btn.textContent = orig; }, 2000);
+        }).catch(() => {
+          prompt('Copy this link:', url.toString());
+        });
+      });
+
+      // If this recording matches a deep-link seek param, jump to that time
+      if (seekFile && rec.filename === seekFile && !isNaN(seekTime)) {
+        const audio = item.querySelector('audio');
+        if (audio) {
+          const doSeek = () => {
+            audio.currentTime = seekTime;
+            audio.play().catch(() => {});
+            item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          };
+          if (audio.readyState >= 1) doSeek();
+          else audio.addEventListener('loadedmetadata', doSeek, { once: true });
+        }
+      }
 
       recordingsList.appendChild(item);
       return item;
