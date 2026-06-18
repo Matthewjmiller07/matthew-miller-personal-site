@@ -1830,9 +1830,21 @@ try {
         <div class="transcript-area">
           ${transcriptHTML || '<p class="transcript-status text-xs text-gray-400 dark:text-gray-500 italic">Transcribing with Whisper…</p>'}
         </div>
+        ${rec.transcript && !hasSegments ? `<button class="analyze-speakers-btn self-start text-xs text-purple-600 dark:text-purple-400 hover:underline" data-url="${rec.url}" data-filename="${filename}">Analyze speakers ✦</button>` : ''}
       `;
 
       if (hasSegments) renderInsightsPanel(item, rec.segments, labels);
+
+      // "Analyze speakers" button on already-transcribed recordings
+      item.addEventListener('click', e => {
+        const btn = e.target.closest('.analyze-speakers-btn');
+        if (btn) {
+          btn.textContent = 'Analyzing…';
+          btn.disabled = true;
+          autoTranscribe(item, btn.dataset.url, btn.dataset.filename).then(() => btn.remove());
+          return;
+        }
+      });
 
       // Tap a speaker label → prompt to name that speaker
       item.addEventListener('click', e => {
