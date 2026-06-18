@@ -1,10 +1,12 @@
 export const prerender = false;
 
-import { InferenceClient } from '@huggingface/inference';
 import { getSheetData, updateSheetData } from '../../utils/googleSheetsClient.js';
 import { GOOGLE_SHEETS_CONFIG } from './config.js';
 
-const MODEL = 'openai/whisper-large-v3';
+// fal-ai/whisper via the HF router — accepts a URL, fetches audio itself.
+// This avoids binary/content-type issues with hf-inference serverless.
+const HF_ASR_URL = 'https://router.huggingface.co/fal-ai/fal-ai/whisper';
+
 const AUDIO_SHEET = 'audio-recordings';
 const TRANSCRIPT_COL = 'Transcript'; // column G
 
@@ -65,27 +67,25 @@ export async function POST({ request }) {
     });
   }
 
-  // Fetch the audio from Supabase (public URL)
-  let audioBuffer;
-  try {
-    const audioRes = await fetch(url);
-    if (!audioRes.ok) throw new Error(`Could not fetch audio: ${audioRes.status}`);
-    audioBuffer = Buffer.from(await audioRes.arrayBuffer());
-  } catch (err) {
-    return new Response(JSON.stringify({ error: `Failed to fetch audio: ${err.message}` }), {
-      status: 502, headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  // Transcribe via HF Inference Providers (hf-inference provider for Whisper)
+  // Pass the Supabase public URL directly to fal-ai/whisper — it fetches the
+  // audio itself, which avoids all binary/content-type issues with serverless.
   let transcript;
   try {
-    const client = new InferenceClient(token);
-    const result = await client.automaticSpeechRecognition({
-      model: MODEL,
-      data: audioBuffer,
+    const hfRes = await fetch(HF_ASR_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ audio_url: url }),
     });
-    transcript = result?.text?.trim() ?? '';
+    if (!hfRes.ok) {
+      const err = await hfRes.json().catch(() => ({}));
+      throw new Error(err.error || err.detail || `HF returned ${hfRes.status}`);
+    }
+    const result = await hfRes.json();
+    // fal-ai/whisper returns { text, chunks, ... }
+    transcript = (result?.text ?? '').trim();
   } catch (err) {
     console.error('Transcription error:', err);
     return new Response(JSON.stringify({ error: `Transcription failed: ${err.message}` }), {
