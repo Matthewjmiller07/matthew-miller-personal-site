@@ -1881,39 +1881,60 @@ try {
     }
 
     async function autoTranscribe(item, url, filename) {
+      const area = item.querySelector('.transcript-area');
+      if (!area) return;
+      area.innerHTML = '<p class="transcript-status text-xs text-gray-400 dark:text-gray-500 italic">Transcribing… may take 30–60 sec ⏳</p>';
+
       try {
-        const res = await fetch('/api/transcribe-audio', {
+        const res = await fetch('/.netlify/functions/transcribe-audio-background', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url, date: dateParam, schedule, filename }),
         });
-        const contentType = res.headers.get('content-type') || '';
-        const area = item.querySelector('.transcript-area');
-        if (!area) return;
-        if (!contentType.includes('application/json')) {
-          showTranscribeRetry(area, url, filename, 'Timed out — recording may be long. Try again.');
+        if (!res.ok && res.status !== 202) {
+          showTranscribeRetry(area, url, filename, 'Failed to start transcription. Try again.');
           return;
         }
-        const data = await res.json();
-        if (data.segments?.length) {
-          item._segments = data.segments;
-          const labels = getSpeakerLabels();
-          area.innerHTML = renderSegments(data.segments, labels);
-          if (!item.querySelector('.insights-panel')) {
-            const panel = document.createElement('div');
-            panel.className = 'insights-panel p-2 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800';
-            area.insertAdjacentElement('beforebegin', panel);
-          }
-          renderInsightsPanel(item, data.segments, labels);
-        } else if (data.transcript) {
-          area.innerHTML = `<p class="transcript-text text-sm text-gray-700 dark:text-gray-300 leading-relaxed">${data.transcript}</p>`;
-        } else {
-          showTranscribeRetry(area, url, filename, `Transcription failed: ${data.error || 'unknown error'}`);
-        }
       } catch (err) {
-        const area = item.querySelector('.transcript-area');
-        if (area) showTranscribeRetry(area, url, filename, `Transcription error: ${err.message}`);
+        showTranscribeRetry(area, url, filename, `Transcription error: ${err.message}`);
+        return;
       }
+
+      // Poll until the transcript appears in the sheet
+      const started = Date.now();
+      const maxWait = 3 * 60 * 1000;
+      const pollInterval = 6000;
+
+      const poll = async () => {
+        if (Date.now() - started > maxWait) {
+          showTranscribeRetry(area, url, filename, 'Transcription timed out. Try again.');
+          return;
+        }
+        try {
+          const pollRes = await fetch(`/api/load-audio?date=${encodeURIComponent(dateParam)}&schedule=${encodeURIComponent(schedule)}`);
+          const pollData = await pollRes.json();
+          const updated = (pollData.recordings || []).find(r => r.filename === filename);
+          if (updated?.segments?.length) {
+            item._segments = updated.segments;
+            const labels = getSpeakerLabels();
+            area.innerHTML = renderSegments(updated.segments, labels);
+            if (!item.querySelector('.insights-panel')) {
+              const panel = document.createElement('div');
+              panel.className = 'insights-panel p-2 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800';
+              area.insertAdjacentElement('beforebegin', panel);
+            }
+            renderInsightsPanel(item, updated.segments, labels);
+          } else if (updated?.transcript) {
+            area.innerHTML = `<p class="transcript-text text-sm text-gray-700 dark:text-gray-300 leading-relaxed">${updated.transcript}</p>`;
+          } else {
+            setTimeout(poll, pollInterval);
+          }
+        } catch {
+          setTimeout(poll, pollInterval);
+        }
+      };
+
+      setTimeout(poll, pollInterval);
     }
 
     async function loadRecordings() {
