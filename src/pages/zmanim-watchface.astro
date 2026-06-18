@@ -1,0 +1,302 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const sourceFiles = [
+  {
+    name: 'ZmanimFaceView.mc',
+    description: 'Main watchface view — day-arc layout, next-zman panel, progress bar, shaah circle',
+    lines: 477,
+  },
+  {
+    name: 'SolarCalc.mc',
+    description: 'NOAA solar position algorithm — sunrise/sunset + all zmanim derivations',
+    lines: 187,
+  },
+  {
+    name: 'HebrewCal.mc',
+    description: 'Hebrew calendar converter (Hillel II / Metonic cycle, full postponement rules)',
+    lines: 140,
+  },
+  {
+    name: 'ZmanimFaceApp.mc',
+    description: 'Connect IQ AppBase entry point',
+    lines: 21,
+  },
+];
+
+const zmanim = [
+  { name: 'Alot HaShachar', desc: '16.1° below horizon (degree-based, season-correct)', watch: '04:06', hebcal: '04:06', delta: '-0.0' },
+  { name: 'Misheyakir', desc: '11.5° below horizon', watch: '04:34', hebcal: '04:34', delta: '+0.1' },
+  { name: 'Hanetz HaChama', desc: 'Sunrise (zenith 90.833°, standard refraction)', watch: '05:34', hebcal: '05:34', delta: '-0.3' },
+  { name: 'Sof Zman Shema (GRA)', desc: '3 shaot after sunrise', watch: '09:07', hebcal: '09:07', delta: '+0.1' },
+  { name: 'Sof Zman Tefillah (GRA)', desc: '4 shaot after sunrise', watch: '10:18', hebcal: '10:18', delta: '+0.2' },
+  { name: 'Chatzot', desc: 'Solar noon', watch: '12:40', hebcal: '12:41', delta: '-0.6' },
+  { name: 'Mincha Gedola', desc: '6.5 shaot after sunrise', watch: '13:16', hebcal: '13:16', delta: '0.0' },
+  { name: 'Mincha Ketana', desc: '9.5 shaot after sunrise', watch: '16:49', hebcal: '16:49', delta: '+0.3' },
+  { name: 'Plag HaMincha', desc: '10.75 shaot after sunrise', watch: '18:18', hebcal: '18:18', delta: '+0.2' },
+  { name: 'Shekia', desc: 'Sunset', watch: '19:47', hebcal: '19:47', delta: '+0.1' },
+  { name: 'Tzet Kochavim', desc: '42 minutes after sunset', watch: '20:29', hebcal: '20:29', delta: '+0.1' },
+];
+
+const features = [
+  { icon: '☀️', title: 'Day-Arc Timeline', desc: 'Horizontal bar from Alot → Tzet with tick marks for each zman and a live sun-dot showing the current moment' },
+  { icon: '⏱️', title: 'Shaah Zmanit Circle', desc: 'Today\'s halachic hour length in minutes, displayed in the Instinct 2\'s GPS-button viewport (top-right corner)' },
+  { icon: '📅', title: 'Hebrew Date', desc: 'Full Hillel II calendar calculation — correct leap years, month lengths, and all 4 postponement rules (dechiyot)' },
+  { icon: '🎯', title: 'Next Zman Countdown', desc: 'Name, clock time, and live countdown to the next upcoming zman — updates every second' },
+  { icon: '📊', title: 'Period Progress Bar', desc: 'Shows how far into the current halachic period you are (e.g., 40% through Hanetz → Shema window)' },
+  { icon: '🔄', title: 'GRA / MGA Toggle', desc: 'Switch between GRA (sunrise-based) and MGA (Alot72-based) shaot via Garmin Connect settings' },
+  { icon: '📍', title: 'GPS + Custom Location', desc: 'Auto-updates from GPS if available; falls back to lat/lon set in Garmin Connect (default: Jerusalem)' },
+  { icon: '🌍', title: 'Any Timezone', desc: 'UTC offset derived by diffing local vs UTC clock — avoids Garmin\'s timeZoneOffset API quirks on some firmware versions' },
+];
+---
+
+<Layout
+  title="ZmanimFace — Halachic Watchface for Garmin Instinct 2"
+  description="A full Connect IQ watchface for the Garmin Instinct 2 showing halachic times (zmanim), Hebrew date, next-zman countdown, shaah zmanit, and a day-arc timeline. Built using the NOAA solar position algorithm."
+>
+  <main class="min-h-screen bg-gray-950 text-gray-100">
+
+    <!-- Hero -->
+    <section class="relative overflow-hidden bg-gradient-to-br from-gray-900 via-slate-900 to-gray-950 border-b border-gray-800">
+      <div class="absolute inset-0 opacity-10 pointer-events-none"
+           style="background: radial-gradient(ellipse at 70% 40%, #3b82f6 0%, transparent 60%)"></div>
+      <div class="container mx-auto px-6 py-16 max-w-5xl relative">
+        <div class="flex items-start gap-4 mb-4">
+          <span class="text-5xl">⌚</span>
+          <div>
+            <h1 class="text-4xl font-bold text-white leading-tight">ZmanimFace</h1>
+            <p class="text-blue-400 font-medium mt-1">Connect IQ Watchface · Garmin Instinct 2</p>
+          </div>
+        </div>
+        <p class="text-gray-300 text-lg max-w-2xl mt-4 leading-relaxed">
+          A full halachic watchface for the Garmin Instinct 2 (176×176 MIP monochrome display).
+          Shows all 11 zmanim, Hebrew date, shaah zmanit, next-zman countdown, period progress bar,
+          and an innovative day-arc timeline — built from scratch in Monkey C using the NOAA solar
+          position algorithm.
+        </p>
+        <div class="flex flex-wrap gap-3 mt-6">
+          {['GRA & MGA opinions', 'NOAA solar algorithm', '< 1 min accuracy vs Hebcal', 'GPS-aware', 'Hillel II Hebrew calendar'].map(tag => (
+            <span class="px-3 py-1 rounded-full bg-blue-900/40 border border-blue-700/50 text-blue-300 text-sm">{tag}</span>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Display layout diagram -->
+    <section class="container mx-auto px-6 py-12 max-w-5xl">
+      <h2 class="text-2xl font-bold text-white mb-2">Display Layout</h2>
+      <p class="text-gray-400 mb-6 text-sm">176 × 176 px monochrome MIP display (Garmin Instinct 2)</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+
+        <!-- Watchface mockup -->
+        <div class="bg-black rounded-2xl border-4 border-gray-700 p-4 font-mono text-xs leading-tight max-w-xs mx-auto shadow-2xl"
+             style="font-family: 'Courier New', monospace; min-height: 320px;">
+          <div class="flex justify-between items-start mb-1">
+            <span class="text-white text-2xl font-bold tracking-tight">05:47</span>
+            <div class="border border-gray-500 rounded-full w-10 h-10 flex flex-col items-center justify-center text-white">
+              <span class="text-xs font-bold leading-none">71</span>
+              <span class="text-gray-400 text-[8px]">min</span>
+            </div>
+          </div>
+          <div class="text-white text-xs mb-0.5">23 Sivan</div>
+          <div class="text-gray-400 text-xs mb-2">Thu 18 Jun</div>
+          <div class="border-t border-gray-700 my-1"></div>
+          <div class="text-gray-500 text-center text-[10px] mb-1">─ NEXT ZMAN (GRA) ─</div>
+          <div class="text-white text-center text-sm font-semibold mb-0.5">Sof Zman Shema</div>
+          <div class="text-gray-400 text-center text-[10px] mb-2">09:07 &nbsp; in 3:20</div>
+          <div class="h-2 bg-gray-800 rounded-sm overflow-hidden mb-1">
+            <div class="h-full bg-white rounded-sm" style="width: 35%"></div>
+          </div>
+          <div class="border-t border-gray-700 my-2"></div>
+          <!-- Day arc -->
+          <div class="relative h-3 mx-2">
+            <div class="absolute inset-x-0 top-1/2 h-px bg-gray-600"></div>
+            {[20, 35, 45, 52, 65, 80, 88].map(pos => (
+              <div class="absolute top-0 h-full w-px bg-gray-500" style={`left: ${pos}%`}></div>
+            ))}
+            <div class="absolute w-3 h-3 rounded-full bg-white shadow-lg top-0" style="left: 42%; transform: translateX(-50%)"></div>
+          </div>
+          <div class="flex justify-between text-gray-600 text-[8px] mx-2 mt-1">
+            <span>Alot</span><span>Tzet</span>
+          </div>
+        </div>
+
+        <!-- Layout key -->
+        <div class="space-y-2">
+          {[
+            { y: '0–48px', label: 'Large current time (HH:MM)', color: 'text-white' },
+            { y: 'top-right', label: 'Shaah zmanit circle (71 min today)', color: 'text-blue-300' },
+            { y: '50–62px', label: 'Hebrew date "23 Sivan"', color: 'text-gray-200' },
+            { y: '62–74px', label: 'Gregorian date "Thu 18 Jun"', color: 'text-gray-400' },
+            { y: '82–124px', label: 'Next zman — name, time, countdown', color: 'text-white' },
+            { y: '128–136px', label: 'Period progress bar', color: 'text-gray-300' },
+            { y: '142–175px', label: 'Day-arc: Alot→Tzet with sun dot', color: 'text-yellow-300' },
+          ].map(row => (
+            <div class="flex gap-3 items-baseline">
+              <span class="text-gray-600 text-xs w-20 shrink-0 font-mono">{row.y}</span>
+              <span class={`text-sm ${row.color}`}>{row.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="bg-gray-900/50 border-y border-gray-800 py-12">
+      <div class="container mx-auto px-6 max-w-5xl">
+        <h2 class="text-2xl font-bold text-white mb-8">Features</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {features.map(f => (
+            <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-blue-700/50 transition-colors">
+              <div class="text-2xl mb-2">{f.icon}</div>
+              <h3 class="font-semibold text-white text-sm mb-1">{f.title}</h3>
+              <p class="text-gray-400 text-xs leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Accuracy analysis -->
+    <section class="container mx-auto px-6 py-12 max-w-5xl">
+      <h2 class="text-2xl font-bold text-white mb-2">Accuracy Analysis vs Hebcal API</h2>
+      <p class="text-gray-400 mb-2 text-sm">
+        Jerusalem · 18–19 Sivan 5786 (Jun 18–19, 2026) · GRA opinion · UTC+3
+      </p>
+      <p class="text-gray-500 text-xs mb-6">
+        The watchface SolarCalc is compared against the authoritative
+        <a href="https://www.hebcal.com" class="text-blue-400 hover:underline" target="_blank" rel="noopener">Hebcal API</a>
+        using the same NOAA algorithm and KosherJava-compatible degree-based twilight angles.
+      </p>
+
+      <!-- PNG chart -->
+      <div class="rounded-xl overflow-hidden border border-gray-800 mb-8 shadow-2xl">
+        <img
+          src="/images/zmanim-watchface-analysis.png"
+          alt="ZmanimFace accuracy analysis vs Hebcal API — all zmanim within 0.8 minutes"
+          class="w-full"
+          loading="lazy"
+        />
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto rounded-xl border border-gray-800">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-900 text-gray-400 text-xs">
+              <th class="px-4 py-3 text-left font-semibold">Zman</th>
+              <th class="px-4 py-3 text-left font-semibold">Derivation</th>
+              <th class="px-3 py-3 text-center font-semibold">Watch</th>
+              <th class="px-3 py-3 text-center font-semibold">Hebcal</th>
+              <th class="px-3 py-3 text-center font-semibold">Δ (min)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {zmanim.map((z, i) => {
+              const d = parseFloat(z.delta);
+              const deltaColor = Math.abs(d) < 1 ? 'text-green-400' : Math.abs(d) < 3 ? 'text-yellow-400' : 'text-red-400';
+              return (
+                <tr class={i % 2 === 0 ? 'bg-gray-950' : 'bg-gray-900/50'}>
+                  <td class="px-4 py-2.5 font-medium text-white whitespace-nowrap">{z.name}</td>
+                  <td class="px-4 py-2.5 text-gray-400 text-xs">{z.desc}</td>
+                  <td class="px-3 py-2.5 text-center text-blue-300 font-mono">{z.watch}</td>
+                  <td class="px-3 py-2.5 text-center text-yellow-400 font-mono">{z.hebcal}</td>
+                  <td class={`px-3 py-2.5 text-center font-mono font-semibold ${deltaColor}`}>{z.delta}m</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr class="bg-gray-900 border-t border-gray-800">
+              <td colspan="4" class="px-4 py-2.5 text-gray-400 text-xs">Shaah Zmanit (GRA)</td>
+              <td class="px-3 py-2.5 text-center text-blue-300 font-mono text-sm font-semibold">71.1 min</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p class="text-gray-600 text-xs mt-3">
+        Maximum deviation: 0.8 min (Chatzot). All other zmanim within ±0.4 minutes.
+      </p>
+    </section>
+
+    <!-- Source code -->
+    <section class="bg-gray-900/50 border-t border-gray-800 py-12">
+      <div class="container mx-auto px-6 max-w-5xl">
+        <h2 class="text-2xl font-bold text-white mb-2">Source Code</h2>
+        <p class="text-gray-400 text-sm mb-6">
+          Written in Monkey C (Garmin Connect IQ SDK 3.4.4). Targets device ID
+          <code class="bg-gray-800 px-1.5 py-0.5 rounded text-blue-300 text-xs">instinct2</code>
+          (part 006-B3888-00). No external libraries — pure algorithmic implementation.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          {sourceFiles.map(f => (
+            <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-blue-700/40 transition-colors">
+              <div class="flex items-start justify-between mb-2">
+                <code class="text-blue-300 font-mono text-sm font-semibold">{f.name}</code>
+                <span class="text-gray-600 text-xs">{f.lines} lines</span>
+              </div>
+              <p class="text-gray-400 text-xs leading-relaxed">{f.description}</p>
+            </div>
+          ))}
+        </div>
+
+        <!-- SolarCalc algorithm highlights -->
+        <h3 class="text-lg font-semibold text-white mb-4">SolarCalc Algorithm Highlights</h3>
+        <div class="bg-gray-950 rounded-xl border border-gray-800 p-5 font-mono text-xs text-gray-300 leading-relaxed overflow-x-auto">
+          <div class="text-gray-500 mb-3">// SolarCalc.mc — key algorithm notes</div>
+          <div><span class="text-purple-400">// Julian Day Number</span> — Jean Meeus §7, INT-before-sum floor rule</div>
+          <div class="mt-2"><span class="text-purple-400">// Equation of Time</span> — eqT via tan(ε/2)² series expansion</div>
+          <div class="mt-2"><span class="text-purple-400">// Sunrise/Sunset</span> — zenith 90.833° (standard refraction + solar disc)</div>
+          <div class="mt-2"><span class="text-purple-400">// Alot HaShachar</span> — 16.1° below horizon (matches KosherJava/Hebcal default)</div>
+          <div class="mt-2"><span class="text-purple-400">// Misheyakir</span> — 11.5° below horizon (degree-based, season/latitude-correct)</div>
+          <div class="mt-2"><span class="text-purple-400">// GRA shaot zmanit</span> — (sunset − sunrise) / 12</div>
+          <div class="mt-2"><span class="text-purple-400">// MGA shaot zmanit</span> — (Tzet72 − Alot72) / 12, Tzet72 = sunset + 1.2h</div>
+          <div class="mt-2"><span class="text-purple-400">// UTC offset</span> — diffing local vs UTC clock (avoids timeZoneOffset API bugs)</div>
+          <div class="mt-4 text-green-400">// Accuracy: all 11 zmanim within ±0.8 min of Hebcal API for Jerusalem</div>
+        </div>
+
+        <!-- HebrewCal highlights -->
+        <h3 class="text-lg font-semibold text-white mb-4 mt-8">HebrewCal — Hillel II Calendar</h3>
+        <div class="bg-gray-950 rounded-xl border border-gray-800 p-5 font-mono text-xs text-gray-300 leading-relaxed overflow-x-auto">
+          <div class="text-gray-500 mb-3">// HebrewCal.mc — calendar arithmetic</div>
+          <div><span class="text-purple-400">// Epoch</span>: 1 Tishri Year 1 AM = Julian Day 347,998</div>
+          <div class="mt-2"><span class="text-purple-400">// Molad</span>: 29d 12h 793 chalakim cycle</div>
+          <div class="mt-2"><span class="text-purple-400">// Dechiyot</span>: all 4 postponement rules (Lo ADU Rosh, etc.)</div>
+          <div class="mt-2"><span class="text-purple-400">// Leap years</span>: 7 in 19-year Metonic cycle (3,6,8,11,14,17,19)</div>
+          <div class="mt-2"><span class="text-purple-400">// Month lengths</span>: Cheshvan/Kislev vary per year-type</div>
+          <div class="mt-2"><span class="text-purple-400">// Months</span>: Nissan(1)…Elul(6), Tishri(7)…Adar(12/13 in leap)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Build instructions -->
+    <section class="container mx-auto px-6 py-12 max-w-5xl">
+      <h2 class="text-2xl font-bold text-white mb-6">Building & Installing</h2>
+      <div class="space-y-4">
+        {[
+          { step: '1', title: 'Install SDK Manager', desc: 'Download Garmin Connect IQ SDK Manager from developer.garmin.com, install to /Applications/SdkManager.app' },
+          { step: '2', title: 'Download SDK', desc: 'Open SDK Manager → Download latest SDK (tested on CIQ 7.x). Installs to ~/Library/Application Support/Garmin/ConnectIQ/Sdks/' },
+          { step: '3', title: 'Generate developer key', desc: 'Run: openssl genrsa -out developer_key.pem 4096 && openssl pkcs8 -topk8 -inform PEM -outform DER -in developer_key.pem -out developer_key.der -passout pass:yourpassword' },
+          { step: '4', title: 'Build', desc: 'Run: ./build.sh yourpassword — outputs ZmanimFace.prg for sideloading' },
+          { step: '5', title: 'Sideload', desc: 'Connect Instinct 2 via USB, copy ZmanimFace.prg to GARMIN/APPS/ on the device, then set it as the active watchface' },
+        ].map(s => (
+          <div class="flex gap-4 items-start">
+            <span class="bg-blue-900 text-blue-200 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold shrink-0">{s.step}</span>
+            <div>
+              <h3 class="font-semibold text-white text-sm">{s.title}</h3>
+              <p class="text-gray-400 text-xs mt-0.5">{s.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- Footer link back -->
+    <div class="border-t border-gray-800 py-6">
+      <div class="container mx-auto px-6 max-w-5xl">
+        <a href="/projects" class="text-blue-400 hover:text-blue-300 text-sm transition-colors">← Back to Projects</a>
+      </div>
+    </div>
+
+  </main>
+</Layout>
