@@ -951,7 +951,11 @@ async function getVerseText(book, chapter, verse) {
       const heb = data.versions.find(v => v.language === 'he') || data.versions[0];
       const raw = heb.text;
       text = Array.isArray(raw) ? raw.join(' ') : (raw || '');
+      // Strip Sefaria HTML: remove span elements with their content (paragraph markers), then remaining tags and entities
+      text = text.replace(/<span[^>]*>[\s\S]*?<\/span>/g, '');
       text = text.replace(/<[^>]+>/g, '');
+      text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+      text = text.trim().replace(/\s+/g, ' ');
     }
     verseTextCache[key] = text;
     return text;

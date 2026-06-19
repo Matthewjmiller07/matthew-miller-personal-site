@@ -767,11 +767,21 @@ function addVerseToMap(verseKey, verseText, rite, verseRiteMap) {
   verseRiteMap[verseKey].rites.push(rite);
 }
 
+function stripSefariaHtml(text) {
+  if (typeof text !== 'string') return text;
+  return text
+    .replace(/<span[^>]*>[\s\S]*?<\/span>/g, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .trim().replace(/\s+/g, ' ');
+}
+
 async function fetchHebrewTextRange(reference) {
   try {
     const response = await fetch(`https://www.sefaria.org/api/texts/${reference}?lang=he&context=0`);
     const data = await response.json();
-    return Array.isArray(data.he) ? data.he : ['[Text not available]'];
+    const verses = Array.isArray(data.he) ? data.he : ['[Text not available]'];
+    return verses.map(v => Array.isArray(v) ? v.map(stripSefariaHtml) : stripSefariaHtml(v));
   } catch (error) {
     console.error(`Error fetching Hebrew text for reference: ${reference}`, error);
     return ['Error fetching text'];
