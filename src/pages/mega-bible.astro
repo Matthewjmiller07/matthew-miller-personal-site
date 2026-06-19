@@ -13,7 +13,6 @@ import Layout from '../layouts/Layout.astro';
 body:has(.mb-page) { background:#0c0b09!important; padding:0!important; overflow:hidden!important; }
 body:has(.mb-page) > header,
 body:has(.mb-page) > footer { display:none!important; }
-body:has(.mb-page) .flex-grow { flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
 
 .mb-page {
   --bg:#0c0b09; --surface:#141210; --surface2:#1c1a15;
@@ -25,8 +24,8 @@ body:has(.mb-page) .flex-grow { flex:1; min-height:0; overflow:hidden; display:f
   --sc:'Cormorant SC',Georgia,serif;
   --mono:'JetBrains Mono',monospace;
   --nav-top:2.4rem; --nav-bottom:3rem; --sidebar:220px; --detail:0px;
-  display:flex; flex-direction:column; height:100dvh;
-  background:var(--bg); color:var(--text); overflow:hidden; flex:1;
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  background:var(--bg); color:var(--text); overflow:hidden;
 }
 
 /* NAV BAR — two rows */
@@ -287,6 +286,38 @@ body:has(.mb-page) .flex-grow { flex:1; min-height:0; overflow:hidden; display:f
   background:var(--dev-bg, transparent);
 }
 .mb-page.no-devices .w.has-dev { border-bottom-color:transparent!important; background:transparent!important; }
+.w.flash { background:rgba(201,162,87,.38)!important; transition:background .4s; }
+
+/* Section filter buttons */
+.mb-section-btns { display:flex; gap:.3rem; align-items:center; }
+.mb-sect-btn {
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.15em; text-transform:uppercase;
+  background:none; border:1px solid var(--border); color:var(--muted);
+  padding:.2rem .55rem; cursor:pointer; transition:all .12s; flex-shrink:0;
+}
+.mb-sect-btn.active { border-color:var(--gold); color:var(--gold); }
+.mb-sect-btn:hover { border-color:var(--border-hi); color:var(--text); }
+.mb-section-btns + .mb-nav-label { margin-left:.3rem; }
+
+/* Device browser table */
+.dev-browser-hdr, .dev-browser-row {
+  display:grid;
+  grid-template-columns:120px 80px 60px 1fr 1.6fr;
+  gap:.5rem; padding:.45rem .7rem;
+}
+.dev-browser-hdr {
+  background:var(--surface); position:sticky; top:0; z-index:2;
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.2em; color:var(--muted); text-transform:uppercase;
+  border-bottom:1px solid var(--border-hi);
+}
+.dev-browser-row {
+  border-bottom:1px solid var(--faint); cursor:pointer;
+  font-family:var(--display); font-size:.83rem; color:var(--text); transition:background .1s;
+}
+.dev-browser-row:hover { background:var(--surface); }
+.dev-browser-device { font-family:var(--sc); font-size:.58rem; letter-spacing:.15em; text-transform:uppercase; }
+.dev-browser-ref { font-family:var(--mono); font-size:.62rem; color:var(--muted); }
+.dev-browser-count { font-family:var(--mono); font-size:.62rem; color:var(--muted); text-align:center; }
 .verse-device-badges { display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.4rem; }
 .vdb-badge {
   font-family:var(--sc); font-size:.5rem; letter-spacing:.12em;
@@ -368,12 +399,19 @@ body:has(.mb-page) .flex-grow { flex:1; min-height:0; overflow:hidden; display:f
         <button class="mb-mode-btn active" id="modeChapter" data-mode="chapter">By Chapter</button>
         <button class="mb-mode-btn" id="modeParsha" data-mode="parsha">By Parsha</button>
         <button class="mb-mode-btn" id="modeHaftarah" data-mode="haftarah">Haftarah</button>
+        <button class="mb-mode-btn" id="modeAllDevices" data-mode="alldevices">All Devices</button>
       </div>
     </div>
     <!-- Row 2: selects + load -->
     <div class="mb-nav-bottom">
       <!-- Chapter mode -->
       <div class="mb-nav-group" id="groupChapter">
+        <div class="mb-section-btns">
+          <button class="mb-sect-btn active" data-sect="all">All</button>
+          <button class="mb-sect-btn" data-sect="torah">Torah</button>
+          <button class="mb-sect-btn" data-sect="neviim">Nevi'im</button>
+          <button class="mb-sect-btn" data-sect="ketuvim">Ketuvim</button>
+        </div>
         <span class="mb-nav-label">Book</span>
         <select class="mb-sel" id="bookSel" aria-label="Book">
           <option value="">Select a book…</option>
@@ -392,6 +430,20 @@ body:has(.mb-page) .flex-grow { flex:1; min-height:0; overflow:hidden; display:f
         <span class="mb-nav-label">Aliya</span>
         <select class="mb-sel" id="aliyaSel" disabled aria-label="Aliya">
           <option value="">—</option>
+        </select>
+      </div>
+      <!-- All Devices mode -->
+      <div class="mb-nav-group hidden" id="groupAllDevices">
+        <span class="mb-nav-label">Device</span>
+        <select class="mb-sel" id="allDevSel" aria-label="Device filter">
+          <option value="">All Devices</option>
+        </select>
+        <span class="mb-nav-label">Section</span>
+        <select class="mb-sel" id="allSectSel" aria-label="Section filter">
+          <option value="">All Sections</option>
+          <option value="torah">Torah</option>
+          <option value="neviim">Nevi'im</option>
+          <option value="ketuvim">Ketuvim</option>
         </select>
       </div>
       <!-- Haftarah mode -->
@@ -538,6 +590,11 @@ const BOOK_CHAPTERS: Record<string,number> = {
 };
 
 const TORAH_BOOKS = new Set(['Genesis','Exodus','Leviticus','Numbers','Deuteronomy']);
+const TORAH_BOOKS_LIST = ['Genesis','Exodus','Leviticus','Numbers','Deuteronomy'];
+const NEVIIM_BOOKS_LIST = ['Joshua','Judges','1 Samuel','2 Samuel','1 Kings','2 Kings','Isaiah','Jeremiah','Ezekiel','Hosea','Joel','Amos','Obadiah','Jonah','Micah','Nahum','Habakkuk','Zephaniah','Haggai','Zechariah','Malachi'];
+const NEVIIM_BOOKS = new Set(NEVIIM_BOOKS_LIST);
+const KETUVIM_BOOKS_LIST = ['Psalms','Proverbs','Job','Song of Songs','Ruth','Lamentations','Ecclesiastes','Esther','Daniel','Ezra','Nehemiah','1 Chronicles','2 Chronicles'];
+const KETUVIM_BOOKS = new Set(KETUVIM_BOOKS_LIST);
 
 // Haftarah JSON uses Roman numeral prefixes
 const HAFTARAH_NORM: Record<string,string> = {
@@ -629,6 +686,7 @@ let activeRites = new Set(RITES);
 let activeDevice = '';
 let navMode = 'chapter';
 let currentParsha = '';
+let allDevicesData: any[] = [];
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
 const page        = document.getElementById('mbPage')!;
@@ -645,13 +703,16 @@ const detailWord  = document.getElementById('detailWord')!;
 const detailBody  = document.getElementById('detailBody')!;
 const devicePills   = document.getElementById('devicePills')!;
 const riteBoxes     = document.getElementById('riteCheckboxes')!;
-const groupChapter  = document.getElementById('groupChapter')!;
-const groupParsha   = document.getElementById('groupParsha')!;
-const groupHaftarah = document.getElementById('groupHaftarah')!;
-const haftParshasel = document.getElementById('haftParshasel') as HTMLSelectElement;
-const haftRiteSel   = document.getElementById('haftRiteSel') as HTMLSelectElement;
-const devNav        = document.getElementById('devNav')!;
-const devPos        = document.getElementById('devPos')!;
+const groupChapter    = document.getElementById('groupChapter')!;
+const groupParsha     = document.getElementById('groupParsha')!;
+const groupHaftarah   = document.getElementById('groupHaftarah')!;
+const groupAllDevices = document.getElementById('groupAllDevices')!;
+const haftParshasel   = document.getElementById('haftParshasel') as HTMLSelectElement;
+const haftRiteSel     = document.getElementById('haftRiteSel') as HTMLSelectElement;
+const allDevSel       = document.getElementById('allDevSel') as HTMLSelectElement;
+const allSectSel      = document.getElementById('allSectSel') as HTMLSelectElement;
+const devNav          = document.getElementById('devNav')!;
+const devPos          = document.getElementById('devPos')!;
 
 // ── Init ───────────────────────────────────────────────────────────────────
 populateBookSelect();
@@ -667,12 +728,23 @@ async function loadAllDevices() {
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/literary_bible?select=device`,
+      `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,notes&order=book,chapter,verse`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     if (!r.ok) return;
-    const rows = await r.json();
-    updateDevicePills(rows);
+    allDevicesData = await r.json();
+    updateDevicePills(allDevicesData);
+    // Populate allDevSel with unique devices
+    const devicesSeen = new Set<string>();
+    allDevicesData.forEach(row => {
+      const d = (row.device || '').toLowerCase();
+      if (d && !devicesSeen.has(d)) {
+        devicesSeen.add(d);
+        const o = document.createElement('option');
+        o.value = d; o.textContent = d;
+        allDevSel.appendChild(o);
+      }
+    });
   } catch {}
 }
 
@@ -772,9 +844,10 @@ document.querySelectorAll('.mb-mode-btn').forEach(btn => {
     navMode = (btn as HTMLElement).dataset.mode || 'chapter';
     document.querySelectorAll('.mb-mode-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    groupChapter.classList.toggle('hidden',  navMode !== 'chapter');
-    groupParsha.classList.toggle('hidden',   navMode !== 'parsha');
-    groupHaftarah.classList.toggle('hidden', navMode !== 'haftarah');
+    groupChapter.classList.toggle('hidden',    navMode !== 'chapter');
+    groupParsha.classList.toggle('hidden',     navMode !== 'parsha');
+    groupHaftarah.classList.toggle('hidden',   navMode !== 'haftarah');
+    groupAllDevices.classList.toggle('hidden', navMode !== 'alldevices');
     updateLoadBtn();
   });
 });
@@ -785,6 +858,9 @@ bookSel.addEventListener('change', () => {
   chapterSel.innerHTML = '<option value="">Chapter…</option>';
   chapterSel.disabled = !book;
   if (book) {
+    const allOpt = document.createElement('option');
+    allOpt.value = 'all'; allOpt.textContent = 'All Chapters';
+    chapterSel.appendChild(allOpt);
     const n = BOOK_CHAPTERS[book] || 0;
     for (let i = 1; i <= n; i++) {
       const o = document.createElement('option');
@@ -793,6 +869,33 @@ bookSel.addEventListener('change', () => {
     }
   }
   updateLoadBtn();
+});
+
+function filterBooksBySection(sect: string) {
+  const prevBook = bookSel.value;
+  bookSel.innerHTML = '<option value="">Select a book…</option>';
+  const books = sect === 'torah'   ? TORAH_BOOKS_LIST
+              : sect === 'neviim'  ? NEVIIM_BOOKS_LIST
+              : sect === 'ketuvim' ? KETUVIM_BOOKS_LIST
+              : Object.keys(BOOK_CHAPTERS);
+  books.forEach(b => {
+    const o = document.createElement('option');
+    o.value = b; o.textContent = b;
+    bookSel.appendChild(o);
+  });
+  // Restore selection if still in list
+  if (books.includes(prevBook)) bookSel.value = prevBook;
+  chapterSel.innerHTML = '<option value="">Chapter…</option>';
+  chapterSel.disabled = true;
+  updateLoadBtn();
+}
+
+document.querySelectorAll('.mb-sect-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mb-sect-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterBooksBySection((btn as HTMLElement).dataset.sect || 'all');
+  });
 });
 chapterSel.addEventListener('change', updateLoadBtn);
 
@@ -820,8 +923,10 @@ function updateLoadBtn() {
     loadBtn.disabled = !bookSel.value || !chapterSel.value;
   } else if (navMode === 'parsha') {
     loadBtn.disabled = !parshaSel.value || !aliyaSel.value;
-  } else {
+  } else if (navMode === 'haftarah') {
     loadBtn.disabled = !haftParshasel.value;
+  } else {
+    loadBtn.disabled = false; // alldevices always loadable
   }
 }
 haftParshasel.addEventListener('change', updateLoadBtn);
@@ -850,9 +955,15 @@ async function handleLoad() {
 
   if (navMode === 'chapter') {
     const book = bookSel.value;
-    const ch   = parseInt(chapterSel.value);
-    currentParsha = findParshaForChapter(book, ch);
-    await renderRange(book, ch, 1, ch, Infinity, currentParsha);
+    if (chapterSel.value === 'all') {
+      const maxCh = BOOK_CHAPTERS[book] || 1;
+      currentParsha = '';
+      await renderRange(book, 1, 1, maxCh, Infinity, '', '', true);
+    } else {
+      const ch = parseInt(chapterSel.value);
+      currentParsha = findParshaForChapter(book, ch);
+      await renderRange(book, ch, 1, ch, Infinity, currentParsha);
+    }
   } else if (navMode === 'parsha') {
     const parsha = parshaSel.value;
     currentParsha = parsha;
@@ -862,9 +973,11 @@ async function handleLoad() {
     if (!parsed) { setStatus('Invalid range'); loadBtn.disabled = false; return; }
     const { book, sc, sv, ec, ev } = parsed;
     await renderRange(book, sc, sv, ec, ev, parsha, aliyaLabel);
-  } else {
-    // Haftarah mode
+  } else if (navMode === 'haftarah') {
     await handleHaftarahLoad();
+  } else {
+    // All Devices mode
+    await handleAllDevicesLoad();
   }
 
   loadBtn.disabled = false;
@@ -903,6 +1016,101 @@ async function handleHaftarahLoad() {
     const maxV  = Math.max(...verses.filter(v => v.ch === maxCh).map(v => v.v));
     await renderRange(book, minCh, minV, maxCh, maxV, parsha, `Haftarah (${rite})`);
   }
+}
+
+// ── All Devices browser ────────────────────────────────────────────────────
+async function handleAllDevicesLoad() {
+  main.innerHTML = '';
+  const loaderWrap = document.createElement('div');
+  loaderWrap.className = 'mb-loader-wrap';
+  loaderWrap.innerHTML = `<div class="mb-loader-label">Loading devices…</div><div class="mb-loader-bar"></div>`;
+  main.appendChild(loaderWrap);
+  setStatus('');
+
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    main.innerHTML = '<div class="mb-placeholder">Supabase not configured.</div>';
+    return;
+  }
+
+  // Use cached data if available, else fetch
+  let rows: any[] = allDevicesData;
+  if (!rows.length) {
+    try {
+      const r = await fetch(
+        `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,notes&order=book,chapter,verse`,
+        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+      );
+      rows = await r.json();
+      allDevicesData = rows;
+    } catch {
+      main.innerHTML = '<div class="mb-placeholder">Error loading devices.</div>';
+      return;
+    }
+  }
+
+  // Apply filters
+  const filterDev  = allDevSel.value;
+  const filterSect = allSectSel.value;
+  let filtered = rows;
+  if (filterDev)  filtered = filtered.filter(r => (r.device || '').toLowerCase() === filterDev);
+  if (filterSect === 'torah')   filtered = filtered.filter(r => TORAH_BOOKS.has(r.book));
+  if (filterSect === 'neviim')  filtered = filtered.filter(r => NEVIIM_BOOKS.has(r.book));
+  if (filterSect === 'ketuvim') filtered = filtered.filter(r => KETUVIM_BOOKS.has(r.book));
+
+  main.innerHTML = '';
+
+  // Context
+  const ctx = document.createElement('div');
+  ctx.className = 'mb-context';
+  ctx.innerHTML = `<span>Literary Devices</span> · <span class="chip-count">${filtered.length}</span> annotations`;
+  main.appendChild(ctx);
+
+  if (!filtered.length) {
+    main.innerHTML += '<div class="mb-placeholder">No devices found for the selected filters.</div>';
+    setStatus('0 devices');
+    return;
+  }
+
+  // Header
+  const hdr = document.createElement('div');
+  hdr.className = 'dev-browser-hdr';
+  hdr.innerHTML = '<div>Book</div><div>Ref</div><div>Device</div><div>Words</div><div>Notes</div>';
+  main.appendChild(hdr);
+
+  // Rows
+  filtered.forEach(row => {
+    const div = document.createElement('div');
+    div.className = 'dev-browser-row';
+    const color = deviceColor((row.device || '').toLowerCase());
+    div.innerHTML = `
+      <div class="dev-browser-ref">${row.book}</div>
+      <div class="dev-browser-ref">${row.book} ${row.chapter}:${row.verse}</div>
+      <div class="dev-browser-device" style="color:${color}">${row.device || ''}</div>
+      <div style="font-family:var(--heb);direction:rtl;font-size:1rem">${row.words || ''}</div>
+      <div style="font-style:italic;color:var(--muted);font-size:.78rem">${row.notes || ''}</div>`;
+    div.addEventListener('click', () => {
+      // Switch to chapter mode and load the passage
+      navMode = 'chapter';
+      document.querySelectorAll('.mb-mode-btn').forEach(b => {
+        (b as HTMLElement).classList.toggle('active', (b as HTMLElement).dataset.mode === 'chapter');
+      });
+      groupChapter.classList.remove('hidden');
+      groupAllDevices.classList.add('hidden');
+      groupParsha.classList.add('hidden');
+      groupHaftarah.classList.add('hidden');
+      bookSel.value = row.book;
+      bookSel.dispatchEvent(new Event('change'));
+      // Select chapter
+      setTimeout(() => {
+        chapterSel.value = String(row.chapter);
+        updateLoadBtn();
+        renderRange(row.book, row.chapter, 1, row.chapter, Infinity, findParshaForChapter(row.book, row.chapter));
+      }, 50);
+    });
+    main.appendChild(div);
+  });
+
+  setStatus(`${filtered.length} device${filtered.length !== 1 ? 's' : ''}`);
 }
 
 // ── Range parsing helpers ──────────────────────────────────────────────────
@@ -1086,7 +1294,7 @@ function updateDevicePills(allDevices: any[]) {
 // ── Main render ────────────────────────────────────────────────────────────
 async function renderRange(
   book: string, sc: number, sv: number, ec: number, ev: number,
-  parsha?: string, aliyaLabel?: string
+  parsha?: string, aliyaLabel?: string, skipEnglish = false
 ) {
   main.innerHTML = '';
   const loaderWrap = document.createElement('div');
@@ -1134,7 +1342,7 @@ async function renderRange(
       const chapterNode = chapters.find(c => c.getAttribute('osisID') === chId);
       if (!chapterNode) continue;
 
-      const englishVerses = await fetchEnglishChapter(book, ch);
+      const englishVerses = (skipEnglish || (ec - sc) > 2) ? [] : await fetchEnglishChapter(book, ch);
 
       const verses = getByTag(chapterNode, 'verse');
       for (const verseNode of verses) {
@@ -1223,12 +1431,13 @@ function buildStatsPanel(stats: any, deviceCount: number): HTMLElement {
     chip.addEventListener('click', () => {
       wl.classList.toggle('open');
       chip.classList.toggle('active');
-      // Also highlight this POS in the text
       if (cssFilter) {
-        const on = chip.classList.contains('active');
-        main.querySelectorAll(`.w.${cssFilter}`).forEach(el => {
-          (el as HTMLElement).style.outline = on ? `2px solid ${color}` : '';
-        });
+        // Toggle the corresponding POS sidebar checkbox
+        const cbId = cssFilter === 'pos-noun' ? 'posNoun'
+                   : cssFilter === 'pos-verb' ? 'posVerb'
+                   : cssFilter === 'pos-proper-noun' ? 'posProper' : 'posAdverb';
+        const cb = document.getElementById(cbId) as HTMLInputElement | null;
+        if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); }
       }
     });
     const wrap = document.createElement('div');
@@ -1277,10 +1486,24 @@ function buildStatsPanel(stats: any, deviceCount: number): HTMLElement {
     sorted.forEach(w => {
       const row = document.createElement('div');
       row.className = 'mb-freq-bar-row';
+      row.style.cursor = 'pointer';
+      row.title = `Click to highlight "${w.text}" in text`;
       row.innerHTML = `
         <div class="mb-freq-label">${w.text}</div>
         <div class="mb-freq-bar-wrap"><div class="mb-freq-bar" style="width:${Math.round(w.count/max*100)}%"></div></div>
         <div class="mb-freq-bar-num">${w.count}</div>`;
+      row.addEventListener('click', () => {
+        const target = w.text;
+        const matches = Array.from(main.querySelectorAll('.w')).filter(el => {
+          return stripMarks((el as HTMLElement).textContent || '') === target;
+        });
+        if (!matches.length) return;
+        matches[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        matches.forEach(el => {
+          el.classList.add('flash');
+          setTimeout(() => el.classList.remove('flash'), 1500);
+        });
+      });
       barsDiv.appendChild(row);
     });
     chartDiv.appendChild(barsDiv);
