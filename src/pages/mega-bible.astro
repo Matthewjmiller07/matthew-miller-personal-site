@@ -338,6 +338,15 @@ body:has(.mb-page) > footer { display:none!important; }
 /* Haftarah section */
 .haftarah-section { margin-top:2.5rem; }
 
+/* Book sources + shared/unique viz */
+.mb-book-src-row { display:flex; align-items:center; gap:.5rem; padding:.2rem 0; }
+.mb-book-src-name { font-family:var(--sc); font-size:.58rem; letter-spacing:.12em; color:var(--gold); width:90px; flex-shrink:0; }
+.mb-book-src-rites { display:flex; flex-wrap:wrap; gap:.25rem; }
+.mb-rite-pip { font-family:var(--sc); font-size:.48rem; letter-spacing:.08em; padding:.15rem .4rem; border-radius:.2rem; color:#111; font-weight:700; cursor:default; }
+.mb-shared-row { display:flex; align-items:center; gap:.5rem; padding:.15rem 0; }
+.mb-shared-label { font-family:var(--sc); font-size:.55rem; letter-spacing:.12em; color:var(--muted); }
+.mb-shared-num { font-family:var(--mono); font-size:.72rem; color:var(--text); }
+
 /* Rite section divider */
 .rite-section-hdr {
   font-family:var(--sc); font-size:.62rem; letter-spacing:.22em; text-transform:uppercase;
@@ -1653,6 +1662,112 @@ function buildHaftarahViz(parsha: string): HTMLElement {
       barsDiv.appendChild(row);
     });
     panel.appendChild(barsDiv);
+  }
+
+  // ── Book Sources ────────────────────────────────────────────────────────
+  const RITE_COLORS: Record<string,string> = {
+    'Ashkenazi': 'rgba(201,162,87,.85)',
+    'Sephardi':  'rgba(96,165,250,.85)',
+    'Yemenite':  'rgba(52,211,153,.85)',
+    'Italian':   'rgba(244,114,182,.85)',
+    'Karaite':   'rgba(167,139,250,.85)',
+    'Romaniote': 'rgba(251,146,60,.85)',
+    'Chabad':    'rgba(248,113,113,.85)',
+  };
+
+  const bookRiteCounts = new Map<string, Map<string,number>>();
+  RITES_ORDER.forEach(rite => {
+    const verses: string[] = parshaData[rite]?.individual_verses || [];
+    verses.forEach(v => {
+      const book = v.replace(/\s+\d+:\d+$/, '').trim();
+      if (!bookRiteCounts.has(book)) bookRiteCounts.set(book, new Map());
+      const rc = bookRiteCounts.get(book)!;
+      rc.set(rite, (rc.get(rite) || 0) + 1);
+    });
+  });
+
+  if (bookRiteCounts.size > 0) {
+    const srcTitle = document.createElement('div');
+    srcTitle.className = 'mb-freq-title';
+    srcTitle.textContent = 'Book Sources';
+    panel.appendChild(srcTitle);
+
+    bookRiteCounts.forEach((riteMap, book) => {
+      const row = document.createElement('div');
+      row.className = 'mb-book-src-row';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'mb-book-src-name';
+      nameEl.textContent = book;
+      const ritesEl = document.createElement('div');
+      ritesEl.className = 'mb-book-src-rites';
+      RITES_ORDER.forEach(rite => {
+        const cnt = riteMap.get(rite);
+        if (!cnt) return;
+        const pip = document.createElement('span');
+        pip.className = 'mb-rite-pip';
+        pip.style.background = RITE_COLORS[rite] || 'rgba(200,200,200,.6)';
+        pip.title = rite;
+        pip.textContent = `${rite.slice(0,3)} ${cnt}`;
+        ritesEl.appendChild(pip);
+      });
+      row.appendChild(nameEl);
+      row.appendChild(ritesEl);
+      panel.appendChild(row);
+    });
+  }
+
+  // ── Shared vs. Unique ──────────────────────────────────────────────────
+  const allRites = RITES_ORDER.filter(r => parshaData[r]?.individual_verses?.length);
+  if (allRites.length >= 2) {
+    const verseSets = new Map<string, Set<string>>();
+    allRites.forEach(r => verseSets.set(r, new Set(parshaData[r].individual_verses)));
+
+    const sharedByAll = [...verseSets.get(allRites[0])!].filter(v =>
+      allRites.every(r => verseSets.get(r)!.has(v))
+    );
+
+    const uniquePerRite = new Map<string, number>();
+    allRites.forEach(r => {
+      const others = allRites.filter(o => o !== r);
+      uniquePerRite.set(r, [...verseSets.get(r)!].filter(v =>
+        others.every(o => !verseSets.get(o)!.has(v))
+      ).length);
+    });
+
+    const svTitle = document.createElement('div');
+    svTitle.className = 'mb-freq-title';
+    svTitle.style.marginTop = '.8rem';
+    svTitle.textContent = 'Shared vs. Unique';
+    panel.appendChild(svTitle);
+
+    const sharedRow = document.createElement('div');
+    sharedRow.className = 'mb-shared-row';
+    const sharedLbl = document.createElement('span');
+    sharedLbl.className = 'mb-shared-label';
+    sharedLbl.textContent = `Shared by all ${allRites.length} rites`;
+    const sharedNum = document.createElement('span');
+    sharedNum.className = 'mb-shared-num';
+    sharedNum.textContent = String(sharedByAll.length);
+    sharedRow.appendChild(sharedLbl);
+    sharedRow.appendChild(sharedNum);
+    panel.appendChild(sharedRow);
+
+    allRites.forEach(rite => {
+      const uCount = uniquePerRite.get(rite) || 0;
+      if (!uCount) return;
+      const row = document.createElement('div');
+      row.className = 'mb-shared-row';
+      const pip = document.createElement('span');
+      pip.className = 'mb-rite-pip';
+      pip.style.background = RITE_COLORS[rite] || 'rgba(200,200,200,.6)';
+      pip.textContent = rite;
+      const num = document.createElement('span');
+      num.className = 'mb-shared-num';
+      num.textContent = `${uCount} unique`;
+      row.appendChild(pip);
+      row.appendChild(num);
+      panel.appendChild(row);
+    });
   }
 
   return panel;
