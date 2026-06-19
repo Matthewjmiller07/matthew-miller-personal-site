@@ -225,6 +225,16 @@ const pageDescription =
   }
   .kava-topic-srcs { margin: 0.4rem 0 0; padding: 0; list-style: none; }
   .kava-topic-srcs li { padding: 0.45rem 0; border-top: 1px dashed var(--paper-line); }
+  .kava-subtopic { padding: 0.3rem 0; }
+  .kava-subtopic-sep { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--paper-line); }
+  .kava-subtopic-q { display: flex; gap: 0.5rem; align-items: baseline; }
+  .kava-subtopic-num { font-family: 'Fraunces', serif; color: var(--copper); font-weight: 600; flex: none; }
+  .kava-topic-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', serif; font-size: 0.7rem; font-style: normal; font-weight: 600;
+    background: rgba(200,127,61,0.18); color: var(--copper-bright); border-radius: 999px;
+    padding: 0.05rem 0.45rem; margin-left: 0.5rem; vertical-align: middle; letter-spacing: 0;
+  }
   .kava-topic-srcs .src-note { display: block; font-size: 0.92rem; color: var(--crema-dim); }
   .kava-seph-note { background: var(--bean-700); border-left: 3px solid var(--copper); padding: 0.7rem 0.9rem; border-radius: 0 8px 8px 0; margin-top: 0.5rem; font-size: 0.98rem; }
 
@@ -252,6 +262,12 @@ const pageDescription =
   }
   .kava-source .src-notes { font-size: 0.9rem; line-height: 1.5; color: var(--crema-dim); opacity: 0.85; margin: 0 0 0.6rem; }
   .kava-source .src-meta { font-size: 0.8rem; }
+  .src-sefaria-link {
+    display: inline-block; margin-top: 0.5rem; font-family: 'Fraunces', serif;
+    font-size: 0.78rem; letter-spacing: 0.04em; color: var(--copper) !important;
+    border-bottom: 1px dashed rgba(200,127,61,0.5) !important;
+  }
+  .src-sefaria-link:hover { color: var(--crema) !important; border-bottom-color: var(--crema) !important; }
   .src-original-wrap { margin: 0.45rem 0 0.6rem; }
   .src-original-toggle {
     font-family: 'Fraunces', serif; font-size: 0.78rem; letter-spacing: 0.05em;
@@ -347,44 +363,79 @@ const pageDescription =
 
   function renderTopics(topics: any[], sources: any[], links: any[]) {
     const srcById = new Map(sources.map((s) => [s.id, s]));
-    $('topics-list').innerHTML = topics
-      .map((t) => {
-        const linked = links
-          .filter((l) => l.halacha_id === t.id)
-          .map((l) => ({ ...l, src: srcById.get(l.source_id) }))
-          .filter((l) => l.src);
-        const claude = (t.tags || []).includes('claude-added');
+
+    const linksFor = (id: string) =>
+      links
+        .filter((l) => l.halacha_id === id)
+        .map((l) => ({ ...l, src: srcById.get(l.source_id) }))
+        .filter((l) => l.src);
+
+    // Group entries by topic name, preserving first-seen order
+    const grouped = new Map<string, any[]>();
+    topics.forEach((t) => {
+      if (!grouped.has(t.topic)) grouped.set(t.topic, []);
+      grouped.get(t.topic)!.push(t);
+    });
+
+    // Update stat to reflect unique topic count
+    const statEl = document.getElementById('stat-topics');
+    if (statEl) statEl.textContent = String(grouped.size);
+
+    const renderEntry = (t: any, showQ = true) => {
+      const linked = linksFor(t.id);
+      return `
+        ${showQ && t.question ? `<p class="kava-topic-q">${esc(t.question)}</p>` : ''}
+        ${t.ruling ? `<span class="kava-topic-label">Ruling</span><p>${esc(t.ruling)}</p>` : ''}
+        ${t.reasoning ? `<span class="kava-topic-label">Reasoning</span><p>${esc(t.reasoning)}</p>` : ''}
+        ${
+          t.sephardic_ashkenaz_diff && t.sephardic_ashkenaz_notes
+            ? `<span class="kava-topic-label">Sephardic ↔ Ashkenazic</span><div class="kava-seph-note">${esc(t.sephardic_ashkenaz_notes)}</div>`
+            : ''
+        }
+        ${
+          linked.length
+            ? `<span class="kava-topic-label">Sources</span><ul class="kava-topic-srcs">${linked
+                .map(
+                  (l: any) =>
+                    `<li>${linkTo(l.src.url, l.src.short_name)}${
+                      l.relevance_note ? `<span class="src-note">${esc(l.relevance_note)}</span>` : ''
+                    }</li>`
+                )
+                .join('')}</ul>`
+            : ''
+        }
+        ${t.notes ? `<p class="src-notes" style="font-size:0.88rem;opacity:0.7;margin-top:0.6rem">${esc(t.notes)}</p>` : ''}`;
+    };
+
+    $('topics-list').innerHTML = [...grouped.entries()]
+      .map(([topicName, entries]) => {
+        const allTags: string[] = [...new Set<string>(entries.flatMap((e) => e.tags || []))];
+        const hasClaude = allTags.includes('claude-added');
+
+        const body =
+          entries.length === 1
+            ? renderEntry(entries[0])
+            : entries
+                .map(
+                  (t, i) => `
+          <div class="kava-subtopic${i > 0 ? ' kava-subtopic-sep' : ''}">
+            ${t.question ? `<p class="kava-topic-q kava-subtopic-q"><span class="kava-subtopic-num">${i + 1}.</span> ${esc(t.question)}</p>` : ''}
+            ${renderEntry(t, false)}
+          </div>`
+                )
+                .join('');
+
         return `
         <details class="kava-topic">
-          <summary>${esc(t.topic)}</summary>
+          <summary>${esc(topicName)}${entries.length > 1 ? ` <span class="kava-topic-count">${entries.length}</span>` : ''}</summary>
           <div class="kava-topic-body">
-            ${t.question ? `<p class="kava-topic-q">${esc(t.question)}</p>` : ''}
-            ${t.ruling ? `<span class="kava-topic-label">Ruling</span><p>${esc(t.ruling)}</p>` : ''}
-            ${t.reasoning ? `<span class="kava-topic-label">Reasoning</span><p>${esc(t.reasoning)}</p>` : ''}
-            ${
-              t.sephardic_ashkenaz_diff && t.sephardic_ashkenaz_notes
-                ? `<span class="kava-topic-label">Sephardic ↔ Ashkenazic</span><div class="kava-seph-note">${esc(t.sephardic_ashkenaz_notes)}</div>`
-                : ''
-            }
-            ${
-              linked.length
-                ? `<span class="kava-topic-label">Sources</span><ul class="kava-topic-srcs">${linked
-                    .map(
-                      (l) => `<li>${linkTo(l.src.url, l.src.short_name)}${
-                        l.relevance_note ? `<span class="src-note">${esc(l.relevance_note)}</span>` : ''
-                      }</li>`
-                    )
-                    .join('')}</ul>`
-                : ''
-            }
-            <div style="margin-top:0.9rem">${(t.tags || []).filter((x: string) => x !== 'claude-added').map(badge).join('')}${claude ? badge('claude-added') : ''}</div>
-            ${t.notes ? `<p class="src-notes" style="font-size:0.88rem;opacity:0.7;margin-top:0.6rem">${esc(t.notes)}</p>` : ''}
+            ${body}
+            <div style="margin-top:0.9rem">${allTags.filter((x) => !['claude-added','claude-enriched'].includes(x)).map(badge).join('')}${hasClaude ? badge('claude-added') : ''}</div>
           </div>
         </details>`;
       })
       .join('');
   }
-
   function renderSources(sources: any[]) {
     const tagSet = new Set<string>();
     sources.forEach((s) => (s.tags || []).forEach((t: string) => tagSet.add(t)));
@@ -416,6 +467,7 @@ const pageDescription =
             ${s.notes ? `<p class="src-notes">${esc(s.notes)}</p>` : ''}
             <div class="src-meta">${(s.tags || []).map(badge).join('')}${s.language ? badge(s.language) : ''}${s.translation_model ? `<span class="kava-badge kava-badge-model" title="Translation by AI">🤖 ${esc(s.translation_model.split('/').pop())}</span>` : ''}</div>
             ${s.source_of_source ? `<p class="src-notes" style="margin-top:0.5rem">Found via: ${esc(s.source_of_source)}</p>` : ''}
+            ${!s.url && (s.language === 'Hebrew' || s.language === 'Aramaic') ? `<a class="src-sefaria-link" href="https://www.sefaria.org/search?q=${encodeURIComponent(s.short_name)}" target="_blank" rel="noopener">Search Sefaria ↗</a>` : ''}
           </article>`
             )
             .join('')
@@ -498,7 +550,6 @@ const pageDescription =
         sb('shiurim?select=id,title,rabbi,url,tags,source_sheet_url,notes&order=created_at.desc'),
       ]);
 
-      $('stat-topics').textContent = String(topics.length);
       $('stat-sources').textContent = String(sources.length);
       $('stat-shiurim').textContent = String(shiurim.length);
 

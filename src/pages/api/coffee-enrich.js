@@ -1,12 +1,13 @@
 // Supabase database webhook receiver for the coffee project.
-// Supabase fires a POST here on INSERT to the `sources` table.
-// If the new source is Hebrew/Aramaic and lacks a translation, we call a
-// HuggingFace LLM to generate one and write it back via the service-role key.
+// Fires on INSERT to `sources`. For each new source:
+//   1. Try Sefaria API → pull original_text, English translation, and url
+//   2. If Sefaria has no English translation, use HuggingFace Llama to generate one
+//   3. Patch the row back with whatever we found
 //
 // Required env vars:
-//   COFFEE_WEBHOOK_SECRET        — shared secret set in the Supabase trigger function
-//   COFFEE_SUPABASE_SERVICE_KEY  — service-role (secret) key for the coffee project
-//   HF_TOKEN                     — HuggingFace token (already set in Netlify)
+//   COFFEE_WEBHOOK_SECRET        — shared secret in Supabase trigger function
+//   COFFEE_SUPABASE_SERVICE_KEY  — service-role key for the coffee project
+//   HF_TOKEN                     — HuggingFace token
 
 export const prerender = false;
 
@@ -18,61 +19,107 @@ function env(key) {
   return process.env[key] || import.meta.env?.[key] || '';
 }
 
-async function enrichSource(record) {
-  const hfToken = env('HF_TOKEN');
-  if (!hfToken) return null;
+// ── Sefaria helpers ────────────────────────────────────────────────────────
 
-  const needsTranslation =
-    !record.translation && (record.language === 'Hebrew' || record.language === 'Aramaic');
+function flattenText(arr) {
+  if (!arr) return '';
+  if (typeof arr === 'string') return arr.replace(/<[^>]+>/g, '').trim();
+  return arr
+    .flat(Infinity)
+    .map((s) => (typeof s === 'string' ? s.replace(/<[^>]+>/g, '').trim() : ''))
+    .filter(Boolean)
+    .join(' ');
+}
 
-  if (!needsTranslation) return null;
+// Convert a short_name like "Mishnah Berurah 318:42" → "Mishnah_Berurah.318.42"
+function toSefariaRef(shortName) {
+  // Strip parenthetical notes and trailing qualifiers
+  let s = shortName
+    .replace(/\s*\(cited in.*?\)/gi, '')
+    .replace(/\s*\(.*?\)/g, '')
+    .replace(/—.*$/, '')
+    .trim();
 
-  let userMessage;
-  if (record.original_text) {
-    userMessage =
-      `Translate this ${record.language} halachic text into clear, readable English. ` +
-      `Source: "${record.short_name}" (${record.full_name}${record.author ? `, by ${record.author}` : ''}). ` +
-      `Return ONLY the English translation — no preamble, no notes.\n\n${record.original_text}`;
-  } else {
-    userMessage =
-      `This is a ${record.language} responsum or halachic source: ` +
-      `"${record.short_name}" — ${record.full_name}${record.author ? ` by ${record.author}` : ''}. ` +
-      `Write a concise 1–2 sentence English summary of what this text discusses, ` +
-      `specifically in relation to coffee in Jewish law. Return ONLY the summary.`;
+  // "Book Name X:Y" → Book_Name.X.Y
+  let m = s.match(/^(.+?)\s+(\d+):(\d+)$/);
+  if (m) return `${m[1].replace(/\s+/g, '_')}.${m[2]}.${m[3]}`;
+
+  // "Book Name X" → Book_Name.X
+  m = s.match(/^(.+?)\s+(\d+)$/);
+  if (m) return `${m[1].replace(/\s+/g, '_')}.${m[2]}`;
+
+  return s.replace(/\s+/g, '_');
+}
+
+async function lookupSefaria(record) {
+  const ref = toSefariaRef(record.short_name);
+  let res;
+  try {
+    res = await fetch(
+      `https://www.sefaria.org/api/texts/${encodeURIComponent(ref)}?lang=he&version=primary`,
+      { headers: { 'User-Agent': 'coffee-enrich-bot/1.0' } }
+    );
+  } catch {
+    return null;
   }
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  if (data.error || data.statusCode === 404) return null;
+
+  const heText = flattenText(data.he);
+  const enText = flattenText(data.text);
+  const url = data.url
+    ? `https://www.sefaria.org${data.url}`
+    : `https://www.sefaria.org/${encodeURIComponent(ref)}`;
+
+  return {
+    original_text: heText || null,
+    translation: enText || null,
+    url,
+    ref: data.ref || ref,
+  };
+}
+
+// ── HuggingFace fallback ───────────────────────────────────────────────────
+
+async function translateWithHF(record, heText) {
+  const hfToken = env('HF_TOKEN');
+  if (!hfToken || !heText) return null;
+
+  const lang = record.language || 'Hebrew';
+  const prompt =
+    `Translate this ${lang} halachic text into clear, readable English. ` +
+    `Source: "${record.short_name}" (${record.full_name}${record.author ? `, by ${record.author}` : ''}). ` +
+    `Return ONLY the English translation — no preamble, no notes.\n\n${heText}`;
 
   const res = await fetch(HF_API, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${hfToken}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { Authorization: `Bearer ${hfToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: HF_MODEL,
       messages: [
         {
           role: 'system',
-          content:
-            'You are a scholar of Jewish law and Hebrew texts. You translate and summarize halachic sources accurately and concisely.',
+          content: 'You are a scholar of Jewish law and Hebrew texts. Translate and summarize halachic sources accurately and concisely.',
         },
-        { role: 'user', content: userMessage },
+        { role: 'user', content: prompt },
       ],
-      max_tokens: 512,
+      max_tokens: 768,
       temperature: 0.3,
     }),
   });
 
   if (!res.ok) {
-    console.error('[coffee-enrich] HuggingFace error:', res.status, await res.text());
+    console.error('[coffee-enrich] HF error:', res.status, await res.text());
     return null;
   }
 
   const data = await res.json();
-  const text = data.choices?.[0]?.message?.content?.trim();
-  if (!text) return null;
-
-  return { translation: text, translation_model: HF_MODEL };
+  return data.choices?.[0]?.message?.content?.trim() || null;
 }
+
+// ── Supabase write-back ────────────────────────────────────────────────────
 
 async function patchSource(id, patch, serviceKey) {
   const res = await fetch(`${COFFEE_SB_URL}/sources?id=eq.${id}`, {
@@ -85,14 +132,13 @@ async function patchSource(id, patch, serviceKey) {
     },
     body: JSON.stringify(patch),
   });
-  if (!res.ok) {
-    console.error('[coffee-enrich] Supabase PATCH error:', res.status, await res.text());
-  }
+  if (!res.ok) console.error('[coffee-enrich] PATCH error:', res.status, await res.text());
   return res.ok;
 }
 
+// ── Main handler ──────────────────────────────────────────────────────────
+
 export async function POST({ request }) {
-  // Verify shared secret
   const secret = env('COFFEE_WEBHOOK_SECRET');
   if (secret) {
     const incoming =
@@ -119,23 +165,52 @@ export async function POST({ request }) {
   const serviceKey = env('COFFEE_SUPABASE_SERVICE_KEY');
   if (!serviceKey) {
     console.warn('[coffee-enrich] No service key — skipping write-back');
-    return new Response(
-      JSON.stringify({ enriched: false, reason: 'no service key' }),
-      { status: 200 }
-    );
+    return new Response(JSON.stringify({ enriched: false, reason: 'no service key' }), { status: 200 });
   }
 
-  const enrichment = await enrichSource(record);
-  if (!enrichment) {
-    return new Response(
-      JSON.stringify({ enriched: false, reason: 'not needed or enrichment skipped' }),
-      { status: 200 }
-    );
+  const isHebrewish = record.language === 'Hebrew' || record.language === 'Aramaic';
+  const patch = {};
+  const tags = new Set(record.tags || []);
+
+  // 1. Try Sefaria
+  const sefaria = isHebrewish ? await lookupSefaria(record) : null;
+
+  if (sefaria) {
+    console.log('[coffee-enrich] Sefaria found:', sefaria.ref, '→', sefaria.url);
+    if (!record.url && sefaria.url) patch.url = sefaria.url;
+    if (!record.original_text && sefaria.original_text) patch.original_text = sefaria.original_text;
+
+    if (!record.translation) {
+      if (sefaria.translation) {
+        patch.translation = sefaria.translation;
+        patch.translation_model = 'sefaria';
+        tags.add('sefaria');
+      } else if (sefaria.original_text || record.original_text) {
+        // Sefaria had the Hebrew but no English — use HF
+        const hfText = await translateWithHF(record, sefaria.original_text || record.original_text);
+        if (hfText) {
+          patch.translation = hfText;
+          patch.translation_model = HF_MODEL;
+        }
+      }
+    }
+  } else if (isHebrewish && !record.translation && record.original_text) {
+    // No Sefaria hit, but we have original_text — translate with HF
+    const hfText = await translateWithHF(record, record.original_text);
+    if (hfText) {
+      patch.translation = hfText;
+      patch.translation_model = HF_MODEL;
+    }
   }
 
-  const tags = Array.from(new Set([...(record.tags || []), 'claude-enriched']));
-  const ok = await patchSource(record.id, { ...enrichment, tags }, serviceKey);
+  if (patch.translation_model) tags.add('claude-enriched');
 
-  console.log('[coffee-enrich] Patch result:', ok, 'for', record.id);
-  return new Response(JSON.stringify({ enriched: ok }), { status: 200 });
+  if (Object.keys(patch).length === 0) {
+    return new Response(JSON.stringify({ enriched: false, reason: 'nothing to add' }), { status: 200 });
+  }
+
+  patch.tags = [...tags];
+  const ok = await patchSource(record.id, patch, serviceKey);
+  console.log('[coffee-enrich] Patch result:', ok, JSON.stringify(Object.keys(patch)));
+  return new Response(JSON.stringify({ enriched: ok, fields: Object.keys(patch) }), { status: 200 });
 }
