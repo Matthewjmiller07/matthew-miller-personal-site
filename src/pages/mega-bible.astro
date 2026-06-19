@@ -754,6 +754,31 @@ const devPos          = document.getElementById('devPos')!;
 populateBookSelect();
 populateParshaSelect();
 
+// Default parsha selects to the current week's parasha
+(async () => {
+  try {
+    const r = await fetch('https://www.sefaria.org/api/calendars');
+    const data = await r.json();
+    const item = (data.calendar_items as any[])?.find(
+      (c: any) => c.title?.en === 'Parashat Hashavua'
+    );
+    const sefariaName: string = item?.displayValue?.en || '';
+    if (!sefariaName) return;
+    const norm = (s: string) => s.toLowerCase().replace(/[\s\-'`]/g, '');
+    const sn = norm(sefariaName);
+    const parshaKeys = Object.keys(PARSHAS);
+    const match = parshaKeys.find(k => norm(k) === sn)
+               || parshaKeys.find(k => norm(k).startsWith(sn.slice(0, 6)))
+               || parshaKeys.find(k => sn.startsWith(norm(k).slice(0, 6)));
+    if (match) {
+      parshaSel.value = match;
+      haftParshasel.value = match;
+      parshaSel.dispatchEvent(new Event('change'));
+      updateLoadBtn();
+    }
+  } catch {}
+})();
+
 // Load shared data in parallel (non-blocking)
 Promise.all([loadMorphData(), loadLemmaData(), loadHaftarah(), loadAllDevices()]).then(() => {
   setStatus('');
