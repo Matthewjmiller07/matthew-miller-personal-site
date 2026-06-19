@@ -11,7 +11,6 @@ import Layout from '../layouts/Layout.astro';
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Cormorant+SC:wght@400;500;600&display=swap');
 
 body:has(.mb-page) { background:#0c0b09!important; padding:0!important; overflow:hidden!important; }
-body:has(.mb-page) > header,
 body:has(.mb-page) > footer { display:none!important; }
 
 .mb-page {
@@ -24,7 +23,7 @@ body:has(.mb-page) > footer { display:none!important; }
   --sc:'Cormorant SC',Georgia,serif;
   --mono:'JetBrains Mono',monospace;
   --nav-top:2.4rem; --nav-bottom:3rem; --sidebar:220px; --detail:0px;
-  position:fixed; inset:0; display:flex; flex-direction:column;
+  position:fixed; top:4rem; left:0; right:0; bottom:0; display:flex; flex-direction:column;
   background:var(--bg); color:var(--text); overflow:hidden;
 }
 
@@ -386,6 +385,28 @@ body:has(.mb-page) > footer { display:none!important; }
   font-family:var(--display); font-size:.72rem; font-style:italic;
   color:var(--muted); padding:0 .8rem;
 }
+
+/* Verse number input */
+.mb-verse-input { width:60px; text-align:center; -moz-appearance:textfield; }
+.mb-verse-input::-webkit-inner-spin-button,
+.mb-verse-input::-webkit-outer-spin-button { opacity:0.4; }
+
+/* Haftarah rite checkboxes in nav */
+.mb-rite-checks { display:flex; flex-wrap:wrap; gap:.3rem .6rem; }
+.mb-rite-lbl {
+  font-family:var(--sc); font-size:.52rem; letter-spacing:.12em; color:var(--muted);
+  display:flex; align-items:center; gap:.2rem; cursor:pointer; white-space:nowrap;
+}
+.mb-rite-lbl input { accent-color:var(--gold); }
+
+/* POS chart tab buttons */
+.mb-chart-tabs { display:flex; gap:.3rem; margin-bottom:.5rem; flex-wrap:wrap; }
+.mb-chart-tab {
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.15em; text-transform:uppercase;
+  background:none; border:1px solid var(--border); color:var(--muted);
+  padding:.15rem .45rem; cursor:pointer; transition:all .12s;
+}
+.mb-chart-tab.active { border-color:var(--gold); color:var(--gold); }
 </style>
 
 <div class="mb-page" id="mbPage">
@@ -420,6 +441,8 @@ body:has(.mb-page) > footer { display:none!important; }
         <select class="mb-sel" id="chapterSel" disabled aria-label="Chapter">
           <option value="">—</option>
         </select>
+        <span class="mb-nav-label">Verse</span>
+        <input class="mb-sel mb-verse-input" type="number" id="verseInput" min="1" max="176" placeholder="All" aria-label="Verse">
       </div>
       <!-- Parsha mode -->
       <div class="mb-nav-group hidden" id="groupParsha">
@@ -452,16 +475,16 @@ body:has(.mb-page) > footer { display:none!important; }
         <select class="mb-sel" id="haftParshasel" aria-label="Haftarah Parsha">
           <option value="">Select a parsha…</option>
         </select>
-        <span class="mb-nav-label">Rite</span>
-        <select class="mb-sel" id="haftRiteSel" aria-label="Rite">
-          <option value="Ashkenazi">Ashkenazi</option>
-          <option value="Sephardi">Sephardi</option>
-          <option value="Yemenite">Yemenite</option>
-          <option value="Italian">Italian</option>
-          <option value="Karaite">Karaite</option>
-          <option value="Romaniote">Romaniote</option>
-          <option value="Chabad">Chabad</option>
-        </select>
+        <span class="mb-nav-label">Rites</span>
+        <div class="mb-rite-checks" id="haftRiteChecks">
+          <label class="mb-rite-lbl"><input type="checkbox" value="Ashkenazi" checked> Ashkenazi</label>
+          <label class="mb-rite-lbl"><input type="checkbox" value="Sephardi"> Sephardi</label>
+          <label class="mb-rite-lbl"><input type="checkbox" value="Yemenite"> Yemenite</label>
+          <label class="mb-rite-lbl"><input type="checkbox" value="Italian"> Italian</label>
+          <label class="mb-rite-lbl"><input type="checkbox" value="Karaite"> Karaite</label>
+          <label class="mb-rite-lbl"><input type="checkbox" value="Romaniote"> Romaniote</label>
+          <label class="mb-rite-lbl"><input type="checkbox" value="Chabad"> Chabad</label>
+        </div>
       </div>
       <button class="mb-load-btn" id="loadBtn" disabled>Load</button>
       <span class="mb-status" id="statusMsg"></span>
@@ -708,7 +731,6 @@ const groupParsha     = document.getElementById('groupParsha')!;
 const groupHaftarah   = document.getElementById('groupHaftarah')!;
 const groupAllDevices = document.getElementById('groupAllDevices')!;
 const haftParshasel   = document.getElementById('haftParshasel') as HTMLSelectElement;
-const haftRiteSel     = document.getElementById('haftRiteSel') as HTMLSelectElement;
 const allDevSel       = document.getElementById('allDevSel') as HTMLSelectElement;
 const allSectSel      = document.getElementById('allSectSel') as HTMLSelectElement;
 const devNav          = document.getElementById('devNav')!;
@@ -718,6 +740,7 @@ const devPos          = document.getElementById('devPos')!;
 populateBookSelect();
 populateParshaSelect();
 buildRiteCheckboxes();
+document.getElementById('riteSection')!.style.display = 'none';
 
 // Load shared data in parallel (non-blocking)
 Promise.all([loadMorphData(), loadLemmaData(), loadHaftarah(), loadAllDevices()]).then(() => {
@@ -848,6 +871,7 @@ document.querySelectorAll('.mb-mode-btn').forEach(btn => {
     groupParsha.classList.toggle('hidden',     navMode !== 'parsha');
     groupHaftarah.classList.toggle('hidden',   navMode !== 'haftarah');
     groupAllDevices.classList.toggle('hidden', navMode !== 'alldevices');
+    document.getElementById('riteSection')!.style.display = navMode === 'haftarah' ? '' : 'none';
     updateLoadBtn();
   });
 });
@@ -961,8 +985,12 @@ async function handleLoad() {
       await renderRange(book, 1, 1, maxCh, Infinity, '', '', true);
     } else {
       const ch = parseInt(chapterSel.value);
+      const verseInputEl = document.getElementById('verseInput') as HTMLInputElement;
+      const verseNum = verseInputEl.value ? parseInt(verseInputEl.value) : null;
+      const sv = verseNum || 1;
+      const ev = verseNum || Infinity;
       currentParsha = findParshaForChapter(book, ch);
-      await renderRange(book, ch, 1, ch, Infinity, currentParsha);
+      await renderRange(book, ch, sv, ch, ev, currentParsha);
     }
   } else if (navMode === 'parsha') {
     const parsha = parshaSel.value;
@@ -985,13 +1013,25 @@ async function handleLoad() {
 
 async function handleHaftarahLoad() {
   const parsha = haftParshasel.value;
-  const rite   = haftRiteSel.value;
   if (!parsha || !haftarahData) { setStatus('Haftarah data not loaded yet'); loadBtn.disabled = false; return; }
-  const riteData = haftarahData[parsha]?.[rite];
-  if (!riteData?.individual_verses?.length) { setStatus(`No ${rite} haftarah for ${parsha}`); loadBtn.disabled = false; return; }
 
-  // Parse individual_verses → find book + verse range
-  const refs = riteData.individual_verses as string[];
+  const selectedRites = Array.from(document.querySelectorAll('#haftRiteChecks input:checked')).map(el => (el as HTMLInputElement).value);
+  if (!selectedRites.length) { setStatus('Select at least one rite'); loadBtn.disabled = false; return; }
+
+  // Collect union of all verse refs across selected rites
+  const allVerseRefs = new Set<string>();
+  for (const rite of selectedRites) {
+    const riteData = haftarahData[parsha]?.[rite];
+    (riteData?.individual_verses || []).forEach((v: string) => allVerseRefs.add(v));
+  }
+  const refs = Array.from(allVerseRefs);
+  if (!refs.length) { setStatus(`No haftarah for ${parsha} in selected rites`); loadBtn.disabled = false; return; }
+
+  // Build viz panel first
+  main.innerHTML = '';
+  main.appendChild(buildHaftarahViz(parsha));
+
+  // Parse verse refs → group by book
   interface VRef { book: string; ch: number; v: number; }
   const parsed: VRef[] = refs.map((r: string) => {
     const m = r.match(/^(.+?)\s+(\d+):(\d+)$/);
@@ -1001,20 +1041,19 @@ async function handleHaftarahLoad() {
 
   if (!parsed.length) { setStatus('Could not parse haftarah verses'); loadBtn.disabled = false; return; }
 
-  // Group by book and find range
   const byBook = new Map<string, VRef[]>();
   parsed.forEach(r => {
     if (!byBook.has(r.book)) byBook.set(r.book, []);
     byBook.get(r.book)!.push(r);
   });
 
-  // Render each book's range
+  const riteLabel = selectedRites.join(', ');
   for (const [book, verses] of byBook) {
     const minCh = Math.min(...verses.map(v => v.ch));
     const maxCh = Math.max(...verses.map(v => v.ch));
     const minV  = Math.min(...verses.filter(v => v.ch === minCh).map(v => v.v));
     const maxV  = Math.max(...verses.filter(v => v.ch === maxCh).map(v => v.v));
-    await renderRange(book, minCh, minV, maxCh, maxV, parsha, `Haftarah (${rite})`);
+    await renderRange(book, minCh, minV, maxCh, maxV, parsha, `Haftarah (${riteLabel})`, false, true);
   }
 }
 
@@ -1104,7 +1143,7 @@ async function handleAllDevicesLoad() {
       setTimeout(() => {
         chapterSel.value = String(row.chapter);
         updateLoadBtn();
-        renderRange(row.book, row.chapter, 1, row.chapter, Infinity, findParshaForChapter(row.book, row.chapter));
+        renderRange(row.book, row.chapter, row.verse, row.chapter, row.verse, findParshaForChapter(row.book, row.chapter));
       }, 50);
     });
     main.appendChild(div);
@@ -1294,13 +1333,15 @@ function updateDevicePills(allDevices: any[]) {
 // ── Main render ────────────────────────────────────────────────────────────
 async function renderRange(
   book: string, sc: number, sv: number, ec: number, ev: number,
-  parsha?: string, aliyaLabel?: string, skipEnglish = false
+  parsha?: string, aliyaLabel?: string, skipEnglish = false, appendMode = false
 ) {
-  main.innerHTML = '';
-  const loaderWrap = document.createElement('div');
-  loaderWrap.className = 'mb-loader-wrap';
-  loaderWrap.innerHTML = `<div class="mb-loader-label">Loading…</div><div class="mb-loader-bar"></div>`;
-  main.appendChild(loaderWrap);
+  if (!appendMode) {
+    main.innerHTML = '';
+    const loaderWrap = document.createElement('div');
+    loaderWrap.className = 'mb-loader-wrap';
+    loaderWrap.innerHTML = `<div class="mb-loader-label">Loading…</div><div class="mb-loader-bar"></div>`;
+    main.appendChild(loaderWrap);
+  }
   setStatus('');
 
   try {
@@ -1309,7 +1350,7 @@ async function renderRange(
       fetchDevices(book),
     ]);
 
-    main.innerHTML = '';
+    if (!appendMode) main.innerHTML = '';
     updateDevicePills(devices);
 
     // Context header
@@ -1391,8 +1432,8 @@ async function renderRange(
       }
     }
 
-    // Build stats panel then append verses
-    main.appendChild(buildStatsPanel(stats, devices.length));
+    // Build stats panel then append verses (stats only in non-append mode)
+    if (!appendMode) main.appendChild(buildStatsPanel(stats, devices.length));
     verseBlocks.forEach(b => main.appendChild(b));
 
     // Haftarah section for Torah books
@@ -1466,48 +1507,144 @@ function buildStatsPanel(stats: any, deviceCount: number): HTMLElement {
 
   panel.appendChild(chipsRow);
 
-  // Frequency bar chart — top 15 lemmas
-  const sorted = Array.from((stats.lemmaFreq as Map<string,{text:string,count:number}>).values())
-    .filter(v => v.text.length > 0)
-    .sort((a,b) => b.count - a.count)
-    .slice(0, 15);
+  // Frequency bar chart with POS tabs
+  const chartMaps: Record<string, Map<string,{text:string,count:number}>> = {
+    all:    stats.lemmaFreq,
+    nouns:  stats.nouns,
+    verbs:  stats.verbs,
+    proper: stats.properNouns,
+    adverbs:stats.adverbs,
+  };
+  const chartLabels: Record<string, string> = { all:'All', nouns:'Nouns', verbs:'Verbs', proper:'Proper', adverbs:'Adverbs' };
 
-  if (sorted.length) {
+  const allVals = Array.from((stats.lemmaFreq as Map<string,{text:string,count:number}>).values()).filter(v => v.text.length > 0);
+  if (allVals.length) {
     const chartDiv = document.createElement('div');
     chartDiv.className = 'mb-freq-chart';
+
     const title = document.createElement('div');
     title.className = 'mb-freq-title';
     title.textContent = 'Top Word Frequencies';
     chartDiv.appendChild(title);
 
+    // Tab buttons
+    const tabsDiv = document.createElement('div');
+    tabsDiv.className = 'mb-chart-tabs';
+
     const barsDiv = document.createElement('div');
     barsDiv.className = 'mb-freq-bars';
-    const max = sorted[0].count;
-    sorted.forEach(w => {
-      const row = document.createElement('div');
-      row.className = 'mb-freq-bar-row';
-      row.style.cursor = 'pointer';
-      row.title = `Click to highlight "${w.text}" in text`;
-      row.innerHTML = `
-        <div class="mb-freq-label">${w.text}</div>
-        <div class="mb-freq-bar-wrap"><div class="mb-freq-bar" style="width:${Math.round(w.count/max*100)}%"></div></div>
-        <div class="mb-freq-bar-num">${w.count}</div>`;
-      row.addEventListener('click', () => {
-        const target = w.text;
-        const matches = Array.from(main.querySelectorAll('.w')).filter(el => {
-          return stripMarks((el as HTMLElement).textContent || '') === target;
+
+    const renderBars = (mapKey: string) => {
+      barsDiv.innerHTML = '';
+      const vals = Array.from(chartMaps[mapKey].values())
+        .filter(v => v.text.length > 0)
+        .sort((a,b) => b.count - a.count)
+        .slice(0, 15);
+      if (!vals.length) { barsDiv.innerHTML = '<div style="font-family:var(--display);font-style:italic;color:var(--muted);font-size:.78rem">No entries</div>'; return; }
+      const max = vals[0].count;
+      vals.forEach(w => {
+        const row = document.createElement('div');
+        row.className = 'mb-freq-bar-row';
+        row.style.cursor = 'pointer';
+        row.title = `Click to highlight "${w.text}"`;
+        row.innerHTML = `
+          <div class="mb-freq-label">${w.text}</div>
+          <div class="mb-freq-bar-wrap"><div class="mb-freq-bar" style="width:${Math.round(w.count/max*100)}%"></div></div>
+          <div class="mb-freq-bar-num">${w.count}</div>`;
+        row.addEventListener('click', () => {
+          const target = w.text;
+          const matches = Array.from(main.querySelectorAll('.w')).filter(el => stripMarks((el as HTMLElement).textContent || '') === target);
+          if (!matches.length) return;
+          matches[0].scrollIntoView({ behavior:'smooth', block:'center' });
+          matches.forEach(el => { el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1500); });
         });
-        if (!matches.length) return;
-        matches[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-        matches.forEach(el => {
-          el.classList.add('flash');
-          setTimeout(() => el.classList.remove('flash'), 1500);
-        });
+        barsDiv.appendChild(row);
       });
-      barsDiv.appendChild(row);
+    };
+
+    let activeTab = 'all';
+    Object.keys(chartLabels).forEach(key => {
+      const btn = document.createElement('button');
+      btn.className = 'mb-chart-tab' + (key === 'all' ? ' active' : '');
+      btn.textContent = chartLabels[key];
+      btn.addEventListener('click', () => {
+        activeTab = key;
+        tabsDiv.querySelectorAll('.mb-chart-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderBars(key);
+      });
+      tabsDiv.appendChild(btn);
     });
+
+    chartDiv.appendChild(tabsDiv);
+    renderBars('all');
     chartDiv.appendChild(barsDiv);
     panel.appendChild(chartDiv);
+  }
+
+  return panel;
+}
+
+// ── Haftarah data viz ─────────────────────────────────────────────────────
+function buildHaftarahViz(parsha: string): HTMLElement {
+  const panel = document.createElement('div');
+  panel.className = 'mb-stats';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'mb-freq-title';
+  titleEl.textContent = `Haftarah Overview — ${parsha}`;
+  panel.appendChild(titleEl);
+
+  const parshaData = haftarahData?.[parsha] || {};
+  const RITES_ORDER = ['Ashkenazi','Sephardi','Yemenite','Italian','Karaite','Romaniote','Chabad'];
+
+  // Comparison table
+  const table = document.createElement('div');
+  table.style.cssText = 'display:grid;grid-template-columns:100px 1fr auto;gap:.25rem .6rem;margin-bottom:.75rem;font-size:.78rem;';
+
+  ['Rite','References','Verses'].forEach(h => {
+    const hd = document.createElement('div');
+    hd.style.cssText = 'font-family:var(--sc);font-size:.5rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:.2rem;';
+    hd.textContent = h;
+    table.appendChild(hd);
+  });
+
+  const riteCounts: {rite:string, count:number}[] = [];
+
+  RITES_ORDER.forEach(rite => {
+    const d = parshaData[rite];
+    if (!d) return;
+    const refs = (d.references || []).join(', ');
+    const count = (d.individual_verses || []).length;
+    riteCounts.push({rite, count});
+
+    const r1 = document.createElement('div'); r1.style.cssText='font-family:var(--sc);font-size:.7rem;color:var(--gold)'; r1.textContent = rite;
+    const r2 = document.createElement('div'); r2.style.cssText='color:var(--text);font-family:var(--display)'; r2.textContent = refs;
+    const r3 = document.createElement('div'); r3.style.cssText='font-family:var(--mono);color:var(--muted);font-size:.7rem'; r3.textContent = count ? String(count) : '—';
+    [r1,r2,r3].forEach(el => table.appendChild(el));
+  });
+  panel.appendChild(table);
+
+  // Bar chart of verses by rite
+  if (riteCounts.length) {
+    const barTitle = document.createElement('div');
+    barTitle.className = 'mb-freq-title';
+    barTitle.textContent = 'Verses by Rite';
+    panel.appendChild(barTitle);
+
+    const barsDiv = document.createElement('div');
+    barsDiv.className = 'mb-freq-bars';
+    const maxC = Math.max(...riteCounts.map(r => r.count));
+    riteCounts.forEach(({rite, count}) => {
+      const row = document.createElement('div');
+      row.className = 'mb-freq-bar-row';
+      row.innerHTML = `
+        <div class="mb-freq-label" style="font-family:var(--sc);font-size:.6rem;letter-spacing:.1em;direction:ltr">${rite}</div>
+        <div class="mb-freq-bar-wrap"><div class="mb-freq-bar" style="width:${maxC ? Math.round(count/maxC*100) : 0}%"></div></div>
+        <div class="mb-freq-bar-num">${count}</div>`;
+      barsDiv.appendChild(row);
+    });
+    panel.appendChild(barsDiv);
   }
 
   return panel;

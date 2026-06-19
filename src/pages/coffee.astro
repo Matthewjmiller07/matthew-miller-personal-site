@@ -251,6 +251,19 @@ const pageDescription =
   }
   .kava-source .src-notes { font-size: 0.9rem; line-height: 1.5; color: var(--crema-dim); opacity: 0.85; margin: 0 0 0.6rem; }
   .kava-source .src-meta { font-size: 0.8rem; }
+  .src-original-wrap { margin: 0.45rem 0 0.6rem; }
+  .src-original-toggle {
+    font-family: 'Fraunces', serif; font-size: 0.78rem; letter-spacing: 0.05em;
+    color: var(--copper); cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 0.35rem;
+  }
+  .src-original-toggle::before { content: '▸'; transition: transform 0.2s ease; }
+  details[open] .src-original-toggle::before { transform: rotate(90deg); }
+  .src-original-toggle::-webkit-details-marker { display: none; }
+  .src-original {
+    font-family: 'Frank Ruhl Libre', serif; font-size: 1.05rem; line-height: 1.75;
+    color: var(--crema); background: var(--bean-700); border-right: 3px solid var(--copper);
+    padding: 0.65rem 0.8rem 0.65rem 0.5rem; border-radius: 0 8px 8px 0; margin: 0.4rem 0 0;
+  }
 
   /* ---- Facts ---- */
   .kava-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
@@ -277,6 +290,8 @@ const pageDescription =
   .kava-shiur:hover { background: var(--bean-800); }
   .kava-shiur .sh-title { flex: 1 1 auto; font-size: 1.02rem; }
   .kava-shiur .sh-rabbi { flex: none; font-size: 0.88rem; color: var(--copper-bright); font-style: italic; max-width: 13rem; text-align: right; }
+  .sh-sheet { border-bottom: none !important; opacity: 0.65; font-size: 0.9em; margin-left: 0.3rem; vertical-align: middle; }
+  .sh-sheet:hover { opacity: 1; }
   .kava-more {
     margin: 1.4rem auto 0; display: block; font-family: 'Fraunces', serif; font-size: 0.9rem;
     letter-spacing: 0.05em; color: var(--copper-bright); background: none; cursor: pointer;
@@ -392,6 +407,11 @@ const pageDescription =
             <h3>${linkTo(s.url, s.short_name)}</h3>
             <p class="src-author">${esc(s.full_name)}${s.author ? ` — ${esc(s.author)}` : ''}</p>
             ${s.translation ? `<p class="src-excerpt">${esc(s.translation)}</p>` : ''}
+            ${s.original_text ? `
+            <details class="src-original-wrap">
+              <summary class="src-original-toggle">View original text</summary>
+              <p class="src-original" dir="rtl" lang="he">${esc(s.original_text)}</p>
+            </details>` : ''}
             ${s.notes ? `<p class="src-notes">${esc(s.notes)}</p>` : ''}
             <div class="src-meta">${(s.tags || []).map(badge).join('')}${s.language ? badge(s.language) : ''}</div>
             ${s.source_of_source ? `<p class="src-notes" style="margin-top:0.5rem">Found via: ${esc(s.source_of_source)}</p>` : ''}
@@ -445,7 +465,7 @@ const pageDescription =
             .map(
               (s) => `
         <div class="kava-shiur">
-          <span class="sh-title">${linkTo(s.url, s.title)}</span>
+          <span class="sh-title">${linkTo(s.url, s.title)}${s.source_sheet_url ? ` <a class="sh-sheet" href="${esc(s.source_sheet_url)}" target="_blank" rel="noopener" title="Source sheet">&#128196;</a>` : ''}</span>
           ${s.rabbi ? `<span class="sh-rabbi">${esc(s.rabbi)}</span>` : ''}
         </div>`
             )
@@ -474,7 +494,7 @@ const pageDescription =
         sb('sources?select=*&order=short_name.asc'),
         sb('halacha_sources?select=*'),
         sb('coffee_facts?select=*&order=created_at.asc'),
-        sb('shiurim?select=id,title,rabbi,url,tags&order=created_at.desc'),
+        sb('shiurim?select=id,title,rabbi,url,tags,source_sheet_url,notes&order=created_at.desc'),
       ]);
 
       $('stat-topics').textContent = String(topics.length);
