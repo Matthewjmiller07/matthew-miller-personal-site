@@ -337,6 +337,17 @@ body:has(.mb-page) > footer { display:none!important; }
 
 /* Haftarah section */
 .haftarah-section { margin-top:2.5rem; }
+
+/* Rite section divider */
+.rite-section-hdr {
+  font-family:var(--sc); font-size:.62rem; letter-spacing:.22em; text-transform:uppercase;
+  color:var(--gold); border-bottom:1px solid var(--gold); padding:.4rem .8rem .3rem;
+  margin:1.2rem 0 .5rem; display:flex; align-items:center; gap:.7rem;
+}
+.rite-section-hdr .rite-refs {
+  font-family:var(--display); font-size:.75rem; letter-spacing:0; text-transform:none;
+  color:var(--muted); font-weight:400; font-style:italic;
+}
 .haftarah-banner {
   font-family:var(--sc); font-size:.6rem; letter-spacing:.3em; text-transform:uppercase;
   color:var(--gold); padding:.5rem 0; border-top:1px solid var(--border-hi);
@@ -549,10 +560,6 @@ body:has(.mb-page) > footer { display:none!important; }
         </div>
       </div>
 
-      <div class="sb-section" id="riteSection">
-        <div class="sb-title">Haftarah Rites</div>
-        <div id="riteCheckboxes"></div>
-      </div>
 
     </aside>
 
@@ -705,7 +712,6 @@ let morphMap: Record<string,string> = {};
 let lemmaMap: Record<string,{word:string, definition:string}> = {};
 let haftarahData: any = null;
 let haftarahIdx = new Map<string, Array<{parsha:string, rite:string}>>();
-let activeRites = new Set(RITES);
 let activeDevice = '';
 let navMode = 'chapter';
 let currentParsha = '';
@@ -725,7 +731,6 @@ const detailPanel = document.getElementById('detailPanel')!;
 const detailWord  = document.getElementById('detailWord')!;
 const detailBody  = document.getElementById('detailBody')!;
 const devicePills   = document.getElementById('devicePills')!;
-const riteBoxes     = document.getElementById('riteCheckboxes')!;
 const groupChapter    = document.getElementById('groupChapter')!;
 const groupParsha     = document.getElementById('groupParsha')!;
 const groupHaftarah   = document.getElementById('groupHaftarah')!;
@@ -739,8 +744,6 @@ const devPos          = document.getElementById('devPos')!;
 // ── Init ───────────────────────────────────────────────────────────────────
 populateBookSelect();
 populateParshaSelect();
-buildRiteCheckboxes();
-document.getElementById('riteSection')!.style.display = 'none';
 
 // Load shared data in parallel (non-blocking)
 Promise.all([loadMorphData(), loadLemmaData(), loadHaftarah(), loadAllDevices()]).then(() => {
@@ -845,22 +848,6 @@ function populateParshaSelect() {
   });
 }
 
-function buildRiteCheckboxes() {
-  RITES.forEach(rite => {
-    const row = document.createElement('div');
-    row.className = 'sb-row';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.id = `rite-${rite}`; cb.checked = true;
-    cb.addEventListener('change', () => {
-      if (cb.checked) activeRites.add(rite); else activeRites.delete(rite);
-    });
-    const lbl = document.createElement('label');
-    lbl.htmlFor = `rite-${rite}`; lbl.textContent = rite;
-    row.appendChild(cb); row.appendChild(lbl);
-    riteBoxes.appendChild(row);
-  });
-}
-
 // ── Navigation mode toggle ─────────────────────────────────────────────────
 document.querySelectorAll('.mb-mode-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -871,7 +858,6 @@ document.querySelectorAll('.mb-mode-btn').forEach(btn => {
     groupParsha.classList.toggle('hidden',     navMode !== 'parsha');
     groupHaftarah.classList.toggle('hidden',   navMode !== 'haftarah');
     groupAllDevices.classList.toggle('hidden', navMode !== 'alldevices');
-    document.getElementById('riteSection')!.style.display = navMode === 'haftarah' ? '' : 'none';
     updateLoadBtn();
   });
 });
@@ -1018,43 +1004,55 @@ async function handleHaftarahLoad() {
   const selectedRites = Array.from(document.querySelectorAll('#haftRiteChecks input:checked')).map(el => (el as HTMLInputElement).value);
   if (!selectedRites.length) { setStatus('Select at least one rite'); loadBtn.disabled = false; return; }
 
-  // Collect union of all verse refs across selected rites
-  const allVerseRefs = new Set<string>();
-  for (const rite of selectedRites) {
-    const riteData = haftarahData[parsha]?.[rite];
-    (riteData?.individual_verses || []).forEach((v: string) => allVerseRefs.add(v));
-  }
-  const refs = Array.from(allVerseRefs);
-  if (!refs.length) { setStatus(`No haftarah for ${parsha} in selected rites`); loadBtn.disabled = false; return; }
-
-  // Build viz panel first
   main.innerHTML = '';
+  placeholder.style.display = 'none';
+
+  // Haftarah viz (rite comparison table + bar chart) at the top
   main.appendChild(buildHaftarahViz(parsha));
 
-  // Parse verse refs → group by book
   interface VRef { book: string; ch: number; v: number; }
-  const parsed: VRef[] = refs.map((r: string) => {
-    const m = r.match(/^(.+?)\s+(\d+):(\d+)$/);
-    if (!m) return null;
-    return { book: normHaftBook(m[1]), ch: parseInt(m[2]), v: parseInt(m[3]) };
-  }).filter(Boolean) as VRef[];
 
-  if (!parsed.length) { setStatus('Could not parse haftarah verses'); loadBtn.disabled = false; return; }
-
-  const byBook = new Map<string, VRef[]>();
-  parsed.forEach(r => {
-    if (!byBook.has(r.book)) byBook.set(r.book, []);
-    byBook.get(r.book)!.push(r);
-  });
-
-  const riteLabel = selectedRites.join(', ');
-  for (const [book, verses] of byBook) {
-    const minCh = Math.min(...verses.map(v => v.ch));
-    const maxCh = Math.max(...verses.map(v => v.ch));
-    const minV  = Math.min(...verses.filter(v => v.ch === minCh).map(v => v.v));
-    const maxV  = Math.max(...verses.filter(v => v.ch === maxCh).map(v => v.v));
-    await renderRange(book, minCh, minV, maxCh, maxV, parsha, `Haftarah (${riteLabel})`, false, true);
+  function parseRiteRefs(refs: string[]): Map<string, VRef[]> {
+    const byBook = new Map<string, VRef[]>();
+    refs.forEach((r: string) => {
+      const m = r.match(/^(.+?)\s+(\d+):(\d+)$/);
+      if (!m) return;
+      const book = normHaftBook(m[1]);
+      const ch = parseInt(m[2]); const v = parseInt(m[3]);
+      if (!byBook.has(book)) byBook.set(book, []);
+      byBook.get(book)!.push({ book, ch, v });
+    });
+    return byBook;
   }
+
+  // Render each selected rite as its own labeled section
+  let isFirst = true;
+  for (const rite of selectedRites) {
+    const riteData = haftarahData[parsha]?.[rite];
+    const refs: string[] = riteData?.individual_verses || [];
+    if (!refs.length) continue;
+
+    const refSummary = (riteData?.references || []).join(' / ');
+
+    // Rite section header
+    const hdr = document.createElement('div');
+    hdr.className = 'rite-section-hdr';
+    hdr.innerHTML = `<span>${rite}</span>${refSummary ? `<span class="rite-refs">${refSummary}</span>` : ''}`;
+    main.appendChild(hdr);
+
+    const byBook = parseRiteRefs(refs);
+    for (const [book, verses] of byBook) {
+      const minCh = Math.min(...verses.map(v => v.ch));
+      const maxCh = Math.max(...verses.map(v => v.ch));
+      const minV  = Math.min(...verses.filter(v => v.ch === minCh).map(v => v.v));
+      const maxV  = Math.max(...verses.filter(v => v.ch === maxCh).map(v => v.v));
+      await renderRange(book, minCh, minV, maxCh, maxV, parsha, `Haftarah — ${rite}`, false, true);
+    }
+    isFirst = false;
+  }
+
+  if (isFirst) { setStatus(`No haftarah for ${parsha} in selected rites`); }
+  loadBtn.disabled = false;
 }
 
 // ── All Devices browser ────────────────────────────────────────────────────
@@ -1694,7 +1692,7 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
 
   // Haftarah badges (Nevi'im)
   const verseKey = `${book} ${ch}:${v}`;
-  const hEntries = haftarahIdx.get(verseKey)?.filter(e => activeRites.has(e.rite)) || [];
+  const hEntries = haftarahIdx.get(verseKey) || [];
   if (hEntries.length) {
     const badgesDiv = document.createElement('div');
     badgesDiv.className = 'haftarah-badges';
@@ -1803,7 +1801,6 @@ async function buildHaftarahSection(parsha: string): Promise<HTMLElement> {
   // Group unique reference sets across active rites
   const riteGroups = new Map<string, string[]>(); // refKey → riteList
   for (const rite of RITES) {
-    if (!activeRites.has(rite)) continue;
     const data = parshaRites[rite];
     if (!data?.references) continue;
     const key = (data.references as string[]).join('|');
