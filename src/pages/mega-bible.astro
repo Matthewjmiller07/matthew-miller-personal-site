@@ -1201,9 +1201,16 @@ async function fetchXml(book: string): Promise<Document|null> {
 // ── English translation (Sefaria) ─────────────────────────────────────────
 function stripSefariaHtml(t: string): string {
   return (t || '')
-    .replace(/<span[^>]*>[\s\S]*?<\/span>/g, '')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/<[^>]+>/g, '')                 // strip all HTML tags
+    .replace(/&thinsp;/g, '')               // thin spaces (used around Hebrew paseq ׀)
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x[0-9a-fA-F]+;/gi, '')     // hex numeric entities
+    .replace(/&#[0-9]+;/g, '')             // decimal numeric entities
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -1213,13 +1220,16 @@ async function fetchEnglishChapter(book: string, chapter: number): Promise<strin
   try {
     const sefariaBook = (SEFARIA_BOOK_MAP[book] || book).replace(/ /g, '_');
     const ref = encodeURIComponent(`${sefariaBook}.${chapter}`);
-    const res = await fetch(`https://www.sefaria.org/api/v3/texts/${ref}?version=primary`);
+    // v1 API: data.text = English, data.he = Hebrew
+    const res = await fetch(`https://www.sefaria.org/api/texts/${ref}?context=0&pad=0&commentary=0`);
     const data = await res.json();
     let verses: string[] = [];
-    if (data.versions?.length) {
-      const eng = data.versions.find((v: any) => v.language === 'en') || data.versions[0];
-      const raw = eng?.text;
-      verses = (Array.isArray(raw) ? raw : [raw]).map((t: any) => stripSefariaHtml(String(t || '')));
+    const raw = data.text;
+    if (Array.isArray(raw)) {
+      verses = raw.map((t: any) => {
+        if (Array.isArray(t)) return (t as string[]).map(s => stripSefariaHtml(String(s || ''))).join(' ');
+        return stripSefariaHtml(String(t || ''));
+      }).filter(Boolean);
     }
     englishCache.set(key, verses);
     return verses;
