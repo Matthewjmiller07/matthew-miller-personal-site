@@ -98,6 +98,15 @@ const pageDescription =
         <button id="shiurim-more" class="kava-more" hidden>Pour another 25 →</button>
       </section>
 
+      <!-- ===== Authors ===== -->
+      <section id="authors-section" class="kava-section" hidden>
+        <h2 class="kava-h2"><span class="kava-h2-num">V.</span> The Authorities</h2>
+        <p class="kava-section-sub">
+          Poskim, scholars, and historians whose works appear in this collection.
+        </p>
+        <div id="authors-list" class="kava-authors"></div>
+      </section>
+
       <footer class="kava-colophon">
         <p>
           Data lives in a Supabase database and renders live — the sheet grows as the
@@ -318,6 +327,25 @@ const pageDescription =
   .kava-more:hover { background: var(--copper); color: var(--bean-900); }
   .kava-empty { text-align: center; color: var(--crema-dim); font-style: italic; padding: 1.5rem 0; }
 
+  /* ---- Authors ---- */
+  .kava-authors { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 1rem; }
+  .kava-author {
+    border: 1px solid var(--paper-line); border-radius: 12px; padding: 1.15rem 1.2rem;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .kava-author:hover { transform: translateY(-2px); border-color: rgba(200,127,61,0.4); }
+  .auth-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.3rem; }
+  .auth-name { font-family: 'Fraunces', serif; font-size: 1.05rem; font-weight: 600; color: var(--crema); margin: 0; }
+  .auth-he { font-family: 'Frank Ruhl Libre', serif; font-size: 1rem; color: var(--crema-dim); margin: 0.2rem 0 0; direction: rtl; }
+  .auth-dates { font-family: 'Fraunces', serif; font-size: 0.8rem; color: var(--copper); white-space: nowrap; flex: none; padding-top: 0.15rem; }
+  .auth-known { font-style: italic; font-size: 0.92rem; color: var(--copper-bright); margin: 0 0 0.5rem; }
+  .auth-meta { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.6rem; }
+  .auth-bio { font-size: 0.93rem; line-height: 1.55; color: var(--crema-dim); margin: 0 0 0.5rem; }
+  .auth-links { font-size: 0.82rem; margin: 0; }
+  .auth-links a { color: var(--copper-bright) !important; border-bottom: 1px solid rgba(224,154,85,0.3) !important; }
+  /* Source find links */
+  .src-find-links { display: flex; gap: 0.65rem; margin-top: 0.5rem; flex-wrap: wrap; }
+
   .kava-colophon {
     margin-top: 5rem; padding-top: 1.75rem; border-top: 1px solid var(--paper-line);
     font-size: 0.95rem; color: var(--crema-dim); line-height: 1.65; text-align: center;
@@ -467,7 +495,7 @@ const pageDescription =
             ${s.notes ? `<p class="src-notes">${esc(s.notes)}</p>` : ''}
             <div class="src-meta">${(s.tags || []).map(badge).join('')}${s.language ? badge(s.language) : ''}${s.translation_model ? `<span class="kava-badge kava-badge-model" title="Translation by AI">🤖 ${esc(s.translation_model.split('/').pop())}</span>` : ''}</div>
             ${s.source_of_source ? `<p class="src-notes" style="margin-top:0.5rem">Found via: ${esc(s.source_of_source)}</p>` : ''}
-            ${!s.url && (s.language === 'Hebrew' || s.language === 'Aramaic') ? `<a class="src-sefaria-link" href="https://www.sefaria.org/search?q=${encodeURIComponent(s.short_name)}" target="_blank" rel="noopener">Search Sefaria ↗</a>` : ''}
+            ${!s.url && (s.language === 'Hebrew' || s.language === 'Aramaic') ? `<span class="src-find-links"><a class="src-sefaria-link" href="https://www.sefaria.org/search?q=${encodeURIComponent(s.short_name)}" target="_blank" rel="noopener">Sefaria ↗</a><a class="src-sefaria-link" href="https://hebrewbooks.org/search?type=all&search=${encodeURIComponent(s.short_name)}" target="_blank" rel="noopener">HebrewBooks ↗</a></span>` : ''}
           </article>`
             )
             .join('')
@@ -540,14 +568,50 @@ const pageDescription =
     draw();
   }
 
+  function renderAuthors(authors: any[]) {
+    const TRADITION_COLORS: Record<string, string> = {
+      'Ashkenaz': 'rgba(100,140,200,0.18)',
+      'Sephardic': 'rgba(180,120,60,0.18)',
+      'Hasidic (Chabad)': 'rgba(160,100,180,0.18)',
+    };
+
+    $('authors-list').innerHTML = authors
+      .map((a) => {
+        const bg = TRADITION_COLORS[a.tradition] || 'rgba(200,127,61,0.08)';
+        const links = [
+          a.sefaria_url ? `<a href="${esc(a.sefaria_url)}" target="_blank" rel="noopener">Sefaria ↗</a>` : '',
+          a.wikipedia_url ? `<a href="${esc(a.wikipedia_url)}" target="_blank" rel="noopener">Wikipedia ↗</a>` : '',
+        ].filter(Boolean).join(' · ');
+        return `
+        <article class="kava-author" style="background:${bg}">
+          <div class="auth-header">
+            <div>
+              <h3 class="auth-name">${esc(a.name)}</h3>
+              ${a.hebrew_name ? `<p class="auth-he" dir="rtl" lang="he">${esc(a.hebrew_name)}</p>` : ''}
+            </div>
+            ${a.dates ? `<span class="auth-dates">${esc(a.dates)}</span>` : ''}
+          </div>
+          ${a.known_as ? `<p class="auth-known">${esc(a.known_as)}</p>` : ''}
+          <div class="auth-meta">
+            ${a.tradition ? `<span class="kava-badge">${esc(a.tradition)}</span>` : ''}
+            ${a.country ? `<span class="kava-badge">${esc(a.country)}</span>` : ''}
+          </div>
+          ${a.bio ? `<p class="auth-bio">${esc(a.bio)}</p>` : ''}
+          ${links ? `<p class="auth-links">${links}</p>` : ''}
+        </article>`;
+      })
+      .join('');
+  }
+
   async function init() {
     try {
-      const [topics, sources, links, facts, shiurim] = await Promise.all([
+      const [topics, sources, links, facts, shiurim, authors] = await Promise.all([
         sb('coffee_halacha?select=*&order=created_at.asc'),
         sb('sources?select=*&order=short_name.asc'),
         sb('halacha_sources?select=*'),
         sb('coffee_facts?select=*&order=created_at.asc'),
         sb('shiurim?select=id,title,rabbi,url,tags,source_sheet_url,notes&order=created_at.desc'),
+        sb('authors?select=*&order=death_year.asc,birth_year.asc,name.asc'),
       ]);
 
       $('stat-sources').textContent = String(sources.length);
@@ -557,9 +621,10 @@ const pageDescription =
       renderSources(sources);
       renderFacts(facts);
       renderShiurim(shiurim);
+      renderAuthors(authors);
 
       $('kava-loading').hidden = true;
-      ['topics-section', 'sources-section', 'facts-section', 'shiurim-section'].forEach(
+      ['topics-section', 'sources-section', 'facts-section', 'shiurim-section', 'authors-section'].forEach(
         (id) => ($(id).hidden = false)
       );
     } catch (err) {
