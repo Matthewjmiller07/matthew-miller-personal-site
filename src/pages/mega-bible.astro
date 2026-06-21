@@ -427,6 +427,87 @@ body:has(.mb-page) > footer { display:none!important; }
   padding:.15rem .45rem; cursor:pointer; transition:all .12s;
 }
 .mb-chart-tab.active { border-color:var(--gold); color:var(--gold); }
+
+/* Sidebar toggle (mobile only — hidden on desktop) */
+.mb-sb-toggle {
+  display:none; align-items:center; justify-content:center;
+  width:2.4rem; height:100%; border:none; border-right:1px solid var(--border);
+  background:none; color:var(--muted); font-size:1rem; cursor:pointer;
+  flex-shrink:0; transition:color .12s;
+}
+.mb-sb-toggle:hover { color:var(--gold); }
+.mb-sb-close {
+  display:none; position:absolute; top:.5rem; right:.6rem;
+  background:none; border:none; color:var(--muted); font-size:1.1rem;
+  cursor:pointer; padding:.2rem .4rem; transition:color .12s;
+}
+.mb-sb-close:hover { color:var(--gold); }
+
+/* Sidebar overlay (mobile) */
+.mb-sb-overlay {
+  display:none; position:absolute; inset:0; z-index:35;
+  background:rgba(0,0,0,.55); opacity:0; pointer-events:none; transition:opacity .25s;
+}
+.mb-sb-overlay.visible { opacity:1; pointer-events:auto; }
+
+/* ── MOBILE ──────────────────────────────────────────────────────────────── */
+@media (max-width:639px) {
+  .mb-page { top:4rem; }
+
+  /* Hamburger visible */
+  .mb-sb-toggle { display:flex; }
+  .mb-sb-close  { display:block; }
+  .mb-sb-overlay { display:block; }
+
+  /* Sidebar → slide-in drawer */
+  .mb-sidebar {
+    position:absolute; top:0; bottom:0; left:0; z-index:40;
+    width:82%; max-width:280px;
+    transform:translateX(-105%);
+    transition:transform .25s cubic-bezier(.4,0,.2,1);
+    box-shadow:6px 0 28px rgba(0,0,0,.65);
+  }
+  .mb-sidebar.mob-open { transform:translateX(0); }
+
+  /* Mode toggle: scroll horizontally */
+  .mb-mode-toggle { overflow-x:auto; -webkit-overflow-scrolling:touch; flex-shrink:1; }
+  .mb-mode-btn { font-size:.48rem; padding:0 .6rem; letter-spacing:.12em; }
+  .mb-logo { font-size:.58rem; letter-spacing:.18em; padding:0 .7rem; }
+
+  /* Controls row: wrap, auto height */
+  .mb-nav-bottom {
+    height:auto; padding:.4rem .6rem;
+    flex-wrap:wrap; row-gap:.4rem; column-gap:.4rem;
+  }
+  .mb-nav-group { flex-wrap:wrap; gap:.35rem; }
+  .mb-nav-label { font-size:.46rem; }
+  .mb-sel { min-width:100px; font-size:.82rem; padding:.3rem 1.5rem .3rem .5rem; }
+  .mb-verse-input { width:52px; }
+  .mb-section-btns { display:none; } /* save space — section filtering via sidebar */
+  .mb-load-btn { font-size:.52rem; padding:.35rem .85rem; letter-spacing:.18em; }
+  .mb-rite-checks { max-height:3.8rem; overflow-y:auto; }
+
+  /* Main text */
+  .mb-main { padding:.75rem .75rem 7rem; }
+  .hebrew-row { font-size:1.25rem; line-height:2.3; }
+  .verse-ref { font-size:.58rem; }
+  .english-row { font-size:.82rem; }
+
+  /* Stats panel */
+  .mb-stats { padding:.55rem .65rem .75rem; }
+  .mb-stats-row { gap:.7rem; }
+  .mb-freq-label { width:60px; font-size:.88rem; }
+
+  /* Detail panel: full-width, taller */
+  .mb-detail-body { grid-template-columns:1fr; }
+
+  /* Device browser table: collapse 5-col to 4-col */
+  .dev-browser-hdr,
+  .dev-browser-row { grid-template-columns:90px 68px 100px 1fr; }
+
+  /* Rite section header */
+  .rite-section-hdr { font-size:.56rem; padding:.35rem .5rem .25rem; }
+}
 </style>
 
 <div class="mb-page" id="mbPage">
@@ -435,6 +516,7 @@ body:has(.mb-page) > footer { display:none!important; }
   <nav class="mb-nav">
     <!-- Row 1: wordmark + mode toggle -->
     <div class="mb-nav-top">
+      <button class="mb-sb-toggle" id="sbToggle" aria-label="Toggle sidebar">&#9776;</button>
       <div class="mb-logo">Mega Bible</div>
       <div class="mb-mode-toggle">
         <button class="mb-mode-btn active" id="modeChapter" data-mode="chapter">By Chapter</button>
@@ -514,8 +596,11 @@ body:has(.mb-page) > footer { display:none!important; }
   <!-- BODY -->
   <div class="mb-body">
 
+    <div class="mb-sb-overlay" id="sbOverlay"></div>
+
     <!-- SIDEBAR -->
     <aside class="mb-sidebar">
+      <button class="mb-sb-close" id="sbClose" aria-label="Close sidebar">&#10005;</button>
 
       <div class="sb-section">
         <div class="sb-title">Layers</div>
@@ -749,6 +834,17 @@ const allDevSel       = document.getElementById('allDevSel') as HTMLSelectElemen
 const allSectSel      = document.getElementById('allSectSel') as HTMLSelectElement;
 const devNav          = document.getElementById('devNav')!;
 const devPos          = document.getElementById('devPos')!;
+
+// ── Mobile sidebar drawer ──────────────────────────────────────────────────
+const sidebar    = document.querySelector('.mb-sidebar') as HTMLElement;
+const sbOverlay  = document.getElementById('sbOverlay')!;
+const sbToggleEl = document.getElementById('sbToggle')!;
+const sbCloseEl  = document.getElementById('sbClose')!;
+function openSb()  { sidebar.classList.add('mob-open');    sbOverlay.classList.add('visible'); }
+function closeSb() { sidebar.classList.remove('mob-open'); sbOverlay.classList.remove('visible'); }
+sbToggleEl.addEventListener('click', openSb);
+sbCloseEl.addEventListener('click',  closeSb);
+sbOverlay.addEventListener('click',  closeSb);
 
 // ── Init ───────────────────────────────────────────────────────────────────
 populateBookSelect();
