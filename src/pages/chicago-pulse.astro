@@ -1,0 +1,313 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Chicago Pulse"
+  description="Real-time Chicago crime incidents from the City of Chicago Data Portal, with community area stats and live map."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-red-950/40 to-transparent px-4 py-10 text-center border-b border-red-900/20">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        🌆 Chicago Pulse
+      </h1>
+      <p class="text-slate-400 max-w-xl mx-auto text-sm">
+        Recent crime incidents from <a href="https://data.cityofchicago.org" target="_blank" rel="noopener" class="text-red-400 hover:underline">Chicago's open data portal</a> — the city that shaped me.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-6 flex-wrap text-sm">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse"></span>
+          <span class="text-slate-400">Refreshes every 5 minutes</span>
+        </div>
+        <div id="last-update" class="text-slate-500 text-xs">—</div>
+      </div>
+    </div>
+
+    <div class="max-w-5xl mx-auto px-4 pt-8 pb-12">
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div class="rounded-2xl border border-red-900/40 bg-red-950/20 p-4 text-center">
+          <div class="text-xs text-red-400/70 uppercase tracking-wider mb-2">Today's Incidents</div>
+          <div id="stat-today" class="text-3xl font-black text-white">—</div>
+        </div>
+        <div class="rounded-2xl border border-orange-900/40 bg-orange-950/20 p-4 text-center">
+          <div class="text-xs text-orange-400/70 uppercase tracking-wider mb-2">Arrest Rate</div>
+          <div id="stat-arrests" class="text-3xl font-black text-white">—</div>
+          <div class="text-slate-600 text-xs">%</div>
+        </div>
+        <div class="rounded-2xl border border-amber-900/40 bg-amber-950/20 p-4 text-center">
+          <div class="text-xs text-amber-400/70 uppercase tracking-wider mb-2">Most Common</div>
+          <div id="stat-type" class="text-base font-black text-white leading-tight">—</div>
+        </div>
+        <div class="rounded-2xl border border-yellow-900/40 bg-yellow-950/20 p-4 text-center">
+          <div class="text-xs text-yellow-400/70 uppercase tracking-wider mb-2">Hot Zone</div>
+          <div id="stat-hotzone" class="text-base font-black text-white leading-tight">—</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Left: Type breakdown + filter -->
+        <div class="space-y-4">
+
+          <!-- Filter by type -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h2 class="text-sm font-bold text-slate-300 mb-4">Crime Type Breakdown</h2>
+            <div id="type-chart" class="space-y-2">
+              <div class="text-slate-600 text-xs animate-pulse">Loading…</div>
+            </div>
+          </div>
+
+          <!-- Incident list -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-sm font-bold text-slate-300">Recent Incidents</h2>
+              <select id="type-filter" class="text-xs bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-slate-300 focus:outline-none">
+                <option value="">All types</option>
+              </select>
+            </div>
+            <div id="incidents-list" class="space-y-2 max-h-96 overflow-y-auto">
+              <div class="text-slate-600 text-xs animate-pulse py-4 text-center">Loading incidents…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: SVG Chicago map -->
+        <div class="space-y-4">
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h2 class="text-sm font-bold text-slate-300 mb-4">Incidents by District</h2>
+            <!-- District heatmap grid (simplified Chicago PD districts) -->
+            <div id="district-grid" class="grid grid-cols-6 gap-1 mb-4">
+              <!-- Filled by JS -->
+            </div>
+            <p class="text-slate-600 text-xs">Chicago Police Department districts 1–25 (darker = more incidents)</p>
+          </div>
+
+          <!-- Time of day breakdown -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h2 class="text-sm font-bold text-slate-300 mb-4">Time of Day</h2>
+            <div id="hour-chart" class="flex items-end gap-0.5 h-24">
+              <div class="text-slate-600 text-xs animate-pulse">Loading…</div>
+            </div>
+            <div class="flex justify-between text-xs text-slate-600 mt-1">
+              <span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>12am</span>
+            </div>
+          </div>
+
+          <!-- Community area leaderboard -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h2 class="text-sm font-bold text-slate-300 mb-4">Top Community Areas (Last 7 Days)</h2>
+            <div id="area-list" class="space-y-2">
+              <div class="text-slate-600 text-xs animate-pulse">Loading…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data from <a href="https://data.cityofchicago.org/resource/ijzp-q8t2.json" target="_blank" class="hover:text-slate-500 underline">Chicago Data Portal — Crimes API</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+const CRIME_COLORS = {
+  'THEFT': '#f59e0b',
+  'BATTERY': '#ef4444',
+  'CRIMINAL DAMAGE': '#f97316',
+  'NARCOTICS': '#8b5cf6',
+  'ASSAULT': '#dc2626',
+  'OTHER OFFENSE': '#94a3b8',
+  'BURGLARY': '#0ea5e9',
+  'MOTOR VEHICLE THEFT': '#06b6d4',
+  'ROBBERY': '#f43f5e',
+  'DECEPTIVE PRACTICE': '#a855f7',
+};
+const DEFAULT_COLOR = '#475569';
+
+function crimeColor(type) {
+  return CRIME_COLORS[type] || DEFAULT_COLOR;
+}
+
+function timeLabel(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+let allCrimes = [];
+
+async function loadCrimes() {
+  const today = new Date();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+
+  const url = `https://data.cityofchicago.org/resource/ijzp-q8t2.json?$limit=500&$order=date%20DESC&$where=date>'${sevenDaysAgo}'`;
+
+  try {
+    const resp = await fetch(url);
+    const crimes = await resp.json();
+    allCrimes = crimes;
+
+    // Today's incidents
+    const todayStr = today.toISOString().split('T')[0];
+    const todayCrimes = crimes.filter(c => (c.date || '').startsWith(todayStr));
+    document.getElementById('stat-today').textContent = todayCrimes.length;
+
+    // Arrest rate
+    const arrests = crimes.filter(c => c.arrest === 'true' || c.arrest === true);
+    const arrestRate = crimes.length > 0 ? Math.round((arrests.length / crimes.length) * 100) : 0;
+    document.getElementById('stat-arrests').textContent = arrestRate;
+
+    // Most common type
+    const typeCounts = {};
+    crimes.forEach(c => { typeCounts[c.primary_type] = (typeCounts[c.primary_type] || 0) + 1; });
+    const topType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
+    if (topType) document.getElementById('stat-type').textContent = topType[0];
+
+    // District hot zone
+    const districtCounts = {};
+    crimes.forEach(c => {
+      const d = c.district;
+      if (d) districtCounts[d] = (districtCounts[d] || 0) + 1;
+    });
+    const topDistrict = Object.entries(districtCounts).sort((a, b) => b[1] - a[1])[0];
+    if (topDistrict) document.getElementById('stat-hotzone').textContent = `District ${parseInt(topDistrict[0])}`;
+
+    // Type chart
+    renderTypeChart(typeCounts);
+
+    // Hour chart
+    renderHourChart(crimes);
+
+    // District grid
+    renderDistrictGrid(districtCounts);
+
+    // Community area leaderboard
+    renderAreaList(crimes);
+
+    // Incident list
+    const typeFilter = document.getElementById('type-filter');
+    // Populate type filter
+    const types = Object.keys(typeCounts).sort();
+    typeFilter.innerHTML = '<option value="">All types</option>' +
+      types.map(t => `<option value="${t}">${t}</option>`).join('');
+
+    renderIncidents(crimes);
+
+    document.getElementById('last-update').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+  } catch (err) {
+    console.error('Error loading crimes:', err);
+  }
+}
+
+function renderTypeChart(typeCounts) {
+  const container = document.getElementById('type-chart');
+  const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const max = sorted[0]?.[1] || 1;
+
+  container.innerHTML = sorted.map(([type, count]) => `
+    <div class="flex items-center gap-2 text-xs cursor-pointer hover:bg-white/5 rounded px-1 -mx-1 transition-colors" onclick="filterByType('${type}')">
+      <div class="w-28 flex-shrink-0 text-slate-400 truncate">${type}</div>
+      <div class="flex-1 bg-slate-800 rounded-full h-1.5">
+        <div class="h-1.5 rounded-full transition-all duration-700" style="width:${(count/max*100).toFixed(1)}%; background:${crimeColor(type)}"></div>
+      </div>
+      <div class="w-8 text-right text-slate-500 font-mono">${count}</div>
+    </div>
+  `).join('');
+}
+
+function renderHourChart(crimes) {
+  const hours = new Array(24).fill(0);
+  crimes.forEach(c => {
+    if (c.date) {
+      const h = new Date(c.date).getHours();
+      if (!isNaN(h)) hours[h]++;
+    }
+  });
+  const max = Math.max(...hours, 1);
+  const chart = document.getElementById('hour-chart');
+  chart.innerHTML = hours.map((v, h) => {
+    const pct = (v / max) * 88;
+    const isNight = h < 6 || h >= 22;
+    return `<div class="flex-1 rounded-t" style="height:${Math.max(2, pct)}px; background:${isNight ? '#7c3aed' : '#f97316'}; opacity:0.8" title="${h}:00 — ${v} incidents"></div>`;
+  }).join('');
+}
+
+function renderDistrictGrid(districtCounts) {
+  const grid = document.getElementById('district-grid');
+  const max = Math.max(...Object.values(districtCounts), 1);
+  const districts = Array.from({ length: 25 }, (_, i) => i + 1);
+
+  grid.innerHTML = districts.map(d => {
+    const count = districtCounts[String(d).padStart(2, '0')] || districtCounts[String(d)] || 0;
+    const intensity = Math.min(1, count / max);
+    const bg = `rgba(239, 68, 68, ${0.1 + intensity * 0.85})`;
+    return `<div class="aspect-square rounded flex items-center justify-center text-xs font-bold cursor-pointer hover:ring-1 hover:ring-white/30 transition-all"
+      style="background:${bg}; color:${intensity > 0.4 ? 'white' : '#94a3b8'}"
+      title="District ${d}: ${count} incidents"
+      onclick="filterByDistrict('${d}')">
+      ${d}
+    </div>`;
+  }).join('');
+}
+
+function renderAreaList(crimes) {
+  const areaCounts = {};
+  crimes.forEach(c => {
+    const a = c.community_area_number;
+    if (a) areaCounts[a] = (areaCounts[a] || 0) + 1;
+  });
+  const sorted = Object.entries(areaCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const max = sorted[0]?.[1] || 1;
+
+  document.getElementById('area-list').innerHTML = sorted.map(([area, count]) => `
+    <div class="flex items-center gap-2 text-xs">
+      <div class="w-16 text-slate-500">Area ${area}</div>
+      <div class="flex-1 bg-slate-800 rounded-full h-1.5">
+        <div class="h-1.5 rounded-full bg-red-600" style="width:${(count/max*100).toFixed(1)}%"></div>
+      </div>
+      <div class="w-6 text-right text-slate-400 font-mono">${count}</div>
+    </div>
+  `).join('');
+}
+
+function renderIncidents(crimes) {
+  const list = document.getElementById('incidents-list');
+  list.innerHTML = crimes.slice(0, 50).map(c => {
+    const color = crimeColor(c.primary_type);
+    const arrested = c.arrest === 'true' || c.arrest === true;
+    return `
+      <div class="flex gap-2 items-start text-xs border-b border-white/5 pb-2 mb-2 last:border-0">
+        <div class="flex-shrink-0 w-2 h-2 rounded-full mt-1" style="background:${color}"></div>
+        <div class="flex-1 min-w-0">
+          <span class="font-semibold" style="color:${color}">${c.primary_type}</span>
+          <span class="text-slate-500 ml-1">${c.description || ''}</span>
+          <div class="text-slate-600 mt-0.5">${c.block || ''} · ${timeLabel(c.date || '')}</div>
+        </div>
+        ${arrested ? '<span class="flex-shrink-0 text-green-600 text-xs">🔒</span>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+window.filterByType = function(type) {
+  const filtered = type ? allCrimes.filter(c => c.primary_type === type) : allCrimes;
+  document.getElementById('type-filter').value = type;
+  renderIncidents(filtered);
+};
+
+window.filterByDistrict = function(district) {
+  const filtered = allCrimes.filter(c => c.district === district || c.district === district.padStart(2, '0'));
+  renderIncidents(filtered);
+};
+
+document.getElementById('type-filter').addEventListener('change', e => {
+  filterByType(e.target.value);
+});
+
+loadCrimes();
+setInterval(loadCrimes, 300000); // 5 min
+</script>

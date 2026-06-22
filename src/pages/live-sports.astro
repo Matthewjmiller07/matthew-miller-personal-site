@@ -1,0 +1,223 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Live Sports"
+  description="Real-time MLB and NBA scores from ESPN's public API. Live game scores, standings, and team stats."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-green-950/40 to-transparent px-4 py-10 text-center border-b border-green-900/20">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        🏟️ Live Sports
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        Real-time MLB and NBA scores from the ESPN API. No auth required — just live games.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-6 flex-wrap text-sm">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
+          <span class="text-slate-400">Updates every 30s</span>
+        </div>
+        <div id="last-update" class="text-slate-500 text-xs">—</div>
+      </div>
+    </div>
+
+    <!-- Sport tabs -->
+    <div class="max-w-5xl mx-auto px-4 pt-6">
+      <div class="flex gap-2 mb-6">
+        <button class="sport-btn active px-4 py-2 rounded-xl text-sm font-bold border border-green-500/50 bg-green-500/10 text-green-300" data-sport="mlb" data-label="⚾ MLB">⚾ MLB</button>
+        <button class="sport-btn px-4 py-2 rounded-xl text-sm font-bold border border-white/10 bg-white/5 text-slate-400" data-sport="nba" data-label="🏀 NBA">🏀 NBA</button>
+        <button class="sport-btn px-4 py-2 rounded-xl text-sm font-bold border border-white/10 bg-white/5 text-slate-400" data-sport="nfl" data-label="🏈 NFL">🏈 NFL</button>
+        <button class="sport-btn px-4 py-2 rounded-xl text-sm font-bold border border-white/10 bg-white/5 text-slate-400" data-sport="nhl" data-label="🏒 NHL">🏒 NHL</button>
+      </div>
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Games Today</div>
+          <div id="stat-games" class="text-2xl font-black text-green-400">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Live Now</div>
+          <div id="stat-live" class="text-2xl font-black text-red-400">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Final</div>
+          <div id="stat-final" class="text-2xl font-black text-slate-400">—</div>
+        </div>
+      </div>
+
+      <!-- Scoreboard -->
+      <div id="scoreboard" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-12">
+        <div class="col-span-2 p-8 text-center text-slate-500 animate-pulse">
+          <div class="text-3xl mb-2">🏟️</div>Loading games…
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data from <a href="https://site.api.espn.com" target="_blank" class="hover:text-slate-500 underline">ESPN API</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+const SPORT_APIS = {
+  mlb: 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard',
+  nba: 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard',
+  nfl: 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard',
+  nhl: 'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard',
+};
+
+let currentSport = 'mlb';
+
+// Chicago teams
+const CHICAGO_TEAMS = ['CHC', 'CHW', 'BUL', 'CHI', 'CHB', 'CHIC'];
+
+function isChicago(abbr) {
+  return abbr && CHICAGO_TEAMS.some(t => abbr.toUpperCase().includes(t.substring(0, 2)));
+}
+
+function getStatusInfo(event) {
+  const status = event.status?.type;
+  const period = event.status?.period;
+  const clock = event.status?.displayClock;
+
+  if (!status) return { live: false, finished: false, label: '—', color: '#94a3b8' };
+
+  switch (status.name) {
+    case 'STATUS_FINAL':
+      return { live: false, finished: true, label: 'Final', color: '#94a3b8' };
+    case 'STATUS_IN_PROGRESS':
+      return { live: true, finished: false, label: clock || `In Progress`, color: '#ef4444' };
+    case 'STATUS_HALFTIME':
+      return { live: true, finished: false, label: 'Halftime', color: '#f97316' };
+    case 'STATUS_SCHEDULED':
+      const date = new Date(event.date);
+      return { live: false, finished: false, label: date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }), color: '#22c55e' };
+    case 'STATUS_POSTPONED':
+      return { live: false, finished: false, label: 'PPD', color: '#f59e0b' };
+    default:
+      return { live: false, finished: false, label: status.description || '—', color: '#94a3b8' };
+  }
+}
+
+async function loadSports() {
+  const url = SPORT_APIS[currentSport];
+  try {
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const events = data.events || [];
+
+    document.getElementById('stat-games').textContent = events.length;
+    document.getElementById('last-update').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+
+    const liveGames = events.filter(e => e.status?.type?.name === 'STATUS_IN_PROGRESS');
+    const finalGames = events.filter(e => e.status?.type?.name === 'STATUS_FINAL');
+
+    document.getElementById('stat-live').textContent = liveGames.length;
+    document.getElementById('stat-final').textContent = finalGames.length;
+
+    renderScoreboard(events);
+  } catch (err) {
+    document.getElementById('scoreboard').innerHTML = `
+      <div class="col-span-2 p-8 text-center">
+        <div class="text-3xl mb-2">😴</div>
+        <div class="text-slate-400">No games scheduled today or API unavailable.</div>
+        <div class="text-slate-600 text-xs mt-2">${err.message}</div>
+      </div>`;
+  }
+}
+
+function renderScoreboard(events) {
+  const board = document.getElementById('scoreboard');
+
+  if (events.length === 0) {
+    board.innerHTML = `
+      <div class="col-span-2 p-8 text-center rounded-2xl border border-white/10 bg-white/5">
+        <div class="text-4xl mb-3">😴</div>
+        <div class="text-slate-400 font-semibold">No games today</div>
+        <div class="text-slate-600 text-sm mt-1">Check back when the season is in action!</div>
+      </div>`;
+    return;
+  }
+
+  board.innerHTML = events.map(event => {
+    const comp = event.competitions?.[0];
+    if (!comp) return '';
+
+    const competitors = comp.competitors || [];
+    const home = competitors.find(c => c.homeAway === 'home') || competitors[0] || {};
+    const away = competitors.find(c => c.homeAway === 'away') || competitors[1] || {};
+
+    const statusInfo = getStatusInfo(event);
+    const homeAbbr = home.team?.abbreviation || '?';
+    const awayAbbr = away.team?.abbreviation || '?';
+    const homeName = home.team?.displayName || homeAbbr;
+    const awayName = away.team?.displayName || awayAbbr;
+    const homeScore = home.score || '0';
+    const awayScore = away.score || '0';
+    const homeLogo = home.team?.logo || '';
+    const awayLogo = away.team?.logo || '';
+    const homeColor = home.team?.color ? `#${home.team.color}` : '#1e293b';
+    const awayColor = away.team?.color ? `#${away.team.color}` : '#1e293b';
+
+    const isChicagoGame = isChicago(homeAbbr) || isChicago(awayAbbr);
+    const homeWins = statusInfo.finished && parseInt(homeScore) > parseInt(awayScore);
+    const awayWins = statusInfo.finished && parseInt(awayScore) > parseInt(homeScore);
+
+    return `
+      <div class="rounded-2xl border ${isChicagoGame ? 'border-blue-600/40 bg-blue-950/10' : 'border-white/10 bg-white/5'} overflow-hidden">
+        ${isChicagoGame ? '<div class="text-xs text-center py-1 bg-blue-900/30 text-blue-400 font-semibold">🌆 Chicago team</div>' : ''}
+        <div class="p-4">
+          <!-- Away team -->
+          <div class="flex items-center gap-3 mb-3 ${awayWins ? 'opacity-100' : statusInfo.finished ? 'opacity-50' : ''}">
+            ${awayLogo ? `<img src="${awayLogo}" alt="" class="w-8 h-8 object-contain flex-shrink-0"/>` : `<div class="w-8 h-8 rounded-full flex-shrink-0" style="background:#${away.team?.color || '334155'}"></div>`}
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-sm ${awayWins ? 'text-white' : 'text-slate-300'} truncate">${awayName}</div>
+              <div class="text-xs text-slate-500">${awayAbbr} · Away</div>
+            </div>
+            <div class="text-2xl font-black ${awayWins ? 'text-white' : 'text-slate-400'}">${awayScore}</div>
+          </div>
+
+          <!-- Home team -->
+          <div class="flex items-center gap-3 ${homeWins ? 'opacity-100' : statusInfo.finished ? 'opacity-50' : ''}">
+            ${homeLogo ? `<img src="${homeLogo}" alt="" class="w-8 h-8 object-contain flex-shrink-0"/>` : `<div class="w-8 h-8 rounded-full flex-shrink-0" style="background:#${home.team?.color || '334155'}"></div>`}
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-sm ${homeWins ? 'text-white' : 'text-slate-300'} truncate">${homeName}</div>
+              <div class="text-xs text-slate-500">${homeAbbr} · Home</div>
+            </div>
+            <div class="text-2xl font-black ${homeWins ? 'text-white' : 'text-slate-400'}">${homeScore}</div>
+          </div>
+        </div>
+
+        <!-- Status bar -->
+        <div class="px-4 py-2 border-t border-white/5 flex items-center justify-between">
+          <div class="text-xs font-bold" style="color:${statusInfo.color}">
+            ${statusInfo.live ? '● LIVE · ' : ''}${statusInfo.label}
+          </div>
+          ${comp.venue?.fullName ? `<div class="text-xs text-slate-600 truncate ml-2">${comp.venue.fullName}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+document.querySelectorAll('.sport-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sport-btn').forEach(b => {
+      b.classList.remove('active', 'border-green-500/50', 'bg-green-500/10', 'text-green-300');
+      b.classList.add('border-white/10', 'bg-white/5', 'text-slate-400');
+    });
+    btn.classList.add('active', 'border-green-500/50', 'bg-green-500/10', 'text-green-300');
+    btn.classList.remove('border-white/10', 'bg-white/5', 'text-slate-400');
+    currentSport = btn.dataset.sport;
+    loadSports();
+  });
+});
+
+loadSports();
+setInterval(loadSports, 30000);
+</script>
