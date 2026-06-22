@@ -1,6 +1,6 @@
 export const prerender = false;
 
-const DEFAULT_INPUT_IMAGE_URL = 'https://i.imgur.com/vcb1nGz.png';
+const DEFAULT_INPUT_IMAGE_URL = 'https://theothermatthewmiller.com/images/matthew-selfie.jpg';
 
 function getToken() {
   return process.env.REPLICATE_API_TOKEN || import.meta.env?.REPLICATE_API_TOKEN || '';
@@ -42,6 +42,12 @@ export async function POST({ request }) {
 
     const data = await resp.json();
     if (!resp.ok) return new Response(JSON.stringify({ error: data.detail || 'Replicate error' }), { status: resp.status, headers: { 'Content-Type': 'application/json' } });
+    if (data.status === 'failed') {
+      return new Response(JSON.stringify({ error: data.error || 'GPT Image 2 prediction failed' }), {
+        status: 422,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     return new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } });
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
