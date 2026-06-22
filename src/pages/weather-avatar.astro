@@ -73,8 +73,10 @@ import Layout from '../layouts/Layout.astro';
             </div>
           </div>
           <div id="gpt-image-row" class="hidden mb-2">
-            <input id="custom-image-url" type="url" placeholder="Input image URL (blank = use my selfie)"
+            <label for="custom-image-url" class="mb-1 block text-xs text-slate-500">Reference image URL</label>
+            <input id="custom-image-url" type="url" value="https://i.imgur.com/vcb1nGz.png" aria-describedby="custom-image-help"
               class="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-xs placeholder-slate-600 focus:outline-none focus:border-white/20"/>
+            <p id="custom-image-help" class="mt-1 text-[11px] text-slate-600">Replace this URL to swap in a different person or source image.</p>
           </div>
 
           <button id="generate-btn"
@@ -210,7 +212,9 @@ function buildGptPrompt() {
   if (!weatherData) return currentPrompt;
   const wmo = WMO_CODES[weatherData.code] || {};
   const city = el('loc-text')?.textContent || 'your location';
-  return `A man with dark wavy hair, round tortoiseshell glasses, and a warm smile standing outdoors in ${wmo.label || 'current weather'} conditions. Style: editorial portrait photography, photorealistic.
+  return `Use input image 1 as the identity and appearance reference for the person in the result. Preserve that person's recognizable facial identity, face shape, skin tone, hair, glasses, facial hair, and other defining features. Transform the reference into a new photorealistic weather portrait rather than copying its original background, pose, or clothing.
+
+Place the referenced person outdoors in ${wmo.label || 'current weather'} conditions in ${city}, naturally dressed for the current temperature. Style: editorial portrait photography, realistic lighting, photorealistic, high detail.
 
 In the corner of the image, include a clean weather widget card with this exact text:
 "📍 ${city}"
@@ -323,7 +327,7 @@ async function generate() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(selectedModel === 'gpt'
-        ? { prompt: activePrompt, ...(customImageUrl ? { inputImageUrl: customImageUrl } : {}) }
+        ? { prompt: activePrompt, inputImageUrl: customImageUrl || 'https://i.imgur.com/vcb1nGz.png' }
         : { prompt: activePrompt }),
     });
 
