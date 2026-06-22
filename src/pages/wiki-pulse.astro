@@ -1,0 +1,234 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Wiki Pulse"
+  description="What the world is reading on Wikipedia right now. Live trending articles from the Wikimedia API."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-sky-950/50 to-transparent px-4 py-10 text-center border-b border-sky-900/20">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        🌐 Wiki Pulse
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        Yesterday's most-read Wikipedia articles, ranked by views. The world's collective curiosity, live.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-6 flex-wrap text-sm">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></span>
+          <span class="text-slate-400" id="date-label">Loading…</span>
+        </div>
+        <div id="total-views" class="text-slate-300 font-semibold">—</div>
+      </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+
+      <!-- Category filter pills -->
+      <div class="flex flex-wrap gap-2 mb-6">
+        <button class="filter-pill active px-3 py-1.5 rounded-full text-xs font-semibold border border-sky-500/50 bg-sky-500/10 text-sky-300" data-cat="all">All</button>
+        <button class="filter-pill px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400 hover:border-white/20" data-cat="jewish">✡️ Jewish / Israel</button>
+        <button class="filter-pill px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400 hover:border-white/20" data-cat="sports">⚽ Sports</button>
+        <button class="filter-pill px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400 hover:border-white/20" data-cat="science">🔬 Science & Tech</button>
+        <button class="filter-pill px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400 hover:border-white/20" data-cat="culture">🎬 Culture</button>
+      </div>
+
+      <!-- Stats strip -->
+      <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Top article</div>
+          <div id="stat-top" class="text-sm font-bold text-white truncate">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Top views</div>
+          <div id="stat-top-views" class="text-xl font-black text-sky-400">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Jewish interest</div>
+          <div id="stat-jewish" class="text-sm font-bold text-amber-400">—</div>
+        </div>
+      </div>
+
+      <!-- Article list -->
+      <div id="article-list" class="space-y-2">
+        <div class="p-8 text-center text-slate-500 animate-pulse">
+          <div class="text-3xl mb-2">📡</div>
+          Querying Wikimedia…
+        </div>
+      </div>
+
+      <!-- Load more -->
+      <div class="mt-6 text-center">
+        <button id="show-more-btn" class="hidden px-6 py-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-sm font-semibold transition-colors">
+          Show more
+        </button>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data from <a href="https://wikimedia.org/api/rest_v1/" target="_blank" class="hover:text-slate-500 underline">Wikimedia REST API</a> ·
+      Part of <a href="https://github.com/bytewax/awesome-public-real-time-datasets" target="_blank" class="hover:text-slate-500 underline">awesome-public-real-time-datasets</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+const SKIP = new Set(['Main_Page', 'Special:Search', 'Wikipedia:Featured_pictures', 'Wikipedia:Featured_articles', '-']);
+
+const JEWISH_KEYWORDS = ['israel','jewish','jew','judaism','hebrew','zionism','zionist','holocaust','antisemit','torah','talmud','sefaria','synagogue','rabbinical','knesset','netanyahu','tel aviv','jerusalem','mossad','idf','diaspora','hasidic','orthodox','kosher','yiddish','kabbalah','midrash','mishna','halakha'];
+const SPORTS_KEYWORDS = ['world cup','football','soccer','basketball','baseball','nba','nfl','mlb','nhl','olympic','tennis','championship','league','tournament','fifa','copa','euro','wimbledon'];
+const SCIENCE_KEYWORDS = ['nasa','physics','biology','chemistry','mathematics','algorithm','quantum','ai','artificial intelligence','machine learning','astronomy','genetics','vaccine','climate','technology','computer','programming'];
+const CULTURE_KEYWORDS = ['film','movie','actor','actress','singer','music','album','television','series','actor','director','award','oscar','emmy','grammy','celebrity','artist','painter'];
+
+function categorize(title) {
+  const t = title.toLowerCase().replace(/_/g, ' ');
+  if (JEWISH_KEYWORDS.some(k => t.includes(k))) return 'jewish';
+  if (SPORTS_KEYWORDS.some(k => t.includes(k))) return 'sports';
+  if (SCIENCE_KEYWORDS.some(k => t.includes(k))) return 'science';
+  if (CULTURE_KEYWORDS.some(k => t.includes(k))) return 'culture';
+  return 'other';
+}
+
+function formatViews(n) {
+  if (n >= 1e6) return `${(n/1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n/1e3).toFixed(0)}k`;
+  return n.toLocaleString();
+}
+
+function titleToDisplay(t) {
+  return t.replace(/_/g, ' ');
+}
+
+function getCategoryBadge(cat) {
+  const map = {
+    jewish:  { label: '✡️ Jewish / Israel', color: '#f59e0b' },
+    sports:  { label: '⚽ Sports',          color: '#10b981' },
+    science: { label: '🔬 Science & Tech',  color: '#60a5fa' },
+    culture: { label: '🎬 Culture',         color: '#c084fc' },
+    other:   { label: '',                   color: '' },
+  };
+  return map[cat] || map.other;
+}
+
+let allArticles = [];
+let currentCat = 'all';
+let showCount = 30;
+
+async function fetchTrending() {
+  const now = new Date();
+  now.setDate(now.getDate() - 1);
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+
+  document.getElementById('date-label').textContent = `${yyyy}-${mm}-${dd} (yesterday)`;
+
+  const url = `https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia.org/all-access/${yyyy}/${mm}/${dd}`;
+
+  const resp = await fetch(url);
+  const data = await resp.json();
+
+  allArticles = data.items[0].articles
+    .filter(a => !SKIP.has(a.article))
+    .map(a => ({ ...a, cat: categorize(a.article) }));
+
+  // Stats
+  const top = allArticles[0];
+  const totalViews = allArticles.reduce((s, a) => s + a.views, 0);
+  const jewishOnes = allArticles.filter(a => a.cat === 'jewish');
+
+  document.getElementById('total-views').textContent = `${formatViews(totalViews)} total views`;
+  document.getElementById('stat-top').textContent = titleToDisplay(top.article);
+  document.getElementById('stat-top-views').textContent = formatViews(top.views);
+  document.getElementById('stat-jewish').textContent = jewishOnes.length > 0
+    ? `${jewishOnes[0] ? titleToDisplay(jewishOnes[0].article).slice(0, 20) + '…' : '—'}`
+    : 'Not trending today';
+
+  renderList();
+}
+
+function renderList() {
+  const filtered = currentCat === 'all'
+    ? allArticles
+    : allArticles.filter(a => a.cat === currentCat);
+
+  const shown = filtered.slice(0, showCount);
+  const maxViews = shown[0]?.views || 1;
+
+  const list = document.getElementById('article-list');
+
+  if (shown.length === 0) {
+    list.innerHTML = '<div class="p-8 text-center text-slate-500">No articles in this category today</div>';
+    document.getElementById('show-more-btn').classList.add('hidden');
+    return;
+  }
+
+  list.innerHTML = shown.map((a, i) => {
+    const badgeInfo = getCategoryBadge(a.cat);
+    const barWidth = (a.views / maxViews) * 100;
+    const rankDisplay = a.rank <= 3 ? ['🥇', '🥈', '🥉'][a.rank - 1] : `#${a.rank}`;
+    const wikiUrl = `https://en.wikipedia.org/wiki/${a.article}`;
+
+    return `
+      <a href="${wikiUrl}" target="_blank" rel="noopener noreferrer"
+        class="group flex items-center gap-4 px-4 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-sky-500/30 transition-all duration-150 relative overflow-hidden block">
+
+        <!-- Bar background -->
+        <div class="absolute inset-y-0 left-0 rounded-xl opacity-10 transition-all" style="width:${barWidth}%; background: ${badgeInfo.color || '#0ea5e9'}"></div>
+
+        <!-- Rank -->
+        <div class="flex-shrink-0 w-10 text-center font-bold text-sm ${i < 3 ? 'text-xl' : 'text-slate-500'} relative z-10">
+          ${rankDisplay}
+        </div>
+
+        <!-- Title + bar -->
+        <div class="flex-1 min-w-0 relative z-10">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-white font-medium text-sm group-hover:text-sky-300 transition-colors">
+              ${titleToDisplay(a.article)}
+            </span>
+            ${badgeInfo.label ? `<span class="text-xs px-1.5 py-0.5 rounded-full" style="color:${badgeInfo.color}; background:${badgeInfo.color}20">${badgeInfo.label}</span>` : ''}
+          </div>
+        </div>
+
+        <!-- Views -->
+        <div class="flex-shrink-0 text-right relative z-10">
+          <div class="font-black text-white text-sm">${formatViews(a.views)}</div>
+          <div class="text-slate-500 text-xs">views</div>
+        </div>
+      </a>
+    `;
+  }).join('');
+
+  if (filtered.length > showCount) {
+    document.getElementById('show-more-btn').classList.remove('hidden');
+    document.getElementById('show-more-btn').textContent = `Show more (${filtered.length - showCount} remaining)`;
+  } else {
+    document.getElementById('show-more-btn').classList.add('hidden');
+  }
+}
+
+// Filter pills
+document.querySelectorAll('.filter-pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-pill').forEach(b => {
+      b.classList.remove('active', 'border-sky-500/50', 'bg-sky-500/10', 'text-sky-300');
+      b.classList.add('border-white/10', 'bg-white/5', 'text-slate-400');
+    });
+    btn.classList.add('active', 'border-sky-500/50', 'bg-sky-500/10', 'text-sky-300');
+    btn.classList.remove('border-white/10', 'bg-white/5', 'text-slate-400');
+    currentCat = btn.dataset.cat;
+    showCount = 30;
+    renderList();
+  });
+});
+
+document.getElementById('show-more-btn').addEventListener('click', () => {
+  showCount += 30;
+  renderList();
+});
+
+fetchTrending();
+</script>

@@ -1,0 +1,345 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Parsha Art"
+  description="This week's Torah portion, illustrated by FLUX AI. Live from Sefaria."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-amber-950/50 to-transparent px-4 py-10 text-center border-b border-amber-900/20">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        📜 Parsha Art
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        This week's Torah portion, retrieved live from <a href="https://sefaria.org" target="_blank" rel="noopener" class="text-amber-400 hover:underline">Sefaria</a> and illustrated by FLUX AI.
+      </p>
+    </div>
+
+    <div class="max-w-5xl mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+      <!-- Left: parsha info -->
+      <div class="flex flex-col gap-5">
+
+        <!-- Parsha header -->
+        <div class="rounded-2xl border border-amber-900/40 bg-amber-950/20 p-6">
+          <div class="text-amber-500 text-xs font-semibold uppercase tracking-wider mb-2">This Week's Portion</div>
+          <div id="parsha-loading" class="animate-pulse text-slate-500">Loading from Sefaria…</div>
+          <h2 id="parsha-name" class="hidden text-3xl font-black text-amber-300 mb-1">—</h2>
+          <div id="parsha-he" class="hidden text-2xl font-bold text-amber-600/70 mb-3" style="font-family:'Noto Serif Hebrew', serif; direction:rtl">—</div>
+          <div id="parsha-ref" class="hidden text-slate-400 text-sm font-mono mb-4">—</div>
+          <p id="parsha-desc" class="hidden text-slate-300 text-sm leading-relaxed">—</p>
+        </div>
+
+        <!-- Aliyot -->
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Aliyot</h3>
+          <div id="aliyot-list" class="space-y-1.5 text-sm text-slate-400">
+            <div class="animate-pulse text-slate-600">—</div>
+          </div>
+        </div>
+
+        <!-- Prompt preview -->
+        <div class="rounded-2xl border border-purple-900/40 bg-purple-950/20 p-5">
+          <h3 class="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">FLUX Illustration Prompt</h3>
+          <p id="flux-prompt-preview" class="text-slate-400 text-xs italic leading-relaxed">—</p>
+          <button id="generate-btn"
+            class="mt-4 w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled
+          >
+            Illustrate This Parsha
+          </button>
+          <button id="regen-btn"
+            class="mt-2 w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-medium text-xs transition-all hidden"
+          >
+            ↻ Try a Different Scene
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: artwork -->
+      <div class="flex flex-col gap-5">
+        <div class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden flex-1 min-h-[400px] flex flex-col">
+          <div class="p-4 border-b border-white/10 flex items-center justify-between">
+            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Illustration</h3>
+            <div id="art-style-badge" class="text-xs text-amber-500/70">Biblical Art Style</div>
+          </div>
+
+          <!-- Idle -->
+          <div id="art-idle" class="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-600 gap-4">
+            <div class="text-6xl opacity-40">🕍</div>
+            <div class="text-sm">Load the parsha, then generate an illustration of a key scene.</div>
+          </div>
+
+          <!-- Loading -->
+          <div id="art-loading" class="hidden flex-1 flex-col items-center justify-center p-8 gap-5">
+            <div class="relative w-20 h-20">
+              <div class="absolute inset-0 rounded-full border-4 border-amber-500/10"></div>
+              <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-amber-400 animate-spin"></div>
+              <div class="text-3xl absolute inset-0 flex items-center justify-center">✡️</div>
+            </div>
+            <div class="text-amber-400 font-semibold text-sm">Illuminating the Torah…</div>
+            <div id="art-status" class="text-slate-500 text-xs">Connecting to FLUX</div>
+          </div>
+
+          <!-- Result -->
+          <div id="art-result" class="hidden flex-1 flex flex-col">
+            <img id="art-img" src="" alt="Parsha illustration" class="w-full object-cover flex-1" style="max-height:480px"/>
+            <div class="p-4 border-t border-white/10">
+              <div id="art-caption" class="text-slate-400 text-xs text-center leading-relaxed italic">—</div>
+            </div>
+          </div>
+
+          <!-- Error -->
+          <div id="art-error" class="hidden flex-1 flex-col items-center justify-center p-8 gap-3 text-center">
+            <div class="text-3xl">⚠️</div>
+            <div id="art-err-msg" class="text-red-400 text-sm">—</div>
+            <button onclick="generate()" class="text-xs px-4 py-2 rounded-lg bg-red-500/20 text-red-300">Try Again</button>
+          </div>
+        </div>
+
+        <!-- Sefaria link -->
+        <div id="sefaria-link-box" class="hidden rounded-2xl border border-amber-900/30 bg-amber-950/10 p-4 flex items-center gap-4">
+          <div class="text-3xl">📖</div>
+          <div>
+            <div class="text-amber-400 font-semibold text-sm mb-0.5">Read it on Sefaria</div>
+            <a id="sefaria-link" href="#" target="_blank" rel="noopener" class="text-slate-400 text-xs hover:text-amber-300 transition-colors hover:underline">—</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Torah data from <a href="https://sefaria.org" target="_blank" class="hover:text-slate-500 underline">Sefaria</a> ·
+      Art by <a href="https://replicate.com/black-forest-labs/flux-2-klein-4b" target="_blank" class="hover:text-slate-500 underline">FLUX 2 Klein 4B</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+// Scenes to illustrate for different parasha themes
+// Maps keywords → FLUX prompt suffixes
+const SCENE_TEMPLATES = [
+  // Format: [keyword, scene description, flux prompt]
+  ['bereishit', 'Creation of light', 'God separating light from darkness at the moment of Creation, dramatic cosmic light, biblical illustration, ancient manuscript style, luminous divine light rays, epic scale, sacred art'],
+  ['noach', "Noah's Ark", "Noah's Ark floating on the great flood, animals visible, dramatic storm clouds parting to reveal sunlight, biblical illustration, ancient manuscript style, epic scale"],
+  ['lech', 'Abraham leaving Haran', 'Abraham leading his family and flocks out of the city of Haran into the desert, divine light guiding the way, biblical illustration, ancient Near East, sacred art'],
+  ['vayera', 'Three angels visiting', 'Three divine messengers visiting Abraham under the great oak of Mamre, Sarah at the tent entrance, midday desert light, biblical illustration, ancient manuscript style'],
+  ['chayei', 'Rebecca at the well', 'Rebecca lowering her jar to water camels at a desert well, caravans in the background, golden sunset light, biblical illustration, ancient Mesopotamia'],
+  ['toldot', 'Isaac blessing Jacob', 'Elderly Isaac blessing his son, hands outstretched, candlelight in a tent, intimate sacred moment, biblical illustration, ancient Near East'],
+  ['vayetzei', "Jacob's ladder", "Jacob sleeping in the desert, a ladder reaching to heaven with angels ascending and descending, divine light streaming down, biblical illustration, epic sacred art"],
+  ['vayishlach', 'Jacob wrestling the angel', 'Jacob wrestling with a divine being at the ford of Jabbok, dramatic nighttime scene, moonlight, biblical illustration, intense spiritual combat'],
+  ['vayeshev', 'Joseph and the coat', 'Joseph standing in a field wearing his coat of many colors, brothers gathered around, biblical illustration, ancient Canaan'],
+  ['miketz', "Pharaoh's dreams", "Pharaoh standing before seven fat and seven lean cows at the Nile, dream-like vision, Egyptian palace setting, biblical illustration, ancient Egypt"],
+  ['vayigash', 'Joseph reveals himself', 'Joseph revealing himself to his brothers in Egypt, emotional reunion, tears, Egyptian court backdrop, biblical illustration, epic moment'],
+  ['vayechi', 'Jacob blessing his sons', 'Jacob on his deathbed surrounded by his twelve sons, prophetic blessing, candlelight, ancient Egyptian setting, biblical illustration'],
+  ['shemot', 'Burning bush', 'Moses standing before the burning bush on Mount Horeb, shoes removed, divine fire, epic desert mountain scene, biblical illustration, sacred art'],
+  ['vaera', 'Plagues of Egypt', 'Moses raising his staff over the Nile turning to blood, Pharaoh watching from his palace, dramatic biblical illustration, ancient Egypt'],
+  ['bo', 'Exodus night', 'Israelites rushing out of Egypt at midnight, carrying bundles, moon overhead, Egyptian city behind them, biblical illustration, epic scale'],
+  ['beshalach', 'Splitting of the Sea', 'Moses raising his staff as the Red Sea splits, walls of water on each side, Israelites walking through, Egyptians behind, epic biblical art, dramatic light'],
+  ['yitro', 'Mount Sinai', 'Lightning and thunder at Mount Sinai, Moses ascending, Israelites at the base, the Ten Commandments on stone, divine fire and cloud, epic sacred art'],
+  ['mishpatim', 'Covenant at Sinai', 'Elders of Israel seeing the God of Israel on a sapphire pavement, divine vision, awe-inspiring sacred moment, biblical illustration'],
+  ['terumah', 'Building the Tabernacle', 'Israelites bringing gold and silver offerings for the Tabernacle, the Ark of the Covenant being constructed, ancient desert setting, biblical illustration'],
+  ['tetzaveh', 'High Priest vestments', 'Aaron the High Priest dressed in the eight priestly vestments, Urim and Thummim, golden bells, desert Tabernacle backdrop, sacred biblical art'],
+  ['ki tisa', 'Golden calf', 'Israelites dancing around a golden calf in the desert, Moses descending from Sinai with the tablets, dramatic confrontation, biblical illustration'],
+  ['vayakhel', 'Building the Mishkan', 'Master craftsman Bezalel working on the Menorah with precision and divine inspiration, Tabernacle being constructed, biblical illustration'],
+  ['pekudei', 'Cloud of glory', 'The divine cloud of glory descending upon the completed Tabernacle in the desert, Israelites watching in awe, biblical illustration'],
+  ['vayikra', 'Offerings at the altar', 'Priests performing the temple service at the Tabernacle altar, fire rising, smoke ascending, ancient Israelite sacred ritual, biblical illustration'],
+  ['tzav', 'Eternal flame', 'The eternal flame of the Temple Menorah burning, priests tending to it, sacred Tabernacle interior, ancient Israelite ritual, golden light'],
+  ['shemini', 'Nadav and Avihu', 'Nadav and Avihu approaching the altar with strange fire, divine response, dramatic moment of consecration, Tabernacle setting, biblical illustration'],
+  ['tazria', 'Priestly examination', 'Aaron the priest carefully examining a person, Tabernacle backdrop, ancient Israelite ritual, detailed biblical illustration'],
+  ['metzora', 'Purification ceremony', 'Birds and cedar wood used in purification ritual by a priest, spring water, ancient Israelite ritual setting, biblical illustration'],
+  ['acharei', 'Yom Kippur service', 'Aaron the High Priest entering the Holy of Holies on Yom Kippur, smoke of incense, divine presence, most sacred moment, biblical illustration'],
+  ['kedoshim', 'Holy people', 'Israelites gathered at Mount Sinai receiving the commandments of holiness, sacred community, biblical illustration, ancient Israel'],
+  ['emor', 'Festival proclamations', 'Priests blowing silver trumpets to announce the festivals, Tabernacle backdrop, ancient Israelite ceremony, biblical illustration'],
+  ['behar', 'Sabbatical year', 'Israelites resting the land on the Shemita year, crops left to grow wild, ancient Canaan landscape, peaceful biblical illustration'],
+  ['bechukotai', 'Blessings and curses', 'Israelites receiving divine blessings in the Promised Land, prosperous fields, land of milk and honey, biblical illustration'],
+  ['bamidbar', 'Census in the desert', 'Moses and Aaron counting the Israelite tribes in the Sinai desert, vast encampment spread before them, biblical illustration, aerial view'],
+  ['naso', 'Priestly blessing', 'Aaron and his sons blessing the Israelite people with hands raised, divine light descending, Tabernacle setting, sacred biblical art'],
+  ['behaalotcha', 'Menorah lighting', 'Aaron lighting the seven-branched Menorah in the Tabernacle, divine golden light, sacred moment, ancient biblical illustration'],
+  ['shelach', 'Twelve spies', 'Twelve spies returning from Canaan carrying an enormous cluster of grapes on a pole, the Promised Land visible, biblical illustration'],
+  ['korach', "Korah's rebellion", "Korach leading his followers in rebellion against Moses, the earth opening beneath them, divine judgment, dramatic biblical illustration"],
+  ['chukat', 'Red heifer', 'The ritual of the red heifer in the desert, Moses and Aaron performing the ceremony, Israelite camp in background, biblical illustration, mysterious rite'],
+  ['balak', "Balaam's blessing", "Balaam standing on a mountain overlooking the vast Israelite camp spread across the desert below, arms raised in blessing instead of cursing, dramatic golden sunset light, epic biblical art"],
+  ['balaam', "Balaam's donkey", "Balaam's donkey seeing the angel of God blocking the path, Balaam unable to see, dramatic desert scene, biblical illustration, ancient Near East"],
+  ['pinchas', 'Pinchas and Joshua', 'The daughters of Zelophehad standing before Moses and the leaders making their case, powerful women of Israel, ancient Israelite scene, biblical illustration'],
+  ['matot', 'Vows in the desert', 'Tribal leaders of Israel making solemn vows, Israelite encampment backdrop, ancient Near East setting, biblical illustration'],
+  ['masei', 'Journey through the desert', 'Israelites on their forty-year journey, marching through the Sinai with the Ark of the Covenant leading, column of cloud overhead, epic biblical art'],
+  ['devarim', "Moses' farewell speech", "Moses standing on a mountain addressing the entire nation of Israel in the plains of Moab, the Promised Land visible in the distance, emotional farewell, epic biblical illustration"],
+  ['vaetchanan', 'Ten Commandments', 'Moses teaching the Ten Commandments to Israel, stone tablets held high, people gathered, Mount Sinai behind, sacred biblical art'],
+  ['ekev', 'Milk and honey', 'Israelites arriving in the Promised Land, seeing a land of agricultural abundance, grapes, pomegranates, figs, golden light, biblical illustration'],
+  ['reeh', 'Blessings and choices', 'Israelites standing between Mount Gerizim and Mount Ebal, two mountains of blessing and curse, Canaan landscape, biblical illustration'],
+  ['shoftim', 'Judges and justice', 'Deborah the prophetess-judge under a palm tree hearing cases from the Israelites, ancient Israel, powerful female leader, biblical illustration'],
+  ['ki teitzei', 'Laws of war', 'Israelite soldiers at the borders of the Promised Land, protecting the camp, ancient military setting, biblical illustration'],
+  ['ki tavo', 'First fruits', 'Israelite farmer bringing the first fruits to Jerusalem in a procession, Temple Mount visible, joyous ceremony, ancient Israel, biblical illustration'],
+  ['nitzavim', 'Standing together', 'All of Israel, men women and children, standing together in a covenant with God, dramatic gathering, biblical illustration, unity of the nation'],
+  ['vayelech', "Moses' final day", 'Moses writing the Torah scroll on his final day, handing it to the Levites, the Tabernacle in background, emotional sacred moment, biblical illustration'],
+  ['haazinu', "Moses' song", "Moses singing his final poem to Israel, arms raised, the entire nation listening, Mount Nebo in background, dramatic golden light, epic biblical art"],
+  ['zot habracha', 'Moses ascending Nebo', 'Moses ascending Mount Nebo to see the Promised Land for the last time, panoramic view of Canaan, divine meeting, bittersweet moment, epic biblical illustration'],
+  ['rosh hashana', 'Shofar at Sinai', 'Blowing the great shofar on Rosh HaShana, people gathered in prayer, divine judgment, heavenly court scene, sacred Jewish art'],
+  ['yom kippur', 'Atonement', 'High Priest in the Holy of Holies on Yom Kippur, incense smoke, divine presence, holiest moment of the year, sacred Jewish art'],
+  ['sukkot', 'Four species', 'Israelites waving the four species in the Sukkah, joyful harvest festival, ancient Jerusalem, sacred Jewish art'],
+  ['pesach', 'Passover seder', 'Ancient Israelites eating the Passover seder in Egypt, staff in hand, sandals on, ready to leave, dramatic candlelight, biblical illustration'],
+  ['shavuot', 'Giving of the Torah', 'The giving of the Torah at Mount Sinai, fire and thunder, Moses receiving the tablets, entire Israel at the base, epic sacred art'],
+];
+
+function buildPrompt(parshaName, description) {
+  const lowerName = parshaName.toLowerCase();
+
+  // Find matching template
+  for (const [keyword, scene, prompt] of SCENE_TEMPLATES) {
+    if (lowerName.includes(keyword)) {
+      return { scene, prompt: `${prompt}, photorealistic painting, soft dramatic lighting, ancient Hebrew biblical atmosphere, cinematic composition, museum-quality` };
+    }
+  }
+
+  // Fallback: use description to build generic prompt
+  const firstSentence = description?.split('.')[0] || parshaName;
+  return {
+    scene: firstSentence,
+    prompt: `A dramatic biblical illustration of ${firstSentence}, ancient Near East setting, divine golden light, epic scale, museum-quality biblical art, cinematic composition, photorealistic painting`,
+  };
+}
+
+let currentPrompt = '';
+let parshaName = '';
+
+async function loadParsha() {
+  try {
+    const r = await fetch('https://www.sefaria.org/api/calendars?diaspora=1');
+    const d = await r.json();
+    const item = d.calendar_items?.find(c => c.title?.en?.includes('Parasha'));
+    if (!item) throw new Error('Parasha not found');
+
+    parshaName = item.displayValue.en;
+    const hebrewName = item.displayValue.he;
+    const ref = item.ref;
+    const description = item.description?.en || '';
+    const aliyot = item.extraDetails?.aliyot || [];
+
+    // Render
+    document.getElementById('parsha-loading').classList.add('hidden');
+    document.getElementById('parsha-name').textContent = `Parashat ${parshaName}`;
+    document.getElementById('parsha-name').classList.remove('hidden');
+    document.getElementById('parsha-he').textContent = hebrewName;
+    document.getElementById('parsha-he').classList.remove('hidden');
+    document.getElementById('parsha-ref').textContent = ref;
+    document.getElementById('parsha-ref').classList.remove('hidden');
+    document.getElementById('parsha-desc').textContent = description;
+    document.getElementById('parsha-desc').classList.remove('hidden');
+
+    // Aliyot
+    document.getElementById('aliyot-list').innerHTML = aliyot.map((a, i) => `
+      <div class="flex items-start gap-2">
+        <span class="text-amber-600/60 font-mono text-xs mt-0.5 w-5 flex-shrink-0">${i === aliyot.length - 1 && aliyot.length > 7 ? 'M' : i + 1}</span>
+        <a href="https://sefaria.org/${encodeURIComponent(a)}" target="_blank" rel="noopener" class="text-slate-400 hover:text-amber-300 transition-colors hover:underline text-xs">${a}</a>
+      </div>
+    `).join('');
+
+    // Build FLUX prompt
+    const { scene, prompt } = buildPrompt(parshaName, description);
+    currentPrompt = prompt;
+    document.getElementById('flux-prompt-preview').textContent = prompt;
+    document.getElementById('generate-btn').disabled = false;
+
+    // Sefaria link
+    const sefariaUrl = `https://sefaria.org/${encodeURIComponent(ref.replace(/ /g, '_'))}`;
+    document.getElementById('sefaria-link').textContent = `Read ${parshaName} on Sefaria →`;
+    document.getElementById('sefaria-link').href = sefariaUrl;
+    document.getElementById('sefaria-link-box').classList.remove('hidden');
+
+  } catch (err) {
+    document.getElementById('parsha-loading').textContent = `Error: ${err.message}`;
+  }
+}
+
+// Multiple scene variants for regeneration
+let sceneIndex = 0;
+const sceneVariants = [
+  '', // will be set from template
+  'dramatic wide shot, golden hour, vast scale, impressionist biblical painting',
+  'intimate close-up, candlelight, emotional moment, Renaissance oil painting style',
+  'aerial view, vast landscape, epic scale, cinematic widescreen, painterly',
+];
+
+async function generate() {
+  if (!currentPrompt) return;
+
+  // Swap variant on regen
+  const variant = sceneVariants[sceneIndex % sceneVariants.length];
+  const prompt = sceneIndex === 0 ? currentPrompt : `${currentPrompt.split(',').slice(0, -2).join(',')}, ${variant}`;
+  sceneIndex++;
+
+  setArtState('loading');
+  document.getElementById('generate-btn').disabled = true;
+  document.getElementById('regen-btn').classList.add('hidden');
+
+  try {
+    const resp = await fetch('/api/flux-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Failed');
+
+    document.getElementById('art-status').textContent = `Prediction ${data.status}…`;
+
+    if (data.status === 'succeeded' && data.output) {
+      showArt(data.output);
+      return;
+    }
+    if (data.id) await pollArt(data.id);
+
+  } catch (err) {
+    setArtState('error');
+    document.getElementById('art-err-msg').textContent = err.message;
+  } finally {
+    document.getElementById('generate-btn').disabled = false;
+    document.getElementById('regen-btn').classList.remove('hidden');
+  }
+}
+
+async function pollArt(id) {
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2500));
+    try {
+      const r = await fetch(`/api/flux-poll?id=${id}`);
+      const d = await r.json();
+      document.getElementById('art-status').textContent = `${d.status}…`;
+      if (d.status === 'succeeded' && d.output) { showArt(d.output); return; }
+      if (d.status === 'failed') throw new Error(d.error || 'Failed');
+    } catch (err) {
+      setArtState('error');
+      document.getElementById('art-err-msg').textContent = err.message;
+      return;
+    }
+  }
+}
+
+function showArt(output) {
+  const url = Array.isArray(output) ? output[0] : output;
+  document.getElementById('art-img').src = url;
+  document.getElementById('art-caption').textContent = `Parashat ${parshaName} · Generated ${new Date().toLocaleTimeString()}`;
+  setArtState('result');
+}
+
+function setArtState(state) {
+  ['idle', 'loading', 'result', 'error'].forEach(s => {
+    const el = document.getElementById(`art-${s}`);
+    el?.classList.toggle('hidden', s !== state);
+    if (s === state && (s === 'loading' || s === 'error' || s === 'idle')) {
+      el?.classList.add('flex');
+    } else {
+      el?.classList.remove('flex');
+    }
+  });
+}
+
+document.getElementById('generate-btn').addEventListener('click', generate);
+document.getElementById('regen-btn').addEventListener('click', generate);
+window.generate = generate;
+
+loadParsha();
+</script>
