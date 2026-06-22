@@ -1,0 +1,333 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Crypto Vibes"
+  description="Live crypto prices + AI mood portraits. The market moves, so does the portrait."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-emerald-950/50 to-transparent px-4 py-10 text-center border-b border-emerald-900/20">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        📈 Crypto Vibes
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        Real-time prices via CoinGecko. The market's mood shapes a FLUX portrait — bull, bear, or zen.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-4 text-sm flex-wrap">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-slate-400">Live · updates every 30s</span>
+        </div>
+        <div id="market-mood-badge" class="hidden px-3 py-1 rounded-full text-xs font-bold border"></div>
+        <div id="last-update" class="text-slate-500 text-xs">—</div>
+      </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+      <!-- Left: price board -->
+      <div class="lg:col-span-3 flex flex-col gap-4">
+
+        <!-- Big ticker board -->
+        <div class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+          <div class="p-4 border-b border-white/10">
+            <h2 class="font-bold text-sm text-slate-300">Market Board</h2>
+          </div>
+          <div id="ticker-board" class="divide-y divide-white/5">
+            <!-- Filled by JS -->
+            <div class="p-8 text-center text-slate-500 animate-pulse">Loading market data…</div>
+          </div>
+        </div>
+
+        <!-- Torah wisdom quote -->
+        <div class="rounded-2xl border border-yellow-900/40 bg-yellow-950/20 p-5">
+          <div class="text-yellow-600 text-xs uppercase tracking-wider font-semibold mb-2">📜 Torah Perspective on Markets</div>
+          <blockquote id="torah-quote" class="text-slate-300 text-sm italic leading-relaxed">—</blockquote>
+          <div id="torah-source" class="text-slate-600 text-xs mt-2">—</div>
+        </div>
+
+        <!-- Market chart (sparkline style) -->
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">24h BTC Sentiment</h3>
+          <div id="btc-sparkline" class="h-16 flex items-end gap-0.5"></div>
+          <div class="flex justify-between text-xs text-slate-600 mt-1">
+            <span>24h ago</span><span>Now</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: AI Portrait -->
+      <div class="lg:col-span-2 flex flex-col gap-4">
+
+        <!-- Mood panel -->
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Current Market Mood</div>
+          <div id="mood-display" class="text-center py-4">
+            <div id="mood-emoji" class="text-6xl mb-2">⏳</div>
+            <div id="mood-title" class="text-xl font-black text-white">Loading…</div>
+            <div id="mood-desc" class="text-slate-400 text-sm mt-1">—</div>
+          </div>
+          <button id="gen-btn"
+            class="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled
+          >
+            Generate Mood Portrait
+          </button>
+        </div>
+
+        <!-- Portrait panel -->
+        <div class="rounded-2xl border border-white/10 bg-white/5 flex-1 flex flex-col overflow-hidden min-h-[280px]">
+          <div class="p-4 border-b border-white/10">
+            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">AI Mood Portrait</h3>
+          </div>
+
+          <div id="portrait-idle" class="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3 text-slate-500">
+            <div class="text-4xl">🎨</div>
+            <div class="text-sm">Hit Generate to create a portrait shaped by today's market mood</div>
+          </div>
+
+          <div id="portrait-loading" class="hidden flex-1 flex-col items-center justify-center p-6 gap-4">
+            <div class="w-14 h-14 rounded-full border-4 border-emerald-500/20 border-t-emerald-400 animate-spin"></div>
+            <div class="text-emerald-400 text-sm font-semibold">Channeling the market…</div>
+          </div>
+
+          <div id="portrait-result" class="hidden flex-col flex-1">
+            <img id="portrait-img" src="" alt="Mood portrait" class="w-full object-cover flex-1" style="max-height:360px"/>
+            <div class="p-3 flex justify-between items-center">
+              <div id="portrait-meta" class="text-slate-500 text-xs">—</div>
+              <button onclick="generatePortrait()" class="text-xs px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition-colors">↻</button>
+            </div>
+          </div>
+
+          <div id="portrait-error" class="hidden flex-1 flex-col items-center justify-center p-6 gap-3 text-center">
+            <div class="text-3xl">⚠️</div>
+            <div id="portrait-err-msg" class="text-red-400 text-sm">—</div>
+            <button onclick="generatePortrait()" class="text-xs px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300">Try Again</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Prices from <a href="https://coingecko.com" target="_blank" class="hover:text-slate-500 underline">CoinGecko</a> ·
+      Part of <a href="https://github.com/bytewax/awesome-public-real-time-datasets" target="_blank" class="hover:text-slate-500 underline">awesome-public-real-time-datasets</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+const COINS = [
+  { id: 'bitcoin',  name: 'Bitcoin',  symbol: 'BTC', emoji: '₿' },
+  { id: 'ethereum', name: 'Ethereum', symbol: 'ETH', emoji: 'Ξ' },
+  { id: 'solana',   name: 'Solana',   symbol: 'SOL', emoji: '◎' },
+  { id: 'dogecoin', name: 'Dogecoin', symbol: 'DOGE',emoji: 'Ð' },
+];
+
+const MOODS = {
+  euphoria:   { emoji: '🚀', title: 'EUPHORIA', desc: 'Everything is up. To the moon.', threshold: 10, color: '#10b981' },
+  bull:       { emoji: '🐂', title: 'BULLISH',  desc: 'Green across the board.',        threshold: 3,  color: '#34d399' },
+  neutral:    { emoji: '😐', title: 'SIDEWAYS', desc: 'The market is thinking.',        threshold: 0,  color: '#94a3b8' },
+  bear:       { emoji: '🐻', title: 'BEARISH',  desc: 'Red candles everywhere.',        threshold: -3, color: '#f87171' },
+  crash:      { emoji: '💥', title: 'REKT',     desc: 'This is fine. 🔥',              threshold: -10,color: '#ef4444' },
+};
+
+const TORAH_QUOTES = {
+  euphoria: { quote: '"Do not say in your heart: My own power and the might of my own hand has brought me this wealth." — Devarim 8:17', note: 'Humility in bull markets.' },
+  bull:     { quote: '"Wealth obtained by fraud dwindles, but the one who gathers by labor increases it." — Mishlei 13:11', note: 'On sustainable gains.' },
+  neutral:  { quote: '"There is a time for everything, a season for every activity under the heavens." — Kohelet 3:1', note: 'The market has its seasons.' },
+  bear:     { quote: '"Do not rejoice when your enemy falls; do not let your heart be glad when he stumbles." — Mishlei 24:17', note: 'On loss and equanimity.' },
+  crash:    { quote: '"Who is rich? One who is satisfied with his portion." — Avot 4:1', note: 'Ben Zoma on contentment.' },
+};
+
+const FLUX_PROMPTS = {
+  euphoria: 'Portrait of a man with dark wavy hair, round tortoiseshell glasses, arms raised in triumph, laughing, surrounded by confetti and green upward arrows, Wall Street trading floor backdrop, euphoric celebration, cinematic, photorealistic',
+  bull:     'Portrait of a man with dark wavy hair, round tortoiseshell glasses, confident smile, looking at multiple glowing green stock screens, sleek office backdrop, optimistic and focused, professional photography',
+  neutral:  'Portrait of a man with dark wavy hair, round tortoiseshell glasses, calm contemplative expression, sitting cross-legged in a minimalist room, neutral tones, zen meditation pose, soft lighting, cinematic',
+  bear:     'Portrait of a man with dark wavy hair, round tortoiseshell glasses, serious pensive expression, looking at red falling graphs, dramatic red lighting, worried but stoic, cinematic portrait',
+  crash:    'Portrait of a man with dark wavy hair, round tortoiseshell glasses, head in hands, surrounded by red everywhere, dramatic noir lighting, exhausted and shell-shocked, black and white with red accents, cinematic',
+};
+
+let currentMoodKey = 'neutral';
+let prices = {};
+
+function getMoodKey(btcChange) {
+  if (btcChange > 10) return 'euphoria';
+  if (btcChange > 3)  return 'bull';
+  if (btcChange > -3) return 'neutral';
+  if (btcChange > -10) return 'bear';
+  return 'crash';
+}
+
+function fmtPrice(p, sym) {
+  if (sym === 'DOGE') return `$${p.toFixed(4)}`;
+  if (p > 1000) return `$${p.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  return `$${p.toFixed(2)}`;
+}
+
+function fmtChange(c) {
+  const sign = c >= 0 ? '+' : '';
+  return `${sign}${c.toFixed(2)}%`;
+}
+
+async function fetchPrices() {
+  const ids = COINS.map(c => c.id).join(',');
+  try {
+    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true`);
+    prices = await r.json();
+    renderBoard();
+    document.getElementById('last-update').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+  } catch (err) {
+    console.error('CoinGecko error:', err);
+  }
+}
+
+function renderBoard() {
+  const board = document.getElementById('ticker-board');
+  const btcChange = prices.bitcoin?.usd_24h_change || 0;
+  currentMoodKey = getMoodKey(btcChange);
+
+  board.innerHTML = COINS.map(coin => {
+    const d = prices[coin.id];
+    if (!d) return '';
+    const change = d.usd_24h_change || 0;
+    const positive = change >= 0;
+    const color = positive ? '#10b981' : '#ef4444';
+    const bg = positive ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)';
+    const mcap = d.usd_market_cap;
+    const mcapStr = mcap > 1e12 ? `$${(mcap/1e12).toFixed(2)}T` : mcap > 1e9 ? `$${(mcap/1e9).toFixed(0)}B` : `$${(mcap/1e6).toFixed(0)}M`;
+
+    return `
+      <div class="flex items-center px-5 py-4 gap-4 transition-colors" style="background:${bg}">
+        <div class="text-2xl w-10 text-center">${coin.emoji}</div>
+        <div class="flex-1">
+          <div class="font-bold text-white text-sm">${coin.name}</div>
+          <div class="text-slate-500 text-xs">${coin.symbol} · MCap ${mcapStr}</div>
+        </div>
+        <div class="text-right">
+          <div class="font-black text-white text-lg">${fmtPrice(d.usd, coin.symbol)}</div>
+          <div class="text-sm font-bold" style="color:${color}">
+            ${positive ? '▲' : '▼'} ${fmtChange(change)}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  updateMood();
+  renderSparkline(btcChange);
+}
+
+function updateMood() {
+  const mood = MOODS[currentMoodKey];
+  const quote = TORAH_QUOTES[currentMoodKey];
+
+  document.getElementById('mood-emoji').textContent = mood.emoji;
+  document.getElementById('mood-title').textContent = mood.title;
+  document.getElementById('mood-desc').textContent = mood.desc;
+  document.getElementById('torah-quote').textContent = quote.quote;
+  document.getElementById('torah-source').textContent = quote.note;
+
+  const badge = document.getElementById('market-mood-badge');
+  badge.textContent = mood.title;
+  badge.className = `px-3 py-1 rounded-full text-xs font-bold border`;
+  badge.style.color = mood.color;
+  badge.style.borderColor = mood.color + '40';
+  badge.style.background = mood.color + '15';
+  badge.classList.remove('hidden');
+
+  document.getElementById('gen-btn').disabled = false;
+}
+
+function renderSparkline(change) {
+  const bars = 24;
+  const spark = document.getElementById('btc-sparkline');
+  // Simulate a plausible 24h distribution based on final change
+  const values = Array.from({ length: bars }, (_, i) => {
+    const t = i / bars;
+    const noise = (Math.random() - 0.5) * 2;
+    return change * t + noise * Math.abs(change) * 0.5;
+  });
+  values.push(change);
+
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, -1);
+  const range = max - min || 1;
+
+  spark.innerHTML = values.map(v => {
+    const h = Math.max(4, ((v - min) / range) * 56);
+    const color = v >= 0 ? '#10b981' : '#ef4444';
+    return `<div class="flex-1 rounded-t" style="height:${h}px; background:${color}; opacity:0.7"></div>`;
+  }).join('');
+}
+
+async function generatePortrait() {
+  const prompt = FLUX_PROMPTS[currentMoodKey];
+  if (!prompt) return;
+
+  document.getElementById('portrait-idle').classList.add('hidden');
+  document.getElementById('portrait-result').classList.add('hidden');
+  document.getElementById('portrait-error').classList.add('hidden');
+  document.getElementById('portrait-loading').classList.remove('hidden');
+  document.getElementById('portrait-loading').classList.add('flex');
+  document.getElementById('gen-btn').disabled = true;
+
+  try {
+    const resp = await fetch('/api/flux-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Failed');
+
+    if (data.status === 'succeeded' && data.output) {
+      showPortrait(data.output);
+      return;
+    }
+
+    if (data.id) await pollPortrait(data.id);
+  } catch (err) {
+    document.getElementById('portrait-loading').classList.add('hidden');
+    document.getElementById('portrait-error').classList.remove('hidden');
+    document.getElementById('portrait-error').classList.add('flex');
+    document.getElementById('portrait-err-msg').textContent = err.message;
+  } finally {
+    document.getElementById('gen-btn').disabled = false;
+  }
+}
+
+async function pollPortrait(id) {
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2500));
+    try {
+      const r = await fetch(`/api/flux-poll?id=${id}`);
+      const d = await r.json();
+      if (d.status === 'succeeded' && d.output) { showPortrait(d.output); return; }
+      if (d.status === 'failed') throw new Error(d.error || 'Failed');
+    } catch (err) {
+      document.getElementById('portrait-loading').classList.add('hidden');
+      document.getElementById('portrait-error').classList.remove('hidden');
+      document.getElementById('portrait-error').classList.add('flex');
+      document.getElementById('portrait-err-msg').textContent = err.message;
+      return;
+    }
+  }
+}
+
+function showPortrait(output) {
+  const url = Array.isArray(output) ? output[0] : output;
+  document.getElementById('portrait-loading').classList.add('hidden');
+  document.getElementById('portrait-result').classList.remove('hidden');
+  document.getElementById('portrait-result').classList.add('flex');
+  document.getElementById('portrait-img').src = url;
+  document.getElementById('portrait-meta').textContent = `${MOODS[currentMoodKey].title} · ${new Date().toLocaleTimeString()}`;
+}
+
+document.getElementById('gen-btn').addEventListener('click', generatePortrait);
+window.generatePortrait = generatePortrait;
+
+fetchPrices();
+setInterval(fetchPrices, 30000);
+</script>
