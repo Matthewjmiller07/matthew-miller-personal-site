@@ -343,6 +343,26 @@ const pageDescription =
   .auth-bio { font-size: 0.93rem; line-height: 1.55; color: var(--crema-dim); margin: 0 0 0.5rem; }
   .auth-links { font-size: 0.82rem; margin: 0; }
   .auth-links a { color: var(--copper-bright) !important; border-bottom: 1px solid rgba(224,154,85,0.3) !important; }
+  /* Author in-collection */
+  .auth-collection { margin-top: 0.9rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem; }
+  .auth-coll-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--copper); margin: 0 0 0.45rem; font-weight: 600; }
+  .auth-sources-list { list-style: none; padding: 0; margin: 0 0 0.6rem; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .auth-src-link {
+    font-size: 0.78rem; padding: 0.2rem 0.55rem; border-radius: 20px;
+    background: rgba(200,127,61,0.12); border: 1px solid rgba(200,127,61,0.25);
+    color: var(--crema-dim) !important; border-bottom: none !important;
+    text-decoration: none; transition: background 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap; display: inline-block;
+  }
+  .auth-src-link:hover { background: rgba(200,127,61,0.22); border-color: rgba(200,127,61,0.5); color: var(--crema) !important; }
+  .auth-topics-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--copper); margin: 0.5rem 0 0.3rem; font-weight: 600; }
+  .auth-topic-tags { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .auth-topic-chip {
+    font-size: 0.74rem; padding: 0.15rem 0.45rem; border-radius: 4px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    color: var(--crema-dim);
+  }
+
   /* Source find links */
   .src-find-links { display: flex; gap: 0.65rem; margin-top: 0.5rem; flex-wrap: wrap; }
 
@@ -568,20 +588,62 @@ const pageDescription =
     draw();
   }
 
-  function renderAuthors(authors: any[]) {
+  function renderAuthors(authors: any[], allSources: any[], links: any[], topics: any[]) {
     const TRADITION_COLORS: Record<string, string> = {
       'Ashkenaz': 'rgba(100,140,200,0.18)',
       'Sephardic': 'rgba(180,120,60,0.18)',
       'Hasidic (Chabad)': 'rgba(160,100,180,0.18)',
     };
 
+    // Build lookup: source_id → topic IDs
+    const srcToTopicIds: Record<string, string[]> = {};
+    links.forEach((l: any) => {
+      if (!srcToTopicIds[l.source_id]) srcToTopicIds[l.source_id] = [];
+      srcToTopicIds[l.source_id].push(l.halacha_id);
+    });
+    const topicById: Record<string, any> = {};
+    topics.forEach((t: any) => { topicById[t.id] = t; });
+
     $('authors-list').innerHTML = authors
       .map((a) => {
         const bg = TRADITION_COLORS[a.tradition] || 'rgba(200,127,61,0.08)';
-        const links = [
+        const extLinks = [
           a.sefaria_url ? `<a href="${esc(a.sefaria_url)}" target="_blank" rel="noopener">Sefaria ↗</a>` : '',
           a.wikipedia_url ? `<a href="${esc(a.wikipedia_url)}" target="_blank" rel="noopener">Wikipedia ↗</a>` : '',
         ].filter(Boolean).join(' · ');
+
+        // Sources written by this author
+        const authorSources = allSources.filter((s: any) => s.author_id === a.id);
+
+        // Unique halachic topics those sources appear in
+        const topicIdSet = new Set<string>();
+        authorSources.forEach((s: any) => {
+          (srcToTopicIds[s.id] || []).forEach((tid) => topicIdSet.add(tid));
+        });
+        const authorTopics = [...topicIdSet]
+          .map((tid) => topicById[tid])
+          .filter(Boolean)
+          .filter((v, i, arr) => arr.findIndex((x) => x.topic === v.topic) === i)
+          .sort((a, b) => a.topic.localeCompare(b.topic));
+
+        // Sources section HTML
+        const sourcesHtml = authorSources.length
+          ? `<div class="auth-collection">
+              <p class="auth-coll-label">In this collection (${authorSources.length})</p>
+              <ul class="auth-sources-list">
+                ${authorSources.map((s: any) => {
+                  const href = s.url
+                    ? esc(s.url)
+                    : `https://www.sefaria.org/search?q=${encodeURIComponent(s.short_name)}`;
+                  return `<li><a href="${href}" target="_blank" rel="noopener" class="auth-src-link" title="${esc(s.full_name || s.short_name)}">${esc(s.short_name)}</a></li>`;
+                }).join('')}
+              </ul>
+              ${authorTopics.length ? `<p class="auth-topics-label">Topics</p><div class="auth-topic-tags">${
+                authorTopics.map((t: any) => `<span class="auth-topic-chip">${esc(t.topic)}</span>`).join('')
+              }</div>` : ''}
+            </div>`
+          : '';
+
         return `
         <article class="kava-author" style="background:${bg}">
           <div class="auth-header">
@@ -597,7 +659,8 @@ const pageDescription =
             ${a.country ? `<span class="kava-badge">${esc(a.country)}</span>` : ''}
           </div>
           ${a.bio ? `<p class="auth-bio">${esc(a.bio)}</p>` : ''}
-          ${links ? `<p class="auth-links">${links}</p>` : ''}
+          ${extLinks ? `<p class="auth-links">${extLinks}</p>` : ''}
+          ${sourcesHtml}
         </article>`;
       })
       .join('');
@@ -621,7 +684,7 @@ const pageDescription =
       renderSources(sources);
       renderFacts(facts);
       renderShiurim(shiurim);
-      renderAuthors(authors);
+      renderAuthors(authors, sources, links, topics);
 
       $('kava-loading').hidden = true;
       ['topics-section', 'sources-section', 'facts-section', 'shiurim-section', 'authors-section'].forEach(
