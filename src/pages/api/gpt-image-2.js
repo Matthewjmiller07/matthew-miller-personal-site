@@ -1,5 +1,7 @@
 export const prerender = false;
 
+const DEFAULT_INPUT_IMAGE_URL = 'https://i.imgur.com/vcb1nGz.png';
+
 function getToken() {
   return process.env.REPLICATE_API_TOKEN || import.meta.env?.REPLICATE_API_TOKEN || '';
 }
@@ -14,14 +16,17 @@ export async function POST({ request }) {
   const { prompt, inputImageUrl } = body;
   if (!prompt) return new Response(JSON.stringify({ error: 'prompt is required' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
 
+  const referenceImageUrl = inputImageUrl || DEFAULT_INPUT_IMAGE_URL;
+
   const input = {
     prompt,
     quality: 'low',
     aspect_ratio: '1:1',
     output_format: 'webp',
     output_compression: 85,
-    // Only pass input_images when user explicitly supplies an HTTP URL (base64 is rejected by the model)
-    ...(inputImageUrl ? { input_images: [inputImageUrl] } : {}),
+    // GPT Image 2 uses this image as Matthew's identity reference. A caller can
+    // still override it, but generations always receive a real HTTP image URL.
+    input_images: [referenceImageUrl],
   };
 
   try {
