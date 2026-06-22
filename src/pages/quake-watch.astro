@@ -1,0 +1,319 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Quake Watch"
+  description="Real-time global earthquake feed powered by USGS. Live seismic activity around the world."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <!-- Header -->
+    <div class="bg-gradient-to-b from-red-950/60 to-transparent px-4 py-10 text-center border-b border-red-900/30">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        <span class="text-red-400">⚡</span> Quake Watch
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        Live global seismic activity from the <a href="https://earthquake.usgs.gov" target="_blank" rel="noopener" class="text-red-400 hover:underline">USGS</a> real-time feed. Updates every 60 seconds.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-6 text-sm">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
+          <span class="text-slate-400">Live</span>
+        </div>
+        <div id="quake-count" class="text-slate-300 font-semibold">—</div>
+        <div id="last-update" class="text-slate-500 text-xs">—</div>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 border-b border-white/5">
+      <div class="p-4 text-center border-r border-white/5">
+        <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Largest (24h)</div>
+        <div id="stat-largest" class="text-2xl font-black text-red-400">—</div>
+      </div>
+      <div class="p-4 text-center border-r border-white/5">
+        <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Significant</div>
+        <div id="stat-significant" class="text-2xl font-black text-orange-400">—</div>
+      </div>
+      <div class="p-4 text-center border-r border-white/5">
+        <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Last hour</div>
+        <div id="stat-last-hour" class="text-2xl font-black text-yellow-400">—</div>
+      </div>
+      <div class="p-4 text-center">
+        <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Most active region</div>
+        <div id="stat-region" class="text-sm font-bold text-slate-300 leading-tight">—</div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-5 gap-8">
+
+      <!-- Left: world map (SVG dot overlay) -->
+      <div class="lg:col-span-3">
+        <div class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+          <div class="p-4 border-b border-white/10 flex items-center justify-between">
+            <h2 class="font-bold text-sm">Global Map (Past 24h)</h2>
+            <div class="flex gap-3 text-xs text-slate-500">
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span> M2–4</span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-400 inline-block"></span> M4–6</span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span> M6+</span>
+            </div>
+          </div>
+          <div class="relative bg-slate-900/80 aspect-[2/1]">
+            <!-- Simple equirectangular world map background -->
+            <svg id="quake-map" viewBox="0 0 720 360" class="w-full h-full" style="background:#0f172a">
+              <!-- Simplified continent outlines -->
+              <!-- North America -->
+              <path d="M 60 60 L 80 50 L 130 45 L 155 55 L 165 80 L 180 95 L 175 120 L 160 145 L 145 165 L 125 175 L 105 185 L 90 180 L 75 160 L 65 140 L 55 110 L 50 85 Z" fill="#1e2d3d" stroke="#2d4a5e" stroke-width="0.5"/>
+              <!-- Greenland -->
+              <path d="M 175 20 L 200 15 L 215 25 L 210 45 L 195 55 L 180 50 L 170 35 Z" fill="#1e2d3d" stroke="#2d4a5e" stroke-width="0.5"/>
+              <!-- South America -->
+              <path d="M 145 185 L 165 185 L 180 200 L 185 230 L 180 260 L 165 285 L 148 295 L 135 275 L 130 250 L 128 220 L 130 200 Z" fill="#1e2d3d" stroke="#2d4a5e" stroke-width="0.5"/>
+              <!-- Europe -->
+              <path d="M 320 40 L 345 35 L 365 45 L 375 60 L 360 75 L 340 80 L 325 90 L 315 85 L 310 70 L 315 55 Z" fill="#1e2d3d" stroke="#2d4a5e" stroke-width="0.5"/>
+              <!-- Africa -->
+              <path d="M 315 90 L 345 85 L 370 100 L 380 130 L 375 165 L 360 195 L 340 210 L 318 205 L 305 185 L 300 155 L 302 120 L 308 100 Z" fill="#1e2d3d" stroke="#2d4a5e" stroke-width="0.5"/>
+              <!-- Asia -->
+              <path d="M 365 45 L 420 35 L 480 40 L 530 50 L 570 55 L 590 70 L 575 95 L 540 110 L 505 120 L 480 130 L 450 135 L 420 125 L 390 115 L 370 100 L 360 75 Z" fill="#1e2d3d" stroke="#2d4a5e" stroke-width="0.5"/>
+              <!-- Southeast Asia -->
+              <path d="M 505 120 L 540 115 L 565 130 L 570 150 L 550 160 L 525 155 L 510 140 Z" fill="#1e2d3d" stroke="#2d4a5e" stroke-width="0.5"/>
+              <!-- Australia -->
+              <path d="M 530 205 L 570 195 L 610 200 L 630 220 L 625 250 L 600 265 L 565 260 L 540 245 L 525 225 Z" fill="#1e2d3d" stroke="#2d4a5e" stroke-width="0.5"/>
+              <!-- Antarctica hint -->
+              <rect x="50" y="330" width="620" height="20" rx="2" fill="#1a2840" opacity="0.5"/>
+
+              <!-- Grid lines -->
+              <line x1="0" y1="180" x2="720" y2="180" stroke="#ffffff08" stroke-width="0.5"/>
+              <line x1="360" y1="0" x2="360" y2="360" stroke="#ffffff08" stroke-width="0.5"/>
+
+              <!-- Quake dots will be injected here -->
+              <g id="quake-dots"></g>
+            </svg>
+            <div id="map-tooltip" class="hidden absolute z-10 bg-slate-900 border border-white/20 rounded-lg p-3 text-xs pointer-events-none max-w-48 shadow-xl"></div>
+          </div>
+        </div>
+
+        <!-- Magnitude histogram -->
+        <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Magnitude Distribution (24h)</h3>
+          <div id="mag-chart" class="flex items-end gap-1 h-16"></div>
+          <div class="flex justify-between text-xs text-slate-600 mt-1">
+            <span>M0</span><span>M1</span><span>M2</span><span>M3</span><span>M4</span>
+            <span>M5</span><span>M6</span><span>M7</span><span>M8+</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: live feed -->
+      <div class="lg:col-span-2">
+        <div class="rounded-2xl border border-white/10 bg-white/5 h-full flex flex-col">
+          <div class="p-4 border-b border-white/10 flex items-center justify-between">
+            <h2 class="font-bold text-sm">Recent Activity</h2>
+            <select id="mag-filter" class="bg-slate-800 border border-white/10 rounded-lg text-xs px-2 py-1 text-slate-300">
+              <option value="0">All magnitudes</option>
+              <option value="2">M2+</option>
+              <option value="3">M3+</option>
+              <option value="4">M4+</option>
+              <option value="5">M5+</option>
+            </select>
+          </div>
+          <div id="quake-list" class="flex-1 overflow-y-auto divide-y divide-white/5 max-h-[600px]">
+            <div class="p-8 text-center text-slate-500">
+              <div class="text-3xl mb-2 animate-pulse">🌍</div>
+              Loading seismic data…
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data source: <a href="https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php" target="_blank" class="hover:text-slate-500 underline">USGS Earthquake Hazards Program</a> ·
+      Part of <a href="https://github.com/bytewax/awesome-public-real-time-datasets" target="_blank" class="hover:text-slate-500 underline">awesome-public-real-time-datasets</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+let allQuakes = [];
+let minMag = 0;
+
+const MAG_COLORS = (m) => {
+  if (m >= 6) return '#ef4444';
+  if (m >= 5) return '#f97316';
+  if (m >= 4) return '#f59e0b';
+  if (m >= 3) return '#84cc16';
+  return '#22d3ee';
+};
+
+const MAG_SIZE = (m) => Math.max(3, m * 3);
+
+function lonLatToSvg(lon, lat) {
+  const x = ((lon + 180) / 360) * 720;
+  const y = ((90 - lat) / 180) * 360;
+  return { x, y };
+}
+
+function timeSince(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+function regionFromPlace(place) {
+  return place?.split(' of ').pop()?.trim() || place || 'Unknown';
+}
+
+async function fetchQuakes() {
+  const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
+  const resp = await fetch(url);
+  const data = await resp.json();
+  allQuakes = data.features.map(f => ({
+    id: f.id,
+    mag: f.properties.mag,
+    place: f.properties.place,
+    time: f.properties.time,
+    lat: f.geometry.coordinates[1],
+    lon: f.geometry.coordinates[0],
+    depth: f.geometry.coordinates[2],
+    url: f.properties.url,
+  })).filter(q => q.mag !== null);
+
+  renderAll();
+  document.getElementById('last-update').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+}
+
+function renderAll() {
+  const filtered = allQuakes.filter(q => q.mag >= minMag);
+
+  // Stats
+  const largest = allQuakes.reduce((a, b) => b.mag > a.mag ? b : a, allQuakes[0]);
+  const significant = allQuakes.filter(q => q.mag >= 5).length;
+  const lastHour = allQuakes.filter(q => Date.now() - q.time < 3600000).length;
+
+  document.getElementById('quake-count').textContent = `${allQuakes.length} earthquakes in last 24h`;
+  document.getElementById('stat-largest').textContent = largest ? `M${largest.mag.toFixed(1)}` : '—';
+  document.getElementById('stat-significant').textContent = significant;
+  document.getElementById('stat-last-hour').textContent = lastHour;
+
+  // Most active region
+  const regionCounts = {};
+  allQuakes.forEach(q => {
+    const r = regionFromPlace(q.place);
+    regionCounts[r] = (regionCounts[r] || 0) + 1;
+  });
+  const topRegion = Object.entries(regionCounts).sort((a, b) => b[1] - a[1])[0];
+  document.getElementById('stat-region').textContent = topRegion ? `${topRegion[0]} (${topRegion[1]})` : '—';
+
+  renderMap(filtered);
+  renderList(filtered);
+  renderHistogram();
+}
+
+function renderMap(quakes) {
+  const g = document.getElementById('quake-dots');
+  const tooltip = document.getElementById('map-tooltip');
+  const mapEl = document.getElementById('quake-map');
+
+  g.innerHTML = quakes.map(q => {
+    const { x, y } = lonLatToSvg(q.lon, q.lat);
+    const r = MAG_SIZE(q.mag);
+    const color = MAG_COLORS(q.mag);
+    const isNew = Date.now() - q.time < 3600000;
+    return `<circle
+      cx="${x.toFixed(1)}"
+      cy="${y.toFixed(1)}"
+      r="${r}"
+      fill="${color}"
+      opacity="${q.mag >= 5 ? '0.9' : '0.6'}"
+      class="quake-dot cursor-pointer hover:opacity-100"
+      data-mag="${q.mag}"
+      data-place="${q.place?.replace(/"/g, '&quot;')}"
+      data-time="${q.time}"
+      data-depth="${q.depth}"
+      ${isNew ? `stroke="${color}" stroke-width="2" stroke-opacity="0.5"` : ''}
+    />`;
+  }).join('');
+
+  g.querySelectorAll('.quake-dot').forEach(dot => {
+    dot.addEventListener('mouseenter', (e) => {
+      const rect = mapEl.getBoundingClientRect();
+      const svgRect = mapEl.viewBox.baseVal;
+      const scaleX = rect.width / svgRect.width;
+      const scaleY = rect.height / svgRect.height;
+      const cx = parseFloat(dot.getAttribute('cx')) * scaleX;
+      const cy = parseFloat(dot.getAttribute('cy')) * scaleY;
+
+      tooltip.innerHTML = `
+        <div class="font-bold text-white mb-0.5">M${parseFloat(dot.dataset.mag).toFixed(1)}</div>
+        <div class="text-slate-300">${dot.dataset.place}</div>
+        <div class="text-slate-500 mt-1">Depth: ${parseFloat(dot.dataset.depth).toFixed(0)}km · ${timeSince(parseInt(dot.dataset.time))}</div>
+      `;
+      tooltip.style.left = `${Math.min(cx + 8, rect.width - 200)}px`;
+      tooltip.style.top = `${Math.max(0, cy - 60)}px`;
+      tooltip.classList.remove('hidden');
+    });
+    dot.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
+    dot.addEventListener('click', () => {
+      const q = allQuakes.find(q => Math.abs(q.mag - parseFloat(dot.dataset.mag)) < 0.01 && q.place === dot.dataset.place);
+      if (q?.url) window.open(q.url, '_blank');
+    });
+  });
+}
+
+function renderList(quakes) {
+  const list = document.getElementById('quake-list');
+  if (quakes.length === 0) {
+    list.innerHTML = '<div class="p-8 text-center text-slate-500">No earthquakes above the selected threshold</div>';
+    return;
+  }
+
+  list.innerHTML = quakes.slice(0, 60).map(q => {
+    const color = MAG_COLORS(q.mag);
+    const isNew = Date.now() - q.time < 1800000;
+    return `
+      <a href="${q.url}" target="_blank" rel="noopener" class="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors group">
+        <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-black text-sm" style="background:${color}22; color:${color}; border: 1px solid ${color}44">
+          ${q.mag.toFixed(1)}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-white text-xs font-medium truncate group-hover:text-cyan-300 transition-colors">
+            ${q.place || 'Unknown location'}
+          </div>
+          <div class="text-slate-500 text-xs mt-0.5">${timeSince(q.time)} · Depth ${q.depth.toFixed(0)}km</div>
+        </div>
+        ${isNew ? '<span class="flex-shrink-0 text-xs bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full">New</span>' : ''}
+      </a>
+    `;
+  }).join('');
+}
+
+function renderHistogram() {
+  const bins = new Array(9).fill(0);
+  allQuakes.forEach(q => {
+    const bin = Math.min(Math.floor(q.mag), 8);
+    if (bin >= 0) bins[bin]++;
+  });
+
+  const max = Math.max(...bins, 1);
+  const colors = ['#22d3ee','#22d3ee','#22d3ee','#84cc16','#f59e0b','#f97316','#ef4444','#dc2626','#991b1b'];
+  const chart = document.getElementById('mag-chart');
+  chart.innerHTML = bins.map((count, i) => `
+    <div class="flex-1 flex flex-col items-center gap-1">
+      <div class="text-xs text-slate-500" style="font-size:9px">${count > 0 ? count : ''}</div>
+      <div class="w-full rounded-t transition-all duration-500" style="height:${Math.max(2, (count / max) * 48)}px; background:${colors[i]}; opacity:${count > 0 ? '1' : '0.2'}"></div>
+    </div>
+  `).join('');
+}
+
+document.getElementById('mag-filter').addEventListener('change', (e) => {
+  minMag = parseFloat(e.target.value);
+  renderAll();
+});
+
+fetchQuakes();
+setInterval(fetchQuakes, 60000);
+</script>

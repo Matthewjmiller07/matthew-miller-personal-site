@@ -1,0 +1,359 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Weather Avatar"
+  description="Real-time weather meets AI portrait generation. See Matthew rendered in today's conditions using FLUX."
+>
+  <main class="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white px-4 py-12">
+    <div class="max-w-5xl mx-auto">
+
+      <header class="text-center mb-12">
+        <h1 class="text-5xl font-black tracking-tight mb-3 bg-gradient-to-r from-sky-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">
+          Weather Avatar
+        </h1>
+        <p class="text-slate-400 text-lg max-w-xl mx-auto">
+          Real-time weather + FLUX AI. Every generation is shaped by what's actually happening outside right now.
+        </p>
+      </header>
+
+      <!-- Location bar -->
+      <div id="location-bar" class="flex items-center justify-center gap-3 mb-10 text-slate-400 text-sm">
+        <span id="loc-icon" class="text-xl animate-pulse">📍</span>
+        <span id="loc-text">Detecting your location…</span>
+        <button id="refresh-btn" class="hidden ml-4 px-3 py-1 rounded-full bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 text-xs transition-colors" onclick="startAll()">
+          ↻ Refresh
+        </button>
+      </div>
+
+      <!-- Main grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+
+        <!-- Left: weather card -->
+        <div id="weather-card" class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-6 min-h-[320px] flex flex-col justify-between opacity-0 transition-opacity duration-500">
+          <div>
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <div id="weather-city" class="text-slate-300 text-sm font-medium mb-1">—</div>
+                <div id="weather-desc" class="text-3xl font-bold text-white">—</div>
+              </div>
+              <div id="weather-icon" class="text-7xl leading-none select-none">🌤</div>
+            </div>
+            <div id="weather-temp" class="text-6xl font-black text-sky-400 mb-6">—</div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3 text-center">
+            <div class="rounded-xl bg-white/5 p-3">
+              <div class="text-slate-400 text-xs mb-1">Humidity</div>
+              <div id="w-humidity" class="text-white font-bold text-lg">—</div>
+            </div>
+            <div class="rounded-xl bg-white/5 p-3">
+              <div class="text-slate-400 text-xs mb-1">Wind</div>
+              <div id="w-wind" class="text-white font-bold text-lg">—</div>
+            </div>
+            <div class="rounded-xl bg-white/5 p-3">
+              <div class="text-slate-400 text-xs mb-1">Feels like</div>
+              <div id="w-feels" class="text-white font-bold text-lg">—</div>
+            </div>
+          </div>
+
+          <!-- Prompt preview -->
+          <div class="mt-5 p-3 rounded-xl bg-sky-950/50 border border-sky-800/40">
+            <div class="text-sky-400 text-xs font-semibold mb-1 uppercase tracking-wider">FLUX Prompt</div>
+            <div id="prompt-preview" class="text-slate-300 text-xs leading-relaxed italic">—</div>
+          </div>
+
+          <button id="generate-btn"
+            class="mt-5 w-full py-3 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-500 hover:to-cyan-500 text-white font-bold text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled
+          >
+            Generate Portrait
+          </button>
+        </div>
+
+        <!-- Right: image panel -->
+        <div class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur overflow-hidden min-h-[420px] flex flex-col items-center justify-center relative">
+
+          <!-- Idle state -->
+          <div id="img-idle" class="flex flex-col items-center gap-4 text-slate-500 p-8 text-center">
+            <div class="text-6xl">🎨</div>
+            <div class="text-sm leading-relaxed">
+              Once weather loads, hit <strong class="text-slate-300">Generate Portrait</strong> to see yourself through today's forecast.
+            </div>
+          </div>
+
+          <!-- Loading state -->
+          <div id="img-loading" class="hidden flex-col items-center gap-6 p-8">
+            <div class="relative w-24 h-24">
+              <div class="absolute inset-0 rounded-full border-4 border-sky-500/20"></div>
+              <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-sky-400 animate-spin"></div>
+              <div class="absolute inset-2 rounded-full border-4 border-transparent border-t-cyan-400 animate-spin" style="animation-duration:1.5s; animation-direction:reverse"></div>
+            </div>
+            <div class="text-center">
+              <div class="text-white font-semibold mb-1">Generating…</div>
+              <div id="loading-status" class="text-slate-400 text-sm">Sending to FLUX</div>
+            </div>
+            <div class="w-48 bg-slate-800 rounded-full h-1.5">
+              <div id="progress-bar" class="bg-gradient-to-r from-sky-500 to-cyan-500 h-1.5 rounded-full transition-all duration-500" style="width:5%"></div>
+            </div>
+          </div>
+
+          <!-- Result state -->
+          <div id="img-result" class="hidden w-full">
+            <img id="result-img" src="" alt="AI weather portrait" class="w-full object-cover rounded-2xl" />
+            <div class="p-4 flex justify-between items-center">
+              <div id="result-meta" class="text-slate-400 text-xs"></div>
+              <button onclick="generate()" class="text-xs px-3 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 transition-colors">
+                ↻ Regenerate
+              </button>
+            </div>
+          </div>
+
+          <!-- Error state -->
+          <div id="img-error" class="hidden flex-col items-center gap-4 p-8 text-center">
+            <div class="text-4xl">⚠️</div>
+            <div id="error-msg" class="text-red-400 text-sm"></div>
+            <button onclick="generate()" class="text-xs px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 transition-colors">
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- History strip -->
+      <div id="history-section" class="mt-10 hidden">
+        <h2 class="text-slate-400 text-xs uppercase tracking-widest mb-4 font-semibold">Previous Generations This Session</h2>
+        <div id="history-grid" class="grid grid-cols-3 sm:grid-cols-5 gap-3"></div>
+      </div>
+
+      <!-- Data source credit -->
+      <p class="text-center text-slate-600 text-xs mt-12">
+        Weather from <a href="https://open-meteo.com" target="_blank" rel="noopener" class="hover:text-slate-400 underline">Open-Meteo</a> ·
+        Images via <a href="https://replicate.com/black-forest-labs/flux-2-klein-4b" target="_blank" rel="noopener" class="hover:text-slate-400 underline">FLUX 2 Klein 4B</a> ·
+        Inspired by <a href="https://github.com/bytewax/awesome-public-real-time-datasets" target="_blank" rel="noopener" class="hover:text-slate-400 underline">Real-time datasets</a>
+      </p>
+    </div>
+  </main>
+</Layout>
+
+<script>
+const WMO_CODES = {
+  0:  { label: 'Clear sky',         emoji: '☀️',  mood: 'sunny' },
+  1:  { label: 'Mainly clear',      emoji: '🌤️', mood: 'pleasant' },
+  2:  { label: 'Partly cloudy',     emoji: '⛅',  mood: 'cloudy' },
+  3:  { label: 'Overcast',          emoji: '☁️',  mood: 'overcast' },
+  45: { label: 'Foggy',             emoji: '🌫️', mood: 'foggy' },
+  48: { label: 'Rime fog',          emoji: '🌫️', mood: 'foggy' },
+  51: { label: 'Light drizzle',     emoji: '🌦️', mood: 'drizzle' },
+  53: { label: 'Drizzle',           emoji: '🌦️', mood: 'drizzle' },
+  55: { label: 'Heavy drizzle',     emoji: '🌧️', mood: 'rain' },
+  61: { label: 'Light rain',        emoji: '🌧️', mood: 'rain' },
+  63: { label: 'Rain',              emoji: '🌧️', mood: 'rain' },
+  65: { label: 'Heavy rain',        emoji: '🌧️', mood: 'heavy_rain' },
+  71: { label: 'Light snow',        emoji: '🌨️', mood: 'snow' },
+  73: { label: 'Snow',              emoji: '❄️',  mood: 'snow' },
+  75: { label: 'Heavy snow',        emoji: '🌨️', mood: 'blizzard' },
+  80: { label: 'Rain showers',      emoji: '🌦️', mood: 'rain' },
+  81: { label: 'Heavy showers',     emoji: '🌧️', mood: 'heavy_rain' },
+  95: { label: 'Thunderstorm',      emoji: '⛈️',  mood: 'storm' },
+  96: { label: 'Storm w/ hail',     emoji: '⛈️',  mood: 'storm' },
+  99: { label: 'Storm w/ hail',     emoji: '⛈️',  mood: 'storm' },
+};
+
+const MOOD_PROMPTS = {
+  sunny:      'on a bright sunny day in a vibrant city park, golden hour light, long shadows, summer warmth, cheerful expression, colorful pineapple shirt, cinematic',
+  pleasant:   'on a perfect spring afternoon outdoors, dappled light through tree leaves, relaxed and happy, light breeze, botanical garden setting',
+  cloudy:     'under dramatic overcast skies on a city rooftop, moody diffused light, urban backdrop, thoughtful expression',
+  overcast:   'on a grey overcast afternoon walking through a quiet urban street, moody and contemplative, cool tones, cinematic wide shot',
+  foggy:      'standing in dense morning fog in a forest, ethereal and mysterious atmosphere, soft light filtering through mist, dramatic composition',
+  drizzle:    'in a light drizzle on a European cobblestone street, small coffee in hand, slightly damp hair, cozy café behind, warm amber window glow',
+  rain:       'caught in steady rain on a city street, drops on glasses, slightly damp, dramatic reflections on wet pavement, neon lights reflected',
+  heavy_rain: 'in a downpour running through an empty street, soaked, laughing, dramatic cinematic rain, splashing puddles, motion blur',
+  snow:       'in a snowy city park, soft snowflakes falling, bundled up in a dark coat and scarf, breath visible in cold air, peaceful winter scene',
+  blizzard:   'in a full blizzard, wind-blown snow, heavy winter gear, squinting into the storm, dramatic low contrast, intense atmosphere',
+  storm:      'under a dramatic stormy sky with lightning in the distance, standing at a clifftop overlook, powerful atmosphere, dark moody cinematic',
+};
+
+let weatherData = null;
+let currentPrompt = '';
+let history = [];
+
+function el(id) { return document.getElementById(id); }
+
+function showImgState(state) {
+  ['idle', 'loading', 'result', 'error'].forEach(s => {
+    const e = el(`img-${s}`);
+    if (e) {
+      e.classList.toggle('hidden', s !== state);
+      e.classList.toggle('flex', s === state);
+    }
+  });
+}
+
+function buildPrompt(weather) {
+  const wmo = WMO_CODES[weather.code] || WMO_CODES[0];
+  const mood = MOOD_PROMPTS[wmo.mood] || MOOD_PROMPTS.pleasant;
+  const tempDesc = weather.temp > 30 ? 'sweltering heat' : weather.temp > 20 ? 'warm weather' : weather.temp > 10 ? 'mild conditions' : weather.temp > 0 ? 'cold weather' : 'freezing cold';
+
+  return `Portrait of a man with dark wavy hair, round tortoiseshell glasses, warm smile, ${mood}, in ${tempDesc} (${Math.round(weather.temp)}°C), photorealistic, professional photography, sharp focus, high detail`;
+}
+
+async function loadWeather(lat, lon, cityName) {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`;
+  const resp = await fetch(url);
+  const data = await resp.json();
+  const c = data.current;
+
+  weatherData = {
+    temp: c.temperature_2m,
+    feels: c.apparent_temperature,
+    humidity: c.relative_humidity_2m,
+    wind: c.wind_speed_10m,
+    code: c.weather_code,
+  };
+
+  const wmo = WMO_CODES[c.weather_code] || { label: 'Unknown', emoji: '🌡️' };
+
+  el('weather-city').textContent = cityName;
+  el('weather-desc').textContent = wmo.label;
+  el('weather-icon').textContent = wmo.emoji;
+  el('weather-temp').textContent = `${Math.round(c.temperature_2m)}°C`;
+  el('w-humidity').textContent = `${c.relative_humidity_2m}%`;
+  el('w-wind').textContent = `${Math.round(c.wind_speed_10m)} km/h`;
+  el('w-feels').textContent = `${Math.round(c.apparent_temperature)}°C`;
+
+  currentPrompt = buildPrompt(weatherData);
+  el('prompt-preview').textContent = currentPrompt;
+
+  el('weather-card').style.opacity = '1';
+  el('generate-btn').disabled = false;
+  el('refresh-btn').classList.remove('hidden');
+}
+
+async function reversGeocode(lat, lon) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+    const d = await r.json();
+    return d.address?.city || d.address?.town || d.address?.village || d.address?.county || `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  } catch {
+    return `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  }
+}
+
+async function startAll() {
+  el('loc-text').textContent = 'Detecting your location…';
+  el('loc-icon').textContent = '📍';
+  el('weather-card').style.opacity = '0';
+  el('generate-btn').disabled = true;
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      el('loc-icon').textContent = '📍';
+      el('loc-text').textContent = 'Fetching weather…';
+      const city = await reversGeocode(lat, lon);
+      el('loc-text').textContent = city;
+      await loadWeather(lat, lon, city);
+    },
+    async () => {
+      // Default to Chicago
+      el('loc-icon').textContent = '📍';
+      el('loc-text').textContent = 'Chicago, IL (default)';
+      await loadWeather(41.8781, -87.6298, 'Chicago, IL');
+    }
+  );
+}
+
+async function generate() {
+  if (!currentPrompt) return;
+
+  showImgState('loading');
+  el('generate-btn').disabled = true;
+  el('loading-status').textContent = 'Sending to FLUX…';
+  el('progress-bar').style.width = '10%';
+
+  try {
+    const resp = await fetch('/api/flux-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: currentPrompt }),
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Generation failed');
+
+    el('progress-bar').style.width = '30%';
+    el('loading-status').textContent = `Prediction ${data.status}…`;
+
+    if (data.status === 'succeeded' && data.output) {
+      showResult(data.output, data.id);
+    } else if (data.status === 'failed') {
+      throw new Error(data.error || 'Prediction failed');
+    } else {
+      await pollPrediction(data.id);
+    }
+  } catch (err) {
+    el('img-error').classList.remove('hidden');
+    el('img-error').classList.add('flex');
+    el('img-loading').classList.add('hidden');
+    el('img-loading').classList.remove('flex');
+    el('error-msg').textContent = err.message;
+  } finally {
+    el('generate-btn').disabled = false;
+  }
+}
+
+async function pollPrediction(id) {
+  let progress = 30;
+  const interval = setInterval(async () => {
+    try {
+      const r = await fetch(`/api/flux-poll?id=${id}`);
+      const d = await r.json();
+
+      progress = Math.min(progress + 8, 90);
+      el('progress-bar').style.width = `${progress}%`;
+      el('loading-status').textContent = d.status === 'processing' ? 'Processing…' : d.status;
+
+      if (d.status === 'succeeded' && d.output) {
+        clearInterval(interval);
+        showResult(d.output, id);
+      } else if (d.status === 'failed' || d.status === 'canceled') {
+        clearInterval(interval);
+        showImgState('error');
+        el('error-msg').textContent = d.error || 'Generation failed';
+        el('generate-btn').disabled = false;
+      }
+    } catch {
+      clearInterval(interval);
+    }
+  }, 2000);
+}
+
+function showResult(output, id) {
+  const url = Array.isArray(output) ? output[0] : output;
+  el('progress-bar').style.width = '100%';
+
+  setTimeout(() => {
+    el('result-img').src = url;
+    el('result-meta').textContent = `Generated ${new Date().toLocaleTimeString()}`;
+    showImgState('result');
+
+    history.unshift({ url, prompt: currentPrompt, time: new Date() });
+    renderHistory();
+  }, 400);
+}
+
+function renderHistory() {
+  if (history.length === 0) return;
+  el('history-section').classList.remove('hidden');
+  el('history-grid').innerHTML = history.slice(0, 5).map(h => `
+    <div class="rounded-xl overflow-hidden border border-white/10 aspect-square cursor-pointer hover:border-sky-500 transition-colors group" onclick="window.open('${h.url}','_blank')">
+      <img src="${h.url}" alt="past generation" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+    </div>
+  `).join('');
+}
+
+el('generate-btn').addEventListener('click', generate);
+startAll();
+</script>

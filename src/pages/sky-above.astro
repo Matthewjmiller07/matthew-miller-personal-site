@@ -1,0 +1,424 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Sky Above"
+  description="Real-time flights overhead using OpenSky Network. Watch the planes above you right now."
+>
+  <main class="min-h-screen bg-slate-950 text-white overflow-x-hidden">
+
+    <div class="bg-gradient-to-b from-indigo-950/60 to-transparent px-4 py-10 text-center border-b border-indigo-900/30">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        <span>✈️</span> Sky Above
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        Live aircraft tracked by the <a href="https://opensky-network.org" target="_blank" rel="noopener" class="text-indigo-400 hover:underline">OpenSky Network</a>. Watch what's flying overhead in real time.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-6 text-sm flex-wrap">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
+          <span class="text-slate-400">Live · updates every 30s</span>
+        </div>
+        <div id="plane-count" class="text-slate-300 font-semibold">—</div>
+      </div>
+    </div>
+
+    <!-- Location + radius controls -->
+    <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center gap-4 text-sm">
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">📍</span>
+        <span id="loc-label" class="text-slate-300">Detecting location…</span>
+      </div>
+      <div class="flex items-center gap-2 ml-auto">
+        <label class="text-slate-400 text-xs">Radius:</label>
+        <select id="radius-select" class="bg-slate-800 border border-white/10 rounded-lg text-xs px-2 py-1 text-slate-300">
+          <option value="1.5">~170km</option>
+          <option value="2.5" selected>~280km</option>
+          <option value="4">~440km</option>
+        </select>
+        <button id="refresh-btn" class="px-3 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-xs transition-colors">
+          ↻ Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="max-w-6xl mx-auto px-4 pb-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+        <div class="text-xs text-slate-500 mb-1">Highest</div>
+        <div id="stat-highest" class="text-xl font-black text-indigo-400">—</div>
+      </div>
+      <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+        <div class="text-xs text-slate-500 mb-1">Fastest</div>
+        <div id="stat-fastest" class="text-xl font-black text-cyan-400">—</div>
+      </div>
+      <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+        <div class="text-xs text-slate-500 mb-1">On ground</div>
+        <div id="stat-ground" class="text-xl font-black text-green-400">—</div>
+      </div>
+      <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+        <div class="text-xs text-slate-500 mb-1">Countries</div>
+        <div id="stat-countries" class="text-xl font-black text-yellow-400">—</div>
+      </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="max-w-6xl mx-auto px-4 pb-12 grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+      <!-- Radar / map -->
+      <div class="lg:col-span-3">
+        <div class="rounded-2xl border border-white/10 bg-slate-900/80 overflow-hidden">
+          <div class="p-4 border-b border-white/10">
+            <h2 class="font-bold text-sm text-slate-300">Radar View</h2>
+          </div>
+          <div class="relative aspect-square">
+            <canvas id="radar-canvas" class="w-full h-full block"></canvas>
+            <div id="radar-tooltip" class="hidden absolute z-10 bg-slate-900 border border-white/20 rounded-lg p-3 text-xs pointer-events-none max-w-52 shadow-xl"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Flight list -->
+      <div class="lg:col-span-2">
+        <div class="rounded-2xl border border-white/10 bg-white/5 flex flex-col">
+          <div class="p-4 border-b border-white/10 flex items-center justify-between">
+            <h2 class="font-bold text-sm">Flights Overhead</h2>
+            <div id="list-count" class="text-xs text-slate-500">—</div>
+          </div>
+          <div id="flight-list" class="overflow-y-auto max-h-[500px] divide-y divide-white/5">
+            <div class="p-8 text-center text-slate-500">
+              <div class="text-3xl mb-2 animate-pulse">✈️</div>
+              Scanning the skies…
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data source: <a href="https://opensky-network.org" target="_blank" class="hover:text-slate-500 underline">OpenSky Network</a> ·
+      Part of <a href="https://github.com/bytewax/awesome-public-real-time-datasets" target="_blank" class="hover:text-slate-500 underline">awesome-public-real-time-datasets</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+let userLat = 41.8781;
+let userLon = -87.6298;
+let flights = [];
+let selectedFlight = null;
+let radiusDeg = 2.5;
+let animFrame;
+
+const canvas = document.getElementById('radar-canvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  const size = canvas.offsetWidth;
+  canvas.width = size;
+  canvas.height = size;
+  drawRadar();
+}
+
+function metersToFeet(m) { return Math.round(m * 3.281); }
+function msToKnots(ms) { return Math.round(ms * 1.944); }
+
+function hdgToArrow(hdg) {
+  if (hdg === null || hdg === undefined) return '→';
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  return dirs[Math.round(hdg / 45) % 8];
+}
+
+function countryFlag(icao) {
+  const code = icao?.slice(0, 2).toUpperCase();
+  const map = { 'AA': '🇺🇸', 'N': '🇺🇸', 'C': '🇨🇦', 'G': '🇬🇧', 'D': '🇩🇪', 'F': '🇫🇷', 'E': '🇸🇪', 'J': '🇯🇵', 'B': '🇨🇳', 'VH': '🇦🇺', 'PH': '🇳🇱' };
+  return map[code] || '✈️';
+}
+
+function drawRadar() {
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
+  const maxR = Math.min(w, h) / 2 - 10;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Background
+  ctx.fillStyle = '#0a0f1e';
+  ctx.fillRect(0, 0, w, h);
+
+  // Range rings
+  [0.25, 0.5, 0.75, 1].forEach(frac => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, maxR * frac, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(99,102,241,0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const label = `${Math.round(frac * radiusDeg * 111)}km`;
+    ctx.fillStyle = 'rgba(148,163,184,0.4)';
+    ctx.font = '9px monospace';
+    ctx.fillText(label, cx + maxR * frac + 3, cy - 3);
+  });
+
+  // Cross hairs
+  ctx.strokeStyle = 'rgba(99,102,241,0.12)';
+  ctx.lineWidth = 0.5;
+  ctx.setLineDash([3, 6]);
+  ctx.beginPath(); ctx.moveTo(cx, cy - maxR); ctx.lineTo(cx, cy + maxR); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - maxR, cy); ctx.lineTo(cx + maxR, cy); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Compass labels
+  ctx.fillStyle = 'rgba(148,163,184,0.5)';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('N', cx, cy - maxR - 4);
+  ctx.fillText('S', cx, cy + maxR + 12);
+  ctx.textAlign = 'right';
+  ctx.fillText('W', cx - maxR - 4, cy + 4);
+  ctx.textAlign = 'left';
+  ctx.fillText('E', cx + maxR + 4, cy + 4);
+  ctx.textAlign = 'center';
+
+  // Center dot (you)
+  ctx.beginPath();
+  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#4ade80';
+  ctx.fill();
+  ctx.fillStyle = 'rgba(74,222,128,0.3)';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Flights
+  flights.forEach(f => {
+    const dLat = f.latitude - userLat;
+    const dLon = f.longitude - userLon;
+    const normX = dLon / radiusDeg;
+    const normY = -dLat / radiusDeg;
+
+    if (Math.abs(normX) > 1 || Math.abs(normY) > 1) return;
+
+    const px = cx + normX * maxR;
+    const py = cy + normY * maxR;
+
+    const isSelected = selectedFlight?.icao24 === f.icao24;
+    const isGround = f.on_ground;
+    const alt = f.baro_altitude || 0;
+
+    // Color by altitude
+    let color = '#6366f1';
+    if (isGround) color = '#22c55e';
+    else if (alt > 10000) color = '#60a5fa';
+    else if (alt > 5000) color = '#a78bfa';
+    else color = '#f59e0b';
+
+    // Glow for selected
+    if (isSelected) {
+      ctx.beginPath();
+      ctx.arc(px, py, 12, 0, Math.PI * 2);
+      ctx.fillStyle = color + '33';
+      ctx.fill();
+    }
+
+    // Draw plane as triangle pointing in heading direction
+    const hdg = (f.true_track || 0) * Math.PI / 180;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(hdg);
+    ctx.beginPath();
+    ctx.moveTo(0, -6);
+    ctx.lineTo(4, 5);
+    ctx.lineTo(0, 3);
+    ctx.lineTo(-4, 5);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+
+    // Callsign label for significant flights
+    if (isSelected || f.callsign) {
+      ctx.fillStyle = isSelected ? '#fff' : 'rgba(148,163,184,0.7)';
+      ctx.font = isSelected ? 'bold 10px monospace' : '8px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(f.callsign?.trim() || f.icao24, px + 7, py - 3);
+      ctx.textAlign = 'center';
+    }
+  });
+}
+
+async function fetchFlights() {
+  const lat = userLat;
+  const lon = userLon;
+  const r = radiusDeg;
+  const url = `https://opensky-network.org/api/states/all?lamin=${lat - r}&lamax=${lat + r}&lomin=${lon - r}&lomax=${lon + r}`;
+
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+
+    flights = (data.states || []).map(s => ({
+      icao24: s[0],
+      callsign: s[1]?.trim(),
+      origin_country: s[2],
+      longitude: s[5],
+      latitude: s[6],
+      baro_altitude: s[7],
+      on_ground: s[8],
+      velocity: s[9],
+      true_track: s[10],
+      vertical_rate: s[11],
+    })).filter(f => f.latitude && f.longitude);
+
+    updateStats();
+    renderList();
+    drawRadar();
+    document.getElementById('plane-count').textContent = `${flights.length} aircraft tracked`;
+    document.getElementById('list-count').textContent = `${flights.length} aircraft`;
+  } catch (err) {
+    document.getElementById('plane-count').textContent = `Error: ${err.message}`;
+  }
+}
+
+function updateStats() {
+  const airborne = flights.filter(f => !f.on_ground);
+  const highest = airborne.reduce((a, b) => (b.baro_altitude || 0) > (a.baro_altitude || 0) ? b : a, airborne[0]);
+  const fastest = airborne.reduce((a, b) => (b.velocity || 0) > (a.velocity || 0) ? b : a, airborne[0]);
+  const onGround = flights.filter(f => f.on_ground).length;
+  const countries = new Set(flights.map(f => f.origin_country)).size;
+
+  document.getElementById('stat-highest').textContent = highest ? `${metersToFeet(highest.baro_altitude).toLocaleString()}ft` : '—';
+  document.getElementById('stat-fastest').textContent = fastest ? `${msToKnots(fastest.velocity)}kts` : '—';
+  document.getElementById('stat-ground').textContent = onGround;
+  document.getElementById('stat-countries').textContent = countries;
+}
+
+function renderList() {
+  const list = document.getElementById('flight-list');
+  if (flights.length === 0) {
+    list.innerHTML = '<div class="p-6 text-center text-slate-500 text-sm">No aircraft found in range</div>';
+    return;
+  }
+
+  const sorted = [...flights].sort((a, b) => (b.baro_altitude || 0) - (a.baro_altitude || 0));
+
+  list.innerHTML = sorted.map(f => {
+    const isSelected = selectedFlight?.icao24 === f.icao24;
+    const alt = f.baro_altitude ? `${metersToFeet(f.baro_altitude).toLocaleString()}ft` : 'Ground';
+    const spd = f.velocity ? `${msToKnots(f.velocity)}kts` : '—';
+    const hdgArrow = hdgToArrow(f.true_track);
+    const isGround = f.on_ground;
+
+    return `
+      <div
+        class="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${isSelected ? 'bg-indigo-500/10' : 'hover:bg-white/5'}"
+        data-icao="${f.icao24}"
+        onclick="selectFlight('${f.icao24}')"
+      >
+        <div class="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl ${isGround ? 'bg-green-500/10' : 'bg-indigo-500/10'}">
+          ${isGround ? '🛬' : '✈️'}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-1">
+            <span class="font-bold text-white text-sm">${f.callsign?.trim() || f.icao24}</span>
+            <span class="text-slate-500 text-xs">${f.origin_country || ''}</span>
+          </div>
+          <div class="text-slate-500 text-xs">
+            ${alt} · ${spd} · ${hdgArrow}
+            ${f.vertical_rate > 1 ? '↑' : f.vertical_rate < -1 ? '↓' : '→'}
+          </div>
+        </div>
+        ${isSelected ? '<span class="text-indigo-400 text-xs">●</span>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function selectFlight(icao24) {
+  selectedFlight = flights.find(f => f.icao24 === icao24) || null;
+  renderList();
+  drawRadar();
+}
+
+// Radar hover tooltip
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const maxR = Math.min(canvas.width, canvas.height) / 2 - 10;
+
+  const tooltip = document.getElementById('radar-tooltip');
+  let hit = null;
+
+  flights.forEach(f => {
+    const dLon = f.longitude - userLon;
+    const dLat = f.latitude - userLat;
+    const px = cx + (dLon / radiusDeg) * maxR;
+    const py = cy + (-dLat / radiusDeg) * maxR;
+    const dist = Math.sqrt((px - mx) ** 2 + (py - my) ** 2);
+    if (dist < 12) hit = { f, px, py };
+  });
+
+  if (hit) {
+    const { f, px, py } = hit;
+    const alt = f.baro_altitude ? `${metersToFeet(f.baro_altitude).toLocaleString()} ft` : 'On ground';
+    const spd = f.velocity ? `${msToKnots(f.velocity)} kts` : '—';
+    tooltip.innerHTML = `
+      <div class="font-bold text-white mb-1">${f.callsign?.trim() || f.icao24}</div>
+      <div class="text-slate-400">From: ${f.origin_country || '—'}</div>
+      <div class="text-slate-400">Alt: ${alt}</div>
+      <div class="text-slate-400">Speed: ${spd}</div>
+      <div class="text-slate-400">Heading: ${f.true_track ? f.true_track.toFixed(0) + '°' : '—'}</div>
+    `;
+    tooltip.style.left = `${Math.min(px / (canvas.width / rect.width) + 10, rect.width - 220)}px`;
+    tooltip.style.top = `${Math.max(0, py / (canvas.height / rect.height) - 70)}px`;
+    tooltip.classList.remove('hidden');
+  } else {
+    tooltip.classList.add('hidden');
+  }
+});
+canvas.addEventListener('mouseleave', () => {
+  document.getElementById('radar-tooltip').classList.add('hidden');
+});
+
+document.getElementById('radius-select').addEventListener('change', (e) => {
+  radiusDeg = parseFloat(e.target.value);
+  fetchFlights();
+});
+document.getElementById('refresh-btn').addEventListener('click', fetchFlights);
+
+// Init
+function init() {
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      userLat = pos.coords.latitude;
+      userLon = pos.coords.longitude;
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLon}&format=json`)
+        .then(r => r.json())
+        .then(d => {
+          const city = d.address?.city || d.address?.town || `${userLat.toFixed(2)}, ${userLon.toFixed(2)}`;
+          document.getElementById('loc-label').textContent = city;
+        }).catch(() => {});
+      fetchFlights();
+    },
+    () => {
+      document.getElementById('loc-label').textContent = 'Chicago, IL (default)';
+      fetchFlights();
+    }
+  );
+}
+
+window.addEventListener('resize', () => { resize(); drawRadar(); });
+resize();
+init();
+setInterval(fetchFlights, 30000);
+
+// Expose for inline onclick
+window.selectFlight = selectFlight;
+</script>
