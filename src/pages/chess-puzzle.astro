@@ -1,0 +1,287 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Chess Puzzle of the Day"
+  description="Lichess daily puzzle — today's chess challenge with themes, rating, solution, and an AI portrait of Matthew playing."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-amber-950/30 to-transparent px-4 py-10 text-center border-b border-amber-900/20">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        ♟️ Chess Puzzle of the Day
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        Today's puzzle from <a href="https://lichess.org" target="_blank" rel="noopener" class="text-amber-400 hover:underline">Lichess</a> — free, open-source chess. Can you find the winning move?
+      </p>
+    </div>
+
+    <div class="max-w-5xl mx-auto px-4 pt-8 pb-12">
+
+      <div id="loading-state" class="py-16 text-center">
+        <div class="text-5xl mb-4 animate-pulse">♟️</div>
+        <div class="text-slate-500">Loading today's puzzle from Lichess…</div>
+      </div>
+
+      <div id="main-content" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+        <!-- Left: Puzzle board embed + info -->
+        <div class="space-y-4">
+          <!-- Embedded Lichess puzzle board -->
+          <div class="rounded-2xl border border-amber-900/30 bg-amber-950/10 overflow-hidden">
+            <div class="px-4 py-3 border-b border-amber-900/20 flex items-center justify-between">
+              <h2 class="text-sm font-bold text-amber-300">Today's Puzzle</h2>
+              <div class="flex items-center gap-2">
+                <span id="puzzle-rating-badge" class="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/30 font-semibold">Rating: —</span>
+                <a id="puzzle-link" href="https://lichess.org/training" target="_blank" rel="noopener"
+                  class="text-xs text-amber-500/70 hover:text-amber-400 transition-colors">Open on Lichess ↗</a>
+              </div>
+            </div>
+            <!-- Lichess embed iframe -->
+            <iframe id="puzzle-iframe"
+              src=""
+              class="w-full"
+              style="height: 400px; border: none;"
+              title="Lichess chess puzzle"
+              loading="lazy"
+            ></iframe>
+          </div>
+
+          <!-- Turn indicator -->
+          <div id="turn-card" class="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center gap-3">
+            <div id="turn-icon" class="text-3xl flex-shrink-0">♟️</div>
+            <div>
+              <div class="text-xs text-slate-500 uppercase tracking-wider">To move</div>
+              <div id="turn-text" class="text-white font-bold">—</div>
+            </div>
+            <div class="ml-auto text-right">
+              <div class="text-xs text-slate-500 uppercase tracking-wider">Puzzle</div>
+              <a id="puzzle-id-link" href="#" target="_blank" class="font-mono text-amber-400 text-sm hover:underline">—</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Themes + players + AI portrait -->
+        <div class="space-y-4">
+
+          <!-- Themes + game players -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Puzzle Themes</h3>
+            <div id="themes-list" class="flex flex-wrap gap-2 mb-4"></div>
+
+            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">From the Game</h3>
+            <div id="players-card" class="space-y-2"></div>
+          </div>
+
+          <!-- Solution (hidden by default) -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Solution</h3>
+              <button id="reveal-btn" class="text-xs px-3 py-1 rounded-lg bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors border border-amber-500/30">
+                Reveal
+              </button>
+            </div>
+            <div id="solution-hidden" class="text-center py-4 text-slate-600 text-sm">
+              Try to solve it first — then reveal!
+            </div>
+            <div id="solution-shown" class="hidden space-y-2">
+              <div id="solution-moves" class="font-mono text-sm text-green-400 space-y-1"></div>
+              <div class="text-xs text-slate-500 mt-2">UCI format · Click to study on Lichess</div>
+            </div>
+          </div>
+
+          <!-- FLUX chess portrait -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-white/10">
+              <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Chess Portrait</h3>
+              <p class="text-slate-600 text-xs mt-0.5">FLUX image of Matthew deep in thought over the board</p>
+            </div>
+
+            <div id="chess-idle" class="flex-1 flex flex-col items-center justify-center p-5 text-center gap-3 text-slate-500 min-h-[180px]">
+              <div class="text-4xl">♟️</div>
+              <button id="chess-gen-btn"
+                class="mt-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs transition-all disabled:opacity-40"
+                disabled
+              >
+                Generate Chess Portrait
+              </button>
+            </div>
+
+            <div id="chess-loading" class="hidden flex-1 flex-col items-center justify-center p-5 gap-4 min-h-[180px]">
+              <div class="w-12 h-12 rounded-full border-4 border-amber-500/20 border-t-amber-400 animate-spin"></div>
+              <div class="text-amber-400 text-sm">Thinking 20 moves ahead…</div>
+            </div>
+
+            <div id="chess-result" class="hidden flex-col flex-1">
+              <img id="chess-img" src="" alt="Chess portrait" class="w-full object-cover" style="max-height:260px"/>
+              <div class="p-3 flex justify-between items-center">
+                <div id="chess-meta" class="text-slate-500 text-xs">—</div>
+                <button onclick="generateChessPortrait()" class="text-xs px-2 py-1 rounded-lg bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors">↻</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Puzzle from <a href="https://lichess.org/api#tag/Puzzles/operation/apiPuzzleDaily" target="_blank" class="hover:text-slate-500 underline">Lichess API</a> — free, open-source chess
+    </p>
+  </main>
+</Layout>
+
+<script>
+const THEME_LABELS = {
+  mate: '☠️ Mate', mateIn1: '☠️ Mate in 1', mateIn2: '☠️ Mate in 2', mateIn3: '☠️ Mate in 3', mateIn4: '☠️ Mate in 4',
+  crushing: '⚡ Crushing', endgame: '🏁 Endgame', middlegame: '⚔️ Middlegame', opening: '📖 Opening',
+  fork: '🔀 Fork', pin: '📌 Pin', skewer: '🗡️ Skewer', discoveredAttack: '🔍 Discovery',
+  backRankMate: '🚪 Back Rank', smotheredMate: '🪤 Smothered', quietMove: '🤫 Quiet Move',
+  defensiveMove: '🛡️ Defense', sacrifice: '🎯 Sacrifice', promotion: '♛ Promotion',
+  rookEndgame: '♜ Rook Endgame', queenEndgame: '♛ Queen Endgame', knightEndgame: '♞ Knight Endgame',
+  long: '📏 Long combo', short: '✂️ Short combo', veryLong: '📏 Very Long', oneMove: '1️⃣ One move',
+  triangleMate: '▲ Triangle Mate', advanced: '🧠 Advanced', master: '👑 Master level',
+};
+
+const CHESS_PROMPTS = [
+  'A man with dark wavy hair, round tortoiseshell glasses, sitting at a classic wooden chess board, leaning forward deep in concentration, dimly lit library atmosphere, dramatic side lighting casting shadows across the board, ornate chess pieces, photorealistic',
+  'A man with dark wavy hair, round tortoiseshell glasses, in an intense chess tournament, clock beside the board, focused expression, modern tournament hall, bright overhead lighting, serious competition atmosphere, photorealistic',
+  'A man with dark wavy hair, round tortoiseshell glasses, playing chess in a café, coffee cup nearby, casual intellectual atmosphere, warm afternoon light through windows, relaxed but focused, lifestyle photography, photorealistic',
+];
+
+async function loadPuzzle() {
+  try {
+    const resp = await fetch('https://lichess.org/api/puzzle/daily');
+    const data = await resp.json();
+    const puzzle = data.puzzle || {};
+    const game = data.game || {};
+
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('main-content').classList.remove('hidden');
+
+    const puzzleId = puzzle.id || '';
+    const rating = puzzle.rating || '?';
+    const themes = puzzle.themes || [];
+    const solution = puzzle.solution || [];
+    const players = game.players || [];
+    const pgn = game.pgn || '';
+    const color = puzzle.color || (pgn.split(' ').length % 2 === 0 ? 'black' : 'white');
+
+    // Set puzzle iframe — embed the Lichess training page
+    const iframeSrc = `https://lichess.org/embed/puzzle/${puzzleId}?theme=neon&bg=dark`;
+    document.getElementById('puzzle-iframe').src = iframeSrc;
+
+    // Rating badge
+    document.getElementById('puzzle-rating-badge').textContent = `Rating: ${rating}`;
+    document.getElementById('puzzle-link').href = `https://lichess.org/training/${puzzleId}`;
+    document.getElementById('puzzle-id-link').href = `https://lichess.org/training/${puzzleId}`;
+    document.getElementById('puzzle-id-link').textContent = puzzleId;
+
+    // Turn
+    const toMove = color || 'white';
+    document.getElementById('turn-icon').textContent = toMove === 'white' ? '♔' : '♚';
+    document.getElementById('turn-text').textContent = `${toMove.charAt(0).toUpperCase() + toMove.slice(1)} to move`;
+
+    // Themes
+    const themeContainer = document.getElementById('themes-list');
+    themeContainer.innerHTML = themes.map(t => {
+      const label = THEME_LABELS[t] || t.replace(/([A-Z])/g, ' $1').trim();
+      return `<span class="text-xs px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">${label}</span>`;
+    }).join('');
+
+    // Players
+    const playersEl = document.getElementById('players-card');
+    playersEl.innerHTML = players.map(p => `
+      <div class="flex items-center gap-2 text-xs">
+        <span>${p.color === 'white' ? '♔' : '♚'}</span>
+        <span class="font-bold text-white">${p.name || p.userId || '?'}</span>
+        ${p.rating ? `<span class="text-slate-500">(${p.rating})</span>` : ''}
+        ${p.title ? `<span class="text-xs bg-yellow-500/20 text-yellow-400 px-1 rounded">${p.title}</span>` : ''}
+      </div>
+    `).join('');
+
+    // Solution
+    document.getElementById('solution-moves').innerHTML = solution.map((move, i) => `
+      <div class="flex items-center gap-2">
+        <span class="text-slate-500 w-5">${i+1}.</span>
+        <span class="text-green-400">${formatMove(move)}</span>
+      </div>
+    `).join('');
+
+    // Reveal button
+    document.getElementById('reveal-btn').addEventListener('click', () => {
+      document.getElementById('solution-hidden').classList.add('hidden');
+      document.getElementById('solution-shown').classList.remove('hidden');
+    });
+
+    // Chess portrait
+    window._chessPrompt = CHESS_PROMPTS[Math.floor(Math.random() * CHESS_PROMPTS.length)];
+    document.getElementById('chess-gen-btn').disabled = false;
+
+  } catch (err) {
+    document.getElementById('loading-state').innerHTML = `
+      <div class="text-4xl mb-4">⚠️</div>
+      <div class="text-red-400">Failed to load puzzle: ${err.message}</div>
+      <div class="text-slate-500 text-sm mt-2">The Lichess API may be temporarily unavailable.</div>
+    `;
+  }
+}
+
+function formatMove(uci) {
+  // Convert UCI format (e.g. "e2e4") to readable
+  if (!uci || uci.length < 4) return uci;
+  return `${uci.slice(0, 2)} → ${uci.slice(2, 4)}${uci.length > 4 ? ` (${uci[4].toUpperCase()})` : ''}`;
+}
+
+async function generateChessPortrait() {
+  const prompt = window._chessPrompt || CHESS_PROMPTS[0];
+  setChessState('loading');
+
+  try {
+    const resp = await fetch('/api/flux-generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error);
+    if (data.status === 'succeeded' && data.output) { showChessResult(data.output); return; }
+    if (data.id) await pollChess(data.id);
+  } catch {
+    setChessState('idle');
+  }
+}
+window.generateChessPortrait = generateChessPortrait;
+
+async function pollChess(id) {
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2500));
+    try {
+      const d = await (await fetch(`/api/flux-poll?id=${id}`)).json();
+      if (d.status === 'succeeded' && d.output) { showChessResult(d.output); return; }
+      if (d.status === 'failed') break;
+    } catch { break; }
+  }
+  setChessState('idle');
+}
+
+function setChessState(state) {
+  ['idle', 'loading', 'result'].forEach(s => {
+    const el = document.getElementById(`chess-${s}`);
+    el?.classList.toggle('hidden', s !== state);
+    if (s === state && s !== 'result') el?.classList.add('flex');
+    else el?.classList.remove('flex');
+  });
+}
+
+function showChessResult(output) {
+  const url = Array.isArray(output) ? output[0] : output;
+  setChessState('result');
+  document.getElementById('chess-result').classList.add('flex');
+  document.getElementById('chess-img').src = url;
+  document.getElementById('chess-meta').textContent = new Date().toLocaleTimeString();
+}
+
+document.getElementById('chess-gen-btn').addEventListener('click', generateChessPortrait);
+
+loadPuzzle();
+</script>
