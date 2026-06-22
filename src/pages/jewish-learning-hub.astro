@@ -47,7 +47,7 @@ import Layout from '../layouts/Layout.astro';
             <div id="daf-he" class="text-xl text-blue-400/60 mb-4" style="font-family:'Noto Serif Hebrew',serif;direction:rtl">—</div>
             <div id="daf-ref" class="text-slate-500 text-xs font-mono mb-4">—</div>
             <div id="daf-preview" class="text-slate-400 text-sm leading-relaxed mb-4 line-clamp-4 italic">—</div>
-            <div class="flex gap-3 flex-wrap">
+            <div class="flex gap-3 flex-wrap items-center">
               <a id="daf-link" href="#" target="_blank" rel="noopener"
                 class="text-xs px-3 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 transition-colors border border-blue-500/30">
                 📖 Read on Sefaria
@@ -58,6 +58,18 @@ import Layout from '../layouts/Layout.astro';
               >
                 🎨 Generate Scene
               </button>
+            </div>
+            <!-- Model selector -->
+            <div class="flex items-center gap-2 mt-2">
+              <span class="text-xs text-slate-500">Model:</span>
+              <div class="flex rounded-lg overflow-hidden border border-white/10 text-xs">
+                <button id="model-flux-btn" onclick="setModel('flux')" class="px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold">⚡ FLUX</button>
+                <button id="model-gpt-btn" onclick="setModel('gpt')" class="px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors">✨ GPT Image 2</button>
+              </div>
+            </div>
+            <div id="gpt-image-row" class="hidden mt-1">
+              <input id="custom-image-url" type="url" placeholder="Input image URL (blank = use my selfie)"
+                class="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-xs placeholder-slate-600 focus:outline-none focus:border-white/20"/>
             </div>
           </div>
 
@@ -375,17 +387,47 @@ function setDafState(state) {
   });
 }
 
+let selectedModel = 'flux';
+function setModel(m) {
+  selectedModel = m;
+  document.getElementById('model-flux-btn').className = m === 'flux'
+    ? 'px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('model-gpt-btn').className = m === 'gpt'
+    ? 'px-3 py-1.5 bg-green-500/20 text-green-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('gpt-image-row').classList.toggle('hidden', m !== 'gpt');
+}
+window.setModel = setModel;
+function buildGptPrompt() {
+  const dafRef = document.getElementById('daf-ref')?.textContent || '';
+  const parshaEl = document.querySelector('[id*="parasha"]') || document.getElementById('parasha-name') || {};
+  const parshaText = parshaEl.textContent || '';
+  return `A man with dark wavy hair and round tortoiseshell glasses sitting at a beautiful wooden desk studying Torah from an ancient illuminated manuscript. Warm candlelight, ancient yeshiva library, rich bookshelves.
+
+Include as elegant golden calligraphy overlay:
+"📖 Jewish Learning Hub"
+"${dafRef ? 'Daf Yomi: ' + dafRef : ''}"
+"${parshaText ? 'Parasha: ' + parshaText : ''}"
+
+Painterly illustration, warm amber tones, museum-quality illuminated manuscript aesthetic.`;
+}
+
 async function generateDafScene() {
-  const prompt = window._dafPrompt;
-  if (!prompt) return;
+  const fluxPrompt = window._dafPrompt;
+  if (!fluxPrompt) return;
+  const prompt = selectedModel === 'gpt' ? buildGptPrompt() : fluxPrompt;
 
   setDafState('loading');
   document.getElementById('daf-gen-btn').disabled = true;
 
   try {
-    const resp = await fetch('/api/flux-generate', {
+    const customImageUrl = document.getElementById('custom-image-url')?.value.trim() || '';
+    const resp = await fetch(selectedModel === 'gpt' ? '/api/gpt-image-2' : '/api/flux-generate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify(selectedModel === 'gpt'
+        ? { prompt, ...(customImageUrl ? { inputImageUrl: customImageUrl } : {}) }
+        : { prompt }),
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error);

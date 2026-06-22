@@ -100,6 +100,17 @@ import Layout from '../layouts/Layout.astro';
 
             <div id="chess-idle" class="flex-1 flex flex-col items-center justify-center p-5 text-center gap-3 text-slate-500 min-h-[180px]">
               <div class="text-4xl">♟️</div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500">Model:</span>
+                <div class="flex rounded-lg overflow-hidden border border-white/10 text-xs">
+                  <button id="model-flux-btn" onclick="setModel('flux')" class="px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold">⚡ FLUX</button>
+                  <button id="model-gpt-btn" onclick="setModel('gpt')" class="px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors">✨ GPT Image 2</button>
+                </div>
+              </div>
+              <div id="gpt-image-row" class="hidden w-full">
+                <input id="custom-image-url" type="url" placeholder="Input image URL (blank = use my selfie)"
+                  class="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-xs placeholder-slate-600 focus:outline-none focus:border-white/20"/>
+              </div>
               <button id="chess-gen-btn"
                 class="mt-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs transition-all disabled:opacity-40"
                 disabled
@@ -233,14 +244,46 @@ function formatMove(uci) {
   return `${uci.slice(0, 2)} → ${uci.slice(2, 4)}${uci.length > 4 ? ` (${uci[4].toUpperCase()})` : ''}`;
 }
 
+let selectedModel = 'flux';
+function setModel(m) {
+  selectedModel = m;
+  document.getElementById('model-flux-btn').className = m === 'flux'
+    ? 'px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('model-gpt-btn').className = m === 'gpt'
+    ? 'px-3 py-1.5 bg-green-500/20 text-green-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('gpt-image-row').classList.toggle('hidden', m !== 'gpt');
+}
+window.setModel = setModel;
+function buildGptPrompt() {
+  const ratingEl = document.getElementById('puzzle-rating-badge') || {};
+  const themesEl = document.getElementById('themes-list') || {};
+  const rating = ratingEl.textContent || '—';
+  const themes = themesEl.textContent?.trim() || '—';
+  return `A dramatic overhead view of a chess board mid-game with a complex tactical position. The chess pieces are beautifully crafted marble.
+
+Include a stylish puzzle card overlay:
+"♟️ Lichess Daily Puzzle"
+"${rating}"
+"Themes: ${themes}"
+"Find the winning move!"
+
+High quality photorealistic chess photography, dramatic lighting, elegant composition.`;
+}
+
 async function generateChessPortrait() {
-  const prompt = window._chessPrompt || CHESS_PROMPTS[0];
+  const fluxPrompt = window._chessPrompt || CHESS_PROMPTS[0];
+  const prompt = selectedModel === 'gpt' ? buildGptPrompt() : fluxPrompt;
   setChessState('loading');
 
+  const customImageUrl = document.getElementById('custom-image-url')?.value.trim() || '';
   try {
-    const resp = await fetch('/api/flux-generate', {
+    const resp = await fetch(selectedModel === 'gpt' ? '/api/gpt-image-2' : '/api/flux-generate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify(selectedModel === 'gpt'
+        ? { prompt, ...(customImageUrl ? { inputImageUrl: customImageUrl } : {}) }
+        : { prompt }),
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error);

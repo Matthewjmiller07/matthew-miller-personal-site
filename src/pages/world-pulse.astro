@@ -131,12 +131,25 @@ import Layout from '../layouts/Layout.astro';
             <h2 class="font-black text-sm text-white">World Moment Portrait</h2>
             <p class="text-slate-500 text-xs mt-0.5">A FLUX portrait synthesizing all current conditions into one image</p>
           </div>
-          <button id="world-gen-btn"
-            class="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            disabled
-          >
-            Generate World Moment
-          </button>
+          <div class="flex flex-col items-end gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-500">Model:</span>
+              <div class="flex rounded-lg overflow-hidden border border-white/10 text-xs">
+                <button id="model-flux-btn" onclick="setModel('flux')" class="px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold">⚡ FLUX</button>
+                <button id="model-gpt-btn" onclick="setModel('gpt')" class="px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors">✨ GPT Image 2</button>
+              </div>
+            </div>
+            <div id="gpt-image-row" class="hidden w-64">
+              <input id="custom-image-url" type="url" placeholder="Input image URL (blank = selfie)"
+                class="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-xs placeholder-slate-600 focus:outline-none focus:border-white/20"/>
+            </div>
+            <button id="world-gen-btn"
+              class="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled
+            >
+              Generate World Moment
+            </button>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-0">
@@ -353,9 +366,32 @@ function checkReadyForWorldGen() {
   window._worldPrompt = prompt;
 }
 
+let selectedModel = 'flux';
+
+function setModel(m) {
+  selectedModel = m;
+  document.getElementById('model-flux-btn').className = m === 'flux'
+    ? 'px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('model-gpt-btn').className = m === 'gpt'
+    ? 'px-3 py-1.5 bg-green-500/20 text-green-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('gpt-image-row').classList.toggle('hidden', m !== 'gpt');
+  if (m === 'gpt') document.getElementById('world-prompt').textContent = buildGptPrompt();
+  else if (window._worldPrompt) document.getElementById('world-prompt').textContent = window._worldPrompt;
+}
+window.setModel = setModel;
+
+function buildGptPrompt() {
+  const base = window._worldPrompt || 'Live world data portrait';
+  return base + '. Include as stylish data overlay text: current conditions (ISS position, BTC price, local weather). High quality editorial photography, real-time data visualization aesthetic.';
+}
+
 async function generateWorldMoment() {
-  const prompt = window._worldPrompt;
-  if (!prompt) return;
+  const basePrompt = window._worldPrompt;
+  if (!basePrompt) return;
+  const prompt = selectedModel === 'gpt' ? buildGptPrompt() : basePrompt;
+  const customImageUrl = document.getElementById('custom-image-url')?.value.trim() || '';
 
   document.getElementById('world-idle').classList.add('hidden');
   document.getElementById('world-result').classList.add('hidden');
@@ -364,9 +400,11 @@ async function generateWorldMoment() {
   document.getElementById('world-gen-btn').disabled = true;
 
   try {
-    const resp = await fetch('/api/flux-generate', {
+    const resp = await fetch(selectedModel === 'gpt' ? '/api/gpt-image-2' : '/api/flux-generate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify(selectedModel === 'gpt'
+        ? { prompt, ...(customImageUrl ? { inputImageUrl: customImageUrl } : {}) }
+        : { prompt }),
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error);

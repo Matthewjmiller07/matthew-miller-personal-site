@@ -90,6 +90,17 @@ import Layout from '../layouts/Layout.astro';
             <div id="food-idle" class="flex-1 flex flex-col items-center justify-center p-5 text-center gap-3 text-slate-500 min-h-[180px]">
               <div class="text-4xl">🍽️</div>
               <p class="text-xs">Select any product from the list</p>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500">Model:</span>
+                <div class="flex rounded-lg overflow-hidden border border-white/10 text-xs">
+                  <button id="model-flux-btn" onclick="setModel('flux')" class="px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold">⚡ FLUX</button>
+                  <button id="model-gpt-btn" onclick="setModel('gpt')" class="px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors">✨ GPT Image 2</button>
+                </div>
+              </div>
+              <div id="gpt-image-row" class="hidden w-full">
+                <input id="custom-image-url" type="url" placeholder="Input image URL (blank = use my selfie)"
+                  class="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-xs placeholder-slate-600 focus:outline-none focus:border-white/20"/>
+              </div>
             </div>
 
             <div id="food-loading" class="hidden flex-1 flex-col items-center justify-center p-5 gap-4 min-h-[180px]">
@@ -253,21 +264,53 @@ function selectProduct(p) {
 window.selectProduct = selectProduct;
 window.selectProductByIdx = selectProductByIdx;
 
+let selectedModel = 'flux';
+function setModel(m) {
+  selectedModel = m;
+  document.getElementById('model-flux-btn').className = m === 'flux'
+    ? 'px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('model-gpt-btn').className = m === 'gpt'
+    ? 'px-3 py-1.5 bg-green-500/20 text-green-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('gpt-image-row').classList.toggle('hidden', m !== 'gpt');
+}
+window.setModel = setModel;
+
 async function generateFoodPortrait(p) {
   if (!p) return;
   const name = p.product_name || 'food';
   const brand = p.brands ? ` by ${p.brands}` : '';
   const isKosh = isKosher(p);
+  const kosherStatus = isKosh ? '✅ Kosher' : '❌ Not Certified Kosher';
+  const ingredients = p.ingredients_text ? p.ingredients_text.slice(0, 120) : '—';
+  const calories = p.nutriments?.['energy-kcal_100g'] ? `${Math.round(p.nutriments['energy-kcal_100g'])} kcal/100g` : '—';
+  const nutriscore = p.nutriscore_grade ? p.nutriscore_grade.toUpperCase() : '—';
 
-  const prompt = isKosh
+  const fluxPrompt = isKosh
     ? `A man with dark wavy hair, round tortoiseshell glasses, enjoying a delicious meal featuring ${name}${brand}, beautifully plated on a Shabbat table with white tablecloth and silver candlesticks, warm family dinner atmosphere, food photography style, photorealistic`
     : `A man with dark wavy hair, round tortoiseshell glasses, eating ${name}${brand} at a cozy restaurant, beautiful food presentation, warm lighting, lifestyle photography, photorealistic`;
+  const gptPrompt = `Beautiful food photography of ${name}${brand} with a product information card overlay.
 
+Include a clean label overlay:
+"🍽️ ${name}"
+"${brand}"
+"${kosherStatus}"
+"Calories: ${calories}"
+"Nutri-Score: ${nutriscore}"
+"Ingredients: ${ingredients}…"
+
+Professional product photography, clean white background, elegant food styling.`;
+  const prompt = selectedModel === 'gpt' ? gptPrompt : fluxPrompt;
+
+  const customImageUrl = document.getElementById('custom-image-url')?.value.trim() || '';
   setFoodState('loading');
   try {
-    const resp = await fetch('/api/flux-generate', {
+    const resp = await fetch(selectedModel === 'gpt' ? '/api/gpt-image-2' : '/api/flux-generate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify(selectedModel === 'gpt'
+        ? { prompt, ...(customImageUrl ? { inputImageUrl: customImageUrl } : {}) }
+        : { prompt }),
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error);

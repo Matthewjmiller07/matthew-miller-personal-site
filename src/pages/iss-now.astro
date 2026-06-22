@@ -171,6 +171,17 @@ import Layout from '../layouts/Layout.astro';
           <div id="flux-panel" class="flex-1 flex flex-col items-center justify-center p-5 text-center gap-4">
             <div class="text-4xl">🛸</div>
             <p class="text-slate-500 text-sm">A portrait will be generated the moment the ISS passes within 2,000 km of your location.</p>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-500">Model:</span>
+              <div class="flex rounded-lg overflow-hidden border border-white/10 text-xs">
+                <button id="model-flux-btn" onclick="setModel('flux')" class="px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold">⚡ FLUX</button>
+                <button id="model-gpt-btn" onclick="setModel('gpt')" class="px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors">✨ GPT Image 2</button>
+              </div>
+            </div>
+            <div id="gpt-image-row" class="hidden w-full">
+              <input id="custom-image-url" type="url" placeholder="Input image URL (blank = use my selfie)"
+                class="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-xs placeholder-slate-600 focus:outline-none focus:border-white/20"/>
+            </div>
             <div id="dist-progress-wrap" class="w-full">
               <div class="flex justify-between text-xs text-slate-600 mb-1">
                 <span>Distance</span>
@@ -335,18 +346,51 @@ function updateMap(lat, lon, dist) {
   }).join('');
 }
 
+let selectedModel = 'flux';
+function setModel(m) {
+  selectedModel = m;
+  document.getElementById('model-flux-btn').className = m === 'flux'
+    ? 'px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('model-gpt-btn').className = m === 'gpt'
+    ? 'px-3 py-1.5 bg-green-500/20 text-green-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('gpt-image-row').classList.toggle('hidden', m !== 'gpt');
+}
+window.setModel = setModel;
+
 async function generateOverheadPortrait(issLat, issLon, dist) {
   document.getElementById('flux-panel').classList.add('hidden');
   document.getElementById('flux-loading').classList.remove('hidden');
   document.getElementById('flux-loading').classList.add('flex');
 
-  const prompt = `Portrait of a man with dark wavy hair, round tortoiseshell glasses, looking upward in wonder at the night sky, the International Space Station visible as a bright streak overhead, dramatic upward angle, city lights below, awe and excitement, cinematic space photography, photorealistic, high detail`;
+  const issLatText = issLat ? issLat.toFixed(2) : '—';
+  const issLonText = issLon ? issLon.toFixed(2) : '—';
+  const distText = dist ? Math.round(dist).toLocaleString() : '—';
+  const altText = document.getElementById('iss-alt')?.textContent || '—';
+  const velText = document.getElementById('iss-vel')?.textContent || '—';
+
+  const fluxPrompt = `Portrait of a man with dark wavy hair, round tortoiseshell glasses, looking upward in wonder at the night sky, the International Space Station visible as a bright streak overhead, dramatic upward angle, city lights below, awe and excitement, cinematic space photography, photorealistic, high detail`;
+  const gptPrompt = `The International Space Station orbiting Earth against the blackness of space, glowing against a stunning blue Earth limb.
+
+Include a NASA-style mission data overlay:
+"🛸 ISS Live Position"
+"Latitude: ${issLatText}°  Longitude: ${issLonText}°"
+"Altitude: ${altText}"
+"Velocity: ${velText}"
+"Distance from you: ${distText} km"
+
+NASA-quality photography, dramatic orbital perspective, photorealistic.`;
+  const prompt = selectedModel === 'gpt' ? gptPrompt : fluxPrompt;
 
   try {
-    const resp = await fetch('/api/flux-generate', {
+    const customImageUrl = document.getElementById('custom-image-url')?.value.trim() || '';
+    const resp = await fetch(selectedModel === 'gpt' ? '/api/gpt-image-2' : '/api/flux-generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify(selectedModel === 'gpt'
+        ? { prompt, ...(customImageUrl ? { inputImageUrl: customImageUrl } : {}) }
+        : { prompt }),
     });
     const data = await resp.json();
 

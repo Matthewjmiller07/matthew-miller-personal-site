@@ -138,6 +138,18 @@ import Layout from '../layouts/Layout.astro';
             <div id="aq-idle" class="flex-1 flex flex-col items-center justify-center p-5 text-center text-slate-600 gap-3">
               <div class="text-4xl">🌬️</div>
               <p class="text-xs">Generate a portrait of Matthew styled by the current air quality</p>
+              <!-- Model selector -->
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-xs text-slate-500">Model:</span>
+                <div class="flex rounded-lg overflow-hidden border border-white/10 text-xs">
+                  <button id="model-flux-btn" onclick="setModel('flux')" class="px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold">⚡ FLUX</button>
+                  <button id="model-gpt-btn" onclick="setModel('gpt')" class="px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors">✨ GPT Image 2</button>
+                </div>
+              </div>
+              <div id="gpt-image-row" class="hidden w-full">
+                <input id="custom-image-url" type="url" placeholder="Input image URL (blank = use my selfie)"
+                  class="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-xs placeholder-slate-600 focus:outline-none focus:border-white/20"/>
+              </div>
               <button id="aq-gen-btn"
                 class="mt-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-500 hover:to-cyan-500 text-white font-bold text-xs transition-all disabled:opacity-40"
                 disabled
@@ -191,6 +203,39 @@ function pct(val, max) {
 
 let currentAQI = null;
 let currentPrompt = null;
+let selectedModel = 'flux';
+
+function setModel(m) {
+  selectedModel = m;
+  document.getElementById('model-flux-btn').className = m === 'flux'
+    ? 'px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('model-gpt-btn').className = m === 'gpt'
+    ? 'px-3 py-1.5 bg-green-500/20 text-green-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('gpt-image-row').classList.toggle('hidden', m !== 'gpt');
+}
+window.setModel = setModel;
+
+function buildGptPrompt() {
+  if (!currentAQI) return currentPrompt || '';
+  const level = getAQILevel(currentAQI);
+  const city = document.getElementById('location-name')?.textContent || 'your location';
+  const pm25v = document.getElementById('pm25')?.textContent || '—';
+  const pm10v = document.getElementById('pm10')?.textContent || '—';
+  const o3v = document.getElementById('ozone')?.textContent || '—';
+  const no2v = document.getElementById('no2')?.textContent || '—';
+  return `Portrait of a man with dark wavy hair and round tortoiseshell glasses outdoors in ${city}. ${level.advice}. Photorealistic editorial photography.
+
+Include a clean air quality data card overlay with this text:
+"${level.icon} Air Quality: ${level.label}"
+"AQI: ${currentAQI}"
+"PM2.5: ${pm25v} μg/m³  |  PM10: ${pm10v} μg/m³"
+"O₃: ${o3v} μg/m³  |  NO₂: ${no2v} μg/m³"
+"📍 ${city}"
+
+Modern data visualization style, clean sans-serif typography, color: ${level.color}.`;
+}
 
 async function loadAQ(lat, lon) {
   const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,nitrogen_dioxide,ozone,us_aqi&hourly=us_aqi&timezone=auto&forecast_days=1`;
@@ -276,9 +321,13 @@ async function generateAQPortrait() {
   document.getElementById('aq-loading').classList.add('flex');
 
   try {
-    const resp = await fetch('/api/flux-generate', {
+    const activePrompt = selectedModel === 'gpt' ? buildGptPrompt() : currentPrompt;
+    const customImageUrl = document.getElementById('custom-image-url')?.value.trim() || '';
+    const resp = await fetch(selectedModel === 'gpt' ? '/api/gpt-image-2' : '/api/flux-generate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: currentPrompt }),
+      body: JSON.stringify(selectedModel === 'gpt'
+        ? { prompt: activePrompt, ...(customImageUrl ? { inputImageUrl: customImageUrl } : {}) }
+        : { prompt: activePrompt }),
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error);

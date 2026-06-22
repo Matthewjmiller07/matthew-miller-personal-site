@@ -60,8 +60,21 @@ import Layout from '../layouts/Layout.astro';
 
           <!-- Prompt preview -->
           <div class="mt-5 p-3 rounded-xl bg-sky-950/50 border border-sky-800/40">
-            <div class="text-sky-400 text-xs font-semibold mb-1 uppercase tracking-wider">FLUX Prompt</div>
+            <div class="text-sky-400 text-xs font-semibold mb-1 uppercase tracking-wider">AI Prompt</div>
             <div id="prompt-preview" class="text-slate-300 text-xs leading-relaxed italic">—</div>
+          </div>
+
+          <!-- Model selector -->
+          <div class="mt-3 mb-2 flex items-center gap-2">
+            <span class="text-xs text-slate-500">Model:</span>
+            <div class="flex rounded-lg overflow-hidden border border-white/10 text-xs">
+              <button id="model-flux-btn" onclick="setModel('flux')" class="px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold">⚡ FLUX</button>
+              <button id="model-gpt-btn" onclick="setModel('gpt')" class="px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors">✨ GPT Image 2</button>
+            </div>
+          </div>
+          <div id="gpt-image-row" class="hidden mb-2">
+            <input id="custom-image-url" type="url" placeholder="Input image URL (blank = use my selfie)"
+              class="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-xs placeholder-slate-600 focus:outline-none focus:border-white/20"/>
           </div>
 
           <button id="generate-btn"
@@ -178,6 +191,36 @@ const MOOD_PROMPTS = {
 let weatherData = null;
 let currentPrompt = '';
 let history = [];
+let selectedModel = 'flux';
+
+function setModel(m) {
+  selectedModel = m;
+  document.getElementById('model-flux-btn').className = m === 'flux'
+    ? 'px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('model-gpt-btn').className = m === 'gpt'
+    ? 'px-3 py-1.5 bg-green-500/20 text-green-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('gpt-image-row').classList.toggle('hidden', m !== 'gpt');
+  el('prompt-preview').textContent = m === 'gpt' ? buildGptPrompt() : (currentPrompt || '—');
+}
+window.setModel = setModel;
+
+function buildGptPrompt() {
+  if (!weatherData) return currentPrompt;
+  const wmo = WMO_CODES[weatherData.code] || {};
+  const city = el('loc-text')?.textContent || 'your location';
+  return `A man with dark wavy hair, round tortoiseshell glasses, and a warm smile standing outdoors in ${wmo.label || 'current weather'} conditions. Style: editorial portrait photography, photorealistic.
+
+In the corner of the image, include a clean weather widget card with this exact text:
+"📍 ${city}"
+"${wmo.emoji || '🌡️'} ${wmo.label || ''}"
+"🌡 ${Math.round(weatherData.temp)}°C / ${Math.round(weatherData.temp * 9/5 + 32)}°F"
+"💧 Humidity: ${weatherData.humidity}%"
+"💨 Wind: ${Math.round(weatherData.wind)} km/h"
+
+Clean sans-serif typography, modern weather app aesthetic, high quality.`;
+}
 
 function el(id) { return document.getElementById(id); }
 
@@ -224,7 +267,7 @@ async function loadWeather(lat, lon, cityName) {
   el('w-feels').textContent = `${Math.round(c.apparent_temperature)}°C`;
 
   currentPrompt = buildPrompt(weatherData);
-  el('prompt-preview').textContent = currentPrompt;
+  el('prompt-preview').textContent = selectedModel === 'gpt' ? buildGptPrompt() : currentPrompt;
 
   el('weather-card').style.opacity = '1';
   el('generate-btn').disabled = false;
@@ -270,14 +313,18 @@ async function generate() {
 
   showImgState('loading');
   el('generate-btn').disabled = true;
-  el('loading-status').textContent = 'Sending to FLUX…';
+  el('loading-status').textContent = selectedModel === 'gpt' ? 'Sending to GPT Image 2…' : 'Sending to FLUX…';
   el('progress-bar').style.width = '10%';
 
   try {
-    const resp = await fetch('/api/flux-generate', {
+    const activePrompt = selectedModel === 'gpt' ? buildGptPrompt() : currentPrompt;
+    const customImageUrl = document.getElementById('custom-image-url')?.value.trim() || '';
+    const resp = await fetch(selectedModel === 'gpt' ? '/api/gpt-image-2' : '/api/flux-generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: currentPrompt }),
+      body: JSON.stringify(selectedModel === 'gpt'
+        ? { prompt: activePrompt, ...(customImageUrl ? { inputImageUrl: customImageUrl } : {}) }
+        : { prompt: activePrompt }),
     });
 
     const data = await resp.json();

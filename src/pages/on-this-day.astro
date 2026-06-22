@@ -90,7 +90,18 @@ import Layout from '../layouts/Layout.astro';
 
             <div id="hist-idle" class="flex-1 flex flex-col items-center justify-center p-5 text-center gap-3 text-slate-500 min-h-[200px]">
               <div class="text-4xl">🏛️</div>
-              <p class="text-xs">Click any event to generate a FLUX scene with Matthew as a witness</p>
+              <p class="text-xs">Click any event to generate an AI scene</p>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-xs text-slate-500">Model:</span>
+                <div class="flex rounded-lg overflow-hidden border border-white/10 text-xs">
+                  <button id="model-flux-btn" onclick="setModel('flux')" class="px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold">⚡ FLUX</button>
+                  <button id="model-gpt-btn" onclick="setModel('gpt')" class="px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors">✨ GPT Image 2</button>
+                </div>
+              </div>
+              <div id="gpt-image-row" class="hidden w-full">
+                <input id="custom-image-url" type="url" placeholder="Input image URL (blank = use my selfie)"
+                  class="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-xs placeholder-slate-600 focus:outline-none focus:border-white/20"/>
+              </div>
             </div>
 
             <div id="hist-loading" class="hidden flex-1 flex-col items-center justify-center p-5 gap-4 min-h-[200px]">
@@ -140,6 +151,18 @@ function isJewishRelated(text) {
 }
 
 let allData = { events: [], births: [], deaths: [], holidays: [] };
+let selectedModel = 'flux';
+function setModel(m) {
+  selectedModel = m;
+  document.getElementById('model-flux-btn').className = m === 'flux'
+    ? 'px-3 py-1.5 bg-purple-500/20 text-purple-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('model-gpt-btn').className = m === 'gpt'
+    ? 'px-3 py-1.5 bg-green-500/20 text-green-300 font-semibold'
+    : 'px-3 py-1.5 bg-white/5 text-slate-400 hover:bg-white/10 transition-colors';
+  document.getElementById('gpt-image-row').classList.toggle('hidden', m !== 'gpt');
+}
+window.setModel = setModel;
 let currentTab = 'all';
 let searchQuery = '';
 let eraFilter = 'all';
@@ -277,9 +300,12 @@ async function loadToday() {
 }
 
 async function selectEvent(text) {
-  // Build a FLUX prompt for the event
   const shortText = text.slice(0, 150);
-  const prompt = `A man with dark wavy hair, round tortoiseshell glasses, witnessing as a quiet observer the historical moment: ${shortText}. Cinematic historical scene, detailed period-accurate setting, dramatic lighting, documentary photography style, photorealistic`;
+  const fluxPrompt = `A man with dark wavy hair, round tortoiseshell glasses, witnessing as a quiet observer the historical moment: ${shortText}. Cinematic historical scene, detailed period-accurate setting, dramatic lighting, documentary photography style, photorealistic`;
+  const gptPrompt = `A dramatic vintage newspaper front page photograph of the historical event: "${shortText}". Style as a high-quality archival newspaper front page with the headline in bold period typography:
+"${text.slice(0, 100)}"
+Aged newsprint texture, dramatic black and white photography, authentic 20th century newspaper layout, dateline visible.`;
+  const prompt = selectedModel === 'gpt' ? gptPrompt : fluxPrompt;
 
   document.getElementById('hist-idle').classList.add('hidden');
   document.getElementById('hist-result').classList.add('hidden');
@@ -288,10 +314,13 @@ async function selectEvent(text) {
 
   document.getElementById('hist-event-label').textContent = text;
 
+  const customImageUrl = document.getElementById('custom-image-url')?.value.trim() || '';
   try {
-    const resp = await fetch('/api/flux-generate', {
+    const resp = await fetch(selectedModel === 'gpt' ? '/api/gpt-image-2' : '/api/flux-generate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify(selectedModel === 'gpt'
+        ? { prompt, ...(customImageUrl ? { inputImageUrl: customImageUrl } : {}) }
+        : { prompt }),
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error);
