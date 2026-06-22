@@ -1,0 +1,429 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Jewish Learning Hub"
+  description="Today's complete Jewish learning calendar: Daf Yomi, Parasha, Mishnah, Rambam, 929, and more — live from Sefaria. Plus FLUX-generated Talmudic scene art."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-blue-950/60 to-transparent px-4 py-10 text-center border-b border-blue-900/30">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        ✡️ Jewish Learning Hub
+      </h1>
+      <p class="text-slate-400 max-w-xl mx-auto text-sm">
+        Today's complete daily learning calendar, live from <a href="https://sefaria.org" target="_blank" rel="noopener" class="text-blue-400 hover:underline">Sefaria</a>. Every study cycle, every day, in one place.
+      </p>
+      <div class="mt-3 flex items-center justify-center gap-4 text-sm flex-wrap">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse"></span>
+          <span class="text-slate-400">Live calendar</span>
+        </div>
+        <div id="heb-date" class="text-slate-300 font-semibold" style="font-family:'Noto Serif Hebrew',serif;direction:rtl">—</div>
+        <div id="greg-date" class="text-slate-500 text-xs">—</div>
+      </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-4 py-8">
+
+      <!-- Loading state -->
+      <div id="loading-state" class="py-16 text-center">
+        <div class="text-4xl mb-4 animate-pulse">📜</div>
+        <div class="text-slate-500">Loading today's learning from Sefaria…</div>
+      </div>
+
+      <!-- Main grid (hidden until loaded) -->
+      <div id="main-content" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left col: big cards -->
+        <div class="lg:col-span-2 space-y-4">
+
+          <!-- Daf Yomi (featured) -->
+          <div class="rounded-2xl border border-blue-800/40 bg-blue-950/30 p-6 relative overflow-hidden">
+            <div class="absolute top-3 right-3 text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30 font-semibold">Daf Yomi</div>
+            <div class="text-xs text-blue-400/70 uppercase tracking-wider font-semibold mb-2">Babylonian Talmud</div>
+            <div id="daf-name" class="text-3xl font-black text-white mb-1">—</div>
+            <div id="daf-he" class="text-xl text-blue-400/60 mb-4" style="font-family:'Noto Serif Hebrew',serif;direction:rtl">—</div>
+            <div id="daf-ref" class="text-slate-500 text-xs font-mono mb-4">—</div>
+            <div id="daf-preview" class="text-slate-400 text-sm leading-relaxed mb-4 line-clamp-4 italic">—</div>
+            <div class="flex gap-3 flex-wrap">
+              <a id="daf-link" href="#" target="_blank" rel="noopener"
+                class="text-xs px-3 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 transition-colors border border-blue-500/30">
+                📖 Read on Sefaria
+              </a>
+              <button id="daf-gen-btn"
+                class="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold transition-all disabled:opacity-40"
+                disabled
+              >
+                🎨 Generate Scene
+              </button>
+            </div>
+          </div>
+
+          <!-- 3-column secondary cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+            <!-- Parasha -->
+            <div class="rounded-2xl border border-amber-900/40 bg-amber-950/20 p-4">
+              <div class="text-xs text-amber-400/70 uppercase tracking-wider font-semibold mb-2">Parasha</div>
+              <div id="para-name" class="text-lg font-black text-white mb-0.5 leading-tight">—</div>
+              <div id="para-he" class="text-sm text-amber-500/50 mb-2" style="font-family:'Noto Serif Hebrew',serif;direction:rtl">—</div>
+              <div id="para-ref" class="text-slate-600 text-xs font-mono mb-3">—</div>
+              <a id="para-link" href="/parsha-art" class="text-xs text-amber-500/70 hover:text-amber-400 transition-colors hover:underline">→ Illustrate it</a>
+            </div>
+
+            <!-- Mishnah -->
+            <div class="rounded-2xl border border-green-900/40 bg-green-950/20 p-4">
+              <div class="text-xs text-green-400/70 uppercase tracking-wider font-semibold mb-2">Daily Mishnah</div>
+              <div id="mish-name" class="text-lg font-black text-white mb-0.5 leading-tight">—</div>
+              <div id="mish-ref" class="text-slate-600 text-xs font-mono mb-3">—</div>
+              <a id="mish-link" href="#" target="_blank" rel="noopener" class="text-xs text-green-500/70 hover:text-green-400 transition-colors hover:underline">→ Read on Sefaria</a>
+            </div>
+
+            <!-- 929 -->
+            <div class="rounded-2xl border border-orange-900/40 bg-orange-950/20 p-4">
+              <div class="text-xs text-orange-400/70 uppercase tracking-wider font-semibold mb-2">929 (Tanakh Yomi)</div>
+              <div id="tanakh-name" class="text-lg font-black text-white mb-0.5 leading-tight">—</div>
+              <div id="tanakh-ref" class="text-slate-600 text-xs font-mono mb-3">—</div>
+              <a id="tanakh-link" href="#" target="_blank" rel="noopener" class="text-xs text-orange-500/70 hover:text-orange-400 transition-colors hover:underline">→ Read on Sefaria</a>
+            </div>
+          </div>
+
+          <!-- Additional studies row -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+            <!-- Rambam -->
+            <div class="rounded-2xl border border-purple-900/40 bg-purple-950/20 p-4">
+              <div class="text-xs text-purple-400/70 uppercase tracking-wider font-semibold mb-2">Daily Rambam</div>
+              <div id="rambam-name" class="text-base font-bold text-white mb-0.5 leading-snug">—</div>
+              <div id="rambam-ref" class="text-slate-600 text-xs font-mono mb-3">—</div>
+              <a id="rambam-link" href="#" target="_blank" rel="noopener" class="text-xs text-purple-500/70 hover:text-purple-400 transition-colors hover:underline">→ Mishneh Torah</a>
+            </div>
+
+            <!-- Halakhah Yomit -->
+            <div class="rounded-2xl border border-cyan-900/40 bg-cyan-950/20 p-4">
+              <div class="text-xs text-cyan-400/70 uppercase tracking-wider font-semibold mb-2">Halakhah Yomit</div>
+              <div id="halacha-name" class="text-base font-bold text-white mb-0.5 leading-snug">—</div>
+              <div id="halacha-ref" class="text-slate-600 text-xs font-mono mb-3">—</div>
+              <a id="halacha-link" href="#" target="_blank" rel="noopener" class="text-xs text-cyan-500/70 hover:text-cyan-400 transition-colors hover:underline">→ Shulchan Arukh</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right col: AI illustration + extras -->
+        <div class="flex flex-col gap-4">
+
+          <!-- Daf scene illustration -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-white/10">
+              <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Today's Daf — AI Scene</h3>
+            </div>
+
+            <div id="daf-idle" class="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3 text-slate-500 min-h-[200px]">
+              <div class="text-4xl">🕍</div>
+              <p class="text-xs">Generate an AI illustration of today's Daf Yomi tractate</p>
+            </div>
+
+            <div id="daf-loading" class="hidden flex-1 flex-col items-center justify-center p-6 gap-4 min-h-[200px]">
+              <div class="w-14 h-14 rounded-full border-4 border-blue-500/20 border-t-blue-400 animate-spin"></div>
+              <div class="text-blue-400 text-sm">Illuminating the Gemara…</div>
+            </div>
+
+            <div id="daf-result" class="hidden flex-col flex-1">
+              <img id="daf-img" src="" alt="Daf Yomi illustration" class="w-full object-cover" style="max-height:280px"/>
+              <div class="p-3 flex justify-between items-center">
+                <div id="daf-meta" class="text-slate-500 text-xs">—</div>
+                <button onclick="generateDafScene()" class="text-xs px-2 py-1 rounded-lg bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors">↻</button>
+              </div>
+            </div>
+
+            <div id="daf-error" class="hidden flex-1 flex-col items-center justify-center p-6 gap-3 text-center min-h-[200px]">
+              <div class="text-3xl">⚠️</div>
+              <div id="daf-err" class="text-red-400 text-xs">—</div>
+              <button onclick="generateDafScene()" class="text-xs px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300">Try Again</button>
+            </div>
+          </div>
+
+          <!-- Tanya + Yerushalmi -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">More Daily Studies</div>
+
+            <div class="border-b border-white/5 pb-3">
+              <div class="text-xs text-rose-400/70 font-semibold mb-0.5">Tanya Yomi</div>
+              <div id="tanya-name" class="text-sm font-bold text-white">—</div>
+              <a id="tanya-link" href="#" target="_blank" class="text-xs text-slate-600 hover:text-slate-400 transition-colors mt-1 block">—</a>
+            </div>
+
+            <div class="border-b border-white/5 pb-3">
+              <div class="text-xs text-indigo-400/70 font-semibold mb-0.5">Yerushalmi Yomi</div>
+              <div id="yer-name" class="text-sm font-bold text-white">—</div>
+              <a id="yer-link" href="#" target="_blank" class="text-xs text-slate-600 hover:text-slate-400 transition-colors mt-1 block">—</a>
+            </div>
+
+            <div>
+              <div class="text-xs text-yellow-400/70 font-semibold mb-0.5">Daf a Week</div>
+              <div id="dafweek-name" class="text-sm font-bold text-white">—</div>
+              <a id="dafweek-link" href="#" target="_blank" class="text-xs text-slate-600 hover:text-slate-400 transition-colors mt-1 block">—</a>
+            </div>
+          </div>
+
+          <!-- Quick links -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Explore</div>
+            <div class="space-y-2">
+              <a href="https://sefaria.org" target="_blank" rel="noopener" class="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors group">
+                <span class="text-base">📚</span>
+                <span class="group-hover:underline">Sefaria — Full library</span>
+              </a>
+              <a href="/parsha-art" class="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors group">
+                <span class="text-base">🎨</span>
+                <span class="group-hover:underline">Parsha Art — AI illustration</span>
+              </a>
+              <a href="/sefaria-memory" class="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors group">
+                <span class="text-base">🧠</span>
+                <span class="group-hover:underline">Sefaria Memory Game</span>
+              </a>
+              <a href="/search" class="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors group">
+                <span class="text-base">🔍</span>
+                <span class="group-hover:underline">Semantic Torah Search</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Calendar data from <a href="https://sefaria.org" target="_blank" class="hover:text-slate-500 underline">Sefaria Open Book Project</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+// Daf Yomi prompts by tractate
+const DAF_PROMPTS = {
+  'Berakhot':    'Jewish scholars in a candlelit beit midrash studying prayers, dawn light through windows, ancient stone walls, sacred atmosphere, Talmud open on table, oil lamps, photorealistic painting',
+  'Shabbat':     'A family welcoming Shabbat, Shabbat candles lit, white tablecloth, challah, kiddush cup, warm golden light, Talmud on shelf, cozy traditional Jewish home, photorealistic painting',
+  'Eruvin':      'Ancient rabbis measuring boundaries of an eruv in a narrow Jerusalem alley, olive trees, stone walls, Byzantine-era Jerusalem, detailed Talmudic discussion, photorealistic biblical art',
+  'Pesachim':    'Rabbis examining the Passover sacrifice preparations, ancient Temple courtyard, priests in white vestments, ceremonial vessels, dramatic stone architecture, photorealistic biblical art',
+  'Shekalim':    'Coin merchants and Temple officials exchanging half-shekel coins in the Temple courtyard, ancient Jerusalem market, detailed Herodian architecture, photorealistic painting',
+  'Yoma':        'The High Priest entering the Holy of Holies on Yom Kippur, incense smoke, golden Ark of the Covenant, divine presence, awe-inspiring sacred moment, photorealistic biblical art',
+  'Sukkah':      'Scholars examining a beautiful sukkah with palm fronds, hanging fruit and decorations, night sky visible through schach, autumn harvest festival atmosphere, photorealistic painting',
+  'Beitzah':     'A Talmudic court examining an egg found on Yom Tov, rabbis in discussion, medieval Jewish town setting, warm interior light, scholarly debate, photorealistic painting',
+  'Rosh Hashanah': 'Shofar being blown in an ancient synagogue on Rosh Hashanah, congregation in prayer, divine judgment theme, dramatic light, ancient stone synagogue, photorealistic religious art',
+  'Taanit':      'Scholars fasting and praying for rain in ancient Israel, gathering at the altar in robes of mourning, desert landscape, collective prayer, photorealistic biblical art',
+  'Megillah':    'Esther reading the Megillah in the Persian court, elaborate ancient Persian palace setting, scrolls and candles, the Jewish community celebrating, photorealistic painting',
+  'Moed Katan':  'Jewish community observing Chol HaMoed, scholars and workers in ancient Jerusalem, festive yet restricted work day, Temple Mount visible, photorealistic painting',
+  'Chagigah':    'Pilgrims ascending to Jerusalem for the Temple festivals, Mount Zion, ancient road with travelers, donkeys, joy and celebration, photorealistic biblical art',
+  'Yevamot':     'Rabbinical court examining levirate marriage case, serious legal deliberation, ancient stone chamber, scribes taking notes, scrolls, photorealistic Talmudic scene',
+  'Ketubot':     'Ancient Jewish wedding contract being written by a scribe, bride and groom surrounded by community, traditional wedding scene, ketubbah document, photorealistic painting',
+  'Nedarim':     'Rabbis carefully examining the language of vows, scholarly legal discussion in a yeshiva, ancient stone building, scrolls and quills, intense deliberation, photorealistic painting',
+  'Nazir':       'A Nazirite letting their uncut hair grow, abstaining from wine and grapes, ancient Israelite setting, dedicated spiritual life, photorealistic biblical art',
+  'Sotah':       'Ancient Israelite court with the High Priest and water ceremony, Temple courtyard, solemn judicial proceeding, scrolls and vessels, photorealistic biblical art',
+  'Gittin':      'A scribe carefully writing a get (Jewish divorce document) with a quill, rabbinical witnesses present, medieval Jewish community setting, photorealistic painting',
+  'Kiddushin':   'A joyful Jewish betrothal ceremony, exchange of a ring, ancient setting, family gathered, celebration, traditional Jewish wedding customs, photorealistic painting',
+  'Bava Kamma':  'Rabbis examining property damage cases — an ox that gored, a pit in the road, ancient marketplace, legal deliberation, photorealistic Talmudic scene',
+  'Bava Metzia': 'Ancient merchants disputing lost property ownership before a rabbinical court, marketplace of ancient Israel, scrolls, judges, witnesses, photorealistic painting',
+  'Bava Batra':  'Ancient Jewish community dividing a courtyard wall, measuring and surveying, legal dispute resolved by rabbis, ancient stone architecture, photorealistic painting',
+  'Sanhedrin':   'The 71-member Sanhedrin court in session in the Chamber of Hewn Stone, semicircular arrangement, ancient Jerusalem, the Nasi leading deliberations, photorealistic biblical art',
+  'Makkot':      'Ancient rabbinical court carefully applying the law of witnesses, solemn judicial scene, ancient stone hall, the Sanhedrin in session, photorealistic painting',
+  'Shevuot':     'Scholars debating the laws of oaths in a candlelit study hall, ancient beit midrash, scrolls on tables, oil lamps, intense Talmudic discussion, photorealistic painting',
+  'Avodah Zarah': 'Jewish merchants carefully avoiding idolatrous goods in a Roman marketplace, ancient Rome setting, distinctive Jewish community navigating pagan world, photorealistic painting',
+  'Horayot':     'A rabbinical court correcting a mistaken ruling, formal gathering of scholars, ancient stone chamber, scrolls and deliberation, photorealistic Talmudic scene',
+  'Zevachim':    'Temple priests performing animal sacrifices at the great altar, smoke rising, priestly vestments, Herodian Temple courtyard, dramatic sacred art, photorealistic painting',
+  'Menachot':    'Temple priests preparing grain offerings, mixing oil and fine flour, measuring carefully, ancient Temple kitchen, detailed ritual, photorealistic biblical art',
+  'Chullin':     'A shochet (ritual slaughterer) examining a freshly slaughtered bird, rabbinical supervision, ancient marketplace, detailed examination of the lungs, kashrut law, photorealistic painting',
+  'Bekhorot':    'Priests examining firstborn animals, ancient Temple courtyard, distinguishing blemishes, rabbinical court, holy service, photorealistic biblical art',
+  'Arakhin':     'Priests calculating the value of Temple pledges, ancient counting and measuring, Temple treasury scene, solemn dedication ceremony, photorealistic biblical art',
+  'Temurah':     'Rabbis carefully examining the law of substituting one sacred animal for another, scholarly debate, Temple courtyard, photorealistic Talmudic scene',
+  'Keritot':     'Scholars studying the severe prohibitions of the Torah requiring karet, serious legal deliberation, ancient beit midrash, photorealistic painting',
+  'Meilah':      'Priests guarding against misuse of Temple property, careful accounting and guarding, ancient Temple treasury, sacred vessels, photorealistic biblical art',
+  'Kinnim':      'Temple priests sorting and arranging the bird offerings, doves and turtledoves in the Temple courtyards, organized ritual, photorealistic biblical art',
+  'Tamid':       'The daily Temple service at dawn — priests washing, preparing incense, the Tamid sacrifice — a living documentary of the Temple, photorealistic biblical art',
+  'Middot':      'Detailed architectural survey of the Temple Mount, measuring rooms and gates, scribes recording dimensions, ancient architectural drawing, photorealistic biblical art',
+  'Niddah':      'A woman immersing in a mikveh under rabbinical supervision, ancient stone ritual bath, candle light, purity and renewal, respectful photorealistic sacred art',
+};
+
+function getDafPrompt(tractate, daf) {
+  const base = DAF_PROMPTS[tractate] || `Ancient rabbis studying a complex legal case from Tractate ${tractate}, intense Talmudic discussion in a candlelit beit midrash, scrolls open, quills in hand, sacred atmosphere, photorealistic painting`;
+  return `${base}, background detail showing Daf ${daf} text, warm lamplight, wood-paneled study hall, museum-quality art, soft dramatic lighting`;
+}
+
+function sefariaLink(ref) {
+  return `https://www.sefaria.org/${encodeURIComponent(ref.replace(/ /g, '_'))}`;
+}
+
+async function loadCalendar() {
+  const resp = await fetch('https://www.sefaria.org/api/calendars?diaspora=1');
+  const data = await resp.json();
+  const items = data.calendar_items || [];
+
+  document.getElementById('loading-state').classList.add('hidden');
+  document.getElementById('main-content').classList.remove('hidden');
+
+  const today = new Date();
+  document.getElementById('greg-date').textContent = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  function getItem(title) {
+    return items.find(i => i.title?.en?.includes(title));
+  }
+
+  // Daf Yomi
+  const daf = getItem('Daf Yomi');
+  if (daf) {
+    const parts = daf.displayValue.en.split(' ');
+    const dafNum = parts.pop();
+    const tractate = parts.join(' ');
+    document.getElementById('daf-name').textContent = daf.displayValue.en;
+    document.getElementById('daf-he').textContent = daf.displayValue.he || '';
+    document.getElementById('daf-ref').textContent = daf.ref;
+    document.getElementById('daf-link').href = sefariaLink(daf.ref);
+
+    // Try to fetch a brief text snippet
+    try {
+      const textResp = await fetch(`https://www.sefaria.org/api/v3/texts/${encodeURIComponent(daf.ref)}?context=0&commentary=0`);
+      const textData = await textResp.json();
+      const text = textData.versions?.[0]?.text;
+      const snippet = Array.isArray(text) ? (Array.isArray(text[0]) ? text[0][0] : text[0]) : text;
+      if (snippet) {
+        const clean = snippet.replace(/<[^>]+>/g, '').slice(0, 280);
+        document.getElementById('daf-preview').textContent = `"${clean}…"`;
+      }
+    } catch {}
+
+    window._dafPrompt = getDafPrompt(tractate, dafNum);
+    document.getElementById('daf-gen-btn').disabled = false;
+  }
+
+  // Parasha
+  const para = getItem('Parasha');
+  if (para) {
+    document.getElementById('para-name').textContent = `Parashat ${para.displayValue.en}`;
+    document.getElementById('para-he').textContent = para.displayValue.he || '';
+    document.getElementById('para-ref').textContent = para.ref;
+  }
+
+  // Mishnah
+  const mish = getItem('Daily Mishnah');
+  if (mish) {
+    document.getElementById('mish-name').textContent = mish.displayValue.en;
+    document.getElementById('mish-ref').textContent = mish.ref;
+    document.getElementById('mish-link').href = sefariaLink(mish.ref);
+  }
+
+  // 929
+  const tanakh = getItem('929');
+  if (tanakh) {
+    document.getElementById('tanakh-name').textContent = tanakh.displayValue.en;
+    document.getElementById('tanakh-ref').textContent = tanakh.ref;
+    document.getElementById('tanakh-link').href = sefariaLink(tanakh.ref);
+  }
+
+  // Rambam
+  const rambam = getItem('Daily Rambam');
+  if (rambam) {
+    document.getElementById('rambam-name').textContent = rambam.displayValue.en;
+    document.getElementById('rambam-ref').textContent = rambam.ref;
+    document.getElementById('rambam-link').href = sefariaLink(rambam.ref);
+  }
+
+  // Halakhah Yomit
+  const halacha = getItem('Halakhah Yomit');
+  if (halacha) {
+    document.getElementById('halacha-name').textContent = halacha.displayValue.en;
+    document.getElementById('halacha-ref').textContent = halacha.ref;
+    document.getElementById('halacha-link').href = sefariaLink(halacha.ref);
+  }
+
+  // Tanya
+  const tanya = getItem('Tanya');
+  if (tanya) {
+    document.getElementById('tanya-name').textContent = tanya.displayValue.en;
+    document.getElementById('tanya-link').textContent = tanya.ref;
+    document.getElementById('tanya-link').href = sefariaLink(tanya.ref);
+  }
+
+  // Yerushalmi
+  const yer = getItem('Yerushalmi');
+  if (yer) {
+    document.getElementById('yer-name').textContent = yer.displayValue.en;
+    document.getElementById('yer-link').textContent = yer.ref;
+    document.getElementById('yer-link').href = sefariaLink(yer.ref);
+  }
+
+  // Daf a Week
+  const dafWeek = getItem('Daf a Week');
+  if (dafWeek) {
+    document.getElementById('dafweek-name').textContent = dafWeek.displayValue.en;
+    document.getElementById('dafweek-link').textContent = dafWeek.ref;
+    document.getElementById('dafweek-link').href = sefariaLink(dafWeek.ref);
+  }
+
+  // Hebrew date (from Sefaria if available)
+  if (data.date?.he_str) {
+    document.getElementById('heb-date').textContent = data.date.he_str;
+  }
+}
+
+function setDafState(state) {
+  ['idle', 'loading', 'result', 'error'].forEach(s => {
+    const el = document.getElementById(`daf-${s}`);
+    el?.classList.toggle('hidden', s !== state);
+    if (s === state && s !== 'result') el?.classList.add('flex');
+    else el?.classList.remove('flex');
+  });
+}
+
+async function generateDafScene() {
+  const prompt = window._dafPrompt;
+  if (!prompt) return;
+
+  setDafState('loading');
+  document.getElementById('daf-gen-btn').disabled = true;
+
+  try {
+    const resp = await fetch('/api/flux-generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error);
+
+    if (data.status === 'succeeded' && data.output) { showDafResult(data.output); return; }
+    if (data.id) await pollDaf(data.id);
+  } catch (err) {
+    setDafState('error');
+    document.getElementById('daf-err').textContent = err.message;
+  } finally {
+    document.getElementById('daf-gen-btn').disabled = false;
+  }
+}
+
+async function pollDaf(id) {
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2500));
+    try {
+      const d = (await (await fetch(`/api/flux-poll?id=${id}`)).json());
+      if (d.status === 'succeeded' && d.output) { showDafResult(d.output); return; }
+      if (d.status === 'failed') throw new Error(d.error || 'Failed');
+    } catch (err) {
+      setDafState('error');
+      document.getElementById('daf-err').textContent = err.message;
+      return;
+    }
+  }
+}
+
+function showDafResult(output) {
+  const url = Array.isArray(output) ? output[0] : output;
+  setDafState('result');
+  document.getElementById('daf-img').src = url;
+  document.getElementById('daf-meta').textContent = `Generated ${new Date().toLocaleTimeString()}`;
+}
+
+document.getElementById('daf-gen-btn').addEventListener('click', generateDafScene);
+window.generateDafScene = generateDafScene;
+
+loadCalendar();
+</script>
