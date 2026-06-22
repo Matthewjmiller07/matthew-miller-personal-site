@@ -1,0 +1,431 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="World Pulse"
+  description="Real-time planet vitals: weather, ISS, earthquakes, crypto, Torah, Wikipedia — all live, all now."
+>
+  <main class="min-h-screen bg-slate-950 text-white font-mono">
+
+    <!-- Header -->
+    <div class="border-b border-white/5 px-6 py-5 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-black tracking-tight text-white">
+          <span class="text-cyan-400">◈</span> WORLD PULSE
+        </h1>
+        <p class="text-slate-500 text-xs mt-0.5">Real-time planet vitals</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+        <span id="master-clock" class="text-slate-400 text-sm tabular-nums">00:00:00</span>
+        <button onclick="refreshAll()" class="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-slate-400 transition-colors">↻</button>
+      </div>
+    </div>
+
+    <!-- Vitals grid -->
+    <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+
+      <!-- Weather -->
+      <div class="vital-card rounded-xl border border-white/8 bg-gradient-to-br from-sky-950/40 to-slate-900 p-4 relative overflow-hidden group hover:border-sky-500/30 transition-colors">
+        <div class="absolute top-0 right-0 w-24 h-24 rounded-full bg-sky-500/5 -translate-y-8 translate-x-8 group-hover:bg-sky-500/10 transition-colors"></div>
+        <div class="flex items-start justify-between mb-3">
+          <div class="text-xs text-sky-400/70 uppercase tracking-widest font-semibold">Weather</div>
+          <div id="w-icon" class="text-2xl">⏳</div>
+        </div>
+        <div id="w-temp" class="text-4xl font-black text-white mb-1">—</div>
+        <div id="w-desc" class="text-slate-400 text-sm mb-3">—</div>
+        <div class="flex gap-3 text-xs text-slate-500">
+          <span>💧 <span id="w-hum">—</span></span>
+          <span>💨 <span id="w-wind">—</span></span>
+          <span>🌡 <span id="w-feels">—</span></span>
+        </div>
+        <div id="w-city" class="text-xs text-slate-600 mt-2">—</div>
+        <div class="pulse-line bg-sky-500/20 mt-3"></div>
+      </div>
+
+      <!-- ISS -->
+      <div class="vital-card rounded-xl border border-white/8 bg-gradient-to-br from-purple-950/40 to-slate-900 p-4 relative overflow-hidden group hover:border-purple-500/30 transition-colors">
+        <div class="absolute top-0 right-0 w-24 h-24 rounded-full bg-purple-500/5 -translate-y-8 translate-x-8 group-hover:bg-purple-500/10 transition-colors"></div>
+        <div class="flex items-start justify-between mb-3">
+          <div class="text-xs text-purple-400/70 uppercase tracking-widest font-semibold">ISS Position</div>
+          <div class="text-2xl">🛸</div>
+        </div>
+        <div class="font-black text-white mb-1">
+          <span id="iss-lat" class="text-2xl tabular-nums">—</span>
+          <span class="text-slate-500 text-sm">°N</span>
+        </div>
+        <div class="font-black text-white mb-3">
+          <span id="iss-lon" class="text-2xl tabular-nums">—</span>
+          <span class="text-slate-500 text-sm">°E</span>
+        </div>
+        <div id="iss-over" class="text-slate-400 text-xs">Over: —</div>
+        <div id="iss-dist" class="text-xs text-slate-500 mt-1">— from you</div>
+        <div class="pulse-line bg-purple-500/20 mt-3"></div>
+      </div>
+
+      <!-- Earthquakes -->
+      <div class="vital-card rounded-xl border border-white/8 bg-gradient-to-br from-red-950/40 to-slate-900 p-4 relative overflow-hidden group hover:border-red-500/30 transition-colors">
+        <div class="absolute top-0 right-0 w-24 h-24 rounded-full bg-red-500/5 -translate-y-8 translate-x-8 group-hover:bg-red-500/10 transition-colors"></div>
+        <div class="flex items-start justify-between mb-3">
+          <div class="text-xs text-red-400/70 uppercase tracking-widest font-semibold">Seismic</div>
+          <div class="text-2xl">⚡</div>
+        </div>
+        <div id="q-latest-mag" class="text-4xl font-black text-white mb-1">—</div>
+        <div id="q-latest-place" class="text-slate-400 text-sm mb-3 truncate">—</div>
+        <div class="flex gap-3 text-xs text-slate-500">
+          <span>24h: <span id="q-count" class="text-red-400">—</span></span>
+          <span>M5+: <span id="q-significant" class="text-orange-400">—</span></span>
+        </div>
+        <div id="q-time" class="text-xs text-slate-600 mt-2">—</div>
+        <div class="pulse-line bg-red-500/20 mt-3"></div>
+      </div>
+
+      <!-- Bitcoin -->
+      <div class="vital-card rounded-xl border border-white/8 bg-gradient-to-br from-yellow-950/40 to-slate-900 p-4 relative overflow-hidden group hover:border-yellow-500/30 transition-colors">
+        <div class="absolute top-0 right-0 w-24 h-24 rounded-full bg-yellow-500/5 -translate-y-8 translate-x-8 group-hover:bg-yellow-500/10 transition-colors"></div>
+        <div class="flex items-start justify-between mb-3">
+          <div class="text-xs text-yellow-400/70 uppercase tracking-widest font-semibold">Bitcoin</div>
+          <div class="text-2xl">₿</div>
+        </div>
+        <div id="btc-price" class="text-4xl font-black text-white mb-1">—</div>
+        <div id="btc-change" class="text-sm mb-3">—</div>
+        <div id="btc-mood" class="text-xs text-slate-400">—</div>
+        <div class="pulse-line bg-yellow-500/20 mt-3"></div>
+      </div>
+
+      <!-- Parsha -->
+      <div class="vital-card rounded-xl border border-white/8 bg-gradient-to-br from-amber-950/40 to-slate-900 p-4 relative overflow-hidden group hover:border-amber-500/30 transition-colors">
+        <div class="absolute top-0 right-0 w-24 h-24 rounded-full bg-amber-500/5 -translate-y-8 translate-x-8 group-hover:bg-amber-500/10 transition-colors"></div>
+        <div class="flex items-start justify-between mb-3">
+          <div class="text-xs text-amber-400/70 uppercase tracking-widest font-semibold">Parsha HaShavua</div>
+          <div class="text-2xl">📜</div>
+        </div>
+        <div id="parsha-name" class="text-xl font-black text-white mb-1 leading-tight">—</div>
+        <div id="parsha-he" class="text-lg text-amber-600/70 mb-2" style="font-family:'Noto Serif Hebrew',serif;direction:rtl">—</div>
+        <div id="parsha-ref" class="text-xs text-slate-500 mb-2 font-mono">—</div>
+        <a id="parsha-link" href="/parsha-art" class="text-xs text-amber-500/70 hover:text-amber-400 transition-colors hover:underline">→ Generate illustration</a>
+        <div class="pulse-line bg-amber-500/20 mt-3"></div>
+      </div>
+
+      <!-- Wikipedia top -->
+      <div class="vital-card rounded-xl border border-white/8 bg-gradient-to-br from-sky-950/30 to-slate-900 p-4 relative overflow-hidden group hover:border-cyan-500/30 transition-colors">
+        <div class="absolute top-0 right-0 w-24 h-24 rounded-full bg-cyan-500/5 -translate-y-8 translate-x-8 group-hover:bg-cyan-500/10 transition-colors"></div>
+        <div class="flex items-start justify-between mb-3">
+          <div class="text-xs text-cyan-400/70 uppercase tracking-widest font-semibold">Wikipedia #1</div>
+          <div class="text-2xl">🌐</div>
+        </div>
+        <div id="wiki-top" class="text-lg font-black text-white mb-1 leading-snug">—</div>
+        <div id="wiki-views" class="text-3xl font-black text-cyan-400 mb-2">—</div>
+        <div id="wiki-top2" class="text-xs text-slate-500">Also trending: <span id="wiki-top2-name" class="text-slate-400">—</span></div>
+        <a id="wiki-link" href="/wiki-pulse" class="text-xs text-cyan-500/70 hover:text-cyan-400 transition-colors hover:underline mt-2 block">→ See all trending</a>
+        <div class="pulse-line bg-cyan-500/20 mt-3"></div>
+      </div>
+    </div>
+
+    <!-- Full-width: world moment generator -->
+    <div class="px-4 pb-4">
+      <div class="rounded-2xl border border-white/8 bg-slate-900/60 overflow-hidden">
+        <div class="p-5 border-b border-white/5 flex items-center justify-between">
+          <div>
+            <h2 class="font-black text-sm text-white">World Moment Portrait</h2>
+            <p class="text-slate-500 text-xs mt-0.5">A FLUX portrait synthesizing all current conditions into one image</p>
+          </div>
+          <button id="world-gen-btn"
+            class="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled
+          >
+            Generate World Moment
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-0">
+          <!-- Prompt preview -->
+          <div class="p-5 border-b lg:border-b-0 lg:border-r border-white/5">
+            <div class="text-xs text-slate-500 uppercase tracking-wider mb-2">Synthesized Prompt</div>
+            <p id="world-prompt" class="text-slate-400 text-xs leading-relaxed italic min-h-[80px]">Waiting for live data…</p>
+          </div>
+
+          <!-- Loading / result -->
+          <div class="lg:col-span-2 min-h-[200px] flex items-center justify-center relative">
+            <div id="world-idle" class="text-slate-600 text-sm text-center p-8">
+              <div class="text-4xl mb-3 opacity-30">🌍</div>
+              Load all vitals, then generate a portrait of this exact moment on Earth
+            </div>
+            <div id="world-loading" class="hidden flex-col items-center gap-4 p-8">
+              <div class="w-16 h-16 rounded-full border-4 border-cyan-500/20 border-t-cyan-400 animate-spin"></div>
+              <div class="text-cyan-400 text-sm">Synthesizing the world…</div>
+            </div>
+            <div id="world-result" class="hidden w-full h-full">
+              <img id="world-img" src="" alt="World moment portrait" class="w-full object-cover" style="max-height:400px"/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick nav to all live pages -->
+    <div class="px-4 pb-6">
+      <div class="text-xs text-slate-600 uppercase tracking-widest mb-3 font-semibold">Live Pages</div>
+      <div class="flex flex-wrap gap-2">
+        {[
+          { href: '/weather-avatar', label: '🌤 Weather Avatar' },
+          { href: '/quake-watch',    label: '⚡ Quake Watch' },
+          { href: '/sky-above',      label: '✈️ Sky Above' },
+          { href: '/iss-now',        label: '🛸 ISS Now' },
+          { href: '/crypto-vibes',   label: '📈 Crypto Vibes' },
+          { href: '/parsha-art',     label: '📜 Parsha Art' },
+          { href: '/wiki-pulse',     label: '🌐 Wiki Pulse' },
+          { href: '/arxiv-feed',     label: '🔬 arXiv Feed' },
+        ].map(p => (
+          <a href={p.href} class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-slate-400 hover:text-white text-xs transition-all">{p.label}</a>
+        ))}
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-6">
+      Open-Meteo · USGS · Open Notify · CoinGecko · Sefaria · Wikimedia ·
+      <a href="https://github.com/bytewax/awesome-public-real-time-datasets" target="_blank" class="hover:text-slate-500 underline">awesome-public-real-time-datasets</a>
+    </p>
+  </main>
+</Layout>
+
+<style>
+.pulse-line {
+  height: 2px;
+  border-radius: 1px;
+  position: relative;
+  overflow: hidden;
+}
+.pulse-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, white, transparent);
+  opacity: 0.4;
+  animation: pulse-sweep 3s ease-in-out infinite;
+}
+@keyframes pulse-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+</style>
+
+<script>
+let state = { weather: null, iss: null, quake: null, btc: null, parsha: null, wiki: null };
+let userLat = 41.8781, userLon = -87.6298;
+
+// Clock
+setInterval(() => {
+  document.getElementById('master-clock').textContent = new Date().toLocaleTimeString();
+}, 1000);
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+const WMO = {
+  0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',48:'🌫',51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',
+  71:'🌨',73:'❄️',75:'🌨',80:'🌦',81:'🌧',95:'⛈',96:'⛈',99:'⛈'
+};
+const WMO_LABEL = {
+  0:'Clear',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',51:'Light drizzle',
+  53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',
+  71:'Light snow',73:'Snow',75:'Heavy snow',80:'Showers',81:'Heavy showers',95:'Thunderstorm'
+};
+
+async function loadWeather(city) {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${userLat}&longitude=${userLon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`;
+    const d = (await (await fetch(url)).json()).current;
+    state.weather = d;
+    document.getElementById('w-temp').textContent = `${Math.round(d.temperature_2m)}°C`;
+    document.getElementById('w-desc').textContent = WMO_LABEL[d.weather_code] || 'Unknown';
+    document.getElementById('w-icon').textContent = WMO[d.weather_code] || '🌡';
+    document.getElementById('w-hum').textContent = `${d.relative_humidity_2m}%`;
+    document.getElementById('w-wind').textContent = `${Math.round(d.wind_speed_10m)}km/h`;
+    document.getElementById('w-feels').textContent = `${Math.round(d.apparent_temperature)}°C`;
+    document.getElementById('w-city').textContent = city;
+    checkReadyForWorldGen();
+  } catch {}
+}
+
+async function loadISS() {
+  try {
+    const d = (await (await fetch('https://api.open-notify.org/iss-now.json')).json()).iss_position;
+    state.iss = d;
+    const lat = parseFloat(d.latitude), lon = parseFloat(d.longitude);
+    document.getElementById('iss-lat').textContent = lat.toFixed(2);
+    document.getElementById('iss-lon').textContent = lon.toFixed(2);
+    const dist = haversine(userLat, userLon, lat, lon);
+    document.getElementById('iss-dist').textContent = `${Math.round(dist).toLocaleString()} km from you`;
+    // Rough location name
+    const region = lat > 60 ? 'Arctic' : lat < -60 ? 'Antarctic' : lon > -20 && lon < 50 && lat > -35 && lat < 40 ? 'Africa / Middle East' : lon > 60 && lon < 150 ? 'Asia-Pacific' : lon > -100 && lon < -30 ? 'Americas' : 'Atlantic / Europe';
+    document.getElementById('iss-over').textContent = `Over: ${region}`;
+    checkReadyForWorldGen();
+  } catch {}
+}
+
+async function loadQuake() {
+  try {
+    const data = (await (await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson')).json()).features;
+    state.quake = data;
+    const latest = data[0];
+    const largest = data.reduce((a,b) => (b.properties.mag||0) > (a.properties.mag||0) ? b : a, data[0]);
+    const significant = data.filter(q => (q.properties.mag||0) >= 5).length;
+    const mag = largest.properties.mag?.toFixed(1) || '—';
+    document.getElementById('q-latest-mag').textContent = `M${mag}`;
+    document.getElementById('q-latest-place').textContent = largest.properties.place || '—';
+    document.getElementById('q-count').textContent = data.length;
+    document.getElementById('q-significant').textContent = significant;
+    const t = new Date(latest.properties.time);
+    document.getElementById('q-time').textContent = `Latest: ${t.toLocaleTimeString()}`;
+    checkReadyForWorldGen();
+  } catch {}
+}
+
+async function loadBTC() {
+  try {
+    const d = (await (await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true')).json()).bitcoin;
+    state.btc = d;
+    const price = d.usd.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    const change = d.usd_24h_change.toFixed(2);
+    const pos = d.usd_24h_change >= 0;
+    document.getElementById('btc-price').textContent = `$${price}`;
+    document.getElementById('btc-change').innerHTML = `<span style="color:${pos?'#10b981':'#ef4444'}">${pos?'▲':'▼'} ${Math.abs(change)}%</span> <span class="text-slate-500 text-xs">24h</span>`;
+    const mood = d.usd_24h_change > 5 ? '🚀 Euphoria' : d.usd_24h_change > 1 ? '🐂 Bullish' : d.usd_24h_change > -1 ? '😐 Sideways' : d.usd_24h_change > -5 ? '🐻 Bearish' : '💥 REKT';
+    document.getElementById('btc-mood').textContent = mood;
+    checkReadyForWorldGen();
+  } catch {}
+}
+
+async function loadParsha() {
+  try {
+    const d = (await (await fetch('https://www.sefaria.org/api/calendars?diaspora=1')).json()).calendar_items;
+    const item = d?.find(c => c.title?.en?.includes('Parasha'));
+    if (!item) return;
+    state.parsha = item;
+    document.getElementById('parsha-name').textContent = `Parashat ${item.displayValue.en}`;
+    document.getElementById('parsha-he').textContent = item.displayValue.he;
+    document.getElementById('parsha-ref').textContent = item.ref;
+    checkReadyForWorldGen();
+  } catch {}
+}
+
+async function loadWiki() {
+  try {
+    const now = new Date();
+    now.setDate(now.getDate() - 1);
+    const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0'), dd = String(now.getDate()).padStart(2,'0');
+    const url = `https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia.org/all-access/${y}/${m}/${dd}`;
+    const articles = (await (await fetch(url)).json()).items[0].articles;
+    const SKIP = new Set(['Main_Page','Special:Search','Wikipedia:Featured_pictures']);
+    const filtered = articles.filter(a => !SKIP.has(a.article));
+    state.wiki = filtered;
+    const top = filtered[0];
+    document.getElementById('wiki-top').textContent = top.article.replace(/_/g,' ');
+    document.getElementById('wiki-views').textContent = top.views >= 1e6 ? `${(top.views/1e6).toFixed(1)}M` : `${(top.views/1e3).toFixed(0)}k`;
+    const link = `https://en.wikipedia.org/wiki/${top.article}`;
+    document.getElementById('wiki-link').href = link;
+    document.getElementById('wiki-top2-name').textContent = filtered[1]?.article.replace(/_/g,' ').slice(0,30) || '—';
+    checkReadyForWorldGen();
+  } catch {}
+}
+
+function checkReadyForWorldGen() {
+  const ready = state.weather && state.iss && state.btc && state.parsha;
+  if (!ready) return;
+
+  const w = state.weather;
+  const btcChange = state.btc?.usd_24h_change || 0;
+  const wmoLabel = WMO_LABEL[w.weather_code] || 'unclear skies';
+  const parsha = state.parsha?.displayValue?.en || 'the weekly Torah portion';
+  const btcMood = btcChange > 3 ? 'bull market energy' : btcChange < -3 ? 'market uncertainty' : 'calm markets';
+  const wikiTop = state.wiki?.[0]?.article.replace(/_/g,' ') || 'global events';
+
+  const prompt = `Portrait of a man with dark wavy hair, round tortoiseshell glasses, standing at a window overlooking a city, ${wmoLabel.toLowerCase()} outside, ${Math.round(w.temperature_2m)}°C, contemplative and thoughtful expression, surrounded by multiple screens showing data and world events, Jewish scholar meets data analyst aesthetic, warm indoor lighting against ${wmoLabel.toLowerCase()} sky, cinematic, photorealistic, high detail`;
+
+  document.getElementById('world-prompt').textContent = prompt;
+  document.getElementById('world-gen-btn').disabled = false;
+  window._worldPrompt = prompt;
+}
+
+async function generateWorldMoment() {
+  const prompt = window._worldPrompt;
+  if (!prompt) return;
+
+  document.getElementById('world-idle').classList.add('hidden');
+  document.getElementById('world-result').classList.add('hidden');
+  document.getElementById('world-loading').classList.remove('hidden');
+  document.getElementById('world-loading').classList.add('flex');
+  document.getElementById('world-gen-btn').disabled = true;
+
+  try {
+    const resp = await fetch('/api/flux-generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error);
+
+    if (data.status === 'succeeded' && data.output) { showWorldResult(data.output); return; }
+    if (data.id) await pollWorld(data.id);
+  } catch (err) {
+    document.getElementById('world-loading').classList.add('hidden');
+    document.getElementById('world-idle').classList.remove('hidden');
+    document.getElementById('world-idle').innerHTML = `<div class="text-red-400 text-sm">${err.message}</div>`;
+  } finally {
+    document.getElementById('world-gen-btn').disabled = false;
+  }
+}
+
+async function pollWorld(id) {
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2500));
+    try {
+      const d = (await (await fetch(`/api/flux-poll?id=${id}`)).json());
+      if (d.status === 'succeeded' && d.output) { showWorldResult(d.output); return; }
+      if (d.status === 'failed') throw new Error(d.error);
+    } catch { break; }
+  }
+}
+
+function showWorldResult(output) {
+  const url = Array.isArray(output) ? output[0] : output;
+  document.getElementById('world-loading').classList.add('hidden');
+  document.getElementById('world-result').classList.remove('hidden');
+  document.getElementById('world-img').src = url;
+}
+
+document.getElementById('world-gen-btn').addEventListener('click', generateWorldMoment);
+window.refreshAll = function() {
+  loadISS();
+  loadBTC();
+};
+
+// Geo + init
+navigator.geolocation.getCurrentPosition(
+  async pos => {
+    userLat = pos.coords.latitude;
+    userLon = pos.coords.longitude;
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLon}&format=json`).catch(() => null);
+    const city = r ? (await r.json())?.address?.city || `${userLat.toFixed(2)}, ${userLon.toFixed(2)}` : 'Your location';
+    loadWeather(city);
+  },
+  () => loadWeather('Chicago, IL')
+);
+
+loadISS();
+loadQuake();
+loadBTC();
+loadParsha();
+loadWiki();
+
+// Live updates
+setInterval(loadISS, 5000);
+setInterval(loadBTC, 30000);
+setInterval(loadQuake, 60000);
+</script>

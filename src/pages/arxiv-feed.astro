@@ -1,0 +1,255 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="arXiv Feed"
+  description="Live AI and ML research papers from arXiv. The frontier of intelligence, updated daily."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-green-950/50 to-transparent px-4 py-10 text-center border-b border-green-900/20">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        🔬 arXiv Feed
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        The freshest AI and ML research papers from <a href="https://arxiv.org" target="_blank" rel="noopener" class="text-green-400 hover:underline">arXiv</a>, direct from the source.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-6 flex-wrap text-sm">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
+          <span class="text-slate-400">Updated daily</span>
+        </div>
+        <div id="paper-count" class="text-slate-300 font-semibold">—</div>
+      </div>
+    </div>
+
+    <!-- Category tabs -->
+    <div class="max-w-5xl mx-auto px-4 pt-6">
+      <div class="flex flex-wrap gap-2 mb-6">
+        <button class="cat-btn active px-3 py-1.5 rounded-full text-xs font-semibold border border-green-500/50 bg-green-500/10 text-green-300" data-cat="cs.AI">🤖 AI</button>
+        <button class="cat-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-cat="cs.LG">📊 Machine Learning</button>
+        <button class="cat-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-cat="cs.CL">💬 NLP / LLMs</button>
+        <button class="cat-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-cat="cs.CV">👁 Vision</button>
+        <button class="cat-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-cat="stat.ML">📐 Stats ML</button>
+      </div>
+
+      <!-- Search -->
+      <div class="flex gap-2 mb-6">
+        <input id="search-input" type="text" placeholder="Search titles and abstracts…"
+          class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-green-500/50 focus:bg-white/8 transition-colors"
+        />
+        <button id="search-btn" class="px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 font-semibold text-sm transition-colors">Search</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Results</div>
+          <div id="stat-count" class="text-2xl font-black text-green-400">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Latest</div>
+          <div id="stat-latest" class="text-sm font-bold text-white truncate">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Top venue</div>
+          <div id="stat-venue" class="text-sm font-bold text-cyan-400">—</div>
+        </div>
+      </div>
+
+      <!-- Papers -->
+      <div id="papers-list" class="space-y-3 pb-12">
+        <div class="p-8 text-center text-slate-500 animate-pulse">
+          <div class="text-3xl mb-2">📡</div>
+          Fetching from arXiv…
+        </div>
+      </div>
+
+      <div class="text-center pb-6">
+        <button id="load-more-btn" class="hidden px-6 py-2.5 rounded-xl bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-300 text-sm font-semibold transition-colors">
+          Load 10 more
+        </button>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data from <a href="https://arxiv.org/help/api" target="_blank" class="hover:text-slate-500 underline">arXiv API</a> ·
+      Part of <a href="https://github.com/bytewax/awesome-public-real-time-datasets" target="_blank" class="hover:text-slate-500 underline">awesome-public-real-time-datasets</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+let currentCat = 'cs.AI';
+let currentQuery = '';
+let allPapers = [];
+let start = 0;
+const PAGE_SIZE = 10;
+
+const VENUE_PATTERNS = [
+  { re: /NeurIPS|neurips/i, label: 'NeurIPS' },
+  { re: /ICML/i, label: 'ICML' },
+  { re: /ICLR/i, label: 'ICLR' },
+  { re: /CVPR/i, label: 'CVPR' },
+  { re: /AAAI/i, label: 'AAAI' },
+  { re: /ACL|EMNLP|NAACL/i, label: 'ACL/NLP' },
+  { re: /ICCV|ECCV/i, label: 'ICCV/ECCV' },
+];
+
+function detectVenue(paper) {
+  const text = (paper.journalRef || '') + ' ' + (paper.comment || '');
+  for (const { re, label } of VENUE_PATTERNS) {
+    if (re.test(text)) return label;
+  }
+  return null;
+}
+
+function timeSince(dateStr) {
+  const d = new Date(dateStr);
+  const s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return `${Math.floor(s/86400)}d ago`;
+}
+
+async function fetchPapers(append = false) {
+  if (!append) {
+    start = 0;
+    allPapers = [];
+    document.getElementById('papers-list').innerHTML = '<div class="p-8 text-center text-slate-500 animate-pulse"><div class="text-3xl mb-2">📡</div>Fetching…</div>';
+  }
+
+  const q = currentQuery
+    ? `search_query=all:${encodeURIComponent(currentQuery)}+AND+cat:${currentCat}`
+    : `search_query=cat:${currentCat}`;
+
+  const url = `https://export.arxiv.org/api/query?${q}&start=${start}&max_results=${PAGE_SIZE}&sortBy=submittedDate&sortOrder=descending`;
+
+  try {
+    const resp = await fetch(url);
+    const text = await resp.text();
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, 'text/xml');
+    const entries = [...xml.querySelectorAll('entry')];
+
+    const totalStr = xml.querySelector('opensearch\\:totalResults, totalResults')?.textContent;
+    const total = parseInt(totalStr) || entries.length;
+
+    const papers = entries.map(e => ({
+      id: e.querySelector('id')?.textContent.split('/').pop()?.replace('v', ' v') || '—',
+      arxivId: e.querySelector('id')?.textContent.split('/').pop() || '',
+      url: e.querySelector('id')?.textContent || '#',
+      title: e.querySelector('title')?.textContent.replace(/\s+/g, ' ').trim() || '—',
+      abstract: e.querySelector('summary')?.textContent.replace(/\s+/g, ' ').trim() || '—',
+      authors: [...e.querySelectorAll('author name')].map(a => a.textContent).slice(0, 4),
+      published: e.querySelector('published')?.textContent || '',
+      updated: e.querySelector('updated')?.textContent || '',
+      categories: [...e.querySelectorAll('category')].map(c => c.getAttribute('term')).filter(Boolean),
+      journalRef: e.querySelector('journal_ref, arxiv\\:journal_ref')?.textContent || '',
+      comment: e.querySelector('arxiv\\:comment, comment')?.textContent || '',
+    }));
+
+    if (!append) allPapers = papers;
+    else allPapers = [...allPapers, ...papers];
+
+    start += PAGE_SIZE;
+
+    // Stats
+    document.getElementById('stat-count').textContent = total.toLocaleString();
+    document.getElementById('paper-count').textContent = `${total.toLocaleString()} papers`;
+    document.getElementById('stat-latest').textContent = papers[0]?.title.slice(0, 30) + '…' || '—';
+
+    const venues = papers.map(detectVenue).filter(Boolean);
+    const topVenue = venues.length > 0 ? (() => {
+      const counts = {};
+      venues.forEach(v => counts[v] = (counts[v]||0)+1);
+      return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+    })() : '—';
+    document.getElementById('stat-venue').textContent = topVenue;
+
+    renderPapers(allPapers);
+    document.getElementById('load-more-btn').classList.toggle('hidden', start >= total || papers.length === 0);
+
+  } catch (err) {
+    document.getElementById('papers-list').innerHTML = `<div class="p-8 text-center text-red-400">Error: ${err.message}</div>`;
+  }
+}
+
+function renderPapers(papers) {
+  const list = document.getElementById('papers-list');
+  if (papers.length === 0) {
+    list.innerHTML = '<div class="p-8 text-center text-slate-500">No papers found</div>';
+    return;
+  }
+
+  list.innerHTML = papers.map(p => {
+    const venue = detectVenue(p);
+    const truncAbstract = p.abstract.length > 300 ? p.abstract.slice(0, 300) + '…' : p.abstract;
+    const isNew = Date.now() - new Date(p.published).getTime() < 86400000 * 2;
+
+    return `
+      <div class="rounded-xl border border-white/8 bg-white/5 hover:bg-white/8 hover:border-green-500/20 transition-all p-5 group">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              ${isNew ? '<span class="text-xs bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full border border-green-500/30">New</span>' : ''}
+              ${venue ? `<span class="text-xs bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded-full">${venue}</span>` : ''}
+              ${p.categories.slice(0, 2).map(c => `<span class="text-xs text-slate-600">${c}</span>`).join('')}
+            </div>
+            <a href="${p.url}" target="_blank" rel="noopener"
+              class="text-white font-bold text-sm leading-snug group-hover:text-green-300 transition-colors hover:underline">
+              ${p.title}
+            </a>
+          </div>
+          <div class="flex-shrink-0 text-right">
+            <div class="text-xs text-slate-600 font-mono">${timeSince(p.published)}</div>
+            <a href="${p.url}" target="_blank" rel="noopener" class="text-xs text-green-600 hover:text-green-400 transition-colors mt-1 block">→ PDF</a>
+          </div>
+        </div>
+
+        <p class="text-slate-400 text-xs leading-relaxed mb-3">${truncAbstract}</p>
+
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-slate-600">
+            ${p.authors.join(', ')}${p.authors.length === 4 ? ' et al.' : ''}
+          </div>
+          <div class="text-xs font-mono text-slate-600">${p.arxivId}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Event listeners
+document.querySelectorAll('.cat-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.cat-btn').forEach(b => {
+      b.classList.remove('active', 'border-green-500/50', 'bg-green-500/10', 'text-green-300');
+      b.classList.add('border-white/10', 'bg-white/5', 'text-slate-400');
+    });
+    btn.classList.add('active', 'border-green-500/50', 'bg-green-500/10', 'text-green-300');
+    btn.classList.remove('border-white/10', 'bg-white/5', 'text-slate-400');
+    currentCat = btn.dataset.cat;
+    currentQuery = '';
+    document.getElementById('search-input').value = '';
+    fetchPapers();
+  });
+});
+
+document.getElementById('search-btn').addEventListener('click', () => {
+  currentQuery = document.getElementById('search-input').value.trim();
+  fetchPapers();
+});
+
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    currentQuery = e.target.value.trim();
+    fetchPapers();
+  }
+});
+
+document.getElementById('load-more-btn').addEventListener('click', () => fetchPapers(true));
+
+fetchPapers();
+</script>
