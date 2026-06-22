@@ -1,0 +1,238 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="HN Live"
+  description="Real-time Hacker News top stories with smart filtering and live scoring."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-orange-950/50 to-transparent px-4 py-10 text-center border-b border-orange-900/20">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        <span class="text-orange-400">▲</span> HN Live
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        Real-time <a href="https://news.ycombinator.com" target="_blank" rel="noopener" class="text-orange-400 hover:underline">Hacker News</a> top stories, refreshed every 90 seconds. Smart filters for your interests.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-6 flex-wrap text-sm">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-orange-400 animate-pulse"></span>
+          <span class="text-slate-400">Live · refreshes every 90s</span>
+        </div>
+        <div id="last-refresh" class="text-slate-500 text-xs">—</div>
+      </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 pt-6">
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Top score</div>
+          <div id="stat-top" class="text-2xl font-black text-orange-400">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Avg score</div>
+          <div id="stat-avg" class="text-2xl font-black text-white">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Total comments</div>
+          <div id="stat-comments" class="text-2xl font-black text-white">—</div>
+        </div>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="flex flex-wrap gap-2 mb-4">
+        <button class="filter-btn active px-3 py-1.5 rounded-full text-xs font-semibold border border-orange-500/50 bg-orange-500/10 text-orange-300" data-filter="all">🔥 All</button>
+        <button class="filter-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-filter="ai">🤖 AI / ML</button>
+        <button class="filter-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-filter="data">📊 Data</button>
+        <button class="filter-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-filter="jewish">✡️ Jewish / Israel</button>
+        <button class="filter-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-filter="top100">🏆 Top 100</button>
+        <button class="filter-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-filter="ask">❓ Ask HN</button>
+        <button class="filter-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-filter="show">🚀 Show HN</button>
+      </div>
+
+      <!-- Search -->
+      <div class="flex gap-2 mb-4">
+        <input id="search-input" type="text" placeholder="Search stories…"
+          class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500/50 transition-colors"
+        />
+        <button id="clear-search" class="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-colors text-sm">✕</button>
+      </div>
+
+      <!-- Story list -->
+      <div id="stories-list" class="space-y-2 pb-12">
+        <div class="p-8 text-center text-slate-500 animate-pulse">
+          <div class="text-3xl mb-2">▲</div>
+          Fetching from HN…
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data from <a href="https://github.com/HackerNews/API" target="_blank" class="hover:text-slate-500 underline">Hacker News Firebase API</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+const AI_KEYWORDS = ['AI', 'LLM', 'GPT', 'ML', 'machine learning', 'neural', 'deep learning', 'OpenAI', 'Anthropic', 'Claude', 'ChatGPT', 'Gemini', 'model', 'inference', 'fine-tun', 'embedding', 'transformer', 'diffusion', 'stable diffusion', 'FLUX', 'image generation', 'RAG'];
+const DATA_KEYWORDS = ['data', 'analytics', 'SQL', 'pandas', 'Python', 'R ', 'BI', 'visualization', 'dashboard', 'BigQuery', 'Snowflake', 'Databricks', 'ETL', 'pipeline', 'Postgres', 'database', 'spark', 'kafka', 'dbt'];
+const JEWISH_KEYWORDS = ['Israel', 'Israeli', 'Jewish', 'Judaism', 'Hebrew', 'Torah', 'Talmud', 'Sefaria', 'Shabbat', 'synagogue', 'rabbi', 'kosher', 'Tel Aviv', 'Jerusalem', 'Gaza', 'Zionist', 'antisemitism', 'Holocaust', 'IDF', 'Mossad'];
+
+let allStories = [];
+let currentFilter = 'all';
+let searchQuery = '';
+
+function matchesFilter(story, filter) {
+  const text = (story.title + ' ' + (story.url || '')).toLowerCase();
+  switch (filter) {
+    case 'all': return true;
+    case 'ai': return AI_KEYWORDS.some(k => text.includes(k.toLowerCase()));
+    case 'data': return DATA_KEYWORDS.some(k => text.includes(k.toLowerCase()));
+    case 'jewish': return JEWISH_KEYWORDS.some(k => text.includes(k.toLowerCase()));
+    case 'top100': return (story.rank || 999) <= 100;
+    case 'ask': return story.title.startsWith('Ask HN');
+    case 'show': return story.title.startsWith('Show HN');
+    default: return true;
+  }
+}
+
+function highlightText(text) {
+  // Check for jewish interest
+  const isJewish = JEWISH_KEYWORDS.some(k => text.toLowerCase().includes(k.toLowerCase()));
+  const isAI = AI_KEYWORDS.some(k => text.toLowerCase().includes(k.toLowerCase()));
+  const isData = DATA_KEYWORDS.some(k => text.toLowerCase().includes(k.toLowerCase()));
+  return { isJewish, isAI, isData };
+}
+
+function timeSince(timestamp) {
+  const s = Math.floor((Date.now() / 1000) - timestamp);
+  if (s < 3600) return `${Math.floor(s/60)}m`;
+  if (s < 86400) return `${Math.floor(s/3600)}h`;
+  return `${Math.floor(s/86400)}d`;
+}
+
+function getDomain(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
+
+function renderStories() {
+  const list = document.getElementById('stories-list');
+
+  let filtered = allStories.filter(s => matchesFilter(s, currentFilter));
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter(s => s.title.toLowerCase().includes(q) || (s.url || '').toLowerCase().includes(q));
+  }
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="p-8 text-center text-slate-500">No stories match this filter.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.slice(0, 50).map((s, i) => {
+    const { isJewish, isAI, isData } = highlightText(s.title + ' ' + (s.url || ''));
+    const domain = getDomain(s.url || '');
+    const commentUrl = `https://news.ycombinator.com/item?id=${s.id}`;
+
+    const tags = [
+      isJewish ? '<span class="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded-full border border-blue-500/20">✡️</span>' : '',
+      isAI ? '<span class="text-xs bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded-full border border-purple-500/20">🤖 AI</span>' : '',
+      isData ? '<span class="text-xs bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded-full border border-cyan-500/20">📊</span>' : '',
+      s.title.startsWith('Ask HN') ? '<span class="text-xs bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded-full">Ask</span>' : '',
+      s.title.startsWith('Show HN') ? '<span class="text-xs bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">Show</span>' : '',
+    ].filter(Boolean).join('');
+
+    // Score color
+    const scoreColor = s.score >= 500 ? 'text-orange-300' : s.score >= 200 ? 'text-orange-400' : s.score >= 100 ? 'text-amber-500' : 'text-slate-500';
+    const rankColor = (s.rank || 999) <= 10 ? 'text-orange-400 font-black' : 'text-slate-600';
+
+    return `
+      <div class="group flex gap-3 items-start rounded-xl border border-white/5 hover:border-orange-500/20 bg-white/3 hover:bg-orange-500/5 p-4 transition-all">
+        <div class="${rankColor} text-sm w-6 flex-shrink-0 text-right font-mono pt-0.5">${s.rank}</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start gap-2 flex-wrap mb-1.5">
+            ${tags}
+          </div>
+          <a href="${s.url || commentUrl}" target="_blank" rel="noopener"
+            class="text-white font-semibold text-sm leading-snug group-hover:text-orange-300 transition-colors hover:underline">
+            ${s.title}
+          </a>
+          ${domain ? `<span class="text-slate-600 text-xs ml-2">(${domain})</span>` : ''}
+
+          <div class="flex items-center gap-3 mt-2 text-xs text-slate-600">
+            <span class="${scoreColor} font-bold">▲ ${s.score}</span>
+            <a href="${commentUrl}" target="_blank" rel="noopener" class="hover:text-slate-400 transition-colors">
+              💬 ${s.descendants || 0}
+            </a>
+            <span>${s.by}</span>
+            <span>${timeSince(s.time)}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function fetchStories() {
+  try {
+    const idsResp = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
+    const ids = await idsResp.json();
+
+    // Fetch top 150 in parallel batches
+    const BATCH = 30;
+    const toFetch = ids.slice(0, 150);
+    const fetched = [];
+
+    for (let i = 0; i < toFetch.length; i += BATCH) {
+      const batch = toFetch.slice(i, i + BATCH);
+      const results = await Promise.all(
+        batch.map(id => fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(r => r.json()).catch(() => null))
+      );
+      fetched.push(...results.filter(Boolean));
+    }
+
+    allStories = fetched.filter(s => s && s.type === 'story' && s.title).map((s, i) => ({ ...s, rank: i + 1 }));
+
+    // Update stats
+    const scores = allStories.map(s => s.score || 0);
+    document.getElementById('stat-top').textContent = Math.max(...scores).toLocaleString();
+    document.getElementById('stat-avg').textContent = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length).toLocaleString();
+    document.getElementById('stat-comments').textContent = allStories.reduce((a, s) => a + (s.descendants || 0), 0).toLocaleString();
+    document.getElementById('last-refresh').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+
+    renderStories();
+  } catch (err) {
+    console.error('HN fetch error:', err);
+  }
+}
+
+// Filter buttons
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.classList.remove('active', 'border-orange-500/50', 'bg-orange-500/10', 'text-orange-300');
+      b.classList.add('border-white/10', 'bg-white/5', 'text-slate-400');
+    });
+    btn.classList.add('active', 'border-orange-500/50', 'bg-orange-500/10', 'text-orange-300');
+    btn.classList.remove('border-white/10', 'bg-white/5', 'text-slate-400');
+    currentFilter = btn.dataset.filter;
+    renderStories();
+  });
+});
+
+document.getElementById('search-input').addEventListener('input', e => {
+  searchQuery = e.target.value;
+  renderStories();
+});
+document.getElementById('clear-search').addEventListener('click', () => {
+  document.getElementById('search-input').value = '';
+  searchQuery = '';
+  renderStories();
+});
+
+fetchStories();
+setInterval(fetchStories, 90000);
+</script>

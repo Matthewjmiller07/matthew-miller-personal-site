@@ -1,0 +1,319 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Air Quality"
+  description="Real-time air quality index and pollutant breakdown for your location, powered by Open-Meteo."
+>
+  <main class="min-h-screen text-white" style="background: radial-gradient(ellipse at top, #0f1a0a 0%, #050d03 50%, #000 100%)">
+
+    <div class="px-4 py-10 text-center border-b border-green-900/20">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        <span id="page-icon" class="mr-2">🌿</span>
+        <span class="bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">Air Quality</span>
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        Real-time EPA Air Quality Index and pollutant breakdown powered by <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noopener" class="text-green-400 hover:underline">Open-Meteo</a>.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-6 flex-wrap text-sm">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
+          <span class="text-slate-400">Hourly data</span>
+        </div>
+        <div id="location-name" class="text-slate-300 font-semibold">Detecting location…</div>
+        <div id="last-update" class="text-slate-500 text-xs">—</div>
+      </div>
+    </div>
+
+    <!-- AQI category banner -->
+    <div id="aqi-banner" class="px-4 py-4 text-center border-b border-white/5">
+      <div id="aqi-number" class="text-7xl font-black mb-1">—</div>
+      <div id="aqi-label" class="text-2xl font-bold mb-1">—</div>
+      <div id="aqi-desc" class="text-slate-400 text-sm max-w-md mx-auto">—</div>
+    </div>
+
+    <div class="max-w-5xl mx-auto px-4 pt-8 pb-12">
+
+      <!-- Pollutant grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+          <div class="text-xs text-slate-500 uppercase tracking-wider mb-2">PM2.5</div>
+          <div id="pm25" class="text-3xl font-black text-white">—</div>
+          <div class="text-slate-600 text-xs mt-1">μg/m³</div>
+          <div class="mt-2 h-1 rounded-full bg-white/10">
+            <div id="pm25-bar" class="h-1 rounded-full bg-gradient-to-r from-green-500 to-yellow-400 transition-all duration-1000" style="width:0%"></div>
+          </div>
+          <div id="pm25-label" class="text-xs mt-1 font-semibold text-slate-500">—</div>
+        </div>
+
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+          <div class="text-xs text-slate-500 uppercase tracking-wider mb-2">PM10</div>
+          <div id="pm10" class="text-3xl font-black text-white">—</div>
+          <div class="text-slate-600 text-xs mt-1">μg/m³</div>
+          <div class="mt-2 h-1 rounded-full bg-white/10">
+            <div id="pm10-bar" class="h-1 rounded-full bg-gradient-to-r from-green-500 to-orange-400 transition-all duration-1000" style="width:0%"></div>
+          </div>
+          <div id="pm10-label" class="text-xs mt-1 font-semibold text-slate-500">—</div>
+        </div>
+
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+          <div class="text-xs text-slate-500 uppercase tracking-wider mb-2">Ozone (O₃)</div>
+          <div id="ozone" class="text-3xl font-black text-white">—</div>
+          <div class="text-slate-600 text-xs mt-1">μg/m³</div>
+          <div class="mt-2 h-1 rounded-full bg-white/10">
+            <div id="ozone-bar" class="h-1 rounded-full bg-gradient-to-r from-cyan-500 to-blue-400 transition-all duration-1000" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+          <div class="text-xs text-slate-500 uppercase tracking-wider mb-2">NO₂</div>
+          <div id="no2" class="text-3xl font-black text-white">—</div>
+          <div class="text-slate-600 text-xs mt-1">μg/m³</div>
+          <div class="mt-2 h-1 rounded-full bg-white/10">
+            <div id="no2-bar" class="h-1 rounded-full bg-gradient-to-r from-amber-500 to-red-400 transition-all duration-1000" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left: 24h AQI chart + health guide -->
+        <div class="lg:col-span-2 space-y-4">
+
+          <!-- 24h hourly AQI chart -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h2 class="text-sm font-bold text-slate-300 mb-4">AQI — Past 24 Hours</h2>
+            <div id="aqi-chart" class="flex items-end gap-1 h-32">
+              <div class="text-slate-600 text-xs animate-pulse">Loading…</div>
+            </div>
+            <div class="flex justify-between text-xs text-slate-600 mt-2">
+              <span>24h ago</span>
+              <span>Now</span>
+            </div>
+          </div>
+
+          <!-- Health guidance table -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h2 class="text-sm font-bold text-slate-300 mb-4">EPA AQI Scale</h2>
+            <div class="space-y-2">
+              {[
+                { range: '0–50', label: 'Good', color: '#22c55e', bg: '#052e16', desc: 'Air quality is satisfactory.' },
+                { range: '51–100', label: 'Moderate', color: '#eab308', bg: '#1c1500', desc: 'Acceptable; some pollutants may be a concern for a small number of people.' },
+                { range: '101–150', label: 'Unhealthy for Sensitive Groups', color: '#f97316', bg: '#1c0700', desc: 'Members of sensitive groups may experience health effects.' },
+                { range: '151–200', label: 'Unhealthy', color: '#ef4444', bg: '#1c0000', desc: 'Everyone may begin to experience health effects.' },
+                { range: '201–300', label: 'Very Unhealthy', color: '#a855f7', bg: '#0f0015', desc: 'Health warnings of emergency conditions.' },
+                { range: '301+', label: 'Hazardous', color: '#991b1b', bg: '#150000', desc: 'Health alert: everyone may experience serious health effects.' },
+              ].map(({ range, label, color, bg, desc }) => `
+                <div id="guide-${label.split(' ')[0].toLowerCase()}" class="flex items-start gap-3 p-2 rounded-lg transition-all" style="background:${bg}">
+                  <div class="rounded px-2 py-0.5 text-xs font-bold font-mono flex-shrink-0" style="color:${color};background:${color}22">${range}</div>
+                  <div>
+                    <div class="text-xs font-semibold" style="color:${color}">${label}</div>
+                    <div class="text-xs text-slate-500">${desc}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: portrait generation -->
+        <div class="flex flex-col gap-4">
+
+          <!-- Air quality tip -->
+          <div id="health-card" class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Current Advice</h3>
+            <div id="advice-icon" class="text-4xl text-center mb-3">🌿</div>
+            <div id="advice-title" class="text-center text-lg font-black text-white mb-1">—</div>
+            <div id="advice-text" class="text-center text-slate-400 text-xs leading-relaxed">—</div>
+          </div>
+
+          <!-- FLUX portrait -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 flex-1 flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-white/10">
+              <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Air Quality Portrait</h3>
+              <p class="text-slate-600 text-xs mt-0.5">A FLUX portrait styled by current AQI</p>
+            </div>
+
+            <div id="aq-idle" class="flex-1 flex flex-col items-center justify-center p-5 text-center text-slate-600 gap-3">
+              <div class="text-4xl">🌬️</div>
+              <p class="text-xs">Generate a portrait of Matthew styled by the current air quality</p>
+              <button id="aq-gen-btn"
+                class="mt-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-500 hover:to-cyan-500 text-white font-bold text-xs transition-all disabled:opacity-40"
+                disabled
+              >
+                Generate Portrait
+              </button>
+            </div>
+
+            <div id="aq-loading" class="hidden flex-1 flex-col items-center justify-center p-5 gap-4">
+              <div class="w-14 h-14 rounded-full border-4 border-green-500/20 border-t-green-400 animate-spin"></div>
+              <div class="text-green-400 text-sm">Breathing in the data…</div>
+            </div>
+
+            <div id="aq-result" class="hidden flex-col flex-1">
+              <img id="aq-img" src="" alt="Air quality portrait" class="w-full object-cover flex-1" style="max-height:300px"/>
+              <div class="p-3 flex justify-between items-center">
+                <div id="aq-meta" class="text-slate-500 text-xs">—</div>
+                <button onclick="generateAQPortrait()" class="text-xs px-2 py-1 rounded-lg bg-green-500/20 text-green-300 hover:bg-green-500/30 transition-colors">↻</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data: <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" class="hover:text-slate-500 underline">Open-Meteo Air Quality API</a> ·
+      Part of <a href="https://github.com/bytewax/awesome-public-real-time-datasets" target="_blank" class="hover:text-slate-500 underline">awesome-public-real-time-datasets</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+const AQI_LEVELS = [
+  { max: 50,  label: 'Good',                       color: '#22c55e', bg: 'rgba(34,197,94,0.08)',   icon: '🌿', advice: 'Perfect day to be outside. The air is clean and fresh.',        prompt: 'Portrait of a man with dark wavy hair, round tortoiseshell glasses, jogging in a city park on a perfect clear-air morning, vibrant green trees, fresh air, golden morning light, cinematic running shot, photorealistic' },
+  { max: 100, label: 'Moderate',                   color: '#eab308', bg: 'rgba(234,179,8,0.08)',    icon: '🌤️', advice: 'Generally okay. Unusually sensitive people should consider reducing prolonged exertion.', prompt: 'Portrait of a man with dark wavy hair, round tortoiseshell glasses, standing outdoors on a slightly hazy summer day, slight atmospheric haze visible, city in background, casual outdoor atmosphere, photorealistic' },
+  { max: 150, label: 'Unhealthy for Sensitive Groups', color: '#f97316', bg: 'rgba(249,115,22,0.08)', icon: '😷', advice: 'Sensitive groups: reduce prolonged outdoor exertion. General public is less likely to be affected.', prompt: 'Portrait of a man with dark wavy hair, round tortoiseshell glasses, standing on a city street on a hazy day, noticeable air haze in background, slight concern on face, urban pollution atmosphere, photorealistic' },
+  { max: 200, label: 'Unhealthy',                  color: '#ef4444', bg: 'rgba(239,68,68,0.08)',    icon: '🚨', advice: 'Everyone should reduce prolonged outdoor exertion. Sensitive groups should avoid outdoor activity.', prompt: 'Portrait of a man with dark wavy hair, round tortoiseshell glasses, wearing an N95 mask on a heavily smoggy city street, orange-grey smog filling the air, dramatic polluted cityscape, photorealistic' },
+  { max: 300, label: 'Very Unhealthy',             color: '#a855f7', bg: 'rgba(168,85,247,0.08)',   icon: '⚠️', advice: 'Everyone should avoid prolonged outdoor exertion. Stay indoors with windows closed.', prompt: 'Portrait of a man with dark wavy hair, round tortoiseshell glasses, wearing full respirator mask indoors looking out at an apocalyptic smoggy city skyline, purple-orange haze, dramatic lighting, photorealistic' },
+  { max: Infinity, label: 'Hazardous',             color: '#991b1b', bg: 'rgba(153,27,27,0.08)',    icon: '💀', advice: 'HEALTH EMERGENCY. Everyone should avoid all outdoor activity. Stay indoors!', prompt: 'Portrait of a man with dark wavy hair, round tortoiseshell glasses, wearing a full gas mask inside a sealed room, outside the window is dense red-brown toxic smog, apocalyptic air quality emergency, cinematic horror, photorealistic' },
+];
+
+function getAQILevel(aqi) {
+  return AQI_LEVELS.find(l => aqi <= l.max) || AQI_LEVELS[AQI_LEVELS.length - 1];
+}
+
+function pct(val, max) {
+  return Math.min(100, Math.max(0, (val / max) * 100));
+}
+
+let currentAQI = null;
+let currentPrompt = null;
+
+async function loadAQ(lat, lon) {
+  const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,nitrogen_dioxide,ozone,us_aqi&hourly=us_aqi&timezone=auto&forecast_days=1`;
+
+  const resp = await fetch(url);
+  const data = await resp.json();
+
+  const c = data.current;
+  currentAQI = c.us_aqi;
+  const level = getAQILevel(currentAQI);
+  currentPrompt = level.prompt;
+
+  // Update banner
+  document.getElementById('aqi-number').textContent = currentAQI;
+  document.getElementById('aqi-number').style.color = level.color;
+  document.getElementById('aqi-label').textContent = level.label;
+  document.getElementById('aqi-label').style.color = level.color;
+  document.getElementById('aqi-desc').textContent = level.desc || '';
+  document.getElementById('aqi-banner').style.background = level.bg;
+  document.getElementById('page-icon').textContent = level.icon;
+
+  // Pollutants
+  const pm25v = Math.round(c.pm2_5);
+  const pm10v = Math.round(c.pm10);
+  document.getElementById('pm25').textContent = pm25v;
+  document.getElementById('pm10').textContent = pm10v;
+  document.getElementById('ozone').textContent = Math.round(c.ozone);
+  document.getElementById('no2').textContent = Math.round(c.nitrogen_dioxide);
+
+  document.getElementById('pm25-bar').style.width = `${pct(pm25v, 150)}%`;
+  document.getElementById('pm10-bar').style.width = `${pct(pm10v, 250)}%`;
+  document.getElementById('ozone-bar').style.width = `${pct(c.ozone, 300)}%`;
+  document.getElementById('no2-bar').style.width = `${pct(c.nitrogen_dioxide, 200)}%`;
+
+  document.getElementById('pm25-label').textContent = pm25v > 35 ? 'High' : pm25v > 12 ? 'Moderate' : 'Good';
+
+  // Health advice
+  document.getElementById('advice-icon').textContent = level.icon;
+  document.getElementById('advice-title').textContent = level.label;
+  document.getElementById('advice-text').textContent = level.advice;
+
+  // 24h AQI chart
+  const hourly = data.hourly?.us_aqi || [];
+  const past24 = hourly.slice(-24).filter(v => v !== null);
+  if (past24.length > 0) {
+    const maxAQI = Math.max(...past24, 100);
+    const chart = document.getElementById('aqi-chart');
+    chart.innerHTML = past24.map(v => {
+      const h = Math.max(2, (v / maxAQI) * 124);
+      const lvl = getAQILevel(v);
+      return `<div class="flex-1 rounded-t" style="height:${h}px; background:${lvl.color}; opacity:0.8" title="AQI ${v}"></div>`;
+    }).join('');
+  }
+
+  document.getElementById('last-update').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+  document.getElementById('aq-gen-btn').disabled = false;
+}
+
+function getLocation() {
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      try {
+        const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`).then(r => r.json());
+        const city = rev.address?.city || rev.address?.town || rev.address?.county || 'Your location';
+        document.getElementById('location-name').textContent = `${city}`;
+      } catch {}
+      await loadAQ(lat, lon);
+    },
+    async () => {
+      document.getElementById('location-name').textContent = 'Chicago, IL';
+      await loadAQ(41.8781, -87.6298);
+    }
+  );
+}
+
+async function generateAQPortrait() {
+  if (!currentPrompt) return;
+
+  document.getElementById('aq-idle').classList.add('hidden');
+  document.getElementById('aq-result').classList.add('hidden');
+  document.getElementById('aq-loading').classList.remove('hidden');
+  document.getElementById('aq-loading').classList.add('flex');
+
+  try {
+    const resp = await fetch('/api/flux-generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: currentPrompt }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error);
+    if (data.status === 'succeeded' && data.output) { showResult(data.output); return; }
+    if (data.id) await pollResult(data.id);
+  } catch {
+    document.getElementById('aq-loading').classList.add('hidden');
+    document.getElementById('aq-idle').classList.remove('hidden');
+  }
+}
+
+async function pollResult(id) {
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2500));
+    try {
+      const d = (await (await fetch(`/api/flux-poll?id=${id}`)).json());
+      if (d.status === 'succeeded' && d.output) { showResult(d.output); return; }
+      if (d.status === 'failed') break;
+    } catch { break; }
+  }
+  document.getElementById('aq-loading').classList.add('hidden');
+  document.getElementById('aq-idle').classList.remove('hidden');
+}
+
+function showResult(output) {
+  const url = Array.isArray(output) ? output[0] : output;
+  document.getElementById('aq-loading').classList.add('hidden');
+  document.getElementById('aq-result').classList.remove('hidden');
+  document.getElementById('aq-result').classList.add('flex');
+  document.getElementById('aq-img').src = url;
+  document.getElementById('aq-meta').textContent = `AQI ${currentAQI} · ${new Date().toLocaleTimeString()}`;
+}
+
+document.getElementById('aq-gen-btn').addEventListener('click', generateAQPortrait);
+window.generateAQPortrait = generateAQPortrait;
+
+getLocation();
+</script>
