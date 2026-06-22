@@ -108,6 +108,7 @@ import Layout from '../layouts/Layout.astro';
               <div class="w-14 h-14 rounded-full border-4 border-amber-500/20 border-t-amber-400 animate-spin"></div>
               <div class="text-amber-400 text-sm">Stepping through time…</div>
             </div>
+            <div id="hist-error" class="hidden text-red-400 text-xs p-3 text-center"></div>
 
             <div id="hist-result" class="hidden flex-col flex-1">
               <img id="hist-img" src="" alt="Historical portrait" class="w-full object-cover" style="max-height:300px"/>
@@ -302,9 +303,9 @@ async function loadToday() {
 async function selectEvent(text) {
   const shortText = text.slice(0, 150);
   const fluxPrompt = `A man with dark wavy hair, round tortoiseshell glasses, witnessing as a quiet observer the historical moment: ${shortText}. Cinematic historical scene, detailed period-accurate setting, dramatic lighting, documentary photography style, photorealistic`;
-  const gptPrompt = `A dramatic vintage newspaper front page photograph of the historical event: "${shortText}". Style as a high-quality archival newspaper front page with the headline in bold period typography:
-"${text.slice(0, 100)}"
-Aged newsprint texture, dramatic black and white photography, authentic 20th century newspaper layout, dateline visible.`;
+  const gptPrompt = `A man with dark wavy hair, round tortoiseshell glasses, and a light beard, present as an eyewitness at the historical moment: "${shortText}". He stands in period-appropriate clothing, experiencing the scene firsthand. Dramatic documentary photography, cinematic lighting, photorealistic.
+Include as an overlay caption in bold typography:
+"${text.slice(0, 120)}"`;
   const prompt = selectedModel === 'gpt' ? gptPrompt : fluxPrompt;
 
   document.getElementById('hist-idle').classList.add('hidden');
@@ -326,9 +327,12 @@ Aged newsprint texture, dramatic black and white photography, authentic 20th cen
     if (!resp.ok) throw new Error(data.error);
     if (data.status === 'succeeded' && data.output) { showHistResult(data.output, text); return; }
     if (data.id) await pollHist(data.id, text);
-  } catch {
+  } catch (err) {
+    console.error('[on-this-day] generate error:', err);
     document.getElementById('hist-loading').classList.add('hidden');
     document.getElementById('hist-idle').classList.remove('hidden');
+    const errEl = document.getElementById('hist-error');
+    if (errEl) { errEl.textContent = err.message || 'Generation failed'; errEl.classList.remove('hidden'); }
   }
 }
 
@@ -353,6 +357,16 @@ function showHistResult(output, text) {
   document.getElementById('hist-img').src = url;
   document.getElementById('hist-event-label').textContent = text;
   document.getElementById('hist-meta').textContent = new Date().toLocaleTimeString();
+  const errEl = document.getElementById('hist-error');
+  if (errEl) errEl.classList.add('hidden');
+  saveAiImage(url, 'on-this-day', text.slice(0, 300), selectedModel);
+}
+
+function saveAiImage(imageUrl, page, prompt, model) {
+  fetch('/api/save-ai-image', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageUrl, page, prompt, model }),
+  }).catch(() => {});
 }
 
 function clearHistResult() {

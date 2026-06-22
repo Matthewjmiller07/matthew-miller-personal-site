@@ -1,18 +1,7 @@
-import fs from 'fs';
-import path from 'path';
-
 export const prerender = false;
 
 function getToken() {
   return process.env.REPLICATE_API_TOKEN || import.meta.env?.REPLICATE_API_TOKEN || '';
-}
-
-function getSelfieDataUrl() {
-  try {
-    const imgPath = path.join(process.cwd(), 'public', 'images', 'matthew-selfie.jpg');
-    const buf = fs.readFileSync(imgPath);
-    return `data:image/jpeg;base64,${buf.toString('base64')}`;
-  } catch { return null; }
 }
 
 export async function POST({ request }) {
@@ -25,21 +14,14 @@ export async function POST({ request }) {
   const { prompt, inputImageUrl } = body;
   if (!prompt) return new Response(JSON.stringify({ error: 'prompt is required' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
 
-  let inputImages = [];
-  if (inputImageUrl) {
-    inputImages = [inputImageUrl];
-  } else {
-    const selfie = getSelfieDataUrl();
-    if (selfie) inputImages = [selfie];
-  }
-
   const input = {
     prompt,
     quality: 'low',
     aspect_ratio: '1:1',
     output_format: 'webp',
     output_compression: 85,
-    ...(inputImages.length > 0 ? { input_images: inputImages } : {}),
+    // Only pass input_images when user explicitly supplies an HTTP URL (base64 is rejected by the model)
+    ...(inputImageUrl ? { input_images: [inputImageUrl] } : {}),
   };
 
   try {

@@ -9,7 +9,59 @@ import ImageGallery from '../../components/ImageGallery.astro';
 >
   <main class="container mx-auto px-4 py-8">
     <article class="prose prose-lg lg:prose-xl dark:prose-invert mx-auto">
+      <h2 class="text-slate-200 mb-4">Classic Portraits</h2>
       <ImageGallery folder="images/AI-Matthew" />
+
+      <h2 class="text-slate-200 mt-12 mb-4">Live-Generated Images</h2>
+      <p class="text-slate-400 text-sm mb-6">Images generated across the live data pages, saved automatically.</p>
+
+      <div id="ai-gallery-loading" class="text-slate-500 text-sm">Loading...</div>
+      <div id="ai-gallery-empty" class="text-slate-500 text-sm hidden">No generated images yet — visit any live page and generate one!</div>
+      <div id="ai-gallery-error" class="text-red-400 text-sm hidden"></div>
+
+      <div id="ai-gallery" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4"></div>
     </article>
   </main>
 </Layout>
+
+<script>
+async function loadAiGallery() {
+  const loading = document.getElementById('ai-gallery-loading');
+  const empty = document.getElementById('ai-gallery-empty');
+  const errEl = document.getElementById('ai-gallery-error');
+  const gallery = document.getElementById('ai-gallery');
+
+  try {
+    const resp = await fetch('/api/get-ai-images?limit=60');
+    const images = await resp.json();
+    loading.classList.add('hidden');
+
+    if (!Array.isArray(images) || images.length === 0) {
+      empty.classList.remove('hidden');
+      return;
+    }
+
+    gallery.innerHTML = images.map(img => `
+      <div class="group relative overflow-hidden rounded-xl aspect-square bg-slate-800">
+        <img
+          src="${img.image_url}"
+          alt="${img.page || 'AI generated'}"
+          class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+          onerror="this.parentElement.classList.add('hidden')"
+        />
+        <div class="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+          <p class="text-white text-xs font-medium">${img.page || '—'}</p>
+          <p class="text-slate-300 text-xs">${img.model || ''} · ${new Date(img.created_at).toLocaleDateString()}</p>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    loading.classList.add('hidden');
+    errEl.textContent = `Failed to load: ${err.message}`;
+    errEl.classList.remove('hidden');
+  }
+}
+
+loadAiGallery();
+</script>
