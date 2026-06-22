@@ -158,7 +158,7 @@ import Layout from '../layouts/Layout.astro';
               ✡️ The ISS is currently passing over the Middle East / Israel region
             </div>
             <div class="text-slate-500 text-xs leading-relaxed" id="location-detail">
-              Data from <a href="http://api.open-notify.org" target="_blank" class="hover:text-slate-300 underline">Open Notify</a> + reverse geocoding
+              Data from <a href="https://wheretheiss.at" target="_blank" class="hover:text-slate-300 underline">Where the ISS At</a> + reverse geocoding
             </div>
           </div>
         </div>
@@ -194,7 +194,7 @@ import Layout from '../layouts/Layout.astro';
     </div>
 
     <p class="text-center text-slate-700 text-xs pb-8">
-      ISS position from <a href="http://api.open-notify.org" target="_blank" class="hover:text-slate-500 underline">Open Notify</a> ·
+      ISS position from <a href="https://wheretheiss.at" target="_blank" class="hover:text-slate-500 underline">Where the ISS At</a> ·
       Part of <a href="https://github.com/bytewax/awesome-public-real-time-datasets" target="_blank" class="hover:text-slate-500 underline">awesome-public-real-time-datasets</a>
     </p>
   </main>
@@ -248,10 +248,18 @@ async function reverseGeocode(lat, lon) {
 
 async function fetchISS() {
   try {
-    const r = await fetch('https://api.open-notify.org/iss-now.json');
+    const r = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
     const d = await r.json();
-    const lat = parseFloat(d.iss_position.latitude);
-    const lon = parseFloat(d.iss_position.longitude);
+    const lat = parseFloat(d.latitude);
+    const lon = parseFloat(d.longitude);
+
+    // Live altitude and velocity from the new API
+    if (d.altitude) {
+      document.querySelector('[class*="text-purple-400"]').textContent = `${Math.round(d.altitude)} km`;
+    }
+    if (d.velocity) {
+      document.querySelector('[class*="text-cyan-400"]').textContent = `${(d.velocity / 3600).toFixed(2)} km/s`;
+    }
 
     document.getElementById('iss-coords').textContent = `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
 
