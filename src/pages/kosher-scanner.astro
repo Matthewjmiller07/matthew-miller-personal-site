@@ -158,6 +158,8 @@ async function doSearch(term) {
   }
 }
 
+let _productList = [];
+
 function renderProducts(products) {
   const list = document.getElementById('products-list');
   if (!products.length) {
@@ -165,7 +167,8 @@ function renderProducts(products) {
     return;
   }
 
-  list.innerHTML = products.map(p => {
+  _productList = products;
+  list.innerHTML = products.map((p, idx) => {
     const hasKosher = isKosher(p);
     const agencies = getKosherAgencies(p);
     const name = p.product_name || 'Unknown product';
@@ -173,7 +176,7 @@ function renderProducts(products) {
 
     return `
       <div class="group flex gap-3 items-start rounded-xl border ${hasKosher ? 'border-blue-900/40 bg-blue-950/10' : 'border-white/5 bg-white/3'} hover:border-blue-500/30 hover:bg-blue-500/5 p-3 cursor-pointer transition-all"
-        onclick="selectProduct(${JSON.stringify(JSON.stringify(p))})"
+        onclick="selectProductByIdx(${idx})"
       >
         <div class="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border border-white/10 bg-white/5">
           ${p.image_thumb_url
@@ -194,8 +197,11 @@ function renderProducts(products) {
   }).join('');
 }
 
-function selectProduct(pJson) {
-  const p = JSON.parse(pJson);
+function selectProductByIdx(idx) {
+  selectProduct(_productList[idx]);
+}
+
+function selectProduct(p) {
   window._selectedProduct = p;
 
   const detail = document.getElementById('product-detail');
@@ -245,6 +251,7 @@ function selectProduct(pJson) {
   generateFoodPortrait(p);
 }
 window.selectProduct = selectProduct;
+window.selectProductByIdx = selectProductByIdx;
 
 async function generateFoodPortrait(p) {
   if (!p) return;

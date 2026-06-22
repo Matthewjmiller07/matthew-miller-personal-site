@@ -184,26 +184,46 @@ const SCENE_TEMPLATES = [
   ['shavuot', 'Giving of the Torah', 'The giving of the Torah at Mount Sinai, fire and thunder, Moses receiving the tablets, entire Israel at the base, epic sacred art'],
 ];
 
-function buildPrompt(parshaName, description) {
+function buildAllScenes(parshaName, description) {
   const lowerName = parshaName.toLowerCase();
+  const suffix = ', photorealistic painting, soft dramatic lighting, ancient Hebrew biblical atmosphere, cinematic composition, museum-quality';
+  const scenes = [];
 
-  // Find matching template
   for (const [keyword, scene, prompt] of SCENE_TEMPLATES) {
     if (lowerName.includes(keyword)) {
-      return { scene, prompt: `${prompt}, photorealistic painting, soft dramatic lighting, ancient Hebrew biblical atmosphere, cinematic composition, museum-quality` };
+      scenes.push({ scene, prompt: `${prompt}${suffix}` });
     }
   }
 
-  // Fallback: use description to build generic prompt
-  const firstSentence = description?.split('.')[0] || parshaName;
-  return {
-    scene: firstSentence,
-    prompt: `A dramatic biblical illustration of ${firstSentence}, ancient Near East setting, divine golden light, epic scale, museum-quality biblical art, cinematic composition, photorealistic painting`,
-  };
+  if (scenes.length === 0) {
+    const firstSentence = description?.split('.')[0] || parshaName;
+    scenes.push({
+      scene: firstSentence,
+      prompt: `A dramatic biblical illustration of ${firstSentence}, ancient Near East setting, divine golden light, epic scale, museum-quality biblical art, cinematic composition, photorealistic painting`,
+    });
+  }
+
+  return scenes;
 }
 
-let currentPrompt = '';
+let currentScenes = [];
+let currentSceneIndex = 0;
 let parshaName = '';
+
+function syncSceneUI() {
+  const { scene, prompt } = currentScenes[currentSceneIndex];
+  document.getElementById('flux-prompt-preview').textContent = prompt;
+  document.getElementById('art-style-badge').textContent = scene;
+
+  const nextIdx = (currentSceneIndex + 1) % currentScenes.length;
+  const nextScene = currentScenes[nextIdx].scene;
+  const regenBtn = document.getElementById('regen-btn');
+  if (currentScenes.length > 1) {
+    regenBtn.textContent = `↻ Next Scene: ${nextScene} (${nextIdx + 1}/${currentScenes.length})`;
+  } else {
+    regenBtn.textContent = '↻ Try Again';
+  }
+}
 
 async function loadParsha() {
   try {
@@ -218,7 +238,6 @@ async function loadParsha() {
     const description = item.description?.en || '';
     const aliyot = item.extraDetails?.aliyot || [];
 
-    // Render
     document.getElementById('parsha-loading').classList.add('hidden');
     document.getElementById('parsha-name').textContent = `Parashat ${parshaName}`;
     document.getElementById('parsha-name').classList.remove('hidden');
@@ -229,7 +248,6 @@ async function loadParsha() {
     document.getElementById('parsha-desc').textContent = description;
     document.getElementById('parsha-desc').classList.remove('hidden');
 
-    // Aliyot
     document.getElementById('aliyot-list').innerHTML = aliyot.map((a, i) => `
       <div class="flex items-start gap-2">
         <span class="text-amber-600/60 font-mono text-xs mt-0.5 w-5 flex-shrink-0">${i === aliyot.length - 1 && aliyot.length > 7 ? 'M' : i + 1}</span>
@@ -237,13 +255,11 @@ async function loadParsha() {
       </div>
     `).join('');
 
-    // Build FLUX prompt
-    const { scene, prompt } = buildPrompt(parshaName, description);
-    currentPrompt = prompt;
-    document.getElementById('flux-prompt-preview').textContent = prompt;
+    currentScenes = buildAllScenes(parshaName, description);
+    currentSceneIndex = 0;
+    syncSceneUI();
     document.getElementById('generate-btn').disabled = false;
 
-    // Sefaria link
     const sefariaUrl = `https://sefaria.org/${encodeURIComponent(ref.replace(/ /g, '_'))}`;
     document.getElementById('sefaria-link').textContent = `Read ${parshaName} on Sefaria →`;
     document.getElementById('sefaria-link').href = sefariaUrl;
@@ -254,22 +270,12 @@ async function loadParsha() {
   }
 }
 
-// Multiple scene variants for regeneration
-let sceneIndex = 0;
-const sceneVariants = [
-  '', // will be set from template
-  'dramatic wide shot, golden hour, vast scale, impressionist biblical painting',
-  'intimate close-up, candlelight, emotional moment, Renaissance oil painting style',
-  'aerial view, vast landscape, epic scale, cinematic widescreen, painterly',
-];
-
 async function generate() {
-  if (!currentPrompt) return;
+  if (!currentScenes.length) return;
 
-  // Swap variant on regen
-  const variant = sceneVariants[sceneIndex % sceneVariants.length];
-  const prompt = sceneIndex === 0 ? currentPrompt : `${currentPrompt.split(',').slice(0, -2).join(',')}, ${variant}`;
-  sceneIndex++;
+  const { scene, prompt } = currentScenes[currentSceneIndex];
+  document.getElementById('flux-prompt-preview').textContent = prompt;
+  document.getElementById('art-style-badge').textContent = scene;
 
   setArtState('loading');
   document.getElementById('generate-btn').disabled = true;
@@ -287,10 +293,10 @@ async function generate() {
     document.getElementById('art-status').textContent = `Prediction ${data.status}…`;
 
     if (data.status === 'succeeded' && data.output) {
-      showArt(data.output);
+      showArt(data.output, scene);
       return;
     }
-    if (data.id) await pollArt(data.id);
+    if (data.id) await pollArt(data.id, scene);
 
   } catch (err) {
     setArtState('error');
@@ -301,6 +307,12 @@ async function generate() {
   }
 }
 
+function nextScene() {
+  currentSceneIndex = (currentSceneIndex + 1) % currentScenes.length;
+  syncSceneUI();
+  generate();
+}
+
 async function pollArt(id) {
   for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 2500));
@@ -308,7 +320,7 @@ async function pollArt(id) {
       const r = await fetch(`/api/flux-poll?id=${id}`);
       const d = await r.json();
       document.getElementById('art-status').textContent = `${d.status}…`;
-      if (d.status === 'succeeded' && d.output) { showArt(d.output); return; }
+      if (d.status === 'succeeded' && d.output) { showArt(d.output, ''); return; }
       if (d.status === 'failed') throw new Error(d.error || 'Failed');
     } catch (err) {
       setArtState('error');
@@ -318,10 +330,11 @@ async function pollArt(id) {
   }
 }
 
-function showArt(output) {
+function showArt(output, scene) {
   const url = Array.isArray(output) ? output[0] : output;
   document.getElementById('art-img').src = url;
-  document.getElementById('art-caption').textContent = `Parashat ${parshaName} · Generated ${new Date().toLocaleTimeString()}`;
+  const sceneLabel = scene || currentScenes[currentSceneIndex]?.scene || '';
+  document.getElementById('art-caption').textContent = `${sceneLabel ? sceneLabel + ' · ' : ''}Parashat ${parshaName} · Generated ${new Date().toLocaleTimeString()}`;
   setArtState('result');
 }
 
@@ -338,8 +351,9 @@ function setArtState(state) {
 }
 
 document.getElementById('generate-btn').addEventListener('click', generate);
-document.getElementById('regen-btn').addEventListener('click', generate);
+document.getElementById('regen-btn').addEventListener('click', nextScene);
 window.generate = generate;
+window.nextScene = nextScene;
 
 loadParsha();
 </script>

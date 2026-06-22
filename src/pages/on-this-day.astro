@@ -143,6 +143,8 @@ let allData = { events: [], births: [], deaths: [], holidays: [] };
 let currentTab = 'all';
 let searchQuery = '';
 let eraFilter = 'all';
+let _renderedItems = [];
+let _jewishItems = [];
 
 function getYear(item) {
   return parseInt(item.year) || 0;
@@ -208,7 +210,9 @@ function renderItems() {
     return;
   }
 
-  list.innerHTML = items.slice(0, 80).map(item => {
+  const slicedItems = items.slice(0, 80);
+  _renderedItems = slicedItems;
+  list.innerHTML = slicedItems.map((item, idx) => {
     const isJ = isJewishRelated(item.text || '');
     const color = TYPE_COLORS[item.type] || '#94a3b8';
     const icon = TYPE_LABELS[item.type] || '•';
@@ -217,7 +221,7 @@ function renderItems() {
 
     return `
       <div class="group flex gap-3 items-start rounded-xl border ${isJ ? 'border-blue-800/40 bg-blue-950/10' : 'border-white/5 bg-white/3'} hover:border-amber-500/20 hover:bg-amber-500/5 p-3 transition-all cursor-pointer"
-        onclick="selectEvent(${JSON.stringify(item.text || '').replace(/'/g, "\\'")})"
+        onclick="selectEventByIdx(${idx})"
       >
         <div class="flex-shrink-0 text-center w-10">
           <div class="text-xs font-bold" style="color:${color}">${item.year || '?'}</div>
@@ -260,8 +264,9 @@ async function loadToday() {
   // Jewish highlight section
   if (jewishItems.length > 0) {
     document.getElementById('jewish-highlight').classList.remove('hidden');
-    document.getElementById('jewish-items').innerHTML = jewishItems.slice(0, 5).map(item => `
-      <div class="flex gap-2 items-start text-sm cursor-pointer hover:text-blue-300 transition-colors" onclick="selectEvent(${JSON.stringify(item.text || '')})">
+    _jewishItems = jewishItems.slice(0, 5);
+    document.getElementById('jewish-items').innerHTML = _jewishItems.map((item, idx) => `
+      <div class="flex gap-2 items-start text-sm cursor-pointer hover:text-blue-300 transition-colors" onclick="selectJewishItemByIdx(${idx})">
         <span class="text-blue-500/70 font-bold text-xs flex-shrink-0 mt-0.5">${item.year || '?'}</span>
         <span class="text-slate-300 text-xs leading-relaxed">${item.text || ''}</span>
       </div>
@@ -327,6 +332,8 @@ function clearHistResult() {
 }
 window.clearHistResult = clearHistResult;
 window.selectEvent = selectEvent;
+window.selectEventByIdx = (idx) => { const item = _renderedItems[idx]; if (item) selectEvent(item.text || ''); };
+window.selectJewishItemByIdx = (idx) => { const item = _jewishItems[idx]; if (item) selectEvent(item.text || ''); };
 
 window.filterByEra = function(era) {
   eraFilter = era;
