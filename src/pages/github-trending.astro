@@ -1,0 +1,249 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="GitHub Trending"
+  description="Live trending GitHub repositories, filtered by AI/ML, Data, Jewish topics, and more."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-slate-900 to-transparent px-4 py-10 text-center border-b border-white/5">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        <span style="color:#6e40c9">⬡</span> GitHub Trending
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        What developers are building right now — live from the <a href="https://github.com" target="_blank" rel="noopener" class="text-purple-400 hover:underline">GitHub</a> search API. Smart filters for AI, data, and Jewish tech.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-6 flex-wrap text-sm">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse"></span>
+          <span class="text-slate-400">Live search results</span>
+        </div>
+        <div id="result-count" class="text-slate-300 font-semibold text-xs">—</div>
+        <div id="rate-status" class="text-slate-500 text-xs">—</div>
+      </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 pt-6 pb-12">
+
+      <!-- Topic tabs -->
+      <div class="flex flex-wrap gap-2 mb-4">
+        <button class="topic-btn active px-3 py-1.5 rounded-full text-xs font-semibold border border-purple-500/50 bg-purple-500/10 text-purple-300" data-topic="ai">🤖 AI / LLMs</button>
+        <button class="topic-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-topic="data">📊 Data Tools</button>
+        <button class="topic-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-topic="web">🌐 Web Dev</button>
+        <button class="topic-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-topic="devtools">🛠 DevTools</button>
+        <button class="topic-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-topic="hebrew">✡️ Hebrew & Jewish</button>
+        <button class="topic-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-topic="mine">👤 matthewjmiller07</button>
+      </div>
+
+      <!-- Time range (for topics other than "mine") -->
+      <div id="time-row" class="flex gap-2 mb-4">
+        <button class="time-btn active text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-colors border-purple-500/40 bg-purple-500/10 text-purple-300" data-days="7">Past week</button>
+        <button class="time-btn text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-colors" data-days="30">Past month</button>
+        <button class="time-btn text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-colors" data-days="1">Today</button>
+      </div>
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-3 gap-3 mb-4">
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Top Stars</div>
+          <div id="stat-stars" class="text-2xl font-black text-yellow-400">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Total Results</div>
+          <div id="stat-total" class="text-2xl font-black text-purple-400">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Top Language</div>
+          <div id="stat-lang" class="text-sm font-bold text-cyan-400">—</div>
+        </div>
+      </div>
+
+      <!-- Repo list -->
+      <div id="repos-list" class="space-y-2">
+        <div class="p-8 text-center text-slate-500 animate-pulse">
+          <div class="text-3xl mb-2">⬡</div>Loading…
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data from <a href="https://docs.github.com/en/rest" target="_blank" class="hover:text-slate-500 underline">GitHub REST API</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+const TOPIC_QUERIES = {
+  ai: 'llm OR "large language model" OR claude OR openai OR "machine learning" OR "neural network" OR "diffusion model"',
+  data: 'analytics OR "data pipeline" OR pandas OR "data visualization" OR dbt OR spark OR sql',
+  web: 'react OR nextjs OR astro OR svelte OR tailwind OR "web framework"',
+  devtools: 'cli OR "developer tool" OR devtools OR "code editor" OR debugger OR linter',
+  hebrew: 'hebrew OR jewish OR sefaria OR torah OR talmud OR "jewish texts" OR israel',
+  mine: null, // special case
+};
+
+const LANG_COLORS = {
+  JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5', Go: '#00ADD8',
+  Rust: '#dea584', Ruby: '#701516', Java: '#b07219', C: '#555555', 'C++': '#f34b7d',
+  CSS: '#563d7c', HTML: '#e34c26', Shell: '#89e051', Vue: '#41b883', Swift: '#F05138',
+  Kotlin: '#A97BFF', Jupyter: '#DA5B0B', R: '#198CE7',
+};
+
+let currentTopic = 'ai';
+let currentDays = 7;
+let allRepos = [];
+
+async function loadRepos() {
+  const list = document.getElementById('repos-list');
+  list.innerHTML = '<div class="p-8 text-center text-slate-500 animate-pulse"><div class="text-3xl mb-2">⬡</div>Loading from GitHub…</div>';
+
+  try {
+    let repos;
+
+    if (currentTopic === 'mine') {
+      const resp = await fetch('https://api.github.com/users/matthewjmiller07/repos?sort=updated&per_page=30');
+      updateRateLimit(resp);
+      repos = await resp.json();
+
+      // Get contribution activity
+      document.getElementById('time-row').classList.add('hidden');
+
+      if (Array.isArray(repos)) {
+        allRepos = repos.map(r => ({ ...r, trending: false }));
+      } else {
+        allRepos = [];
+      }
+    } else {
+      document.getElementById('time-row').classList.remove('hidden');
+      const since = new Date(Date.now() - currentDays * 86400000).toISOString().split('T')[0];
+      const q = TOPIC_QUERIES[currentTopic];
+      const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}+pushed:>${since}&sort=stars&order=desc&per_page=30`;
+      const resp = await fetch(url);
+      updateRateLimit(resp);
+      const data = await resp.json();
+      allRepos = (data.items || []).map(r => ({ ...r, trending: true }));
+      document.getElementById('stat-total').textContent = (data.total_count || 0).toLocaleString();
+    }
+
+    renderRepos(allRepos);
+  } catch (err) {
+    list.innerHTML = `<div class="p-8 text-center text-red-400">Error: ${err.message}</div>`;
+  }
+}
+
+function updateRateLimit(resp) {
+  const remaining = resp.headers.get('X-RateLimit-Remaining');
+  const limit = resp.headers.get('X-RateLimit-Limit');
+  if (remaining && limit) {
+    document.getElementById('rate-status').textContent = `API: ${remaining}/${limit} requests remaining`;
+  }
+}
+
+function formatNum(n) {
+  if (n >= 1000) return `${(n/1000).toFixed(1)}k`;
+  return String(n);
+}
+
+function timeAgo(dateStr) {
+  const d = new Date(dateStr);
+  const s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  if (s < 86400 * 30) return `${Math.floor(s/86400)}d ago`;
+  return `${Math.floor(s/86400/30)}mo ago`;
+}
+
+function renderRepos(repos) {
+  const list = document.getElementById('repos-list');
+
+  if (!repos.length) {
+    list.innerHTML = '<div class="p-8 text-center text-slate-500">No repositories found.</div>';
+    return;
+  }
+
+  const stars = repos.map(r => r.stargazers_count || 0);
+  const maxStars = Math.max(...stars, 1);
+  document.getElementById('stat-stars').textContent = formatNum(Math.max(...stars));
+  document.getElementById('stat-total').textContent = repos.length;
+
+  // Top language
+  const langs = repos.map(r => r.language).filter(Boolean);
+  if (langs.length) {
+    const counts = {};
+    langs.forEach(l => counts[l] = (counts[l] || 0) + 1);
+    document.getElementById('stat-lang').textContent = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+  }
+
+  document.getElementById('result-count').textContent = `${repos.length} repos`;
+
+  list.innerHTML = repos.slice(0, 30).map((r, i) => {
+    const langColor = LANG_COLORS[r.language] || '#94a3b8';
+    const pct = maxStars > 0 ? (r.stargazers_count / maxStars) * 100 : 0;
+
+    return `
+      <div class="group relative rounded-xl border border-white/5 hover:border-purple-500/30 bg-white/3 hover:bg-purple-500/5 p-4 transition-all overflow-hidden">
+        <!-- Star bar background -->
+        <div class="absolute inset-0 opacity-10" style="background: linear-gradient(90deg, #7c3aed ${pct.toFixed(1)}%, transparent ${pct.toFixed(1)}%)"></div>
+
+        <div class="relative">
+          <div class="flex items-start gap-3">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap mb-1">
+                ${i < 3 ? `<span class="text-xs font-black text-yellow-400">#${i+1}</span>` : `<span class="text-xs text-slate-600 font-mono">#${i+1}</span>`}
+                ${r.language ? `<span class="flex items-center gap-1 text-xs"><span class="w-2 h-2 rounded-full" style="background:${langColor}"></span><span class="text-slate-500">${r.language}</span></span>` : ''}
+                ${r.fork ? '<span class="text-xs text-slate-600 bg-white/5 px-1 rounded">fork</span>' : ''}
+              </div>
+              <a href="${r.html_url}" target="_blank" rel="noopener"
+                class="text-white font-bold text-sm group-hover:text-purple-300 transition-colors hover:underline">
+                ${r.full_name || r.name}
+              </a>
+              ${r.description ? `<p class="text-slate-400 text-xs mt-1 line-clamp-2">${r.description}</p>` : ''}
+
+              ${r.topics?.length > 0 ? `
+                <div class="flex flex-wrap gap-1 mt-2">
+                  ${r.topics.slice(0, 4).map(t => `<span class="text-xs bg-purple-500/10 text-purple-400/70 px-1.5 py-0.5 rounded border border-purple-500/10">${t}</span>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="flex-shrink-0 text-right space-y-1">
+              <div class="text-yellow-400 font-bold text-sm">⭐ ${formatNum(r.stargazers_count || 0)}</div>
+              <div class="text-slate-600 text-xs">🍴 ${formatNum(r.forks_count || 0)}</div>
+              <div class="text-slate-700 text-xs">${timeAgo(r.updated_at || r.pushed_at || '')}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+document.querySelectorAll('.topic-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.topic-btn').forEach(b => {
+      b.classList.remove('active', 'border-purple-500/50', 'bg-purple-500/10', 'text-purple-300');
+      b.classList.add('border-white/10', 'bg-white/5', 'text-slate-400');
+    });
+    btn.classList.add('active', 'border-purple-500/50', 'bg-purple-500/10', 'text-purple-300');
+    btn.classList.remove('border-white/10', 'bg-white/5', 'text-slate-400');
+    currentTopic = btn.dataset.topic;
+    loadRepos();
+  });
+});
+
+document.querySelectorAll('.time-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.time-btn').forEach(b => {
+      b.classList.remove('border-purple-500/40', 'bg-purple-500/10', 'text-purple-300');
+      b.classList.add('border-white/10', 'bg-white/5', 'text-slate-400');
+    });
+    btn.classList.add('border-purple-500/40', 'bg-purple-500/10', 'text-purple-300');
+    btn.classList.remove('border-white/10', 'bg-white/5', 'text-slate-400');
+    currentDays = parseInt(btn.dataset.days);
+    loadRepos();
+  });
+});
+
+loadRepos();
+</script>

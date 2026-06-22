@@ -1,0 +1,329 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Kosher Scanner"
+  description="Search Open Food Facts to find kosher-certified products with nutrition info and AI food portrait generation."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-blue-950/40 to-transparent px-4 py-10 text-center border-b border-blue-900/20">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        🍽️ Kosher Scanner
+      </h1>
+      <p class="text-slate-400 max-w-xl mx-auto text-sm">
+        Search <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" class="text-blue-400 hover:underline">Open Food Facts</a> — 3M+ products — for kosher certification, ingredients, and nutrition. Click any product for a FLUX food portrait.
+      </p>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 pt-6 pb-12">
+
+      <!-- Search bar -->
+      <div class="flex gap-2 mb-4">
+        <input id="search-input" type="text" placeholder="Search any food (e.g. matzo, challah, gefilte fish, chocolate…)"
+          class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 transition-colors"
+          value="kosher"
+        />
+        <button id="search-btn" class="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-bold text-sm transition-colors">Search</button>
+      </div>
+
+      <!-- Quick searches -->
+      <div class="flex flex-wrap gap-2 mb-6">
+        <span class="text-xs text-slate-600">Quick:</span>
+        <button class="quick-btn text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-blue-500/30 transition-colors">🍪 matzo</button>
+        <button class="quick-btn text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-blue-500/30 transition-colors">🐟 gefilte fish</button>
+        <button class="quick-btn text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-blue-500/30 transition-colors">🍞 challah</button>
+        <button class="quick-btn text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-blue-500/30 transition-colors">🍫 chocolate</button>
+        <button class="quick-btn text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-blue-500/30 transition-colors">🥤 soda</button>
+        <button class="quick-btn text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-blue-500/30 transition-colors">🫘 hummus</button>
+        <button class="quick-btn text-xs px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-blue-500/30 transition-colors">🍷 wine</button>
+      </div>
+
+      <!-- Filter: kosher only -->
+      <div class="flex items-center gap-3 mb-4">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <div class="relative">
+            <input id="kosher-only" type="checkbox" class="sr-only peer" checked/>
+            <div class="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
+            <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-all peer-checked:left-5.5 peer-checked:translate-x-5"></div>
+          </div>
+          <span class="text-sm text-slate-300">Kosher certified only</span>
+        </label>
+        <span id="result-count" class="text-xs text-slate-500 ml-auto">—</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Product list -->
+        <div class="lg:col-span-2">
+          <div id="products-list" class="space-y-3">
+            <div class="p-8 text-center text-slate-500 animate-pulse">
+              <div class="text-3xl mb-2">🔍</div>Searching Open Food Facts…
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: selected product + FLUX -->
+        <div class="flex flex-col gap-4">
+
+          <!-- Selected product detail -->
+          <div id="product-detail" class="rounded-2xl border border-white/10 bg-white/5 p-4 hidden">
+            <div id="product-img-wrap" class="mb-3 flex justify-center">
+              <img id="product-img" src="" alt="" class="w-24 h-24 object-cover rounded-xl border border-white/10"/>
+            </div>
+            <div id="product-name" class="text-white font-bold text-sm mb-1">—</div>
+            <div id="product-brand" class="text-slate-400 text-xs mb-2">—</div>
+            <div id="product-kosher-badges" class="flex flex-wrap gap-1 mb-2"></div>
+            <div id="product-nutrition" class="space-y-1 mb-3"></div>
+            <a id="product-off-link" href="#" target="_blank" rel="noopener"
+              class="text-xs text-blue-400 hover:underline">View on Open Food Facts →</a>
+          </div>
+
+          <!-- FLUX food portrait -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 flex-1 flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-white/10">
+              <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Food Portrait</h3>
+              <p class="text-slate-600 text-xs mt-0.5">Select a product to generate a FLUX scene</p>
+            </div>
+
+            <div id="food-idle" class="flex-1 flex flex-col items-center justify-center p-5 text-center gap-3 text-slate-500 min-h-[180px]">
+              <div class="text-4xl">🍽️</div>
+              <p class="text-xs">Select any product from the list</p>
+            </div>
+
+            <div id="food-loading" class="hidden flex-1 flex-col items-center justify-center p-5 gap-4 min-h-[180px]">
+              <div class="w-12 h-12 rounded-full border-4 border-blue-500/20 border-t-blue-400 animate-spin"></div>
+              <div class="text-blue-400 text-sm">Plating the dish…</div>
+            </div>
+
+            <div id="food-result" class="hidden flex-col flex-1">
+              <img id="food-img" src="" alt="Food portrait" class="w-full object-cover" style="max-height:260px"/>
+              <div class="p-3 flex justify-between items-center">
+                <div id="food-meta" class="text-slate-500 text-xs">—</div>
+                <button onclick="generateFoodPortrait(window._selectedProduct)" class="text-xs px-2 py-1 rounded-lg bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors">↻</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data from <a href="https://world.openfoodfacts.org" target="_blank" class="hover:text-slate-500 underline">Open Food Facts</a> — the free food products database
+    </p>
+  </main>
+</Layout>
+
+<script>
+const KOSHER_AGENCIES = ['en:kosher', 'en:ou-kosher', 'en:ok-kosher', 'en:kof-k-kosher', 'en:crc-kosher', 'en:star-k-kosher', 'en:crc', 'en:ou', 'en:ok', 'en:kof-k', 'en:star-k', 'en:rabbi'];
+const AGENCY_LABELS = { 'en:ou-kosher': 'OU', 'en:ok-kosher': 'OK', 'en:kof-k-kosher': 'Kof-K', 'en:crc-kosher': 'cRc', 'en:star-k-kosher': 'Star-K', 'en:ou': 'OU', 'en:ok': 'OK', 'en:kosher': 'Kosher' };
+
+function isKosher(product) {
+  const labels = product.labels_tags || [];
+  return labels.some(l => KOSHER_AGENCIES.some(k => l.includes(k.replace('en:', ''))));
+}
+
+function getKosherAgencies(product) {
+  const labels = product.labels_tags || [];
+  return labels.filter(l => KOSHER_AGENCIES.some(k => l === k || l.includes('kosher') || l.includes('ou') || l.includes('kof') || l.includes('star-k') || l.includes('crc')));
+}
+
+function agencyLabel(tag) {
+  return AGENCY_LABELS[tag] || tag.replace('en:', '').replace(/-/g, ' ');
+}
+
+async function doSearch(term) {
+  const kosherOnly = document.getElementById('kosher-only').checked;
+  const list = document.getElementById('products-list');
+  list.innerHTML = '<div class="p-8 text-center text-slate-500 animate-pulse"><div class="text-3xl mb-2">🔍</div>Searching…</div>';
+
+  const fields = 'product_name,brands,labels_tags,image_thumb_url,categories_tags,nutriments,code,url';
+  const kosherParam = kosherOnly ? '&tag_0=labels&tag_contains_0=contains&tag_name_0=kosher' : '';
+  const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(term)}&json=1&fields=${fields}&page_size=20&action=process${kosherParam}`;
+
+  try {
+    const resp = await fetch(url);
+    const data = await resp.json();
+    let products = data.products || [];
+
+    if (kosherOnly) {
+      products = products.filter(isKosher);
+    }
+
+    document.getElementById('result-count').textContent = `${products.length} product${products.length !== 1 ? 's' : ''} found`;
+    renderProducts(products);
+  } catch (err) {
+    list.innerHTML = `<div class="p-8 text-center text-red-400">Search error: ${err.message}</div>`;
+  }
+}
+
+function renderProducts(products) {
+  const list = document.getElementById('products-list');
+  if (!products.length) {
+    list.innerHTML = '<div class="p-8 text-center text-slate-500">No products found. Try removing the kosher filter.</div>';
+    return;
+  }
+
+  list.innerHTML = products.map(p => {
+    const hasKosher = isKosher(p);
+    const agencies = getKosherAgencies(p);
+    const name = p.product_name || 'Unknown product';
+    const brand = p.brands || '';
+
+    return `
+      <div class="group flex gap-3 items-start rounded-xl border ${hasKosher ? 'border-blue-900/40 bg-blue-950/10' : 'border-white/5 bg-white/3'} hover:border-blue-500/30 hover:bg-blue-500/5 p-3 cursor-pointer transition-all"
+        onclick="selectProduct(${JSON.stringify(JSON.stringify(p))})"
+      >
+        <div class="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border border-white/10 bg-white/5">
+          ${p.image_thumb_url
+            ? `<img src="${p.image_thumb_url}" alt="" class="w-full h-full object-cover"/>`
+            : '<div class="w-full h-full flex items-center justify-center text-2xl">🍽️</div>'}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-white font-semibold text-sm group-hover:text-blue-300 transition-colors truncate">${name}</div>
+          ${brand ? `<div class="text-slate-500 text-xs mb-1">${brand}</div>` : ''}
+          <div class="flex flex-wrap gap-1">
+            ${hasKosher ? '<span class="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded-full font-semibold border border-blue-500/20">✡️ Kosher</span>' : ''}
+            ${agencies.slice(0, 2).map(a => `<span class="text-xs bg-white/5 text-slate-500 px-1.5 py-0.5 rounded">${agencyLabel(a)}</span>`).join('')}
+          </div>
+        </div>
+        ${p.nutriments?.['energy-kcal_100g'] ? `<div class="flex-shrink-0 text-right"><div class="text-xs text-slate-500">${Math.round(p.nutriments['energy-kcal_100g'])} kcal</div><div class="text-xs text-slate-600">per 100g</div></div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function selectProduct(pJson) {
+  const p = JSON.parse(pJson);
+  window._selectedProduct = p;
+
+  const detail = document.getElementById('product-detail');
+  detail.classList.remove('hidden');
+
+  const name = p.product_name || 'Unknown product';
+  const brand = p.brands || '';
+
+  if (p.image_thumb_url) {
+    document.getElementById('product-img').src = p.image_thumb_url;
+    document.getElementById('product-img-wrap').classList.remove('hidden');
+  } else {
+    document.getElementById('product-img-wrap').classList.add('hidden');
+  }
+
+  document.getElementById('product-name').textContent = name;
+  document.getElementById('product-brand').textContent = brand;
+
+  // Kosher badges
+  const agencies = getKosherAgencies(p);
+  const badges = document.getElementById('product-kosher-badges');
+  badges.innerHTML = agencies.length > 0
+    ? agencies.map(a => `<span class="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 font-semibold">✡️ ${agencyLabel(a)}</span>`).join('')
+    : '<span class="text-xs text-slate-500">No kosher certification found</span>';
+
+  // Nutrition
+  const n = p.nutriments || {};
+  const nutritionEl = document.getElementById('product-nutrition');
+  const facts = [
+    ['Calories', n['energy-kcal_100g'], 'kcal'],
+    ['Protein', n['proteins_100g'], 'g'],
+    ['Carbs', n['carbohydrates_100g'], 'g'],
+    ['Fat', n['fat_100g'], 'g'],
+    ['Sodium', n['sodium_100g'] ? (n['sodium_100g'] * 1000).toFixed(0) : null, 'mg'],
+  ].filter(([, v]) => v !== null && v !== undefined);
+
+  nutritionEl.innerHTML = facts.map(([label, val, unit]) => `
+    <div class="flex justify-between text-xs">
+      <span class="text-slate-500">${label}</span>
+      <span class="text-white">${Math.round(val)} ${unit}</span>
+    </div>
+  `).join('');
+
+  const productUrl = p.url || (p.code ? `https://world.openfoodfacts.org/product/${p.code}` : '#');
+  document.getElementById('product-off-link').href = productUrl;
+
+  generateFoodPortrait(p);
+}
+window.selectProduct = selectProduct;
+
+async function generateFoodPortrait(p) {
+  if (!p) return;
+  const name = p.product_name || 'food';
+  const brand = p.brands ? ` by ${p.brands}` : '';
+  const isKosh = isKosher(p);
+
+  const prompt = isKosh
+    ? `A man with dark wavy hair, round tortoiseshell glasses, enjoying a delicious meal featuring ${name}${brand}, beautifully plated on a Shabbat table with white tablecloth and silver candlesticks, warm family dinner atmosphere, food photography style, photorealistic`
+    : `A man with dark wavy hair, round tortoiseshell glasses, eating ${name}${brand} at a cozy restaurant, beautiful food presentation, warm lighting, lifestyle photography, photorealistic`;
+
+  setFoodState('loading');
+  try {
+    const resp = await fetch('/api/flux-generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error);
+    if (data.status === 'succeeded' && data.output) { showFoodResult(data.output, name); return; }
+    if (data.id) await pollFood(data.id, name);
+  } catch {
+    setFoodState('idle');
+  }
+}
+window.generateFoodPortrait = generateFoodPortrait;
+
+async function pollFood(id, name) {
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2500));
+    try {
+      const d = await (await fetch(`/api/flux-poll?id=${id}`)).json();
+      if (d.status === 'succeeded' && d.output) { showFoodResult(d.output, name); return; }
+      if (d.status === 'failed') break;
+    } catch { break; }
+  }
+  setFoodState('idle');
+}
+
+function setFoodState(state) {
+  ['idle', 'loading', 'result'].forEach(s => {
+    const el = document.getElementById(`food-${s}`);
+    el?.classList.toggle('hidden', s !== state);
+    if (s === state && s !== 'result') el?.classList.add('flex');
+    else el?.classList.remove('flex');
+  });
+}
+
+function showFoodResult(output, name) {
+  const url = Array.isArray(output) ? output[0] : output;
+  setFoodState('result');
+  document.getElementById('food-result').classList.add('flex');
+  document.getElementById('food-img').src = url;
+  document.getElementById('food-meta').textContent = `${name} · ${new Date().toLocaleTimeString()}`;
+}
+
+document.getElementById('search-btn').addEventListener('click', () => {
+  const term = document.getElementById('search-input').value.trim() || 'kosher';
+  doSearch(term);
+});
+
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    doSearch(e.target.value.trim() || 'kosher');
+  }
+});
+
+document.getElementById('kosher-only').addEventListener('change', () => {
+  const term = document.getElementById('search-input').value.trim() || 'kosher';
+  doSearch(term);
+});
+
+document.querySelectorAll('.quick-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const term = btn.textContent.replace(/^.+ /, '').trim();
+    document.getElementById('search-input').value = term;
+    doSearch(term);
+  });
+});
+
+doSearch('kosher');
+</script>
