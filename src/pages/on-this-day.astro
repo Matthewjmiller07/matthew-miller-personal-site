@@ -279,7 +279,12 @@ async function loadToday() {
   allData.deaths = data.deaths || [];
   allData.holidays = data.holidays || [];
 
-  const allItems = [...allData.events, ...allData.births, ...allData.deaths, ...allData.holidays];
+  const allItems = [
+    ...allData.events.map(item => ({ ...item, type: 'event' })),
+    ...allData.births.map(item => ({ ...item, type: 'birth' })),
+    ...allData.deaths.map(item => ({ ...item, type: 'death' })),
+    ...allData.holidays.map(item => ({ ...item, type: 'holiday' })),
+  ];
   const jewishItems = allItems.filter(i => isJewishRelated(i.text || ''));
 
   document.getElementById('stat-events').textContent = allData.events.length;
@@ -310,15 +315,42 @@ function formatHistoricalDate(year) {
   return `${historicalDayLabel}, ${year || new Date().getFullYear()}`;
 }
 
+function getHistoricalContext(item, historicalDate) {
+  const text = String(item?.text || '').replace(/\s+/g, ' ').trim().slice(0, 220);
+  switch (item?.type) {
+    case 'birth':
+      return {
+        caption: `On this date, ${text} was born.`,
+        direction: `This is specifically a birth. Make it visually clear that the named person was born on ${historicalDate}; do not depict a later achievement or their death. Use a respectful, period-appropriate birth or newborn setting.`,
+      };
+    case 'death':
+      return {
+        caption: `On this date, ${text} died.`,
+        direction: `This is specifically a death. Make it visually clear that the named person died on ${historicalDate}. Use a respectful, non-graphic documentary or memorial scene; do not depict their birth or an unrelated achievement.`,
+      };
+    case 'holiday':
+      return {
+        caption: `This date is observed as ${text}.`,
+        direction: `This is an observance. Depict how ${text} is commemorated or observed, with culturally and historically accurate details.`,
+      };
+    default:
+      return {
+        caption: `On this date, ${text}`,
+        direction: `This is a historical event. Depict the specific event described by Wikipedia as it occurred on ${historicalDate}.`,
+      };
+  }
+}
+
 async function selectEvent(item) {
   const text = item?.text || '';
   const historicalDate = formatHistoricalDate(item?.year);
   const shortText = text.slice(0, 150);
-  const eventCaption = text.replace(/\s+/g, ' ').trim().slice(0, 220);
-  const fluxPrompt = `A man with dark wavy hair, round tortoiseshell glasses, witnessing as a quiet observer the historical moment on ${historicalDate}: ${shortText}. Cinematic historical scene, detailed period-accurate setting, dramatic lighting, documentary photography style, photorealistic`;
+  const historicalContext = getHistoricalContext(item, historicalDate);
+  const eventCaption = historicalContext.caption;
+  const fluxPrompt = `A man with dark wavy hair, round tortoiseshell glasses, witnessing as a quiet observer this moment on ${historicalDate}: ${shortText}. ${historicalContext.direction} Cinematic historical scene, detailed period-accurate setting, dramatic lighting, documentary photography style, photorealistic`;
   const gptPrompt = `Use input image 1 as the identity reference for Matthew. Preserve his recognizable facial identity, face shape, hair, glasses, and beard while placing him naturally in this new scene.
 
-Create a photorealistic image of Matthew present as an eyewitness at this historical moment on ${historicalDate}: "${shortText}". Dress him in period-appropriate clothing and show him experiencing the event firsthand. Dramatic documentary photography, cinematic lighting, historically accurate setting.
+Create a photorealistic image of Matthew present as an eyewitness to this item from Wikipedia on ${historicalDate}: "${shortText}". ${historicalContext.direction} Dress Matthew in period-appropriate clothing and show him experiencing the scene firsthand. Dramatic documentary photography, cinematic lighting, historically accurate setting.
 
 Reserve a clean, high-contrast editorial caption panel in the image. The final image must clearly state both the full historical date/year and what happened. Render these two text blocks exactly as written, with correct spelling, without omitting or abbreviating either one:
 
