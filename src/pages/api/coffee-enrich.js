@@ -119,6 +119,28 @@ async function translateWithHF(record, heText) {
   return data.choices?.[0]?.message?.content?.trim() || null;
 }
 
+// ── Author resolver ────────────────────────────────────────────────────────
+
+async function resolveAuthorId(authorText, serviceKey) {
+  if (!authorText) return null;
+  // Extract the most distinctive part (last surname-like word, skipping titles)
+  const clean = authorText.replace(/\(.*?\)/g, '').trim();
+  const words = clean.split(/\s+/).filter((w) => w.length > 4 && !/^(rabbi|rav|the|and)$/i.test(w));
+  if (!words.length) return null;
+  const keyword = encodeURIComponent(words[words.length - 1]);
+  try {
+    const res = await fetch(
+      `${COFFEE_SB_URL}/authors?name=ilike.*${keyword}*&select=id&limit=1`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows[0]?.id || null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Supabase write-back ────────────────────────────────────────────────────
 
 async function patchSource(id, patch, serviceKey) {
@@ -171,6 +193,15 @@ export async function POST({ request }) {
   const isHebrewish = record.language === 'Hebrew' || record.language === 'Aramaic';
   const patch = {};
   const tags = new Set(record.tags || []);
+
+  // Auto-link to authors table
+  if (!record.author_id && record.author) {
+    const authorId = await resolveAuthorId(record.author, serviceKey);
+    if (authorId) {
+      patch.author_id = authorId;
+      console.log('[coffee-enrich] Resolved author_id:', authorId, 'for', record.author);
+    }
+  }
 
   // 1. Try Sefaria
   const sefaria = isHebrewish ? await lookupSefaria(record) : null;

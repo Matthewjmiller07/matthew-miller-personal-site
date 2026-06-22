@@ -117,6 +117,23 @@ async function translateWithHF(record, heText) {
   return data.choices?.[0]?.message?.content?.trim() || null;
 }
 
+async function resolveAuthorId(authorText) {
+  if (!authorText) return null;
+  const clean = authorText.replace(/\(.*?\)/g, '').trim();
+  const words = clean.split(/\s+/).filter((w) => w.length > 4 && !/^(rabbi|rav|the|and)$/i.test(w));
+  if (!words.length) return null;
+  const keyword = encodeURIComponent(words[words.length - 1]);
+  try {
+    const res = await fetch(
+      `${SB_URL}/authors?name=ilike.*${keyword}*&select=id&limit=1`,
+      { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows[0]?.id || null;
+  } catch { return null; }
+}
+
 async function patchSource(id, patch) {
   if (DRY_RUN) { console.log('  [dry-run] would patch:', Object.keys(patch)); return true; }
   const res = await fetch(`${SB_URL}/sources?id=eq.${id}`, {
@@ -134,7 +151,7 @@ async function patchSource(id, patch) {
 // ── main ───────────────────────────────────────────────────────────────────
 
 const res = await fetch(
-  `${SB_URL}/sources?select=id,short_name,full_name,author,language,url,original_text,translation,tags&order=language.asc,short_name.asc`,
+  `${SB_URL}/sources?select=id,short_name,full_name,author,author_id,language,url,original_text,translation,tags&order=language.asc,short_name.asc`,
   { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
 );
 const sources = await res.json();
@@ -201,6 +218,12 @@ for (const source of candidates) {
   } else {
     console.log('  – no Sefaria hit, no original_text to translate');
     skipped++;
+  }
+
+  // Auto-link author_id if missing
+  if (!source.author_id && source.author) {
+    const authorId = await resolveAuthorId(source.author);
+    if (authorId) { patch.author_id = authorId; console.log(`  author_id → ${authorId}`); }
   }
 
   if (Object.keys(patch).length > 0) {
