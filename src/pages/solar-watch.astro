@@ -1,0 +1,410 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Solar Watch"
+  description="Real-time space weather from NOAA: solar wind, geomagnetic storms, X-ray flux, and aurora potential."
+>
+  <main class="min-h-screen text-white" style="background: radial-gradient(ellipse at top, #0a0020 0%, #050010 50%, #000 100%)">
+
+    <div class="px-4 py-10 text-center border-b border-white/5">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        <span class="bg-gradient-to-r from-orange-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">☀️ Solar Watch</span>
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        Live space weather from <a href="https://www.swpc.noaa.gov" target="_blank" rel="noopener" class="text-orange-400 hover:underline">NOAA Space Weather Prediction Center</a>. Solar wind, geomagnetic storms, and aurora potential in real time.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-6 flex-wrap text-sm">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-orange-400 animate-pulse"></span>
+          <span class="text-slate-400">Updates every 60s</span>
+        </div>
+        <div id="last-update" class="text-slate-500 text-xs">—</div>
+      </div>
+    </div>
+
+    <!-- Kp alert banner -->
+    <div id="storm-banner" class="hidden px-4 py-3 text-center font-bold text-sm animate-pulse border-b" style="border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.1); color: #f87171">
+      ⚠️ <span id="storm-text">Geomagnetic storm in progress</span>
+    </div>
+
+    <!-- Stats grid -->
+    <div class="max-w-6xl mx-auto px-4 pt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+
+      <div class="rounded-2xl border border-orange-900/40 bg-orange-950/20 p-4 text-center">
+        <div class="text-xs text-orange-400/70 uppercase tracking-wider mb-2">Solar Wind Speed</div>
+        <div id="sw-speed" class="text-3xl font-black text-white">—</div>
+        <div class="text-slate-500 text-xs mt-1">km/s</div>
+        <div id="sw-speed-bar" class="mt-2 h-1 rounded-full bg-orange-900/40">
+          <div id="sw-speed-fill" class="h-1 rounded-full bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-1000" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-cyan-900/40 bg-cyan-950/20 p-4 text-center">
+        <div class="text-xs text-cyan-400/70 uppercase tracking-wider mb-2">Proton Density</div>
+        <div id="sw-density" class="text-3xl font-black text-white">—</div>
+        <div class="text-slate-500 text-xs mt-1">p/cm³</div>
+      </div>
+
+      <div class="rounded-2xl border border-purple-900/40 bg-purple-950/20 p-4 text-center">
+        <div class="text-xs text-purple-400/70 uppercase tracking-wider mb-2">Kp Index</div>
+        <div id="kp-value" class="text-3xl font-black text-white">—</div>
+        <div id="kp-label" class="text-xs mt-1 font-semibold">—</div>
+      </div>
+
+      <div class="rounded-2xl border border-yellow-900/40 bg-yellow-950/20 p-4 text-center">
+        <div class="text-xs text-yellow-400/70 uppercase tracking-wider mb-2">X-Ray Class</div>
+        <div id="xray-class" class="text-3xl font-black text-white">—</div>
+        <div id="xray-flux" class="text-slate-500 text-xs mt-1">—</div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="max-w-6xl mx-auto px-4 pb-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Left: Kp chart -->
+      <div class="lg:col-span-2 flex flex-col gap-4">
+
+        <!-- Kp bar chart -->
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-sm font-bold text-slate-300 mb-4">Kp Index — Past 7 Days</h2>
+          <div id="kp-chart" class="flex items-end gap-0.5 h-32 mb-2">
+            <div class="text-slate-600 text-xs animate-pulse">Loading…</div>
+          </div>
+          <!-- Storm threshold lines (visual only) -->
+          <div class="flex justify-between text-xs text-slate-600">
+            <span>7 days ago</span>
+            <span class="text-red-500/60">Kp5+ = Storm</span>
+            <span>Now</span>
+          </div>
+        </div>
+
+        <!-- Solar wind speed sparkline -->
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-sm font-bold text-slate-300 mb-4">Solar Wind Speed — Past 24h</h2>
+          <div id="sw-chart" class="flex items-end gap-0.5 h-24 mb-2">
+            <div class="text-slate-600 text-xs animate-pulse">Loading…</div>
+          </div>
+          <div class="flex justify-between text-xs text-slate-600">
+            <span>24h ago</span><span>Now</span>
+          </div>
+        </div>
+
+        <!-- Aurora probability by latitude -->
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-sm font-bold text-slate-300 mb-4">Aurora Viewing Probability by Latitude</h2>
+          <div id="aurora-chart" class="space-y-2">
+            <!-- Filled by JS -->
+          </div>
+          <p class="text-slate-600 text-xs mt-3">Based on current Kp index. Higher Kp = auroras visible at lower latitudes.</p>
+        </div>
+      </div>
+
+      <!-- Right: info + FLUX -->
+      <div class="flex flex-col gap-4">
+
+        <!-- Status summary -->
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Space Weather Status</h3>
+          <div id="status-icon" class="text-5xl text-center mb-3">☀️</div>
+          <div id="status-title" class="text-center text-xl font-black text-white mb-1">—</div>
+          <div id="status-desc" class="text-center text-slate-400 text-xs leading-relaxed">—</div>
+
+          <div class="mt-4 space-y-2 text-xs">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Solar temp</span>
+              <span id="sw-temp" class="text-white font-mono">—</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Kp 24h max</span>
+              <span id="kp-max" class="text-white font-mono">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- FLUX aurora portrait -->
+        <div class="rounded-2xl border border-white/10 bg-white/5 flex-1 flex flex-col overflow-hidden">
+          <div class="p-4 border-b border-white/10">
+            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Aurora Portrait</h3>
+            <p class="text-slate-600 text-xs mt-0.5">Generated based on current space weather</p>
+          </div>
+
+          <div id="aurora-idle" class="flex-1 flex flex-col items-center justify-center p-5 text-center text-slate-600 gap-3">
+            <div class="text-4xl">🌌</div>
+            <p class="text-xs">Generate a portrait of Matthew under the auroras, styled by current Kp intensity</p>
+            <button id="aurora-gen-btn"
+              class="mt-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs transition-all disabled:opacity-40"
+              disabled
+            >
+              Generate Aurora Portrait
+            </button>
+          </div>
+
+          <div id="aurora-loading" class="hidden flex-1 flex-col items-center justify-center p-5 gap-4">
+            <div class="w-14 h-14 rounded-full border-4 border-purple-500/20 border-t-purple-400 animate-spin"></div>
+            <div class="text-purple-300 text-sm">Channeling the solar wind…</div>
+          </div>
+
+          <div id="aurora-result" class="hidden flex-col flex-1">
+            <img id="aurora-img" src="" alt="Aurora portrait" class="w-full object-cover flex-1" style="max-height:300px"/>
+            <div class="p-3 flex justify-between items-center">
+              <div id="aurora-meta" class="text-slate-500 text-xs">—</div>
+              <button onclick="generateAuroraPortrait()" class="text-xs px-2 py-1 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors">↻</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data: <a href="https://www.swpc.noaa.gov/products/real-time-solar-wind" target="_blank" class="hover:text-slate-500 underline">NOAA SWPC</a> ·
+      Part of <a href="https://github.com/bytewax/awesome-public-real-time-datasets" target="_blank" class="hover:text-slate-500 underline">awesome-public-real-time-datasets</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+const KP_LEVELS = [
+  { max: 1,   label: 'Quiet',        color: '#22c55e', icon: '☀️', desc: 'Sun is quiet. Clear skies, normal conditions.' },
+  { max: 2,   label: 'Quiet',        color: '#86efac', icon: '🌤️', desc: 'Calm solar activity. No significant disturbances.' },
+  { max: 3,   label: 'Unsettled',    color: '#fbbf24', icon: '🌥️', desc: 'Slightly unsettled. Auroras possible at very high latitudes.' },
+  { max: 4,   label: 'Active',       color: '#f97316', icon: '⚡', desc: 'Active conditions. Auroras visible from northern Canada/Scandinavia.' },
+  { max: 5,   label: 'Minor Storm',  color: '#ef4444', icon: '🌩️', desc: 'G1 Minor Storm. Auroras visible down to 65° latitude.' },
+  { max: 6,   label: 'Moderate',     color: '#dc2626', icon: '⛈️', desc: 'G2 Moderate Storm. Auroras visible to northern US/Europe.' },
+  { max: 7,   label: 'Strong',       color: '#b91c1c', icon: '🔴', desc: 'G3 Strong Storm. Auroras visible at mid-latitudes.' },
+  { max: 8,   label: 'Severe',       color: '#7f1d1d', icon: '🚨', desc: 'G4 Severe Storm! Widespread aurora possible.' },
+  { max: 9,   label: 'Extreme',      color: '#450a0a', icon: '💥', desc: 'G5 Extreme Storm! Historic geomagnetic event.' },
+];
+
+function getKpLevel(kp) {
+  return KP_LEVELS.find(l => kp <= l.max) || KP_LEVELS[KP_LEVELS.length - 1];
+}
+
+function xrayFluxToClass(flux) {
+  if (flux >= 1e-4) return 'X10+';
+  if (flux >= 1e-5) return `X${(flux/1e-4).toFixed(1)}`;
+  if (flux >= 1e-5) return 'X-class';
+  if (flux >= 1e-6) return `M${(flux/1e-5 * 10).toFixed(1)}`;
+  if (flux >= 1e-7) return `C${(flux/1e-6 * 10).toFixed(1)}`;
+  if (flux >= 1e-8) return `B${(flux/1e-7 * 10).toFixed(1)}`;
+  return 'A-class';
+}
+
+function xrayColor(flux) {
+  if (flux >= 1e-4) return '#ef4444';
+  if (flux >= 1e-5) return '#f97316';
+  if (flux >= 1e-6) return '#f59e0b';
+  if (flux >= 1e-7) return '#22c55e';
+  return '#94a3b8';
+}
+
+const AURORA_LATITUDES = [
+  { lat: '90°', name: 'Poles',          kpReq: 0 },
+  { lat: '75°', name: 'Alaska/Norway',  kpReq: 1 },
+  { lat: '65°', name: 'Canada/Iceland', kpReq: 3 },
+  { lat: '55°', name: 'UK/N. Europe',   kpReq: 5 },
+  { lat: '45°', name: 'N. USA/Central Europe', kpReq: 6 },
+  { lat: '35°', name: 'Israel/Southern US',    kpReq: 8 },
+  { lat: '25°', name: 'Tropics',        kpReq: 9 },
+];
+
+let currentKp = 0;
+const AURORA_PROMPTS = {
+  quiet: 'Portrait of a man with dark wavy hair, round tortoiseshell glasses, standing outside on a clear quiet night, stars overhead, peaceful night sky, serene expression, soft moonlight, countryside setting, cinematic, photorealistic',
+  moderate: 'Portrait of a man with dark wavy hair, round tortoiseshell glasses, gazing upward in wonder at a green aurora dancing across the northern sky, awed expression, cold night, dramatic auroral light illuminating his face, cinematic, photorealistic',
+  strong: 'Portrait of a man with dark wavy hair, round tortoiseshell glasses, standing in a field as a massive green and purple aurora storm fills the entire sky above him, arms slightly raised, dramatic electric atmosphere, cinematic night photography, photorealistic',
+  extreme: 'Portrait of a man with dark wavy hair, round tortoiseshell glasses, silhouetted against a violent geomagnetic storm, the sky ablaze with red and white auroras never seen in living memory, dramatic end-of-times atmosphere, cinematic, photorealistic',
+};
+
+function getAuroraPrompt(kp) {
+  if (kp >= 7) return AURORA_PROMPTS.extreme;
+  if (kp >= 5) return AURORA_PROMPTS.strong;
+  if (kp >= 3) return AURORA_PROMPTS.moderate;
+  return AURORA_PROMPTS.quiet;
+}
+
+async function loadSolarWind() {
+  const resp = await fetch('https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json');
+  const data = await resp.json();
+  const fields = data[0]; // header row
+  const rows = data.slice(1);
+
+  // Last 24h (data every ~minute, so ~1440 rows)
+  const last24h = rows.slice(-1440);
+  const latest = rows[rows.length - 1];
+
+  const speed = parseFloat(latest[1]);
+  const density = parseFloat(latest[2]);
+  const temp = parseFloat(latest[3]);
+
+  document.getElementById('sw-speed').textContent = Math.round(speed);
+  document.getElementById('sw-density').textContent = density.toFixed(1);
+  document.getElementById('sw-temp').textContent = `${(temp/1000).toFixed(0)}k K`;
+
+  // Speed bar (typical range: 300-800 km/s)
+  const speedPct = Math.min(100, ((speed - 300) / 500) * 100);
+  document.getElementById('sw-speed-fill').style.width = `${Math.max(0, speedPct)}%`;
+
+  // Solar wind sparkline (downsample to 60 points)
+  const step = Math.floor(last24h.length / 60);
+  const sample = last24h.filter((_, i) => i % step === 0).map(r => parseFloat(r[1])).filter(v => !isNaN(v));
+  renderSparkline('sw-chart', sample, '#f97316', 200, 800);
+}
+
+async function loadKp() {
+  const resp = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json');
+  const data = await resp.json();
+  const recent = data.slice(-56); // 7 days × 8 readings/day
+  const latest = data[data.length - 1];
+
+  currentKp = parseFloat(latest.Kp);
+  const level = getKpLevel(currentKp);
+
+  document.getElementById('kp-value').textContent = currentKp.toFixed(1);
+  document.getElementById('kp-label').textContent = level.label;
+  document.getElementById('kp-label').style.color = level.color;
+  document.getElementById('status-icon').textContent = level.icon;
+  document.getElementById('status-title').textContent = level.label;
+  document.getElementById('status-desc').textContent = level.desc;
+
+  const max24h = Math.max(...data.slice(-8).map(d => parseFloat(d.Kp)));
+  document.getElementById('kp-max').textContent = max24h.toFixed(1);
+
+  // Storm banner
+  if (currentKp >= 5) {
+    document.getElementById('storm-banner').classList.remove('hidden');
+    document.getElementById('storm-text').textContent = `G${Math.min(5, Math.ceil(currentKp - 4))} ${level.label} in progress (Kp = ${currentKp.toFixed(1)})`;
+  }
+
+  // Kp bar chart
+  renderKpChart(recent);
+
+  // Aurora bands
+  renderAuroraBands(currentKp);
+
+  // Enable aurora gen button
+  document.getElementById('aurora-gen-btn').disabled = false;
+  document.getElementById('last-update').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+}
+
+async function loadXRay() {
+  try {
+    const resp = await fetch('https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json');
+    const data = await resp.json();
+    const latest = data[data.length - 1];
+    const flux = latest.flux;
+    const cls = xrayFluxToClass(flux);
+    document.getElementById('xray-class').textContent = cls;
+    document.getElementById('xray-class').style.color = xrayColor(flux);
+    document.getElementById('xray-flux').textContent = `${flux.toExponential(2)} W/m²`;
+  } catch {}
+}
+
+function renderKpChart(data) {
+  const chart = document.getElementById('kp-chart');
+  const vals = data.map(d => parseFloat(d.Kp));
+  const max = 9;
+
+  chart.innerHTML = vals.map(v => {
+    const h = Math.max(2, (v / max) * 120);
+    const level = getKpLevel(v);
+    const isStorm = v >= 5;
+    return `<div class="flex-1 rounded-t relative group" style="height:${h}px; background:${level.color}; opacity:${isStorm ? '1' : '0.7'}" title="Kp ${v.toFixed(1)} — ${level.label}">
+      <div class="hidden group-hover:block absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-slate-900 border border-white/20 rounded px-1.5 py-0.5 text-xs whitespace-nowrap z-10">
+        Kp ${v.toFixed(1)}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Storm threshold line at Kp=5
+  chart.style.position = 'relative';
+  const thresholdY = (1 - 5/9) * 100;
+  chart.style.background = `linear-gradient(to bottom, transparent ${thresholdY}%, rgba(239,68,68,0.1) ${thresholdY}%)`;
+}
+
+function renderSparkline(id, vals, color, min, max) {
+  const chart = document.getElementById(id);
+  if (!vals.length) return;
+  const range = max - min || 1;
+  chart.innerHTML = vals.map(v => {
+    const h = Math.max(2, ((v - min) / range) * 88);
+    return `<div class="flex-1 rounded-t" style="height:${h}px; background:${color}; opacity:0.8"></div>`;
+  }).join('');
+}
+
+function renderAuroraBands(kp) {
+  const container = document.getElementById('aurora-chart');
+  container.innerHTML = AURORA_LATITUDES.map(band => {
+    const visible = kp >= band.kpReq;
+    const pct = visible ? 100 : Math.max(0, (kp / band.kpReq) * 100);
+    return `
+      <div class="flex items-center gap-3 text-xs">
+        <div class="w-20 text-right text-slate-500">${band.lat} — ${band.name.split('/')[0]}</div>
+        <div class="flex-1 bg-slate-800 rounded-full h-2 relative overflow-hidden">
+          <div class="h-full rounded-full transition-all duration-1000 ${visible ? 'bg-gradient-to-r from-green-500 to-cyan-400' : 'bg-gradient-to-r from-slate-600 to-slate-500'}" style="width:${pct}%"></div>
+        </div>
+        <div class="w-16 ${visible ? 'text-green-400 font-semibold' : 'text-slate-600'}">
+          ${visible ? '✓ Visible' : `Needs Kp${band.kpReq}`}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function generateAuroraPortrait() {
+  const prompt = getAuroraPrompt(currentKp);
+
+  document.getElementById('aurora-idle').classList.add('hidden');
+  document.getElementById('aurora-result').classList.add('hidden');
+  document.getElementById('aurora-loading').classList.remove('hidden');
+  document.getElementById('aurora-loading').classList.add('flex');
+
+  try {
+    const resp = await fetch('/api/flux-generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error);
+
+    if (data.status === 'succeeded' && data.output) { showAurora(data.output); return; }
+    if (data.id) await pollAurora(data.id);
+  } catch (err) {
+    document.getElementById('aurora-loading').classList.add('hidden');
+    document.getElementById('aurora-idle').classList.remove('hidden');
+  }
+}
+
+async function pollAurora(id) {
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2500));
+    try {
+      const d = (await (await fetch(`/api/flux-poll?id=${id}`)).json());
+      if (d.status === 'succeeded' && d.output) { showAurora(d.output); return; }
+      if (d.status === 'failed') break;
+    } catch { break; }
+  }
+  document.getElementById('aurora-loading').classList.add('hidden');
+  document.getElementById('aurora-idle').classList.remove('hidden');
+}
+
+function showAurora(output) {
+  const url = Array.isArray(output) ? output[0] : output;
+  document.getElementById('aurora-loading').classList.add('hidden');
+  document.getElementById('aurora-result').classList.remove('hidden');
+  document.getElementById('aurora-result').classList.add('flex');
+  document.getElementById('aurora-img').src = url;
+  document.getElementById('aurora-meta').textContent = `Kp ${currentKp.toFixed(1)} · ${new Date().toLocaleTimeString()}`;
+}
+
+document.getElementById('aurora-gen-btn').addEventListener('click', generateAuroraPortrait);
+window.generateAuroraPortrait = generateAuroraPortrait;
+
+async function loadAll() {
+  await Promise.all([loadSolarWind(), loadKp(), loadXRay()]);
+}
+
+loadAll();
+setInterval(loadAll, 60000);
+</script>
