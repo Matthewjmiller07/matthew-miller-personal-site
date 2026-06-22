@@ -1,0 +1,252 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Radio World"
+  description="Live global radio stations from Radio Browser — Jewish, Israeli, jazz, classical, and more. Stream the world live."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-violet-950/50 to-transparent px-4 py-10 text-center border-b border-violet-900/20">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        📻 Radio World
+      </h1>
+      <p class="text-slate-400 max-w-lg mx-auto text-sm">
+        Stream live global radio via <a href="https://www.radio-browser.info" target="_blank" rel="noopener" class="text-violet-400 hover:underline">Radio Browser</a> — Jewish stations, Israeli radio, and curated genre channels.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-4 text-sm flex-wrap">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-violet-400 animate-pulse"></span>
+          <span class="text-slate-400" id="station-count">—</span>
+        </div>
+        <div id="now-playing-mini" class="hidden text-violet-300 text-xs font-semibold">♪ <span id="mini-name">—</span></div>
+      </div>
+    </div>
+
+    <!-- Now playing bar (sticky, shown when playing) -->
+    <div id="now-playing-bar" class="hidden sticky top-0 z-50 bg-violet-950/95 border-b border-violet-700/30 px-4 py-3 backdrop-blur-md">
+      <div class="max-w-5xl mx-auto flex items-center gap-4">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <div class="w-8 h-8 rounded-full bg-violet-500/30 flex items-center justify-center flex-shrink-0">
+            <span class="text-violet-400 text-sm animate-pulse">♪</span>
+          </div>
+          <div class="min-w-0">
+            <div id="playing-name" class="text-white font-bold text-sm truncate">—</div>
+            <div id="playing-meta" class="text-violet-400/70 text-xs truncate">—</div>
+          </div>
+        </div>
+        <button id="stop-btn" class="flex-shrink-0 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-semibold transition-colors border border-red-500/30">
+          ■ Stop
+        </button>
+      </div>
+    </div>
+
+    <!-- Hidden audio player -->
+    <audio id="radio-audio" preload="none"></audio>
+
+    <div class="max-w-5xl mx-auto px-4 pt-6 pb-12">
+
+      <!-- Genre tabs (curated collections) -->
+      <div class="flex flex-wrap gap-2 mb-6">
+        <button class="genre-btn active px-3 py-1.5 rounded-full text-xs font-semibold border border-violet-500/50 bg-violet-500/10 text-violet-300" data-genre="jewish">✡️ Jewish</button>
+        <button class="genre-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-genre="israel">🇮🇱 Israel</button>
+        <button class="genre-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-genre="jazz">🎷 Jazz</button>
+        <button class="genre-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-genre="classical">🎻 Classical</button>
+        <button class="genre-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-genre="news">📰 News</button>
+        <button class="genre-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-genre="chicago">🌆 Chicago</button>
+        <button class="genre-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-genre="lofi">🎧 Lo-fi / Study</button>
+      </div>
+
+      <!-- Search -->
+      <div class="flex gap-2 mb-4">
+        <input id="search-input" type="text" placeholder="Search stations by name, country, or tag…"
+          class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 transition-colors"
+        />
+      </div>
+
+      <!-- Loading state -->
+      <div id="loading-state" class="p-8 text-center text-slate-500 animate-pulse">
+        <div class="text-3xl mb-2">📻</div>Tuning in…
+      </div>
+
+      <!-- Station grid -->
+      <div id="stations-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data from <a href="https://www.radio-browser.info" target="_blank" class="hover:text-slate-500 underline">Radio Browser API</a> — community-maintained radio station database
+    </p>
+  </main>
+</Layout>
+
+<script>
+const GENRE_QUERIES = {
+  jewish: { tag: 'jewish', label: 'Jewish Music & Talk' },
+  israel: { country: 'Israel', label: 'Israeli Radio' },
+  jazz: { tag: 'jazz', label: 'Jazz' },
+  classical: { tag: 'classical', label: 'Classical' },
+  news: { tag: 'news', label: 'News & Talk' },
+  chicago: { country: 'The United States Of America', tag: 'chicago', label: 'Chicago Radio' },
+  lofi: { tag: 'lofi', label: 'Lo-fi & Study' },
+};
+
+const API_BASE = 'https://de1.api.radio-browser.info/json';
+let allStations = [];
+let currentGenre = 'jewish';
+let playingId = null;
+
+const audio = document.getElementById('radio-audio');
+
+async function loadStations(genre) {
+  const q = GENRE_QUERIES[genre] || GENRE_QUERIES.jewish;
+  document.getElementById('loading-state').classList.remove('hidden');
+  document.getElementById('stations-grid').classList.add('hidden');
+
+  try {
+    let url;
+    if (q.tag && q.country) {
+      // Search by both tag and country
+      url = `${API_BASE}/stations/search?tag=${encodeURIComponent(q.tag)}&country=${encodeURIComponent(q.country)}&order=clickcount&reverse=true&limit=30`;
+    } else if (q.country && !q.tag) {
+      url = `${API_BASE}/stations/bycountry/${encodeURIComponent(q.country)}?order=clickcount&reverse=true&limit=40`;
+    } else {
+      url = `${API_BASE}/stations/bytag/${encodeURIComponent(q.tag)}?order=clickcount&reverse=true&limit=40`;
+    }
+
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'MatthewMillerPersonalSite/1.0' }
+    });
+    const stations = await resp.json();
+
+    allStations = stations.filter(s => s.url_resolved && s.name);
+    document.getElementById('station-count').textContent = `${allStations.length} stations`;
+
+    renderStations(allStations);
+  } catch (err) {
+    document.getElementById('loading-state').textContent = 'Failed to load stations. Try again.';
+  }
+}
+
+function searchFilter(stations, q) {
+  if (!q) return stations;
+  const lower = q.toLowerCase();
+  return stations.filter(s =>
+    s.name.toLowerCase().includes(lower) ||
+    (s.country || '').toLowerCase().includes(lower) ||
+    (s.tags || '').toLowerCase().includes(lower)
+  );
+}
+
+function renderStations(stations) {
+  const q = document.getElementById('search-input').value;
+  const filtered = searchFilter(stations, q);
+
+  document.getElementById('loading-state').classList.add('hidden');
+  const grid = document.getElementById('stations-grid');
+  grid.classList.remove('hidden');
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="col-span-2 p-8 text-center text-slate-500">No stations found.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(s => {
+    const isPlaying = s.stationuuid === playingId;
+    const bitrate = s.bitrate ? `${s.bitrate}kbps` : '';
+    const codec = s.codec || '';
+    const countryFlag = getFlag(s.countrycode);
+    const tags = (s.tags || '').split(',').filter(Boolean).slice(0, 3);
+
+    return `
+      <div id="card-${s.stationuuid}" class="group rounded-2xl border ${isPlaying ? 'border-violet-500/60 bg-violet-900/20' : 'border-white/10 bg-white/5'} hover:border-violet-500/40 hover:bg-violet-500/5 p-4 transition-all cursor-pointer"
+        onclick="playStation('${s.stationuuid}', ${JSON.stringify(s.name)}, ${JSON.stringify(s.url_resolved)}, ${JSON.stringify(s.country || '')})"
+      >
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden border border-white/10 ${isPlaying ? 'bg-violet-500/30 border-violet-500/50' : 'bg-white/10'}">
+            ${s.favicon
+              ? `<img src="${s.favicon}" alt="" class="w-full h-full object-cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><span class="text-lg hidden items-center justify-center w-full h-full">${countryFlag || '📻'}</span>`
+              : `<span class="text-xl">${countryFlag || '📻'}</span>`}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              ${isPlaying ? '<span class="text-xs bg-violet-500/30 text-violet-300 px-1.5 py-0.5 rounded-full animate-pulse">▶ Live</span>' : ''}
+              <span class="text-white font-bold text-sm group-hover:text-violet-300 transition-colors truncate">${s.name}</span>
+            </div>
+            <div class="text-xs text-slate-500 mt-0.5">${s.country || ''} ${bitrate ? `· ${bitrate}` : ''} ${codec ? `· ${codec}` : ''}</div>
+            ${tags.length > 0 ? `<div class="flex flex-wrap gap-1 mt-1.5">${tags.map(t => `<span class="text-xs bg-white/5 text-slate-500 px-1.5 py-0.5 rounded">${t.trim()}</span>`).join('')}</div>` : ''}
+          </div>
+          <div class="flex-shrink-0 w-8 h-8 rounded-full ${isPlaying ? 'bg-red-500/20 text-red-400' : 'bg-violet-500/20 text-violet-400'} flex items-center justify-center group-hover:bg-violet-500/30 transition-colors text-sm">
+            ${isPlaying ? '■' : '▶'}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function getFlag(code) {
+  if (!code || code.length !== 2) return '';
+  const cp = code.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65);
+  return String.fromCodePoint(...cp);
+}
+
+async function playStation(id, name, url, country) {
+  if (playingId === id) {
+    stopStation();
+    return;
+  }
+
+  playingId = id;
+
+  // Register a click with Radio Browser (updates stats)
+  try {
+    const station = allStations.find(s => s.stationuuid === id);
+    if (station) {
+      fetch(`${API_BASE}/url/${id}`, { method: 'GET' }).catch(() => {});
+    }
+  } catch {}
+
+  audio.src = url;
+  audio.play().catch(e => console.error('Audio error:', e));
+
+  // Update UI
+  document.getElementById('now-playing-bar').classList.remove('hidden');
+  document.getElementById('now-playing-mini').classList.remove('hidden');
+  document.getElementById('playing-name').textContent = name;
+  document.getElementById('playing-meta').textContent = country;
+  document.getElementById('mini-name').textContent = name;
+
+  renderStations(allStations);
+}
+
+function stopStation() {
+  audio.pause();
+  audio.src = '';
+  playingId = null;
+  document.getElementById('now-playing-bar').classList.add('hidden');
+  document.getElementById('now-playing-mini').classList.add('hidden');
+  renderStations(allStations);
+}
+
+document.getElementById('stop-btn').addEventListener('click', stopStation);
+
+document.querySelectorAll('.genre-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.genre-btn').forEach(b => {
+      b.classList.remove('active', 'border-violet-500/50', 'bg-violet-500/10', 'text-violet-300');
+      b.classList.add('border-white/10', 'bg-white/5', 'text-slate-400');
+    });
+    btn.classList.add('active', 'border-violet-500/50', 'bg-violet-500/10', 'text-violet-300');
+    btn.classList.remove('border-white/10', 'bg-white/5', 'text-slate-400');
+    currentGenre = btn.dataset.genre;
+    loadStations(currentGenre);
+  });
+});
+
+document.getElementById('search-input').addEventListener('input', () => {
+  renderStations(allStations);
+});
+
+loadStations(currentGenre);
+</script>

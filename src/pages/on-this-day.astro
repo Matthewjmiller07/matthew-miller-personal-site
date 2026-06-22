@@ -1,0 +1,355 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="On This Day"
+  description="Historical events, births, and deaths for today's date from Wikipedia — with Jewish and Israeli history highlighted."
+>
+  <main class="min-h-screen bg-slate-950 text-white">
+
+    <div class="bg-gradient-to-b from-amber-950/50 to-transparent px-4 py-10 text-center border-b border-amber-900/20">
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+        📅 On This Day
+      </h1>
+      <p class="text-slate-400 max-w-xl mx-auto text-sm">
+        Historical events, births, and deaths from <a href="https://wikipedia.org" target="_blank" rel="noopener" class="text-amber-400 hover:underline">Wikipedia</a> — today in history, Jewish highlights front and center.
+      </p>
+      <div class="mt-4 flex items-center justify-center gap-6 text-sm">
+        <div id="today-label" class="text-amber-300 font-black text-xl">—</div>
+      </div>
+    </div>
+
+    <div class="max-w-5xl mx-auto px-4 pt-6 pb-12">
+
+      <!-- Filter tabs -->
+      <div class="flex flex-wrap gap-2 mb-6">
+        <button class="tab-btn active px-3 py-1.5 rounded-full text-xs font-semibold border border-amber-500/50 bg-amber-500/10 text-amber-300" data-tab="all">🌍 All</button>
+        <button class="tab-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-tab="jewish">✡️ Jewish & Israel</button>
+        <button class="tab-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-tab="events">⚡ Events</button>
+        <button class="tab-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-tab="births">🎂 Births</button>
+        <button class="tab-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-tab="deaths">☠️ Deaths</button>
+        <button class="tab-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-slate-400" data-tab="holidays">🕎 Holidays</button>
+      </div>
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-4 gap-3 mb-6">
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Events</div>
+          <div id="stat-events" class="text-2xl font-black text-amber-400">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Births</div>
+          <div id="stat-births" class="text-2xl font-black text-green-400">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">Deaths</div>
+          <div id="stat-deaths" class="text-2xl font-black text-red-400">—</div>
+        </div>
+        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div class="text-xs text-slate-500 mb-1">✡️ Jewish</div>
+          <div id="stat-jewish" class="text-2xl font-black text-blue-400">—</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Main list -->
+        <div class="lg:col-span-2">
+
+          <!-- Jewish highlight card (shown only when there are jewish items) -->
+          <div id="jewish-highlight" class="hidden rounded-2xl border border-blue-800/50 bg-blue-950/30 p-5 mb-4">
+            <div class="text-xs text-blue-400/70 uppercase tracking-wider font-semibold mb-3">✡️ Jewish & Israeli History Today</div>
+            <div id="jewish-items" class="space-y-3"></div>
+          </div>
+
+          <!-- Search -->
+          <div class="flex gap-2 mb-4">
+            <input id="search-input" type="text" placeholder="Search today's history…"
+              class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 transition-colors"
+            />
+          </div>
+
+          <!-- Items list -->
+          <div id="items-list" class="space-y-2">
+            <div class="p-8 text-center text-slate-500 animate-pulse">
+              <div class="text-3xl mb-2">📅</div>Loading…
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Selected event FLUX + "On This Day" quote -->
+        <div class="space-y-4">
+
+          <!-- FLUX historical portrait -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-white/10">
+              <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Historical Portrait</h3>
+              <p class="text-slate-600 text-xs mt-0.5">Matthew witnesses a key moment from today</p>
+            </div>
+
+            <div id="hist-idle" class="flex-1 flex flex-col items-center justify-center p-5 text-center gap-3 text-slate-500 min-h-[200px]">
+              <div class="text-4xl">🏛️</div>
+              <p class="text-xs">Click any event to generate a FLUX scene with Matthew as a witness</p>
+            </div>
+
+            <div id="hist-loading" class="hidden flex-1 flex-col items-center justify-center p-5 gap-4 min-h-[200px]">
+              <div class="w-14 h-14 rounded-full border-4 border-amber-500/20 border-t-amber-400 animate-spin"></div>
+              <div class="text-amber-400 text-sm">Stepping through time…</div>
+            </div>
+
+            <div id="hist-result" class="hidden flex-col flex-1">
+              <img id="hist-img" src="" alt="Historical portrait" class="w-full object-cover" style="max-height:300px"/>
+              <div class="p-3">
+                <div id="hist-event-label" class="text-xs text-slate-400 mb-1 line-clamp-2">—</div>
+                <div class="flex justify-between items-center">
+                  <div id="hist-meta" class="text-slate-600 text-xs">—</div>
+                  <button onclick="clearHistResult()" class="text-xs px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 transition-colors">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Year browser -->
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Browse by Year Range</h3>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="filterByEra('ancient')" class="text-xs px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-amber-500/30 transition-colors">Ancient (pre-500)</button>
+              <button onclick="filterByEra('medieval')" class="text-xs px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-amber-500/30 transition-colors">Medieval (500–1500)</button>
+              <button onclick="filterByEra('modern')" class="text-xs px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-amber-500/30 transition-colors">Modern (1500–1900)</button>
+              <button onclick="filterByEra('contemporary')" class="text-xs px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-amber-500/30 transition-colors">Contemporary (1900+)</button>
+              <button onclick="filterByEra('all')" class="col-span-2 text-xs px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 transition-colors">All time periods</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-700 text-xs pb-8">
+      Data from <a href="https://www.mediawiki.org/wiki/API:REST_API" target="_blank" class="hover:text-slate-500 underline">Wikipedia REST API</a>
+    </p>
+  </main>
+</Layout>
+
+<script>
+const JEWISH_KEYWORDS = ['Israel', 'Israeli', 'Jewish', 'Judaism', 'Hebrew', 'Holocaust', 'Zion', 'Jerusalem', 'Gaza', 'rabbi', 'kosher', 'Talmud', 'synagogue', 'Torah', 'Shabbat', 'Passover', 'Hanukkah', 'Yom Kippur', 'Rosh', 'Mossad', 'IDF', 'Knesset', 'antisemitism', 'antisemitic', 'anti-Semit', 'pogrom', 'ghetto', 'kibbutz', 'Haganah', 'Aliyah', 'Nakba', 'Balfour', 'mandate Palestine'];
+
+function isJewishRelated(text) {
+  const t = text.toLowerCase();
+  return JEWISH_KEYWORDS.some(k => t.includes(k.toLowerCase()));
+}
+
+let allData = { events: [], births: [], deaths: [], holidays: [] };
+let currentTab = 'all';
+let searchQuery = '';
+let eraFilter = 'all';
+
+function getYear(item) {
+  return parseInt(item.year) || 0;
+}
+
+function eraRange(era) {
+  switch (era) {
+    case 'ancient': return [-9999, 499];
+    case 'medieval': return [500, 1499];
+    case 'modern': return [1500, 1899];
+    case 'contemporary': return [1900, 9999];
+    default: return [-9999, 9999];
+  }
+}
+
+function getFilteredItems() {
+  let items = [];
+  const [minY, maxY] = eraRange(eraFilter);
+
+  if (currentTab === 'all' || currentTab === 'events') {
+    items.push(...allData.events.map(e => ({ ...e, type: 'event' })));
+  }
+  if (currentTab === 'all' || currentTab === 'births') {
+    items.push(...allData.births.map(e => ({ ...e, type: 'birth' })));
+  }
+  if (currentTab === 'all' || currentTab === 'deaths') {
+    items.push(...allData.deaths.map(e => ({ ...e, type: 'death' })));
+  }
+  if (currentTab === 'all' || currentTab === 'holidays') {
+    items.push(...allData.holidays.map(e => ({ ...e, type: 'holiday' })));
+  }
+  if (currentTab === 'jewish') {
+    items.push(...allData.events.map(e => ({ ...e, type: 'event' })));
+    items.push(...allData.births.map(e => ({ ...e, type: 'birth' })));
+    items.push(...allData.deaths.map(e => ({ ...e, type: 'death' })));
+    items = items.filter(i => isJewishRelated(i.text || ''));
+  }
+
+  items = items.filter(i => {
+    const y = getYear(i);
+    return y >= minY && y <= maxY;
+  });
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    items = items.filter(i => (i.text || '').toLowerCase().includes(q));
+  }
+
+  // Sort by year descending
+  items.sort((a, b) => getYear(b) - getYear(a));
+  return items;
+}
+
+const TYPE_COLORS = { event: '#f59e0b', birth: '#22c55e', death: '#ef4444', holiday: '#a855f7' };
+const TYPE_LABELS = { event: '⚡', birth: '🎂', death: '☠️', holiday: '🕎' };
+
+function renderItems() {
+  const items = getFilteredItems();
+  const list = document.getElementById('items-list');
+
+  if (items.length === 0) {
+    list.innerHTML = '<div class="p-8 text-center text-slate-500">No items match this filter.</div>';
+    return;
+  }
+
+  list.innerHTML = items.slice(0, 80).map(item => {
+    const isJ = isJewishRelated(item.text || '');
+    const color = TYPE_COLORS[item.type] || '#94a3b8';
+    const icon = TYPE_LABELS[item.type] || '•';
+    const pages = item.pages?.[0];
+    const wikiUrl = pages ? `https://en.wikipedia.org/wiki/${encodeURIComponent(pages.title)}` : null;
+
+    return `
+      <div class="group flex gap-3 items-start rounded-xl border ${isJ ? 'border-blue-800/40 bg-blue-950/10' : 'border-white/5 bg-white/3'} hover:border-amber-500/20 hover:bg-amber-500/5 p-3 transition-all cursor-pointer"
+        onclick="selectEvent(${JSON.stringify(item.text || '').replace(/'/g, "\\'")})"
+      >
+        <div class="flex-shrink-0 text-center w-10">
+          <div class="text-xs font-bold" style="color:${color}">${item.year || '?'}</div>
+          <div class="text-xs">${icon}</div>
+        </div>
+        <div class="flex-1 min-w-0">
+          ${isJ ? '<span class="text-xs bg-blue-500/20 text-blue-400 px-1 rounded mr-1">✡️</span>' : ''}
+          <span class="text-white text-sm leading-snug group-hover:text-amber-300 transition-colors">${item.text || ''}</span>
+          ${pages?.thumbnail?.source ? `<img src="${pages.thumbnail.source}" alt="" class="mt-2 w-16 h-12 object-cover rounded float-right ml-2 opacity-70" />` : ''}
+        </div>
+        ${wikiUrl ? `<a href="${wikiUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="flex-shrink-0 text-slate-700 hover:text-slate-400 transition-colors text-xs self-start">→</a>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadToday() {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  document.getElementById('today-label').textContent = dateStr;
+
+  const resp = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/all/${mm}/${dd}`);
+  const data = await resp.json();
+
+  allData.events = data.events || [];
+  allData.births = data.births || [];
+  allData.deaths = data.deaths || [];
+  allData.holidays = data.holidays || [];
+
+  const allItems = [...allData.events, ...allData.births, ...allData.deaths, ...allData.holidays];
+  const jewishItems = allItems.filter(i => isJewishRelated(i.text || ''));
+
+  document.getElementById('stat-events').textContent = allData.events.length;
+  document.getElementById('stat-births').textContent = allData.births.length;
+  document.getElementById('stat-deaths').textContent = allData.deaths.length;
+  document.getElementById('stat-jewish').textContent = jewishItems.length;
+
+  // Jewish highlight section
+  if (jewishItems.length > 0) {
+    document.getElementById('jewish-highlight').classList.remove('hidden');
+    document.getElementById('jewish-items').innerHTML = jewishItems.slice(0, 5).map(item => `
+      <div class="flex gap-2 items-start text-sm cursor-pointer hover:text-blue-300 transition-colors" onclick="selectEvent(${JSON.stringify(item.text || '')})">
+        <span class="text-blue-500/70 font-bold text-xs flex-shrink-0 mt-0.5">${item.year || '?'}</span>
+        <span class="text-slate-300 text-xs leading-relaxed">${item.text || ''}</span>
+      </div>
+    `).join('');
+  }
+
+  renderItems();
+}
+
+async function selectEvent(text) {
+  // Build a FLUX prompt for the event
+  const shortText = text.slice(0, 150);
+  const prompt = `A man with dark wavy hair, round tortoiseshell glasses, witnessing as a quiet observer the historical moment: ${shortText}. Cinematic historical scene, detailed period-accurate setting, dramatic lighting, documentary photography style, photorealistic`;
+
+  document.getElementById('hist-idle').classList.add('hidden');
+  document.getElementById('hist-result').classList.add('hidden');
+  document.getElementById('hist-loading').classList.remove('hidden');
+  document.getElementById('hist-loading').classList.add('flex');
+
+  document.getElementById('hist-event-label').textContent = text;
+
+  try {
+    const resp = await fetch('/api/flux-generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error);
+    if (data.status === 'succeeded' && data.output) { showHistResult(data.output, text); return; }
+    if (data.id) await pollHist(data.id, text);
+  } catch {
+    document.getElementById('hist-loading').classList.add('hidden');
+    document.getElementById('hist-idle').classList.remove('hidden');
+  }
+}
+
+async function pollHist(id, text) {
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2500));
+    try {
+      const d = (await (await fetch(`/api/flux-poll?id=${id}`)).json());
+      if (d.status === 'succeeded' && d.output) { showHistResult(d.output, text); return; }
+      if (d.status === 'failed') break;
+    } catch { break; }
+  }
+  document.getElementById('hist-loading').classList.add('hidden');
+  document.getElementById('hist-idle').classList.remove('hidden');
+}
+
+function showHistResult(output, text) {
+  const url = Array.isArray(output) ? output[0] : output;
+  document.getElementById('hist-loading').classList.add('hidden');
+  document.getElementById('hist-result').classList.remove('hidden');
+  document.getElementById('hist-result').classList.add('flex');
+  document.getElementById('hist-img').src = url;
+  document.getElementById('hist-event-label').textContent = text;
+  document.getElementById('hist-meta').textContent = new Date().toLocaleTimeString();
+}
+
+function clearHistResult() {
+  document.getElementById('hist-result').classList.add('hidden');
+  document.getElementById('hist-idle').classList.remove('hidden');
+}
+window.clearHistResult = clearHistResult;
+window.selectEvent = selectEvent;
+
+window.filterByEra = function(era) {
+  eraFilter = era;
+  renderItems();
+};
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('active', 'border-amber-500/50', 'bg-amber-500/10', 'text-amber-300');
+      b.classList.add('border-white/10', 'bg-white/5', 'text-slate-400');
+    });
+    btn.classList.add('active', 'border-amber-500/50', 'bg-amber-500/10', 'text-amber-300');
+    btn.classList.remove('border-white/10', 'bg-white/5', 'text-slate-400');
+    currentTab = btn.dataset.tab;
+    renderItems();
+  });
+});
+
+document.getElementById('search-input').addEventListener('input', e => {
+  searchQuery = e.target.value;
+  renderItems();
+});
+
+loadToday();
+</script>
