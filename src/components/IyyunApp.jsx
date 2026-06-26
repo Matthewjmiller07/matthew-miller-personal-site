@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Sparkles, Loader2, X, BookOpen } from 'lucide-react'; // Loader2 used in WordSheet
 
 // ============================================================
@@ -811,6 +811,216 @@ function HebrewLine({ text, onWordTap }) {
   );
 }
 
+// ============================================================
+// Pretext kinetic Hebrew word cloud — uses @chenglou/pretext
+// for line-breaking text without DOM reflow, then animates
+// each word on a parchment-toned canvas.
+// ============================================================
+function PretextCanvas({ hebrewLines, onWordTap }) {
+  const canvasRef = useRef(null);
+  const stateRef = useRef({ animId: 0, words: [], mouse: { x: -9999, y: -9999 }, startTime: null });
+
+  // Sample up to 16 unique Hebrew words (≥3 chars) from the section
+  const sampleWords = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    for (const line of hebrewLines) {
+      for (const tok of tokenize(line)) {
+        const bare = stripNikkud(tok.text);
+        if (tok.word && bare.length >= 3 && !seen.has(bare)) {
+          seen.add(bare);
+          result.push({ text: tok.text, phrase: line });
+          if (result.length >= 16) return result;
+        }
+      }
+    }
+    return result;
+  }, [hebrewLines]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || sampleWords.length === 0) return;
+    const state = stateRef.current;
+    let cancelled = false;
+
+    const FONT_SIZE = 22;
+    const LINE_HEIGHT = 56;
+    const V_PAD = 18;
+    const H_PAD = 20;
+    const SEP = '  ·  ';
+    const WORD_COLORS = [COLORS.burgundy, COLORS.gold, 'rgba(28,24,20,0.72)'];
+
+    function setup(pretext) {
+      if (cancelled) return;
+      cancelAnimationFrame(state.animId);
+      const { prepareWithSegments, layoutWithLines } = pretext;
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvas.parentElement?.offsetWidth ?? 680;
+      const font = `400 ${FONT_SIZE}px 'Frank Ruhl Libre', serif`;
+
+      const fullText = sampleWords.map((w) => w.text).join(SEP);
+      const prepared = prepareWithSegments(fullText, font);
+      const { lines, height } = layoutWithLines(prepared, W - H_PAD * 2, LINE_HEIGHT);
+
+      const canvasH = height + V_PAD * 2;
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(canvasH * dpr);
+      canvas.style.width = W + 'px';
+      canvas.style.height = canvasH + 'px';
+      const gc = canvas.getContext('2d');
+      gc.scale(dpr, dpr);
+      gc.font = font;
+
+      state.words = [];
+      let colorIdx = 0;
+
+      lines.forEach((line, li) => {
+        const baseY = V_PAD + li * LINE_HEIGHT + FONT_SIZE;
+        const lineWidth = gc.measureText(line.text).width;
+        const lineX = (W - lineWidth) / 2;
+        let x = lineX;
+
+        const parts = line.text.split(SEP);
+        parts.forEach((part, pi) => {
+          if (!part.trim()) return;
+          const renderText = pi < parts.length - 1 ? part + SEP : part;
+          const tokenW = gc.measureText(renderText).width;
+          const bare = stripNikkud(part.trim());
+          const match = sampleWords.find((w) => stripNikkud(w.text.trim()) === bare);
+          state.words.push({
+            text: part.trim(),
+            renderText,
+            x,
+            w: tokenW,
+            baseY,
+            phase: colorIdx * 0.73,
+            speed: 1.1 + (colorIdx % 3) * 0.18,
+            color: WORD_COLORS[colorIdx % WORD_COLORS.length],
+            phrase: match?.phrase || '',
+          });
+          x += tokenW;
+          colorIdx++;
+        });
+      });
+
+      state.startTime = null;
+      state.animId = requestAnimationFrame(draw);
+
+      function draw(ts) {
+        if (cancelled) return;
+        if (!state.startTime) state.startTime = ts;
+        const t = (ts - state.startTime) / 1000;
+        const cW = canvas.width / dpr;
+        const cH = canvas.height / dpr;
+        gc.clearRect(0, 0, cW, cH);
+
+        // Parchment gradient background
+        const grad = gc.createLinearGradient(0, 0, 0, cH);
+        grad.addColorStop(0, COLORS.parchment);
+        grad.addColorStop(1, COLORS.parchmentDeep);
+        gc.fillStyle = grad;
+        gc.fillRect(0, 0, cW, cH);
+
+        gc.font = font;
+        gc.textAlign = 'left';
+
+        state.words.forEach((w) => {
+          const wave = Math.sin(t * w.speed + w.phase) * 4;
+          const cx = w.x + w.w / 2;
+          const dx = cx - state.mouse.x;
+          const dy = w.baseY - state.mouse.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const prox = Math.max(0, 1 - dist / 80);
+          const y = w.baseY + wave - prox * 8;
+
+          gc.save();
+          gc.shadowColor = w.color;
+          gc.shadowBlur = 2 + prox * 12;
+          gc.fillStyle = w.color;
+          gc.globalAlpha = 0.68 + prox * 0.32;
+
+          if (prox > 0.05) {
+            gc.translate(cx, y);
+            gc.scale(1 + prox * 0.1, 1 + prox * 0.1);
+            gc.fillText(w.renderText, -w.w / 2, 0);
+          } else {
+            gc.fillText(w.renderText, w.x, y);
+          }
+          gc.restore();
+        });
+
+        // Subtle label
+        gc.save();
+        gc.font = `400 10px ${FONTS.label}`;
+        gc.fillStyle = COLORS.inkFaint;
+        gc.globalAlpha = 0.6;
+        gc.textAlign = 'center';
+        gc.fillText('tap any word · powered by @chenglou/pretext', cW / 2, cH - 5);
+        gc.restore();
+
+        state.animId = requestAnimationFrame(draw);
+      }
+    }
+
+    // Wait for Hebrew font, then set up
+    document.fonts.load(`400 22px 'Frank Ruhl Libre'`).finally(() => {
+      import('@chenglou/pretext').then(setup).catch(() => {});
+    });
+
+    const onMouseMove = (e) => {
+      const r = canvas.getBoundingClientRect();
+      state.mouse.x = e.clientX - r.left;
+      state.mouse.y = e.clientY - r.top;
+    };
+    const onMouseLeave = () => { state.mouse.x = -9999; state.mouse.y = -9999; };
+    const onClick = (e) => {
+      const r = canvas.getBoundingClientRect();
+      const mx = e.clientX - r.left;
+      const my = e.clientY - r.top;
+      for (const w of state.words) {
+        if (mx >= w.x - 2 && mx <= w.x + w.w + 2 && Math.abs(my - w.baseY) < 28) {
+          onWordTap({ word: w.text, phrase: w.phrase });
+          break;
+        }
+      }
+    };
+    const onResize = () => {
+      import('@chenglou/pretext').then(setup).catch(() => {});
+    };
+
+    canvas.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('mouseleave', onMouseLeave);
+    canvas.addEventListener('click', onClick);
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(state.animId);
+      canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('mouseleave', onMouseLeave);
+      canvas.removeEventListener('click', onClick);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [sampleWords, onWordTap]);
+
+  if (sampleWords.length === 0) return null;
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        display: 'block',
+        width: '100%',
+        cursor: 'pointer',
+        border: `1px solid ${COLORS.gold}33`,
+        borderRadius: '4px',
+        marginBottom: '32px',
+      }}
+    />
+  );
+}
+
 function FlashcardsPanel({
   savedWords,
   flashcardIndex,
@@ -1318,6 +1528,12 @@ export default function Iyyun() {
               {selected.subtitle}
             </div>
           </div>
+
+          <PretextCanvas
+            key={selected.id}
+            hebrewLines={sectionData.he}
+            onWordTap={(info) => setActiveWordInfo({ ...info, lookupRef: selected.lookupRef })}
+          />
 
           {paragraphs.map((p, i) => {
             const key = `${selected.id}-${i}`;
