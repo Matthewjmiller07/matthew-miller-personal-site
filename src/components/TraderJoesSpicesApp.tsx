@@ -794,7 +794,7 @@ export default function TraderJoesSpicesApp() {
                               paths.push(
                                 <path
                                   key={`${s.id}-${ingName}`}
-                                  d={`M 180 ${ySeasoning} C 310 ${ySeasoning}, 310 ${yIngredient}, 480 ${yIngredient}`}
+                                  d={`M 180 ${ySeasoning} C 300 ${ySeasoning}, 300 ${yIngredient}, 420 ${yIngredient}`}
                                   fill="none"
                                   stroke={strokeColor}
                                   strokeWidth={strokeWidth}
@@ -883,7 +883,7 @@ export default function TraderJoesSpicesApp() {
                           return (
                             <g 
                               key={ing.name} 
-                              transform={`translate(480, ${y})`}
+                              transform={`translate(420, ${y})`}
                               onMouseEnter={() => setHoveredIngredient(ing.name)}
                               onMouseLeave={() => setHoveredIngredient(null)}
                               onClick={() => {
