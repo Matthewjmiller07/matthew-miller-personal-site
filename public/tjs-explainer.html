@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trader Joe's Spice Matrix — Explainer (HyperFrames)</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Crimson+Pro:ital,wght@0,300..700;1,300..700&family=Frank+Ruhl+Libre:wght@400;700;900&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #020617;
+      --bg-card: #0b1329;
+      --cyan: #06b6d4;
+      --blue: #3b82f6;
+      --slate-300: #cbd5e1;
+      --slate-400: #94a3b8;
+      --slate-500: #64748b;
+      --slate-800: #1e293b;
+      --white: #ffffff;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background-color: var(--bg-dark);
+      color: var(--white);
+      font-family: 'Fraunces', serif;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100vw;
+      height: 100vh;
+    }
+    
+    /* Root Composition Container (1920x1080) */
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      background-color: var(--bg-dark);
+      background-image: radial-gradient(circle at center, #0f172a 0%, var(--bg-dark) 100%);
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      transform-origin: center;
+    }
+
+    /* Absolute Overlay for Scenes */
+    .scene {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .scene.active {
+      pointer-events: auto;
+    }
+
+    /* Typography */
+    .main-title {
+      font-family: 'Frank Ruhl Libre', serif;
+      font-weight: 900;
+      font-size: 110px;
+      background: linear-gradient(135deg, var(--white) 30%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 4px 30px rgba(6, 182, 212, 0.15);
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
+    .sub-title {
+      font-family: 'Fraunces', serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: 48px;
+      color: var(--slate-400);
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .desc-text {
+      font-family: 'Fraunces', serif;
+      font-size: 32px;
+      max-width: 1000px;
+      text-align: center;
+      color: var(--slate-300);
+      font-weight: 300;
+      line-height: 1.4;
+      opacity: 0.9;
+    }
+    
+    /* Scene 1: Spice Shaker Graphic */
+    #shaker-graphic {
+      margin-top: 40px;
+      width: 200px;
+      height: 200px;
+    }
+
+    /* Scene 2: Crossover Concept Cards */
+    .crossover-container {
+      display: flex;
+      gap: 40px;
+      align-items: center;
+      justify-content: center;
+      margin-top: 40px;
+      width: 1300px;
+    }
+    
+    .card-wrap {
+      flex: 1;
+      background: var(--bg-card);
+      border: 2px solid var(--slate-800);
+      padding: 40px;
+      border-radius: 28px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .card-title {
+      font-family: 'Frank Ruhl Libre', serif;
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--white);
+    }
+    
+    .ing-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .ing-tag {
+      font-family: 'Fraunces', serif;
+      font-size: 18px;
+      padding: 8px 16px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--slate-300);
+    }
+    
+    .ing-tag.match {
+      background: rgba(6, 182, 212, 0.1);
+      border-color: rgba(6, 182, 212, 0.3);
+      color: var(--cyan);
+      font-weight: 600;
+    }
+
+    /* Center Overlap Graphic */
+    .overlap-divider {
+      width: 80px;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cyan);
+    }
+
+    /* Scene 3: Stats Grid */
+    .stats-container {
+      display: flex;
+      gap: 40px;
+      width: 1400px;
+      margin-top: 50px;
+    }
+    
+    .stat-box {
+      flex: 1;
+      background: rgba(11, 19, 41, 0.5);
+      border: 2px dashed rgba(6, 182, 212, 0.2);
+      padding: 50px 30px;
+      border-radius: 32px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .stat-number {
+      font-family: 'Frank Ruhl Libre', serif;
+      font-weight: 900;
+      font-size: 96px;
+      background: linear-gradient(135deg, var(--cyan) 0%, var(--blue) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1;
+    }
+    
+    .stat-heading {
+      font-family: 'Fraunces', serif;
+      font-size: 26px;
+      color: var(--white);
+      font-weight: 600;
+    }
+    
+    .stat-body {
+      font-size: 18px;
+      color: var(--slate-400);
+      line-height: 1.4;
+      max-width: 320px;
+    }
+
+    /* Scene 4: Outro Interface Mockup */
+    .ui-mockup {
+      width: 800px;
+      height: 400px;
+      background: #020617;
+      border: 4px solid var(--slate-800);
+      border-radius: 24px;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7);
+      margin-top: 40px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .mock-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--slate-800);
+      padding-bottom: 15px;
+    }
+    
+    .mock-dots {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    
+    .mock-url {
+      background: #0b1329;
+      padding: 4px 20px;
+      border-radius: 10px;
+      font-family: monospace;
+      font-size: 14px;
+      color: var(--slate-400);
+      width: 400px;
+      text-align: center;
+    }
+    
+    .mock-content {
+      flex-grow: 1;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    
+    .mock-chart {
+      flex: 1.5;
+      height: 100%;
+      border: 1px solid rgba(6, 182, 212, 0.15);
+      border-radius: 16px;
+      background: rgba(6, 182, 212, 0.02);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .mock-details {
+      flex: 1;
+      height: 100%;
+      border: 1px solid var(--slate-800);
+      border-radius: 16px;
+      background: #0b1329;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .outro-link {
+      font-family: 'Fraunces', serif;
+      font-size: 32px;
+      color: var(--slate-300);
+      margin-top: 45px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    
+    .outro-link-url {
+      color: var(--cyan);
+      font-weight: 600;
+      text-decoration: none;
+      border-bottom: 2px solid rgba(6, 182, 212, 0.3);
+    }
+
+    /* Frame Border Trim */
+    .frame-border {
+      position: absolute;
+      inset: 30px;
+      border: 1px solid rgba(6, 182, 212, 0.08);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* ---- Preview Player Controls ---- */
+    #player-controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(2, 6, 23, 0.95);
+      border: 1px solid var(--slate-800);
+      border-radius: 16px;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      z-index: 100;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+      backdrop-filter: blur(10px);
+      width: 800px;
+      transition: opacity 0.3s ease;
+    }
+    
+    body.rendering #player-controls {
+      display: none !important;
+    }
+    
+    .btn {
+      background: var(--cyan);
+      border: none;
+      color: var(--bg-dark);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: 'Fraunces', serif;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    
+    .btn:hover {
+      background: #0891b2;
+    }
+    
+    .slider-container {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .slider {
+      flex-grow: 1;
+      height: 6px;
+      background: #1e293b;
+      outline: none;
+      border-radius: 3px;
+      appearance: none;
+      cursor: pointer;
+    }
+    
+    .slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--cyan);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    
+    .slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+    
+    .time-display {
+      font-family: monospace;
+      font-size: 14px;
+      color: var(--slate-500);
+      min-width: 90px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Root container configured for 1920x1080 output -->
+  <div id="root" data-composition-id="tjs-explainer" data-width="1920" data-height="1080">
+    <div class="frame-border"></div>
+    
+    <!-- SCENE 1: Intro (0.0s - 4.0s) -->
+    <div id="scene1" class="scene active">
+      <div id="intro-title" class="main-title">Trader Joe's Spice Matrix</div>
+      <div id="intro-sub" class="sub-title">Ingredient Crossover Visualizer</div>
+      <div id="intro-desc" class="desc-text">Exploring shared recipes and flavor distributions across the legendary seasoning catalog.</div>
+      
+      <!-- Spice Shaker SVG -->
+      <svg id="shaker-graphic" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <!-- Jar lid -->
+        <rect x="40" y="15" width="20" height="10" rx="3" fill="#cbd5e1" stroke="#94a3b8"/>
+        <!-- Jar Neck -->
+        <rect x="43" y="25" width="14" height="6" fill="#1e293b" stroke="#1e293b"/>
+        <!-- Glass Jar Body -->
+        <path d="M30 31 C30 31, 30 85, 33 88 C36 91, 64 91, 67 88 C70 85, 70 31, 70 31 Z" fill="rgba(6, 182, 212, 0.05)" stroke="var(--cyan)"/>
+        <!-- Label on Jar -->
+        <rect x="36" y="45" width="28" height="28" rx="4" fill="rgba(2, 6, 23, 0.8)" stroke="rgba(6, 182, 212, 0.3)"/>
+        <!-- Shaker lines inside label -->
+        <line x1="42" y1="52" x2="58" y2="52" stroke="var(--cyan)" stroke-width="1.5"/>
+        <line x1="42" y1="59" x2="54" y2="59" stroke="var(--cyan)" stroke-width="1.5"/>
+        <line x1="42" y1="66" x2="50" y2="66" stroke="var(--cyan)" stroke-width="1.5"/>
+        <!-- Shaken spices floating out -->
+        <circle cx="28" cy="18" r="2" fill="var(--cyan)" opacity="0.8"/>
+        <circle cx="34" cy="10" r="1.5" fill="var(--blue)" opacity="0.6"/>
+        <circle cx="50" cy="5" r="2" fill="var(--cyan)"/>
+        <circle cx="68" cy="10" r="2.5" fill="var(--cyan)" opacity="0.9"/>
+        <circle cx="72" cy="20" r="1.5" fill="var(--blue)" opacity="0.7"/>
+      </svg>
+    </div>
+    
+    <!-- SCENE 2: The Concept (4.0s - 8.0s) -->
+    <div id="scene2" class="scene">
+      <div id="concept-title" class="sub-title" style="margin-bottom: 40px; color: var(--white);">Intersecting Seasoning Ingredients</div>
+      
+      <div class="crossover-container">
+        <!-- Blend A -->
+        <div id="card-a" class="card-wrap">
+          <div class="card-title">Everything But The Bagel</div>
+          <div class="ing-list">
+            <span class="ing-tag match">Sesame Seeds</span>
+            <span class="ing-tag match">Garlic</span>
+            <span class="ing-tag match">Onion</span>
+            <span class="ing-tag match">Salt</span>
+            <span class="ing-tag">Poppy Seeds</span>
+          </div>
+        </div>
+        
+        <!-- Overlap Icon -->
+        <div id="overlap-icon" class="overlap-divider">
+          <svg viewBox="0 0 24 24" width="60" height="60" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="12" r="6" stroke="var(--blue)" fill="rgba(59, 130, 246, 0.05)"/>
+            <circle cx="15" cy="12" r="6" stroke="var(--cyan)" fill="rgba(6, 182, 212, 0.05)"/>
+            <path d="M12 9 L12 15" stroke="var(--white)" stroke-width="2.5"/>
+            <path d="M9 12 L15 12" stroke="var(--white)" stroke-width="2.5"/>
+          </svg>
+        </div>
+        
+        <!-- Blend B -->
+        <div id="card-b" class="card-wrap">
+          <div class="card-title">Everything But The Elote</div>
+          <div class="ing-list">
+            <span class="ing-tag match">Salt</span>
+            <span class="ing-tag">Chili Pepper</span>
+            <span class="ing-tag">Cheese</span>
+            <span class="ing-tag">Cumin</span>
+            <span class="ing-tag">Cilantro</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- SCENE 3: The Data (8.0s - 12.0s) -->
+    <div id="scene3" class="scene">
+      <div id="stats-title" class="sub-title" style="margin-bottom: 30px; color: var(--white);">Built with Precise Ingredient Mapping</div>
+      
+      <div class="stats-container">
+        <!-- Stat 1 -->
+        <div id="stat-box-1" class="stat-box">
+          <div class="stat-number">31</div>
+          <div class="stat-heading">Seasonings</div>
+          <div class="stat-body">Tracing active favorites, seasonal specialties, and discontinued blends.</div>
+        </div>
+        <!-- Stat 2 -->
+        <div id="stat-box-2" class="stat-box">
+          <div class="stat-number">47</div>
+          <div class="stat-heading">Ingredients</div>
+          <div class="stat-body">Normalized and categorized catalog from base salts to exotic herbs.</div>
+        </div>
+        <!-- Stat 3 -->
+        <div id="stat-box-3" class="stat-box">
+          <div class="stat-number">100%</div>
+          <div class="stat-heading">Interactive</div>
+          <div class="stat-body">Sort columns, filter tags, search text, and compare blends dynamically.</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- SCENE 4: Outro (12.0s - 16.0s) -->
+    <div id="scene4" class="scene">
+      <div id="outro-title" class="main-title" style="font-size: 80px; margin-bottom: 10px;">Trader Joe's Spice Matrix</div>
+      <div id="outro-sub" class="sub-title" style="font-size: 36px; margin-bottom: 20px;">Data Visualization Showcase</div>
+      
+      <div id="outro-ui" class="ui-mockup">
+        <div class="mock-nav">
+          <div class="mock-dots">
+            <span class="dot" style="background-color: #ef4444;"></span>
+            <span class="dot" style="background-color: #f59e0b;"></span>
+            <span class="dot" style="background-color: #10b981;"></span>
+          </div>
+          <div class="mock-url">theothermatthewmiller.com/tjs</div>
+          <div style="width: 50px;"></div>
+        </div>
+        <div class="mock-content">
+          <!-- Mock Chart -->
+          <div class="mock-chart">
+            <svg viewBox="0 0 100 100" width="80" height="80" fill="none" stroke="var(--cyan)" stroke-width="1.5">
+              <!-- Left Dots -->
+              <circle cx="20" cy="20" r="3" fill="var(--cyan)"/>
+              <circle cx="20" cy="50" r="3" fill="var(--cyan)"/>
+              <circle cx="20" cy="80" r="3" fill="var(--cyan)"/>
+              <!-- Right Dots -->
+              <circle cx="80" cy="30" r="3" fill="var(--blue)"/>
+              <circle cx="80" cy="70" r="3" fill="var(--blue)"/>
+              <!-- Curves -->
+              <path d="M23 20 C50 20, 50 30, 77 30" stroke="var(--cyan)" opacity="0.8"/>
+              <path d="M23 20 C50 20, 50 70, 77 77" stroke="var(--blue)" opacity="0.6"/>
+              <path d="M23 50 C50 50, 50 30, 77 30" stroke="var(--cyan)"/>
+              <path d="M23 80 C50 80, 50 70, 77 70" stroke="var(--blue)"/>
+            </svg>
+          </div>
+          <!-- Mock Sidebar -->
+          <div class="mock-details">
+            <div style="height: 12px; width: 60px; background: var(--cyan); border-radius: 4px;"></div>
+            <div style="height: 16px; width: 140px; background: var(--white); border-radius: 4px; margin-top: 5px;"></div>
+            <div style="height: 10px; width: 180px; background: var(--slate-800); border-radius: 4px; margin-top: 15px;"></div>
+            <div style="height: 10px; width: 160px; background: var(--slate-800); border-radius: 4px; margin-top: 5px;"></div>
+            <div style="height: 10px; width: 120px; background: var(--slate-800); border-radius: 4px; margin-top: 5px;"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div id="outro-link" class="outro-link">
+        Explore the visualizer at <span class="outro-link-url">theothermatthewmiller.com/tjs</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- BROWSER PREVIEW PLAYBACK CONTROLLER -->
+  <div id="player-controls">
+    <button id="play-btn" class="btn">Play</button>
+    <div class="slider-container">
+      <input type="range" id="scrubber" class="slider" min="0" max="100" value="0">
+    </div>
+    <div id="time-display" class="time-display">00.00 / 16.00s</div>
+  </div>
+
+  <!-- Load GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  
+  <script>
+    // Handle Auto-Scale for Responsive Screen Previews
+    const root = document.getElementById('root');
+    function scaleRoot() {
+      const winW = window.innerWidth;
+      const winH = window.innerHeight;
+      const scale = Math.min(winW / 1920, winH / 1080);
+      root.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener('resize', scaleRoot);
+    scaleRoot();
+
+    // Netlify/Headless render detection to hide controls
+    if (window.location.search.includes('render=true') || navigator.userAgent.includes('Headless')) {
+      document.body.classList.add('rendering');
+    }
+
+    // Set up timelines container for HyperFrames compliance
+    window.__timelines = window.__timelines || {};
+    
+    // Create the master paused GSAP timeline
+    const tl = gsap.timeline({ paused: true });
+    const duration = 16; // 16 seconds total video
+    
+    // Helper to toggle active visibility class
+    function activateScene(selector) {
+      document.querySelectorAll('.scene').forEach(el => el.classList.remove('active'));
+      const activeEl = document.querySelector(selector);
+      if (activeEl) activeEl.classList.add('active');
+    }
+
+    // SCENE 1: Intro (0.0s - 4.0s)
+    tl.add(() => activateScene('#scene1'), 0);
+    tl.to("#scene1", { opacity: 1, duration: 0.4 }, 0);
+    tl.fromTo("#intro-title", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 0.2);
+    tl.fromTo("#intro-sub", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 0.4);
+    tl.fromTo("#intro-desc", { y: 30, opacity: 0 }, { y: 0, opacity: 0.9, duration: 0.8, ease: "power3.out" }, 0.6);
+    // Animate shaker tilting and shaking
+    tl.fromTo("#shaker-graphic", { scale: 0.6, rotate: -20, opacity: 0 }, { scale: 1, rotate: 0, opacity: 1, duration: 1.0, ease: "back.out(1.5)" }, 0.8);
+    tl.to("#shaker-graphic", { rotate: 25, duration: 0.3, ease: "power1.inOut" }, 1.8);
+    tl.to("#shaker-graphic", { rotate: 10, duration: 0.2, ease: "power1.inOut" }, 2.1);
+    tl.to("#shaker-graphic", { rotate: 25, duration: 0.2, ease: "power1.inOut" }, 2.3);
+    tl.to("#shaker-graphic", { rotate: 0, duration: 0.4, ease: "back.out" }, 2.5);
+    tl.to("#scene1", { opacity: 0, duration: 0.4 }, 3.6);
+
+    // SCENE 2: Question & Concept Cards (4.0s - 8.0s)
+    tl.add(() => activateScene('#scene2'), 4.0);
+    tl.to("#scene2", { opacity: 1, duration: 0.4 }, 4.0);
+    tl.fromTo("#concept-title", { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, 4.2);
+    tl.fromTo("#card-a", { x: -100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 4.4);
+    tl.fromTo("#card-b", { x: 100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 4.6);
+    tl.fromTo("#overlap-icon", { scale: 0.3, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.8, ease: "back.out(2)" }, 5.0);
+    tl.to("#scene2", { opacity: 0, duration: 0.4 }, 7.6);
+
+    // SCENE 3: Statistics Grid (8.0s - 12.0s)
+    tl.add(() => activateScene('#scene3'), 8.0);
+    tl.to("#scene3", { opacity: 1, duration: 0.4 }, 8.0);
+    tl.fromTo("#stats-title", { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, 8.2);
+    tl.fromTo("#stat-box-1", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "back.out(1.2)" }, 8.4);
+    tl.fromTo("#stat-box-2", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "back.out(1.2)" }, 8.7);
+    tl.fromTo("#stat-box-3", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "back.out(1.2)" }, 9.0);
+    tl.to("#scene3", { opacity: 0, duration: 0.4 }, 11.6);
+
+    // SCENE 4: Outro (12.0s - 16.0s)
+    tl.add(() => activateScene('#scene4'), 12.0);
+    tl.to("#scene4", { opacity: 1, duration: 0.4 }, 12.0);
+    tl.fromTo("#outro-title", { y: -40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, 12.2);
+    tl.fromTo("#outro-sub", { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, 12.4);
+    tl.fromTo("#outro-ui", { scale: 0.85, rotateY: -15, opacity: 0 }, { scale: 1, rotateY: 0, opacity: 1, duration: 1.0, ease: "power3.out" }, 12.6);
+    tl.fromTo("#outro-link", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power2.out" }, 13.0);
+
+    // Register Master Timeline in global window object for HeyGen hyperframes CLI rendering
+    window.__timelines["tjs-explainer"] = tl;
+
+    // ---- Preview Controller Scripting ----
+    const playBtn = document.getElementById('play-btn');
+    const scrubber = document.getElementById('scrubber');
+    const timeDisplay = document.getElementById('time-display');
+    let isPlaying = false;
+
+    // Listen to GSAP ticks to update scrubber/timer during playback
+    function updateUI() {
+      const progress = tl.progress() * 100;
+      scrubber.value = progress;
+      
+      const currentSecs = (tl.progress() * duration).toFixed(2);
+      timeDisplay.innerText = `${currentSecs} / ${duration.toFixed(2)}s`;
+      
+      if (tl.progress() >= 1 && isPlaying) {
+        pauseVideo();
+      }
+    }
+    
+    // Sync slider drag (scrubbing)
+    scrubber.addEventListener('input', (e) => {
+      const progress = e.target.value / 100;
+      tl.progress(progress);
+      updateUI();
+    });
+
+    function playVideo() {
+      if (tl.progress() >= 1) {
+        tl.restart();
+      } else {
+        tl.play();
+      }
+      isPlaying = true;
+      playBtn.innerText = 'Pause';
+      gsap.ticker.add(updateUI);
+    }
+
+    function pauseVideo() {
+      tl.pause();
+      isPlaying = false;
+      playBtn.innerText = 'Play';
+      gsap.ticker.remove(updateUI);
+    }
+
+    playBtn.addEventListener('click', () => {
+      if (isPlaying) {
+        pauseVideo();
+      } else {
+        playVideo();
+      }
+    });
+
+    // Initial update
+    updateUI();
+  </script>
+</body>
+</html>
