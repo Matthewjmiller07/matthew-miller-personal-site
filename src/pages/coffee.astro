@@ -8,6 +8,24 @@ import Layout from '../layouts/Layout.astro';
 const pageTitle = 'Coffee in Judaism';
 const pageDescription =
   'A living source sheet on coffee in halacha and Jewish history — berachot, Shabbat, Pesach, bishul akum, chassidut and more, with sources from Sefaria, Hakirah, and OU Kosher.';
+
+// Print-ready source-sheet series generated from this database
+// (static files in public/coffee-sheets/, rebuilt by the Coffee generator).
+const sheetSeries = [
+  { n: 1, slug: 'brachot', he: 'בִּרְכַּת הַקָּפֶה', en: 'The Blessing on Coffee', q: 13, s: 27 },
+  { n: 2, slug: 'shabbat', he: 'קָפֶה בְּשַׁבָּת', en: 'Making Coffee on Shabbat', q: 17, s: 49 },
+  { n: 3, slug: 'chamar-medina', he: 'חֲמַר מְדִינָה', en: 'Chamar Medina — Kiddush & Havdalah', q: 8, s: 10 },
+  { n: 4, slug: 'bishul-akum', he: 'בִּשּׁוּל עַכּוּ״ם', en: 'Bishul Akum & the Kosher Cup', q: 11, s: 45 },
+  { n: 5, slug: 'coffee-out', he: 'קָפֶה בַּחוּץ', en: 'Coffee Out — Marit Ayin & the Café', q: 7, s: 14 },
+  { n: 6, slug: 'pesach-yomtov', he: 'קָפֶה בְּפֶסַח', en: 'Coffee on Pesach & Yom Tov', q: 11, s: 12 },
+  { n: 7, slug: 'tefillah', he: 'קָפֶה וּתְפִלָּה', en: 'Coffee & Prayer', q: 5, s: 12 },
+  { n: 8, slug: 'home', he: 'קָפֶה בַּבַּיִת', en: 'Coffee in the Jewish Home', q: 6, s: 10 },
+  { n: 9, slug: 'history', he: 'הַקָּפֶה בְּבֵית הַמִּדְרָשׁ', en: 'How Coffee Entered the Literature', q: 3, s: 5 },
+];
+const sheetBase = (sh: (typeof sheetSeries)[number]) =>
+  `/coffee-sheets/sheets/${String(sh.n).padStart(2, '0')}-${sh.slug}`;
+const sheetPdf = (sh: (typeof sheetSeries)[number], student = false) =>
+  `/coffee-sheets/pdf/${String(sh.n).padStart(2, '0')}-${sh.slug}${student ? '-student' : ''}.pdf`;
 ---
 
 <Layout title={pageTitle} description={pageDescription}>
@@ -46,6 +64,15 @@ const pageDescription =
       </div>
     </header>
 
+    <nav class="kava-nav" aria-label="Sections">
+      <a href="#topics-section">Questions</a>
+      <a href="#sheets-section">Source Sheets</a>
+      <a href="#sources-section">Library</a>
+      <a href="#facts-section">Facts</a>
+      <a href="#shiurim-section">Shiurim</a>
+      <a href="#authors-section">Authorities</a>
+    </nav>
+
     <main class="kava-main">
       <div id="kava-loading" class="kava-loading">Brewing the sources&hellip;</div>
       <div id="kava-error" class="kava-error" hidden>
@@ -61,9 +88,35 @@ const pageDescription =
         <div id="topics-list" class="kava-topics"></div>
       </section>
 
+      <!-- ===== Printable source sheets ===== -->
+      <section id="sheets-section" class="kava-section">
+        <h2 class="kava-h2"><span class="kava-h2-num">II.</span> The Source-Sheet Series</h2>
+        <p class="kava-section-sub">
+          Nine print-ready sheets brewed from this database — original texts with translation,
+          linked citations, and a two-page <em>student handout</em> for each. Print them for the
+          shiur or browse the <a href="/coffee-sheets/">series index</a>.
+        </p>
+        <div class="kava-sheets">
+          {sheetSeries.map((sh) => (
+            <article class="kava-sheet">
+              <span class="kava-sheet-no">Sheet Nº {sh.n}</span>
+              <a class="kava-sheet-he" href={`${sheetBase(sh)}.html`} dir="rtl" lang="he">{sh.he}</a>
+              <a class="kava-sheet-en" href={`${sheetBase(sh)}.html`}>{sh.en}</a>
+              <span class="kava-sheet-meta">{sh.q} questions · {sh.s} sources</span>
+              <span class="kava-sheet-links">
+                <a href={`${sheetBase(sh)}.html`}>Read</a>
+                <a href={sheetPdf(sh)}>PDF</a>
+                <a href={`${sheetBase(sh)}-student.html`}>Student</a>
+                <a href={sheetPdf(sh, true)}>Student&nbsp;PDF</a>
+              </span>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <!-- ===== Source library ===== -->
       <section id="sources-section" class="kava-section" hidden>
-        <h2 class="kava-h2"><span class="kava-h2-num">II.</span> The Source Library</h2>
+        <h2 class="kava-h2"><span class="kava-h2-num">III.</span> The Source Library</h2>
         <p class="kava-section-sub">
           Every text in the collection. Sources marked
           <span class="kava-badge kava-badge-claude">✦ added by Claude</span> were researched
@@ -76,13 +129,13 @@ const pageDescription =
 
       <!-- ===== Facts ===== -->
       <section id="facts-section" class="kava-section" hidden>
-        <h2 class="kava-h2"><span class="kava-h2-num">III.</span> Beans of Knowledge</h2>
+        <h2 class="kava-h2"><span class="kava-h2-num">IV.</span> Beans of Knowledge</h2>
         <div id="facts-list" class="kava-facts"></div>
       </section>
 
       <!-- ===== Shiurim ===== -->
       <section id="shiurim-section" class="kava-section" hidden>
-        <h2 class="kava-h2"><span class="kava-h2-num">IV.</span> Shiurim to Sip By</h2>
+        <h2 class="kava-h2"><span class="kava-h2-num">V.</span> Shiurim to Sip By</h2>
         <p class="kava-section-sub">
           Audio shiurim touching on coffee and its halachot, mostly via
           <a href="https://www.yutorah.org" target="_blank" rel="noopener">YUTorah</a>.
@@ -100,7 +153,7 @@ const pageDescription =
 
       <!-- ===== Authors ===== -->
       <section id="authors-section" class="kava-section" hidden>
-        <h2 class="kava-h2"><span class="kava-h2-num">V.</span> The Authorities</h2>
+        <h2 class="kava-h2"><span class="kava-h2-num">VI.</span> The Authorities</h2>
         <p class="kava-section-sub">
           Poskim, scholars, and historians whose works appear in this collection.
         </p>
@@ -187,9 +240,26 @@ const pageDescription =
   .kava-stats b { color: var(--copper-bright); font-weight: 600; }
   .kava-stat-dot { margin: 0 0.6rem; color: var(--copper); }
 
+  /* ---- Sticky section nav ---- */
+  html { scroll-behavior: smooth; }
+  .kava-nav {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; justify-content: center; flex-wrap: wrap; gap: 0.15rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(20, 16, 13, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--paper-line);
+    font-family: 'Fraunces', serif; font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .kava-nav a {
+    color: var(--crema-dim); border-bottom: none; padding: 0.3rem 0.75rem; border-radius: 999px;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .kava-nav a:hover { color: var(--copper-bright); background: rgba(200, 127, 61, 0.14); }
+
   /* ---- Layout ---- */
   .kava-main { max-width: 56rem; margin: 0 auto; padding: 1rem 1.25rem 5rem; }
-  .kava-section { margin-top: 4.5rem; }
+  .kava-section { margin-top: 4.5rem; scroll-margin-top: 4rem; }
+  .kava-topic { scroll-margin-top: 4.5rem; }
   .kava-h2 {
     font-family: 'Fraunces', serif; font-weight: 600; font-size: clamp(1.7rem, 4vw, 2.3rem);
     color: var(--crema); margin: 0 0 0.5rem; letter-spacing: 0.01em;
@@ -291,6 +361,40 @@ const pageDescription =
     padding: 0.65rem 0.8rem 0.65rem 0.5rem; border-radius: 0 8px 8px 0; margin: 0.4rem 0 0;
   }
 
+  /* ---- Source-sheet series ---- */
+  .kava-sheets { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1rem; }
+  .kava-sheet {
+    display: flex; flex-direction: column; gap: 0.35rem;
+    border: 1px solid var(--paper-line); border-radius: 12px; background: var(--bean-800);
+    padding: 1.1rem 1.2rem; transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .kava-sheet:hover { transform: translateY(-2px); border-color: rgba(200, 127, 61, 0.45); }
+  .kava-sheet-no {
+    font-family: 'Fraunces', serif; font-size: 0.64rem; letter-spacing: 0.26em;
+    text-transform: uppercase; color: var(--copper);
+  }
+  .kava-sheet-he {
+    font-family: 'Frank Ruhl Libre', serif; font-weight: 900; font-size: 1.65rem; line-height: 1.15;
+    color: var(--crema) !important; border-bottom: none !important;
+  }
+  .kava-sheet-he:hover { color: var(--copper-bright) !important; }
+  .kava-sheet-en {
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: 1rem; line-height: 1.3;
+    color: var(--crema) !important; border-bottom: none !important;
+  }
+  .kava-sheet-en:hover { color: var(--copper-bright) !important; }
+  .kava-sheet-meta { font-size: 0.85rem; color: var(--crema-dim); }
+  .kava-sheet-links {
+    margin-top: auto; padding-top: 0.55rem; display: flex; flex-wrap: wrap; gap: 0.45rem;
+    font-family: 'Fraunces', serif; font-size: 0.74rem; letter-spacing: 0.05em;
+  }
+  .kava-sheet-links a {
+    padding: 0.22rem 0.7rem; border-radius: 999px; border: 1px solid rgba(200, 127, 61, 0.4);
+    color: var(--copper-bright) !important; border-bottom-style: solid !important;
+    transition: all 0.15s ease;
+  }
+  .kava-sheet-links a:hover { background: var(--copper); color: var(--bean-900) !important; border-color: var(--copper); }
+
   /* ---- Facts ---- */
   .kava-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
   .kava-fact {
@@ -360,8 +464,11 @@ const pageDescription =
   .auth-topic-chip {
     font-size: 0.74rem; padding: 0.15rem 0.45rem; border-radius: 4px;
     background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-    color: var(--crema-dim);
+    color: var(--crema-dim) !important; border-bottom-style: solid !important;
+    transition: background 0.15s ease, border-color 0.15s ease;
   }
+  a.auth-topic-chip:hover { background: rgba(200,127,61,0.18); border-color: rgba(200,127,61,0.5); color: var(--crema) !important; }
+  .kava-topic.kava-topic-flash { border-color: var(--copper); box-shadow: 0 0 0 1px var(--copper); }
 
   /* Source find links */
   .src-find-links { display: flex; gap: 0.65rem; margin-top: 0.5rem; flex-wrap: wrap; }
@@ -408,6 +515,10 @@ const pageDescription =
 
   const linkTo = (url: string | null, label: string) =>
     url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>` : esc(label);
+
+  // Stable anchor id for a topic accordion, used for author→topic cross-links.
+  const topicId = (name: string) =>
+    'topic-' + name.toLowerCase().replace(/[^a-z0-9֐-׿]+/g, '-').replace(/^-+|-+$/g, '');
 
   function renderTopics(topics: any[], sources: any[], links: any[]) {
     const srcById = new Map(sources.map((s) => [s.id, s]));
@@ -474,7 +585,7 @@ const pageDescription =
                 .join('');
 
         return `
-        <details class="kava-topic">
+        <details class="kava-topic" id="${topicId(topicName)}">
           <summary>${esc(topicName)}${entries.length > 1 ? ` <span class="kava-topic-count">${entries.length}</span>` : ''}</summary>
           <div class="kava-topic-body">
             ${body}
@@ -639,7 +750,7 @@ const pageDescription =
                 }).join('')}
               </ul>
               ${authorTopics.length ? `<p class="auth-topics-label">Topics</p><div class="auth-topic-tags">${
-                authorTopics.map((t: any) => `<span class="auth-topic-chip">${esc(t.topic)}</span>`).join('')
+                authorTopics.map((t: any) => `<a class="auth-topic-chip" href="#${topicId(t.topic)}" title="Jump to this topic">${esc(t.topic)}</a>`).join('')
               }</div>` : ''}
             </div>`
           : '';
@@ -666,6 +777,27 @@ const pageDescription =
       .join('');
   }
 
+  // Open a topic accordion when navigated to by hash (author chips, shared links),
+  // flash it briefly so the eye lands in the right place.
+  function openTopicFromHash() {
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el instanceof HTMLDetailsElement) {
+      el.open = true;
+      el.classList.add('kava-topic-flash');
+      setTimeout(() => el.classList.remove('kava-topic-flash'), 1600);
+    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  window.addEventListener('hashchange', openTopicFromHash);
+  // hashchange doesn't fire when clicking a chip whose hash is already current
+  document.addEventListener('click', (e) => {
+    const a = (e.target as HTMLElement).closest('a[href^="#topic-"]');
+    if (a && a.getAttribute('href') === location.hash) openTopicFromHash();
+  });
+
   async function init() {
     try {
       const [topics, sources, links, facts, shiurim, authors] = await Promise.all([
@@ -690,6 +822,7 @@ const pageDescription =
       ['topics-section', 'sources-section', 'facts-section', 'shiurim-section', 'authors-section'].forEach(
         (id) => ($(id).hidden = false)
       );
+      openTopicFromHash();
     } catch (err) {
       console.error('[coffee] load failed:', err);
       $('kava-loading').hidden = true;
