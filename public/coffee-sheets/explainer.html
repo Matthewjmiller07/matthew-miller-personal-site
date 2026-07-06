@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coffee in Halacha — Explainer (HyperFrames)</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Crimson+Pro:ital,wght@0,300..700;1,300..700&family=Frank+Ruhl+Libre:wght@400;700;900&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --paper: #FBF6EC;
+      --ink: #2A1B12;
+      --ink-soft: #4E3B2E;
+      --dim: #8A7767;
+      --copper: #B4672A;
+      --copper-deep: #8E4E1B;
+      --rule: #E6D9C6;
+      --wash: #F4EADA;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background-color: var(--ink);
+      color: var(--paper);
+      font-family: 'Crimson Pro', Georgia, serif;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100vw;
+      height: 100vh;
+    }
+    
+    /* Root Composition Container (1920x1080) */
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      background-color: var(--ink);
+      background-image: radial-gradient(circle at center, #3A261A 0%, var(--ink) 100%);
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      /* Force aspect ratio rendering */
+      transform-origin: center;
+    }
+
+    /* Absolute Overlay for Scenes */
+    .scene {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .scene.active {
+      pointer-events: auto;
+    }
+
+    /* Title Styling */
+    .he-title {
+      font-family: 'Frank Ruhl Libre', serif;
+      font-weight: 900;
+      font-size: 110px;
+      color: var(--paper);
+      direction: rtl;
+      letter-spacing: -2px;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      margin-bottom: 20px;
+    }
+    
+    .en-title {
+      font-family: 'Fraunces', serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: 48px;
+      color: var(--copper);
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-family: 'Fraunces', serif;
+      font-size: 32px;
+      max-width: 1000px;
+      text-align: center;
+      color: var(--paper);
+      font-weight: 300;
+      line-height: 1.4;
+      opacity: 0.9;
+    }
+    
+    /* Scene 1 Elements */
+    #intro-graphic {
+      margin-top: 40px;
+      width: 180px;
+      height: 180px;
+    }
+
+    /* Scene 2 Elements: Question Slider */
+    .q-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      width: 1200px;
+    }
+    
+    .q-card {
+      background: rgba(251, 246, 236, 0.04);
+      border: 1px solid rgba(230, 217, 198, 0.1);
+      border-left: 6px solid var(--copper);
+      padding: 30px 40px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 30px;
+    }
+    
+    .q-num {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-size: 40px;
+      color: var(--copper);
+      font-weight: 300;
+      min-width: 60px;
+    }
+    
+    .q-text {
+      font-family: 'Fraunces', serif;
+      font-weight: 500;
+      font-size: 32px;
+      color: var(--paper);
+      line-height: 1.3;
+    }
+
+    /* Scene 3 Elements: Stats Grid */
+    .stats-grid {
+      display: flex;
+      gap: 50px;
+      justify-content: center;
+      margin-top: 50px;
+      width: 1300px;
+    }
+    
+    .stat-card {
+      flex: 1;
+      background: rgba(251, 246, 236, 0.03);
+      border: 2px solid rgba(230, 217, 198, 0.08);
+      padding: 45px 30px;
+      border-radius: 24px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .stat-val {
+      font-family: 'Frank Ruhl Libre', serif;
+      font-weight: 900;
+      font-size: 84px;
+      color: var(--copper);
+      line-height: 1;
+    }
+    
+    .stat-label {
+      font-family: 'Fraunces', serif;
+      font-size: 24px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--paper);
+      opacity: 0.85;
+      font-weight: 500;
+    }
+    
+    .stat-desc {
+      font-size: 18px;
+      color: var(--dim);
+      line-height: 1.4;
+      max-width: 320px;
+    }
+
+    /* Scene 4 Elements: Outro */
+    .outro-mockup {
+      width: 750px;
+      height: 380px;
+      background: var(--paper);
+      border-radius: 20px;
+      padding: 24px;
+      border: 8px solid #1E120B;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+      margin-top: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: var(--ink);
+    }
+    
+    .mock-header {
+      border-bottom: 2px solid var(--rule);
+      padding-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'Fraunces', serif;
+      font-size: 16px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--copper-deep);
+    }
+    
+    .mock-body {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      padding: 20px 0;
+    }
+    
+    .mock-title {
+      font-family: 'Frank Ruhl Libre', serif;
+      font-weight: 900;
+      font-size: 48px;
+      text-align: center;
+      color: var(--ink);
+    }
+    
+    .mock-desc {
+      font-family: 'Fraunces', serif;
+      font-size: 18px;
+      color: var(--ink-soft);
+      font-style: italic;
+      text-align: center;
+    }
+    
+    .mock-footer {
+      border-top: 1px solid var(--rule);
+      padding-top: 10px;
+      font-family: 'Fraunces', serif;
+      font-size: 14px;
+      color: var(--dim);
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .outro-link-text {
+      font-family: 'Fraunces', serif;
+      font-size: 32px;
+      color: var(--paper);
+      margin-top: 40px;
+      letter-spacing: 0.05em;
+    }
+    
+    .outro-link-url {
+      color: var(--copper);
+      font-weight: 600;
+      text-decoration: underline;
+    }
+
+    /* Frame Border Trim */
+    .frame-border {
+      position: absolute;
+      inset: 30px;
+      border: 1px solid rgba(230, 217, 198, 0.06);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* ---- Slick Interactive Browser Preview Player ---- */
+    #player-controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 10, 8, 0.9);
+      border: 1px solid rgba(230, 217, 198, 0.15);
+      border-radius: 16px;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      z-index: 100;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      backdrop-filter: blur(10px);
+      width: 800px;
+      transition: opacity 0.3s ease;
+    }
+    
+    /* Auto-hide control bar in rendering context */
+    body.rendering #player-controls {
+      display: none !important;
+    }
+    
+    .btn {
+      background: var(--copper);
+      border: none;
+      color: var(--paper);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: 'Fraunces', serif;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    
+    .btn:hover {
+      background: var(--copper-deep);
+    }
+    
+    .slider-container {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .slider {
+      flex-grow: 1;
+      height: 6px;
+      background: #3A261A;
+      outline: none;
+      border-radius: 3px;
+      appearance: none;
+      cursor: pointer;
+    }
+    
+    .slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--copper);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    
+    .slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+    
+    .time-display {
+      font-family: monospace;
+      font-size: 14px;
+      color: var(--dim);
+      min-width: 90px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Root container configured for 1920x1080 output -->
+  <div id="root" data-composition-id="coffee-explainer" data-width="1920" data-height="1080">
+    <div class="frame-border"></div>
+    
+    <!-- SCENE 1: Introduction (0s - 4s) -->
+    <div id="scene1" class="scene active">
+      <div id="intro-title" class="he-title">קָפֶה בַּהֲלָכָה</div>
+      <div id="intro-sub" class="en-title">Coffee in Halacha</div>
+      <div id="intro-desc" class="subtitle">A source-sheet series tracing the coffee cup through the halachic literature.</div>
+      
+      <!-- Steaming Coffee Cup SVG -->
+      <svg id="intro-graphic" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <!-- Cup Body -->
+        <path d="M25 45 C25 65, 30 75, 50 75 C70 75, 75 65, 75 45 Z" fill="rgba(180, 103, 42, 0.05)" stroke="var(--copper)"/>
+        <!-- Handle -->
+        <path d="M75 50 C85 50, 85 62, 72 65" stroke="var(--copper)"/>
+        <!-- Saucer -->
+        <path d="M15 80 L85 80" stroke="var(--copper)" stroke-width="3"/>
+        <!-- Rising Steam lines -->
+        <path d="M38 35 C38 25, 44 25, 41 15" stroke="var(--paper)" opacity="0.8"/>
+        <path d="M50 35 C50 20, 56 20, 53 10" stroke="var(--paper)"/>
+        <path d="M62 35 C62 25, 68 25, 65 15" stroke="var(--paper)" opacity="0.8"/>
+      </svg>
+    </div>
+    
+    <!-- SCENE 2: The Core Questions (4s - 8s) -->
+    <div id="scene2" class="scene">
+      <div id="q-title" class="en-title" style="margin-bottom: 50px;">Halachic Questions Explored</div>
+      
+      <div class="q-container">
+        <!-- Question 1 -->
+        <div id="q1" class="q-card">
+          <div class="q-num">Q.01</div>
+          <div class="q-text">Does coffee require a blessing before and after drinking?</div>
+        </div>
+        <!-- Question 2 -->
+        <div id="q2" class="q-card" style="margin-left: 60px;">
+          <div class="q-num" style="color: var(--paper); border-bottom: 1.5px dashed var(--copper);">Q.04</div>
+          <div class="q-text">Is coffee beans preparation permissible on Shabbat?</div>
+        </div>
+        <!-- Question 3 -->
+        <div id="q3" class="q-card">
+          <div class="q-num">Q.09</div>
+          <div class="q-text">How did rabbis historically rule on patronizing coffee houses?</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- SCENE 3: The Data (8s - 12s) -->
+    <div id="scene3" class="scene">
+      <div id="stats-title" class="en-title" style="margin-bottom: 40px;">Brewed from a Living Database</div>
+      
+      <div class="stats-grid">
+        <!-- Stat 1 -->
+        <div id="stat-card-1" class="stat-card">
+          <div class="stat-val">9</div>
+          <div class="stat-label">Source Sheets</div>
+          <div class="stat-desc">Structured guides containing bilingual Hebrew/English source alignments.</div>
+        </div>
+        <!-- Stat 2 -->
+        <div id="stat-card-2" class="stat-card">
+          <div class="stat-val">81</div>
+          <div class="stat-label">Questions</div>
+          <div class="stat-desc">Complex legal dilemmas compiled from historical halachic writeups.</div>
+        </div>
+        <!-- Stat 3 -->
+        <div id="stat-card-3" class="stat-card">
+          <div class="stat-val">184</div>
+          <div class="stat-label">Citations</div>
+          <div class="stat-desc">Direct links to primary sources spanning centuries of rabbinical discourse.</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- SCENE 4: Outro (12s - 16s) -->
+    <div id="scene4" class="scene">
+      <div id="outro-title" class="he-title" style="font-size: 80px; margin-bottom: 10px;">קָפֶה בַּהֲלָכָה</div>
+      <div id="outro-sub" class="en-title" style="font-size: 36px; margin-bottom: 20px;">Coffee in Halacha</div>
+      
+      <div id="outro-mockup" class="outro-mockup">
+        <div class="mock-header">
+          <span>דפי מקורות · Source sheets</span>
+          <span>9 sheets</span>
+        </div>
+        <div class="mock-body">
+          <span class="mock-title">קָפֶה בַּהֲלָכָה</span>
+          <span class="mock-desc">Coffee in Halacha — a source-sheet series</span>
+        </div>
+        <div class="mock-footer">
+          <span>13 Questions · 27 Sources</span>
+          <span>Sheet Nº 1</span>
+        </div>
+      </div>
+      
+      <div id="outro-link" class="outro-link-text">
+        Explore the sheets at <span class="outro-link-url">theothermatthewmiller.com/coffee-sheets</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- BROWSER PREVIEW PLAYBACK CONTROLLER -->
+  <div id="player-controls">
+    <button id="play-btn" class="btn">Play</button>
+    <div class="slider-container">
+      <input type="range" id="scrubber" class="slider" min="0" max="100" value="0">
+    </div>
+    <div id="time-display" class="time-display">00.00 / 16.00s</div>
+  </div>
+
+  <!-- Load GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  
+  <script>
+    // Handle Auto-Scale for Responsive Screen Previews
+    const root = document.getElementById('root');
+    function scaleRoot() {
+      const winW = window.innerWidth;
+      const winH = window.innerHeight;
+      const scale = Math.min(winW / 1920, winH / 1080);
+      root.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener('resize', scaleRoot);
+    scaleRoot();
+
+    // Netlify/Headless render detection to hide controls
+    if (window.location.search.includes('render=true') || navigator.userAgent.includes('Headless')) {
+      document.body.classList.add('rendering');
+    }
+
+    // Set up timelines container for HyperFrames compliance
+    window.__timelines = window.__timelines || {};
+    
+    // Create the master paused GSAP timeline
+    const tl = gsap.timeline({ paused: true });
+    const duration = 16; // 16 seconds total video
+    
+    // Helper to toggle active visibility class (for DOM/pointer-events safety)
+    function activateScene(selector) {
+      document.querySelectorAll('.scene').forEach(el => el.classList.remove('active'));
+      const activeEl = document.querySelector(selector);
+      if (activeEl) activeEl.classList.add('active');
+    }
+
+    // SCENE 1: Intro Animation (0.0s - 4.0s)
+    tl.add(() => activateScene('#scene1'), 0);
+    tl.to("#scene1", { opacity: 1, duration: 0.4 }, 0);
+    tl.fromTo("#intro-title", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 0.2);
+    tl.fromTo("#intro-sub", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 0.4);
+    tl.fromTo("#intro-desc", { y: 30, opacity: 0 }, { y: 0, opacity: 0.9, duration: 0.8, ease: "power3.out" }, 0.6);
+    tl.fromTo("#intro-graphic", { scale: 0.6, rotate: -15, opacity: 0 }, { scale: 1, rotate: 0, opacity: 1, duration: 1.2, ease: "back.out(1.5)" }, 0.8);
+    tl.to("#scene1", { opacity: 0, duration: 0.4 }, 3.6);
+
+    // SCENE 2: Question Slider (4.0s - 8.0s)
+    tl.add(() => activateScene('#scene2'), 4.0);
+    tl.to("#scene2", { opacity: 1, duration: 0.4 }, 4.0);
+    tl.fromTo("#q-title", { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, 4.2);
+    tl.fromTo("#q1", { x: -80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.7, ease: "power2.out" }, 4.4);
+    tl.fromTo("#q2", { x: 80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.7, ease: "power2.out" }, 4.9);
+    tl.fromTo("#q3", { x: -80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.7, ease: "power2.out" }, 5.4);
+    tl.to("#scene2", { opacity: 0, duration: 0.4 }, 7.6);
+
+    // SCENE 3: Statistics Grid (8.0s - 12.0s)
+    tl.add(() => activateScene('#scene3'), 8.0);
+    tl.to("#scene3", { opacity: 1, duration: 0.4 }, 8.0);
+    tl.fromTo("#stats-title", { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, 8.2);
+    tl.fromTo("#stat-card-1", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.8, ease: "back.out(1.3)" }, 8.4);
+    tl.fromTo("#stat-card-2", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.8, ease: "back.out(1.3)" }, 8.7);
+    tl.fromTo("#stat-card-3", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.8, ease: "back.out(1.3)" }, 9.0);
+    tl.to("#scene3", { opacity: 0, duration: 0.4 }, 11.6);
+
+    // SCENE 4: Outro (12.0s - 16.0s)
+    tl.add(() => activateScene('#scene4'), 12.0);
+    tl.to("#scene4", { opacity: 1, duration: 0.4 }, 12.0);
+    tl.fromTo("#outro-title", { y: -40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, 12.2);
+    tl.fromTo("#outro-sub", { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, 12.4);
+    tl.fromTo("#outro-mockup", { scale: 0.8, rotateX: 20, opacity: 0 }, { scale: 1, rotateX: 0, opacity: 1, duration: 1.0, ease: "power3.out" }, 12.6);
+    tl.fromTo("#outro-link", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power2.out" }, 13.0);
+
+    // Register Master Timeline in global window object for HeyGen hyperframes CLI rendering
+    window.__timelines["coffee-explainer"] = tl;
+
+    // ---- Preview Controller Scripting ----
+    const playBtn = document.getElementById('play-btn');
+    const scrubber = document.getElementById('scrubber');
+    const timeDisplay = document.getElementById('time-display');
+    let isPlaying = false;
+
+    // Listen to GSAP ticks to update scrubber/timer during playback
+    function updateUI() {
+      const progress = tl.progress() * 100;
+      scrubber.value = progress;
+      
+      const currentSecs = (tl.progress() * duration).toFixed(2);
+      timeDisplay.innerText = `${currentSecs} / ${duration.toFixed(2)}s`;
+      
+      if (tl.progress() >= 1 && isPlaying) {
+        pauseVideo();
+      }
+    }
+    
+    // Sync slider drag (scrubbing)
+    scrubber.addEventListener('input', (e) => {
+      const progress = e.target.value / 100;
+      tl.progress(progress);
+      updateUI();
+    });
+
+    function playVideo() {
+      if (tl.progress() >= 1) {
+        tl.restart();
+      } else {
+        tl.play();
+      }
+      isPlaying = true;
+      playBtn.innerText = 'Pause';
+      gsap.ticker.add(updateUI);
+    }
+
+    function pauseVideo() {
+      tl.pause();
+      isPlaying = false;
+      playBtn.innerText = 'Play';
+      gsap.ticker.remove(updateUI);
+    }
+
+    playBtn.addEventListener('click', () => {
+      if (isPlaying) {
+        pauseVideo();
+      } else {
+        playVideo();
+      }
+    });
+
+    // Initial update
+    updateUI();
+  </script>
+</body>
+</html>
