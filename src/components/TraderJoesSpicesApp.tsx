@@ -370,6 +370,19 @@ export default function TraderJoesSpicesApp() {
   // Hover states for interactions
   const [hoveredSeasoning, setHoveredSeasoning] = useState<string | null>(null);
   const [hoveredIngredient, setHoveredIngredient] = useState<string | null>(null);
+
+  // Click-lock states for detail panel
+  const [selectedSeasoning, setSelectedSeasoning] = useState<string | null>(null);
+  const [selectedIngredient, setSelectedIngredient] = useState<string | null>(null);
+
+  const handleClearSelection = () => {
+    setSelectedSeasoning(null);
+    setSelectedIngredient(null);
+  };
+
+  // Find what to display in the details panel (hover overrides lock)
+  const activeDetailSeasoningId = hoveredSeasoning || (hoveredIngredient ? null : selectedSeasoning);
+  const activeDetailIngredientName = hoveredIngredient || (hoveredSeasoning ? null : selectedIngredient);
   
   // Venn selection (supports up to 3)
   const [selectedVenn, setSelectedVenn] = useState<string[]>(['everything-bagel', 'everything-elote']);
@@ -758,21 +771,24 @@ export default function TraderJoesSpicesApp() {
 
                               const yIngredient = 25 + (ingIdx / (maxIngredients > 1 ? maxIngredients - 1 : 1)) * 700;
 
+                              const activeS = hoveredSeasoning || (hoveredIngredient ? null : selectedSeasoning);
+                              const activeI = hoveredIngredient || (hoveredSeasoning ? null : selectedIngredient);
+
                               const isHighLighted = 
-                                (hoveredSeasoning === s.id) || 
-                                (hoveredIngredient === ingName) ||
-                                (hoveredSeasoning === null && hoveredIngredient === null);
+                                (activeS === s.id) || 
+                                (activeI === ingName) ||
+                                (activeS === null && activeI === null);
 
                               const strokeColor = isHighLighted 
                                 ? 'url(#glow-grad)' 
                                 : '#1e293b'; // Slate-800
 
                               const strokeWidth = isHighLighted 
-                                ? (hoveredSeasoning || hoveredIngredient ? 2.5 : 1) 
+                                ? (activeS || activeI ? 2.5 : 1) 
                                 : 0.5;
 
                               const opacity = isHighLighted 
-                                ? (hoveredSeasoning || hoveredIngredient ? 1 : 0.4) 
+                                ? (activeS || activeI ? 1 : 0.4) 
                                 : 0.08;
 
                               paths.push(
@@ -794,8 +810,14 @@ export default function TraderJoesSpicesApp() {
                         {/* Seasonings Labels (Left Column) */}
                         {filteredSeasonings.map((s, idx) => {
                           const y = 25 + (idx / (filteredSeasonings.length > 1 ? filteredSeasonings.length - 1 : 1)) * 700;
+                          
+                          const isSelected = selectedSeasoning === s.id;
                           const isHovered = hoveredSeasoning === s.id;
-                          const isDimmed = hoveredSeasoning !== null && hoveredSeasoning !== s.id && !s.ingredients.includes(hoveredIngredient || '');
+                          
+                          const activeS = hoveredSeasoning || (hoveredIngredient ? null : selectedSeasoning);
+                          const activeI = hoveredIngredient || (hoveredSeasoning ? null : selectedIngredient);
+                          const isHighlighted = activeS === s.id;
+                          const isDimmed = activeS !== null && activeS !== s.id && !s.ingredients.includes(activeI || '');
 
                           return (
                             <g 
@@ -803,6 +825,10 @@ export default function TraderJoesSpicesApp() {
                               transform={`translate(0, ${y})`}
                               onMouseEnter={() => setHoveredSeasoning(s.id)}
                               onMouseLeave={() => setHoveredSeasoning(null)}
+                              onClick={() => {
+                                setSelectedSeasoning(isSelected ? null : s.id);
+                                setSelectedIngredient(null);
+                              }}
                               className="cursor-pointer select-none group"
                             >
                               {/* Background highlight */}
@@ -812,8 +838,8 @@ export default function TraderJoesSpicesApp() {
                                 width="200"
                                 height="36"
                                 rx="8"
-                                fill={isHovered ? 'rgba(6, 182, 212, 0.15)' : 'transparent'}
-                                stroke={isHovered ? 'rgba(6, 182, 212, 0.3)' : 'transparent'}
+                                fill={isHovered || isSelected ? 'rgba(6, 182, 212, 0.15)' : 'transparent'}
+                                stroke={isHovered ? 'rgba(6, 182, 212, 0.3)' : (isSelected ? 'rgba(6, 182, 212, 0.15)' : 'transparent')}
                                 strokeWidth="1"
                                 className="transition-all duration-200"
                               />
@@ -822,8 +848,8 @@ export default function TraderJoesSpicesApp() {
                               <circle
                                 cx="180"
                                 cy="0"
-                                r={isHovered ? 6 : 4}
-                                fill={isHovered ? '#06b6d4' : '#475569'}
+                                r={isHovered ? 6 : (isSelected ? 5 : 4)}
+                                fill={isHovered ? '#06b6d4' : (isSelected ? '#0891b2' : '#475569')}
                                 className="transition-all duration-200 shadow-sm"
                               />
 
@@ -833,7 +859,7 @@ export default function TraderJoesSpicesApp() {
                                 y="4"
                                 textAnchor="end"
                                 className={`text-[11px] font-semibold transition-colors duration-200 ${
-                                  isHovered ? 'fill-cyan-400 font-bold' : isDimmed ? 'fill-slate-600' : 'fill-slate-200'
+                                  isHovered ? 'fill-cyan-400 font-bold' : isSelected ? 'fill-cyan-300 font-bold' : isDimmed ? 'fill-slate-650' : 'fill-slate-200'
                                 }`}
                               >
                                 {s.name.length > 26 ? `${s.name.slice(0, 24)}...` : s.name}
@@ -845,9 +871,14 @@ export default function TraderJoesSpicesApp() {
                         {/* Ingredients Labels (Right Column) */}
                         {visibleIngredientsInNetwork.map((ing, idx) => {
                           const y = 25 + (idx / (visibleIngredientsInNetwork.length > 1 ? visibleIngredientsInNetwork.length - 1 : 1)) * 700;
+                          
+                          const isSelected = selectedIngredient === ing.name;
                           const isHovered = hoveredIngredient === ing.name;
-                          const isConnecting = hoveredSeasoning !== null && seasoningsData.find(s => s.id === hoveredSeasoning)?.ingredients.includes(ing.name);
-                          const isDimmed = hoveredIngredient !== null && hoveredIngredient !== ing.name && !isConnecting;
+                          
+                          const activeS = hoveredSeasoning || (hoveredIngredient ? null : selectedSeasoning);
+                          const activeI = hoveredIngredient || (hoveredSeasoning ? null : selectedIngredient);
+                          const isConnecting = activeS !== null && seasoningsData.find(s => s.id === activeS)?.ingredients.includes(ing.name);
+                          const isDimmed = activeI !== null && activeI !== ing.name && !isConnecting;
 
                           return (
                             <g 
@@ -855,6 +886,10 @@ export default function TraderJoesSpicesApp() {
                               transform={`translate(480, ${y})`}
                               onMouseEnter={() => setHoveredIngredient(ing.name)}
                               onMouseLeave={() => setHoveredIngredient(null)}
+                              onClick={() => {
+                                setSelectedIngredient(isSelected ? null : ing.name);
+                                setSelectedSeasoning(null);
+                              }}
                               className="cursor-pointer select-none group"
                             >
                               {/* Background highlight */}
@@ -864,8 +899,8 @@ export default function TraderJoesSpicesApp() {
                                 width="200"
                                 height="32"
                                 rx="8"
-                                fill={isHovered ? 'rgba(59, 130, 246, 0.15)' : 'transparent'}
-                                stroke={isHovered ? 'rgba(59, 130, 246, 0.3)' : 'transparent'}
+                                fill={isHovered || isSelected ? 'rgba(59, 130, 246, 0.15)' : 'transparent'}
+                                stroke={isHovered ? 'rgba(59, 130, 246, 0.3)' : (isSelected ? 'rgba(59, 130, 246, 0.15)' : 'transparent')}
                                 strokeWidth="1"
                                 className="transition-all duration-200"
                               />
@@ -874,8 +909,8 @@ export default function TraderJoesSpicesApp() {
                               <circle
                                 cx="0"
                                 cy="0"
-                                r={isHovered ? 6 : (isConnecting ? 5 : 4)}
-                                fill={isHovered ? '#3b82f6' : (isConnecting ? '#06b6d4' : '#475569')}
+                                r={isHovered ? 6 : (isSelected ? 5 : (isConnecting ? 5 : 4))}
+                                fill={isHovered ? '#3b82f6' : (isSelected ? '#2563eb' : (isConnecting ? '#06b6d4' : '#475569'))}
                                 className="transition-all duration-200"
                               />
 
@@ -885,7 +920,7 @@ export default function TraderJoesSpicesApp() {
                                 y="4"
                                 textAnchor="start"
                                 className={`text-[11px] font-semibold transition-colors duration-200 ${
-                                  isHovered ? 'fill-blue-400 font-bold' : isConnecting ? 'fill-cyan-300' : isDimmed ? 'fill-slate-600' : 'fill-slate-300'
+                                  isHovered ? 'fill-blue-400 font-bold' : isSelected ? 'fill-blue-300 font-bold' : isConnecting ? 'fill-cyan-300' : isDimmed ? 'fill-slate-650' : 'fill-slate-300'
                                 }`}
                               >
                                 {ing.name} 
@@ -902,21 +937,39 @@ export default function TraderJoesSpicesApp() {
 
                   {/* Sidebar stats/detail panel */}
                   <div className="w-full lg:w-[360px] flex flex-col gap-4 flex-shrink-0">
-                    
-                    {/* Hover detail panel */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl flex-grow flex flex-col justify-start">
-                      {hoveredSeasoning && (() => {
-                        const s = seasoningsData.find(sec => sec.id === hoveredSeasoning)!;
+                                        {/* Hover detail panel */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl flex-grow flex flex-col justify-start relative">
+                      {/* Close button for locked selection */}
+                      {(selectedSeasoning || selectedIngredient) && !hoveredSeasoning && !hoveredIngredient && (
+                        <button 
+                          onClick={handleClearSelection}
+                          title="Clear selection"
+                          className="absolute top-4 right-4 text-slate-500 hover:text-white p-1 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+
+                      {activeDetailSeasoningId && (() => {
+                        const s = seasoningsData.find(sec => sec.id === activeDetailSeasoningId)!;
+                        const isLocked = selectedSeasoning === s.id && !hoveredSeasoning;
                         return (
                           <div className="flex flex-col gap-4">
                             <div>
-                              <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
-                                s.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                                s.status === 'Seasonal' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
-                                'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                              }`}>
-                                {s.status}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
+                                  s.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
+                                  s.status === 'Seasonal' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
+                                  'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                }`}>
+                                  {s.status}
+                                </span>
+                                {isLocked && (
+                                  <span className="text-[10px] font-extrabold uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded-md">
+                                    Pinned
+                                  </span>
+                                )}
+                              </div>
                               <h3 className="text-lg font-bold text-white mt-2 leading-snug">{s.name}</h3>
                             </div>
                             
@@ -929,7 +982,14 @@ export default function TraderJoesSpicesApp() {
                               <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Shared Ingredients ({s.ingredients.length})</h4>
                               <div className="flex flex-wrap gap-1">
                                 {s.ingredients.map(i => (
-                                  <span key={i} className="text-[10px] bg-slate-950 border border-slate-800 text-slate-300 px-2 py-1 rounded-md font-medium">
+                                  <span 
+                                    key={i} 
+                                    onClick={() => {
+                                      setSelectedIngredient(i);
+                                      setSelectedSeasoning(null);
+                                    }}
+                                    className="text-[10px] bg-slate-950 hover:bg-slate-850 hover:text-cyan-400 border border-slate-800 text-slate-300 px-2 py-1 rounded-md font-medium cursor-pointer transition-colors"
+                                  >
                                     {i}
                                   </span>
                                 ))}
@@ -949,16 +1009,24 @@ export default function TraderJoesSpicesApp() {
                         );
                       })()}
 
-                      {hoveredIngredient && (() => {
-                        const freqObj = allIngredientsWithFrequencies.find(i => i.name === hoveredIngredient)!;
-                        const matchingSeasonings = seasoningsData.filter(s => s.ingredients.includes(hoveredIngredient));
+                      {activeDetailIngredientName && (() => {
+                        const freqObj = allIngredientsWithFrequencies.find(i => i.name === activeDetailIngredientName)!;
+                        const matchingSeasonings = seasoningsData.filter(s => s.ingredients.includes(activeDetailIngredientName));
+                        const isLocked = selectedIngredient === freqObj.name && !hoveredIngredient;
                         
                         return (
                           <div className="flex flex-col gap-4">
                             <div>
-                              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                {freqObj.category}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                  {freqObj.category}
+                                </span>
+                                {isLocked && (
+                                  <span className="text-[10px] font-extrabold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-md">
+                                    Pinned
+                                  </span>
+                                )}
+                              </div>
                               <h3 className="text-lg font-bold text-white mt-2">{freqObj.name}</h3>
                             </div>
 
@@ -973,10 +1041,13 @@ export default function TraderJoesSpicesApp() {
                                 {matchingSeasonings.map(s => (
                                   <div 
                                     key={s.id} 
-                                    className="flex items-center justify-between text-xs bg-slate-950 border border-slate-850 p-2 rounded-xl"
-                                    onMouseEnter={() => setHoveredSeasoning(s.id)}
+                                    onClick={() => {
+                                      setSelectedSeasoning(s.id);
+                                      setSelectedIngredient(null);
+                                    }}
+                                    className="flex items-center justify-between text-xs bg-slate-950 hover:bg-slate-900 border border-slate-855 hover:border-cyan-500/35 p-2 rounded-xl cursor-pointer transition-all"
                                   >
-                                    <span className="font-medium text-slate-200 truncate pr-2">{s.name}</span>
+                                    <span className="font-medium text-slate-200 truncate pr-2 hover:text-cyan-400 transition-colors">{s.name}</span>
                                     <span className="text-[9px] text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded uppercase flex-shrink-0">
                                       {s.ingredients.length} items
                                     </span>
@@ -988,12 +1059,12 @@ export default function TraderJoesSpicesApp() {
                         );
                       })()}
 
-                      {!hoveredSeasoning && !hoveredIngredient && (
+                      {!activeDetailSeasoningId && !activeDetailIngredientName && (
                         <div className="flex-grow flex flex-col items-center justify-center text-center p-6 gap-3">
                           <ShoppingBag className="w-12 h-12 text-slate-600" />
                           <h3 className="text-sm font-bold text-slate-300">No Selection</h3>
                           <p className="text-xs text-slate-500 max-w-[200px]">
-                            Hover over a blend or ingredient in the graph to display detailed culinary information here.
+                            Hover or click a blend or ingredient in the graph to lock and display detailed culinary information here.
                           </p>
                         </div>
                       )}
