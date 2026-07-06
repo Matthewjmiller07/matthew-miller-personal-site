@@ -309,6 +309,72 @@ const seasoningsData: Seasoning[] = [
     status: 'Discontinued',
     flavorProfile: 'Complex and highly aromatic, with sweet herbal fenugreek and warm red pepper.',
     useCase: 'Roasted chicken, beef stews, flatbreads, grilled vegetables, bean soups.'
+  },
+  {
+    id: 'onion-salt',
+    name: 'Onion Salt',
+    description: 'A classic savory blend of onions, garlic, salt, and green herbs that adds depth to any dish.',
+    ingredients: ['Onion', 'Garlic', 'Salt'],
+    originalIngredients: 'Granulated onion, granulated garlic, minced onion, kosher salt, green onion, dried chives.',
+    tags: ['Salty', 'Garlicky', 'Herbaceous'],
+    status: 'Active',
+    flavorProfile: 'Sharp, sweet toasted onion balanced with garlic pungency, kosher salt, and green chives.',
+    useCase: 'Baked potatoes, hamburgers, roasted vegetables, egg salads, sour cream dip.'
+  },
+  {
+    id: 'garlic-salt',
+    name: 'Garlic Salt',
+    description: 'A grinder blend of roasted garlic, sea salt, and parsley, bringing freshly ground garlicky goodness to your plate.',
+    ingredients: ['Garlic', 'Salt', 'Parsley'],
+    originalIngredients: 'Sea salt, roasted garlic, minced garlic, dried parsley.',
+    tags: ['Salty', 'Garlicky', 'Herbaceous'],
+    status: 'Active',
+    flavorProfile: 'Freshly ground sea salt with a bold, toasted garlic kick and mild green parsley notes.',
+    useCase: 'Garlic bread, roasted chicken, French fries, steamed broccoli, pasta dishes.'
+  },
+  {
+    id: 'everyday-seasoning',
+    name: 'Everyday Seasoning',
+    description: 'An all-purpose table grinder blend combining spices, herbs, and sea salt to elevate any meal.',
+    ingredients: ['Salt', 'Mustard', 'Black Pepper', 'Coriander', 'Onion', 'Garlic', 'Chili Pepper'],
+    originalIngredients: 'Sea salt, mustard seeds, black peppercorns, coriander, onion, garlic, paprika, chili pepper.',
+    tags: ['Salty', 'Peppery', 'Spicy', 'Garlicky'],
+    status: 'Active',
+    flavorProfile: 'Complex, savory all-around blend with cracked black pepper heat, mustard zing, coriander citrus, and garlic.',
+    useCase: 'Scrambled eggs, grilled meats, roasted vegetables, salads, sandwiches.'
+  },
+  {
+    id: 'pumpkin-pie-spice',
+    name: 'Pumpkin Pie Spice',
+    description: 'A warm, sweet seasonal baking blend that captures the essence of cozy autumn spices.',
+    ingredients: ['Cinnamon', 'Ginger', 'Orange/Lemon Peel', 'Nutmeg', 'Cloves', 'Cardamom'],
+    originalIngredients: 'Cinnamon, ginger, lemon peel, nutmeg, cloves, cardamom.',
+    tags: ['Sweet', 'Warm', 'Citrusy', 'Seasonal'],
+    status: 'Seasonal',
+    flavorProfile: 'Highly aromatic, sweet, and warm cinnamon-nutmeg spice with zesty citrus and pungent cloves.',
+    useCase: 'Pumpkin pies, lattes, oatmeal, pancake batter, roasted butternut squash, sweet potato mash.'
+  },
+  {
+    id: 'shichimi-togarashi',
+    name: 'Shichimi Togarashi (Japanese 7-Spice)',
+    description: 'A traditional Japanese spicy blend that brings heat, citrus, and seaweed umami together.',
+    ingredients: ['Chili Pepper', 'Orange/Lemon Peel', 'Sesame Seeds', 'Ginger', 'Nori/Kelp'],
+    originalIngredients: 'Chili pepper, orange peel, black sesame seed, white sesame seed, ginger, nori seaweed, sansho pepper.',
+    tags: ['Spicy', 'Citrusy', 'Umami', 'Japanese'],
+    status: 'Active',
+    flavorProfile: 'Fiery, bright, and citrusy chili heat backed by nutty sesame crunch and deep seaweed ocean-savory notes.',
+    useCase: 'Udon soup, ramen bowls, edamame, grilled meats, white rice, tempura.'
+  },
+  {
+    id: 'taco-seasoning',
+    name: 'Taco Seasoning Mix',
+    description: 'A classic, zesty mix of cumin, chili pepper, garlic, onion, and oregano that creates a flavorful taco base.',
+    ingredients: ['Cumin', 'Chili Pepper', 'Garlic', 'Onion', 'Oregano', 'Salt'],
+    originalIngredients: 'Yellow corn flour, sea salt, chili pepper, cumin, onion powder, garlic powder, oregano, cayenne pepper, paprika.',
+    tags: ['Spicy', 'Earthy', 'Mexican', 'Salty'],
+    status: 'Active',
+    flavorProfile: 'Boldly spiced, warm, and savory cumin with chili warmth, sweet onion-garlic, and herbal oregano.',
+    useCase: 'Ground beef, chicken tacos, turkey filling, black beans, fajitas, chili.'
   }
 ];
 
@@ -859,7 +925,7 @@ export default function TraderJoesSpicesApp() {
                                 y="4"
                                 textAnchor="end"
                                 className={`text-[11px] font-semibold transition-colors duration-200 ${
-                                  isHovered ? 'fill-cyan-400 font-bold' : isSelected ? 'fill-cyan-300 font-bold' : isDimmed ? 'fill-slate-650' : 'fill-slate-200'
+                                  isHovered ? 'fill-cyan-400 font-bold' : isSelected ? 'fill-cyan-300 font-bold' : isDimmed ? 'fill-slate-600' : 'fill-slate-200'
                                 }`}
                               >
                                 {s.name.length > 26 ? `${s.name.slice(0, 24)}...` : s.name}
@@ -920,7 +986,7 @@ export default function TraderJoesSpicesApp() {
                                 y="4"
                                 textAnchor="start"
                                 className={`text-[11px] font-semibold transition-colors duration-200 ${
-                                  isHovered ? 'fill-blue-400 font-bold' : isSelected ? 'fill-blue-300 font-bold' : isConnecting ? 'fill-cyan-300' : isDimmed ? 'fill-slate-650' : 'fill-slate-300'
+                                  isHovered ? 'fill-blue-400 font-bold' : isSelected ? 'fill-blue-300 font-bold' : isConnecting ? 'fill-cyan-300' : isDimmed ? 'fill-slate-600' : 'fill-slate-300'
                                 }`}
                               >
                                 {ing.name} 
