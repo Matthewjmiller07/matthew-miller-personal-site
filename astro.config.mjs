@@ -12,7 +12,9 @@ export default defineConfig({
   integrations: [
     tailwind(),
     react(),
-    sitemap()
+    sitemap({
+      filter: (page) => !page.includes('/aaron-33-film'),
+    })
   ],
   vite: {
     build: {

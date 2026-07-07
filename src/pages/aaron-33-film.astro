@@ -1,0 +1,155 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+    title="See You Tomorrow — Aaron at 33 | Making Of"
+    description="How a one-shot AI film pipeline turned a WhatsApp archive, a photo album, and $2 of API calls into a birthday film for my twin brother."
+>
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <article class="prose prose-lg dark:prose-invert mx-auto max-w-3xl">
+            <header class="mb-10 text-center not-prose">
+                <h1 class="text-4xl font-extrabold tracking-tight text-text-light dark:text-text-dark sm:text-5xl">
+                    See You Tomorrow
+                </h1>
+                <p class="mt-3 text-xl italic text-gray-500 dark:text-gray-400">
+                    Aaron at 33 — a film by his favorite twin brother
+                </p>
+            </header>
+
+            <div class="not-prose mb-12">
+                <video
+                    controls
+                    preload="metadata"
+                    poster="/aaron33/poster.jpg"
+                    class="w-full rounded-xl shadow-2xl"
+                >
+                    <source src="/aaron33/see-you-tomorrow.mp4" type="video/mp4" />
+                    Your browser does not support the video tag.
+                </video>
+                <p class="mt-2 text-center text-sm text-gray-500">3:46 · 1080p · July 7, 2026</p>
+            </div>
+
+            <h2>The brief</h2>
+            <p>
+                My twin brother Aaron turned 33 on July 7, 2026 — our birthday. In August my family
+                makes aliyah to Raanana, Israel, so this was the last birthday we'd spend as neighbors.
+                I gave Claude (Anthropic's Fable 5, running in Claude Code) a folder and one instruction:
+                make a 1–5 minute film celebrating Aaron, mix real footage with AI, use Whisper on the
+                WhatsApp voice notes, budget $10, <em>make the viewer cry</em>.
+            </p>
+            <p>
+                Everything below — research, script, shot selection, AI generation, edit, and mix —
+                was done by the agent in a single session, in about two hours.
+            </p>
+
+            <h2>The raw material</h2>
+            <ul>
+                <li>A 6&nbsp;GB photo/video archive (457 files) — including photos of physical
+                    photo-album pages from the 1990s</li>
+                <li>A full WhatsApp chat export: <strong>9,593 messages</strong> between the two of us
+                    from January to July 2026, plus 1,900+ photos, videos, and voice notes</li>
+                <li>Whisper (faster-whisper, running locally) transcribed every voice note — which is
+                    how the film found its cold open: a real voice note that begins
+                    <em>“Hello good sir, it's your favorite twin brother.”</em></li>
+            </ul>
+            <p>
+                The agent built contact sheets of all 309 photos and 130 videos, read them visually,
+                and cast the film from them — the scanned photo of us as toddlers with
+                <em>two birthday cakes</em> became the emotional anchor. Data-mining the chat produced the
+                stats card: 120 “good sir”s, 98 “love”s, 91 conversations about Claude. And the climax
+                was sitting in the archive all along — a real exchange from Purim:
+                <em>“Plz come our last Purim together”</em> →
+                <em>“see you tomorrow and next year in raanana inshallah”</em> → <em>“Amen!”</em>
+            </p>
+
+            <h2>The AI shots (Gemini Omni Flash)</h2>
+            <p>
+                Six video generations via <code>gemini-omni-flash-preview</code> (the Interactions API).
+                Five text-to-video establishing shots and one image-to-video resurrection: the 1995
+                two-cakes photograph, animated so the toddlers actually blow out their candles.
+            </p>
+            <p>Sample prompt (the opening shot):</p>
+            <blockquote>
+                <p>
+                    Vintage 16mm film, summer morning, July 1993. Toronto skyline with the CN Tower,
+                    soft golden haze, slow cinematic push-in toward a hospital building window. Film
+                    grain, warm nostalgic color, gentle ambient city sounds, soft hopeful piano. Single
+                    continuous shot, no scene cuts, no dialogue, no text on screen.
+                </p>
+            </blockquote>
+            <p>And the image-to-video prompt for the two-cakes photo:</p>
+            <blockquote>
+                <p>
+                    Bring this old 1990s family photograph gently to life: the candle flames flicker,
+                    the two toddlers lean in and blow out the candles on their two birthday cakes, the
+                    adults smile and clap. Subtle, warm, realistic home-video motion. Keep the vintage
+                    90s film look, colors and everyone's faces exactly the same. Single continuous
+                    shot, no scene cuts.
+                </p>
+            </blockquote>
+            <p>
+                The nursery shot — two bassinets labeled <strong>MILLER A</strong> and
+                <strong>MILLER B</strong>, the babies reaching toward each other — came back perfect
+                on the first try.
+            </p>
+
+            <h2>Voice, music, and the mix</h2>
+            <ul>
+                <li><strong>Narration:</strong> ~340 words written from my point of view, voiced with
+                    <code>minimax/speech-02-hd</code> on Replicate (7 segments, ~2.9s average generation time)</li>
+                <li><strong>Score:</strong> two 30-second cues from <code>meta/musicgen</code>
+                    (stereo-large) — nostalgic piano for the childhood acts, hopeful swell for the
+                    ending — looped with crossfades into a full bed</li>
+                <li><strong>Real audio:</strong> Aaron's actual voice notes, a playground vlog
+                    (“one, two, three, go!”), and my daughters shouting “Hi, Uncle!” over the credits</li>
+                <li><strong>Mix:</strong> a single ffmpeg filtergraph — music side-chain compressed
+                    (ducked) under every voice, limited, and muxed against the picture</li>
+            </ul>
+
+            <h2>The edit pipeline</h2>
+            <p>
+                No editing software — the whole cut is Python + ffmpeg, fully scripted and resumable:
+            </p>
+            <ol>
+                <li>Every photo becomes a 1920×1080 “plate” (blur-fill background) with a Ken Burns
+                    zoom via <code>zoompan</code></li>
+                <li>Typographic cards (title, WhatsApp bubbles, stats, end cards) rendered with PIL —
+                    Georgia for the emotional cards, Avenir Next for the data</li>
+                <li>All 44 shots render to uniform silent MP4s, concat-muxed into picture lock</li>
+                <li>The audio mix is computed from the same timeline data, so every voiceover and
+                    voice note lands on its intended frame</li>
+            </ol>
+
+            <h2>What it cost</h2>
+            <div class="not-prose overflow-x-auto">
+                <table class="w-full text-sm border-collapse">
+                    <thead>
+                        <tr class="border-b border-gray-300 dark:border-gray-700 text-left">
+                            <th class="py-2 pr-4">Item</th>
+                            <th class="py-2 pr-4">Usage</th>
+                            <th class="py-2">Approx. cost</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                        <tr><td class="py-2 pr-4">Gemini Omni Flash (video gen)</td><td class="py-2 pr-4">6 × 10s clips, 720p</td><td class="py-2">~$1–2 (preview pricing)</td></tr>
+                        <tr><td class="py-2 pr-4">MiniMax speech-02-hd (Replicate)</td><td class="py-2 pr-4">7 segments, ~2,200 chars</td><td class="py-2">~$0.15</td></tr>
+                        <tr><td class="py-2 pr-4">MusicGen stereo-large (Replicate)</td><td class="py-2 pr-4">2 runs, ~88s GPU each</td><td class="py-2">~$0.25</td></tr>
+                        <tr><td class="py-2 pr-4">Whisper transcription</td><td class="py-2 pr-4">15 voice notes/audio files</td><td class="py-2">$0 (local)</td></tr>
+                        <tr class="font-semibold"><td class="py-2 pr-4">Total</td><td class="py-2 pr-4">vs. a $10 budget</td><td class="py-2">≈ $2</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2>Why it works</h2>
+            <p>
+                The AI shots are connective tissue, not the substance. Every emotional beat in the film
+                is <em>real</em>: the scanned photographs, the voice notes, the chat messages, the
+                statistics of an actual friendship. The models just gave the memories a camera.
+            </p>
+            <p class="italic">
+                Happy birthday, Aaron. Next year in Raanana. Amen.
+            </p>
+        </article>
+    </main>
+</Layout>
