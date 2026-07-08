@@ -74,6 +74,24 @@ body:has(.mb-page) > footer { display:none!important; }
 .mb-sel:focus { border-color:var(--gold); outline:none; }
 .mb-sel option { background:#1a1710; }
 .mb-sel:disabled { opacity:.35; cursor:not-allowed; }
+.mb-translation-picker { position:relative; flex-shrink:0; }
+.mb-translation-btn { text-align:left; }
+.mb-translation-menu {
+  position:absolute; top:calc(100% + .3rem); left:0; z-index:40;
+  background:var(--surface2); border:1px solid var(--border-hi);
+  min-width:260px; max-height:340px; overflow-y:auto;
+  padding:.4rem; box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.mb-translation-menu.hidden { display:none; }
+.mb-translation-opt {
+  display:flex; align-items:center; gap:.5rem; font-family:var(--display);
+  font-size:.85rem; padding:.3rem .4rem; cursor:pointer; white-space:nowrap;
+}
+.mb-translation-opt:hover { background:var(--faint); }
+.mb-translation-opt input { cursor:pointer; flex-shrink:0; }
+.mb-translation-opt-sub { font-size:.78rem; color:var(--muted); padding-left:1rem; }
+.mb-translation-divider { border-top:1px solid var(--border-hi); margin:.35rem 0; }
+.mb-translation-loading { font-family:var(--display); font-size:.78rem; color:var(--muted); padding:.3rem .4rem; display:block; }
 .mb-load-btn {
   font-family:var(--sc); font-size:.6rem; letter-spacing:.22em; text-transform:uppercase;
   background:var(--gold); border:none; color:#0c0b09;
@@ -592,15 +610,20 @@ body:has(.mb-page) > footer { display:none!important; }
           <label class="mb-rite-lbl"><input type="checkbox" value="Chabad"> Chabad</label>
         </div>
       </div>
-      <span class="mb-nav-label">Translation</span>
-      <select class="mb-sel" id="translationSel" aria-label="English translation">
-        <option value="sefaria">Sefaria (default)</option>
-        <option value="kjv1611">King James (1611)</option>
-        <option value="gnv">Geneva (1587)</option>
-        <option value="bis">Bishops' (1568)</option>
-        <option value="cov">Coverdale (1535)</option>
-        <option value="wyc">Wycliffe (1395)</option>
-      </select>
+      <span class="mb-nav-label">Translations</span>
+      <div class="mb-translation-picker" id="translationPicker">
+        <button type="button" class="mb-sel mb-translation-btn" id="translationBtn" aria-haspopup="true" aria-expanded="false">Sefaria (default)</button>
+        <div class="mb-translation-menu hidden" id="translationMenu">
+          <label class="mb-translation-opt"><input type="checkbox" value="sefaria" checked> Sefaria (default)</label>
+          <div class="mb-translation-sefaria-versions" id="sefariaVersionsList"></div>
+          <div class="mb-translation-divider"></div>
+          <label class="mb-translation-opt"><input type="checkbox" value="kjv1611"> King James (1611)</label>
+          <label class="mb-translation-opt"><input type="checkbox" value="gnv"> Geneva (1587)</label>
+          <label class="mb-translation-opt"><input type="checkbox" value="bis"> Bishops' (1568)</label>
+          <label class="mb-translation-opt"><input type="checkbox" value="cov"> Coverdale (1535)</label>
+          <label class="mb-translation-opt"><input type="checkbox" value="wyc"> Wycliffe (1395)</label>
+        </div>
+      </div>
       <button class="mb-load-btn" id="loadBtn" disabled>Load</button>
       <span class="mb-status" id="statusMsg"></span>
     </div>
@@ -726,6 +749,14 @@ const BOOK_CHAPTERS: Record<string,number> = {
   'Daniel':12,'Ezra':10,'Nehemiah':13,'1 Chronicles':29,'2 Chronicles':36,
 };
 
+const CLASSIC_TRANSLATIONS: Record<string,string> = {
+  kjv1611: 'King James (1611)',
+  gnv: 'Geneva (1587)',
+  bis: "Bishops' (1568)",
+  cov: 'Coverdale (1535)',
+  wyc: 'Wycliffe (1395)',
+};
+
 const TORAH_BOOKS = new Set(['Genesis','Exodus','Leviticus','Numbers','Deuteronomy']);
 const TORAH_BOOKS_LIST = ['Genesis','Exodus','Leviticus','Numbers','Deuteronomy'];
 const NEVIIM_BOOKS_LIST = ['Joshua','Judges','1 Samuel','2 Samuel','1 Kings','2 Kings','Isaiah','Jeremiah','Ezekiel','Hosea','Joel','Amos','Obadiah','Jonah','Micah','Nahum','Habakkuk','Zephaniah','Haggai','Zechariah','Malachi'];
@@ -814,7 +845,10 @@ const PARSHAS: Record<string, Record<string,string>> = {
 // ── State ──────────────────────────────────────────────────────────────────
 const xmlCache     = new Map<string, Document>();
 const supabaseCache = new Map<string, any[]>();
-const englishCache = new Map<string, string[]>();
+const classicBookCache = new Map<string, Record<string, {verse:number, text:string}[]>>();
+const sefariaBookCache = new Map<string, string[][]>();
+const sefariaVersionsCache = new Map<string, {versionTitle:string, label:string}[]>();
+let selectedTranslations: string[] = ['sefaria'];
 let morphMap: Record<string,string> = {};
 let lemmaMap: Record<string,{word:string, definition:string}> = {};
 let haftarahData: any = null;
@@ -834,7 +868,10 @@ const chapterSel  = document.getElementById('chapterSel') as HTMLSelectElement;
 const parshaSel   = document.getElementById('parshaSel') as HTMLSelectElement;
 const aliyaSel    = document.getElementById('aliyaSel') as HTMLSelectElement;
 const loadBtn     = document.getElementById('loadBtn') as HTMLButtonElement;
-const translationSel = document.getElementById('translationSel') as HTMLSelectElement;
+const translationPicker = document.getElementById('translationPicker')!;
+const translationBtn    = document.getElementById('translationBtn') as HTMLButtonElement;
+const translationMenu   = document.getElementById('translationMenu')!;
+const sefariaVersionsList = document.getElementById('sefariaVersionsList')!;
 const detailPanel = document.getElementById('detailPanel')!;
 const detailWord  = document.getElementById('detailWord')!;
 const detailBody  = document.getElementById('detailBody')!;
@@ -1112,7 +1149,7 @@ async function handleLoad() {
     if (chapterSel.value === 'all') {
       const maxCh = BOOK_CHAPTERS[book] || 1;
       currentParsha = '';
-      await renderRange(book, 1, 1, maxCh, Infinity, '', '', true);
+      await renderRange(book, 1, 1, maxCh, Infinity, '', '');
     } else {
       const ch = parseInt(chapterSel.value);
       const verseInputEl = document.getElementById('verseInput') as HTMLInputElement;
@@ -1190,7 +1227,7 @@ async function handleHaftarahLoad() {
       const maxCh = Math.max(...verses.map(v => v.ch));
       const minV  = Math.min(...verses.filter(v => v.ch === minCh).map(v => v.v));
       const maxV  = Math.max(...verses.filter(v => v.ch === maxCh).map(v => v.v));
-      await renderRange(book, minCh, minV, maxCh, maxV, parsha, `Haftarah — ${rite}`, false, true);
+      await renderRange(book, minCh, minV, maxCh, maxV, parsha, `Haftarah — ${rite}`, true);
     }
     isFirst = false;
   }
@@ -1356,50 +1393,172 @@ function stripSefariaHtml(t: string): string {
     .trim();
 }
 
-async function fetchEnglishChapter(book: string, chapter: number): Promise<string[]> {
-  const translation = translationSel?.value || 'sefaria';
-  const key = `${translation}:${book}:${chapter}`;
-  if (englishCache.has(key)) return englishCache.get(key)!;
-
-  if (translation !== 'sefaria') {
-    try {
-      const res = await fetch(`/api/bible/translation/${translation}/${encodeURIComponent(book)}/${chapter}`);
-      const data = await res.json();
-      const verses: string[] = [];
-      (data.verses || []).forEach((v: any) => { verses[v.verse - 1] = v.text; });
-      englishCache.set(key, verses);
-      return verses;
-    } catch {
-      englishCache.set(key, []);
-      return [];
-    }
+// ── Translation picker (multi-select) ──────────────────────────────────────
+function updateTranslationBtnLabel() {
+  const n = selectedTranslations.length;
+  if (n === 0) translationBtn.textContent = 'No translation';
+  else if (n === 1) {
+    const only = selectedTranslations[0];
+    translationBtn.textContent = only === 'sefaria' ? 'Sefaria (default)'
+      : only.startsWith('sefaria:') ? only.slice(8)
+      : CLASSIC_TRANSLATIONS[only] || only;
+  } else {
+    translationBtn.textContent = `${n} translations`;
   }
+}
 
+function readSelectedTranslations() {
+  const boxes = translationMenu.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
+  selectedTranslations = Array.from(boxes).filter(b => b.checked).map(b => b.value);
+  updateTranslationBtnLabel();
+}
+
+translationBtn.addEventListener('click', () => {
+  const isOpen = !translationMenu.classList.contains('hidden');
+  translationMenu.classList.toggle('hidden', isOpen);
+  translationBtn.setAttribute('aria-expanded', String(!isOpen));
+});
+document.addEventListener('click', (e) => {
+  if (!translationPicker.contains(e.target as Node)) {
+    translationMenu.classList.add('hidden');
+    translationBtn.setAttribute('aria-expanded', 'false');
+  }
+});
+translationMenu.addEventListener('change', (e) => {
+  if ((e.target as HTMLElement).tagName !== 'INPUT') return;
+  readSelectedTranslations();
+  if (!loadBtn.disabled) handleLoad();
+});
+
+// Sefaria's non-default named English versions, populated per-book on demand
+async function loadSefariaVersions(book: string) {
+  const sefariaBook = (SEFARIA_BOOK_MAP[book] || book).replace(/ /g, '_');
+  if (sefariaVersionsCache.has(sefariaBook)) return sefariaVersionsCache.get(sefariaBook)!;
   try {
-    const sefariaBook = (SEFARIA_BOOK_MAP[book] || book).replace(/ /g, '_');
-    const ref = encodeURIComponent(`${sefariaBook}.${chapter}`);
-    // v1 API: data.text = English, data.he = Hebrew
-    const res = await fetch(`https://www.sefaria.org/api/texts/${ref}?context=0&pad=0&commentary=0`);
+    const res = await fetch(`https://www.sefaria.org/api/texts/versions/${encodeURIComponent(sefariaBook)}`);
     const data = await res.json();
-    let verses: string[] = [];
-    const raw = data.text;
-    if (Array.isArray(raw)) {
-      verses = raw.map((t: any) => {
-        if (Array.isArray(t)) return (t as string[]).map(s => stripSefariaHtml(String(s || ''))).join(' ');
-        return stripSefariaHtml(String(t || ''));
-      }).filter(Boolean);
-    }
-    englishCache.set(key, verses);
-    return verses;
+    const seen = new Set<string>();
+    const versions = (Array.isArray(data) ? data : [])
+      .filter((v: any) => v.actualLanguage === 'en' && v.versionTitle)
+      .filter((v: any) => (seen.has(v.versionTitle) ? false : (seen.add(v.versionTitle), true)))
+      .sort((a: any, b: any) => (b.priority || 0) - (a.priority || 0))
+      .slice(0, 12)
+      .map((v: any) => ({ versionTitle: v.versionTitle as string, label: (v.shortVersionTitle || v.versionTitle) as string }));
+    sefariaVersionsCache.set(sefariaBook, versions);
+    return versions;
   } catch {
-    englishCache.set(key, []);
+    sefariaVersionsCache.set(sefariaBook, []);
     return [];
   }
 }
 
-translationSel?.addEventListener('change', () => {
-  if (!loadBtn.disabled) handleLoad();
-});
+let lastVersionsBook = '';
+async function populateSefariaVersions(book: string) {
+  if (book === lastVersionsBook) return;
+  lastVersionsBook = book;
+  const checkedBefore = new Set(
+    Array.from(sefariaVersionsList.querySelectorAll('input:checked')).map(i => (i as HTMLInputElement).value)
+  );
+  const versions = await loadSefariaVersions(book);
+  if (lastVersionsBook !== book) return; // a newer book was selected meanwhile
+  sefariaVersionsList.innerHTML = '';
+  versions.forEach(v => {
+    const key = `sefaria:${v.versionTitle}`;
+    const label = document.createElement('label');
+    label.className = 'mb-translation-opt mb-translation-opt-sub';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = key;
+    cb.checked = checkedBefore.has(key);
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(' ' + v.label));
+    sefariaVersionsList.appendChild(label);
+  });
+}
+
+// ── Whole-book text fetchers (fetched once per book, cached, sliced per chapter) ──
+async function getClassicBook(code: string, book: string) {
+  const key = `${code}:${book}`;
+  if (classicBookCache.has(key)) return classicBookCache.get(key)!;
+  try {
+    const res = await fetch(`/api/bible/translation/${code}/${encodeURIComponent(book)}`);
+    const data = await res.json();
+    const chapters = data.chapters || {};
+    classicBookCache.set(key, chapters);
+    return chapters;
+  } catch {
+    classicBookCache.set(key, {});
+    return {};
+  }
+}
+
+async function getSefariaBook(book: string, versionTitle?: string): Promise<string[][]> {
+  const key = `${book}::${versionTitle || 'default'}`;
+  if (sefariaBookCache.has(key)) return sefariaBookCache.get(key)!;
+  try {
+    const sefariaBook = (SEFARIA_BOOK_MAP[book] || book).replace(/ /g, '_');
+    const maxCh = BOOK_CHAPTERS[book] || 1;
+    const ref = encodeURIComponent(`${sefariaBook}.1-${maxCh}`);
+    let url = `https://www.sefaria.org/api/texts/${ref}?context=0&pad=0&commentary=0`;
+    if (versionTitle) url += `&ven=${encodeURIComponent(versionTitle)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const raw = data.text;
+    let chapters: string[][] = [];
+    if (Array.isArray(raw)) {
+      if (raw.length && typeof raw[0] === 'string') {
+        // single-chapter book: Sefaria returns a flat array of verses, not array-of-chapters
+        chapters = [raw.map((s: any) => stripSefariaHtml(String(s || '')))];
+      } else {
+        chapters = raw.map((ch: any) => {
+          if (!Array.isArray(ch)) return [stripSefariaHtml(String(ch || ''))];
+          return ch.map((t: any) => Array.isArray(t)
+            ? (t as string[]).map(s => stripSefariaHtml(String(s || ''))).join(' ')
+            : stripSefariaHtml(String(t || '')));
+        });
+      }
+    }
+    sefariaBookCache.set(key, chapters);
+    return chapters;
+  } catch {
+    sefariaBookCache.set(key, []);
+    return [];
+  }
+}
+
+// Fetches every currently-selected translation for a book once, returns a lookup
+// function verseText(chapter, verse) -> [{label, text}] for use while rendering.
+async function loadSelectedTranslationsForBook(book: string) {
+  const sources = await Promise.all(selectedTranslations.map(async (sel) => {
+    if (sel === 'sefaria') {
+      const chapters = await getSefariaBook(book);
+      return { label: '', chapters, isSefariaDefault: true };
+    }
+    if (sel.startsWith('sefaria:')) {
+      const versionTitle = sel.slice(8);
+      const chapters = await getSefariaBook(book, versionTitle);
+      return { label: versionTitle, chapters, isSefariaDefault: false };
+    }
+    const chapters = await getClassicBook(sel, book);
+    return { label: CLASSIC_TRANSLATIONS[sel] || sel, chapters, isClassic: true };
+  }));
+
+  return function verseText(chapter: number, verse: number): {label: string, text: string}[] {
+    const out: {label: string, text: string}[] = [];
+    for (const src of sources) {
+      let text = '';
+      if ((src as any).isClassic) {
+        const rows = (src.chapters as any)[String(chapter)] as {verse:number, text:string}[] | undefined;
+        text = rows?.find(r => r.verse === verse)?.text || '';
+      } else {
+        const chArr = (src.chapters as string[][])[chapter - 1];
+        text = chArr?.[verse - 1] || '';
+      }
+      if (text) out.push({ label: src.label, text });
+    }
+    return out;
+  };
+}
 
 // ── Supabase devices ───────────────────────────────────────────────────────
 async function fetchDevices(book: string): Promise<any[]> {
@@ -1505,9 +1664,8 @@ function updateDevicePills(allDevices: any[]) {
 // ── Main render ────────────────────────────────────────────────────────────
 async function renderRange(
   book: string, sc: number, sv: number, ec: number, ev: number,
-  parsha?: string, aliyaLabel?: string, skipEnglish = false, appendMode = false
+  parsha?: string, aliyaLabel?: string, appendMode = false
 ) {
-  const translationLabel = translationSel?.options[translationSel.selectedIndex]?.text || '';
   if (!appendMode) {
     main.innerHTML = '';
     const loaderWrap = document.createElement('div');
@@ -1518,10 +1676,12 @@ async function renderRange(
   setStatus('');
 
   try {
-    const [xmlDoc, devices] = await Promise.all([
+    const [xmlDoc, devices, getVerseText] = await Promise.all([
       fetchXml(book),
       fetchDevices(book),
+      loadSelectedTranslationsForBook(book),
     ]);
+    populateSefariaVersions(book);
 
     if (!appendMode) main.innerHTML = '';
     updateDevicePills(devices);
@@ -1555,8 +1715,6 @@ async function renderRange(
       const chapters = getByTag(xmlDoc, 'chapter');
       const chapterNode = chapters.find(c => c.getAttribute('osisID') === chId);
       if (!chapterNode) continue;
-
-      const englishVerses = (skipEnglish || (ec - sc) > 2) ? [] : await fetchEnglishChapter(book, ch);
 
       const verses = getByTag(chapterNode, 'verse');
       for (const verseNode of verses) {
@@ -1598,8 +1756,8 @@ async function renderRange(
         const verseDevices = devices.filter(
           d => String(d.chapter) === String(ch) && String(d.verse) === String(vNum)
         );
-        const englishText = englishVerses[vNum - 1] || '';
-        const block = buildVerseBlock(verseNode, book, ch, vNum, verseDevices, englishText, translationLabel);
+        const translations = getVerseText(ch, vNum);
+        const block = buildVerseBlock(verseNode, book, ch, vNum, verseDevices, translations);
         verseBlocks.push(block);
         verseCount++;
       }
@@ -1930,7 +2088,7 @@ function buildHaftarahViz(parsha: string): HTMLElement {
 }
 
 // ── Verse block builder ────────────────────────────────────────────────────
-function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number, devices: any[], englishText = '', translationLabel = '') {
+function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number, devices: any[], translations: {label: string, text: string}[] = []) {
   const block = document.createElement('div');
   block.className = 'verse-block';
 
@@ -2030,19 +2188,20 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
 
   block.appendChild(hebrewRow);
 
-  // English translation
-  if (englishText) {
+  // English translation(s) — one row per selected translation
+  translations.forEach(({ label: translationLabel, text }) => {
+    if (!text) return;
     const engRow = document.createElement('div');
     engRow.className = 'english-row';
-    if (translationLabel && !translationLabel.startsWith('Sefaria')) {
+    if (translationLabel) {
       const label = document.createElement('span');
       label.className = 'english-row-label';
       label.textContent = translationLabel + ': ';
       engRow.appendChild(label);
     }
-    engRow.appendChild(document.createTextNode(englishText));
+    engRow.appendChild(document.createTextNode(text));
     block.appendChild(engRow);
-  }
+  });
 
   // Footnotes for this verse's devices
   if (devices.length) {

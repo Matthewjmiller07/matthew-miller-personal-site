@@ -91,6 +91,13 @@ export default {
         return await handleTranslationChapter(code.toLowerCase(), decodeURIComponent(book), parseInt(chapter), headers);
       }
 
+      // /api/translation/:code/:book  (whole book, all chapters at once)
+      const translationBookMatch = path.match(/^\/api\/translation\/([a-z0-9]+)\/(.+)$/i);
+      if (translationBookMatch) {
+        const [, code, book] = translationBookMatch;
+        return await handleTranslationBook(code.toLowerCase(), decodeURIComponent(book), headers);
+      }
+
       // /api/translations
       if (path === "/api/translations") return await handleListTranslations(headers);
 
@@ -146,6 +153,24 @@ async function handleTranslationChapter(code, book, chapter, headers) {
     book,
     chapter,
     verses: rows.map(r => ({ verse: r.verse, text: r.text })),
+  }, 200, headers);
+}
+
+async function handleTranslationBook(code, book, headers) {
+  if (!TRANSLATIONS[code]) {
+    return jsonResponse({ error: `Unknown translation code "${code}"`, available: Object.keys(TRANSLATIONS) }, 400, headers);
+  }
+  const rows = await supabaseQuery("bible_translations", { translation: code, book });
+  const chapters = {};
+  for (const r of rows) {
+    (chapters[r.chapter] ||= []).push({ verse: r.verse, text: r.text });
+  }
+  for (const arr of Object.values(chapters)) arr.sort((a, b) => a.verse - b.verse);
+  return jsonResponse({
+    translation: code,
+    name: TRANSLATIONS[code],
+    book,
+    chapters,
   }, 200, headers);
 }
 
