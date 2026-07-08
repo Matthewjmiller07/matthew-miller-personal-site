@@ -1,0 +1,152 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+    title="QidQuotes — How It Works | Matthew Miller"
+    description="How a single free Cloudflare Worker turns my kids' funny quotes into AI-illustrated watercolor storybook cards — with Telegram as the interface and Google Sheets as the database."
+>
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <article class="prose prose-lg dark:prose-invert mx-auto max-w-3xl">
+            <header class="mb-10 text-center not-prose">
+                <h1 class="text-4xl font-extrabold tracking-tight text-text-light dark:text-text-dark sm:text-5xl">
+                    QidQuotes
+                </h1>
+                <p class="mt-3 text-xl italic text-gray-500 dark:text-gray-400">
+                    Kid quotes in, watercolor storybook art out — on a $0/month stack
+                </p>
+            </header>
+
+            <h2>The problem</h2>
+            <p>
+                Kids say incredible things, and they say them exactly once. You tell yourself
+                you'll remember, and you don't. QidQuotes is a Telegram bot that lives in our
+                family group chat: anyone types the quote as it happens, and a minute later the
+                bot posts back an AI-illustrated watercolor quote card — with the child's actual
+                face, their age down to the month, and the quote as a caption. Every quote and
+                every image is archived automatically.
+            </p>
+
+            <h2>The whole backend is one Cloudflare Worker</h2>
+            <p>
+                There's no server, no database, and no monthly bill. A single Cloudflare Worker
+                (free tier) handles everything, and Google Sheets is the store of record. The
+                stack:
+            </p>
+            <ul>
+                <li><strong>Cloudflare Workers</strong> (TypeScript + Wrangler) — the entire backend</li>
+                <li><strong>Telegram Bot API</strong> — the user interface; the family group chat <em>is</em> the app</li>
+                <li><strong>Replicate → OpenAI <code>gpt-image-2</code></strong> — image generation</li>
+                <li><strong>Google Sheets</strong> — the database (Sheets API v4, service account)</li>
+                <li><strong>Google Photos</strong> — permanent image archive (OAuth2 refresh token)</li>
+                <li><strong>Imgur</strong> — hosting for reference photos of each kid</li>
+                <li><strong>Google Apps Script</strong> — a "Rerun" menu inside the spreadsheet itself</li>
+            </ul>
+            <p>
+                The worker exposes three endpoints: the Telegram webhook (all messages and button
+                presses), a Replicate callback that fires when an image finishes generating, and
+                an authenticated <code>/rerun</code> endpoint the spreadsheet can call to bulk-regenerate
+                images for selected rows.
+            </p>
+
+            <h2>Capturing a quote</h2>
+            <p>There are two ways in, depending on how much of a power user you are:</p>
+            <ul>
+                <li>
+                    <strong>Pre-tagged:</strong> <code>Ezra||I want to marry the moon</code> — name,
+                    two pipes, quote. Add a date (<code>Ezra|03/14/2026|…</code>) or a scene hint in
+                    parentheses (<code>(at the beach)</code>) and the bot uses them.
+                </li>
+                <li>
+                    <strong>Plain message:</strong> just type the quote. The bot replies
+                    "Who said this?" with one button per family member, then walks you through
+                    date (Today / Yesterday / custom) and one more question — was this an
+                    <em>eggcorn</em>, a kid-mangled word worth flagging? — before logging it.
+                </li>
+            </ul>
+            <p>
+                Attach a photo and the bot does more: it uploads the photo to Imgur, saves it as a
+                reference image for that child, and uses it for this generation. Attach a photo of
+                someone the bot doesn't know and a "✏️ Custom" button appears — reply with a name
+                and birthday, and a whole new person is added to the system, from inside the chat.
+            </p>
+
+            <h2>Making the picture</h2>
+            <p>
+                Once a quote is logged, the worker fires an async generation request to Replicate
+                and returns immediately — Workers have CPU-time limits, so nothing blocks. The
+                prompt builder does the interesting work:
+            </p>
+            <ul>
+                <li>
+                    <strong>Reference faces:</strong> it picks a reference photo of the speaker
+                    (an uploaded photo wins; otherwise a random one from their stored set), and if
+                    the quote or scene hint <em>mentions</em> another family member by name, their
+                    photos get added too — so "Ezra said something about Aviya" renders both kids.
+                </li>
+                <li>
+                    <strong>Age math:</strong> if the speaker is a child with a known birthday, the
+                    card is attributed with their exact age — "4 years and 2 months old" — computed
+                    against the quote date in Chicago time. Adults (or unknown birthdays) get the
+                    date instead.
+                </li>
+                <li>
+                    <strong>Style:</strong> everything is rendered as a watercolor storybook
+                    illustration, with the quote and attribution composed into the image.
+                </li>
+            </ul>
+            <p>
+                When Replicate finishes, it calls the worker back. The worker downloads the image,
+                posts it to the Telegram group, uploads it to a Google Photos album for permanent
+                keeping, and writes the final URL into the spreadsheet row.
+            </p>
+
+            <h2>Don't like it? Regenerate.</h2>
+            <p>
+                Every image the bot posts carries a <strong>🔄 Regenerate</strong> button. Pressing
+                it sends a preview strip of the child's reference photos with a picker: choose a
+                specific photo, upload a brand-new one, or let it pick automatically. Each
+                regeneration lands in the next empty column of that quote's spreadsheet row, so
+                nothing is ever overwritten — the sheet accumulates every version.
+            </p>
+            <p>
+                And because Google Sheets is the database, the spreadsheet itself is also a control
+                surface: a small Apps Script adds a <em>QidQuotes → Rerun selected row(s)</em> menu,
+                which calls the worker's <code>/rerun</code> endpoint to regenerate any rows you
+                highlight — useful after improving the prompt.
+            </p>
+
+            <h2>The data model is two spreadsheet tabs</h2>
+            <ul>
+                <li>
+                    <strong>Quotes:</strong> date, time, name, quote, eggcorn flag, scene hint,
+                    then image URLs marching rightward — one column per generation.
+                </li>
+                <li>
+                    <strong>Names:</strong> one row per person — name, birthday, their default
+                    scene hint, then reference photo URLs, also appended over time.
+                </li>
+            </ul>
+            <p>
+                Scene hints are sticky: give one once (<code>(in the bath)</code>) and it's saved as
+                that person's default until replaced. All secrets — Telegram token, Google service
+                account key, Replicate token, Photos OAuth tokens — live as Wrangler secrets, never
+                in the repo.
+            </p>
+
+            <h2>Why I like this architecture</h2>
+            <p>
+                It's a full product — chat UI, async job queue, image pipeline, photo archive,
+                admin panel — and every piece is something my family already uses or something
+                free. Telegram is the frontend, Sheets is the database <em>and</em> the admin UI,
+                webhooks replace the job queue, and the one piece of real code is a single
+                TypeScript worker small enough to read in a sitting. Total infrastructure cost:
+                the pennies Replicate charges per image.
+            </p>
+
+            <footer class="not-prose mt-12 border-t border-gray-200 dark:border-gray-700 pt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                <p>Built with Cloudflare Workers, Telegram, Replicate, and Google Sheets · 2026</p>
+            </footer>
+        </article>
+    </main>
+</Layout>
