@@ -55,6 +55,15 @@ export const handler = async (event) => {
       return await handleDevice(decodeURIComponent(deviceMatch[1]), headers);
     }
 
+    // /api/translation/:code/:book/:chapter
+    const translationMatch = path.match(/^\/api\/translation\/([a-z0-9]+)\/(.+)\/(\d+)$/i);
+    if (translationMatch) {
+      const [, code, book, chapter] = translationMatch;
+      return await handleTranslationChapter(code.toLowerCase(), decodeURIComponent(book), parseInt(chapter), headers);
+    }
+
+    if (path === "/api/translations") return await handleListTranslations(headers);
+
     if (path === "/api/search") {
       return await handleSearch(qs.q || "", headers);
     }
@@ -69,11 +78,12 @@ export const handler = async (event) => {
 };
 
 async function handleVerse(book, chapter, verse, headers) {
-  const [tanakhRows, literaryRows, sefaria, crossRefs] = await Promise.allSettled([
+  const [tanakhRows, literaryRows, sefaria, crossRefs, translations] = await Promise.allSettled([
     supabaseQuery("Tanakh Annotations", { book, chapter, verse }),
     supabaseQuery("literary_bible", { book, chapter, verse }),
     fetchSefaria(book, chapter, verse),
     fetchCrossRefs(book, chapter, verse),
+    supabaseQuery("bible_translations", { book, chapter, verse }),
   ]);
 
   return json({
@@ -82,6 +92,27 @@ async function handleVerse(book, chapter, verse, headers) {
     annotations: settled(tanakhRows) || [],
     literary_devices: settled(literaryRows) || [],
     cross_references: settled(crossRefs) || [],
+    translations: settled(translations) || [],
+  }, 200, headers);
+}
+
+async function handleTranslationChapter(code, book, chapter, headers) {
+  if (!TRANSLATIONS[code]) {
+    return json({ error: `Unknown translation code "${code}"`, available: Object.keys(TRANSLATIONS) }, 400, headers);
+  }
+  const rows = await supabaseQuery("bible_translations", { translation: code, book, chapter });
+  return json({
+    translation: code,
+    name: TRANSLATIONS[code],
+    book,
+    chapter,
+    verses: rows.map(r => ({ verse: r.verse, text: r.text })),
+  }, 200, headers);
+}
+
+async function handleListTranslations(headers) {
+  return json({
+    translations: Object.entries(TRANSLATIONS).map(([code, name]) => ({ code, name })),
   }, 200, headers);
 }
 
@@ -257,18 +288,21 @@ function apiDocs(mode) {
     mode,
     description: "Unified Tanakh annotation and literary analysis API combining personal scholarship with Sefaria and Open Bible data.",
     endpoints: {
-      "GET /api/bible/verse/:book/:chapter/:verse": "Verse text (Hebrew + English), annotations, literary devices, cross-references",
-      "GET /api/bible/book/:book":                  "All annotations for a book",
-      "GET /api/bible/device/:device":              "All verses tagged with a literary device",
-      "GET /api/bible/search?q=":                   "Full-text search across comments, words, and notes",
-      "GET /api/bible/devices":                     "List all literary devices in the database",
-      "GET /api/bible/books":                       "List all annotated books",
+      "GET /api/bible/verse/:book/:chapter/:verse":      "Verse text (Hebrew + English), annotations, literary devices, cross-references, classic translations",
+      "GET /api/bible/book/:book":                        "All annotations for a book",
+      "GET /api/bible/device/:device":                    "All verses tagged with a literary device",
+      "GET /api/bible/translation/:code/:book/:chapter":  "One classic translation's verses for a chapter (codes: wyc, cov, bis, gnv, kjv1611)",
+      "GET /api/bible/translations":                      "List available classic translation codes/names",
+      "GET /api/bible/search?q=":                         "Full-text search across comments, words, and notes",
+      "GET /api/bible/devices":                           "List all literary devices in the database",
+      "GET /api/bible/books":                              "List all annotated books",
     },
     sources: [
       "Tanakh Annotations (217 entries, personal scholarship)",
       "Literary Bible (220 entries, literary devices)",
       "Sefaria.org — Hebrew + English text",
       "Open Bible — cross-references",
+      "Classic English translations (Wycliffe, Coverdale, Bishops', Geneva, KJV 1611) — Old Testament, public domain",
     ],
     auth: mode === "private"
       ? "Private mode: pass X-API-Key header with all requests"
@@ -288,4 +322,12 @@ const BOOK_ABBR = {
   Joel: "Joel", Amos: "Amos", Obadiah: "Obad", Jonah: "Jonah",
   Micah: "Mic", Nahum: "Nah", Habakkuk: "Hab", Zephaniah: "Zeph",
   Haggai: "Hag", Zechariah: "Zech", Malachi: "Mal",
+};
+
+const TRANSLATIONS = {
+  wyc: "Wycliffe Bible (1395)",
+  cov: "Coverdale Bible (1535)",
+  bis: "Bishops' Bible (1568)",
+  gnv: "Geneva Bible (1587)",
+  kjv1611: "King James Version (1611)",
 };

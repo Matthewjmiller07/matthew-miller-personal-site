@@ -326,6 +326,10 @@ body:has(.mb-page) > footer { display:none!important; }
   font-family:var(--display); font-size:.88rem; color:var(--muted);
   line-height:1.8; margin-top:.35rem; font-style:italic; direction:ltr;
 }
+.english-row-label {
+  font-style:normal; font-weight:600; letter-spacing:.02em;
+  font-size:.72rem; text-transform:uppercase; color:var(--accent, var(--muted));
+}
 
 /* Footnotes */
 .verse-footnotes {
@@ -588,6 +592,15 @@ body:has(.mb-page) > footer { display:none!important; }
           <label class="mb-rite-lbl"><input type="checkbox" value="Chabad"> Chabad</label>
         </div>
       </div>
+      <span class="mb-nav-label">Translation</span>
+      <select class="mb-sel" id="translationSel" aria-label="English translation">
+        <option value="sefaria">Sefaria (default)</option>
+        <option value="kjv1611">King James (1611)</option>
+        <option value="gnv">Geneva (1587)</option>
+        <option value="bis">Bishops' (1568)</option>
+        <option value="cov">Coverdale (1535)</option>
+        <option value="wyc">Wycliffe (1395)</option>
+      </select>
       <button class="mb-load-btn" id="loadBtn" disabled>Load</button>
       <span class="mb-status" id="statusMsg"></span>
     </div>
@@ -821,6 +834,7 @@ const chapterSel  = document.getElementById('chapterSel') as HTMLSelectElement;
 const parshaSel   = document.getElementById('parshaSel') as HTMLSelectElement;
 const aliyaSel    = document.getElementById('aliyaSel') as HTMLSelectElement;
 const loadBtn     = document.getElementById('loadBtn') as HTMLButtonElement;
+const translationSel = document.getElementById('translationSel') as HTMLSelectElement;
 const detailPanel = document.getElementById('detailPanel')!;
 const detailWord  = document.getElementById('detailWord')!;
 const detailBody  = document.getElementById('detailBody')!;
@@ -1343,8 +1357,24 @@ function stripSefariaHtml(t: string): string {
 }
 
 async function fetchEnglishChapter(book: string, chapter: number): Promise<string[]> {
-  const key = `${book}:${chapter}`;
+  const translation = translationSel?.value || 'sefaria';
+  const key = `${translation}:${book}:${chapter}`;
   if (englishCache.has(key)) return englishCache.get(key)!;
+
+  if (translation !== 'sefaria') {
+    try {
+      const res = await fetch(`/api/bible/translation/${translation}/${encodeURIComponent(book)}/${chapter}`);
+      const data = await res.json();
+      const verses: string[] = [];
+      (data.verses || []).forEach((v: any) => { verses[v.verse - 1] = v.text; });
+      englishCache.set(key, verses);
+      return verses;
+    } catch {
+      englishCache.set(key, []);
+      return [];
+    }
+  }
+
   try {
     const sefariaBook = (SEFARIA_BOOK_MAP[book] || book).replace(/ /g, '_');
     const ref = encodeURIComponent(`${sefariaBook}.${chapter}`);
@@ -1366,6 +1396,10 @@ async function fetchEnglishChapter(book: string, chapter: number): Promise<strin
     return [];
   }
 }
+
+translationSel?.addEventListener('change', () => {
+  if (!loadBtn.disabled) handleLoad();
+});
 
 // ── Supabase devices ───────────────────────────────────────────────────────
 async function fetchDevices(book: string): Promise<any[]> {
@@ -1473,6 +1507,7 @@ async function renderRange(
   book: string, sc: number, sv: number, ec: number, ev: number,
   parsha?: string, aliyaLabel?: string, skipEnglish = false, appendMode = false
 ) {
+  const translationLabel = translationSel?.options[translationSel.selectedIndex]?.text || '';
   if (!appendMode) {
     main.innerHTML = '';
     const loaderWrap = document.createElement('div');
@@ -1564,7 +1599,7 @@ async function renderRange(
           d => String(d.chapter) === String(ch) && String(d.verse) === String(vNum)
         );
         const englishText = englishVerses[vNum - 1] || '';
-        const block = buildVerseBlock(verseNode, book, ch, vNum, verseDevices, englishText);
+        const block = buildVerseBlock(verseNode, book, ch, vNum, verseDevices, englishText, translationLabel);
         verseBlocks.push(block);
         verseCount++;
       }
@@ -1895,7 +1930,7 @@ function buildHaftarahViz(parsha: string): HTMLElement {
 }
 
 // ── Verse block builder ────────────────────────────────────────────────────
-function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number, devices: any[], englishText = '') {
+function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number, devices: any[], englishText = '', translationLabel = '') {
   const block = document.createElement('div');
   block.className = 'verse-block';
 
@@ -1999,7 +2034,13 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
   if (englishText) {
     const engRow = document.createElement('div');
     engRow.className = 'english-row';
-    engRow.textContent = englishText;
+    if (translationLabel && !translationLabel.startsWith('Sefaria')) {
+      const label = document.createElement('span');
+      label.className = 'english-row-label';
+      label.textContent = translationLabel + ': ';
+      engRow.appendChild(label);
+    }
+    engRow.appendChild(document.createTextNode(englishText));
     block.appendChild(engRow);
   }
 
