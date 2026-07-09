@@ -161,11 +161,11 @@ export default function OceanPremium() {
               { label: m.west.label, med: s.wMed, n: west.length, c: C.dune }]
               .sort((a, b) => b.med - a.med).map((r, i) => (
               <div key={i} className="flex items-center gap-3 mb-2">
-                <div className="w-56 text-xs text-right shrink-0" style={{ opacity: 0.85 }}>{r.label} <span style={{ opacity: 0.75 }}>({r.n})</span></div>
+                <div className="w-56 text-xs text-right shrink-0" style={{ color: "#1a1a1a" }}>{r.label} <span style={{ color: "#666666" }}>({r.n})</span></div>
                 <div className="flex-1 h-5 relative rounded-sm" style={{ background: "#E8E6E3" }}>
                   <div className="h-full rounded-sm" style={{ width: (r.med / s.eMed) * 100 + "%", background: r.c }} />
                 </div>
-                <div className="w-16 text-xs" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{fmt(r.med)}</div>
+                <div className="w-16 text-xs" style={{ fontFamily: "'IBM Plex Mono', monospace", color: "#1a1a1a" }}>{fmt(r.med)}</div>
               </div>
             ))}
           </div>
@@ -177,7 +177,7 @@ export default function OceanPremium() {
             {allRows.map((h, i) => (
               <div key={i} className="flex items-center px-4 py-2 text-sm" style={{ background: i % 2 ? "#F5F3F0" : "#FFFFFF", color: "#1a1a1a" }}>
                 <span className="w-3 h-3 rounded-full mr-3 shrink-0" style={{ background: h.side === "east" ? C.sea : C.dune }} />
-                <span className="flex-1">{h.a}</span>
+                <span className="flex-1" style={{ color: "#1a1a1a" }}>{h.a}</span>
                 <span className="w-14 text-xs" style={{ color: "#666666" }}>{h.yb || "—"}</span>
                 <span className="w-24 text-right" style={{ fontFamily: "'IBM Plex Mono', monospace", fontWeight: 500, color: "#1a1a1a" }}>{fmt(h.v)}</span>
               </div>
