@@ -55,8 +55,8 @@ function Axis({ max }) {
   return (
     <div className="relative h-6" style={{ borderTop: "1px solid " + C.line }}>
       {ticks.map(t => (
-        <span key={t} className="absolute text-xs" style={{ left: ((Math.log10(t) - lmin) / (lmax - lmin)) * 100 + "%",
-          transform: "translateX(-50%)", color: C.ink, opacity: 0.75, fontFamily: "'IBM Plex Mono', monospace" }}>
+        <span key={t} className="absolute text-xs font-semibold" style={{ left: ((Math.log10(t) - lmin) / (lmax - lmin)) * 100 + "%",
+          transform: "translateX(-50%)", color: "#1a1a1a", fontFamily: "'IBM Plex Mono', monospace" }}>
           {fmt(t)}
         </span>
       ))}
@@ -67,9 +67,9 @@ function Axis({ max }) {
 function Stat({ label, value, sub, color }) {
   return (
     <div className="flex-1 min-w-[130px] p-4 rounded-lg" style={{ borderLeft: "3px solid " + color, background: "#FFFFFF" }}>
-      <div className="text-xs uppercase tracking-widest mb-1" style={{ color: C.ink, opacity: 0.65 }}>{label}</div>
-      <div className="text-2xl" style={{ fontFamily: "'Newsreader', serif", fontWeight: 600, color: C.ink }}>{value}</div>
-      {sub && <div className="text-xs mt-1" style={{ color: C.ink, opacity: 0.6 }}>{sub}</div>}
+      <div className="text-xs uppercase tracking-widest mb-1" style={{ color: "#888888" }}>{label}</div>
+      <div className="text-2xl" style={{ fontFamily: "'Newsreader', serif", fontWeight: 600, color: "#1a1a1a" }}>{value}</div>
+      {sub && <div className="text-xs mt-1" style={{ color: "#777777" }}>{sub}</div>}
     </div>
   );
 }
@@ -100,8 +100,8 @@ export default function OceanPremium() {
         <div className="text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: C.sea, fontFamily: "'IBM Plex Mono', monospace" }}>
           County assessor rolls · live pull · {east.length + west.length} homes on {m.street}
         </div>
-        <h1 className="leading-tight mb-2" style={{ fontFamily: "'Newsreader', serif", fontWeight: 700, fontSize: "clamp(2rem, 5vw, 3.4rem)" }}>
-          Crossing the street costs <span style={{ color: C.sea }}>{s.ratio.toFixed(1)}×</span>
+        <h1 className="leading-tight mb-2" style={{ fontFamily: "'Newsreader', serif", fontWeight: 700, fontSize: "clamp(2rem, 5vw, 3.4rem)", color: "#1a1a1a" }}>
+          Crossing the street costs <span style={{ color: C.sea, fontWeight: 700 }}>{s.ratio.toFixed(1)}×</span>
         </h1>
         <p className="max-w-2xl text-sm mb-6" style={{ opacity: 0.8, color: C.ink }}>
           {m.name}. Same street, same zip code. The median home on the ocean side is worth {fmt(s.eMed)};
@@ -124,7 +124,7 @@ export default function OceanPremium() {
           <div className="flex justify-between items-baseline mb-1">
             <div>
               <span className="text-sm font-semibold" style={{ color: C.sea }}>{m.east.label}</span>
-              <span className="text-xs ml-2" style={{ color: C.ink, opacity: 0.7 }}>{m.east.sub} · {east.length} homes · median {fmt(s.eMed)}</span>
+              <span className="text-xs ml-2" style={{ color: "#666666" }}>{m.east.sub} · {east.length} homes · median {fmt(s.eMed)}</span>
             </div>
           </div>
           <Strip homes={east} color={C.sea} max={s.max} onHover={setHover} />
@@ -139,7 +139,7 @@ export default function OceanPremium() {
           <Strip homes={west} color={C.dune} max={s.max} onHover={setHover} />
           <div className="mb-1">
             <span className="text-sm font-semibold" style={{ color: C.dune }}>{m.west.label}</span>
-            <span className="text-xs ml-2" style={{ color: C.ink, opacity: 0.7 }}>{m.west.sub} · {west.length} homes · median {fmt(s.wMed)}</span>
+            <span className="text-xs ml-2" style={{ color: "#666666" }}>{m.west.sub} · {west.length} homes · median {fmt(s.wMed)}</span>
           </div>
           <Axis max={s.max} />
           <div className="h-6 mt-2 text-xs" style={{ fontFamily: "'IBM Plex Mono', monospace", color: C.coral }}>
@@ -175,11 +175,11 @@ export default function OceanPremium() {
           <h2 className="text-lg mb-3" style={{ fontFamily: "'Newsreader', serif", fontWeight: 600 }}>Highest-valued parcels on the street</h2>
           <div className="rounded-lg overflow-hidden" style={{ border: "1px solid " + C.line }}>
             {allRows.map((h, i) => (
-              <div key={i} className="flex items-center px-4 py-2 text-sm" style={{ background: i % 2 ? "#F5F3F0" : "#FFFFFF" }}>
+              <div key={i} className="flex items-center px-4 py-2 text-sm" style={{ background: i % 2 ? "#F5F3F0" : "#FFFFFF", color: "#1a1a1a" }}>
                 <span className="w-3 h-3 rounded-full mr-3 shrink-0" style={{ background: h.side === "east" ? C.sea : C.dune }} />
                 <span className="flex-1">{h.a}</span>
-                <span className="w-14 text-xs" style={{ opacity: 0.75 }}>{h.yb || "—"}</span>
-                <span className="w-24 text-right" style={{ fontFamily: "'IBM Plex Mono', monospace", fontWeight: 500 }}>{fmt(h.v)}</span>
+                <span className="w-14 text-xs" style={{ color: "#666666" }}>{h.yb || "—"}</span>
+                <span className="w-24 text-right" style={{ fontFamily: "'IBM Plex Mono', monospace", fontWeight: 500, color: "#1a1a1a" }}>{fmt(h.v)}</span>
               </div>
             ))}
           </div>
