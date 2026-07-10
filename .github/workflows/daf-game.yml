@@ -1,9 +1,12 @@
 # Cloud fallback + remote trigger for the daily Daf Yomi game.
 #
-# - schedule: runs daily at 13:07 UTC (~8am Chicago), 3h after the Mac mini's
+# - schedule: runs Sun-Fri at 13:07 UTC (~8am Chicago), 3h after the Mac mini's
 #   launchd slot. If the mini already built the daf, this exits in seconds
 #   ("no missing dafs"). If the mini was asleep/off, this bridges the gap —
 #   it builds every missing daf, not just today's.
+#   Saturday is deliberately excluded — no automated runs during Sabbath.
+#   Missed Saturday dafs get caught up by Sunday's run (missing-dafs.mjs
+#   looks back up to 14 days).
 # - workflow_dispatch: tap "Run workflow" in the GitHub app/web from anywhere.
 #
 # Auth: CLAUDE_CODE_OAUTH_TOKEN repo secret (create with `claude setup-token`,
@@ -14,7 +17,7 @@ name: Daf Yomi game
 
 on:
   schedule:
-    - cron: '7 13 * * *'
+    - cron: '7 13 * * 0-5'
   workflow_dispatch:
     inputs:
       ref:
