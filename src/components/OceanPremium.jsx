@@ -176,6 +176,9 @@ export default function OceanPremium() {
   const [loadingCoords, setLoadingCoords] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
+  const isLocal = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
   useEffect(() => {
     setSelectedHouse(null);
     setCoords(null);
@@ -323,7 +326,10 @@ export default function OceanPremium() {
                     loading="lazy"
                     allowFullScreen
                     referrerPolicy="strict-origin-when-cross-origin"
-                    src={`https://www.google.com/maps/embed/v1/streetview?key=${GOOGLE_MAPS_API_KEY}&location=${coords.lat},${coords.lng}&heading=180&pitch=5&fov=90`}
+                    src={isLocal 
+                      ? `https://maps.google.com/maps?q=&layer=c&cbll=${coords.lat},${coords.lng}&output=svembed`
+                      : `https://www.google.com/maps/embed/v1/streetview?key=${GOOGLE_MAPS_API_KEY}&location=${coords.lat},${coords.lng}&heading=180&pitch=5&fov=90`
+                    }
                   />
                 )}
               </div>
