@@ -45,6 +45,7 @@ const geocodeWithNominatim = async (address) => {
 };
 
 const geocodeAddress = async (apiKey, address) => {
+  console.log("[Geocoding] Starting geocode for address:", address);
   try {
     const google = await loadGoogleMapsScript(apiKey);
     const geocoder = new google.maps.Geocoder();
@@ -52,15 +53,24 @@ const geocodeAddress = async (apiKey, address) => {
       geocoder.geocode({ address }, (results, status) => {
         if (status === "OK" && results[0]) {
           const loc = results[0].geometry.location;
-          resolve({ lat: loc.lat(), lng: loc.lng() });
+          const coords = { lat: loc.lat(), lng: loc.lng() };
+          console.log("[Geocoding] Google geocoding succeeded:", coords);
+          resolve(coords);
         } else {
-          reject(new Error(`Google Geocoding failed: ${status}`));
+          reject(new Error(`Google Geocoding failed with status: ${status}`));
         }
       });
     });
   } catch (error) {
-    console.warn("Google Geocoding failed, trying Nominatim fallback:", error);
-    return await geocodeWithNominatim(address);
+    console.warn("[Geocoding] Google Geocoding failed, trying Nominatim fallback. Error:", error);
+    try {
+      const coords = await geocodeWithNominatim(address);
+      console.log("[Geocoding] Nominatim fallback succeeded:", coords);
+      return coords;
+    } catch (nomError) {
+      console.error("[Geocoding] Nominatim fallback also failed:", nomError);
+      throw nomError;
+    }
   }
 };
 
