@@ -1,0 +1,91 @@
+# Cloud fallback + remote trigger for the daily Daf Yomi game.
+#
+# - schedule: runs daily at 13:07 UTC (~8am Chicago), 3h after the Mac mini's
+#   launchd slot. If the mini already built the daf, this exits in seconds
+#   ("no missing dafs"). If the mini was asleep/off, this bridges the gap —
+#   it builds every missing daf, not just today's.
+# - workflow_dispatch: tap "Run workflow" in the GitHub app/web from anywhere.
+#
+# Auth: CLAUDE_CODE_OAUTH_TOKEN repo secret (create with `claude setup-token`,
+# then `gh secret set CLAUDE_CODE_OAUTH_TOKEN`). Bills the Claude subscription,
+# NOT API tokens.
+
+name: Daf Yomi game
+
+on:
+  schedule:
+    - cron: '7 13 * * *'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Specific daf to build (e.g. "Chullin 72"); leave empty to build all missing dafs'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daf-game
+  cancel-in-progress: false
+
+jobs:
+  build-daf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check secret exists
+        id: secret
+        run: |
+          if [ -z "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}" ]; then
+            echo "CLAUDE_CODE_OAUTH_TOKEN secret is not set — run 'claude setup-token' locally, then 'gh secret set CLAUDE_CODE_OAUTH_TOKEN'." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Configure git identity
+        run: |
+          git config user.name "daf-game-bot"
+          git config user.email "matthewjmiller07+dafbot@gmail.com"
+
+      - name: Find missing dafs
+        id: missing
+        run: |
+          if [ -n "${{ github.event.inputs.ref }}" ]; then
+            echo "${{ github.event.inputs.ref }}" > /tmp/missing.txt
+          else
+            node scripts/daf-yomi/missing-dafs.mjs > /tmp/missing.txt
+          fi
+          echo "count=$(grep -c . /tmp/missing.txt || true)" >> "$GITHUB_OUTPUT"
+          cat /tmp/missing.txt
+
+      - name: Build missing daf games
+        if: steps.missing.outputs.count != '0'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          while IFS= read -r REF; do
+            [ -z "$REF" ] && continue
+            echo "::group::Building $REF"
+            claude -p "Invoke the /daf-game skill and follow .claude/skills/daf-game/SKILL.md to build the Daf Yomi game for \"$REF\". Rules for this automated run:
+          - If src/data/daf-yomi/games.json already has an entry for $REF, print \"already built\" and stop without changing anything.
+          - Build the game fully per the skill (harness with the explicit ref \"$REF\", learn the daf, fresh mechanic not used in recent games, page at src/pages/daf/<slug>.astro, manifest entry, verify the page renders).
+          - Then git add ONLY the files you created or edited for this daf game (page, data, manifest). NEVER add unrelated changes.
+          - Commit with message \"Add daf game: $REF — <title>\" plus the Co-Authored-By line, and push to origin main. If push is rejected, pull --rebase and push again." \
+              --dangerously-skip-permissions || echo "FAILED: $REF"
+            echo "::endgroup::"
+          done < /tmp/missing.txt
+
+      - name: Nothing to do
+        if: steps.missing.outputs.count == '0'
+        run: echo "All dafs are already built — the Mac mini beat us to it."
