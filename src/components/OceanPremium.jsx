@@ -33,11 +33,7 @@ const loadGoogleMapsScript = (apiKey) => {
 
 const geocodeWithNominatim = async (address) => {
   const encoded = encodeURIComponent(address);
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=1`, {
-    headers: {
-      'User-Agent': 'matthew-miller-personal-site-geocoder'
-    }
-  });
+  const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=1`);
   const data = await response.json();
   if (data && data.length > 0) {
     return {
