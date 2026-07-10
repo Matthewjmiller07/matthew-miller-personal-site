@@ -46,11 +46,25 @@ const geocodeWithNominatim = async (address) => {
 
 const geocodeAddress = async (apiKey, address) => {
   console.log("[Geocoding] Starting geocode for address:", address);
+  
+  // If running locally, bypass Google Geocoder immediately to avoid RefererNotAllowedMapError
+  if (typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    console.log("[Geocoding] Running on localhost. Bypassing Google and using Nominatim directly.");
+    return await geocodeWithNominatim(address);
+  }
+
   try {
     const google = await loadGoogleMapsScript(apiKey);
     const geocoder = new google.maps.Geocoder();
     return await new Promise((resolve, reject) => {
+      // Set a 1.5s timeout in case Google Geocoder callback hangs due to authorization errors
+      const timeoutId = setTimeout(() => {
+        reject(new Error("Google Geocoder timed out (likely due to RefererNotAllowedMapError)"));
+      }, 1500);
+
       geocoder.geocode({ address }, (results, status) => {
+        clearTimeout(timeoutId);
         if (status === "OK" && results[0]) {
           const loc = results[0].geometry.location;
           const coords = { lat: loc.lat(), lng: loc.lng() };
