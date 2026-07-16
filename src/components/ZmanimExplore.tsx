@@ -1351,15 +1351,150 @@ function ZmanDriftView({ location }: { location: LocationInfo }) {
   );
 }
 
+// ── Tab: DST Bill Impact ─────────────────────────────────────────────────────
+// Models the impact of the Sunshine Protection Act (permanent DST) on zmanim.
+// Solar times don't change — only what the clock reads when they happen — so
+// this compares each month's zman under today's DST rules vs. a year-round-DST clock.
+
+function getUtcOffsetMinutes(date: Date, tzid: string): number {
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', { timeZone: tzid, timeZoneName: 'longOffset' });
+    const part = dtf.formatToParts(date).find(p => p.type === 'timeZoneName')?.value || 'GMT+00:00';
+    const m = part.match(/GMT([+-])(\d{1,2}):?(\d{2})?/);
+    if (!m) return 0;
+    const sign = m[1] === '-' ? -1 : 1;
+    return sign * (parseInt(m[2], 10) * 60 + parseInt(m[3] || '0', 10));
+  } catch { return 0; }
+}
+
+// Minutes a clock would gain under permanent DST vs. today's clock, for a given date/tz.
+// ~0 in months already on DST; ~60 in months that currently "fall back" to standard time.
+function dstShiftForDate(dateStr: string, tzid: string): number {
+  const year = new Date(`${dateStr}T12:00:00Z`).getUTCFullYear();
+  const summerOffset = getUtcOffsetMinutes(new Date(`${year}-07-01T12:00:00Z`), tzid);
+  const dateOffset = getUtcOffsetMinutes(new Date(`${dateStr}T12:00:00Z`), tzid);
+  return Math.max(0, summerOffset - dateOffset);
+}
+
+function DstBillView({ location }: { location: LocationInfo }) {
+  const [zmanKey, setZmanKey] = useState('sunrise');
+  const [data, setData]       = useState<{ month: string; current: number; permanent: number }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const year = new Date().getFullYear();
+  const zdef = EXPLORE_ZMANIM.find(z => z.key === zmanKey);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const dates = monthDates(year);
+    try {
+      const mins = await Promise.all(dates.map(d => fetchZmanForDate(location, d, zmanKey)));
+      setData(dates.map((d, i) => {
+        const shift = mins[i] ? dstShiftForDate(d, location.tzid) : 0;
+        return { month: MONTHS[i], current: mins[i], permanent: mins[i] ? mins[i] + shift : 0 };
+      }));
+    } finally { setLoading(false); }
+  }, [location, zmanKey, year]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const shifted = data.filter(d => d.permanent !== d.current);
+  const maxShiftRow = shifted.reduce<typeof data[number] | null>(
+    (best, row) => (!best || (row.permanent - row.current) > (best.permanent - best.current)) ? row : best,
+    null
+  );
+
+  return (
+    <div>
+      <div className="mb-5">
+        <p className="text-white text-sm font-medium mb-1">Sunshine Protection Act — Impact on Zmanim</p>
+        <p className="text-white/30 text-xs leading-relaxed max-w-2xl">
+          On July 14, 2026 the U.S. House passed the Sunshine Protection Act 308–117, which would end the
+          twice-yearly clock change and keep the country on daylight saving time year-round. It now heads
+          to the Senate, where a prior version stalled over concerns from Sen. Tom Cotton. The bill wouldn't
+          change when the sun actually rises or sets — it would change what the clock says when it does,
+          which shifts the clock time of every zman.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <p className="text-white/30 text-xs">{location.label} · {year} · solid = today's clock rules · dashed = if the bill becomes law</p>
+        <select
+          value={zmanKey}
+          onChange={e => setZmanKey(e.target.value)}
+          className="bg-white/5 border border-white/10 text-white/70 text-xs rounded-lg px-3 py-1.5 focus:outline-none"
+        >
+          {EXPLORE_ZMANIM.map(z => <option key={z.key} value={z.key}>{z.label}</option>)}
+        </select>
+      </div>
+
+      {loading ? (
+        <div className="h-52 flex items-center justify-center text-white/20 text-sm">Loading…</div>
+      ) : (
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+            <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis domain={['auto','auto']} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={minsToTimeStr} width={52} />
+            <Tooltip content={<TimeTooltip />} />
+            <Legend wrapperStyle={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', paddingTop: '8px' }} />
+            <Line type="monotone" dataKey="current" name="Today's rules" stroke="rgba(255,255,255,0.6)" strokeWidth={1.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+            <Line type="monotone" dataKey="permanent" name="Permanent DST" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4 3" dot={{ r: 3, fill: '#f59e0b' }} activeDot={{ r: 5, fill: '#f59e0b' }} />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+
+      {!loading && maxShiftRow && (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="bg-white/3 rounded-xl p-3 border border-white/5">
+            <p className="text-white/30 text-xs mb-1">Biggest clock shift</p>
+            <p className="text-white text-sm font-mono">{maxShiftRow.month}: {minsToTimeStr(maxShiftRow.current)} → {minsToTimeStr(maxShiftRow.permanent)}</p>
+            <p className="text-white/30 text-xs mt-1">{zdef?.label} would read {maxShiftRow.permanent - maxShiftRow.current} minutes later on the clock</p>
+          </div>
+          <div className="bg-white/3 rounded-xl p-3 border border-white/5">
+            <p className="text-white/30 text-xs mb-1">Months affected</p>
+            <p className="text-white text-sm font-mono">{shifted.length ? shifted.map(d => d.month).join(', ') : 'None'}</p>
+            <p className="text-white/30 text-xs mt-1">{shifted.length ? "Today's standard-time months" : 'This location is on DST year-round already'}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-5 pt-5 border-t border-white/5 space-y-2.5">
+        <p className="text-white/40 text-xs uppercase tracking-widest mb-1">What this would mean for davening</p>
+        <p className="text-white/50 text-xs leading-relaxed">
+          <span className="text-white/70">Winter mornings:</span> alot hashachar, misheyakir, netz, and the
+          latest times for Shema and Tefila would all read an hour later on the clock — vatikin minyanim
+          and school start times built around sunrise would shift later too.
+        </p>
+        <p className="text-white/50 text-xs leading-relaxed">
+          <span className="text-white/70">Winter evenings:</span> shkiah, tzeit, and candle lighting would
+          also read an hour later — softening the very early Erev Shabbat start times some communities see
+          today in December, but pushing Mincha/Maariv later into the evening commute.
+        </p>
+        <p className="text-white/50 text-xs leading-relaxed">
+          <span className="text-white/70">The catch:</span> on the western edge of some time zones (e.g.
+          parts of Michigan and Indiana), sunrise under permanent DST wouldn't arrive until roughly 8:30–9am
+          in mid-winter — the concern Sen. Cotton has cited in blocking a Senate vote.
+        </p>
+      </div>
+
+      <p className="text-white/15 text-xs text-center mt-4">
+        Modeled from {location.tzid}'s current DST calendar vs. a year-round-DST clock · actual solar times
+        are unaffected — only what the clock calls them
+      </p>
+    </div>
+  );
+}
+
 // ── Main Export ───────────────────────────────────────────────────────────────
 
-type ExplorTab = 'year' | 'compare' | 'daylight' | 'map' | 'wheel' | 'heatmap' | 'shaot' | 'timeline' | 'drift' | 'multi' | 'latitude';
+type ExplorTab = 'year' | 'compare' | 'daylight' | 'map' | 'wheel' | 'heatmap' | 'shaot' | 'timeline' | 'drift' | 'multi' | 'latitude' | 'dstbill';
 
 const TABS: { id: ExplorTab; label: string; desc: string }[] = [
   { id: 'year',     label: 'Year',       desc: 'Zman across 12 months, drill into days' },
   { id: 'multi',    label: 'Overlay',    desc: 'Multiple zmanim on one chart' },
   { id: 'compare',  label: 'Cities',     desc: 'Compare cities side by side' },
   { id: 'daylight', label: 'Daylight',   desc: 'Daylight hours throughout the year' },
+  { id: 'dstbill',  label: 'DST Bill',   desc: 'How the Sunshine Protection Act would shift zmanim' },
   { id: 'timeline', label: 'Timeline',   desc: 'Halachic day segments stacked' },
   { id: 'drift',    label: 'Drift',      desc: 'How fast each zman shifts day to day' },
   { id: 'shaot',    label: 'Shaot',      desc: 'Halachic hour length across the year' },
@@ -1618,6 +1753,7 @@ export default function ZmanimExplore({
         {tab === 'multi'    && <MultiZmanView location={location} />}
         {tab === 'compare'  && <CityCompare currentLocation={location} />}
         {tab === 'daylight' && <DaylightView location={location} />}
+        {tab === 'dstbill'  && <DstBillView location={location} />}
         {tab === 'timeline' && <DayTimelineView location={location} />}
         {tab === 'drift'    && <ZmanDriftView location={location} />}
         {tab === 'shaot'    && <ShaotZmaniotView location={location} />}
