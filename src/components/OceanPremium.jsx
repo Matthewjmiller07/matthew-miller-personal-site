@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 
-const GOOGLE_MAPS_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY) || "AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg";
+const GOOGLE_MAPS_API_KEY = import.meta.env.PUBLIC_OCEAN_PREMIUM_API_KEY;
 
 const loadGoogleMapsScript = (apiKey) => {
   return new Promise((resolve, reject) => {
