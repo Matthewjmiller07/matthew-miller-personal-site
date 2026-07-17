@@ -1513,7 +1513,19 @@ export default function ZmanimExplore({
   allLocations?: LocationInfo[];
   onLocationChange?: (loc: LocationInfo) => void;
 }) {
-  const [tab, setTab] = useState<ExplorTab>('year');
+  const [tab, setTab] = useState<ExplorTab>(() => {
+    if (typeof window === 'undefined') return 'year';
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return TABS.some(x => x.id === t) ? (t as ExplorTab) : 'year';
+  });
+
+  // Sync tab → URL so the current tab is shareable (e.g. ?view=explore&tab=dstbill)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const p = new URLSearchParams(window.location.search);
+    if (tab === 'year') p.delete('tab'); else p.set('tab', tab);
+    window.history.replaceState(null, '', `${window.location.pathname}?${p.toString()}`);
+  }, [tab]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<LocationInfo[]>([]);
   const [searching, setSearching] = useState(false);

@@ -517,7 +517,11 @@ export default function ZmanimApp() {
     p.set('tzid',  location.tzid);
     p.set('label', location.label);
     if (selectedDate) p.set('date', selectedDate);
-    if (view !== 'clock') p.set('view', view);
+    if (view !== 'clock') {
+      p.set('view', view);
+      const curTab = new URLSearchParams(window.location.search).get('tab');
+      if (curTab) p.set('tab', curTab);
+    }
     const newUrl = `${window.location.pathname}?${p.toString()}`;
     window.history.replaceState(null, '', newUrl);
   }, [location, selectedDate, view]);
