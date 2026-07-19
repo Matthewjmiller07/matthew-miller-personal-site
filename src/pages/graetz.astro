@@ -1,0 +1,129 @@
+---
+import Layout from '../layouts/Layout.astro';
+import data from '../data/graetz-emendations.json';
+
+const pageTitle = 'Graetz on Psalms';
+const pageDescription = "Every textual emendation in Heinrich Graetz's Kritischer Commentar zu den Psalmen (1882–83), searchable and linked to the original scans and Sefaria.";
+
+const { entries, progress } = data;
+
+const kindLabels = {
+  'emendation': 'Emendation',
+  'vocalization': 'Revocalization',
+  'deletion': 'Deletion',
+  'addition': 'Addition',
+  'transposition': 'Transposition',
+  'verse-division': 'Verse division',
+  'corruption-noted': 'Corruption noted',
+};
+const kindCounts = {};
+for (const e of entries) kindCounts[e.kind] = (kindCounts[e.kind] || 0) + 1;
+const kinds = Object.keys(kindLabels).filter(k => kindCounts[k]);
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+  <main class="max-w-5xl mx-auto px-4 py-10">
+    <header class="mb-8">
+      <h1 class="text-3xl md:text-4xl font-bold mb-3">Graetz on Psalms: The Emendations</h1>
+      <p class="text-lg opacity-80 max-w-3xl">
+        Heinrich Graetz's <em>Kritischer Commentar zu den Psalmen</em> (Breslau, 1882–83)
+        proposed hundreds of changes to the Masoretic text of Psalms. This project extracts
+        every one of them — each conjecture, revocalization, deletion, and transposition —
+        from the original German volumes, with his reasoning summarized in English and
+        links to the exact page of the
+        <a href="https://sammlungen.ub.uni-frankfurt.de/freimann" class="underline hover:no-underline" target="_blank" rel="noopener">Frankfurt Freimann-Sammlung scans</a>
+        and to each verse on Sefaria.
+      </p>
+      <p class="mt-3 text-sm opacity-70">
+        Work in progress: <strong>{progress.entries}</strong> entries covering Psalms 1–{progress.last_psalm}
+        (of 150), last updated {data.generated}.
+      </p>
+    </header>
+
+    <section class="mb-6 flex flex-wrap gap-2 text-sm">
+      {kinds.map(k => (
+        <button class="kind-chip px-3 py-1 rounded-full border border-current/30 opacity-80 hover:opacity-100 transition" data-kind={k}>
+          {kindLabels[k]} <span class="opacity-60">{kindCounts[k]}</span>
+        </button>
+      ))}
+    </section>
+
+    <section class="mb-8 grid gap-3 md:grid-cols-3">
+      <input id="q" type="search" placeholder="Search Hebrew or English…"
+        class="md:col-span-2 px-4 py-2 rounded-lg border border-current/20 bg-transparent" />
+      <input id="psalm" type="number" min="1" max="150" placeholder="Psalm #"
+        class="px-4 py-2 rounded-lg border border-current/20 bg-transparent" />
+    </section>
+
+    <p id="count" class="text-sm opacity-60 mb-4"></p>
+    <div id="list" class="space-y-4"></div>
+
+    <footer class="mt-12 text-sm opacity-60 border-t border-current/10 pt-6">
+      <p>Source: {data.source}. Scans: {data.scan}. Verse numbers follow the MT (Sefaria);
+      where Graetz's printed verse label differs it is noted. Extraction and English summaries
+      are machine-assisted and being verified — corrections welcome.</p>
+    </footer>
+  </main>
+
+  <script define:vars={{ entries, kindLabels }}>
+    const $q = document.getElementById('q');
+    const $psalm = document.getElementById('psalm');
+    const $list = document.getElementById('list');
+    const $count = document.getElementById('count');
+    const chips = [...document.querySelectorAll('.kind-chip')];
+    let activeKinds = new Set();
+
+    const kindColors = {
+      'emendation': '#e05c5c', 'vocalization': '#d99c2b', 'deletion': '#9c6ade',
+      'addition': '#38a169', 'transposition': '#3182ce', 'verse-division': '#319795',
+      'corruption-noted': '#718096',
+    };
+
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    }
+
+    function render() {
+      const q = $q.value.trim().toLowerCase();
+      const ps = parseInt($psalm.value, 10);
+      const filtered = entries.filter(e => {
+        if (activeKinds.size && !activeKinds.has(e.kind)) return false;
+        if (!isNaN(ps) && e.psalm !== ps) return false;
+        if (q && !((e.mt || '') + ' ' + (e.emendation || '') + ' ' + (e.note || '')).toLowerCase().includes(q)) return false;
+        return true;
+      });
+      $count.textContent = `${filtered.length} of ${entries.length} entries`;
+      const shown = filtered.slice(0, 300);
+      $list.innerHTML = shown.map(e => {
+        const c = kindColors[e.kind] || '#888';
+        const sefaria = `https://www.sefaria.org/Psalms.${e.psalm}.${e.verse}?lang=bi`;
+        return `<article class="rounded-xl border border-current/10 p-4 md:p-5">
+          <div class="flex flex-wrap items-center gap-2 mb-2 text-sm">
+            <a href="${sefaria}" target="_blank" rel="noopener" class="font-semibold text-base hover:underline">Ps ${e.psalm}:${e.verse}</a>
+            ${e.graetz_verse ? `<span class="opacity-50">(Graetz: ${esc(e.graetz_verse)})</span>` : ''}
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium" style="background:${c}22;color:${c}">${kindLabels[e.kind] || e.kind}</span>
+            ${e.certainty === 'tentative' ? '<span class="px-2 py-0.5 rounded-full text-xs border border-current/20 opacity-70">tentative</span>' : ''}
+          </div>
+          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2" dir="rtl" style="font-size:1.15rem">
+            <span class="opacity-70">${esc(e.mt)}</span>
+            ${e.emendation ? `<span aria-hidden="true" class="opacity-40" dir="ltr">→</span><span class="font-semibold">${esc(e.emendation)}</span>` : ''}
+          </div>
+          <p class="text-sm opacity-80 leading-relaxed">${esc(e.note)}</p>
+          <div class="mt-2 text-xs opacity-60">
+            <a href="${e.scan_url}" target="_blank" rel="noopener" class="hover:underline">Scan: vol. ${e.volume}, p. ${e.printed_page}</a>
+          </div>
+        </article>`;
+      }).join('') + (filtered.length > 300 ? `<p class="text-sm opacity-60">…and ${filtered.length - 300} more — narrow the filters.</p>` : '');
+    }
+
+    chips.forEach(ch => ch.addEventListener('click', () => {
+      const k = ch.dataset.kind;
+      if (activeKinds.has(k)) { activeKinds.delete(k); ch.style.background = ''; ch.style.opacity = ''; }
+      else { activeKinds.add(k); ch.style.background = (kindColors[k] || '#888') + '33'; ch.style.opacity = '1'; }
+      render();
+    }));
+    $q.addEventListener('input', render);
+    $psalm.addEventListener('input', render);
+    render();
+  </script>
+</Layout>
