@@ -1,0 +1,650 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Sealed Dockets — Daf Yomi Game: Chullin 78"
+  description="Chullin 78 opens perek Oto v'et Beno with a twelve-case verdict table. The verdicts survived; the case files didn't. Read the stamps, hear the witnesses, and set the four dials to reconstruct what happened at the courtyard gate."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700;900&display=swap"
+  />
+
+  <main class="min-h-screen bg-[#0e0b07] !text-[#e9e2d2]">
+    <!-- ============ Hero ============ -->
+    <div class="border-b border-[#3a2d1a] bg-gradient-to-b from-[#241a0c]/70 to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs uppercase tracking-[0.3em] !text-[#b08a3e]">
+        <a href="/daf" class="hover:!text-[#d9a441]">daf yomi arcade</a> · chullin 78 · 2026-07-17
+      </p>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl">🐄 The Sealed Dockets</h1>
+      <p class="frank mt-1 text-2xl !text-[#d9a441]" dir="rtl" lang="he">אוֹתוֹ וְאֶת בְּנוֹ</p>
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed !text-[#a89b83]">
+        <span class="frank !text-[#c9b891]" dir="rtl" lang="he">הֲדַרַן עֲלָךְ בְּהֵמָה הַמְקַשָּׁה</span> —
+        a new perek opens today, and it opens with a <em>table</em>: twelve cases of an animal and its
+        offspring slaughtered on one day — non-sacred or consecrated, outside the Temple courtyard or
+        within it — each closed with the same drumbeat:
+        <span class="frank !text-[#d9a441]" dir="rtl" lang="he">וְהַשֵּׁנִי סוֹפֵג אֶת הָאַרְבָּעִים</span>,
+        <em>the second absorbs the forty</em>.
+        <strong class="!text-[#e9e2d2]">The clerk's verdict stamps survived. The case files did not.</strong>
+        You are handed seven sealed dockets: read the stamps, hear the witnesses, and set the four
+        dials until your reconstruction matches the record.
+      </p>
+    </div>
+
+    <div class="mx-auto max-w-2xl px-4 pb-16 pt-8">
+      <!-- ============ Progress ============ -->
+      <div class="mb-6 flex items-center justify-between gap-4">
+        <div id="badges" class="flex flex-wrap gap-2" aria-label="Progress: seven dockets"></div>
+        <div class="shrink-0 text-right text-xs">
+          <span id="tally" class="!text-[#8a7f6d]">🔏 0 sealed on the first stamp</span>
+        </div>
+      </div>
+
+      <div id="game-area">
+        <!-- ============ The record ============ -->
+        <div class="mb-5 rounded-2xl border border-[#3a2d1a] bg-[#171208] p-5">
+          <div class="flex items-baseline justify-between gap-3">
+            <span id="docket-kicker" class="font-mono text-[11px] font-bold uppercase tracking-[0.2em] !text-[#b08a3e]"></span>
+            <span class="frank text-lg !text-[#c9b891]" dir="rtl" lang="he">מִשְׁנָה · חוּלִּין עח</span>
+          </div>
+          <h2 class="frank mt-1 text-2xl font-bold !text-[#e9e2d2]">The record of verdicts</h2>
+          <p class="mt-2 text-sm leading-relaxed !text-[#a89b83]">
+            Two animals — a mother and her offspring — were slaughtered on one day. Only these stamps remain:
+          </p>
+
+          <div id="record" class="mt-4 grid grid-cols-2 gap-3"></div>
+
+          <div id="testimony" class="mt-3 space-y-2"></div>
+        </div>
+
+        <!-- ============ The gate scene ============ -->
+        <div class="scene-frame rounded-2xl p-3 sm:p-4">
+          <div id="scene"></div>
+          <p class="mt-2 text-center text-[11px] !text-[#6e6250]">
+            Your reconstruction, live — flip the dials and the animals move.
+          </p>
+        </div>
+
+        <!-- ============ The dials ============ -->
+        <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2" id="dials"></div>
+
+        <p id="off-ledger" class="mt-3 hidden rounded-xl border border-[#5c3a2e] bg-[#2a1712] p-3 text-sm !text-[#d9917f]">
+          <span class="frank" dir="rtl" lang="he">אֵין תִּיק כָּזֶה.</span>
+          The Mishna's ledger holds exactly twelve dockets — and in none of them do the two animals
+          differ in kind <em>and</em> in place. One of those dials is wrong.
+        </p>
+
+        <div class="mt-4">
+          <button id="btn-submit" class="w-full rounded-xl bg-[#d9a441] px-5 py-3 text-sm font-bold !text-[#171208] transition-colors hover:bg-[#e8b95c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8b95c]">
+            Stamp the reconstruction
+          </button>
+        </div>
+
+        <!-- ============ Mismatch ============ -->
+        <div id="mismatch" class="mt-4 hidden rounded-2xl border border-[#5c3a2e] bg-[#2a1712]/70 p-5">
+          <p class="text-[11px] font-bold uppercase tracking-[0.2em] !text-[#d9917f]">the archive disagrees</p>
+          <p class="mt-2 text-sm leading-relaxed !text-[#c9b891]">
+            The docket you reconstructed exists — <span id="mm-name" class="frank !text-[#e9e2d2]" dir="rtl" lang="he"></span> —
+            but its verdicts read differently:
+          </p>
+          <div id="mm-record" class="mt-3 grid grid-cols-2 gap-3"></div>
+          <p class="mt-3 text-xs !text-[#a89b83]">Compare the stamps and try again.</p>
+        </div>
+
+        <!-- ============ Reveal ============ -->
+        <div id="reveal" class="mt-4 hidden rounded-2xl border border-[#6b5426] bg-[#241a0c]/60 p-5">
+          <p class="text-[11px] font-bold uppercase tracking-[0.2em] !text-[#d9a441]">the docket, unsealed</p>
+          <p id="reveal-he" class="frank mt-2 text-xl leading-snug !text-[#e9e2d2]" dir="rtl" lang="he"></p>
+          <p id="reveal-why" class="mt-3 text-sm leading-relaxed !text-[#c9b891]"></p>
+          <a id="reveal-src" href="#" target="_blank" rel="noopener" class="mt-2 inline-block text-xs !text-[#b08a3e] hover:!text-[#d9a441] hover:underline"></a>
+          <div class="mt-4">
+            <button id="btn-next" class="rounded-xl bg-[#d9a441] px-5 py-2.5 text-sm font-bold !text-[#171208] transition-colors hover:bg-[#e8b95c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8b95c]"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ Coda: amud b ============ -->
+      <div id="coda" class="hidden rounded-2xl border border-[#3a2d1a] bg-[#171208] p-6 text-center">
+        <p class="frank text-3xl font-black !text-[#d9a441]" dir="rtl" lang="he">וְהָאָב?</p>
+        <p class="mt-3 text-left text-sm leading-relaxed !text-[#a89b83]">
+          One question no docket in the ledger answers: every case says
+          <span class="frank !text-[#c9b891]" dir="rtl" lang="he">אוֹתוֹ וְאֶת בְּנוֹ</span> —
+          but is the <em>father</em> ever in the dock? On the daf's second side, Ḥananya says the
+          prohibition binds males and females alike; the Rabbis say females only — learning it from
+          the mother bird on the nest, and from the word itself:
+          <span class="frank !text-[#e9e2d2]" dir="rtl" lang="he">״בְּנוֹ״ – מִי שֶׁבְּנוֹ כָּרוּךְ אַחֲרָיו</span>
+          — <em>"its offspring": the one whose young clings to it</em> — excluding the male, whose
+          young does not cling to him (Chullin 78b).
+        </p>
+        <div class="mt-4">
+          <button id="btn-end" class="rounded-xl bg-[#d9a441] px-5 py-2.5 text-sm font-bold !text-[#171208] transition-colors hover:bg-[#e8b95c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8b95c]">Close the archive →</button>
+        </div>
+      </div>
+
+      <!-- ============ End screen ============ -->
+      <div id="end-screen" class="hidden">
+        <div class="rounded-2xl border border-[#6b5426] bg-gradient-to-b from-[#241a0c]/80 to-[#171208] p-8 text-center">
+          <p class="text-[11px] font-bold uppercase tracking-[0.2em] !text-[#d9a441]">the clerk's assessment</p>
+          <div id="final-score" class="frank mt-2 text-6xl font-black !text-[#e9e2d2]"></div>
+          <p class="text-xs uppercase tracking-widest !text-[#8a7f6d]">dockets sealed on the first stamp</p>
+          <div id="final-grade" class="frank mt-3 text-2xl font-bold !text-[#d9a441]" dir="rtl" lang="he"></div>
+          <p id="final-line" class="mx-auto mt-2 max-w-md text-sm !text-[#a89b83]"></p>
+        </div>
+        <div class="mt-5 flex flex-wrap justify-center gap-3">
+          <button id="btn-replay" class="rounded-xl border border-[#4a3a22] px-5 py-2.5 text-sm font-bold !text-[#e9e2d2] transition-colors hover:border-[#b08a3e] hover:!text-[#d9a441]">↻ Reopen the archive</button>
+          <button id="btn-share" class="rounded-xl bg-[#d9a441] px-5 py-2.5 text-sm font-bold !text-[#171208] transition-colors hover:bg-[#e8b95c]">Share score</button>
+        </div>
+
+        <!-- Full ledger -->
+        <div class="mt-10">
+          <h3 class="frank mb-1 text-xl font-bold !text-[#d9a441]">The full ledger — all twelve dockets</h3>
+          <p class="mb-3 text-xs !text-[#8a7f6d]">You reopened seven. Here is the Mishna's complete table; every row links to its line.</p>
+          <div class="overflow-x-auto rounded-xl border border-[#3a2d1a]">
+            <table class="w-full min-w-[560px] text-left text-xs">
+              <thead>
+                <tr class="border-b border-[#3a2d1a] bg-[#171208] uppercase tracking-wider !text-[#8a7f6d]">
+                  <th class="p-2.5">First animal</th>
+                  <th class="p-2.5">Second animal</th>
+                  <th class="p-2.5">First: verdict</th>
+                  <th class="p-2.5">Second: verdict</th>
+                  <th class="p-2.5">Line</th>
+                </tr>
+              </thead>
+              <tbody id="ledger-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ Learn the real daf ============ -->
+      <div class="mt-14 border-t border-[#3a2d1a] pt-8">
+        <h3 class="frank mb-3 text-xl font-bold !text-[#d9a441]">Learn the real daf</h3>
+        <p class="text-sm leading-relaxed !text-[#a89b83]">
+          Every stamp above is straight from the Mishna on Chullin 78a, which opens the fifth perek,
+          <em>Oto v'et Beno</em>: the prohibition of slaughtering an animal and its offspring in one day
+          (Leviticus 22:28) applies in the Land and outside it, with and without a Temple, to non-sacred
+          and consecrated animals — and then the Mishna works the permutations, docket by docket.
+          Before the perek even begins, the daf finishes the previous chapter with a lovely detour:
+          why may one paint a fruit-shedding tree with red paint, when marking trees was an Amorite
+          practice? So that passersby will see it and pray for it — just as the metzora cries
+          <span class="frank !text-[#c9b891]" dir="rtl" lang="he">״טָמֵא טָמֵא״</span> so the masses
+          will seek mercy on his behalf (78a:1–3). The Gemara then digs under the Mishna's table:
+          how do we know the prohibition covers consecrated animals at all, why the offspring of
+          diverse kinds is included from the word
+          <span class="frank !text-[#c9b891]" dir="rtl" lang="he">״אוֹ״</span>, and — Ḥananya against
+          the Rabbis — whether fathers are bound by it, or only mothers, like the mother bird on the nest.
+        </p>
+        <div class="mt-4 flex flex-wrap gap-2 text-xs">
+          <a href="https://www.sefaria.org/Chullin.78a" target="_blank" rel="noopener" class="rounded-full border border-[#6b5426] bg-[#241a0c]/60 px-3 py-1.5 !text-[#d9a441] hover:border-[#b08a3e]">Chullin 78 on Sefaria ↗</a>
+          <span class="rounded-full border border-[#3a2d1a] px-3 py-1.5 !text-[#a89b83]">Rashi ×57</span>
+          <span class="rounded-full border border-[#3a2d1a] px-3 py-1.5 !text-[#a89b83]">Steinsaltz ×30</span>
+          <span class="rounded-full border border-[#3a2d1a] px-3 py-1.5 !text-[#a89b83]">Rabbeinu Gershom ×14</span>
+          <span class="rounded-full border border-[#3a2d1a] px-3 py-1.5 !text-[#a89b83]">Tosafot ×11</span>
+        </div>
+        <p class="mt-6 text-xs !text-[#6e6250]">
+          Part of the <a href="/daf" class="underline decoration-[#4a3a22] hover:!text-[#a89b83]">Daf Yomi Arcade</a> —
+          a new game from every daf. Texts and links via the Sefaria API.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <style is:global>
+    .frank {
+      font-family: 'Frank Ruhl Libre', Georgia, 'Times New Roman', serif;
+    }
+    .scene-frame {
+      background: linear-gradient(170deg, #191309, #110d06 70%);
+      border: 1px solid #3a2d1a;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.04),
+        0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    #scene svg { display: block; width: 100%; height: auto; }
+
+    /* --- verdict stamps --- */
+    .stampcard {
+      border: 1px solid #33281a;
+      border-radius: 0.9rem;
+      background: #1a140d;
+      padding: 0.7rem 0.8rem;
+    }
+    .stamp {
+      display: inline-block;
+      border: 2px solid currentColor;
+      border-radius: 7px;
+      padding: 1px 9px;
+      font-family: 'Frank Ruhl Libre', Georgia, serif;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      transform: rotate(-3.5deg);
+      opacity: 0.92;
+      margin: 2px 3px 2px 0;
+      white-space: nowrap;
+    }
+    .stamp:nth-child(even) { transform: rotate(2.5deg); }
+    .st-green { color: #a8bf8a; }
+    .st-red { color: #cf6152; }
+    .st-gold { color: #d9a441; }
+    .st-gray { color: #8a7f6d; }
+    .stamp-in { animation: stamp-in 0.3s cubic-bezier(0.2, 1.6, 0.4, 1); }
+    @keyframes stamp-in {
+      0% { transform: scale(1.8) rotate(-3.5deg); opacity: 0; }
+      100% { transform: scale(1) rotate(-3.5deg); opacity: 0.92; }
+    }
+
+    /* --- dials --- */
+    .dial-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #8a7f6d;
+    }
+    .seg {
+      display: flex;
+      border: 1px solid #4a3a22;
+      border-radius: 0.8rem;
+      overflow: hidden;
+      background: #171208;
+    }
+    .seg button {
+      flex: 1;
+      padding: 0.6rem 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #8a7f6d;
+      transition: background-color 0.15s, color 0.15s;
+    }
+    .seg button:hover { color: #c9b891; }
+    .seg button:focus-visible { outline: 2px solid #d9a441; outline-offset: -2px; }
+    .seg button[aria-pressed='true'] {
+      background: #d9a441;
+      color: #171208;
+    }
+    .seg button[aria-pressed='true'] .seg-he { color: #171208; }
+    .seg-he { font-family: 'Frank Ruhl Libre', serif; font-size: 0.9rem; color: #b08a3e; }
+    .seg button:disabled { cursor: default; opacity: 0.75; }
+
+    .shake { animation: shake 0.35s ease-out; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      55% { transform: translateX(4px); }
+      80% { transform: translateX(-2px); }
+    }
+
+    .tok { transition: transform 0.55s ease; }
+
+    .witness {
+      border: 1px dashed #6b5426;
+      border-radius: 0.7rem;
+      background: rgba(217, 164, 65, 0.05);
+      padding: 0.55rem 0.75rem;
+      font-size: 0.8rem;
+      color: #c9b891;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .shake { animation: none; }
+      .stamp-in { animation: none; }
+      .tok { transition: none; }
+    }
+  </style>
+
+  <script>
+    const SEFARIA = 'https://www.sefaria.org/';
+
+    // ---------- The Mishna's twelve dockets (Chullin 78a:6–14) ----------
+    // t = kind (H non-sacred / K consecrated), l = place (out / in the courtyard).
+    // fit1/fit2: kasher or pasul; karet1: first slaughterer liable to karet (always with lashes).
+    // The second slaughterer absorbs the forty in every docket.
+    const CASES = [
+      { id: 'C1', t1: 'H', l1: 'out', t2: 'H', l2: 'out', fit1: true, karet1: false, fit2: true, ref: 'Chullin 78a:6',
+        he: 'חוּלִּין בַּחוּץ – שְׁנֵיהֶם כְּשֵׁרִים, וְהַשֵּׁנִי סוֹפֵג אֶת הָאַרְבָּעִים',
+        why: 'Non-sacred animals slaughtered outside the courtyard is exactly how meat is meant to be made — both are kosher to eat. The only law broken is the day itself: the second knife fell on “it and its offspring in one day” (Leviticus 22:28), so the second slaughterer absorbs the forty.' },
+      { id: 'C2', t1: 'K', l1: 'out', t2: 'K', l2: 'out', fit1: false, karet1: true, fit2: false, ref: 'Chullin 78a:7',
+        he: 'קָדָשִׁים בַּחוּץ – הָרִאשׁוֹן חַיָּיב כָּרֵת, וּשְׁנֵיהֶם פְּסוּלִים, וּשְׁנֵיהֶם סוֹפְגִים אֶת הָאַרְבָּעִים',
+        why: 'A consecrated animal slaughtered outside the courtyard: the first slaughterer is liable to karet and lashes, and the animal is disqualified. The second carries no karet — as the offspring of the day it was unfit for the altar anyway — but it too is disqualified, and its slaughterer absorbs the forty.' },
+      { id: 'C3', t1: 'H', l1: 'in', t2: 'H', l2: 'in', fit1: false, karet1: false, fit2: false, ref: 'Chullin 78a:8',
+        he: 'חוּלִּין בִּפְנִים – שְׁנֵיהֶם פְּסוּלִין, וְהַשֵּׁנִי סוֹפֵג אֶת הָאַרְבָּעִים',
+        why: 'Non-sacred animals slaughtered inside the courtyard are invalid — both pasul. No lashes attach to the first; the second’s slaughterer absorbs the forty for the offspring of the day.' },
+      { id: 'C4', t1: 'K', l1: 'in', t2: 'K', l2: 'in', fit1: true, karet1: false, fit2: false, ref: 'Chullin 78a:8',
+        he: 'קָדָשִׁים בִּפְנִים – הָרִאשׁוֹן כָּשֵׁר וּפָטוּר, וְהַשֵּׁנִי סוֹפֵג אֶת הָאַרְבָּעִים וּפָסוּל',
+        why: 'Consecrated animals in their proper place: the first is a valid offering and its slaughterer exempt. The second would have been valid on any other day — but as the offspring of the day it is barred from the altar: pasul, and forty lashes.' },
+      { id: 'C5', t1: 'H', l1: 'out', t2: 'K', l2: 'out', fit1: true, karet1: false, fit2: false, ref: 'Chullin 78a:9',
+        he: 'חוּלִּין וְקָדָשִׁים בַּחוּץ – הָרִאשׁוֹן כָּשֵׁר וּפָטוּר, וְהַשֵּׁנִי סוֹפֵג אֶת הָאַרְבָּעִים וּפָסוּל',
+        why: 'The first, non-sacred and outside, is ordinary kosher slaughter. The consecrated second, outside the courtyard, is disqualified — and its slaughterer absorbs the forty for the offspring of the day.' },
+      { id: 'C6', t1: 'K', l1: 'out', t2: 'H', l2: 'out', fit1: false, karet1: true, fit2: true, ref: 'Chullin 78a:10',
+        he: 'קָדָשִׁים וְחוּלִּין בַּחוּץ – הָרִאשׁוֹן חַיָּיב כָּרֵת וּפָסוּל, וְהַשֵּׁנִי כָּשֵׁר, וּשְׁנֵיהֶם סוֹפְגִים אֶת הָאַרְבָּעִים',
+        why: 'The first was consecrated and slaughtered outside the courtyard: karet, lashes, and the animal is disqualified. The second, non-sacred and outside, is perfectly kosher meat — but its slaughterer too absorbs the forty, for the offspring of the day.' },
+      { id: 'C7', t1: 'H', l1: 'in', t2: 'K', l2: 'in', fit1: false, karet1: false, fit2: false, ref: 'Chullin 78a:11',
+        he: 'חוּלִּין וְקָדָשִׁים בִּפְנִים – שְׁנֵיהֶם פְּסוּלִין, וְהַשֵּׁנִי סוֹפֵג אֶת הָאַרְבָּעִים',
+        why: 'Non-sacred slaughtered inside is invalid, and the consecrated second cannot be offered — an animal whose mother was slaughtered today is barred from the altar. Both pasul; the second’s slaughterer absorbs the forty.' },
+      { id: 'C8', t1: 'K', l1: 'in', t2: 'H', l2: 'in', fit1: true, karet1: false, fit2: false, ref: 'Chullin 78a:11',
+        he: 'קָדָשִׁים וְחוּלִּין בִּפְנִים – הָרִאשׁוֹן כָּשֵׁר וּפָטוּר, וְהַשֵּׁנִי סוֹפֵג אֶת הָאַרְבָּעִים וּפָסוּל',
+        why: 'The first was a consecrated animal offered in its place: valid, and its slaughterer exempt. The second was non-sacred inside the courtyard — invalid — and its slaughterer absorbs the forty.' },
+      { id: 'C9', t1: 'H', l1: 'out', t2: 'H', l2: 'in', fit1: true, karet1: false, fit2: false, ref: 'Chullin 78a:12',
+        he: 'חוּלִּין בַּחוּץ וּבִפְנִים – הָרִאשׁוֹן כָּשֵׁר וּפָטוּר, וְהַשֵּׁנִי סוֹפֵג אֶת הָאַרְבָּעִים וּפָסוּל',
+        why: 'The first is ordinary kosher slaughter outside. The second was non-sacred slaughtered inside the courtyard — invalid — and its slaughterer absorbs the forty for the offspring of the day.' },
+      { id: 'C10', t1: 'K', l1: 'out', t2: 'K', l2: 'in', fit1: false, karet1: true, fit2: false, ref: 'Chullin 78a:13',
+        he: 'קָדָשִׁים בַּחוּץ וּבִפְנִים – הָרִאשׁוֹן חַיָּיב כָּרֵת, וּשְׁנֵיהֶם סוֹפְגִים אֶת הָאַרְבָּעִים, וּשְׁנֵיהֶם פְּסוּלִים',
+        why: 'The first: a consecrated animal outside the courtyard — karet, lashes, disqualified. The second, slaughtered inside, would have been a valid offering on any other day — but as the offspring of the day it is barred from the altar: pasul, and forty lashes.' },
+      { id: 'C11', t1: 'H', l1: 'in', t2: 'H', l2: 'out', fit1: false, karet1: false, fit2: true, ref: 'Chullin 78a:14',
+        he: 'חוּלִּין בִּפְנִים וּבַחוּץ – הָרִאשׁוֹן פָּסוּל וּפָטוּר, וְהַשֵּׁנִי סוֹפֵג אֶת הָאַרְבָּעִים וְכָשֵׁר',
+        why: 'The first, non-sacred slaughtered inside the courtyard, is invalid — though no lashes attach. The second, outside, is perfectly kosher meat — but it is the second of the day, so its slaughterer absorbs the forty.' },
+      { id: 'C12', t1: 'K', l1: 'in', t2: 'K', l2: 'out', fit1: true, karet1: false, fit2: false, ref: 'Chullin 78a:14',
+        he: 'קָדָשִׁים בִּפְנִים וּבַחוּץ – הָרִאשׁוֹן כָּשֵׁר וּפָטוּר, וְהַשֵּׁנִי סוֹפֵג אֶת הָאַרְבָּעִים וּפָסוּל',
+        why: 'The first was offered inside: a valid offering, no penalty. The second was consecrated but slaughtered outside — yet no karet: as the offspring of the day “its requisite time has not yet arrived,” and karet for outside slaughter applies only to what the altar could accept. Pasul, and forty lashes.' },
+    ];
+
+    // ---------- Seven dockets to reopen ----------
+    // Each target is uniquely determined by its verdict record plus the testimony shown.
+    const ROUNDS = [
+      { target: 'C1', witnesses: [] },
+      { target: 'C11', witnesses: [] },
+      { target: 'C6', witnesses: [] },
+      { target: 'C7', witnesses: ['“The second animal had been consecrated as an offering.”'] },
+      { target: 'C10', witnesses: ['“The gatekeepers swear the second animal never left the courtyard.”'] },
+      { target: 'C9', witnesses: ['“Neither animal was ever consecrated.”'] },
+      { target: 'C12', witnesses: ['“Both animals had been consecrated.”', '“The second was slaughtered beyond the gate.”'] },
+    ];
+    const HEB_NUM = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז'];
+
+    const byId = (id) => CASES.find((c) => c.id === id);
+    const $ = (id) => document.getElementById(id);
+
+    // ---------- State ----------
+    let round = 0;
+    let attempts = 0;
+    let seals = []; // true = sealed on first stamp
+    let solved = false;
+    let dial = { t1: 'H', l1: 'out', t2: 'H', l2: 'out' };
+
+    // ---------- Rendering: stamps ----------
+    function stamp(text, tone, animate) {
+      return `<span class="stamp st-${tone}${animate ? ' stamp-in' : ''}">${text}</span>`;
+    }
+    function recordHtml(c, animate) {
+      const a1status = c.fit1 ? stamp('כָּשֵׁר', 'green', animate) : stamp('פָּסוּל', 'red', animate);
+      const a1pun = c.karet1
+        ? stamp('כָּרֵת', 'red', animate) + stamp('סוֹפֵג 40', 'gold', animate)
+        : stamp('פָּטוּר', 'gray', animate);
+      const a2status = c.fit2 ? stamp('כָּשֵׁר', 'green', animate) : stamp('פָּסוּל', 'red', animate);
+      const a2pun = stamp('סוֹפֵג 40', 'gold', animate);
+      return `
+        <div class="stampcard">
+          <p class="text-[10px] font-bold uppercase tracking-[0.18em] !text-[#8a7f6d]">First animal · הָרִאשׁוֹן</p>
+          <div class="mt-1.5" dir="rtl">${a1status}</div>
+          <p class="mt-2 text-[10px] uppercase tracking-[0.18em] !text-[#6e6250]">its slaughterer</p>
+          <div class="mt-1" dir="rtl">${a1pun}</div>
+        </div>
+        <div class="stampcard">
+          <p class="text-[10px] font-bold uppercase tracking-[0.18em] !text-[#8a7f6d]">Second animal · הַשֵּׁנִי</p>
+          <div class="mt-1.5" dir="rtl">${a2status}</div>
+          <p class="mt-2 text-[10px] uppercase tracking-[0.18em] !text-[#6e6250]">its slaughterer</p>
+          <div class="mt-1" dir="rtl">${a2pun}</div>
+        </div>`;
+    }
+
+    // ---------- Rendering: the gate scene ----------
+    function tokenSvg(n) {
+      const shade = n === 1 ? '#cbbfa8' : '#a89b83';
+      return `<g class="tok" id="tok${n}" aria-hidden="true">
+        <line x1="-8" y1="8" x2="-8" y2="18" stroke="${shade}" stroke-width="2.5"/>
+        <line x1="-2" y1="8" x2="-2" y2="18" stroke="${shade}" stroke-width="2.5"/>
+        <line x1="6" y1="8" x2="6" y2="18" stroke="${shade}" stroke-width="2.5"/>
+        <line x1="11" y1="8" x2="11" y2="18" stroke="${shade}" stroke-width="2.5"/>
+        <ellipse cx="1" cy="2" rx="15" ry="9.5" fill="${shade}"/>
+        <circle cx="15" cy="-5" r="5.5" fill="${shade}"/>
+        <path d="M 18.5 -9.5 l 3 -3.5" stroke="${shade}" stroke-width="2" stroke-linecap="round"/>
+        <path d="M -14 -1 q -4 -2 -3 3" stroke="${shade}" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <rect id="collar${n}" x="9" y="-3" width="4.5" height="9" rx="2" fill="#cf6152" opacity="0"/>
+        <circle cx="-1" cy="-16" r="7.5" fill="#0e0b07" stroke="#d9a441" stroke-width="1.6"/>
+        <text x="-1" y="-12.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#d9a441" font-family="system-ui">${n}</text>
+      </g>`;
+    }
+    function sceneSvg() {
+      return `<svg viewBox="0 0 340 168" aria-hidden="true" role="img">
+        <!-- outside: night field -->
+        <rect x="0" y="0" width="196" height="168" fill="#12100c"/>
+        <circle cx="30" cy="26" r="1.1" fill="#c9b891" opacity="0.7"/>
+        <circle cx="74" cy="14" r="0.9" fill="#c9b891" opacity="0.5"/>
+        <circle cx="128" cy="30" r="1" fill="#c9b891" opacity="0.6"/>
+        <circle cx="160" cy="12" r="0.8" fill="#c9b891" opacity="0.45"/>
+        <rect x="0" y="140" width="196" height="28" fill="#1a1710"/>
+        <path d="M 28 140 q 2 -22 6 -30 q 4 8 6 30" fill="#241f14"/>
+        <path d="M 34 112 q -12 -6 -10 -18 q 12 2 12 12 q 2 -12 12 -12 q 2 14 -12 18" fill="#2c2718"/>
+        <!-- courtyard wall + gate -->
+        <rect x="196" y="18" width="12" height="150" fill="#3a2d1a"/>
+        <rect x="196" y="18" width="12" height="10" fill="#4a3a22"/>
+        <path d="M 196 84 h 12 v 56 h -12 z" fill="#241a0c"/>
+        <path d="M 196 84 q 6 -12 12 0" fill="#241a0c"/>
+        <!-- inside: courtyard -->
+        <rect x="208" y="0" width="132" height="168" fill="#191309"/>
+        <rect x="208" y="140" width="132" height="28" fill="#2b2110"/>
+        <!-- altar -->
+        <g>
+          <rect x="288" y="96" width="42" height="14" fill="#4a3a22"/>
+          <rect x="292" y="82" width="34" height="14" fill="#5c4826"/>
+          <rect x="296" y="68" width="26" height="14" fill="#6b5426"/>
+          <rect x="294" y="62" width="5" height="7" fill="#6b5426"/>
+          <rect x="319" y="62" width="5" height="7" fill="#6b5426"/>
+          <path d="M 306 62 q -5 -8 1 -14 q 1 6 5 8 q 3 -4 2 -8 q 7 7 -1 14 z" fill="#d9a441" opacity="0.85"/>
+          <rect x="288" y="110" width="42" height="30" fill="#3a2d1a"/>
+        </g>
+        <text x="98" y="158" text-anchor="middle" font-size="9" fill="#8a7f6d" font-family="system-ui" letter-spacing="2">OUTSIDE · בחוץ</text>
+        <text x="272" y="158" text-anchor="middle" font-size="9" fill="#b08a3e" font-family="system-ui" letter-spacing="2">THE COURTYARD · בפנים</text>
+        ${tokenSvg(1)}
+        ${tokenSvg(2)}
+      </svg>`;
+    }
+    function updateScene() {
+      const slots = { out: [64, 132], in: [232, 268] };
+      const y = 118;
+      const sameZone = dial.l1 === dial.l2;
+      const x1 = sameZone ? slots[dial.l1][0] : (dial.l1 === 'out' ? 98 : 250);
+      const x2 = sameZone ? slots[dial.l2][1] : (dial.l2 === 'out' ? 98 : 250);
+      $('tok1').setAttribute('transform', `translate(${x1},${y})`);
+      $('tok2').setAttribute('transform', `translate(${x2},${y})`);
+      $('collar1').setAttribute('opacity', dial.t1 === 'K' ? '1' : '0');
+      $('collar2').setAttribute('opacity', dial.t2 === 'K' ? '1' : '0');
+    }
+
+    // ---------- Rendering: dials ----------
+    const DIALS = [
+      { key: 't1', label: 'First animal', opts: [ { v: 'H', en: 'Non-sacred', he: 'חוּלִּין' }, { v: 'K', en: 'Consecrated', he: 'קָדָשִׁים' } ] },
+      { key: 'l1', label: 'First slaughtered', opts: [ { v: 'out', en: 'Outside', he: 'בַּחוּץ' }, { v: 'in', en: 'Inside', he: 'בִּפְנִים' } ] },
+      { key: 't2', label: 'Second animal', opts: [ { v: 'H', en: 'Non-sacred', he: 'חוּלִּין' }, { v: 'K', en: 'Consecrated', he: 'קָדָשִׁים' } ] },
+      { key: 'l2', label: 'Second slaughtered', opts: [ { v: 'out', en: 'Outside', he: 'בַּחוּץ' }, { v: 'in', en: 'Inside', he: 'בִּפְנִים' } ] },
+    ];
+    function renderDials() {
+      $('dials').innerHTML = DIALS.map((d) => `
+        <div>
+          <p class="dial-label mb-1.5">${d.label}</p>
+          <div class="seg" role="group" aria-label="${d.label}">
+            ${d.opts.map((o) => `
+              <button type="button" data-key="${d.key}" data-val="${o.v}" aria-pressed="${dial[d.key] === o.v}">
+                ${o.en} <span class="seg-he" dir="rtl" lang="he">${o.he}</span>
+              </button>`).join('')}
+          </div>
+        </div>`).join('');
+      $('dials').querySelectorAll('button').forEach((b) => {
+        b.addEventListener('click', () => {
+          if (solved) return;
+          dial[b.dataset.key] = b.dataset.val;
+          $('dials').querySelectorAll(`button[data-key="${b.dataset.key}"]`)
+            .forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+          $('off-ledger').classList.add('hidden');
+          $('mismatch').classList.add('hidden');
+          updateScene();
+        });
+      });
+    }
+
+    // ---------- Progress ----------
+    function renderBadges() {
+      $('badges').innerHTML = ROUNDS.map((r, i) => {
+        let cls = 'border-[#3a2d1a] !text-[#6e6250]';
+        let mark = HEB_NUM[i];
+        if (i < seals.length) {
+          cls = seals[i]
+            ? 'border-[#d9a441] bg-[#d9a441] !text-[#171208]'
+            : 'border-[#6b5426] bg-[#241a0c] !text-[#b08a3e]';
+        } else if (i === round && !$('end-screen').classList.contains('flex')) {
+          cls = 'border-[#d9a441] !text-[#d9a441]';
+        }
+        return `<span class="frank flex h-7 w-7 items-center justify-center rounded-full border text-sm font-bold ${cls}">${mark}</span>`;
+      }).join('');
+      const n = seals.filter(Boolean).length;
+      $('tally').textContent = `🔏 ${n} sealed on the first stamp`;
+    }
+
+    // ---------- Round flow ----------
+    function startRound() {
+      const r = ROUNDS[round];
+      const t = byId(r.target);
+      attempts = 0;
+      solved = false;
+      dial = { t1: 'H', l1: 'out', t2: 'H', l2: 'out' };
+      $('docket-kicker').textContent = `Docket ${round + 1} of ${ROUNDS.length}`;
+      $('record').innerHTML = recordHtml(t, false);
+      $('testimony').innerHTML = r.witnesses.map((w) => `
+        <p class="witness"><span class="frank font-bold !text-[#d9a441]" dir="rtl" lang="he">עֵדוּת</span> · ${w}</p>`).join('')
+        + (r.witnesses.length === 0
+          ? '<p class="text-xs !text-[#6e6250]">No witnesses came forward. The stamps alone must tell you what happened.</p>'
+          : '');
+      $('reveal').classList.add('hidden');
+      $('mismatch').classList.add('hidden');
+      $('off-ledger').classList.add('hidden');
+      $('btn-submit').disabled = false;
+      $('btn-submit').classList.remove('opacity-50');
+      renderDials();
+      updateScene();
+      renderBadges();
+    }
+
+    function submit() {
+      if (solved) return;
+      const found = CASES.find((c) => c.t1 === dial.t1 && c.l1 === dial.l1 && c.t2 === dial.t2 && c.l2 === dial.l2);
+      const r = ROUNDS[round];
+      if (!found) {
+        // mixed kind + mixed place: the Mishna records no such docket — not counted as an attempt
+        const el = $('off-ledger');
+        el.classList.remove('hidden');
+        el.classList.remove('shake');
+        void el.offsetWidth;
+        el.classList.add('shake');
+        return;
+      }
+      if (found.id === r.target) {
+        solved = true;
+        seals.push(attempts === 0);
+        const t = byId(r.target);
+        $('record').innerHTML = recordHtml(t, true);
+        $('reveal-he').textContent = t.he;
+        $('reveal-why').textContent = t.why;
+        $('reveal-src').textContent = t.ref + ' ↗';
+        $('reveal-src').href = SEFARIA + t.ref.replace(/ /g, '.').replace('.78a:', '.78a.').replace('.78b:', '.78b.');
+        $('btn-next').textContent = round + 1 < ROUNDS.length ? 'Next docket →' : 'To the last question →';
+        $('mismatch').classList.add('hidden');
+        $('off-ledger').classList.add('hidden');
+        $('reveal').classList.remove('hidden');
+        $('btn-submit').disabled = true;
+        $('btn-submit').classList.add('opacity-50');
+        renderBadges();
+        $('reveal').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        attempts++;
+        $('mm-name').textContent = found.he.split('–')[0].trim();
+        $('mm-record').innerHTML = recordHtml(found, true);
+        const el = $('mismatch');
+        el.classList.remove('hidden');
+        el.classList.remove('shake');
+        void el.offsetWidth;
+        el.classList.add('shake');
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    function next() {
+      round++;
+      if (round < ROUNDS.length) {
+        startRound();
+        $('game-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        $('game-area').classList.add('hidden');
+        $('coda').classList.remove('hidden');
+        renderBadges();
+        $('coda').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    // ---------- End ----------
+    const GRADES = [
+      { min: 7, he: 'רֹאשׁ הַסּוֹפְרִים', line: 'Chief of the court scribes. Seven dockets, seven first stamps — the Mishna’s whole table lives in your hands.' },
+      { min: 5, he: 'סוֹפֵר מֻמְחֶה', line: 'An expert clerk. A stray stamp or two, but the archive is in good order.' },
+      { min: 3, he: 'תַּלְמִיד סוֹפֵר', line: 'A scribe’s apprentice. The gate and the collar still blur sometimes — walk the ledger below.' },
+      { min: 0, he: 'סוֹפֵג אֶת הָאַרְבָּעִים', line: 'You absorb the forty — metaphorically. Read the full ledger below and reopen the archive.' },
+    ];
+    function endGame() {
+      $('coda').classList.add('hidden');
+      $('end-screen').classList.remove('hidden');
+      const n = seals.filter(Boolean).length;
+      $('final-score').textContent = `${n}/${ROUNDS.length}`;
+      const g = GRADES.find((x) => n >= x.min);
+      $('final-grade').textContent = g.he;
+      $('final-line').textContent = g.line;
+      $('ledger-body').innerHTML = CASES.map((c) => {
+        const kind = (t) => t === 'H' ? 'non-sacred' : 'consecrated';
+        const place = (l) => l === 'out' ? 'outside' : 'inside';
+        const v1 = (c.fit1 ? 'kasher' : 'pasul') + (c.karet1 ? ' · karet + 40' : ' · exempt');
+        const v2 = (c.fit2 ? 'kasher' : 'pasul') + ' · absorbs 40';
+        const url = SEFARIA + c.ref.replace(/ /g, '.').replace('.78a:', '.78a.');
+        return `<tr class="border-b border-[#33281a] last:border-0">
+          <td class="p-2.5 !text-[#c9b891]">${kind(c.t1)}, ${place(c.l1)}</td>
+          <td class="p-2.5 !text-[#c9b891]">${kind(c.t2)}, ${place(c.l2)}</td>
+          <td class="p-2.5 ${c.fit1 ? '!text-[#a8bf8a]' : '!text-[#cf6152]'}">${v1}</td>
+          <td class="p-2.5 ${c.fit2 ? '!text-[#a8bf8a]' : '!text-[#cf6152]'}">${v2}</td>
+          <td class="p-2.5"><a href="${url}" target="_blank" rel="noopener" class="!text-[#b08a3e] hover:!text-[#d9a441] hover:underline">${c.ref.replace('Chullin ', '')}</a></td>
+        </tr>`;
+      }).join('');
+      renderBadges();
+      $('end-screen').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function share() {
+      const n = seals.filter(Boolean).length;
+      const row = seals.map((s) => (s ? '🔏' : '📎')).join('');
+      const text = `The Sealed Dockets — Chullin 78 (Daf Yomi Arcade)\n${row} ${n}/${ROUNDS.length} sealed on the first stamp\n${location.origin}/daf/chullin-78`;
+      if (navigator.share) {
+        navigator.share({ text }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(text).then(() => {
+          $('btn-share').textContent = 'Copied!';
+          setTimeout(() => ($('btn-share').textContent = 'Share score'), 1500);
+        });
+      }
+    }
+
+    function replay() {
+      round = 0;
+      seals = [];
+      $('end-screen').classList.add('hidden');
+      $('game-area').classList.remove('hidden');
+      startRound();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ---------- Boot ----------
+    $('scene').innerHTML = sceneSvg();
+    $('btn-submit').addEventListener('click', submit);
+    $('btn-next').addEventListener('click', next);
+    $('btn-end').addEventListener('click', endGame);
+    $('btn-share').addEventListener('click', share);
+    $('btn-replay').addEventListener('click', replay);
+    startRound();
+  </script>
+</Layout>
