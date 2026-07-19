@@ -1,0 +1,796 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Five-Year Lamb — Daf Yomi Game: Chullin 74"
+  description="Chullin 74 is the biography of the ben pekuah — the lamb found alive inside its slaughtered mother. Shepherd it from the womb to five years plowing the field: at every waypoint, is it one animal, or part of another?"
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700;900&display=swap"
+  />
+
+  <main class="min-h-screen bg-[#0a100b] !text-stone-100">
+    <!-- ============ Hero ============ -->
+    <div class="border-b border-lime-900/30 bg-gradient-to-b from-lime-950/30 to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs uppercase tracking-[0.3em] !text-lime-500/80">
+        <a href="/daf" class="hover:!text-lime-300">daf yomi arcade</a> · chullin 74 · 2026-07-13
+      </p>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl">🐑 The Five-Year Lamb</h1>
+      <p class="frank mt-1 text-2xl !text-lime-200/90" dir="rtl" lang="he">אֲפִילּוּ בֶּן חָמֵשׁ שָׁנִים וְחוֹרֵשׁ בַּשָּׂדֶה</p>
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed !text-stone-400">
+        You slaughtered a ewe and found a lamb inside her — alive, full-term, blinking at you.
+        The Talmud calls it a <em class="!text-stone-300">ben pekuah</em>, and Chullin 74 is its biography.
+        Rabbi Shimon Shezuri says its mother's slaughter covers it
+        <strong class="!text-stone-200">even when it is five years old and plowing the field</strong>.
+        But is it one animal, or part of another? Shepherd it down the trail —
+        every waypoint is a real question from this daf.
+      </p>
+    </div>
+
+    <div class="mx-auto max-w-2xl px-4 pb-16 pt-8">
+      <!-- ============ The trail (signature) ============ -->
+      <div id="trail-scroll" class="overflow-x-auto pb-1" aria-label="The lamb's trail: nine waypoints from the womb to the field">
+        <div class="min-w-[560px]">
+          <svg id="trail" viewBox="0 0 640 132" class="w-full" role="img" aria-hidden="true">
+            <path id="trail-base" d="M 26 92 C 80 30 140 26 200 58 C 254 87 300 104 356 78 C 412 52 448 24 502 44 C 556 64 590 80 614 86" fill="none" stroke="#28401f" stroke-width="3" stroke-dasharray="1 9" stroke-linecap="round"/>
+            <path id="trail-prog" d="M 26 92 C 80 30 140 26 200 58 C 254 87 300 104 356 78 C 412 52 448 24 502 44 C 556 64 590 80 614 86" fill="none" stroke="#a3e635" stroke-width="3" stroke-linecap="round"/>
+            <g id="trail-nodes"></g>
+            <g id="lamb-g"><text id="lamb" font-size="26" text-anchor="middle" dominant-baseline="middle">🐑</text></g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- ============ Tally ============ -->
+      <div class="mb-6 mt-2 flex items-center justify-between gap-4">
+        <span id="station-label" class="text-xs font-bold uppercase tracking-[0.2em] !text-lime-500/90"></span>
+        <span id="tally-label" class="shrink-0 text-xs !text-stone-500">🐾 0 clean hoofprints</span>
+      </div>
+
+      <div id="game-area">
+        <!-- ============ Station card ============ -->
+        <div class="mb-4 rounded-2xl border border-lime-900/40 bg-[#121a11] p-5">
+          <div class="flex items-baseline justify-between gap-3">
+            <h2 id="st-title" class="frank text-2xl font-bold !text-stone-100"></h2>
+            <span id="st-he" class="frank shrink text-lg leading-snug !text-lime-200/80" dir="rtl" lang="he"></span>
+          </div>
+          <p id="st-scene" class="mt-3 text-sm leading-relaxed !text-stone-300"></p>
+          <p id="st-ask" class="mt-3 text-sm font-bold leading-relaxed !text-amber-200"></p>
+        </div>
+
+        <!-- ============ Interaction area ============ -->
+        <div id="pair-area" class="hidden">
+          <p class="mb-2 text-[11px] uppercase tracking-[0.2em] !text-stone-500">tap a voice, then tap its ruling</p>
+          <div id="pair-sages" class="mb-3 flex flex-wrap gap-2" role="group" aria-label="Voices"></div>
+          <div id="pair-holdings" class="space-y-3" role="group" aria-label="Rulings"></div>
+        </div>
+        <div id="choice-area" class="hidden space-y-3" role="group" aria-label="Choices"></div>
+
+        <!-- ============ Reveal ============ -->
+        <div id="reveal" class="mt-4 hidden rounded-2xl border border-lime-800/40 bg-lime-950/20 p-5">
+          <p class="text-[11px] font-bold uppercase tracking-[0.2em] !text-lime-400">as the daf has it</p>
+          <p class="mt-2 text-sm leading-relaxed !text-stone-200"><span id="rv-who" class="font-bold !text-lime-300"></span> <span id="rv-text"></span></p>
+          <p id="rv-he" class="frank mt-2 text-lg leading-snug !text-stone-300" dir="rtl" lang="he"></p>
+          <a id="rv-src" href="#" target="_blank" rel="noopener" class="mt-2 inline-block text-xs !text-lime-400 hover:!text-lime-300 hover:underline"></a>
+          <div class="mt-4">
+            <button id="btn-next" class="rounded-xl bg-lime-500 px-5 py-2.5 text-sm font-bold !text-lime-950 transition-colors hover:bg-lime-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-300"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ End screen ============ -->
+      <div id="end-screen" class="hidden rounded-2xl border border-lime-800/50 bg-[#121a11] p-6 text-center">
+        <p class="frank text-3xl font-black !text-lime-300" dir="rtl" lang="he">שְׁחִיטַת אִמּוֹ מְטַהַרְתּוֹ</p>
+        <p class="mt-2 text-sm !text-stone-400">Its mother's slaughter purifies it — the sentence your lamb lived its whole life inside.</p>
+        <p id="end-prints" class="mt-4 text-2xl tracking-widest"></p>
+        <p id="end-score" class="frank mt-2 text-2xl font-bold !text-stone-100"></p>
+        <p id="end-grade" class="mx-auto mt-2 max-w-md text-sm !text-stone-400"></p>
+        <div class="mt-5 flex flex-wrap justify-center gap-3">
+          <button id="btn-replay" class="rounded-xl border border-lime-700 px-5 py-2.5 text-sm font-bold !text-lime-300 transition-colors hover:bg-lime-950/50">Walk the trail again</button>
+          <button id="btn-share" class="rounded-xl bg-lime-500 px-5 py-2.5 text-sm font-bold !text-lime-950 transition-colors hover:bg-lime-400">Share score</button>
+        </div>
+      </div>
+
+      <!-- ============ Learn the real daf ============ -->
+      <div class="mt-10 rounded-2xl border border-stone-800 bg-[#0e150f] p-6">
+        <h2 class="frank text-xl font-bold !text-stone-100">Learn the real daf</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-stone-400">
+          The trail walks the mishna of the ben pekuah (74a–b) and every sugya that grows out of it:
+          the hanging limb, Rav Hoshaya's hand in the womb, the blood, the fat and the sciatic nerve,
+          the firstborn donkey, the nut rattling in its shell, and the river before the cemetery.
+          It skips only Rav Ḥisda and Rabba's dispute about the limb of a dead fetus (74a:7)
+          and the eight-month-old's baraita (74a:8–10) — meet them inside.
+        </p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <a href="https://www.sefaria.org/Chullin.74a" target="_blank" rel="noopener" class="rounded-lg border border-lime-800/60 px-3 py-1.5 text-xs font-bold !text-lime-300 hover:bg-lime-950/40">Chullin 74a ↗</a>
+          <a href="https://www.sefaria.org/Chullin.74b" target="_blank" rel="noopener" class="rounded-lg border border-lime-800/60 px-3 py-1.5 text-xs font-bold !text-lime-300 hover:bg-lime-950/40">Chullin 74b ↗</a>
+        </div>
+        <p class="mt-4 text-[11px] font-bold uppercase tracking-[0.2em] !text-stone-500">who walks with you on this daf</p>
+        <ul class="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+          <li><a href="https://www.sefaria.org/Rashi_on_Chullin.74a.1.1" target="_blank" rel="noopener" class="!text-stone-300 hover:!text-lime-300 hover:underline">Rashi</a> <span class="!text-stone-500">— 65 comments on this daf</span></li>
+          <li><a href="https://www.sefaria.org/Rabbeinu_Gershom_on_Chullin.74a" target="_blank" rel="noopener" class="!text-stone-300 hover:!text-lime-300 hover:underline">Rabbeinu Gershom</a> <span class="!text-stone-500">— 28 comments</span></li>
+          <li><a href="https://www.sefaria.org/Tosafot_on_Chullin.74a" target="_blank" rel="noopener" class="!text-stone-300 hover:!text-lime-300 hover:underline">Tosafot</a> <span class="!text-stone-500">— 8 comments</span></li>
+          <li><a href="https://www.sefaria.org/Chiddushei_Ramban_on_Chullin" target="_blank" rel="noopener" class="!text-stone-300 hover:!text-lime-300 hover:underline">Chiddushei Ramban</a> <span class="!text-stone-500">— on the sugya</span></li>
+          <li><a href="https://www.sefaria.org/Chidushei_Chatam_Sofer_on_Chullin" target="_blank" rel="noopener" class="!text-stone-300 hover:!text-lime-300 hover:underline">Chatam Sofer</a> <span class="!text-stone-500">— on the sugya</span></li>
+          <li><a href="https://www.sefaria.org/Shulchan_Arukh,_Yoreh_De'ah.13" target="_blank" rel="noopener" class="!text-stone-300 hover:!text-lime-300 hover:underline">Shulchan Arukh YD 13</a> <span class="!text-stone-500">— the ben pekuah in practice</span></li>
+        </ul>
+      </div>
+
+      <p class="mt-6 text-center text-xs !text-stone-600">
+        <a href="/daf" class="hover:!text-lime-400 hover:underline">← back to the daf yomi arcade</a>
+      </p>
+    </div>
+  </main>
+
+  <style>
+    .frank {
+      font-family: 'Frank Ruhl Libre', Georgia, 'Times New Roman', serif;
+    }
+    #trail-prog {
+      transition: stroke-dashoffset 700ms ease;
+    }
+    #lamb-g {
+      transition: transform 700ms ease;
+      filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+    }
+    .wp-pulse {
+      animation: wp-pulse 2s ease-in-out infinite;
+    }
+    @keyframes wp-pulse {
+      0%, 100% { opacity: 0.9; }
+      50% { opacity: 0.25; }
+    }
+    .shake {
+      animation: shake 350ms ease;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #trail-prog, #lamb-g { transition: none; }
+      .wp-pulse, .shake { animation: none; }
+    }
+  </style>
+
+  <script>
+    // ============ The nine waypoints of the ben pekuah's life ============
+    // Every ruling, attribution and quote below is from Chullin 74 (Sefaria, William Davidson ed.)
+    const STATIONS = [
+      {
+        name: 'waypoint 1 · before the birth',
+        title: 'The Hanging Limb',
+        he: 'אֲכָלוֹ לָזֶה – לוֹקֶה?',
+        scene:
+          'The daf opens in the study hall, before your lamb is even born. Rav Yosef sits before Rav Huna and quotes Rav: one who ate a limb that hung loose from an animal when it died is flogged for eating a limb of a living animal. A sage cuts in: do not listen to him — Rav Yitzḥak bar Shmuel bar Marta says in Rav’s name that he is NOT flogged. Rav Huna asks: on whom shall we rely? Rav Yosef turns his face away in anger.',
+        ask: 'Both quotes are Rav. How does Rav Yosef make them both true?',
+        type: 'choice',
+        options: [
+          {
+            t: 'Death without slaughter renders the hanging limb as though it fell off while the animal lived — eating it earns lashes. Slaughter does not sever it that way — no lashes.',
+            correct: true,
+          },
+          {
+            t: 'One is flogged only if the limb was mostly severed; a limb hanging by a sliver never counts as a limb at all.',
+            correct: false,
+          },
+          {
+            t: 'He cannot — he dismisses the second version as a corrupted tradition and stands by his own.',
+            correct: false,
+          },
+        ],
+        reveal: {
+          who: 'Rav Yosef —',
+          text:
+            'there is no contradiction: "When I spoke, it was of death, which makes the limb as fallen; when he spoke, it was of slaughter, which does not." Rava then grounds the rule in Leviticus 11:32, "when they are dead": death makes falling, slaughter does not.',
+          he: 'מִיתָה עוֹשָׂה נִיפּוּל, שְׁחִיטָה אֵינָהּ עוֹשָׂה נִיפּוּל',
+          ref: 'Chullin 74a:2–4',
+          url: 'https://www.sefaria.org/Chullin.74a.2',
+        },
+      },
+      {
+        name: 'waypoint 2 · the discovery',
+        title: 'Alive Inside the Slaughtered',
+        he: 'מָצָא בֶּן תִּשְׁעָה חַי',
+        scene:
+          'Now the knife falls and the mishna begins your lamb’s story. You slaughter the ewe and find a nine-month fetus inside — alive. The house divides over what you are holding: a lamb, or a limb of its mother?',
+        ask: 'Match each voice of the mishna to its ruling.',
+        type: 'pair',
+        sages: [
+          { id: 'meir', n: 'Rabbi Meir' },
+          { id: 'chachamim', n: 'The Chachamim' },
+          { id: 'stam', n: 'The mishna, undisputed' },
+        ],
+        holdings: [
+          {
+            sage: 'meir',
+            t: 'A live nine-month fetus requires its own shechitah — and one who slaughters mother and offspring the same day is liable for oto ve’et beno.',
+          },
+          {
+            sage: 'chachamim',
+            t: 'Even a live nine-month fetus is part of its mother: her slaughter renders it permitted as it is.',
+          },
+          {
+            sage: 'stam',
+            t: 'An eight-month fetus, alive or dead, or a dead nine-month fetus: permitted by its mother’s slaughter — but tear it open and remove its blood.',
+          },
+        ],
+        reveal: {
+          who: 'The mishna (74a) —',
+          text:
+            'the whole daf hangs on this fork. For Rabbi Meir the ben pekuah is a full-fledged animal; for the Chachamim it is part of its mother, and "shechitat imo metahartó" — its mother’s slaughter purifies it.',
+          he: 'טָעוּן שְׁחִיטָה... דִּבְרֵי רַבִּי מֵאִיר. וַחֲכָמִים אוֹמְרִים: שְׁחִיטַת אִמּוֹ מְטַהַרְתּוֹ',
+          ref: 'Chullin 74a:16–17',
+          url: 'https://www.sefaria.org/Chullin.74a.16',
+        },
+      },
+      {
+        name: 'waypoint 3 · still in the womb',
+        title: 'The Hand in the Womb',
+        he: 'הוֹשִׁיט אֶת יָדוֹ לִמְעֵי בְּהֵמָה',
+        scene:
+          'Rewind a moment. Rav Hoshaya asks: what if one reached a hand into the womb and slaughtered the nine-month fetus while it was still inside its living mother — does that slaughter permit it? The dilemma runs on both opinions.',
+        ask: 'What daring possibility does the Gemara raise even for the Chachamim?',
+        type: 'choice',
+        options: [
+          {
+            t: 'Perhaps the Merciful One made FOUR simanim fit for slaughter in this animal — the mother’s windpipe and gullet and the fetus’s own — and cutting either pair permits the fetus.',
+            correct: true,
+          },
+          {
+            t: 'Perhaps the Chachamim require all four simanim — both the mother’s and the fetus’s — to be cut together in a single act.',
+            correct: false,
+          },
+          {
+            t: 'Perhaps in-womb slaughter helps to avert carcass impurity but never to permit eating.',
+            correct: false,
+          },
+        ],
+        reveal: {
+          who: 'Rav Hoshaya’s dilemma (74a) —',
+          text:
+            'it stands unresolved. Rav Ḥananya tries to settle it from the mishna about an animal that was "a tereifa from the womb"; Rava deflects: read that as formed tereifa from the outset — you find it in a fetus with five legs, which could never have been slaughtered fit.',
+          he: 'אַרְבָּעָה סִימָנִין אַכְשַׁר בֵּיהּ רַחֲמָנָא',
+          ref: 'Chullin 74a:11–15',
+          url: 'https://www.sefaria.org/Chullin.74a.11',
+        },
+      },
+      {
+        name: 'waypoint 4 · the kitchen',
+        title: 'The Blood',
+        he: 'קוֹרְעוֹ וּמוֹצִיא אֶת דָּמוֹ',
+        scene:
+          'Back to the mishna’s easy case: the fetus you found was dead, and its mother’s slaughter permits it. You carry it to the kitchen. Its flesh is permitted — its blood is another matter.',
+        ask: 'Before eating it, the mishna says you must —',
+        type: 'choice',
+        options: [
+          {
+            t: 'Tear it open and remove its blood: its blood counts as its mother’s blood, and that is forbidden.',
+            correct: true,
+          },
+          {
+            t: 'Nothing — its blood was permitted along with its flesh by the mother’s slaughter.',
+            correct: false,
+          },
+          {
+            t: 'Roast it whole over an open flame; the fire draws the blood, so no tearing is needed.',
+            correct: false,
+          },
+        ],
+        reveal: {
+          who: 'The mishna — and the amoraim (74b) —',
+          text:
+            'קורעו ומוציא את דמו, tear it and remove its blood. Over a LIVE ben pekuah’s blood the amoraim then split: Reish Lakish says whoever permits its fat permits its blood; Rabbi Yoḥanan says even the one who permits its fat forbids its blood — and Rabbi Zeira reframes their dispute as whether karet applies.',
+          he: 'לְדִבְרֵי הַמַּתִּיר בְּחֶלְבּוֹ – מַתִּיר בְּדָמוֹ... וְרַבִּי יוֹחָנָן אָמַר: אַף לְדִבְרֵי הַמַּתִּיר בְּחֶלְבּוֹ – אוֹסֵר בְּדָמוֹ',
+          ref: 'Chullin 74a:16; 74b:6–9',
+          url: 'https://www.sefaria.org/Chullin.74b.6',
+        },
+      },
+      {
+        name: 'waypoint 5 · the butcher’s table',
+        title: 'The Fat and the Nerve',
+        he: 'גִּיד הַנָּשֶׁה נוֹהֵג בַּשְּׁלִיל?',
+        scene:
+          'Your lamb, had it been an ordinary animal, would carry forbidden fat (cheilev) and a sciatic nerve (gid ha-nasheh) to be removed. But if it is only "meat of its mother," those prohibitions may never attach to it at all.',
+        ask: 'Match each voice to its ruling on the fetus.',
+        type: 'pair',
+        sages: [
+          { id: 'meir', n: 'Rabbi Meir' },
+          { id: 'yehuda', n: 'Rabbi Yehuda' },
+          { id: 'oshaya', n: 'R’ Elazar citing R’ Oshaya' },
+        ],
+        holdings: [
+          {
+            sage: 'meir',
+            t: 'The gid ha-nasheh applies to a fetus, and its cheilev is forbidden — it is an animal in full.',
+          },
+          {
+            sage: 'yehuda',
+            t: 'The gid ha-nasheh does not apply to a fetus, and its cheilev is permitted — it is part of its mother.',
+          },
+          {
+            sage: 'oshaya',
+            t: 'Their dispute is about a live nine-month fetus — each tanna walking his own line from the mishna.',
+          },
+        ],
+        reveal: {
+          who: 'The baraita (74b) —',
+          text:
+            'Rabbi Meir le-shitato, Rabbi Yehuda le-shitato: the fat dispute is the mishna’s dispute wearing an apron. The Gemara concludes the amoraim disagreed only about matters of eating — but for copulating with it or plowing with it beside another species, all agree it is a full animal.',
+          he: 'גִּיד הַנָּשֶׁה נוֹהֵג בַּשְּׁלִיל וְחֶלְבּוֹ אָסוּר... רַבִּי יְהוּדָה אוֹמֵר: אֵינוֹ נוֹהֵג בַּשְּׁלִיל וְחֶלְבּוֹ מוּתָּר',
+          ref: 'Chullin 74b:3–5',
+          url: 'https://www.sefaria.org/Chullin.74b.3',
+        },
+      },
+      {
+        name: 'waypoint 6 · the neighbor’s donkey',
+        title: 'The Donkey Ransom',
+        he: 'כְּבִשְׂרָא בְּדִיקּוּלָא?',
+        scene:
+          'Your neighbor’s donkey has foaled a firstborn, and the Torah says: redeem it with a seh, a lamb (Exodus 13:13). His eye falls on your ben pekuah — alive, healthy, running back and forth in the yard. According to the Chachamim, its mother’s slaughter already "slaughtered" it.',
+        ask: 'What is the argument that this running lamb CANNOT redeem the donkey?',
+        type: 'choice',
+        options: [
+          {
+            t: 'Halakhically it is like meat sitting in a pot — already slaughtered meat cannot be called a "seh."',
+            correct: true,
+          },
+          {
+            t: 'A redemption lamb must be male, unblemished, and in its first year, like the Pesach lamb — and this one is not.',
+            correct: false,
+          },
+          {
+            t: 'There is no such argument — all agree a ben pekuah redeems the donkey.',
+            correct: false,
+          },
+        ],
+        reveal: {
+          who: 'Mar Zutra vs. Rav Ashi (74b) —',
+          text:
+            'is it "meat in a pot," or — since it runs back and forth — do we call it a lamb? Mar Zutra: it cannot redeem; Rav Ashi: it can. Rav Ashi presses: your seh-seh analogy to Pesach would also demand male, unblemished, first-year — yet the mishna in Bekhorot permits female, blemished, and older lambs! Mar Zutra answers: "you shall redeem, you shall redeem" includes those; the analogy survives only to exclude the ben pekuah.',
+          he: 'כְּבִשְׂרָא בְּדִיקּוּלָא הוּא, אוֹ דִילְמָא כֵּיוָן דְּרָהֵיט וְאָזֵיל וְרָהֵיט וְאָתֵי – ״שֶׂה״ קָרֵינָא בֵּיהּ?',
+          ref: 'Chullin 74b:10–15',
+          url: 'https://www.sefaria.org/Chullin.74b.10',
+        },
+      },
+      {
+        name: 'waypoint 7 · a touch of impurity',
+        title: 'The Nut in its Shell',
+        he: 'כֶּאֱגוֹז הַמִּתְקַשְׁקֵשׁ בִּקְלִיפָּתוֹ',
+        scene:
+          'Before you ever lifted the lamb out, the slaughtered mother — fetus still inside — touched a primary source of ritual impurity. Impurity travels in numbered steps: the thing touched becomes first-degree, what touches IT becomes second-degree. So: what degree is the lamb?',
+        ask: 'Match each amora to his count.',
+        type: 'pair',
+        sages: [
+          { id: 'yochanan', n: 'Rabbi Yoḥanan' },
+          { id: 'reshlakish', n: 'Reish Lakish' },
+        ],
+        holdings: [
+          {
+            sage: 'yochanan',
+            t: 'Count them: the mother bears first-degree impurity, the fetus second-degree — they are two bodies.',
+          },
+          {
+            sage: 'reshlakish',
+            t: 'Do not count — the fetus is like a nut rattling in its shell: one body, and both bear first-degree impurity.',
+          },
+        ],
+        reveal: {
+          who: 'Reish Lakish’s image (74b) —',
+          text:
+            'the sharpest line of the daf: a nut rattles inside its shell, loose but one thing with it. Objections fly both ways — Reish Lakish from the extended foreleg, Rabbi Yoḥanan answering that the mother’s slaughter itself renders the fetus susceptible, as Rabbi Shimon holds that being permitted for eating suffices.',
+          he: 'נַעֲשָׂה כֶּאֱגוֹז הַמִּתְקַשְׁקֵשׁ בִּקְלִיפָּתוֹ',
+          ref: 'Chullin 74b:16–21',
+          url: 'https://www.sefaria.org/Chullin.74b.16',
+        },
+      },
+      {
+        name: 'waypoint 8 · the river crossing',
+        title: 'The River and the Cemetery',
+        he: 'עָבַר בְּנָהָר... הָלַךְ לְבֵית הַקְּבָרוֹת',
+        scene:
+          'Years pass and your ben pekuah grows. One day it fords the river, and on the far bank it wanders into the cemetery. The baraita rules: it crossed the river — it became susceptible; it walked into the graveyard — it became impure.',
+        ask: 'Why does the story need the river at all?',
+        type: 'choice',
+        options: [
+          {
+            t: 'River water renders it susceptible to impurity (hechsher); only then can the graveyard defile it. Rabbi Yoḥanan: proof it is its own body — were it one body with its mother, her blood would have made it susceptible long ago.',
+            correct: true,
+          },
+          {
+            t: 'The river washes impurity away, so the lamb entered the cemetery pure.',
+            correct: false,
+          },
+          {
+            t: 'The river is only travel scenery — the graveyard alone would have sufficed.',
+            correct: false,
+          },
+        ],
+        reveal: {
+          who: 'Rabbi Yoḥanan’s objection (74b) —',
+          text:
+            '"Granted, on my view they are two bodies — no river, no susceptibility. But on yours, that they are one body — it was already made susceptible by its mother’s blood!" The daf closes mid-volley, the nut still rattling.',
+          he: 'עָבַר בְּנָהָר – הוּכְשַׁר, הָלַךְ לְבֵית הַקְּבָרוֹת – נִטְמָא',
+          ref: 'Chullin 74b:22–23',
+          url: 'https://www.sefaria.org/Chullin.74b.22',
+        },
+      },
+      {
+        name: 'waypoint 9 · the field',
+        title: 'Five Years Plowing',
+        he: 'שְׁחִיטַת אִמּוֹ מְטַהַרְתּוֹ',
+        scene:
+          'Five years now. The ben pekuah is broad-backed and pulls your plow through the field like any beast of the farm. Erev chag, you decide the time has come to eat it.',
+        ask: 'According to Rabbi Shimon Shezuri, what must you do first?',
+        type: 'choice',
+        options: [
+          {
+            t: 'Nothing — even five years old and plowing the field, its mother’s slaughter purifies it still.',
+            correct: true,
+          },
+          {
+            t: 'Slaughter it now: once it has grown up and worked, it needs its own shechitah.',
+            correct: false,
+          },
+          {
+            t: 'It depends whether it plowed alone or yoked beside another animal.',
+            correct: false,
+          },
+        ],
+        reveal: {
+          who: 'Rabbi Shimon Shezuri (74b) —',
+          text:
+            'the slaughter never expires. Two edges, though: had the mother been TORN rather than slaughtered, all agree the fetus needs its own shechitah; and the leniency covers only eating — for breeding it, or plowing it beside another species, it is a full animal like any other.',
+          he: 'אֲפִילּוּ בֶּן חָמֵשׁ שָׁנִים וְחוֹרֵשׁ בַּשָּׂדֶה – שְׁחִיטַת אִמּוֹ מְטַהַרְתּוֹ',
+          ref: 'Chullin 74b:1',
+          url: 'https://www.sefaria.org/Chullin.74b.1',
+        },
+      },
+    ];
+
+    // ============ State ============
+    const N = STATIONS.length;
+    let idx = 0;
+    let firstTry = true;
+    const clean = new Array(N).fill(false);
+    const done = new Array(N).fill(false);
+    // pair state
+    let selSage = null;
+    let assign = {}; // holdingIdx -> sageId
+    let locked = new Set();
+
+    const $ = (id) => document.getElementById(id);
+
+    // ============ Trail ============
+    const basePath = $('trail-base');
+    const totalLen = basePath.getTotalLength();
+    const pts = [];
+    for (let i = 0; i < N; i++) {
+      const p = basePath.getPointAtLength((i / (N - 1)) * totalLen);
+      pts.push(p);
+    }
+    $('trail-prog').style.strokeDasharray = `${totalLen} ${totalLen}`;
+    $('trail-prog').style.strokeDashoffset = `${totalLen}`;
+
+    function buildTrail() {
+      const g = $('trail-nodes');
+      g.innerHTML = '';
+      const svgns = 'http://www.w3.org/2000/svg';
+      pts.forEach((p, i) => {
+        const ring = document.createElementNS(svgns, 'circle');
+        ring.setAttribute('cx', p.x);
+        ring.setAttribute('cy', p.y);
+        ring.setAttribute('r', 12);
+        ring.setAttribute('fill', 'none');
+        ring.setAttribute('stroke', '#fbbf24');
+        ring.setAttribute('stroke-width', 2);
+        ring.dataset.ring = i;
+        const c = document.createElementNS(svgns, 'circle');
+        c.setAttribute('cx', p.x);
+        c.setAttribute('cy', p.y);
+        c.setAttribute('r', 7);
+        c.dataset.node = i;
+        g.appendChild(ring);
+        g.appendChild(c);
+      });
+      const lab = (x, y, t, anchor) => {
+        const e = document.createElementNS(svgns, 'text');
+        e.setAttribute('x', x);
+        e.setAttribute('y', y);
+        e.setAttribute('font-size', 10);
+        e.setAttribute('fill', '#6b8f5e');
+        e.setAttribute('text-anchor', anchor);
+        e.textContent = t;
+        g.appendChild(e);
+      };
+      lab(pts[0].x, pts[0].y + 26, 'the womb', 'start');
+      lab(pts[N - 1].x, pts[N - 1].y + 26, 'the field', 'end');
+    }
+
+    function updateTrail() {
+      const progLen = (idx / (N - 1)) * totalLen;
+      $('trail-prog').style.strokeDashoffset = `${totalLen - progLen}`;
+      document.querySelectorAll('#trail-nodes circle[data-node]').forEach((c) => {
+        const i = Number(c.dataset.node);
+        c.setAttribute('fill', done[i] ? '#a3e635' : i === idx ? '#fbbf24' : '#16210f');
+        c.setAttribute('stroke', done[i] ? '#a3e635' : i === idx ? '#fbbf24' : '#3f6212');
+        c.setAttribute('stroke-width', 2);
+      });
+      document.querySelectorAll('#trail-nodes circle[data-ring]').forEach((c) => {
+        const i = Number(c.dataset.ring);
+        c.classList.toggle('wp-pulse', i === idx && !allDone());
+        c.setAttribute('opacity', i === idx && !allDone() ? '0.9' : '0');
+      });
+      const p = pts[Math.min(idx, N - 1)];
+      $('lamb-g').style.transform = `translate(${p.x}px, ${p.y - 20}px)`;
+      // keep the lamb in view on narrow screens
+      const sc = $('trail-scroll');
+      if (sc.scrollWidth > sc.clientWidth) {
+        const x = (p.x / 640) * sc.scrollWidth - sc.clientWidth / 2;
+        sc.scrollTo({ left: Math.max(0, x), behavior: 'smooth' });
+      }
+    }
+
+    function allDone() {
+      return done.every(Boolean);
+    }
+
+    // ============ Rendering a station ============
+    function renderStation() {
+      const s = STATIONS[idx];
+      firstTry = true;
+      selSage = null;
+      assign = {};
+      locked = new Set();
+      $('station-label').textContent = s.name;
+      $('st-title').textContent = s.title;
+      $('st-he').textContent = s.he;
+      $('st-scene').textContent = s.scene;
+      $('st-ask').textContent = s.ask;
+      $('reveal').classList.add('hidden');
+      $('choice-area').classList.toggle('hidden', s.type !== 'choice');
+      $('pair-area').classList.toggle('hidden', s.type !== 'pair');
+      if (s.type === 'choice') renderChoices();
+      else renderPairs();
+      updateTrail();
+      updateTally();
+    }
+
+    function renderChoices() {
+      const s = STATIONS[idx];
+      const area = $('choice-area');
+      area.innerHTML = '';
+      s.options.forEach((o, i) => {
+        const b = document.createElement('button');
+        b.className =
+          'block w-full rounded-xl border border-stone-700 bg-[#141c13] p-4 text-left text-sm leading-relaxed !text-stone-200 transition-colors hover:border-lime-600 hover:bg-lime-950/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-300';
+        b.innerHTML = `<span class="mr-2 inline-block rounded bg-stone-800 px-1.5 text-xs font-bold !text-stone-400">${i + 1}</span>${o.t}`;
+        b.addEventListener('click', () => pickChoice(i, b));
+        area.appendChild(b);
+      });
+    }
+
+    function pickChoice(i, btn) {
+      const s = STATIONS[idx];
+      if (!$('reveal').classList.contains('hidden')) return;
+      if (s.options[i].correct) {
+        btn.className = btn.className
+          .replace('border-stone-700', 'border-lime-500')
+          .replace('bg-[#141c13]', 'bg-lime-950/40');
+        $('choice-area')
+          .querySelectorAll('button')
+          .forEach((b) => (b.disabled = true));
+        finishStation();
+      } else {
+        firstTry = false;
+        btn.disabled = true;
+        btn.className = btn.className
+          .replace('border-stone-700', 'border-red-800')
+          .replace('!text-stone-200', '!text-stone-500');
+        btn.classList.add('shake');
+      }
+    }
+
+    function renderPairs() {
+      const s = STATIONS[idx];
+      const sg = $('pair-sages');
+      const hd = $('pair-holdings');
+      sg.innerHTML = '';
+      hd.innerHTML = '';
+      s.sages.forEach((sage) => {
+        const b = document.createElement('button');
+        b.dataset.sage = sage.id;
+        b.textContent = sage.n;
+        b.className = sageChipClass(sage.id);
+        b.addEventListener('click', () => {
+          if (lockedSage(sage.id)) return;
+          selSage = selSage === sage.id ? null : sage.id;
+          refreshPairUI();
+        });
+        sg.appendChild(b);
+      });
+      s.holdings.forEach((h, i) => {
+        const b = document.createElement('button');
+        b.dataset.holding = i;
+        b.className = holdingClass(i);
+        b.innerHTML = holdingHTML(i);
+        b.addEventListener('click', () => {
+          if (locked.has(i)) return;
+          if (selSage) {
+            for (const k of Object.keys(assign)) if (assign[k] === selSage) delete assign[k];
+            assign[i] = selSage;
+            selSage = null;
+            refreshPairUI();
+            maybeCheckPairs();
+          } else if (assign[i]) {
+            delete assign[i];
+            refreshPairUI();
+          }
+        });
+        hd.appendChild(b);
+      });
+    }
+
+    function lockedSage(id) {
+      const s = STATIONS[idx];
+      return [...locked].some((i) => s.holdings[i].sage === id);
+    }
+
+    function sageChipClass(id) {
+      const base =
+        'rounded-full border px-4 py-1.5 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-300 ';
+      if (lockedSage(id)) return base + 'border-lime-600 bg-lime-950/40 !text-lime-400 opacity-60';
+      if (selSage === id) return base + 'border-amber-400 bg-amber-950/40 !text-amber-300';
+      if (Object.values(assign).includes(id)) return base + 'border-stone-600 bg-stone-900 !text-stone-400';
+      return base + 'border-stone-600 bg-[#141c13] !text-stone-200 hover:border-lime-600';
+    }
+
+    function holdingClass(i) {
+      const base =
+        'block w-full rounded-xl border p-4 text-left text-sm leading-relaxed transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-300 ';
+      if (locked.has(i)) return base + 'border-lime-500 bg-lime-950/40 !text-stone-200';
+      if (assign[i]) return base + 'border-amber-500/70 bg-[#171f14] !text-stone-200';
+      return base + 'border-stone-700 bg-[#141c13] !text-stone-300 hover:border-lime-600';
+    }
+
+    function holdingHTML(i) {
+      const s = STATIONS[idx];
+      const sid = locked.has(i) ? s.holdings[i].sage : assign[i];
+      const sage = s.sages.find((x) => x.id === sid);
+      const tag = sage
+        ? `<span class="mb-1 inline-block rounded bg-stone-800 px-2 py-0.5 text-xs font-bold ${locked.has(i) ? '!text-lime-300' : '!text-amber-300'}">${sage.n}</span><br/>`
+        : `<span class="mb-1 inline-block rounded border border-dashed border-stone-600 px-2 py-0.5 text-xs !text-stone-500">who says this?</span><br/>`;
+      return tag + s.holdings[i].t;
+    }
+
+    function refreshPairUI() {
+      document.querySelectorAll('#pair-sages button').forEach((b) => {
+        b.className = sageChipClass(b.dataset.sage);
+      });
+      document.querySelectorAll('#pair-holdings button').forEach((b) => {
+        const i = Number(b.dataset.holding);
+        b.className = holdingClass(i);
+        b.innerHTML = holdingHTML(i);
+      });
+    }
+
+    function maybeCheckPairs() {
+      const s = STATIONS[idx];
+      const unlockedIdx = s.holdings.map((_, i) => i).filter((i) => !locked.has(i));
+      if (!unlockedIdx.every((i) => assign[i])) return;
+      let anyWrong = false;
+      unlockedIdx.forEach((i) => {
+        if (assign[i] === s.holdings[i].sage) {
+          locked.add(i);
+          delete assign[i];
+        } else {
+          anyWrong = true;
+        }
+      });
+      if (anyWrong) {
+        firstTry = false;
+        unlockedIdx.forEach((i) => {
+          if (!locked.has(i)) {
+            delete assign[i];
+            const el = document.querySelector(`#pair-holdings button[data-holding="${i}"]`);
+            if (el) el.classList.add('shake');
+            setTimeout(() => el && el.classList.remove('shake'), 400);
+          }
+        });
+      }
+      refreshPairUI();
+      if (locked.size === s.holdings.length) finishStation();
+    }
+
+    // ============ Reveal / advance ============
+    function finishStation() {
+      const s = STATIONS[idx];
+      done[idx] = true;
+      clean[idx] = firstTry;
+      $('rv-who').textContent = s.reveal.who;
+      $('rv-text').textContent = s.reveal.text;
+      $('rv-he').textContent = s.reveal.he;
+      $('rv-src').textContent = s.reveal.ref + ' ↗';
+      $('rv-src').href = s.reveal.url;
+      $('btn-next').textContent = idx === N - 1 ? 'Reach the field' : 'Walk on →';
+      $('reveal').classList.remove('hidden');
+      updateTrail();
+      updateTally();
+      $('reveal').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function next() {
+      if (idx < N - 1) {
+        idx++;
+        renderStation();
+      } else {
+        endGame();
+      }
+    }
+
+    function updateTally() {
+      const n = clean.filter(Boolean).length;
+      $('tally-label').textContent = `🐾 ${n} clean hoofprint${n === 1 ? '' : 's'}`;
+    }
+
+    function endGame() {
+      idx = N - 1;
+      updateTrail();
+      $('game-area').classList.add('hidden');
+      const n = clean.filter(Boolean).length;
+      $('end-prints').textContent = clean.map((c) => (c ? '🐾' : '▭')).join(' ');
+      $('end-score').textContent = `${n}/${N} clean hoofprints`;
+      $('end-grade').textContent =
+        n === N
+          ? 'A shepherd of the study hall. Rabbi Shimon Shezuri would trust you with his five-year lamb.'
+          : n >= 7
+            ? 'The lamb reached the field with its wool intact — retrace the stray hoofprints inside the daf.'
+            : n >= 4
+              ? 'The lamb made it, limping a little. Open the daf below, then walk the trail again.'
+              : 'A muddy trail. Learn the daf below — the lamb will wait for you at the womb.';
+      $('end-screen').classList.remove('hidden');
+      $('end-screen').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function replay() {
+      idx = 0;
+      clean.fill(false);
+      done.fill(false);
+      $('end-screen').classList.add('hidden');
+      $('game-area').classList.remove('hidden');
+      renderStation();
+    }
+
+    async function share() {
+      const n = clean.filter(Boolean).length;
+      const text = `The Five-Year Lamb (Daf Yomi · Chullin 74): ${n}/${N} clean hoofprints.\n${clean.map((c) => (c ? '🐾' : '▭')).join('')}\nשחיטת אמו מטהרתו\n`;
+      const url = location.href;
+      try {
+        if (navigator.share) await navigator.share({ title: 'The Five-Year Lamb', text, url });
+        else {
+          await navigator.clipboard.writeText(text + url);
+          $('btn-share').textContent = 'Copied!';
+          setTimeout(() => ($('btn-share').textContent = 'Share score'), 1500);
+        }
+      } catch {}
+    }
+
+    $('btn-next').addEventListener('click', next);
+    $('btn-replay').addEventListener('click', replay);
+    $('btn-share').addEventListener('click', share);
+    document.addEventListener('keydown', (e) => {
+      if (e.target.closest('input,textarea')) return;
+      if (!$('choice-area').classList.contains('hidden') && ['1', '2', '3'].includes(e.key)) {
+        const btns = $('choice-area').querySelectorAll('button');
+        const b = btns[Number(e.key) - 1];
+        if (b && !b.disabled) b.click();
+      }
+    });
+
+    buildTrail();
+    renderStation();
+  </script>
+</Layout>
