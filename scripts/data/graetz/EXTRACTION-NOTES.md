@@ -42,7 +42,9 @@ Skip: pure translation notes, grammar observations, parallels with no proposed c
 ## Resume state
 
 Batches `batches/batch-NNN.json` each carry `range.pdf_pages`; the highest range is the
-resume point. Extracted so far: vol 1 pdf 169–296 (Pss 1–36:7, batches 001–011).
+resume point. Extracted so far: vol 1 COMPLETE (Pss 1–60, batches 001–016, pdf 169–398).
+Next: vol 2 pdf 9 onward (Pss 61–150). After each batch run `node scripts/build-graetz.mjs`
+to refresh `src/data/graetz-emendations.json` (feeds /graetz), then commit + push.
 
 ## Pipeline (changed after batch-011)
 
