@@ -44,5 +44,7 @@ const out = {
   entries,
 };
 
-writeFileSync(join(root, 'src/data/graetz-emendations.json'), JSON.stringify(out, null, 1));
+const json = JSON.stringify(out, null, 1);
+writeFileSync(join(root, 'src/data/graetz-emendations.json'), json);
+writeFileSync(join(root, 'public/data/graetz-emendations.json'), json); // fetched by /mega-bible
 console.log(`${entries.length} entries, Pss ${Math.min(...psalms)}-${Math.max(...psalms)}, through vol ${maxPage.volume} pdf ${maxPage.pdf_page}`);

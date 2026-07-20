@@ -291,6 +291,17 @@ body:has(.mb-page) > footer { display:none!important; }
 .mb-page.no-pos-adverb .w.pos-adverb { border-bottom-color:transparent; }
 .mb-page.no-pos-proper .w.pos-proper-noun { background:none; }
 .mb-page.no-devices .w { --dev-color:transparent!important; }
+.graetz-badge {
+  font-family:var(--sc); font-size:.48rem; letter-spacing:.1em;
+  background:rgba(224,92,92,.12); border:1px solid rgba(224,92,92,.45);
+  color:#e08a8a; padding:.1rem .4rem; white-space:nowrap; cursor:pointer;
+}
+.graetz-badge:hover { background:rgba(224,92,92,.25); }
+.graetz-entry { grid-column:1/-1; border-top:1px solid var(--border); padding-top:.5rem; }
+.graetz-entry .g-heb { font-family:var(--heb); font-size:1.05rem; direction:rtl; text-align:right; margin-bottom:.2rem; }
+.graetz-entry .g-kind { font-family:var(--sc); font-size:.55rem; letter-spacing:.15em; color:#e08a8a; text-transform:uppercase; margin-right:.5rem; }
+.graetz-entry .g-note { font-family:var(--display); font-size:.78rem; color:var(--muted); line-height:1.55; }
+.graetz-entry a { color:var(--gold-dim); }
 .mb-page.no-haftarah .haftarah-badge { display:none; }
 .mb-page.no-haftarah .haftarah-section { display:none; }
 .mb-page.no-haftarah .haftarah-banner { display:none; }
@@ -853,6 +864,7 @@ let morphMap: Record<string,string> = {};
 let lemmaMap: Record<string,{word:string, definition:string}> = {};
 let haftarahData: any = null;
 let haftarahIdx = new Map<string, Array<{parsha:string, rite:string}>>();
+let graetzIdx = new Map<string, any[]>();
 let activeDevice = '';
 let navMode = 'chapter';
 let currentParsha = '';
@@ -927,7 +939,7 @@ populateParshaSelect();
 })();
 
 // Load shared data in parallel (non-blocking)
-Promise.all([loadMorphData(), loadLemmaData(), loadHaftarah(), loadAllDevices()]).then(() => {
+Promise.all([loadMorphData(), loadLemmaData(), loadHaftarah(), loadGraetz(), loadAllDevices()]).then(() => {
   setStatus('');
 }).catch(() => {});
 
@@ -987,6 +999,19 @@ async function loadHaftarah() {
     const r = await fetch('/data/new_haftarah_with_individual_verses.json');
     haftarahData = await r.json();
     buildHaftarahIdx();
+  } catch {}
+}
+
+async function loadGraetz() {
+  try {
+    const r = await fetch('/data/graetz-emendations.json');
+    const data = await r.json();
+    graetzIdx.clear();
+    for (const e of (data.entries || [])) {
+      const key = `Psalms ${e.psalm}:${e.verse}`;
+      if (!graetzIdx.has(key)) graetzIdx.set(key, []);
+      graetzIdx.get(key)!.push(e);
+    }
   } catch {}
 }
 
@@ -2136,6 +2161,17 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     ref.appendChild(badgesDiv);
   }
 
+  // Graetz emendation badges (Psalms)
+  const gEntries = graetzIdx.get(verseKey) || [];
+  if (gEntries.length) {
+    const badge = document.createElement('span');
+    badge.className = 'graetz-badge';
+    badge.textContent = gEntries.length === 1 ? 'Graetz' : `Graetz ×${gEntries.length}`;
+    badge.title = 'Graetz, Kritischer Commentar zu den Psalmen (1882-83) — click for his emendation';
+    badge.addEventListener('click', () => showGraetzDetail(verseKey, gEntries));
+    ref.appendChild(badge);
+  }
+
   block.appendChild(ref);
 
   // Hebrew row
@@ -2294,6 +2330,24 @@ async function buildHaftarahSection(parsha: string): Promise<HTMLElement> {
 }
 
 // ── Word detail panel ──────────────────────────────────────────────────────
+function escGz(s: any) {
+  return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] || c));
+}
+
+function showGraetzDetail(verseKey: string, entries: any[]) {
+  detailWord.textContent = `Graetz on ${verseKey.replace('Psalms', 'Ps')}`;
+  detailBody.innerHTML = entries.map(e => `
+    <div class="graetz-entry">
+      <div class="g-heb">${escGz(e.mt)}${e.emendation ? ` <span style="opacity:.5" dir="ltr">→</span> <strong>${escGz(e.emendation)}</strong>` : ''}</div>
+      <div><span class="g-kind">${escGz(e.kind)}</span>${e.certainty === 'tentative' ? '<span class="g-kind" style="color:var(--muted)">tentative</span>' : ''}</div>
+      <div class="g-note">${escGz(e.note)}
+        <a href="${escGz(e.scan_url)}" target="_blank" rel="noopener">[scan: vol. ${e.volume}, p. ${e.printed_page}]</a>
+        · <a href="/graetz" target="_blank">all emendations</a>
+      </div>
+    </div>`).join('');
+  detailPanel.classList.add('open');
+}
+
 function showDetail(text: string, lemma: string, morph: string, devices: any[]) {
   detailWord.textContent = text;
 
