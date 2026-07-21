@@ -302,6 +302,16 @@ body:has(.mb-page) > footer { display:none!important; }
 .graetz-entry .g-kind { font-family:var(--sc); font-size:.55rem; letter-spacing:.15em; color:#e08a8a; text-transform:uppercase; margin-right:.5rem; }
 .graetz-entry .g-note { font-family:var(--display); font-size:.78rem; color:var(--muted); line-height:1.55; }
 .graetz-entry a { color:var(--gold-dim); }
+.mb-detail-emend { grid-column:1/-1; }
+.mb-detail-emend .sb-title { font-family:var(--sc); font-size:.55rem; letter-spacing:.25em; color:#e08a8a; text-transform:uppercase; }
+
+/* Emendation (Graetz) word tie-in — independent of device underline so both can coexist */
+.w.has-graetz {
+  text-decoration:underline; text-decoration-style:wavy; text-decoration-color:#e08a8a;
+  text-decoration-thickness:1.5px; text-underline-offset:3px;
+}
+.mb-page.no-graetz .w.has-graetz { text-decoration:none; }
+.mb-page.no-graetz .graetz-badge { display:none; }
 .mb-page.no-haftarah .haftarah-badge { display:none; }
 .mb-page.no-haftarah .haftarah-section { display:none; }
 .mb-page.no-haftarah .haftarah-banner { display:none; }
@@ -662,6 +672,10 @@ body:has(.mb-page) > footer { display:none!important; }
         <div class="sb-row">
           <input type="checkbox" id="layerHaftarah" checked>
           <label for="layerHaftarah">Haftarah</label>
+        </div>
+        <div class="sb-row">
+          <input type="checkbox" id="layerGraetz" checked>
+          <label for="layerGraetz">Emendations</label>
         </div>
       </div>
 
@@ -1157,6 +1171,7 @@ function setupLayerToggle(id: string, cls: string) {
 setupLayerToggle('layerMorph',    'no-morph');
 setupLayerToggle('layerDevices',  'no-devices');
 setupLayerToggle('layerHaftarah', 'no-haftarah');
+setupLayerToggle('layerGraetz',   'no-graetz');
 setupLayerToggle('posNoun',   'no-pos-noun');
 setupLayerToggle('posVerb',   'no-pos-verb');
 setupLayerToggle('posProper', 'no-pos-proper');
@@ -1601,9 +1616,116 @@ async function fetchDevices(book: string): Promise<any[]> {
   } catch { return []; }
 }
 
-// ── POS helper ────────────────────────────────────────────────────────────
+// ── Hebrew text normalization & cross-version matching ─────────────────────
+// The word-level Hebrew text comes from the local OSHB/WLC XML, which is a
+// *different* underlying edition than whatever Sefaria version a literary
+// device's or Graetz's `words`/`mt` text was hand-copied from. Two extra
+// wrinkles make naive string comparison unreliable:
+//  1. OSHB glues morpheme boundaries inside a single <w> with "/" (e.g.
+//     "וְ/תֹאבְדוּ") — a display/markup artifact, not real text.
+//  2. Spelling can drift between editions (plene vs. defective, final-letter
+//     forms), so exact substring matches silently miss valid tags.
+// stripMarks/normalizeConsonants/fuzzyWordEq below normalize both sides
+// before comparing so tags & underlines tie to the right word regardless of
+// which version they were transcribed from.
 const CANTILLATION = /[֑-ׇ]/g;
 function stripMarks(s: string) { return s ? s.replace(CANTILLATION, '') : ''; }
+
+// Strip OSHB's internal morpheme-boundary markers ("/") — not real text.
+function cleanHebWord(s: string): string { return s ? s.replace(/\//g, '') : ''; }
+
+const FINAL_FORMS: Record<string,string> = { 'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ' };
+// Bare consonant skeleton: strips niqqud/cantillation, OSHB slashes, maqaf,
+// and non-Hebrew punctuation; folds final letter-forms to their base form.
+function normalizeConsonants(s: string): string {
+  // Maqaf must become a word-boundary space BEFORE stripMarks runs — maqaf
+  // (U+05BE) falls inside stripMarks's cantillation range and would
+  // otherwise be silently deleted, fusing the two maqaf-joined words into
+  // one token and breaking phrase alignment.
+  return cleanHebWord(stripMarks((s || '').replace(/[־\-]/g, ' ')))
+    .replace(/[^א-ת\s]/g, '')
+    .replace(/[ךםןףץ]/g, c => FINAL_FORMS[c] || c)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function normalizedWords(s: string): string[] {
+  return normalizeConsonants(s).split(' ').filter(Boolean);
+}
+
+function editDistance(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  const dp = new Array(n + 1);
+  for (let j = 0; j <= n; j++) dp[j] = j;
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0]; dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = dp[j];
+      dp[j] = a[i-1] === b[j-1] ? prev : 1 + Math.min(prev, dp[j], dp[j-1]);
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+
+// Tolerant word equality: absorbs a single letter of plene/defective drift
+// (e.g. an extra ו or י) between differing Sefaria/WLC spellings.
+function fuzzyWordEq(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const maxLen = Math.max(a.length, b.length);
+  // Below 4 letters, Hebrew has too many unrelated minimal pairs (e.g.
+  // אני/אלי) for a 1-letter edit to safely imply plene/defective drift —
+  // require an exact match instead.
+  if (maxLen < 4) return false;
+  return editDistance(a, b) <= (maxLen >= 6 ? 2 : 1);
+}
+
+// Find a contiguous run in `verseWords` matching `phraseWords` in order
+// (both pre-normalized), tolerant of minor spelling variation.
+function findPhraseSpan(verseWords: string[], phraseWords: string[]): [number, number] | null {
+  if (!phraseWords.length) return null;
+  for (let i = 0; i <= verseWords.length - phraseWords.length; i++) {
+    let ok = true;
+    for (let j = 0; j < phraseWords.length; j++) {
+      if (!fuzzyWordEq(verseWords[i + j], phraseWords[j])) { ok = false; break; }
+    }
+    if (ok) return [i, i + phraseWords.length - 1];
+  }
+  return null;
+}
+
+// Ties each item (a literary device or a Graetz emendation) to the specific
+// verse word(s) it refers to. Tries an exact contiguous phrase match first
+// (precise span); falls back to loose per-word membership for phrases that
+// aren't contiguous in the verse (e.g. a merism spanning the whole line) or
+// whose copied text doesn't tokenize cleanly.
+function matchPhraseSpans<T>(verseWords: string[], items: T[], getPhrase: (item: T) => string): Map<number, T[]> {
+  const result = new Map<number, T[]>();
+  const addAt = (i: number, item: T) => {
+    if (!result.has(i)) result.set(i, []);
+    result.get(i)!.push(item);
+  };
+  for (const item of items) {
+    const phrase = getPhrase(item);
+    if (!phrase) continue;
+    const tokens = normalizedWords(phrase);
+    if (!tokens.length) continue;
+    const span = findPhraseSpan(verseWords, tokens);
+    if (span) {
+      for (let i = span[0]; i <= span[1]; i++) addAt(i, item);
+      continue;
+    }
+    verseWords.forEach((vw, i) => {
+      if (!vw) return;
+      const hit = tokens.some(t => fuzzyWordEq(t, vw)) ||
+                  (vw.length >= 2 && tokens.some(t => t.includes(vw)));
+      if (hit) addAt(i, item);
+    });
+  }
+  return result;
+}
 
 function getPosClasses(morph: string): string[] {
   if (!morph) return [];
@@ -1753,7 +1875,7 @@ async function renderRange(
 
         // Collect stats from words
         getByTag(verseNode, 'w').forEach(wEl => {
-          const text  = wEl.textContent || '';
+          const text  = cleanHebWord(wEl.textContent || '');
           const morph = wEl.getAttribute('morph') || '';
           const lemma = wEl.getAttribute('lemma') || text;
           if (!text.trim()) return;
@@ -2161,13 +2283,14 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     ref.appendChild(badgesDiv);
   }
 
-  // Graetz emendation badges (Psalms)
+  // Emendation badge — overview of all Graetz entries for this verse
+  // (individual words tied to a specific entry are underlined below).
   const gEntries = graetzIdx.get(verseKey) || [];
   if (gEntries.length) {
     const badge = document.createElement('span');
     badge.className = 'graetz-badge';
     badge.textContent = gEntries.length === 1 ? 'Graetz' : `Graetz ×${gEntries.length}`;
-    badge.title = 'Graetz, Kritischer Commentar zu den Psalmen (1882-83) — click for his emendation';
+    badge.title = 'Graetz, Kritischer Commentar zu den Psalmen (1882-83) — click for his emendation(s)';
     badge.addEventListener('click', () => showGraetzDetail(verseKey, gEntries));
     ref.appendChild(badge);
   }
@@ -2181,8 +2304,14 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
   const words = getByTag(verseNode, 'w');
   const allDeviceNames = new Set<string>();
 
-  words.forEach(wordEl => {
-    const text  = wordEl.textContent || '';
+  // Normalize the verse's own words once, then tie devices/emendations to
+  // the specific word span they refer to (see matchPhraseSpans above).
+  const verseWordsNorm = words.map(wordEl => normalizeConsonants(wordEl.textContent || ''));
+  const deviceSpans = matchPhraseSpans(verseWordsNorm, devices, d => d.words);
+  const graetzSpans  = matchPhraseSpans(verseWordsNorm, gEntries, e => e.mt);
+
+  words.forEach((wordEl, i) => {
+    const text  = cleanHebWord(wordEl.textContent || '');
     const lemma = wordEl.getAttribute('lemma') || '';
     const morph = wordEl.getAttribute('morph') || '';
     const span  = document.createElement('span');
@@ -2193,10 +2322,7 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     getPosClasses(morph).forEach(c => span.classList.add(c));
 
     // Device match
-    const matchedDevices = devices.filter(d => {
-      if (!d.words) return false;
-      return stripMarks(text) && stripMarks(d.words).includes(stripMarks(text));
-    });
+    const matchedDevices = deviceSpans.get(i) || [];
 
     if (matchedDevices.length) {
       const primaryDevice = matchedDevices[0];
@@ -2213,9 +2339,16 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
       names.forEach(n => allDeviceNames.add(n));
     }
 
+    // Emendation (Graetz) match
+    const matchedGraetz = graetzSpans.get(i) || [];
+    if (matchedGraetz.length) {
+      span.classList.add('has-graetz');
+      span.title = (span.title ? span.title + ' · ' : '') + 'Graetz emendation — click for detail';
+    }
+
     span.addEventListener('click', (e) => {
       e.stopPropagation();
-      showDetail(text, lemma, morph, matchedDevices);
+      showDetail(text, lemma, morph, matchedDevices, matchedGraetz);
     });
 
     hebrewRow.appendChild(span);
@@ -2334,9 +2467,10 @@ function escGz(s: any) {
   return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] || c));
 }
 
-function showGraetzDetail(verseKey: string, entries: any[]) {
-  detailWord.textContent = `Graetz on ${verseKey.replace('Psalms', 'Ps')}`;
-  detailBody.innerHTML = entries.map(e => `
+// Shared renderer for a single Graetz emendation entry — used both by the
+// verse-level "Emendations" overview and inline from a tied word/phrase.
+function graetzEntryHtml(e: any): string {
+  return `
     <div class="graetz-entry">
       <div class="g-heb">${escGz(e.mt)}${e.emendation ? ` <span style="opacity:.5" dir="ltr">→</span> <strong>${escGz(e.emendation)}</strong>` : ''}</div>
       <div><span class="g-kind">${escGz(e.kind)}</span>${e.certainty === 'tentative' ? '<span class="g-kind" style="color:var(--muted)">tentative</span>' : ''}</div>
@@ -2344,11 +2478,16 @@ function showGraetzDetail(verseKey: string, entries: any[]) {
         <a href="${escGz(e.scan_url)}" target="_blank" rel="noopener">[scan: vol. ${e.volume}, p. ${e.printed_page}]</a>
         · <a href="/graetz" target="_blank">all emendations</a>
       </div>
-    </div>`).join('');
+    </div>`;
+}
+
+function showGraetzDetail(verseKey: string, entries: any[]) {
+  detailWord.textContent = `Emendations — ${verseKey.replace('Psalms', 'Ps')}`;
+  detailBody.innerHTML = entries.map(graetzEntryHtml).join('');
   detailPanel.classList.add('open');
 }
 
-function showDetail(text: string, lemma: string, morph: string, devices: any[]) {
+function showDetail(text: string, lemma: string, morph: string, devices: any[], graetzEntries: any[] = []) {
   detailWord.textContent = text;
 
   const lemmaId = `H${lemma.replace(/\D/g, '')}`;
@@ -2374,6 +2513,9 @@ function showDetail(text: string, lemma: string, morph: string, devices: any[]) 
       return `<span style="color:${color};font-weight:600">${d.device}</span>`;
     }).join(' · ');
     html += `<div class="mb-detail-devices"><strong style="color:var(--muted)">Device:</strong> ${devHtml}</div>`;
+  }
+  if (graetzEntries.length) {
+    html += `<div class="mb-detail-emend"><div class="sb-title">Emendations</div>${graetzEntries.map(graetzEntryHtml).join('')}</div>`;
   }
 
   detailBody.innerHTML = html;
