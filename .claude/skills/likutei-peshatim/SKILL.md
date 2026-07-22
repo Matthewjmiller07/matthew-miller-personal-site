@@ -49,17 +49,32 @@ The email header always anchors a Hebrew date to a Gregorian one, e.g.
 body ("Monday evening, July 20th") — use that directly.
 
 For Hebrew-only dates (yahrzeits are almost always given only as "7 Av", "כ״ח תמוז", etc.):
-compute the Gregorian date by taking the day-offset from the anchor Hebrew date **within the
-same Hebrew month** and applying that offset to the anchor Gregorian date. E.g. anchor
-`2 Av = July 16`; "7 Av" → July 16 + (7-2) = July 21. If the target Hebrew date is in a
-different month than the anchor, use general Hebrew-calendar knowledge (or a neighboring
-week's email, which will anchor that month) — don't guess blindly.
+**never hand-compute the Gregorian date from month-length knowledge or day-offset arithmetic
+— always resolve it with the Hebcal converter API.** The Hebrew year comes from the email
+header (e.g. `5786`). Call:
 
-**Sanity-check every resolved date against known fixed points** (e.g. Tisha B'Av, which
-other events in the same email often reference explicitly) and against day-of-week where
-stated ("Wednesday 8/22/26" that doesn't line up with the Hebrew-date math is very likely a
-copy-paste typo in the newsletter itself — trust the math, note the correction in the
-event's description, don't blindly transcribe an inconsistent date).
+```
+https://www.hebcal.com/converter?cfg=json&hy=<hebrew_year>&hm=<hebrew_month>&hd=<hebrew_day>&h2g=1
+```
+
+`hm` takes standard English transliterations (`Tamuz`, `Av`, `Elul`, `Tishrei`, `Cheshvan`,
+`Kislev`, `Teves`, `Shvat`, `Adar`, `Adar1`/`Adar2` in a leap year, etc. — not the Hebrew
+glyphs from the email). The response's `gy`/`gm`/`gd` is the Gregorian date. Example:
+
+```bash
+curl -s "https://www.hebcal.com/converter?cfg=json&hy=5786&hm=Av&hd=2&h2g=1"
+# {"gy":2026,"gm":7,"gd":16,...}  →  2026-07-16
+```
+
+For Hebrew-only dates written in Hebrew glyphs (e.g. "כ״ח תמוז"), transliterate the month
+and convert the gematria day number before calling the API — don't guess the Gregorian date
+from the glyphs directly.
+
+**Still sanity-check the result** against known fixed points stated elsewhere in the same
+email (e.g. Tisha B'Av) and against day-of-week where given ("Wednesday 8/22/26" that
+doesn't match the API's date is very likely a copy-paste typo in the newsletter itself —
+trust the API, note the correction in the event's description, don't blindly transcribe an
+inconsistent date).
 
 Times are America/Chicago local time — store as plain `"HH:MM"` (24h), not with an offset;
 `generate-ics.mjs` handles the UTC/DST conversion.
