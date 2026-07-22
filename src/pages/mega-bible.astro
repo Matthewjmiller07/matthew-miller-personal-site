@@ -969,8 +969,10 @@ sbOverlay.addEventListener('click',  closeSb);
 populateBookSelect();
 populateParshaSelect();
 
-// Default parsha selects to the current week's parasha
-(async () => {
+const hasURLParams = new URLSearchParams(location.search).toString().length > 0;
+
+// Default parsha selects to the current week's parasha (skip if a link already specifies state)
+if (!hasURLParams) (async () => {
   try {
     const r = await fetch('https://www.sefaria.org/api/calendars');
     const data = await r.json();
@@ -997,6 +999,7 @@ populateParshaSelect();
 // Load shared data in parallel (non-blocking)
 Promise.all([loadMorphData(), loadLemmaData(), loadHaftarah(), loadGraetz(), loadAllDevices()]).then(() => {
   setStatus('');
+  if (hasURLParams) restoreFromURL();
 }).catch(() => {});
 
 async function loadAllDevices() {
@@ -1121,6 +1124,7 @@ document.querySelectorAll('.mb-mode-btn').forEach(btn => {
     groupHaftarah.classList.toggle('hidden',   navMode !== 'haftarah');
     groupAllDevices.classList.toggle('hidden', navMode !== 'alldevices');
     updateLoadBtn();
+    syncURL();
   });
 });
 
@@ -1167,6 +1171,7 @@ document.querySelectorAll('.mb-sect-btn').forEach(btn => {
     document.querySelectorAll('.mb-sect-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     filterBooksBySection((btn as HTMLElement).dataset.sect || 'all');
+    syncURL();
   });
 });
 chapterSel.addEventListener('change', updateLoadBtn);
@@ -1203,11 +1208,170 @@ function updateLoadBtn() {
 }
 haftParshasel.addEventListener('change', updateLoadBtn);
 
+// ── URL param sync ─────────────────────────────────────────────────────────
+// The URL reflects whatever is currently loaded/visible so a link can be
+// shared or bookmarked and land the reader back in the same spot.
+const LAYER_PARAMS: Array<[string, string]> = [
+  ['layerMorph', 'lmorph'], ['layerDevices', 'ldev'],
+  ['layerHaftarah', 'lhaft'], ['layerGraetz', 'lgraetz'],
+  ['posNoun', 'pnoun'], ['posVerb', 'pverb'],
+  ['posProper', 'pproper'], ['posAdverb', 'padverb'],
+];
+
+function syncURL() {
+  const p = new URLSearchParams();
+  if (navMode !== 'chapter') p.set('mode', navMode);
+
+  if (navMode === 'chapter') {
+    const sectBtn = document.querySelector('.mb-sect-btn.active') as HTMLElement | null;
+    const sect = sectBtn?.dataset.sect || 'all';
+    if (sect !== 'all') p.set('sect', sect);
+    if (bookSel.value) p.set('book', bookSel.value);
+    if (chapterSel.value) p.set('chapter', chapterSel.value);
+    const verseInputEl = document.getElementById('verseInput') as HTMLInputElement;
+    if (verseInputEl?.value) p.set('verse', verseInputEl.value);
+  } else if (navMode === 'parsha') {
+    if (parshaSel.value) p.set('parsha', parshaSel.value);
+    if (aliyaSel.value && aliyaSel.selectedIndex > 0) {
+      p.set('aliya', aliyaSel.options[aliyaSel.selectedIndex].text);
+    }
+  } else if (navMode === 'haftarah') {
+    if (haftParshasel.value) p.set('parsha', haftParshasel.value);
+    const rites = Array.from(document.querySelectorAll('#haftRiteChecks input:checked'))
+      .map(el => (el as HTMLInputElement).value);
+    if (!(rites.length === 1 && rites[0] === 'Ashkenazi')) p.set('rites', rites.join(','));
+  } else if (navMode === 'alldevices') {
+    if (allDevSel.value) p.set('device', allDevSel.value);
+    if (allSectSel.value) p.set('sect', allSectSel.value);
+  }
+
+  if (!(selectedTranslations.length === 1 && selectedTranslations[0] === 'sefaria')) {
+    p.set('t', selectedTranslations.map(encodeURIComponent).join(','));
+  }
+
+  LAYER_PARAMS.forEach(([id, key]) => {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    if (el && !el.checked) p.set(key, '0');
+  });
+
+  const qs = p.toString();
+  history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+}
+
+function applyPendingSefariaVersions(pending: string[]) {
+  if (!pending.length) return;
+  let attempts = 0;
+  const iv = setInterval(() => {
+    attempts++;
+    const boxes = sefariaVersionsList.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
+    let matched = false;
+    boxes.forEach(b => {
+      if (pending.includes(b.value) && !b.checked) { b.checked = true; matched = true; }
+    });
+    if (matched) { readSelectedTranslations(); if (!loadBtn.disabled) handleLoad(); }
+    if (matched || attempts > 25) clearInterval(iv);
+  }, 200);
+}
+
+function restoreFromURL() {
+  const p = new URLSearchParams(location.search);
+  if (!p.toString()) return;
+
+  const mode = p.get('mode') || 'chapter';
+  navMode = mode;
+  document.querySelectorAll('.mb-mode-btn').forEach(b => {
+    (b as HTMLElement).classList.toggle('active', (b as HTMLElement).dataset.mode === mode);
+  });
+  groupChapter.classList.toggle('hidden',    mode !== 'chapter');
+  groupParsha.classList.toggle('hidden',     mode !== 'parsha');
+  groupHaftarah.classList.toggle('hidden',   mode !== 'haftarah');
+  groupAllDevices.classList.toggle('hidden', mode !== 'alldevices');
+
+  if (mode === 'chapter') {
+    const sect = p.get('sect') || 'all';
+    document.querySelectorAll('.mb-sect-btn').forEach(b => {
+      (b as HTMLElement).classList.toggle('active', (b as HTMLElement).dataset.sect === sect);
+    });
+    filterBooksBySection(sect);
+    const book = p.get('book');
+    if (book) {
+      bookSel.value = book;
+      bookSel.dispatchEvent(new Event('change'));
+      const chapter = p.get('chapter');
+      if (chapter) {
+        chapterSel.value = chapter;
+        const verse = p.get('verse');
+        const verseInputEl = document.getElementById('verseInput') as HTMLInputElement;
+        if (verse && verseInputEl) verseInputEl.value = verse;
+      }
+    }
+  } else if (mode === 'parsha') {
+    const parsha = p.get('parsha');
+    if (parsha && PARSHAS[parsha]) {
+      parshaSel.value = parsha;
+      parshaSel.dispatchEvent(new Event('change'));
+      const aliya = p.get('aliya');
+      if (aliya) {
+        const opt = Array.from(aliyaSel.options).find(o => o.text === aliya);
+        if (opt) aliyaSel.value = opt.value;
+      }
+    }
+  } else if (mode === 'haftarah') {
+    const parsha = p.get('parsha');
+    if (parsha) haftParshasel.value = parsha;
+    const rites = p.get('rites');
+    if (rites) {
+      const set = new Set(rites.split(','));
+      document.querySelectorAll('#haftRiteChecks input').forEach(el => {
+        (el as HTMLInputElement).checked = set.has((el as HTMLInputElement).value);
+      });
+    }
+  } else if (mode === 'alldevices') {
+    const device = p.get('device');
+    const sect = p.get('sect');
+    const applyFilters = () => {
+      if (device) allDevSel.value = device;
+      if (sect) allSectSel.value = sect;
+    };
+    if (allDevSel.options.length > 1) applyFilters();
+    else {
+      let attempts = 0;
+      const iv = setInterval(() => {
+        attempts++;
+        if (allDevSel.options.length > 1) { applyFilters(); clearInterval(iv); }
+        else if (attempts > 25) clearInterval(iv);
+      }, 200);
+    }
+  }
+
+  let pendingSefariaVersions: string[] = [];
+  const t = p.get('t');
+  if (t) {
+    const values = t.split(',').map(decodeURIComponent);
+    pendingSefariaVersions = values.filter(v => v.startsWith('sefaria:'));
+    const boxes = translationMenu.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
+    boxes.forEach(b => { b.checked = values.includes(b.value); });
+    readSelectedTranslations();
+  }
+
+  LAYER_PARAMS.forEach(([id, key]) => {
+    if (p.get(key) === '0') {
+      const el = document.getElementById(id) as HTMLInputElement | null;
+      if (el) { el.checked = false; el.dispatchEvent(new Event('change')); }
+    }
+  });
+
+  updateLoadBtn();
+  if (!loadBtn.disabled) handleLoad();
+  applyPendingSefariaVersions(pendingSefariaVersions);
+}
+
 // ── Layer toggles ──────────────────────────────────────────────────────────
 function setupLayerToggle(id: string, cls: string) {
   const el = document.getElementById(id) as HTMLInputElement;
   el.addEventListener('change', () => {
     page.classList.toggle(cls, !el.checked);
+    syncURL();
   });
 }
 setupLayerToggle('layerMorph',    'no-morph');
@@ -1258,6 +1422,7 @@ async function handleLoad() {
   }
 
   loadBtn.disabled = false;
+  syncURL();
 }
 
 async function handleHaftarahLoad() {
