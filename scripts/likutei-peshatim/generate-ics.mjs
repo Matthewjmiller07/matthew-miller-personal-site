@@ -113,7 +113,10 @@ for (const ev of sorted) {
 
   lines.push(foldLine(`SUMMARY:${escapeText(ev.title)}`));
   if (ev.location) lines.push(foldLine(`LOCATION:${escapeText(ev.location)}`));
-  if (ev.description) lines.push(foldLine(`DESCRIPTION:${escapeText(ev.description)}`));
+  const descParts = [];
+  if (ev.description) descParts.push(ev.description);
+  if (ev.sourceExcerpt) descParts.push(`Source text: "${ev.sourceExcerpt}"`);
+  if (descParts.length) lines.push(foldLine(`DESCRIPTION:${escapeText(descParts.join('\n\n'))}`));
   if (ev.category) lines.push(`CATEGORIES:${escapeText(ev.category)}`);
   lines.push('END:VEVENT');
 }

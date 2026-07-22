@@ -80,6 +80,7 @@ Append to `src/data/likutei-peshatim/events.json` (array), each entry:
   "allDay": false,
   "location": "string or null",
   "description": "string",
+  "sourceExcerpt": "verbatim quote from the email this event was parsed from",
   "category": "shiur|drasha|screening|race|fast|campaign|event|yahrzeit",
   "sourceMessageId": "<gmail message id>",
   "sourceSubject": "<email subject>",
