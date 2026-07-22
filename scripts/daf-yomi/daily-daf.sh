@@ -13,6 +13,11 @@ LOG_DIR="$HOME/Library/Logs/daf-game"
 mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/$(date +%Y-%m-%d).log"
 
+if [[ "$(date +%u)" == "6" ]]; then
+  echo "=== $(date) === Shabbos — skipping (missing-dafs.mjs will catch up on the next run)" >> "$LOG"
+  exit 0
+fi
+
 cd "$REPO"
 echo "=== daf-game run $(date) ===" >> "$LOG"
 
