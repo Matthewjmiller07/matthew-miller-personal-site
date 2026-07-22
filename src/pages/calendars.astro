@@ -159,6 +159,32 @@ const calendars = [
               </button>
             </div>
           </div>
+
+          <!-- Inline event viewer (no calendar app needed) -->
+          <div class="mt-4 pt-4 border-t border-border-light dark:border-border-dark">
+            <button
+              class="view-events-btn w-full flex items-center justify-between gap-2 text-sm font-medium text-accent dark:text-accent-dark hover:opacity-80 transition-opacity"
+              data-ics-url={cal.icsHttps}
+              aria-expanded="false"
+            >
+              <span>View events inline</span>
+              <svg class="chevron w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="events-panel hidden mt-3">
+              <div class="flex items-center justify-between gap-3 mb-2">
+                <input
+                  type="text"
+                  placeholder="Filter events…"
+                  class="events-search flex-1 text-sm px-3 py-1.5 rounded border border-border-light dark:border-border-dark bg-transparent text-primary-light dark:text-primary-dark placeholder:text-secondary-light/60 dark:placeholder:text-secondary-dark/60"
+                />
+                <span class="events-count text-xs text-secondary-light dark:text-secondary-dark whitespace-nowrap"></span>
+              </div>
+              <ul class="events-list max-h-96 overflow-y-auto pr-1"></ul>
+              <p class="events-status text-xs text-secondary-light dark:text-secondary-dark py-2"></p>
+            </div>
+          </div>
         </div>
       ))}
     </div>
@@ -174,7 +200,130 @@ const calendars = [
   </main>
 
   <script is:inline>
+    function unfoldIcs(text) {
+      return text.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '');
+    }
+
+    function unescapeIcsText(s) {
+      return (s ?? '')
+        .replace(/\\n/gi, '\n')
+        .replace(/\\,/g, ',')
+        .replace(/\\;/g, ';')
+        .replace(/\\\\/g, '\\');
+    }
+
+    function parseIcs(text) {
+      const lines = unfoldIcs(text).split(/\r\n|\n/);
+      const events = [];
+      let cur = null;
+      for (const line of lines) {
+        if (line === 'BEGIN:VEVENT') { cur = {}; continue; }
+        if (line === 'END:VEVENT') { if (cur) events.push(cur); cur = null; continue; }
+        if (!cur) continue;
+        const idx = line.indexOf(':');
+        if (idx === -1) continue;
+        const rawKey = line.slice(0, idx);
+        const value = line.slice(idx + 1);
+        const key = rawKey.split(';')[0];
+        if (key === 'DTSTART') {
+          cur.allDay = rawKey.includes('VALUE=DATE');
+          cur.dtstart = value;
+        } else if (key === 'SUMMARY') {
+          cur.summary = unescapeIcsText(value);
+        } else if (key === 'DESCRIPTION') {
+          cur.description = unescapeIcsText(value);
+        } else if (key === 'LOCATION') {
+          cur.location = unescapeIcsText(value);
+        } else if (key === 'URL') {
+          cur.url = value;
+        }
+      }
+      return events;
+    }
+
+    function parseIcsDate(dtstart, allDay) {
+      const y = +dtstart.slice(0, 4), mo = +dtstart.slice(4, 6), d = +dtstart.slice(6, 8);
+      if (allDay) return new Date(Date.UTC(y, mo - 1, d));
+      const h = +dtstart.slice(9, 11), mi = +dtstart.slice(11, 13), s = +dtstart.slice(13, 15) || 0;
+      return new Date(Date.UTC(y, mo - 1, d, h, mi, s));
+    }
+
+    function formatEventDate(ev) {
+      const date = parseIcsDate(ev.dtstart, ev.allDay);
+      const opts = ev.allDay
+        ? { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }
+        : { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' };
+      return date.toLocaleString('en-US', opts);
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s ?? '';
+      return div.innerHTML;
+    }
+
+    function renderEvents(listEl, countEl, events) {
+      const sorted = [...events].sort((a, b) => parseIcsDate(a.dtstart, a.allDay) - parseIcsDate(b.dtstart, b.allDay));
+      const frag = document.createDocumentFragment();
+      for (const ev of sorted) {
+        const li = document.createElement('li');
+        li.className = 'event-item py-2.5 border-b border-border-light/50 dark:border-border-dark/50 last:border-0';
+        li.dataset.search = `${ev.summary ?? ''} ${ev.description ?? ''} ${ev.location ?? ''}`.toLowerCase();
+        const titleHtml = ev.url
+          ? `<a href="${ev.url}" target="_blank" rel="noopener noreferrer" class="hover:underline">${escapeHtml(ev.summary)}</a>`
+          : escapeHtml(ev.summary);
+        const showDescription = ev.description && ev.description !== ev.url;
+        li.innerHTML = `
+          <div class="flex items-baseline justify-between gap-3">
+            <span class="text-sm font-medium text-primary-light dark:text-primary-dark">${titleHtml}</span>
+            <span class="text-xs text-secondary-light dark:text-secondary-dark whitespace-nowrap">${formatEventDate(ev)}</span>
+          </div>
+          ${ev.location ? `<div class="text-xs text-secondary-light dark:text-secondary-dark mt-0.5">📍 ${escapeHtml(ev.location)}</div>` : ''}
+          ${showDescription ? `<p class="text-xs text-secondary-light/80 dark:text-secondary-dark/80 mt-1 whitespace-pre-line">${escapeHtml(ev.description)}</p>` : ''}
+        `;
+        frag.append(li);
+      }
+      listEl.innerHTML = '';
+      listEl.append(frag);
+      countEl.textContent = `${sorted.length} event${sorted.length === 1 ? '' : 's'}`;
+    }
+
     document.addEventListener('astro:page-load', async () => {
+      document.querySelectorAll('.view-events-btn').forEach(btn => {
+        const panel = btn.nextElementSibling;
+        const listEl = panel.querySelector('.events-list');
+        const statusEl = panel.querySelector('.events-status');
+        const countEl = panel.querySelector('.events-count');
+        const searchInput = panel.querySelector('.events-search');
+        let loaded = false;
+
+        btn.addEventListener('click', async () => {
+          const wasExpanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!wasExpanded));
+          panel.classList.toggle('hidden');
+          btn.querySelector('.chevron').classList.toggle('rotate-180');
+
+          if (loaded || wasExpanded) return;
+          loaded = true;
+          statusEl.textContent = 'Loading events…';
+          try {
+            const res = await fetch(btn.dataset.icsUrl);
+            const text = await res.text();
+            renderEvents(listEl, countEl, parseIcs(text));
+            statusEl.textContent = '';
+          } catch {
+            statusEl.textContent = 'Could not load events — try downloading the .ics instead.';
+          }
+        });
+
+        searchInput.addEventListener('input', () => {
+          const q = searchInput.value.trim().toLowerCase();
+          listEl.querySelectorAll('.event-item').forEach(li => {
+            li.classList.toggle('hidden', q.length > 0 && !li.dataset.search.includes(q));
+          });
+        });
+      });
+
       // Upcoming holidays via the whenarethejewishholidays.com API
       const box = document.getElementById('upcoming-holidays');
       const list = document.getElementById('upcoming-holidays-list');
