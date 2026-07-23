@@ -13,7 +13,7 @@ export default defineConfig({
     tailwind(),
     react(),
     sitemap({
-      filter: (page) => !page.includes('/aaron-33-film'),
+      filter: (page) => !page.includes('/aaron-33-film') && !page.includes('/family'),
     })
   ],
   vite: {
