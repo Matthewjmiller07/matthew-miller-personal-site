@@ -245,6 +245,34 @@ body:has(.mb-page) > footer { display:none!important; }
   line-height:2; color:var(--text); word-break:break-all;
 }
 
+/* Word-occurrence panel — appears under the frequency chart when a bar is
+   clicked, listing the actual verses that contain the word (not just a
+   scroll-to-first), each clickable to jump to that specific occurrence. */
+.mb-occ-panel {
+  margin-top:.6rem; padding:.5rem .7rem; background:var(--bg);
+  border:1px solid var(--border); display:none;
+}
+.mb-occ-panel.open { display:block; }
+.mb-occ-head { display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-bottom:.45rem; }
+.mb-occ-title {
+  font-family:var(--sc); font-size:.55rem; letter-spacing:.15em; color:var(--muted);
+  text-transform:uppercase;
+}
+.mb-occ-title strong { color:var(--gold); font-family:var(--heb); font-size:.85rem; letter-spacing:0; text-transform:none; direction:rtl; unicode-bidi:isolate; }
+.mb-occ-clear {
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.12em; text-transform:uppercase;
+  background:none; border:1px solid var(--border); color:var(--muted);
+  padding:.15rem .5rem; cursor:pointer; transition:all .12s; flex-shrink:0;
+}
+.mb-occ-clear:hover { border-color:var(--border-hi); color:var(--gold); }
+.mb-occ-refs { display:flex; flex-wrap:wrap; gap:.3rem; }
+.mb-occ-ref {
+  font-family:var(--mono); font-size:.62rem; color:var(--gold-dim);
+  border:1px solid var(--border); background:none; padding:.12rem .45rem; cursor:pointer;
+  transition:all .12s;
+}
+.mb-occ-ref:hover { border-color:var(--gold); color:var(--gold); }
+
 .mb-loader-wrap {
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   height:60%; gap:1rem;
@@ -291,21 +319,48 @@ body:has(.mb-page) > footer { display:none!important; }
 .w:hover { background:rgba(201,162,87,.1); }
 
 /* POS highlighting */
-.w.pos-noun { border-bottom-color:#fbbf24; }
-.w.pos-verb { border-bottom-color:#60a5fa; }
-.w.pos-adverb { border-bottom-color:#34d399; }
-.w.pos-proper-noun { background:rgba(167,139,250,.2); }
+.w.pos-noun, .seg.pos-noun { border-bottom-color:#fbbf24; }
+.w.pos-verb, .seg.pos-verb { border-bottom-color:#60a5fa; }
+.w.pos-adverb, .seg.pos-adverb { border-bottom-color:#34d399; }
+.w.pos-proper-noun, .seg.pos-proper-noun { background:rgba(167,139,250,.2); }
 
 /* Layer toggles via parent classes */
-.mb-page.no-morph .w.pos-noun { border-bottom-color:transparent; }
-.mb-page.no-morph .w.pos-verb { border-bottom-color:transparent; }
-.mb-page.no-morph .w.pos-adverb { border-bottom-color:transparent; }
-.mb-page.no-morph .w.pos-proper-noun { background:none; }
-.mb-page.no-pos-noun .w.pos-noun { border-bottom-color:transparent; }
-.mb-page.no-pos-verb .w.pos-verb { border-bottom-color:transparent; }
-.mb-page.no-pos-adverb .w.pos-adverb { border-bottom-color:transparent; }
-.mb-page.no-pos-proper .w.pos-proper-noun { background:none; }
+.mb-page.no-morph .w.pos-noun, .mb-page.no-morph .seg.pos-noun { border-bottom-color:transparent; }
+.mb-page.no-morph .w.pos-verb, .mb-page.no-morph .seg.pos-verb { border-bottom-color:transparent; }
+.mb-page.no-morph .w.pos-adverb, .mb-page.no-morph .seg.pos-adverb { border-bottom-color:transparent; }
+.mb-page.no-morph .w.pos-proper-noun, .mb-page.no-morph .seg.pos-proper-noun { background:none; }
+.mb-page.no-pos-noun .w.pos-noun, .mb-page.no-pos-noun .seg.pos-noun { border-bottom-color:transparent; }
+.mb-page.no-pos-verb .w.pos-verb, .mb-page.no-pos-verb .seg.pos-verb { border-bottom-color:transparent; }
+.mb-page.no-pos-adverb .w.pos-adverb, .mb-page.no-pos-adverb .seg.pos-adverb { border-bottom-color:transparent; }
+.mb-page.no-pos-proper .w.pos-proper-noun, .mb-page.no-pos-proper .seg.pos-proper-noun { background:none; }
 .mb-page.no-devices .w { --dev-color:transparent!important; }
+
+/* Morpheme segments (Split by Lemma view) — each prefix/root/suffix piece
+   gets its own POS underline inside the shared word wrapper. */
+.seg {
+  display:inline; cursor:pointer; padding:0 1px 3px;
+  border-bottom:2px solid transparent; transition:background .12s;
+}
+.seg:hover { background:rgba(201,162,87,.15); }
+.seg + .seg { margin-inline-start:1px; border-inline-start:1px dotted var(--border); padding-inline-start:2px; }
+
+/* Show Parsing — bracketed OSHB morphology code (e.g. [HNcfsa]) printed
+   inline after each word/segment. Rendered on every word regardless of
+   the toggle state and simply hidden via CSS, so flipping the checkbox
+   is instant (no re-render needed), matching the other layer toggles. */
+.w-code {
+  display:none; font-family:var(--mono); font-size:.5rem; color:var(--gold-dim);
+  direction:ltr; unicode-bidi:isolate; vertical-align:.2em; margin-inline-start:.15rem;
+  letter-spacing:.02em;
+}
+.mb-page.show-parse .w-code { display:inline; }
+
+/* Persistent "highlight all occurrences" state, set from the frequency
+   chart — distinct from .flash, which is a transient one-shot pulse. */
+.w.w-highlight, .w.w-highlight .seg {
+  background:rgba(201,162,87,.32)!important;
+  outline:1px solid var(--gold-dim); outline-offset:1px;
+}
 .graetz-badge {
   font-family:var(--sc); font-size:.48rem; letter-spacing:.1em;
   background:rgba(224,92,92,.12); border:1px solid rgba(224,92,92,.45);
@@ -692,6 +747,14 @@ body:has(.mb-page) > footer { display:none!important; }
           <input type="checkbox" id="layerGraetz" checked>
           <label for="layerGraetz">Emendations</label>
         </div>
+        <div class="sb-row">
+          <input type="checkbox" id="splitLemma">
+          <label for="splitLemma" title="Break each word into its prefix/root/suffix morphemes, each parsed and colored on its own">Split by Lemma</label>
+        </div>
+        <div class="sb-row">
+          <input type="checkbox" id="showParse">
+          <label for="showParse" title="Print each word's OSHB morphology code in brackets, e.g. [HNcfsa]">Show Parsing</label>
+        </div>
       </div>
 
       <div class="sb-section" id="posSection">
@@ -732,6 +795,22 @@ body:has(.mb-page) > footer { display:none!important; }
 
       <div class="sb-section">
         <div class="sb-title">Recently Added</div>
+        <div class="sb-recent-item">
+          <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 23</span></div>
+          <span class="sb-recent-text">Clicking a word in the frequency chart now lists every verse it occurs in as clickable chips, alongside the existing highlight</span>
+        </div>
+        <div class="sb-recent-item">
+          <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 23</span></div>
+          <span class="sb-recent-text">"Show Parsing" toggle prints each word's OSHB morphology code in brackets, e.g. [HNcfsa]</span>
+        </div>
+        <div class="sb-recent-item">
+          <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 22</span></div>
+          <span class="sb-recent-text">"Split by Lemma" view breaks each word into its prefix/root/suffix morphemes, each independently parsed and colored</span>
+        </div>
+        <div class="sb-recent-item">
+          <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 22</span></div>
+          <span class="sb-recent-text">Word-frequency chart now highlights every occurrence persistently (click again to clear), not just a brief flash on the first match</span>
+        </div>
         <div class="sb-recent-item">
           <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 22</span></div>
           <span class="sb-recent-text">Fixed Emendations underline overlapping the Part-of-Speech underline</span>
@@ -925,6 +1004,11 @@ let activeDevice = '';
 let navMode = 'chapter';
 let currentParsha = '';
 let allDevicesData: any[] = [];
+let splitMorphemes = false;
+let activeHighlightWord: string | null = null;
+// The verse-occurrence list panel rendered under the frequency chart —
+// rebuilt fresh by buildStatsPanel on every non-append render.
+let currentOccPanel: HTMLElement | null = null;
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
 const page        = document.getElementById('mbPage')!;
@@ -1253,6 +1337,8 @@ function syncURL() {
     const el = document.getElementById(id) as HTMLInputElement | null;
     if (el && !el.checked) p.set(key, '0');
   });
+  if (splitLemmaEl.checked) p.set('split', '1');
+  if (showParseEl.checked) p.set('parse', '1');
 
   const qs = p.toString();
   history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
@@ -1360,6 +1446,14 @@ function restoreFromURL() {
       if (el) { el.checked = false; el.dispatchEvent(new Event('change')); }
     }
   });
+  if (p.get('split') === '1') {
+    splitLemmaEl.checked = true;
+    splitMorphemes = true;
+  }
+  if (p.get('parse') === '1') {
+    showParseEl.checked = true;
+    page.classList.add('show-parse');
+  }
 
   updateLoadBtn();
   if (!loadBtn.disabled) handleLoad();
@@ -1382,6 +1476,24 @@ setupLayerToggle('posNoun',   'no-pos-noun');
 setupLayerToggle('posVerb',   'no-pos-verb');
 setupLayerToggle('posProper', 'no-pos-proper');
 setupLayerToggle('posAdverb', 'no-pos-adverb');
+
+// Split by Lemma changes the DOM structure of every word (one span per
+// morpheme instead of one span per whole word), so it can't be a pure CSS
+// class flip like the other layer toggles — it needs a full re-render.
+const splitLemmaEl = document.getElementById('splitLemma') as HTMLInputElement;
+splitLemmaEl.addEventListener('change', () => {
+  splitMorphemes = splitLemmaEl.checked;
+  syncURL();
+  if (!loadBtn.disabled) handleLoad();
+});
+
+// Show Parsing — bracketed morph codes are rendered on every word already;
+// this is a pure CSS visibility flip, same as the other layer toggles.
+const showParseEl = document.getElementById('showParse') as HTMLInputElement;
+showParseEl.addEventListener('change', () => {
+  page.classList.toggle('show-parse', showParseEl.checked);
+  syncURL();
+});
 
 // ── Load button ────────────────────────────────────────────────────────────
 loadBtn.addEventListener('click', handleLoad);
@@ -1934,6 +2046,17 @@ function matchPhraseSpans<T>(verseWords: string[], items: T[], getPhrase: (item:
   return result;
 }
 
+// Show Parsing: the raw OSHB morph code (e.g. "HR/Ncmsc") printed as a
+// small bracketed tag right after the word/segment it describes. Visibility
+// is toggled purely via CSS (.mb-page.show-parse), so this is always built.
+function morphCodeEl(morph: string): HTMLElement | null {
+  if (!morph) return null;
+  const code = document.createElement('span');
+  code.className = 'w-code';
+  code.textContent = `[${morph}]`;
+  return code;
+}
+
 function getPosClasses(morph: string): string[] {
   if (!morph) return [];
   const cls: string[] = [];
@@ -1942,6 +2065,30 @@ function getPosClasses(morph: string): string[] {
   if (/Np/.test(morph)) cls.push('pos-proper-noun');
   if (/D/.test(morph)) cls.push('pos-adverb');
   return cls;
+}
+
+// ── Split by Lemma (morpheme segmentation) ──────────────────────────────────
+// OSHB encodes a compound word like מִ/כָּל (mikol = מ prefix + כל root) as a
+// single <w> whose text, lemma, and morph all carry matching "/"-separated
+// segments — e.g. text "מִ/כָּל", lemma "m/3605", morph "HR/Ncmsc". Text and
+// morph always have one segment per morpheme (verified against OSHB source:
+// a pronominal suffix like Sp3fs gets its own morph & text segment but never
+// its own lemma entry), so we zip them positionally and only consume a lemma
+// segment for non-suffix morphemes.
+interface MorphSegment { text: string; lemma: string; morph: string; }
+function splitMorphSegments(rawText: string, lemma: string, morph: string): MorphSegment[] | null {
+  const textSegs = rawText.split('/');
+  if (textSegs.length < 2) return null;
+  const morphSegs = morph ? morph.split('/') : [];
+  if (morphSegs.length !== textSegs.length) return null;
+  const lemmaSegs = lemma ? lemma.split('/') : [];
+  let li = 0;
+  return textSegs.map((seg, idx) => {
+    const mSeg = morphSegs[idx] || '';
+    const isSuffix = mSeg.startsWith('S');
+    const lSeg = isSuffix ? '' : (lemmaSegs[li++] || '');
+    return { text: cleanHebWord(seg), lemma: lSeg, morph: mSeg };
+  });
 }
 
 // ── Device pill management ─────────────────────────────────────────────────
@@ -2022,6 +2169,7 @@ async function renderRange(
 ) {
   if (!appendMode) {
     main.innerHTML = '';
+    activeHighlightWord = null;
     const loaderWrap = document.createElement('div');
     loaderWrap.className = 'mb-loader-wrap';
     loaderWrap.innerHTML = `<div class="mb-loader-label">Loading…</div><div class="mb-loader-bar"></div>`;
@@ -2121,6 +2269,15 @@ async function renderRange(
     if (!appendMode) main.appendChild(buildStatsPanel(stats, devices.length));
     verseBlocks.forEach(b => main.appendChild(b));
 
+    // If a word is actively highlighted (e.g. an appendMode continuation of
+    // the same read), the newly appended verses may add fresh matches —
+    // refresh the occurrence panel so its verse list stays complete.
+    if (activeHighlightWord) {
+      const matches = Array.from(main.querySelectorAll('.w'))
+        .filter(el => (el as HTMLElement).dataset.word === activeHighlightWord) as HTMLElement[];
+      renderOccPanel(activeHighlightWord, matches);
+    }
+
     // Haftarah section for Torah books
     if (TORAH_BOOKS.has(book) && parsha && haftarahData && haftarahData[parsha]) {
       main.appendChild(await buildHaftarahSection(parsha));
@@ -2133,6 +2290,76 @@ async function renderRange(
     main.innerHTML = `<div class="mb-placeholder">Error loading content. Please try again.</div>`;
     setStatus('');
   }
+}
+
+// Highlight every occurrence of a word (by its bare consonant form) in the
+// currently rendered range — persists until the same word is clicked again
+// (toggle off) or a different word takes over. Distinct from the transient
+// `.flash` pulse: this is meant to stay lit so all matches are findable, not
+// just the one scrolled to.
+function highlightAllOccurrences(target: string) {
+  main.querySelectorAll('.w.w-highlight').forEach(el => el.classList.remove('w-highlight'));
+  if (activeHighlightWord === target) {
+    activeHighlightWord = null;
+    setStatus('');
+    renderOccPanel(null, []);
+    return;
+  }
+  const matches = Array.from(main.querySelectorAll('.w')).filter(el => (el as HTMLElement).dataset.word === target) as HTMLElement[];
+  if (!matches.length) return;
+  activeHighlightWord = target;
+  matches.forEach(el => el.classList.add('w-highlight'));
+  matches[0].scrollIntoView({ behavior:'smooth', block:'center' });
+  setStatus(`${matches.length} occurrence${matches.length !== 1 ? 's' : ''} of "${target}" highlighted — click again to clear`);
+  renderOccPanel(target, matches);
+}
+
+// Group a word's highlighted matches by the verse they belong to, and list
+// them as clickable chips so the relevant verses can be found and jumped to
+// individually — not just the single scroll-to-first `highlightAllOccurrences`
+// already does.
+function renderOccPanel(word: string | null, matches: HTMLElement[]) {
+  if (!currentOccPanel) return;
+  if (!word) {
+    currentOccPanel.classList.remove('open');
+    currentOccPanel.innerHTML = '';
+    return;
+  }
+  const refs: { ref: string, els: HTMLElement[] }[] = [];
+  const byRef = new Map<string, HTMLElement[]>();
+  matches.forEach(el => {
+    const block = el.closest('.verse-block') as HTMLElement | null;
+    const ref = block?.dataset.verseRef || '';
+    if (!byRef.has(ref)) { byRef.set(ref, []); refs.push({ ref, els: byRef.get(ref)! }); }
+    byRef.get(ref)!.push(el);
+  });
+
+  currentOccPanel.innerHTML = `
+    <div class="mb-occ-head">
+      <span class="mb-occ-title">Occurrences of <strong>${word}</strong> — ${matches.length} in ${refs.length} verse${refs.length !== 1 ? 's' : ''}</span>
+      <button type="button" class="mb-occ-clear">Clear</button>
+    </div>
+    <div class="mb-occ-refs"></div>`;
+
+  currentOccPanel.querySelector('.mb-occ-clear')!.addEventListener('click', () => highlightAllOccurrences(word));
+
+  const refsDiv = currentOccPanel.querySelector('.mb-occ-refs')!;
+  refs.forEach(({ ref, els }) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'mb-occ-ref';
+    chip.textContent = els.length > 1 ? `${ref} (${els.length})` : ref;
+    chip.addEventListener('click', () => {
+      els[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      els.forEach(el => {
+        el.classList.add('flash');
+        setTimeout(() => el.classList.remove('flash'), 900);
+      });
+    });
+    refsDiv.appendChild(chip);
+  });
+
+  currentOccPanel.classList.add('open');
 }
 
 // ── Stats panel ────────────────────────────────────────────────────────────
@@ -2231,18 +2458,12 @@ function buildStatsPanel(stats: any, deviceCount: number): HTMLElement {
         const row = document.createElement('div');
         row.className = 'mb-freq-bar-row';
         row.style.cursor = 'pointer';
-        row.title = `Click to highlight "${w.text}"`;
+        row.title = `Click to highlight all ${w.count} occurrence${w.count !== 1 ? 's' : ''} of "${w.text}"`;
         row.innerHTML = `
           <div class="mb-freq-label">${w.text}</div>
           <div class="mb-freq-bar-wrap"><div class="mb-freq-bar" style="width:${Math.round(w.count/max*100)}%"></div></div>
           <div class="mb-freq-bar-num">${w.count}</div>`;
-        row.addEventListener('click', () => {
-          const target = w.text;
-          const matches = Array.from(main.querySelectorAll('.w')).filter(el => stripMarks((el as HTMLElement).textContent || '') === target);
-          if (!matches.length) return;
-          matches[0].scrollIntoView({ behavior:'smooth', block:'center' });
-          matches.forEach(el => { el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1500); });
-        });
+        row.addEventListener('click', () => highlightAllOccurrences(w.text));
         barsDiv.appendChild(row);
       });
     };
@@ -2264,6 +2485,12 @@ function buildStatsPanel(stats: any, deviceCount: number): HTMLElement {
     chartDiv.appendChild(tabsDiv);
     renderBars('all');
     chartDiv.appendChild(barsDiv);
+
+    const occPanel = document.createElement('div');
+    occPanel.className = 'mb-occ-panel';
+    chartDiv.appendChild(occPanel);
+    currentOccPanel = occPanel;
+
     panel.appendChild(chartDiv);
   }
 
@@ -2445,6 +2672,7 @@ function buildHaftarahViz(parsha: string): HTMLElement {
 function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number, devices: any[], translations: {label: string, text: string}[] = []) {
   const block = document.createElement('div');
   block.className = 'verse-block';
+  block.dataset.verseRef = `${book} ${ch}:${v}`;
 
   // Ref line
   const ref = document.createElement('div');
@@ -2518,19 +2746,47 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
   const graetzSpans  = matchPhraseSpans(verseWordsNorm, gEntries, e => e.mt);
 
   words.forEach((wordEl, i) => {
-    const text  = cleanHebWord(wordEl.textContent || '');
+    const rawText = wordEl.textContent || '';
+    const text  = cleanHebWord(rawText);
     const lemma = wordEl.getAttribute('lemma') || '';
     const morph = wordEl.getAttribute('morph') || '';
     const span  = document.createElement('span');
     span.className = 'w';
-    span.textContent = text;
+    span.dataset.word = stripMarks(text);
 
-    // POS
-    getPosClasses(morph).forEach(c => span.classList.add(c));
+    const matchedDevices = deviceSpans.get(i) || [];
+    const matchedGraetz  = graetzSpans.get(i) || [];
+
+    // Split by Lemma: render each prefix/root/suffix morpheme as its own
+    // clickable, independently-colored sub-span inside the shared wrapper.
+    const segments = splitMorphemes ? splitMorphSegments(rawText, lemma, morph) : null;
+
+    if (segments) {
+      segments.forEach(seg => {
+        const segSpan = document.createElement('span');
+        segSpan.className = 'seg';
+        segSpan.textContent = seg.text;
+        getPosClasses(seg.morph).forEach(c => segSpan.classList.add(c));
+        segSpan.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showDetail(seg.text, seg.lemma, seg.morph, matchedDevices, matchedGraetz);
+        });
+        const segCode = morphCodeEl(seg.morph);
+        if (segCode) segSpan.appendChild(segCode);
+        span.appendChild(segSpan);
+      });
+    } else {
+      span.textContent = text;
+      getPosClasses(morph).forEach(c => span.classList.add(c));
+      span.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showDetail(text, lemma, morph, matchedDevices, matchedGraetz);
+      });
+      const wordCode = morphCodeEl(morph);
+      if (wordCode) span.appendChild(wordCode);
+    }
 
     // Device match
-    const matchedDevices = deviceSpans.get(i) || [];
-
     if (matchedDevices.length) {
       const primaryDevice = matchedDevices[0];
       const color = deviceColor(primaryDevice.device?.toLowerCase() || '');
@@ -2547,16 +2803,15 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     }
 
     // Emendation (Graetz) match
-    const matchedGraetz = graetzSpans.get(i) || [];
     if (matchedGraetz.length) {
       span.classList.add('has-graetz');
       span.title = (span.title ? span.title + ' · ' : '') + 'Graetz emendation — click for detail';
     }
 
-    span.addEventListener('click', (e) => {
-      e.stopPropagation();
-      showDetail(text, lemma, morph, matchedDevices, matchedGraetz);
-    });
+    // Re-apply an active "highlight all occurrences" selection across re-renders
+    if (activeHighlightWord && span.dataset.word === activeHighlightWord) {
+      span.classList.add('w-highlight');
+    }
 
     hebrewRow.appendChild(span);
     hebrewRow.appendChild(document.createTextNode('​'));
