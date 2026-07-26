@@ -202,6 +202,21 @@ body:has(.mb-page) > footer { display:none!important; }
   background:var(--surface); border:1px solid var(--border);
   padding:.75rem 1rem 1rem; margin-bottom:1.5rem;
 }
+.mb-groupby-row {
+  display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem;
+  padding-bottom:.6rem; border-bottom:1px solid var(--border);
+}
+.mb-groupby-label {
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--muted); white-space:nowrap;
+}
+.mb-groupby-btn {
+  font-family:var(--sc); font-size:.52rem; letter-spacing:.1em; text-transform:uppercase;
+  background:none; border:1px solid var(--border); color:var(--muted);
+  padding:.2rem .55rem; cursor:pointer; transition:all .12s;
+}
+.mb-groupby-btn:hover { border-color:var(--border-hi); color:var(--text); }
+.mb-groupby-btn.active { border-color:var(--gold); color:var(--gold); background:rgba(201,162,87,.08); }
 .mb-stats-row {
   display:flex; gap:1.2rem; flex-wrap:wrap; margin-bottom:.7rem;
 }
@@ -242,8 +257,13 @@ body:has(.mb-page) > footer { display:none!important; }
 .mb-wordlist-panel.open { display:block; }
 .mb-wordlist-content {
   font-family:var(--heb); font-size:1rem; direction:rtl;
-  line-height:2; color:var(--text); word-break:break-all;
+  line-height:2; color:var(--text);
 }
+.mb-wl-word {
+  cursor:pointer; transition:color .12s; border-bottom:1px dotted transparent;
+}
+.mb-wl-word:hover { color:var(--gold); border-bottom-color:var(--gold-dim); }
+.mb-wl-sep { color:var(--muted); margin:0 .2rem; unicode-bidi:isolate; }
 
 /* Word-occurrence panel — appears under the frequency chart when a bar is
    clicked, listing the actual verses that contain the word (not just a
@@ -336,24 +356,40 @@ body:has(.mb-page) > footer { display:none!important; }
 .mb-page.no-devices .w { --dev-color:transparent!important; }
 
 /* Morpheme segments (Split by Lemma view) — each prefix/root/suffix piece
-   gets its own POS underline inside the shared word wrapper. */
+   gets its own POS underline inside the shared word wrapper. The wrapper
+   gets a faint boxed outline so a multi-morpheme word reads as one unit
+   at a glance instead of blurring into its neighbors. */
+.mb-page.split-lemma .w:has(> .seg) {
+  border:1px solid var(--border); border-radius:4px;
+  padding:1px 5px 3px; background:rgba(201,162,87,.045);
+}
+.mb-page.split-lemma .w:has(> .seg):hover { background:rgba(201,162,87,.12); }
 .seg {
-  display:inline; cursor:pointer; padding:0 1px 3px;
+  display:inline; cursor:pointer; padding:0 2px 2px;
   border-bottom:2px solid transparent; transition:background .12s;
 }
-.seg:hover { background:rgba(201,162,87,.15); }
-.seg + .seg { margin-inline-start:1px; border-inline-start:1px dotted var(--border); padding-inline-start:2px; }
+.seg:hover { background:rgba(201,162,87,.22); }
+.seg + .seg { margin-inline-start:2px; border-inline-start:1px solid var(--border-hi); padding-inline-start:4px; }
 
-/* Show Parsing — bracketed OSHB morphology code (e.g. [HNcfsa]) printed
-   inline after each word/segment. Rendered on every word regardless of
-   the toggle state and simply hidden via CSS, so flipping the checkbox
-   is instant (no re-render needed), matching the other layer toggles. */
+/* Show Parsing — bracketed OSHB morphology code(s) printed after the word.
+   Rendered on every word regardless of the toggle state and simply hidden
+   via CSS, so flipping the checkbox is instant (no re-render needed),
+   matching the other layer toggles. For a split word every morpheme's code
+   is grouped into one bracket *after* the Hebrew (not interleaved between
+   segments), each chip colored to match its segment's POS underline so the
+   code can be traced back to the piece it describes. */
 .w-code {
-  display:none; font-family:var(--mono); font-size:.5rem; color:var(--gold-dim);
-  direction:ltr; unicode-bidi:isolate; vertical-align:.2em; margin-inline-start:.15rem;
+  display:none; font-family:var(--mono); font-size:.52rem; color:var(--gold-dim);
+  direction:ltr; unicode-bidi:isolate; vertical-align:.2em; margin-inline-start:.25rem;
   letter-spacing:.02em;
 }
 .mb-page.show-parse .w-code { display:inline; }
+.w-code-chip { color:var(--gold-dim); }
+.w-code-chip.pos-noun { color:#fbbf24; }
+.w-code-chip.pos-verb { color:#60a5fa; }
+.w-code-chip.pos-adverb { color:#34d399; }
+.w-code-chip.pos-proper-noun { color:#a78bfa; }
+.w-code-sep { color:var(--faint); margin:0 .12rem; }
 
 /* Persistent "highlight all occurrences" state, set from the frequency
    chart — distinct from .flash, which is a transient one-shot pulse. */
@@ -447,6 +483,20 @@ body:has(.mb-page) > footer { display:none!important; }
   border-top:1px solid var(--faint); line-height:1.7; direction:ltr;
 }
 .fn-device { margin-right:.3rem; font-weight:600; }
+.fn-mycomment {
+  display:inline-block; color:var(--text); font-style:normal;
+  background:rgba(201,162,87,.07); border-left:2px solid var(--gold-dim);
+  padding:.2rem .5rem; margin:.15rem 0; line-height:1.6;
+}
+.fn-mycomment-label {
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--gold); font-weight:600; margin-right:.4rem; font-style:normal;
+}
+.dev-browser-mycomment {
+  color:var(--text); font-size:.78rem; margin-top:.2rem;
+  background:rgba(201,162,87,.07); border-left:2px solid var(--gold-dim);
+  padding:.15rem .45rem;
+}
 
 /* Haftarah section */
 .haftarah-section { margin-top:2.5rem; }
@@ -796,6 +846,22 @@ body:has(.mb-page) > footer { display:none!important; }
       <div class="sb-section">
         <div class="sb-title">Recently Added</div>
         <div class="sb-recent-item">
+          <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 26</span></div>
+          <span class="sb-recent-text">Personal notes (my_comments) on literary devices now show up alongside the verse and in the All Devices browser, distinct from the curated device notes</span>
+        </div>
+        <div class="sb-recent-item">
+          <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 24</span></div>
+          <span class="sb-recent-text">Word stats now toggle between grouping by root lemma (all inflected/prefixed forms together) or exact surface spelling; every word in the Nouns/Verbs/etc lists is now clickable, same as a chart bar</span>
+        </div>
+        <div class="sb-recent-item">
+          <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 24</span></div>
+          <span class="sb-recent-text">Clicking a word in the frequency chart now filters the passage down to only the verses containing it, highlighted, until cleared</span>
+        </div>
+        <div class="sb-recent-item">
+          <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 24</span></div>
+          <span class="sb-recent-text">"Split by Lemma" morphemes now grouped in a boxed word outline with grouped, color-matched parsing codes, instead of tiny codes wedged between each piece</span>
+        </div>
+        <div class="sb-recent-item">
           <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 23</span></div>
           <span class="sb-recent-text">Clicking a word in the frequency chart now lists every verse it occurs in as clickable chips, alongside the existing highlight</span>
         </div>
@@ -1005,7 +1071,13 @@ let navMode = 'chapter';
 let currentParsha = '';
 let allDevicesData: any[] = [];
 let splitMorphemes = false;
-let activeHighlightWord: string | null = null;
+let activeHighlightKey: string | null = null;
+let activeHighlightLabel: string = '';
+let activeHighlightMode: 'lemma' | 'word' = 'lemma';
+// Whether the stats panel's word-lists and frequency chart bucket words by
+// root lemma (all inflected/prefixed forms together) or exact surface
+// spelling. Module-level so it persists across re-renders.
+let wordGroupMode: 'lemma' | 'word' = 'lemma';
 // The verse-occurrence list panel rendered under the frequency chart —
 // rebuilt fresh by buildStatsPanel on every non-append render.
 let currentOccPanel: HTMLElement | null = null;
@@ -1090,7 +1162,7 @@ async function loadAllDevices() {
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,notes&order=book,chapter,verse`,
+      `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,notes,my_comments&order=book,chapter,verse`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     if (!r.ok) return;
@@ -1449,6 +1521,7 @@ function restoreFromURL() {
   if (p.get('split') === '1') {
     splitLemmaEl.checked = true;
     splitMorphemes = true;
+    page.classList.add('split-lemma');
   }
   if (p.get('parse') === '1') {
     showParseEl.checked = true;
@@ -1483,6 +1556,7 @@ setupLayerToggle('posAdverb', 'no-pos-adverb');
 const splitLemmaEl = document.getElementById('splitLemma') as HTMLInputElement;
 splitLemmaEl.addEventListener('change', () => {
   splitMorphemes = splitLemmaEl.checked;
+  page.classList.toggle('split-lemma', splitMorphemes);
   syncURL();
   if (!loadBtn.disabled) handleLoad();
 });
@@ -1614,7 +1688,7 @@ async function handleAllDevicesLoad() {
   if (!rows.length) {
     try {
       const r = await fetch(
-        `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,notes&order=book,chapter,verse`,
+        `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,notes,my_comments&order=book,chapter,verse`,
         { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
       );
       rows = await r.json();
@@ -1664,7 +1738,10 @@ async function handleAllDevicesLoad() {
       <div class="dev-browser-ref">${row.book} ${row.chapter}:${row.verse}</div>
       <div class="dev-browser-device" style="color:${color}">${row.device || ''}</div>
       <div style="font-family:var(--heb);direction:rtl;font-size:1rem">${row.words || ''}</div>
-      <div style="font-style:italic;color:var(--muted);font-size:.78rem">${row.notes || ''}</div>`;
+      <div>
+        ${row.notes ? `<div style="font-style:italic;color:var(--muted);font-size:.78rem">${row.notes}</div>` : ''}
+        ${row.my_comments ? `<div class="dev-browser-mycomment"><span class="fn-mycomment-label">My note</span>${row.my_comments}</div>` : ''}
+      </div>`;
     div.addEventListener('click', () => {
       // Switch to chapter mode and load the passage
       navMode = 'chapter';
@@ -1925,7 +2002,7 @@ async function fetchDevices(book: string): Promise<any[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,sources,urls,notes&book=eq.${encodeURIComponent(book)}`,
+      `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,sources,urls,notes,my_comments&book=eq.${encodeURIComponent(book)}`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     if (!r.ok) return [];
@@ -1952,6 +2029,19 @@ function stripMarks(s: string) { return s ? s.replace(CANTILLATION, '') : ''; }
 
 // Strip OSHB's internal morpheme-boundary markers ("/") — not real text.
 function cleanHebWord(s: string): string { return s ? s.replace(/\//g, '') : ''; }
+
+// Reduce an OSHB lemma attribute to the Strong's number of its root, so every
+// inflected/prefixed form of a word groups under one key. OSHB writes a
+// prefixed word's lemma as "prefix-code/.../root" (e.g. "d/3117" for
+// הַיּוֹם — the definite-article prefix "d" plus root 3117), with the root's
+// Strong's number always the only digits present (prefix codes are letters,
+// and — per splitMorphSegments above — suffixes never contribute a lemma
+// segment). Digit-only extraction is the same trick showDetail() already
+// uses to resolve a word's BDB entry, kept consistent here.
+function coreLemmaKey(lemma: string): string {
+  const digits = lemma.replace(/\D/g, '');
+  return digits || lemma;
+}
 
 const FINAL_FORMS: Record<string,string> = { 'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ' };
 // Bare consonant skeleton: strips niqqud/cantillation, OSHB slashes, maqaf,
@@ -2046,15 +2136,33 @@ function matchPhraseSpans<T>(verseWords: string[], items: T[], getPhrase: (item:
   return result;
 }
 
-// Show Parsing: the raw OSHB morph code (e.g. "HR/Ncmsc") printed as a
-// small bracketed tag right after the word/segment it describes. Visibility
-// is toggled purely via CSS (.mb-page.show-parse), so this is always built.
-function morphCodeEl(morph: string): HTMLElement | null {
-  if (!morph) return null;
-  const code = document.createElement('span');
-  code.className = 'w-code';
-  code.textContent = `[${morph}]`;
-  return code;
+// Show Parsing: the raw OSHB morph code(s) (e.g. "HR/Ncmsc") printed as a
+// small bracketed tag after the word. Visibility is toggled purely via CSS
+// (.mb-page.show-parse), so this is always built. For a split word, each
+// morpheme's code becomes its own chip inside the one bracket — grouped
+// after the Hebrew rather than interleaved between segments — colored to
+// match that segment's POS underline so the code traces back to its piece.
+function morphCodeGroupEl(parts: { morph: string; posClasses: string[] }[]): HTMLElement | null {
+  const withCode = parts.filter(p => p.morph);
+  if (!withCode.length) return null;
+  const wrap = document.createElement('span');
+  wrap.className = 'w-code';
+  wrap.appendChild(document.createTextNode('['));
+  withCode.forEach((p, idx) => {
+    if (idx > 0) {
+      const sep = document.createElement('span');
+      sep.className = 'w-code-sep';
+      sep.textContent = '·';
+      wrap.appendChild(sep);
+    }
+    const chip = document.createElement('span');
+    chip.className = 'w-code-chip';
+    p.posClasses.forEach(c => chip.classList.add(c));
+    chip.textContent = p.morph;
+    wrap.appendChild(chip);
+  });
+  wrap.appendChild(document.createTextNode(']'));
+  return wrap;
 }
 
 function getPosClasses(morph: string): string[] {
@@ -2105,6 +2213,21 @@ function scrollToDevInstance(idx: number) {
 document.getElementById('devPrev')!.addEventListener('click', () => scrollToDevInstance(devIdx - 1));
 document.getElementById('devNext')!.addEventListener('click', () => scrollToDevInstance(devIdx + 1));
 
+// Show only verse-blocks that satisfy every active filter (device pill
+// and/or the frequency-chart word highlight); hide the rest. Called any
+// time either filter changes, and again after a re-render (pagination)
+// so newly appended verses respect whichever filters are still active.
+function applyVerseVisibility() {
+  main.querySelectorAll('.verse-block').forEach(vb => {
+    const el = vb as HTMLElement;
+    const devOk = !activeDevice || vb.querySelector(`.w[data-devices*="${activeDevice}"]`);
+    const wordOk = !activeHighlightKey || vb.querySelector(`.w[data-${activeHighlightMode}="${activeHighlightKey}"]`);
+    el.style.display = (devOk && wordOk) ? '' : 'none';
+  });
+  const haftSection = main.querySelector('.haftarah-section') as HTMLElement | null;
+  if (haftSection) haftSection.style.display = (activeDevice || activeHighlightKey) ? 'none' : '';
+}
+
 function updateDevicePills(allDevices: any[]) {
   devicePills.innerHTML = '';
   // Build count map from current passage if available
@@ -2130,14 +2253,7 @@ function updateDevicePills(allDevices: any[]) {
       devicePills.querySelectorAll('.sb-pill').forEach(b => {
         (b as HTMLElement).classList.toggle('active', (b as HTMLElement).dataset.device === val);
       });
-      main.querySelectorAll('.verse-block').forEach(vb => {
-        if (!val) { (vb as HTMLElement).style.display = ''; return; }
-        const hasDevice = vb.querySelector(`.w[data-devices*="${val}"]`);
-        (vb as HTMLElement).style.display = hasDevice ? '' : 'none';
-      });
-      // Hide haftarah section when filtering by device
-      const haftSection = main.querySelector('.haftarah-section') as HTMLElement | null;
-      if (haftSection) haftSection.style.display = val ? 'none' : '';
+      applyVerseVisibility();
       // Update instance navigator
       if (val) {
         devInstances = Array.from(main.querySelectorAll(`.w[data-devices*="${val}"]`));
@@ -2169,7 +2285,8 @@ async function renderRange(
 ) {
   if (!appendMode) {
     main.innerHTML = '';
-    activeHighlightWord = null;
+    activeHighlightKey = null;
+    activeHighlightLabel = '';
     const loaderWrap = document.createElement('div');
     loaderWrap.className = 'mb-loader-wrap';
     loaderWrap.innerHTML = `<div class="mb-loader-label">Loading…</div><div class="mb-loader-bar"></div>`;
@@ -2206,9 +2323,20 @@ async function renderRange(
     const bookCode = BOOK_XML[book];
     let verseCount = 0;
 
-    // Collect stats as we render
-    interface WordStats { total:number; nouns:Map<string,{text:string,count:number}>; verbs:Map<string,{text:string,count:number}>; properNouns:Map<string,{text:string,count:number}>; adverbs:Map<string,{text:string,count:number}>; lemmaFreq:Map<string,{text:string,count:number}>; }
-    const stats: WordStats = { total:0, nouns:new Map(), verbs:new Map(), properNouns:new Map(), adverbs:new Map(), lemmaFreq:new Map() };
+    // Collect stats as we render. Every occurrence is tallied twice in
+    // parallel — once keyed by root lemma (all inflected/prefixed forms of
+    // יוֹם count together) and once keyed by exact surface spelling (הַיּוֹם
+    // and יוֹם stay separate) — so the chart/word-lists can switch between
+    // "by lemma" and "by word" grouping instantly, without recollecting.
+    type FreqMap = Map<string, {text:string, count:number}>;
+    interface FreqMaps { all:FreqMap; nouns:FreqMap; verbs:FreqMap; properNouns:FreqMap; adverbs:FreqMap; }
+    const makeFreqMaps = (): FreqMaps => ({ all:new Map(), nouns:new Map(), verbs:new Map(), properNouns:new Map(), adverbs:new Map() });
+    interface WordStats { total:number; byLemma:FreqMaps; byWord:FreqMaps; }
+    const stats: WordStats = { total:0, byLemma:makeFreqMaps(), byWord:makeFreqMaps() };
+    const bump = (map: FreqMap, key: string, label: string) => {
+      const e = map.get(key) || {text: label, count:0};
+      map.set(key, {text: label, count: e.count+1});
+    };
 
     const verseBlocks: Element[] = [];
 
@@ -2228,7 +2356,9 @@ async function renderRange(
         const maxV = ch === ec ? ev : Infinity;
         if (vNum < minV || vNum > maxV) continue;
 
-        // Collect stats from words
+        // Collect stats from words, grouped by root lemma (not raw surface
+        // text) so every inflected/prefixed form of a word — הַיּוֹם, בַּיּוֹם,
+        // וּלְיָמִים — counts toward the same bar as יוֹם.
         getByTag(verseNode, 'w').forEach(wEl => {
           const text  = cleanHebWord(wEl.textContent || '');
           const morph = wEl.getAttribute('morph') || '';
@@ -2236,22 +2366,24 @@ async function renderRange(
           if (!text.trim()) return;
           stats.total++;
           const bare = stripMarks(text);
-          const existing = stats.lemmaFreq.get(lemma) || {text: bare, count:0};
-          stats.lemmaFreq.set(lemma, {text: bare, count: existing.count + 1});
+          const key = coreLemmaKey(lemma);
+          const label = lemmaMap[`H${key}`]?.word || bare;
+          bump(stats.byLemma.all, key, label);
+          bump(stats.byWord.all, bare, bare);
           if (/V/.test(morph)) {
-            const e = stats.verbs.get(lemma) || {text: bare, count:0};
-            stats.verbs.set(lemma, {text: bare, count: e.count+1});
+            bump(stats.byLemma.verbs, key, label);
+            bump(stats.byWord.verbs, bare, bare);
           } else if (/(^|[^V])N/.test(morph)) {
             if (/Np/.test(morph)) {
-              const e = stats.properNouns.get(lemma) || {text: bare, count:0};
-              stats.properNouns.set(lemma, {text: bare, count: e.count+1});
+              bump(stats.byLemma.properNouns, key, label);
+              bump(stats.byWord.properNouns, bare, bare);
             } else {
-              const e = stats.nouns.get(lemma) || {text: bare, count:0};
-              stats.nouns.set(lemma, {text: bare, count: e.count+1});
+              bump(stats.byLemma.nouns, key, label);
+              bump(stats.byWord.nouns, bare, bare);
             }
           } else if (/D/.test(morph)) {
-            const e = stats.adverbs.get(lemma) || {text: bare, count:0};
-            stats.adverbs.set(lemma, {text: bare, count: e.count+1});
+            bump(stats.byLemma.adverbs, key, label);
+            bump(stats.byWord.adverbs, bare, bare);
           }
         });
 
@@ -2272,10 +2404,10 @@ async function renderRange(
     // If a word is actively highlighted (e.g. an appendMode continuation of
     // the same read), the newly appended verses may add fresh matches —
     // refresh the occurrence panel so its verse list stays complete.
-    if (activeHighlightWord) {
+    if (activeHighlightKey) {
       const matches = Array.from(main.querySelectorAll('.w'))
-        .filter(el => (el as HTMLElement).dataset.word === activeHighlightWord) as HTMLElement[];
-      renderOccPanel(activeHighlightWord, matches);
+        .filter(el => (el as HTMLElement).dataset[activeHighlightMode] === activeHighlightKey) as HTMLElement[];
+      renderOccPanel(activeHighlightKey, activeHighlightLabel, matches);
     }
 
     // Haftarah section for Torah books
@@ -2285,6 +2417,7 @@ async function renderRange(
 
     setStatus(`${verseCount} verse${verseCount !== 1 ? 's' : ''}`);
     updateDevicePills(devices);
+    applyVerseVisibility();
 
   } catch (e) {
     main.innerHTML = `<div class="mb-placeholder">Error loading content. Please try again.</div>`;
@@ -2292,35 +2425,44 @@ async function renderRange(
   }
 }
 
-// Highlight every occurrence of a word (by its bare consonant form) in the
-// currently rendered range — persists until the same word is clicked again
-// (toggle off) or a different word takes over. Distinct from the transient
-// `.flash` pulse: this is meant to stay lit so all matches are findable, not
-// just the one scrolled to.
-function highlightAllOccurrences(target: string) {
+// Highlight every occurrence of a word in the currently rendered range, and
+// filter the passage down to just the verses that contain it — persists
+// until the same key is clicked again (toggle off, which restores every
+// verse) or a different one takes over. `mode` selects what `key` means:
+// 'lemma' matches the root Strong's number (every inflected/prefixed
+// surface form — הַיּוֹם, בַּיּוֹם, וּלְיָמִים all count as יוֹם); 'word' matches
+// the exact surface spelling only.
+function highlightAllOccurrences(key: string, label: string, mode: 'lemma' | 'word') {
   main.querySelectorAll('.w.w-highlight').forEach(el => el.classList.remove('w-highlight'));
-  if (activeHighlightWord === target) {
-    activeHighlightWord = null;
+  if (activeHighlightKey === key && activeHighlightMode === mode) {
+    activeHighlightKey = null;
+    activeHighlightLabel = '';
     setStatus('');
-    renderOccPanel(null, []);
+    renderOccPanel(null, '', 'lemma', []);
+    applyVerseVisibility();
     return;
   }
-  const matches = Array.from(main.querySelectorAll('.w')).filter(el => (el as HTMLElement).dataset.word === target) as HTMLElement[];
+  const matches = Array.from(main.querySelectorAll('.w')).filter(el => (el as HTMLElement).dataset[mode] === key) as HTMLElement[];
   if (!matches.length) return;
-  activeHighlightWord = target;
+  activeHighlightKey = key;
+  activeHighlightLabel = label;
+  activeHighlightMode = mode;
   matches.forEach(el => el.classList.add('w-highlight'));
+  applyVerseVisibility();
   matches[0].scrollIntoView({ behavior:'smooth', block:'center' });
-  setStatus(`${matches.length} occurrence${matches.length !== 1 ? 's' : ''} of "${target}" highlighted — click again to clear`);
-  renderOccPanel(target, matches);
+  const verseCount = new Set(matches.map(el => el.closest('.verse-block'))).size;
+  const formsNote = mode === 'lemma' ? ' (all forms)' : '';
+  setStatus(`${matches.length} occurrence${matches.length !== 1 ? 's' : ''} of "${label}"${formsNote} in ${verseCount} verse${verseCount !== 1 ? 's' : ''} — showing only those verses, click again to show all`);
+  renderOccPanel(key, label, mode, matches);
 }
 
 // Group a word's highlighted matches by the verse they belong to, and list
 // them as clickable chips so the relevant verses can be found and jumped to
 // individually — not just the single scroll-to-first `highlightAllOccurrences`
 // already does.
-function renderOccPanel(word: string | null, matches: HTMLElement[]) {
+function renderOccPanel(key: string | null, label: string, mode: 'lemma' | 'word', matches: HTMLElement[]) {
   if (!currentOccPanel) return;
-  if (!word) {
+  if (!key) {
     currentOccPanel.classList.remove('open');
     currentOccPanel.innerHTML = '';
     return;
@@ -2334,14 +2476,15 @@ function renderOccPanel(word: string | null, matches: HTMLElement[]) {
     byRef.get(ref)!.push(el);
   });
 
+  const formsNote = mode === 'lemma' ? ' (all forms)' : '';
   currentOccPanel.innerHTML = `
     <div class="mb-occ-head">
-      <span class="mb-occ-title">Occurrences of <strong>${word}</strong> — ${matches.length} in ${refs.length} verse${refs.length !== 1 ? 's' : ''}</span>
-      <button type="button" class="mb-occ-clear">Clear</button>
+      <span class="mb-occ-title">Occurrences of <strong>${label}</strong>${formsNote} — ${matches.length} in ${refs.length} verse${refs.length !== 1 ? 's' : ''}, other verses hidden</span>
+      <button type="button" class="mb-occ-clear">Show all verses</button>
     </div>
     <div class="mb-occ-refs"></div>`;
 
-  currentOccPanel.querySelector('.mb-occ-clear')!.addEventListener('click', () => highlightAllOccurrences(word));
+  currentOccPanel.querySelector('.mb-occ-clear')!.addEventListener('click', () => highlightAllOccurrences(key, label, mode));
 
   const refsDiv = currentOccPanel.querySelector('.mb-occ-refs')!;
   refs.forEach(({ ref, els }) => {
@@ -2367,20 +2510,83 @@ function buildStatsPanel(stats: any, deviceCount: number): HTMLElement {
   const panel = document.createElement('div');
   panel.className = 'mb-stats';
 
+  type Category = 'all' | 'nouns' | 'verbs' | 'properNouns' | 'adverbs';
+  const mapFor = (category: Category): Map<string,{text:string,count:number}> =>
+    (wordGroupMode === 'lemma' ? stats.byLemma : stats.byWord)[category];
+
+  // Everything that depends on wordGroupMode (word-list contents + chart bars)
+  // gets a refresh callback here, so the group-by toggle can redraw them
+  // in place without recollecting or re-fetching anything.
+  const refreshers: (() => void)[] = [];
+
+  // Group-by toggle — switches every word-list and the frequency chart
+  // between root-lemma buckets (all inflected/prefixed forms together)
+  // and exact surface-spelling buckets, without changing anything else.
+  const groupByRow = document.createElement('div');
+  groupByRow.className = 'mb-groupby-row';
+  const groupByLabel = document.createElement('span');
+  groupByLabel.className = 'mb-groupby-label';
+  groupByLabel.textContent = 'Group words by';
+  groupByRow.appendChild(groupByLabel);
+  (['lemma', 'word'] as const).forEach(mode => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mb-groupby-btn' + (wordGroupMode === mode ? ' active' : '');
+    btn.textContent = mode === 'lemma' ? 'Lemma (all forms)' : 'Full Word';
+    btn.addEventListener('click', () => {
+      if (wordGroupMode === mode) return;
+      wordGroupMode = mode;
+      groupByRow.querySelectorAll('.mb-groupby-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      refreshers.forEach(fn => fn());
+    });
+    groupByRow.appendChild(btn);
+  });
+  panel.appendChild(groupByRow);
+
   // Summary chips row
   const chipsRow = document.createElement('div');
   chipsRow.className = 'mb-stats-row';
 
-  const makeStat = (label: string, color: string, map: Map<string,{text:string,count:number}>, cssFilter?: string) => {
+  const makeStat = (label: string, color: string, category: Category, cssFilter?: string) => {
     const chip = document.createElement('div');
     chip.className = 'mb-stat-chip';
-    const total = Array.from(map.values()).reduce((s,v) => s + v.count, 0);
+    const total = Array.from(mapFor(category).values()).reduce((s,v) => s + v.count, 0);
     chip.innerHTML = `<span class="chip-dot" style="background:${color}"></span>${label}: <span class="chip-count">${total}</span>`;
-    // Word list panel
+    // Word list panel — every word is its own clickable trigger for
+    // highlightAllOccurrences, same as a frequency-chart bar.
     const wl = document.createElement('div');
     wl.className = 'mb-wordlist-panel';
-    const sorted = Array.from(map.values()).sort((a,b) => b.count - a.count);
-    wl.innerHTML = `<div class="mb-wordlist-content">${sorted.map(w => `${w.text}${w.count > 1 ? ' ('+w.count+')' : ''}`).join(' · ')}</div>`;
+    const content = document.createElement('div');
+    content.className = 'mb-wordlist-content';
+    wl.appendChild(content);
+
+    const renderWordList = () => {
+      content.innerHTML = '';
+      const sorted = Array.from(mapFor(category).entries())
+        .map(([key, v]) => ({ key, text: v.text, count: v.count }))
+        .sort((a,b) => b.count - a.count);
+      sorted.forEach((w, idx) => {
+        if (idx > 0) {
+          const sep = document.createElement('span');
+          sep.className = 'mb-wl-sep';
+          sep.textContent = '·';
+          content.appendChild(sep);
+        }
+        const wordBtn = document.createElement('span');
+        wordBtn.className = 'mb-wl-word';
+        wordBtn.textContent = w.count > 1 ? `${w.text} (${w.count})` : w.text;
+        wordBtn.title = `Click to highlight all ${w.count} occurrence${w.count !== 1 ? 's' : ''} of "${w.text}"`;
+        wordBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          highlightAllOccurrences(w.key, w.text, wordGroupMode);
+        });
+        content.appendChild(wordBtn);
+      });
+    };
+    renderWordList();
+    refreshers.push(renderWordList);
+
     chip.addEventListener('click', () => {
       wl.classList.toggle('open');
       chip.classList.toggle('active');
@@ -2399,10 +2605,10 @@ function buildStatsPanel(stats: any, deviceCount: number): HTMLElement {
     return wrap;
   };
 
-  chipsRow.appendChild(makeStat('Nouns', '#fbbf24', stats.nouns, 'pos-noun'));
-  chipsRow.appendChild(makeStat('Verbs', '#60a5fa', stats.verbs, 'pos-verb'));
-  chipsRow.appendChild(makeStat('Proper Nouns', 'rgba(167,139,250,.8)', stats.properNouns, 'pos-proper-noun'));
-  chipsRow.appendChild(makeStat('Adverbs', '#34d399', stats.adverbs, 'pos-adverb'));
+  chipsRow.appendChild(makeStat('Nouns', '#fbbf24', 'nouns', 'pos-noun'));
+  chipsRow.appendChild(makeStat('Verbs', '#60a5fa', 'verbs', 'pos-verb'));
+  chipsRow.appendChild(makeStat('Proper Nouns', 'rgba(167,139,250,.8)', 'properNouns', 'pos-proper-noun'));
+  chipsRow.appendChild(makeStat('Adverbs', '#34d399', 'adverbs', 'pos-adverb'));
   if (deviceCount > 0) {
     const dchip = document.createElement('div');
     dchip.className = 'mb-stat-chip';
@@ -2420,17 +2626,11 @@ function buildStatsPanel(stats: any, deviceCount: number): HTMLElement {
   panel.appendChild(chipsRow);
 
   // Frequency bar chart with POS tabs
-  const chartMaps: Record<string, Map<string,{text:string,count:number}>> = {
-    all:    stats.lemmaFreq,
-    nouns:  stats.nouns,
-    verbs:  stats.verbs,
-    proper: stats.properNouns,
-    adverbs:stats.adverbs,
-  };
+  const chartCategories: Record<string, Category> = { all:'all', nouns:'nouns', verbs:'verbs', proper:'properNouns', adverbs:'adverbs' };
   const chartLabels: Record<string, string> = { all:'All', nouns:'Nouns', verbs:'Verbs', proper:'Proper', adverbs:'Adverbs' };
 
-  const allVals = Array.from((stats.lemmaFreq as Map<string,{text:string,count:number}>).values()).filter(v => v.text.length > 0);
-  if (allVals.length) {
+  const anyEntries = Array.from(mapFor('all').values()).some(v => v.text.length > 0);
+  if (anyEntries) {
     const chartDiv = document.createElement('div');
     chartDiv.className = 'mb-freq-chart';
 
@@ -2446,9 +2646,11 @@ function buildStatsPanel(stats: any, deviceCount: number): HTMLElement {
     const barsDiv = document.createElement('div');
     barsDiv.className = 'mb-freq-bars';
 
-    const renderBars = (mapKey: string) => {
+    let activeTab = 'all';
+    const renderBars = () => {
       barsDiv.innerHTML = '';
-      const vals = Array.from(chartMaps[mapKey].values())
+      const vals = Array.from(mapFor(chartCategories[activeTab]).entries())
+        .map(([key, v]) => ({ key, text: v.text, count: v.count }))
         .filter(v => v.text.length > 0)
         .sort((a,b) => b.count - a.count)
         .slice(0, 15);
@@ -2463,12 +2665,12 @@ function buildStatsPanel(stats: any, deviceCount: number): HTMLElement {
           <div class="mb-freq-label">${w.text}</div>
           <div class="mb-freq-bar-wrap"><div class="mb-freq-bar" style="width:${Math.round(w.count/max*100)}%"></div></div>
           <div class="mb-freq-bar-num">${w.count}</div>`;
-        row.addEventListener('click', () => highlightAllOccurrences(w.text));
+        row.addEventListener('click', () => highlightAllOccurrences(w.key, w.text, wordGroupMode));
         barsDiv.appendChild(row);
       });
     };
+    refreshers.push(renderBars);
 
-    let activeTab = 'all';
     Object.keys(chartLabels).forEach(key => {
       const btn = document.createElement('button');
       btn.className = 'mb-chart-tab' + (key === 'all' ? ' active' : '');
@@ -2477,13 +2679,13 @@ function buildStatsPanel(stats: any, deviceCount: number): HTMLElement {
         activeTab = key;
         tabsDiv.querySelectorAll('.mb-chart-tab').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        renderBars(key);
+        renderBars();
       });
       tabsDiv.appendChild(btn);
     });
 
     chartDiv.appendChild(tabsDiv);
-    renderBars('all');
+    renderBars();
     chartDiv.appendChild(barsDiv);
 
     const occPanel = document.createElement('div');
@@ -2753,6 +2955,7 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     const span  = document.createElement('span');
     span.className = 'w';
     span.dataset.word = stripMarks(text);
+    if (lemma) span.dataset.lemma = coreLemmaKey(lemma);
 
     const matchedDevices = deviceSpans.get(i) || [];
     const matchedGraetz  = graetzSpans.get(i) || [];
@@ -2762,27 +2965,32 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     const segments = splitMorphemes ? splitMorphSegments(rawText, lemma, morph) : null;
 
     if (segments) {
+      const codeParts: { morph: string; posClasses: string[] }[] = [];
       segments.forEach(seg => {
         const segSpan = document.createElement('span');
         segSpan.className = 'seg';
         segSpan.textContent = seg.text;
-        getPosClasses(seg.morph).forEach(c => segSpan.classList.add(c));
+        const posClasses = getPosClasses(seg.morph);
+        posClasses.forEach(c => segSpan.classList.add(c));
+        if (seg.morph) segSpan.title = seg.morph;
         segSpan.addEventListener('click', (e) => {
           e.stopPropagation();
           showDetail(seg.text, seg.lemma, seg.morph, matchedDevices, matchedGraetz);
         });
-        const segCode = morphCodeEl(seg.morph);
-        if (segCode) segSpan.appendChild(segCode);
         span.appendChild(segSpan);
+        codeParts.push({ morph: seg.morph, posClasses });
       });
+      const codeGroup = morphCodeGroupEl(codeParts);
+      if (codeGroup) span.appendChild(codeGroup);
     } else {
       span.textContent = text;
-      getPosClasses(morph).forEach(c => span.classList.add(c));
+      const posClasses = getPosClasses(morph);
+      posClasses.forEach(c => span.classList.add(c));
       span.addEventListener('click', (e) => {
         e.stopPropagation();
         showDetail(text, lemma, morph, matchedDevices, matchedGraetz);
       });
-      const wordCode = morphCodeEl(morph);
+      const wordCode = morphCodeGroupEl([{ morph, posClasses }]);
       if (wordCode) span.appendChild(wordCode);
     }
 
@@ -2809,7 +3017,7 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     }
 
     // Re-apply an active "highlight all occurrences" selection across re-renders
-    if (activeHighlightWord && span.dataset.word === activeHighlightWord) {
+    if (activeHighlightKey && span.dataset[activeHighlightMode] === activeHighlightKey) {
       span.classList.add('w-highlight');
     }
 
@@ -2846,6 +3054,9 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
         urlParts[i] ? `<a href="${urlParts[i]}" target="_blank" rel="noopener" style="color:var(--gold-dim)">${s}</a>` : s
       ).join(', ');
       fn.innerHTML += `<span class="fn-device" style="color:${color}">${d.device}</span>${srcs ? '(' + srcs + ')' : ''}${d.notes ? ' — ' + d.notes : ''}<br>`;
+      if (d.my_comments) {
+        fn.innerHTML += `<span class="fn-mycomment"><span class="fn-mycomment-label">My note</span>${d.my_comments}</span><br>`;
+      }
     });
     block.appendChild(fn);
   }
