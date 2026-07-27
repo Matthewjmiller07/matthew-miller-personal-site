@@ -483,19 +483,30 @@ body:has(.mb-page) > footer { display:none!important; }
   border-top:1px solid var(--faint); line-height:1.7; direction:ltr;
 }
 .fn-device { margin-right:.3rem; font-weight:600; }
-.fn-mycomment {
-  display:inline-block; color:var(--text); font-style:normal;
-  background:rgba(201,162,87,.07); border-left:2px solid var(--gold-dim);
-  padding:.2rem .5rem; margin:.15rem 0; line-height:1.6;
+
+/* My Notes — a separate section for personal notes, deliberately plain
+   (normal weight, no device color-coding) so it doesn't read as another
+   literary-device annotation. */
+.verse-mynotes {
+  margin-top:.5rem; padding:.6rem .8rem;
+  background:var(--surface); border:1px solid var(--border); direction:ltr;
 }
-.fn-mycomment-label {
-  font-family:var(--sc); font-size:.5rem; letter-spacing:.15em; text-transform:uppercase;
-  color:var(--gold); font-weight:600; margin-right:.4rem; font-style:normal;
+.verse-mynotes-hdr {
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:.4rem;
 }
+.verse-mynotes p {
+  font-family:var(--display); font-size:.85rem; color:var(--text);
+  line-height:1.65; margin:0 0 .6rem;
+}
+.verse-mynotes p:last-child { margin-bottom:0; }
 .dev-browser-mycomment {
-  color:var(--text); font-size:.78rem; margin-top:.2rem;
-  background:rgba(201,162,87,.07); border-left:2px solid var(--gold-dim);
-  padding:.15rem .45rem;
+  color:var(--text); font-size:.78rem; margin-top:.3rem;
+  padding-top:.3rem; border-top:1px solid var(--faint); line-height:1.55;
+}
+.dev-browser-mycomment-hdr {
+  font-family:var(--sc); font-size:.48rem; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--muted); display:block; margin-bottom:.2rem;
 }
 
 /* Haftarah section */
@@ -847,7 +858,7 @@ body:has(.mb-page) > footer { display:none!important; }
         <div class="sb-title">Recently Added</div>
         <div class="sb-recent-item">
           <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 26</span></div>
-          <span class="sb-recent-text">Personal notes (my_comments) on literary devices now show up alongside the verse and in the All Devices browser, distinct from the curated device notes</span>
+          <span class="sb-recent-text">Personal notes now show up in their own "My Notes" section under a verse and in the All Devices browser, kept separate from the literary-device annotations</span>
         </div>
         <div class="sb-recent-item">
           <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 24</span></div>
@@ -1740,7 +1751,7 @@ async function handleAllDevicesLoad() {
       <div style="font-family:var(--heb);direction:rtl;font-size:1rem">${row.words || ''}</div>
       <div>
         ${row.notes ? `<div style="font-style:italic;color:var(--muted);font-size:.78rem">${row.notes}</div>` : ''}
-        ${row.my_comments ? `<div class="dev-browser-mycomment"><span class="fn-mycomment-label">My note</span>${row.my_comments}</div>` : ''}
+        ${row.my_comments ? `<div class="dev-browser-mycomment"><span class="dev-browser-mycomment-hdr">My Notes</span>${row.my_comments}</div>` : ''}
       </div>`;
     div.addEventListener('click', () => {
       // Switch to chapter mode and load the passage
@@ -3054,11 +3065,18 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
         urlParts[i] ? `<a href="${urlParts[i]}" target="_blank" rel="noopener" style="color:var(--gold-dim)">${s}</a>` : s
       ).join(', ');
       fn.innerHTML += `<span class="fn-device" style="color:${color}">${d.device}</span>${srcs ? '(' + srcs + ')' : ''}${d.notes ? ' — ' + d.notes : ''}<br>`;
-      if (d.my_comments) {
-        fn.innerHTML += `<span class="fn-mycomment"><span class="fn-mycomment-label">My note</span>${d.my_comments}</span><br>`;
-      }
     });
     block.appendChild(fn);
+  }
+
+  // My Notes — personal notes, kept out of the literary-device apparatus above
+  // (not colored/labeled like a device, just plain prose in its own section).
+  const myNotes = devices.map(d => d.my_comments).filter(Boolean);
+  if (myNotes.length) {
+    const notesEl = document.createElement('div');
+    notesEl.className = 'verse-mynotes';
+    notesEl.innerHTML = `<div class="verse-mynotes-hdr">My Notes</div>${myNotes.map(n => `<p>${n}</p>`).join('')}`;
+    block.appendChild(notesEl);
   }
 
   return block;
