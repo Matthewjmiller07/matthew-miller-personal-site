@@ -13,10 +13,8 @@ export async function POST({ request }) {
   let body = {};
   try { body = await request.json(); } catch { return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400, headers: { 'Content-Type': 'application/json' } }); }
 
-  const { prompt, inputImageUrl } = body;
+  const { prompt, inputImageUrl, noReference } = body;
   if (!prompt) return new Response(JSON.stringify({ error: 'prompt is required' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
-
-  const referenceImageUrl = inputImageUrl || DEFAULT_INPUT_IMAGE_URL;
 
   const input = {
     prompt,
@@ -24,10 +22,14 @@ export async function POST({ request }) {
     aspect_ratio: '1:1',
     output_format: 'webp',
     output_compression: 85,
-    // GPT Image 2 uses this image as Matthew's identity reference. A caller can
-    // still override it, but generations always receive a real HTTP image URL.
-    input_images: [referenceImageUrl],
   };
+
+  // GPT Image 2 uses this image as Matthew's identity reference by default. A caller can
+  // override it, or pass noReference:true to generate without any identity photo at all
+  // (e.g. for unrelated illustration use cases that shouldn't include Matthew's face).
+  if (!noReference) {
+    input.input_images = [inputImageUrl || DEFAULT_INPUT_IMAGE_URL];
+  }
 
   try {
     const resp = await fetch('https://api.replicate.com/v1/models/openai/gpt-image-2/predictions', {
