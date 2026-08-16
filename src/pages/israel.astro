@@ -1,0 +1,742 @@
+---
+// /israel — a log of our life here: which shul for which minyan, where Shabbat was
+// spent and with whom, and everywhere else we get to during the week.
+//
+// Reads run in the browser against Supabase with the anon key (RLS: select only).
+// Writes go through /api/israel behind a passcode. The geography — 1,271 settlements
+// and the district polygons — is open government data shipped as static JSON; see
+// scripts/build-israel-places.mjs.
+import Layout from '../layouts/Layout.astro';
+import IsraelTracker from '../components/israel/IsraelTracker.tsx';
+
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL ?? '';
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
+
+const pageTitle = 'Israel';
+const pageDescription =
+  'Tracking our life in Israel — minyanim shul by shul, Shabbat meals and hosts, and the towns and moshavim we get to, mapped on Israeli open government data.';
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+  <main class="il-page">
+    <header class="il-hero">
+      <p class="il-kicker">רעננה · ארץ ישראל</p>
+      <h1>Our Israel, logged</h1>
+      <p class="il-lede">
+        Fifty-eight shuls within walking distance of home, three meals a Shabbat plus the
+        kiddush and the dessert, and a country small enough to drive across on a Tuesday.
+        This is where all of it gets written down.
+      </p>
+    </header>
+
+    {
+      supabaseUrl && supabaseAnonKey ? (
+        <IsraelTracker
+          client:only="react"
+          supabaseUrl={supabaseUrl}
+          supabaseAnonKey={supabaseAnonKey}
+        />
+      ) : (
+        <p class="il-error">
+          Supabase isn’t configured — set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY.
+        </p>
+      )
+    }
+  </main>
+</Layout>
+
+<style is:global>
+  /* ── Page shell ──────────────────────────────────────────────────────────── */
+  .il-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 4rem;
+    color: #e2e8f0;
+  }
+
+  .il-hero {
+    margin-bottom: 2rem;
+  }
+  .il-kicker {
+    font-size: 0.8rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #7dd3fc;
+    margin-bottom: 0.5rem;
+  }
+  .il-hero h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 0.75rem;
+  }
+  .il-lede {
+    max-width: 60ch;
+    color: #94a3b8;
+    line-height: 1.65;
+  }
+
+  /* ── Tabs ────────────────────────────────────────────────────────────────── */
+  .il-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    border-bottom: 1px solid #1e293b;
+    margin-bottom: 1.5rem;
+  }
+  .il-tab {
+    padding: 0.55rem 0.95rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: #94a3b8;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .il-tab:hover {
+    color: #e2e8f0;
+  }
+  .il-tab.is-active {
+    color: #38bdf8;
+    border-bottom-color: #38bdf8;
+  }
+
+  .il-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .il-h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #cbd5e1;
+  }
+
+  /* ── Forms ───────────────────────────────────────────────────────────────── */
+  .il-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.9rem;
+    background: #0b1220;
+  }
+  .il-form-inline {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .il-form-inline .il-input {
+    flex: 1 1 12rem;
+  }
+
+  .il-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 1rem;
+  }
+
+  .il-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+  .il-field > span {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+  .il-field-check {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    align-self: end;
+    padding-bottom: 0.6rem;
+  }
+  .il-field-check > span {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+  }
+
+  .il-input {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid #253449;
+    border-radius: 0.5rem;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-size: 0.95rem;
+  }
+  .il-input:focus {
+    outline: 2px solid #0ea5e9;
+    outline-offset: 1px;
+    border-color: transparent;
+  }
+  .il-input-inline {
+    width: 9rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .il-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .il-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid #334155;
+    border-radius: 0.5rem;
+    background: #1e293b;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .il-btn:hover {
+    background: #263449;
+  }
+  .il-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .il-btn-primary {
+    background: #0284c7;
+    border-color: #0ea5e9;
+    color: #f0f9ff;
+  }
+  .il-btn-primary:hover {
+    background: #0369a1;
+  }
+  .il-btn-sm {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.78rem;
+  }
+  .il-btn.is-active {
+    background: #0284c7;
+    border-color: #38bdf8;
+  }
+
+  .il-link {
+    border: none;
+    background: none;
+    color: #38bdf8;
+    font-size: 0.82rem;
+    cursor: pointer;
+    padding: 0;
+  }
+  .il-link:hover {
+    text-decoration: underline;
+  }
+  .il-link-danger {
+    color: #f87171;
+  }
+
+  .il-error {
+    color: #fca5a5;
+    font-size: 0.88rem;
+  }
+  .il-empty {
+    color: #64748b;
+    font-style: italic;
+  }
+  .il-hint {
+    font-size: 0.82rem;
+    color: #64748b;
+  }
+  .il-footnote {
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #1e293b;
+    font-size: 0.78rem;
+    color: #475569;
+  }
+
+  /* ── Unlock ──────────────────────────────────────────────────────────────── */
+  .il-unlock {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.5rem;
+    border: 1px dashed #334155;
+    border-radius: 0.75rem;
+    background: #0b1220;
+  }
+  .il-unlock label {
+    font-size: 0.85rem;
+    color: #94a3b8;
+  }
+  .il-unlock .il-input {
+    width: 11rem;
+  }
+
+  /* ── Combobox ────────────────────────────────────────────────────────────── */
+  .il-combo-list {
+    position: absolute;
+    z-index: 900;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 17rem;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0.25rem;
+    list-style: none;
+    border: 1px solid #253449;
+    border-radius: 0.6rem;
+    background: #0f172a;
+    box-shadow: 0 18px 40px rgb(0 0 0 / 0.5);
+  }
+  .il-combo-option {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.4rem 0.55rem;
+    border: none;
+    border-radius: 0.4rem;
+    background: none;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+  }
+  .il-combo-option.is-active,
+  .il-combo-option:hover {
+    background: #1e293b;
+  }
+  .il-combo-hint {
+    flex: none;
+    color: #64748b;
+    font-size: 0.78rem;
+  }
+  .il-combo-free {
+    color: #7dd3fc;
+  }
+
+  /* ── Attendees ───────────────────────────────────────────────────────────── */
+  .il-attendees {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+  }
+  .il-chip {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid #334155;
+    border-radius: 999px;
+    background: #0f172a;
+    color: #cbd5e1;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .il-chip:hover {
+    border-color: #475569;
+  }
+  .il-chip.is-on {
+    border-color: #0ea5e9;
+    background: #0c4a6e;
+    color: #e0f2fe;
+  }
+  .il-chip-all.is-on {
+    border-color: #34d399;
+    background: #064e3b;
+    color: #d1fae5;
+  }
+  .il-chip-ghost {
+    border-style: dashed;
+    color: #64748b;
+  }
+  .il-chip-add {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+  }
+  .il-attendees.is-compact .il-chip {
+    font-size: 0.78rem;
+    padding: 0.2rem 0.55rem;
+  }
+
+  /* ── Meals ───────────────────────────────────────────────────────────────── */
+  .il-meals {
+    border: 1px solid #1e293b;
+    border-radius: 0.75rem;
+    padding: 1rem;
+  }
+  .il-meals legend {
+    padding: 0 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+  .il-meal {
+    border-top: 1px solid #172033;
+    padding: 0.55rem 0;
+  }
+  .il-meal:first-of-type {
+    border-top: none;
+  }
+  .il-meal-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+  }
+  .il-meal-name {
+    font-weight: 600;
+    color: #cbd5e1;
+  }
+  .il-meal-he {
+    color: #64748b;
+    font-size: 0.88rem;
+  }
+  .il-meal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem 0 0.35rem 1.6rem;
+  }
+  .il-meal-list {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0 0 0 0.9rem;
+    border-left: 2px solid #1e293b;
+    font-size: 0.86rem;
+    color: #94a3b8;
+  }
+  .il-meal-list li {
+    padding: 0.15rem 0;
+  }
+  .il-meal-list strong {
+    color: #cbd5e1;
+  }
+
+  /* ── Map ─────────────────────────────────────────────────────────────────── */
+  .il-map-wrap {
+    position: relative;
+  }
+  .il-map {
+    height: min(70vh, 620px);
+    border-radius: 0.9rem;
+    border: 1px solid #1e293b;
+    background: #0f172a;
+  }
+  .il-map-wrap.is-pinning .il-map {
+    cursor: crosshair;
+    border-color: #38bdf8;
+  }
+  .il-map-hint {
+    position: absolute;
+    z-index: 800;
+    top: 0.75rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    background: #0284c7;
+    color: #f0f9ff;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+  /* Leaflet's popups and tooltips default to a light card that fights the page. */
+  .il-map .leaflet-popup-content-wrapper,
+  .il-map .leaflet-popup-tip,
+  .il-map .leaflet-tooltip {
+    background: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+  }
+  .il-map .leaflet-tooltip::before {
+    display: none;
+  }
+  .il-map .leaflet-control-attribution {
+    background: rgb(15 23 42 / 0.85);
+    color: #64748b;
+  }
+  .il-map .leaflet-control-attribution a {
+    color: #94a3b8;
+  }
+
+  .il-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    list-style: none;
+    padding: 0;
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+  .il-legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .il-key {
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 999px;
+    display: inline-block;
+  }
+  .il-key-place {
+    background: #fbbf24;
+    border: 2px solid #f59e0b;
+  }
+  .il-key-shul {
+    background: #0ea5e9;
+    border: 2px solid #38bdf8;
+  }
+  .il-key-shul-off {
+    background: #94a3b8;
+    border: 2px solid #64748b;
+    opacity: 0.6;
+  }
+  .il-key-region {
+    border-radius: 0.2rem;
+    background: #22d3ee;
+    opacity: 0.4;
+  }
+
+  /* ── Toolbar & toggles ───────────────────────────────────────────────────── */
+  .il-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .il-toolbar .il-input {
+    flex: 1 1 15rem;
+    width: auto;
+  }
+  .il-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    cursor: pointer;
+  }
+
+  /* ── Lists ───────────────────────────────────────────────────────────────── */
+  .il-log,
+  .il-shul-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .il-log-row {
+    padding: 0.75rem 0.9rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.7rem;
+    background: #0b1220;
+  }
+  .il-log-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+  .il-log-date {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.82rem;
+    color: #64748b;
+    min-width: 9.5rem;
+  }
+  .il-log-title {
+    font-weight: 650;
+    color: #e2e8f0;
+  }
+  .il-log-tag {
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: #1e293b;
+    color: #94a3b8;
+    font-size: 0.75rem;
+  }
+  .il-log-time {
+    font-variant-numeric: tabular-nums;
+    color: #7dd3fc;
+    font-size: 0.85rem;
+  }
+  .il-log-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 0.35rem;
+    font-size: 0.82rem;
+    color: #94a3b8;
+  }
+  .il-log-notes {
+    color: #64748b;
+    font-style: italic;
+  }
+  .il-log-actions {
+    display: inline-flex;
+    gap: 0.75rem;
+    margin-left: auto;
+  }
+
+  .il-shul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.7rem;
+    background: #0b1220;
+  }
+  .il-shul-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.6rem;
+    min-width: 0;
+  }
+  .il-shul-name {
+    font-weight: 650;
+    color: #e2e8f0;
+  }
+  .il-shul-en {
+    color: #64748b;
+    font-size: 0.85rem;
+  }
+  .il-shul-address {
+    color: #94a3b8;
+    font-size: 0.82rem;
+  }
+  .il-shul-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .il-badge {
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: #064e3b;
+    color: #6ee7b7;
+    font-size: 0.72rem;
+  }
+  .il-badge-muted {
+    background: #1e293b;
+    color: #64748b;
+  }
+  .il-count {
+    min-width: 1.6rem;
+    text-align: center;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.4rem;
+    background: #0c4a6e;
+    color: #e0f2fe;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Stats ───────────────────────────────────────────────────────────────── */
+  .il-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+  .il-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+  }
+  .il-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.75rem;
+    background: #0b1220;
+  }
+  .il-tile strong {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #38bdf8;
+    font-variant-numeric: tabular-nums;
+  }
+  .il-tile span {
+    font-size: 0.78rem;
+    color: #64748b;
+  }
+
+  .il-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.75rem;
+  }
+  .il-stat-grid h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #cbd5e1;
+    margin-bottom: 0.6rem;
+  }
+  .il-bars {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .il-bars li {
+    display: grid;
+    grid-template-columns: minmax(6rem, 10rem) 1fr 2rem;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+  }
+  .il-bar-label {
+    color: #cbd5e1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .il-bar-track {
+    height: 0.55rem;
+    border-radius: 999px;
+    background: #172033;
+    overflow: hidden;
+  }
+  .il-bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+  }
+  .il-bar-count {
+    text-align: right;
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 640px) {
+    .il-log-date {
+      min-width: 100%;
+    }
+    .il-log-actions {
+      margin-left: 0;
+    }
+    .il-meal-body {
+      padding-left: 0.5rem;
+    }
+  }
+</style>
