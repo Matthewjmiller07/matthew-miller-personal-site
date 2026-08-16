@@ -219,6 +219,81 @@ async function loadExistingScpData() {
   }
 }
 
+/**
+ * Read the duration out of an MP4/M4A container directly, by walking to the `mvhd`
+ * atom. The GitHub runner has no ffprobe, which is why every recent shiur ended up
+ * with a 0:00 duration — this needs no binaries at all.
+ * Returns seconds, or null if this isn't an MP4-family file.
+ */
+function readMp4Duration(audioPath) {
+  let fd;
+  try {
+    fd = fssync.openSync(audioPath, 'r');
+    const fileSize = fssync.fstatSync(fd).size;
+
+    const readAt = (offset, length) => {
+      const buf = Buffer.alloc(length);
+      fssync.readSync(fd, buf, 0, length, offset);
+      return buf;
+    };
+
+    // Walk sibling boxes at `start`, descending into `moov` to find `mvhd`.
+    const findMvhd = (start, end) => {
+      let offset = start;
+      while (offset + 8 <= end) {
+        const header = readAt(offset, 8);
+        let size = header.readUInt32BE(0);
+        const type = header.toString('ascii', 4, 8);
+        let headerSize = 8;
+
+        if (size === 1) {
+          // 64-bit largesize follows the type.
+          const large = readAt(offset + 8, 8);
+          size = Number(large.readBigUInt64BE(0));
+          headerSize = 16;
+        } else if (size === 0) {
+          size = end - offset; // box extends to end of file
+        }
+        if (size < headerSize) return null; // malformed
+
+        if (type === 'mvhd') {
+          const body = readAt(offset + headerSize, 24);
+          const version = body.readUInt8(0);
+          const timescale = version === 1 ? body.readUInt32BE(20) : body.readUInt32BE(12);
+          const duration = version === 1
+            ? Number(readAt(offset + headerSize + 24, 8).readBigUInt64BE(0))
+            : body.readUInt32BE(16);
+          if (!timescale) return null;
+          return duration / timescale;
+        }
+
+        if (type === 'moov') {
+          const found = findMvhd(offset + headerSize, offset + size);
+          if (found !== null) return found;
+        }
+
+        offset += size;
+      }
+      return null;
+    };
+
+    return findMvhd(0, fileSize);
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) fssync.closeSync(fd);
+  }
+}
+
+function formatDuration(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return {
+    duration: `${mins}:${secs.toString().padStart(2, '0')}`,
+    durationSeconds: Math.floor(seconds),
+  };
+}
+
 async function getAudioDuration(audioPath) {
   try {
     // Try ffprobe first
@@ -231,17 +306,15 @@ async function getAudioDuration(audioPath) {
       { timeout: 10000 }
     );
     const seconds = parseFloat(stdout.trim());
-    if (!isNaN(seconds)) {
-      const mins = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-      return {
-        duration: `${mins}:${secs.toString().padStart(2, '0')}`,
-        durationSeconds: Math.floor(seconds)
-      };
-    }
+    if (!isNaN(seconds)) return formatDuration(seconds);
   } catch {
     // ffprobe not available or failed
   }
+
+  // Fall back to reading the container itself.
+  const seconds = readMp4Duration(audioPath);
+  if (seconds && seconds > 0) return formatDuration(seconds);
+
   return null;
 }
 
@@ -308,7 +381,8 @@ async function updateScpData(shiurFolders) {
         existing.transcriptFile = transcriptFile;
         changed = true;
       }
-      if (durationInfo && !existing.duration) {
+      // "0:00" is truthy, so a previously failed probe would never be retried.
+      if (durationInfo && !existing.durationSeconds) {
         existing.duration = durationInfo.duration;
         existing.durationSeconds = durationInfo.durationSeconds;
         changed = true;
@@ -883,5 +957,6 @@ export {
   analyzeTranscriptWithAI,
   readJobLedger,
   writeJobLedger,
+  getAudioDuration,
   JOB_LEDGER_FILE,
 };
