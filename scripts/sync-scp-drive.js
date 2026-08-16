@@ -8,7 +8,10 @@ import { google } from 'googleapis';
 import fs from 'fs/promises';
 import fssync from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { pipeline } from 'stream/promises';
+
+const RUN_AS_SCRIPT = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 const DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_SCP_FOLDER_ID;
 const SERVICE_ACCOUNT_KEY = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
@@ -17,8 +20,19 @@ const SOFER_AI_API_KEY = process.env.SOFER_AI_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OUTPUT_DIR = './public/scp';
 const DATA_FILE = './src/data/scp.json';
+// Persistent record of every Sofer AI job we've ever submitted, keyed by shiur id.
+// This is what stops the scheduled sync from re-submitting (and re-paying for) a
+// shiur whose job is still running, already finished, or terminally stuck.
+const JOB_LEDGER_FILE = './src/data/scp-transcription-jobs.json';
 
-if (!DRIVE_FOLDER_ID) {
+// Cost guardrails — a scheduled job that pays per submission needs hard limits.
+const MAX_NEW_JOBS_PER_RUN = parseInt(process.env.SOFER_MAX_NEW_JOBS || '2', 10);
+const MAX_SUBMISSIONS_PER_SHIUR = parseInt(process.env.SOFER_MAX_SUBMISSIONS || '2', 10);
+
+// Sofer AI reports these and then never moves on. Polling past them just burns runner minutes.
+const TERMINAL_STATUSES = ['COMPLETED', 'FAILED', 'CANCELLED', 'INSUFFICIENT_FUNDS'];
+
+if (RUN_AS_SCRIPT && !DRIVE_FOLDER_ID) {
   console.log('⚠️  GOOGLE_DRIVE_SCP_FOLDER_ID not set. Skipping Drive sync.');
   process.exit(0);
 }
@@ -386,29 +400,67 @@ function paragraphsToSrt(paragraphs) {
   }).join('\n\n') + '\n';
 }
 
-async function transcribeWithSoferAI(audioPath, shiurId) {
-  if (!SOFER_AI_API_KEY) {
-    console.log('  ⏭️  SOFER_AI_API_KEY not set — skipping auto-transcription');
-    return;
-  }
+// Thrown when Sofer AI can't bill us. Halts the whole transcription pass — there is no
+// point submitting the remaining shiurim into the same wall, and every submission costs money.
+class SoferBillingError extends Error {}
 
-  // Don't block Netlify builds with long-running transcription (GitHub Actions is fine — it commits results back)
-  if (process.env.NETLIFY) {
-    console.log(`  ⏭️  Netlify build detected — skipping transcription for ${shiurId} (handled by GitHub Actions)`);
-    return;
-  }
-
-  const transcriptJsonPath = `./src/data/scp-${shiurId}-transcript.json`;
+async function readJobLedger() {
   try {
-    await fs.access(transcriptJsonPath);
-    console.log(`  ⏭️  Transcript already exists for ${shiurId}`);
-    return;
+    return JSON.parse(await fs.readFile(JOB_LEDGER_FILE, 'utf8'));
   } catch {
-    // File doesn't exist — proceed with transcription
+    return {};
+  }
+}
+
+async function writeJobLedger(ledger) {
+  await fs.mkdir(path.dirname(JOB_LEDGER_FILE), { recursive: true });
+  await fs.writeFile(JOB_LEDGER_FILE, JSON.stringify(ledger, null, 2) + '\n');
+}
+
+async function recordJob(shiurId, patch) {
+  const ledger = await readJobLedger();
+  ledger[shiurId] = { ...(ledger[shiurId] || {}), ...patch, lastCheckedAt: new Date().toISOString() };
+  await writeJobLedger(ledger);
+  return ledger[shiurId];
+}
+
+async function fetchJobStatus(transcriptionId) {
+  const res = await fetch(
+    `https://api.sofer.ai/v1/transcriptions/${transcriptionId}/status`,
+    { headers: { 'Authorization': `Bearer ${SOFER_AI_API_KEY}` } }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.status || null;
+}
+
+/**
+ * Poll an already-submitted job to a terminal status. Never submits anything.
+ * Returns the last status seen — a non-terminal one means we timed out and should
+ * resume this same job on the next run rather than paying for a new one.
+ */
+async function pollJob(transcriptionId, shiurId) {
+  const intervalMs = 10000;
+  const maxAttempts = 240; // 40 min — long enough for a full-length shiur
+  let status = 'PENDING';
+  let attempts = 0;
+
+  while (!TERMINAL_STATUSES.includes(status) && attempts < maxAttempts) {
+    await new Promise(r => setTimeout(r, intervalMs));
+    attempts++;
+
+    const latest = await fetchJobStatus(transcriptionId);
+    if (latest) status = latest;
+    if (attempts % 12 === 0) {
+      console.log(`  ⏳ Still ${status}... (${Math.round(attempts * intervalMs / 1000)}s elapsed)`);
+    }
   }
 
-  console.log(`  🎙️  Transcribing ${shiurId} with Sofer AI...`);
+  await recordJob(shiurId, { status });
+  return status;
+}
 
+async function submitJob(audioPath, shiurId) {
   const audioBuffer = await fs.readFile(audioPath);
   const audioBase64 = audioBuffer.toString('base64');
 
@@ -441,32 +493,11 @@ async function transcribeWithSoferAI(audioPath, shiurId) {
   if (!transcriptionId) {
     throw new Error(`Sofer AI did not return a transcription ID. Response: ${JSON.stringify(submitData)}`);
   }
-  console.log(`  ⏳ Job submitted: ${transcriptionId} — polling for completion...`);
 
-  let status = 'PENDING';
-  let attempts = 0;
-  const maxAttempts = 180; // 15 min max (5s intervals)
+  return transcriptionId;
+}
 
-  while (!['COMPLETED', 'FAILED', 'CANCELLED'].includes(status) && attempts < maxAttempts) {
-    await new Promise(r => setTimeout(r, 5000));
-    attempts++;
-
-    const statusRes = await fetch(
-      `https://api.sofer.ai/v1/transcriptions/${transcriptionId}/status`,
-      { headers: { 'Authorization': `Bearer ${SOFER_AI_API_KEY}` } }
-    );
-
-    if (statusRes.ok) {
-      const data = await statusRes.json();
-      status = data.status;
-      if (attempts % 12 === 0) console.log(`  ⏳ Still ${status}... (${attempts * 5}s elapsed)`);
-    }
-  }
-
-  if (status !== 'COMPLETED') {
-    throw new Error(`Transcription ended with status ${status} after ${attempts * 5}s`);
-  }
-
+async function saveTranscript(transcriptionId, shiurId, transcriptJsonPath) {
   const fullRes = await fetch(`https://api.sofer.ai/v1/transcriptions/${transcriptionId}`, {
     headers: { 'Authorization': `Bearer ${SOFER_AI_API_KEY}` },
   });
@@ -486,11 +517,131 @@ async function transcribeWithSoferAI(audioPath, shiurId) {
 
   // Save SRT file
   const srtPath = `./public/scp/${shiurId}/transcript.srt`;
+  await fs.mkdir(path.dirname(srtPath), { recursive: true });
   await fs.writeFile(srtPath, paragraphsToSrt(paragraphs));
   console.log(`  ✅ SRT saved: ${srtPath}`);
 
   // Extract jokes and disgraced foods via OpenAI
   await analyzeTranscriptWithAI(paragraphs, shiurId);
+}
+
+/**
+ * Transcribe one shiur, at most once. Every exit path that costs money is gated on the
+ * job ledger, so a run that times out, crashes, or hits a billing error resumes the
+ * existing job next time instead of paying for a duplicate.
+ *
+ * `budget` is a shared per-run counter of new submissions.
+ */
+async function transcribeWithSoferAI(audioPath, shiurId, budget) {
+  if (!SOFER_AI_API_KEY) {
+    console.log('  ⏭️  SOFER_AI_API_KEY not set — skipping auto-transcription');
+    return;
+  }
+
+  // Don't block Netlify builds with long-running transcription (GitHub Actions is fine — it commits results back)
+  if (process.env.NETLIFY) {
+    console.log(`  ⏭️  Netlify build detected — skipping transcription for ${shiurId} (handled by GitHub Actions)`);
+    return;
+  }
+
+  const transcriptJsonPath = `./src/data/scp-${shiurId}-transcript.json`;
+  if (fssync.existsSync(transcriptJsonPath)) {
+    console.log(`  ⏭️  Transcript already exists for ${shiurId}`);
+    return;
+  }
+
+  // A hand-made or Drive-supplied SRT counts as transcribed — don't pay to redo it.
+  const existingSrt = `./public/scp/${shiurId}/transcript.srt`;
+  if (fssync.existsSync(existingSrt) && fssync.statSync(existingSrt).size > 0) {
+    console.log(`  ⏭️  SRT already present for ${shiurId} — not re-transcribing`);
+    return;
+  }
+
+  const audioBytes = fssync.statSync(audioPath).size;
+  const ledger = await readJobLedger();
+  let entry = ledger[shiurId];
+
+  // If the audio itself changed (re-recorded, re-uploaded), the old job no longer applies.
+  if (entry && entry.audioBytes && entry.audioBytes !== audioBytes) {
+    console.log(`  🔄 Audio for ${shiurId} changed since last job — clearing previous record`);
+    entry = undefined;
+  }
+
+  // Resume an existing job rather than submitting a new one.
+  if (entry?.transcriptionId) {
+    const liveStatus = await fetchJobStatus(entry.transcriptionId);
+    const status = liveStatus || entry.status;
+    console.log(`  ↩️  Existing job for ${shiurId}: ${entry.transcriptionId} (${status})`);
+
+    if (status === 'COMPLETED') {
+      await recordJob(shiurId, { status });
+      await saveTranscript(entry.transcriptionId, shiurId, transcriptJsonPath);
+      return;
+    }
+
+    if (status === 'INSUFFICIENT_FUNDS') {
+      await recordJob(shiurId, { status });
+      throw new SoferBillingError(
+        `job ${entry.transcriptionId} is INSUFFICIENT_FUNDS — top up at sofer.ai, then re-run`
+      );
+    }
+
+    if (!TERMINAL_STATUSES.includes(status)) {
+      // Still running. Poll it out — no new charge either way.
+      const finalStatus = await pollJob(entry.transcriptionId, shiurId);
+      if (finalStatus === 'COMPLETED') {
+        await saveTranscript(entry.transcriptionId, shiurId, transcriptJsonPath);
+        return;
+      }
+      if (finalStatus === 'INSUFFICIENT_FUNDS') {
+        throw new SoferBillingError(`job ${entry.transcriptionId} hit INSUFFICIENT_FUNDS`);
+      }
+      throw new Error(`Existing job ${entry.transcriptionId} ended as ${finalStatus}`);
+    }
+
+    // FAILED / CANCELLED — allow a bounded number of retries, then stop forever.
+    const submissions = entry.submissions || 1;
+    if (submissions >= MAX_SUBMISSIONS_PER_SHIUR) {
+      console.log(
+        `  ⛔ ${shiurId} already submitted ${submissions}× and last ended ${status} — ` +
+        `not retrying. Delete its entry in ${JOB_LEDGER_FILE} to try again.`
+      );
+      return;
+    }
+  }
+
+  if (budget.remaining <= 0) {
+    console.log(`  ⏭️  ${shiurId} deferred — hit the ${MAX_NEW_JOBS_PER_RUN}-job-per-run cap`);
+    return;
+  }
+
+  console.log(`  🎙️  Transcribing ${shiurId} with Sofer AI...`);
+  budget.remaining--;
+
+  const transcriptionId = await submitJob(audioPath, shiurId);
+
+  // Persist the ID *before* polling. If this run dies here, the next one resumes
+  // this job instead of paying for another.
+  await recordJob(shiurId, {
+    transcriptionId,
+    status: 'PENDING',
+    audioBytes,
+    submittedAt: new Date().toISOString(),
+    submissions: (entry?.submissions || 0) + 1,
+  });
+  console.log(`  ⏳ Job submitted: ${transcriptionId} — polling for completion...`);
+
+  const status = await pollJob(transcriptionId, shiurId);
+
+  if (status === 'INSUFFICIENT_FUNDS') {
+    throw new SoferBillingError(`job ${transcriptionId} hit INSUFFICIENT_FUNDS`);
+  }
+  if (status !== 'COMPLETED') {
+    // Non-terminal here means we timed out; the ledger keeps the ID so the next run resumes it.
+    throw new Error(`Transcription ended with status ${status}`);
+  }
+
+  await saveTranscript(transcriptionId, shiurId, transcriptJsonPath);
 }
 
 function timestampToSeconds(ts) {
@@ -601,6 +752,7 @@ async function transcribeNewShiurim() {
   }
 
   const data = await loadExistingScpData();
+  const budget = { remaining: MAX_NEW_JOBS_PER_RUN };
 
   for (const shiur of data.shiurim) {
     if (!shiur.audioFile) continue;
@@ -608,9 +760,16 @@ async function transcribeNewShiurim() {
     const audioPath = path.join('./public', shiur.audioFile);
     if (!fssync.existsSync(audioPath)) continue;
 
-    await transcribeWithSoferAI(audioPath, shiur.id).catch(err => {
+    try {
+      await transcribeWithSoferAI(audioPath, shiur.id, budget);
+    } catch (err) {
       console.error(`  ❌ Transcription failed for ${shiur.id}: ${err.message}`);
-    });
+      if (err instanceof SoferBillingError) {
+        console.error('  ⛔ Sofer AI balance exhausted — stopping transcription for this run.');
+        console.error('     No further jobs will be submitted until the balance is topped up.');
+        return;
+      }
+    }
   }
 }
 
@@ -682,7 +841,11 @@ async function main() {
   console.log('\n✅ SCP sync complete!');
 }
 
-main().catch(err => {
-  console.error('❌ Sync failed:', err.message);
-  process.exit(1);
-});
+if (RUN_AS_SCRIPT) {
+  main().catch(err => {
+    console.error('❌ Sync failed:', err.message);
+    process.exit(1);
+  });
+}
+
+export { transcribeNewShiurim, transcribeWithSoferAI, SoferBillingError };

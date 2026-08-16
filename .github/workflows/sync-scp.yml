@@ -10,6 +10,9 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    # Transcription polling is the long pole; cap the run so a hung job can't eat
+    # the 6-hour default.
+    timeout-minutes: 150
     permissions:
       contents: write
     
@@ -45,7 +48,7 @@ jobs:
       - name: Check for changes
         id: check-changes
         run: |
-          git add src/data/scp.json src/data/scp-*-transcript.json src/data/search-index.json public/scp/
+          git add src/data/scp.json src/data/scp-*-transcript.json src/data/scp-transcription-jobs.json src/data/search-index.json public/scp/
           if git diff --staged --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No new shiurim detected"

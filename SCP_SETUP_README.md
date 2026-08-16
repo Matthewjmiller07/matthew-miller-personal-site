@@ -38,6 +38,31 @@ SCP/
 
 **Note:** Google Docs are automatically exported as PDFs!
 
+## Transcription (Sofer AI)
+
+Sofer AI bills per submission, so the sync keeps a ledger of every job it has ever
+submitted at `src/data/scp-transcription-jobs.json`, committed back to the repo by the
+workflow. A shiur is submitted **once**; if the run times out, crashes, or the account
+runs out of credit, the next run resumes that same job ID instead of paying again.
+
+A shiur is skipped entirely if it already has `src/data/scp-<id>-transcript.json` or a
+non-empty `public/scp/<id>/transcript.srt`.
+
+**If the balance runs out**, the run stops the whole transcription pass rather than
+submitting the remaining shiurim. Top up at sofer.ai and the next run picks the stuck
+jobs back up — no new charge.
+
+**To force a re-transcription**, delete that shiur's entry from the ledger (and its
+transcript files). Replacing the audio file also resets it automatically, since the
+ledger records the audio's byte size.
+
+Guardrails, both env-overridable:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SOFER_MAX_NEW_JOBS` | `2` | New submissions allowed per run |
+| `SOFER_MAX_SUBMISSIONS` | `2` | Lifetime submissions per shiur before it stops retrying |
+
 ## Setup Option 1: API Key (Easiest - For Public Folders)
 
 Use this if the Rabbi shared the folder with "Anyone with the link can view"
