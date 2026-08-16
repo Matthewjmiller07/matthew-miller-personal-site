@@ -561,6 +561,14 @@ async function transcribeWithSoferAI(audioPath, shiurId, budget) {
   const ledger = await readJobLedger();
   let entry = ledger[shiurId];
 
+  // An explicit skip is sticky and beats every other rule — no polling, no submitting,
+  // no API call at all. Handled here so it survives an audio re-upload too.
+  // Remove the entry from the ledger to undo it.
+  if (entry?.skip) {
+    console.log(`  ⏭️  ${shiurId} marked skip in the ledger${entry.note ? ` (${entry.note})` : ''}`);
+    return;
+  }
+
   // If the audio itself changed (re-recorded, re-uploaded), the old job no longer applies.
   if (entry && entry.audioBytes && entry.audioBytes !== audioBytes) {
     console.log(`  🔄 Audio for ${shiurId} changed since last job — clearing previous record`);

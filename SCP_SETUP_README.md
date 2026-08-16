@@ -56,6 +56,11 @@ jobs back up — no new charge.
 transcript files). Replacing the audio file also resets it automatically, since the
 ledger records the audio's byte size.
 
+**To take a shiur off the sync entirely** — you transcribed it elsewhere, or you just
+don't want it touched — set `"skip": true` on its ledger entry. That beats every other
+rule: no submit, no polling, no API call at all, and it survives an audio re-upload.
+Delete the entry to undo it. Shiurim 12–14 are marked this way.
+
 Guardrails, both env-overridable:
 
 | Variable | Default | Meaning |
