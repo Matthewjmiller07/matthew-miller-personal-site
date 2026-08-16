@@ -445,12 +445,14 @@ async function pollJob(transcriptionId, shiurId) {
   let status = 'PENDING';
   let attempts = 0;
 
-  while (!TERMINAL_STATUSES.includes(status) && attempts < maxAttempts) {
-    await new Promise(r => setTimeout(r, intervalMs));
-    attempts++;
-
+  while (attempts < maxAttempts) {
+    // Check before sleeping — an already-finished job should return immediately.
     const latest = await fetchJobStatus(transcriptionId);
     if (latest) status = latest;
+    if (TERMINAL_STATUSES.includes(status)) break;
+
+    await new Promise(r => setTimeout(r, intervalMs));
+    attempts++;
     if (attempts % 12 === 0) {
       console.log(`  ⏳ Still ${status}... (${Math.round(attempts * intervalMs / 1000)}s elapsed)`);
     }
@@ -561,21 +563,25 @@ async function transcribeWithSoferAI(audioPath, shiurId, budget) {
   const ledger = await readJobLedger();
   let entry = ledger[shiurId];
 
-  // An explicit skip is sticky and beats every other rule — no polling, no submitting,
-  // no API call at all. Handled here so it survives an audio re-upload too.
-  // Remove the entry from the ledger to undo it.
+  // `skip` is sticky and beats every other rule — no API call at all. Handled here so it
+  // survives an audio re-upload. Remove the ledger entry to undo it.
   if (entry?.skip) {
     console.log(`  ⏭️  ${shiurId} marked skip in the ledger${entry.note ? ` (${entry.note})` : ''}`);
     return;
   }
 
-  // If the audio itself changed (re-recorded, re-uploaded), the old job no longer applies.
-  if (entry && entry.audioBytes && entry.audioBytes !== audioBytes) {
+  // `noResubmit` is the softer, money-focused flag: never pay for this shiur again, but
+  // still collect the results of the job already paid for. Retrieval is a plain GET.
+  const noResubmit = entry?.noResubmit === true;
+
+  // If the audio itself changed (re-recorded, re-uploaded), the old job no longer applies —
+  // but a noResubmit marker is deliberate and must survive that.
+  if (entry && entry.audioBytes && entry.audioBytes !== audioBytes && !noResubmit) {
     console.log(`  🔄 Audio for ${shiurId} changed since last job — clearing previous record`);
     entry = undefined;
   }
 
-  // Resume an existing job rather than submitting a new one.
+  // Resume an existing job rather than submitting a new one. Nothing in this block costs money.
   if (entry?.transcriptionId) {
     const liveStatus = await fetchJobStatus(entry.transcriptionId);
     const status = liveStatus || entry.status;
@@ -589,6 +595,12 @@ async function transcribeWithSoferAI(audioPath, shiurId, budget) {
 
     if (status === 'INSUFFICIENT_FUNDS') {
       await recordJob(shiurId, { status });
+      if (noResubmit) {
+        // Nothing to collect and we're never resubmitting, so this costs nothing and
+        // must not halt the pass for the shiurim behind it.
+        console.log(`  ⏭️  ${shiurId} is marked noResubmit — leaving its dead job alone`);
+        return;
+      }
       throw new SoferBillingError(
         `job ${entry.transcriptionId} is INSUFFICIENT_FUNDS — top up at sofer.ai, then re-run`
       );
@@ -601,7 +613,7 @@ async function transcribeWithSoferAI(audioPath, shiurId, budget) {
         await saveTranscript(entry.transcriptionId, shiurId, transcriptJsonPath);
         return;
       }
-      if (finalStatus === 'INSUFFICIENT_FUNDS') {
+      if (finalStatus === 'INSUFFICIENT_FUNDS' && !noResubmit) {
         throw new SoferBillingError(`job ${entry.transcriptionId} hit INSUFFICIENT_FUNDS`);
       }
       throw new Error(`Existing job ${entry.transcriptionId} ended as ${finalStatus}`);
@@ -616,6 +628,12 @@ async function transcribeWithSoferAI(audioPath, shiurId, budget) {
       );
       return;
     }
+  }
+
+  // Everything below here spends money.
+  if (noResubmit) {
+    console.log(`  ⏭️  ${shiurId} is marked noResubmit — not submitting a new paid job`);
+    return;
   }
 
   if (budget.remaining <= 0) {
