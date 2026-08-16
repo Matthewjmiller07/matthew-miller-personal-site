@@ -144,14 +144,6 @@ export default function IsraelMap({
           `${count} ${count === 1 ? 'visit' : 'visits'} logged`
       );
     });
-
-    // Frame the whole country the first time the polygons land, then leave the
-    // view alone so toggling a layer doesn't yank the map back from wherever
-    // it's been panned to.
-    if (!framed.current && map.current) {
-      framed.current = true;
-      map.current.fitBounds(layer.getBounds(), { padding: [12, 12] });
-    }
   }, [ready, regions, showRegions, regionCounts]);
 
   /* Places we've been ------------------------------------------------------ */
@@ -161,9 +153,11 @@ export default function IsraelMap({
     if (!L || !layer) return;
 
     layer.clearLayers();
+    const located: [number, number][] = [];
     for (const [code, count] of placeCounts) {
       const place = placeByCode.get(code);
       if (!place?.lat || !place?.lng) continue;
+      located.push([place.lat, place.lng]);
       L.circleMarker([place.lat, place.lng], {
         radius: Math.min(6 + Math.sqrt(count) * 3, 22),
         color: '#f59e0b',
@@ -177,6 +171,20 @@ export default function IsraelMap({
             `<em>${count} ${count === 1 ? 'time' : 'times'}</em>`
         )
         .addTo(layer);
+    }
+
+    // Frame the map around wherever we've actually logged something, the first
+    // time there's anything to frame — not the whole country, which reduces a
+    // single new marker to a few pixels. Once framed, leave the view alone so
+    // logging another entry doesn't yank the map out from under someone who's
+    // already panned around.
+    if (!framed.current && map.current && located.length) {
+      framed.current = true;
+      if (located.length === 1) {
+        map.current.setView(located[0], 13);
+      } else {
+        map.current.fitBounds(L.latLngBounds(located), { padding: [32, 32], maxZoom: 13 });
+      }
     }
   }, [ready, placeCounts, placeByCode]);
 
