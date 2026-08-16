@@ -61,6 +61,24 @@ don't want it touched — set `"skip": true` on its ledger entry. That beats eve
 rule: no submit, no polling, no API call at all, and it survives an audio re-upload.
 Delete the entry to undo it. Shiurim 12–14 are marked this way.
 
+### Auditing the account
+
+`npm run audit:sofer` lists every transcription on the Sofer account, groups them by
+shiur, and shows which were actually billed — this is how you find duplicate
+submissions and reconcile them against the repo. It never submits a job, so it cannot
+cost money.
+
+```bash
+SOFER_AI_API_KEY=sek_... npm run audit:sofer                        # report only
+SOFER_AI_API_KEY=sek_... node scripts/sofer-audit.mjs --write-ledger # pin job IDs
+SOFER_AI_API_KEY=sek_... node scripts/sofer-audit.mjs --pull         # + download paid-for transcripts
+```
+
+`--write-ledger` pins one job per shiur (preferring a `COMPLETED` one) and marks it
+`noResubmit`, recording `duplicateCount` and any `billedDuplicateJobIds` — the latter
+being the ones worth raising with Sofer for a refund. `--pull` additionally downloads
+transcripts already paid for and writes both the paragraph JSON and the SRT.
+
 Guardrails, both env-overridable:
 
 | Variable | Default | Meaning |

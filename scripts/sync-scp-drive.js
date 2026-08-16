@@ -874,4 +874,14 @@ if (RUN_AS_SCRIPT) {
   });
 }
 
-export { transcribeNewShiurim, transcribeWithSoferAI, SoferBillingError };
+export {
+  transcribeNewShiurim,
+  transcribeWithSoferAI,
+  SoferBillingError,
+  groupWordsIntoParagraphs,
+  paragraphsToSrt,
+  analyzeTranscriptWithAI,
+  readJobLedger,
+  writeJobLedger,
+  JOB_LEDGER_FILE,
+};
