@@ -266,11 +266,23 @@ async function main() {
       process.exit(0);
     }
     const client = new InferenceClient(token);
-    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
-      const batch = pending.slice(i, i + BATCH_SIZE);
-      const vectors = await embedBatch(client, batch.map((c) => c.text));
-      batch.forEach((c, j) => cache.set(c.id + ':' + c.hash, quantizeVec(vectors[j])));
-      console.log(`  🧮 Embedded ${Math.min(i + BATCH_SIZE, pending.length)}/${pending.length}`);
+    try {
+      for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+        const batch = pending.slice(i, i + BATCH_SIZE);
+        const vectors = await embedBatch(client, batch.map((c) => c.text));
+        batch.forEach((c, j) => cache.set(c.id + ':' + c.hash, quantizeVec(vectors[j])));
+        console.log(`  🧮 Embedded ${Math.min(i + BATCH_SIZE, pending.length)}/${pending.length}`);
+      }
+    } catch (err) {
+      // An embedding outage — depleted credits, provider downtime — must not
+      // fail the whole site build. Chunks that never got a vector are filtered
+      // out at query time (see src/pages/api/search.js), so search keeps
+      // working on everything already embedded; only the newest content is
+      // missing until the next successful build.
+      const detail = err.httpResponse?.body?.error ?? err.message;
+      console.warn(`  ⚠️  Embedding unavailable — keeping ${cache.size} already-embedded chunk(s).`);
+      console.warn(`     ${String(detail).slice(0, 200)}`);
+      console.warn(`     ${pending.length} new chunk(s) will stay unsearchable until this succeeds.`);
     }
   }
 
