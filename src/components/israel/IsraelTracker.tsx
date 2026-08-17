@@ -5,7 +5,7 @@ import ShabbatForm from './ShabbatForm';
 import VisitForm from './VisitForm';
 import ShulPanel from './ShulPanel';
 import Stats from './Stats';
-import { db, loadEverything, loadReference, write } from './api';
+import { db, geocodeSearch, loadEverything, loadReference, write } from './api';
 import type { Minyan, Person, Place, Shabbat, ShabbatMeal, Shul, Visit } from './types';
 import { MEAL_LABEL, TEFILLAH_LABEL, describeAttendees, formatDate, formatTime } from './lib';
 
@@ -176,12 +176,18 @@ export default function IsraelTracker({ supabaseUrl, supabaseAnonKey }: Props) {
     await refresh();
   };
 
-  const pinShul = async (lat: number, lng: number) => {
-    if (!pinningShul) return;
-    await write(passcode, { action: 'save-shul', record: { id: pinningShul, lat, lng } });
-    setPinningShul(null);
+  const placeShul = async (shulId: string, lat: number, lng: number) => {
+    await write(passcode, { action: 'save-shul', record: { id: shulId, lat, lng } });
     await refresh();
   };
+
+  const pinShul = async (lat: number, lng: number) => {
+    if (!pinningShul) return;
+    await placeShul(pinningShul, lat, lng);
+    setPinningShul(null);
+  };
+
+  const searchShulAddress = (query: string) => geocodeSearch(passcode, query, { bounded: true });
 
   /* ------------------------------------------------------------------------- */
 
@@ -506,6 +512,8 @@ export default function IsraelTracker({ supabaseUrl, supabaseAnonKey }: Props) {
               if (id) setTab('map');
             }}
             onAddShul={addShul}
+            onSearchAddress={searchShulAddress}
+            onPlaceShul={placeShul}
           />
         </section>
       )}

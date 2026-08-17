@@ -83,3 +83,34 @@ export async function write<T = unknown>(
   }
   return payload as T;
 }
+
+export interface GeocodeHit {
+  lat: number;
+  lng: number;
+  label: string;
+}
+
+/** Address search for pinning a shul, proxied server-side through /api/israel-geocode. */
+export async function geocodeSearch(
+  key: string,
+  query: string,
+  options: { bounded?: boolean } = {}
+): Promise<GeocodeHit[]> {
+  const params = new URLSearchParams({ q: query });
+  if (options.bounded) params.set('bounded', '1');
+
+  const response = await fetch(`/api/israel-geocode?${params}`, {
+    headers: { 'x-israel-key': key },
+  });
+
+  let payload: { error?: string; results?: GeocodeHit[] } = {};
+  try {
+    payload = await response.json();
+  } catch {
+    /* a non-JSON error page — fall through to the status-based message */
+  }
+  if (!response.ok) {
+    throw new ApiError(payload.error || `Request failed (${response.status})`);
+  }
+  return payload.results ?? [];
+}
