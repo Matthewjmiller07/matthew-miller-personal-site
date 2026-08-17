@@ -9,7 +9,7 @@ interface Props {
   canEdit: boolean;
   pinningId: string | null;
   onStartPin: (shulId: string | null) => void;
-  onAddShul: (record: { name_he: string; address_he: string | null }) => Promise<void>;
+  onAddShul: (record: { name_he: string; address_he: string | null }) => Promise<Shul>;
   onSearchAddress: (query: string) => Promise<GeocodeHit[]>;
   onPlaceShul: (shulId: string, lat: number, lng: number) => Promise<void>;
 }
@@ -139,9 +139,21 @@ export default function ShulPanel({
     if (!name.trim()) return;
     setBusy(true);
     try {
-      await onAddShul({ name_he: name.trim(), address_he: address.trim() || null });
+      const created = await onAddShul({
+        name_he: name.trim(),
+        address_he: address.trim() || null,
+      });
       setName('');
       setAddress('');
+      // A shul with no pin is only half-added — open the address search on it
+      // immediately rather than leaving it to be discovered later as "no pin".
+      // Clear anything that could filter the new row out of view first.
+      if (created?.id) {
+        setQuery('');
+        setOnlyEarly(false);
+        setOnlyVisited(false);
+        setSearchingId(created.id);
+      }
     } finally {
       setBusy(false);
     }

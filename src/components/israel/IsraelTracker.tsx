@@ -172,8 +172,12 @@ export default function IsraelTracker({ supabaseUrl, supabaseAnonKey }: Props) {
   };
 
   const addShul = async (record: { name_he: string; address_he: string | null }) => {
-    await write(passcode, { action: 'save-shul', record });
+    const { record: created } = await write<{ record: Shul }>(passcode, {
+      action: 'save-shul',
+      record,
+    });
     await refresh();
+    return created;
   };
 
   const placeShul = async (shulId: string, lat: number, lng: number) => {
@@ -183,7 +187,15 @@ export default function IsraelTracker({ supabaseUrl, supabaseAnonKey }: Props) {
 
   const pinShul = async (lat: number, lng: number) => {
     if (!pinningShul) return;
-    await placeShul(pinningShul, lat, lng);
+    try {
+      await placeShul(pinningShul, lat, lng);
+    } catch (err) {
+      // The map-click handler that calls this can't render an inline error the way
+      // a form can, and staying silent would leave someone thinking a pin landed
+      // when it didn't.
+      alert(err instanceof Error ? err.message : 'Could not save that pin.');
+      return;
+    }
     setPinningShul(null);
   };
 
