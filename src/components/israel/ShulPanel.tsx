@@ -33,6 +33,7 @@ function GeocodeSearch({
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<GeocodeHit[] | null>(null);
   const [placing, setPlacing] = useState(false);
+  const [placed, setPlaced] = useState<GeocodeHit | null>(null);
 
   const search = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -40,6 +41,7 @@ function GeocodeSearch({
     setBusy(true);
     setError(null);
     setResults(null);
+    setPlaced(null);
     try {
       const hits = await onSearchAddress(query.trim());
       setResults(hits);
@@ -55,12 +57,38 @@ function GeocodeSearch({
     setPlacing(true);
     try {
       await onPlaceShul(shul.id, hit.lat, hit.lng);
-      onClose();
+      // Stay open long enough to actually see the confirmation — closing the
+      // instant a click registers reads as "did that do anything?" rather than
+      // "saved."
+      setResults(null);
+      setPlaced(hit);
+      setTimeout(onClose, 2200);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save that pin.');
+    } finally {
       setPlacing(false);
     }
   };
+
+  if (placed) {
+    return (
+      <div className="il-geocode">
+        <p className="il-geocode-success">
+          ✓ Pinned{placed.exact ? '' : ' (approximate — see note below)'}
+          <span dir="auto" className="il-geocode-success-label">
+            {placed.label}
+          </span>
+        </p>
+        {!placed.exact && (
+          <p className="il-hint">
+            OpenStreetMap didn’t have building {query.match(/\d+/)?.[0] ?? 'number'} specifically,
+            so this is placed on the street rather than the exact building. Use “Re-pin” → click
+            the map to correct it by hand if it matters.
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="il-geocode">
@@ -94,7 +122,14 @@ function GeocodeSearch({
                 disabled={placing}
                 onClick={() => place(hit)}
               >
-                {hit.label}
+                <span dir="auto">{hit.label}</span>
+                {hit.exact ? (
+                  <span className="il-geocode-badge il-geocode-badge-exact">exact address</span>
+                ) : (
+                  <span className="il-geocode-badge il-geocode-badge-approx">
+                    {hit.houseNumber ? `building ${hit.houseNumber}, not the number searched` : 'street only — no building match'}
+                  </span>
+                )}
               </button>
             </li>
           ))}
