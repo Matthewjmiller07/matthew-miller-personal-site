@@ -51,6 +51,7 @@ export async function GET({ request, url }) {
     countrycodes: 'il',
     viewbox: RAANANA_VIEWBOX,
     bounded: bounded ? '1' : '0',
+    addressdetails: '1',
   })}`;
 
   try {
@@ -61,11 +62,22 @@ export async function GET({ request, url }) {
       return json({ error: `Nominatim returned ${response.status}` }, 502);
     }
     const hits = await response.json();
+
+    // Nominatim falls back silently: ask for "Achuza 80" and, if no building at that
+    // number is in OSM, it hands back the street or even the neighbourhood instead —
+    // same shape of response, much less precise. Surface that gap rather than let a
+    // street-level guess look as trustworthy as an exact address.
+    const askedNumber = q.match(/\d+/)?.[0];
+
     return json({
       results: hits.map((hit) => ({
         lat: Number(hit.lat),
         lng: Number(hit.lon),
         label: hit.display_name,
+        houseNumber: hit.address?.house_number ?? null,
+        exact: Boolean(
+          askedNumber && hit.address?.house_number && hit.address.house_number === askedNumber
+        ),
       })),
     });
   } catch (err) {

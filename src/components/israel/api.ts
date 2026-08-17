@@ -88,6 +88,10 @@ export interface GeocodeHit {
   lat: number;
   lng: number;
   label: string;
+  /** The matched house number, when Nominatim found the address at building level. */
+  houseNumber: string | null;
+  /** True when houseNumber matches the number typed in the search — a real address hit, not a street/area fallback. */
+  exact: boolean;
 }
 
 /** Address search for pinning a shul, proxied server-side through /api/israel-geocode. */
