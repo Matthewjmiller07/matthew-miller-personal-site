@@ -32,6 +32,7 @@ export default function VisitForm({
   const [notes, setNotes] = useState(editing?.notes ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const placeOptions: ComboOption[] = useMemo(
     () =>
@@ -46,7 +47,9 @@ export default function VisitForm({
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (busy) return;
     setError(null);
+    setSaved(false);
     setBusy(true);
     try {
       await onSave({
@@ -59,6 +62,8 @@ export default function VisitForm({
         attendees,
         notes: notes || null,
       });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
       if (!editing) {
         setTitle('');
         setNotes('');
@@ -151,6 +156,7 @@ export default function VisitForm({
       </label>
 
       {error && <p className="il-error">{error}</p>}
+      {saved && <p className="il-saved">✓ Logged</p>}
 
       <div className="il-actions">
         <button type="submit" className="il-btn il-btn-primary" disabled={busy}>

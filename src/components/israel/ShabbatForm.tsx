@@ -57,6 +57,7 @@ export default function ShabbatForm({
   const [meals, setMeals] = useState<ShabbatMeal[]>(editing?.meals ?? []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   // Only fill an empty parasha field — never overwrite something already typed.
   useEffect(() => {
@@ -97,7 +98,9 @@ export default function ShabbatForm({
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (busy) return;
     setError(null);
+    setSaved(false);
     setBusy(true);
     try {
       await onSave(
@@ -112,6 +115,8 @@ export default function ShabbatForm({
         },
         meals
       );
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save that.');
     } finally {
@@ -265,6 +270,7 @@ export default function ShabbatForm({
       </label>
 
       {error && <p className="il-error">{error}</p>}
+      {saved && <p className="il-saved">✓ Logged</p>}
 
       <div className="il-actions">
         <button type="submit" className="il-btn il-btn-primary" disabled={busy}>
