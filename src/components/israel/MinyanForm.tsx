@@ -50,6 +50,7 @@ export default function MinyanForm({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const set = <K extends keyof ReturnType<typeof blank>>(
     key: K,
@@ -80,7 +81,13 @@ export default function MinyanForm({
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    // The button already disables itself while a save is in flight, but a slow
+    // network reads the same either way — nothing on screen said the first click
+    // landed, so a second (or third) click was a reasonable thing to try. A
+    // duplicate entry from that is a UI bug, not a user error.
+    if (busy) return;
     setError(null);
+    setSaved(false);
     setBusy(true);
     try {
       await onSave({
@@ -94,6 +101,8 @@ export default function MinyanForm({
         attendees: form.attendees,
         notes: form.notes || null,
       });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
       // Keep the date, the shul and who came — the next entry is usually mincha at
       // the same place, not a fresh trip through every field.
       if (!editing) {
@@ -201,6 +210,7 @@ export default function MinyanForm({
       </label>
 
       {error && <p className="il-error">{error}</p>}
+      {saved && <p className="il-saved">✓ Logged</p>}
 
       <div className="il-actions">
         <button type="submit" className="il-btn il-btn-primary" disabled={busy}>
