@@ -9,6 +9,8 @@ interface Props {
   places: Place[];
   people: Person[];
   editing: Minyan | null;
+  /** Date + tefillah to start a new entry from — set when jumping here from the Calendar. */
+  prefill?: { date: string; tefillah: Tefillah } | null;
   onSave: (record: Partial<Minyan>) => Promise<void>;
   onCancel: () => void;
   onAddPerson: (name: string) => Promise<void>;
@@ -30,6 +32,7 @@ export default function MinyanForm({
   places,
   people,
   editing,
+  prefill,
   onSave,
   onCancel,
   onAddPerson,
@@ -46,7 +49,9 @@ export default function MinyanForm({
           attendees: editing.attendees ?? [],
           notes: editing.notes ?? '',
         }
-      : blank()
+      : prefill
+        ? { ...blank(), date: prefill.date, tefillah: prefill.tefillah }
+        : blank()
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

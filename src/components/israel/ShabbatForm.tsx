@@ -8,6 +8,8 @@ interface Props {
   places: Place[];
   people: Person[];
   editing: Shabbat | null;
+  /** Shabbat date to start a new entry from — set when jumping here from the Calendar. */
+  prefillDate?: string | null;
   onSave: (shabbat: Partial<Shabbat>, meals: ShabbatMeal[]) => Promise<void>;
   onCancel: () => void;
   onAddPerson: (name: string) => Promise<void>;
@@ -43,11 +45,12 @@ export default function ShabbatForm({
   places,
   people,
   editing,
+  prefillDate,
   onSave,
   onCancel,
   onAddPerson,
 }: Props) {
-  const [date, setDate] = useState(editing?.shabbat_date ?? nearestShabbat());
+  const [date, setDate] = useState(editing?.shabbat_date ?? prefillDate ?? nearestShabbat());
   const [parasha, setParasha] = useState(editing?.parasha ?? '');
   const [placeCode, setPlaceCode] = useState(editing?.place_code ?? null);
   const [placeName, setPlaceName] = useState(editing?.place_name ?? null);

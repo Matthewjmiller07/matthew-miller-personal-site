@@ -4,9 +4,10 @@ import MinyanForm from './MinyanForm';
 import ShabbatForm from './ShabbatForm';
 import VisitForm from './VisitForm';
 import ShulPanel from './ShulPanel';
+import CalendarView from './CalendarView';
 import Stats from './Stats';
 import { db, geocodeSearch, loadEverything, loadReference, write } from './api';
-import type { Minyan, Person, Place, Shabbat, ShabbatMeal, Shul, Visit } from './types';
+import type { Minyan, Person, Place, Shabbat, ShabbatMeal, Shul, Tefillah, Visit } from './types';
 import { MEAL_LABEL, TEFILLAH_LABEL, describeAttendees, formatDate, formatTime } from './lib';
 
 interface Props {
@@ -14,10 +15,11 @@ interface Props {
   supabaseAnonKey: string;
 }
 
-type Tab = 'map' | 'minyanim' | 'shabbat' | 'visits' | 'shuls' | 'stats';
+type Tab = 'map' | 'calendar' | 'minyanim' | 'shabbat' | 'visits' | 'shuls' | 'stats';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'map', label: 'Map' },
+  { key: 'calendar', label: 'Calendar' },
   { key: 'minyanim', label: 'Minyanim' },
   { key: 'shabbat', label: 'Shabbat' },
   { key: 'visits', label: 'Out & about' },
@@ -50,6 +52,15 @@ export default function IsraelTracker({ supabaseUrl, supabaseAnonKey }: Props) {
   const [pinningShul, setPinningShul] = useState<string | null>(null);
   const [showRegions, setShowRegions] = useState(true);
   const [showShuls, setShowShuls] = useState(true);
+
+  // Jumping here from the Calendar with a date (and, for a minyan, a tefillah)
+  // already chosen. draftNonce forces the target form to remount even when the
+  // same date/tefillah is picked twice in a row, so a stale form state never
+  // lingers from a previous jump.
+  const [minyanDraft, setMinyanDraft] = useState<{ date: string; tefillah: Tefillah } | null>(null);
+  const [shabbatDraftDate, setShabbatDraftDate] = useState<string | null>(null);
+  const [visitDraftDate, setVisitDraftDate] = useState<string | null>(null);
+  const [draftNonce, setDraftNonce] = useState(0);
 
   const supabase = useMemo(
     () => db(supabaseUrl, supabaseAnonKey),
@@ -201,6 +212,55 @@ export default function IsraelTracker({ supabaseUrl, supabaseAnonKey }: Props) {
 
   const searchShulAddress = (query: string) => geocodeSearch(passcode, query, { bounded: true });
 
+  /* Calendar navigation ------------------------------------------------------ */
+
+  /** Switching tabs by hand always starts fresh — no leftover draft from a Calendar jump. */
+  const goToTab = (key: Tab) => {
+    setMinyanDraft(null);
+    setShabbatDraftDate(null);
+    setVisitDraftDate(null);
+    setTab(key);
+  };
+
+  const goToAddMinyan = (date: string, tefillah: Tefillah) => {
+    setEditingMinyan(null);
+    setMinyanDraft({ date, tefillah });
+    setDraftNonce((n) => n + 1);
+    setTab('minyanim');
+  };
+
+  const goToEditMinyan = (minyan: Minyan) => {
+    setMinyanDraft(null);
+    setEditingMinyan(minyan);
+    setTab('minyanim');
+  };
+
+  const goToAddShabbat = (date: string) => {
+    setEditingShabbat(null);
+    setShabbatDraftDate(date);
+    setDraftNonce((n) => n + 1);
+    setTab('shabbat');
+  };
+
+  const goToEditShabbat = (shabbat: Shabbat) => {
+    setShabbatDraftDate(null);
+    setEditingShabbat(shabbat);
+    setTab('shabbat');
+  };
+
+  const goToAddVisit = (date: string) => {
+    setEditingVisit(null);
+    setVisitDraftDate(date);
+    setDraftNonce((n) => n + 1);
+    setTab('visits');
+  };
+
+  const goToEditVisit = (visit: Visit) => {
+    setVisitDraftDate(null);
+    setEditingVisit(visit);
+    setTab('visits');
+  };
+
   /* ------------------------------------------------------------------------- */
 
   if (loading) return <p className="il-empty">Loading the country…</p>;
@@ -216,7 +276,7 @@ export default function IsraelTracker({ supabaseUrl, supabaseAnonKey }: Props) {
             key={entry.key}
             type="button"
             className={`il-tab ${tab === entry.key ? 'is-active' : ''}`}
-            onClick={() => setTab(entry.key)}
+            onClick={() => goToTab(entry.key)}
           >
             {entry.label}
           </button>
@@ -293,14 +353,36 @@ export default function IsraelTracker({ supabaseUrl, supabaseAnonKey }: Props) {
         </section>
       )}
 
+      {tab === 'calendar' && (
+        <section className="il-section">
+          <CalendarView
+            minyanim={minyanim}
+            shabbatot={shabbatot}
+            visits={visits}
+            shuls={shuls}
+            places={places}
+            people={people}
+            canEdit={!locked}
+            onAddMinyan={goToAddMinyan}
+            onEditMinyan={goToEditMinyan}
+            onAddShabbat={goToAddShabbat}
+            onEditShabbat={goToEditShabbat}
+            onAddVisit={goToAddVisit}
+            onEditVisit={goToEditVisit}
+          />
+        </section>
+      )}
+
       {tab === 'minyanim' && (
         <section className="il-section">
           {!locked && (
             <MinyanForm
+              key={editingMinyan?.id ?? `minyan-${draftNonce}`}
               shuls={shuls}
               places={places}
               people={people}
               editing={editingMinyan}
+              prefill={minyanDraft}
               onSave={saveMinyan}
               onCancel={() => setEditingMinyan(null)}
               onAddPerson={addPerson}
@@ -366,10 +448,11 @@ export default function IsraelTracker({ supabaseUrl, supabaseAnonKey }: Props) {
         <section className="il-section">
           {!locked && (
             <ShabbatForm
-              key={editingShabbat?.id ?? 'new'}
+              key={editingShabbat?.id ?? `shabbat-${draftNonce}`}
               places={places}
               people={people}
               editing={editingShabbat}
+              prefillDate={shabbatDraftDate}
               onSave={saveShabbat}
               onCancel={() => setEditingShabbat(null)}
               onAddPerson={addPerson}
@@ -452,10 +535,11 @@ export default function IsraelTracker({ supabaseUrl, supabaseAnonKey }: Props) {
         <section className="il-section">
           {!locked && (
             <VisitForm
-              key={editingVisit?.id ?? 'new'}
+              key={editingVisit?.id ?? `visit-${draftNonce}`}
               places={places}
               people={people}
               editing={editingVisit}
+              prefillDate={visitDraftDate}
               onSave={saveVisit}
               onCancel={() => setEditingVisit(null)}
               onAddPerson={addPerson}
