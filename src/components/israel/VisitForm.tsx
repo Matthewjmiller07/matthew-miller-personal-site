@@ -8,6 +8,8 @@ interface Props {
   places: Place[];
   people: Person[];
   editing: Visit | null;
+  /** Date to start a new entry from — set when jumping here from the Calendar. */
+  prefillDate?: string | null;
   onSave: (record: Partial<Visit>) => Promise<void>;
   onCancel: () => void;
   onAddPerson: (name: string) => Promise<void>;
@@ -19,11 +21,12 @@ export default function VisitForm({
   places,
   people,
   editing,
+  prefillDate,
   onSave,
   onCancel,
   onAddPerson,
 }: Props) {
-  const [date, setDate] = useState(editing?.date ?? todayISO());
+  const [date, setDate] = useState(editing?.date ?? prefillDate ?? todayISO());
   const [placeCode, setPlaceCode] = useState(editing?.place_code ?? null);
   const [placeName, setPlaceName] = useState(editing?.place_name ?? null);
   const [title, setTitle] = useState(editing?.title ?? '');
