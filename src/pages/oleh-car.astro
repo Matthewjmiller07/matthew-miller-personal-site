@@ -1,0 +1,835 @@
+---
+// src/pages/oleh-car.astro
+// Is the aliyah car benefit worth it? A calculator + explainer.
+import Layout from '../layouts/Layout.astro';
+import { SITE_TITLE } from '../consts';
+
+const pageTitle = 'Oleh Car Benefit Calculator';
+const pageDescription =
+  "Does it pay to buy a new car in Israel with the oleh tax benefit, or buy used instead? A calculator built on the 2026 purchase-tax rules, with the four-year lock-in priced in.";
+
+// ---------------------------------------------------------------------------
+// Tax model constants (2026). Every one of these is exposed as an editable
+// input in the calculator; these are just the defaults.
+// ---------------------------------------------------------------------------
+const TAX = {
+  vat: 18,           // %  — rose from 17% to 18%
+  rateStandard: 83,  // %  — purchase tax, petrol/diesel/hybrid/PHEV
+  rateEv: 48,        // %  — EV rate from 1 Jan 2026 (was 45%)
+  rateOleh: 50,      // %  — flat oleh rate, any engine, any origin
+  greenCredit: 13650,// ₪  — green-rating credit ceiling, 2026
+  evCap: 22000,      // ₪  — ceiling on the EV benefit, 2026 (was 30,000 proposed)
+};
+
+// Residual-value curve for the Israeli market, as a share of original list
+// price. Anchored on three published data points: a ~2-year-old car has lost
+// roughly 30% of its value; a 3-4 year old car is described as ~40%
+// depreciated; a 2023 Kia Sportage listed used at ₪99,900 against a new price
+// in the ₪165k range (≈0.60 at three years).
+const RESIDUAL = [1.0, 0.82, 0.72, 0.64, 0.57, 0.51, 0.46, 0.41, 0.37, 0.33, 0.30];
+
+// Reference prices seen in the 2026 Israeli market press. Used to seed the
+// preset buttons — not a price list, just plausible starting points.
+const PRESETS = [
+  { label: 'Toyota Corolla Hybrid', price: 160000, power: 'hybrid', note: 'Relaunched at about ₪160,000' },
+  { label: 'Hyundai Tucson Hybrid AWD', price: 180000, power: 'hybrid', note: 'Listed around ₪180,000 for 2026' },
+  { label: 'Tesla Model 3', price: 194000, power: 'ev', note: 'Base version, about ₪194,000' },
+  { label: 'Family petrol SUV', price: 175000, power: 'ice', note: 'Typical mid-size petrol crossover' },
+];
+
+const RULES = [
+  {
+    t: 'Three years to use it',
+    d: 'The car must be released by customs and in your possession within three years of your aliyah date. Buying by the deadline is not enough — it has to have cleared. Extensions exist for IDF service, study at a recognised university, or six or more consecutive months abroad during those first three years.',
+  },
+  {
+    t: 'Four years before you can sell',
+    d: 'Sell inside four years of the purchase date and you repay the entire reduction you received. The restriction lifts automatically at four years. This is the part most people underprice — see the lock-in section below.',
+  },
+  {
+    t: 'One vehicle, once',
+    d: 'One vehicle per oleh — a car or a motorcycle. You can use it on a motorcycle and later switch to a car, but only after repaying the break you took on the motorcycle.',
+  },
+  {
+    t: 'Only you and your spouse may drive it',
+    d: 'Children living at the same address need permission from the Customs Authority, and that approval is valid for one year at a time, so it has to be renewed annually.',
+  },
+  {
+    t: 'New cars, or passport-to-passport',
+    d: 'The benefit applies to a new car from an authorised importer, or to a "passport-to-passport" purchase from another oleh or a diplomat who imported at the preferential rate. It cannot be applied to an ordinary second-hand car from an Israeli dealer or a private seller.',
+  },
+];
+
+const SOURCES = [
+  { t: "Nefesh B'Nefesh — Customs benefits for a car purchased or imported", u: 'https://www.nbn.org.il/life-in-israel/government-services/rights-and-benefits/customs-benefits-for-a-car-purchased-or-imported/' },
+  { t: "Nefesh B'Nefesh — Buying a vehicle in Israel", u: 'https://www.nbn.org.il/life-in-israel/government-services/rights-and-benefits/buying-a-vehicle-in-israel/' },
+  { t: "Nefesh B'Nefesh — Buying a car passport to passport", u: 'https://www.nbn.org.il/life-in-israel/government-services/rights-and-benefits/buying-a-car-passport-to-passport/' },
+  { t: 'Israel Tax Authority — purchase tax on electric vehicles, 2026', u: 'https://www.gov.il/en/pages/sa121125-1' },
+  { t: 'Globes — Treasury compromises on electric car tax hike', u: 'https://en.globes.co.il/en/article-treasury-compromises-on-electric-car-tax-hike-1001530508' },
+  { t: 'Globes — Taxation on new cars set to rise substantially in 2026', u: 'https://en.globes.co.il/en/article-taxation-on-new-cars-set-to-rise-substantially-in-2026-1001526229' },
+  { t: 'Globes — New car prices in Israel open 2026 lower', u: 'https://en.globes.co.il/en/article-new-car-prices-in-israel-open-2026-lower-1001531870' },
+  { t: 'Times of Israel — Knesset committee rejects bid to hike EV purchase tax to 52%', u: 'https://www.timesofisrael.com/knesset-committee-rejects-treasury-bid-to-hike-electric-vehicle-purchase-tax-to-52/' },
+  { t: 'Jerusalem Post — Plug-in and hybrid cars: benefit-in-kind stays unchanged', u: 'https://www.jpost.com/consumerism/article-873725' },
+  { t: 'About Aliyah — The 2026 guide to buying a car in Israel', u: 'https://www.allaboutaliyah.com/post/buying-car-israel' },
+  { t: 'Shivat Zion — Buying a new car with olim benefits', u: 'https://shivat-zion.com/information-portal/integration-rights/buying-a-new-car-with-olim-benefits/' },
+];
+
+const MARKETS = [
+  { t: 'Yad2', u: 'https://www.yad2.co.il/vehicles/cars', d: "Israel's dominant classifieds site. The real used market lives here — private sellers and dealers both." },
+  { t: 'Autoboom (Carboom)', u: 'https://autoboom.co.il/en/used/cars', d: 'Used listings with an English interface, plus trade-in valuations. Easier to skim if your Hebrew is still warming up.' },
+  { t: 'Levi Yitzhak price list', u: 'https://www.levi-yitzhak.co.il/', d: 'The reference price book insurers and dealers actually quote from. Check a car against it before you negotiate.' },
+  { t: 'Globes automotive', u: 'https://en.globes.co.il/en/gnews-auto-1000000117', d: 'Where new-car price lists and tax changes get reported first.' },
+];
+---
+
+<Layout title={`${pageTitle} | ${SITE_TITLE}`} description={pageDescription}>
+  <main class="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-900 text-gray-100">
+    <div class="container mx-auto px-4 py-12 max-w-6xl">
+
+      <!-- ================= Hero ================= -->
+      <header class="mb-14">
+        <p class="text-sm uppercase tracking-[0.2em] text-cyan-400 mb-3">Aliyah · Cars · 2026 tax year</p>
+        <h1 class="text-4xl sm:text-5xl font-bold mb-5 leading-tight">
+          Is the oleh car benefit<br class="hidden sm:block" /> actually worth using?
+        </h1>
+        <p class="text-lg text-gray-300 max-w-3xl leading-relaxed">
+          Every oleh is told about the car benefit, and it sounds enormous: pay 50% purchase tax instead of 83%.
+          Then you price a car and the discount comes out around a tenth of the sticker. The gap between those two
+          impressions is where this page lives — the benefit is real, it is smaller than the number suggests, and
+          for one whole category of car it is worse than no benefit at all.
+        </p>
+      </header>
+
+      <!-- ================= The short answer ================= -->
+      <section class="mb-16">
+        <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+          <span class="w-1 h-7 bg-cyan-400 rounded-full"></span>The short answer
+        </h2>
+        <div class="grid gap-5 md:grid-cols-3">
+          <div class="bg-gray-800/70 rounded-xl p-6 border border-emerald-700/50">
+            <div class="text-emerald-400 text-sm font-semibold uppercase tracking-wider mb-2">Petrol or diesel</div>
+            <div class="text-3xl font-bold mb-2">Use it</div>
+            <p class="text-sm text-gray-400 leading-relaxed">
+              This is where the benefit still bites. The dirtier the car's green rating, the smaller its standard
+              green credit and the wider the gap the oleh rate opens up.
+            </p>
+          </div>
+          <div class="bg-gray-800/70 rounded-xl p-6 border border-emerald-700/50">
+            <div class="text-emerald-400 text-sm font-semibold uppercase tracking-wider mb-2">Hybrid &amp; plug-in hybrid</div>
+            <div class="text-3xl font-bold mb-2">Use it</div>
+            <p class="text-sm text-gray-400 leading-relaxed">
+              Hybrids and PHEVs lost their own reduced purchase-tax rate. They now sit at the full 83% like any
+              petrol car, which quietly made the oleh benefit <em>more</em> valuable on exactly the cars olim buy most.
+            </p>
+          </div>
+          <div class="bg-gray-800/70 rounded-xl p-6 border border-amber-600/50">
+            <div class="text-amber-400 text-sm font-semibold uppercase tracking-wider mb-2">Fully electric</div>
+            <div class="text-3xl font-bold mb-2">Usually don't</div>
+            <p class="text-sm text-gray-400 leading-relaxed">
+              EVs are taxed at 48%, which already beats the oleh 50%. But that EV discount is capped at ₪22,000 —
+              and above the cap the arithmetic flips back. The calculator finds the crossover for your car.
+            </p>
+          </div>
+        </div>
+        <p class="mt-5 text-sm text-gray-500 max-w-3xl">
+          Across ordinary family cars the benefit lands somewhere around <span class="text-gray-300 font-semibold">8% to 18% off the sticker</span>.
+          Worth having. Rarely worth reorganising your finances around, and — as the calculator shows — usually
+          smaller than what the same money buys you three years down the depreciation curve.
+        </p>
+      </section>
+
+      <!-- ================= How the stack works ================= -->
+      <section class="mb-16">
+        <h2 class="text-2xl font-bold mb-2 flex items-center gap-3">
+          <span class="w-1 h-7 bg-cyan-400 rounded-full"></span>Why 33 points of tax relief isn't 33% off
+        </h2>
+        <p class="text-gray-400 mb-7 max-w-3xl">
+          Purchase tax is charged on the car's taxable value — roughly the landed cost — not on the showroom price.
+          By the time the importer's margin and 18% VAT sit on top, the taxable value is well under half of what you
+          pay. Cutting the rate from 83% to 50% therefore moves a smaller number than it sounds like.
+        </p>
+
+        <div class="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
+          <div class="grid gap-6 md:grid-cols-2">
+            <div>
+              <div class="text-sm font-semibold text-gray-300 mb-3">What a regular Israeli pays</div>
+              <div id="stackStd" class="space-y-2"></div>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-gray-300 mb-3">What an oleh pays</div>
+              <div id="stackOleh" class="space-y-2"></div>
+            </div>
+          </div>
+          <p class="mt-6 text-xs text-gray-500">
+            Updates live with the calculator below. The green credit is a shekel deduction off the standard 83% bill,
+            so a very clean car has already clawed back much of what the oleh rate would have given it.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= Calculator ================= -->
+      <section class="mb-16">
+        <h2 class="text-2xl font-bold mb-2 flex items-center gap-3">
+          <span class="w-1 h-7 bg-cyan-400 rounded-full"></span>Run your own car through it
+        </h2>
+        <p class="text-gray-400 mb-7 max-w-3xl">
+          Put in the list price you have been quoted and how long you realistically expect to keep the car. The
+          calculator compares three routes: new with the benefit, new without it, and a used car of the same model
+          bought off the depreciation curve.
+        </p>
+
+        <div class="grid gap-6 lg:grid-cols-5">
+
+          <!-- Inputs -->
+          <div class="lg:col-span-2 min-w-0 bg-gray-800/70 rounded-xl p-6 border border-gray-700 space-y-6">
+            <div>
+              <label for="list" class="block text-sm font-medium text-gray-300 mb-2">
+                New car list price <span class="text-gray-500">(₪, incl. VAT, standard price)</span>
+              </label>
+              <input id="list" type="number" min="30000" max="2000000" step="1000" value="180000"
+                class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-lg font-semibold text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+              <div class="flex flex-wrap gap-2 mt-3">
+                {PRESETS.map((p) => (
+                  <button type="button" class="preset text-xs px-2.5 py-1.5 rounded-md bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors"
+                    data-price={p.price} data-power={p.power} title={p.note}>{p.label}</button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <span class="block text-sm font-medium text-gray-300 mb-2">Powertrain</span>
+              <div class="grid grid-cols-2 gap-2" id="powerGroup">
+                <button type="button" data-power="ice" class="power px-3 py-2 rounded-lg text-sm border border-gray-600 bg-gray-900 hover:bg-gray-700 transition-colors">Petrol / diesel</button>
+                <button type="button" data-power="hybrid" class="power px-3 py-2 rounded-lg text-sm border border-gray-600 bg-gray-900 hover:bg-gray-700 transition-colors">Hybrid</button>
+                <button type="button" data-power="phev" class="power px-3 py-2 rounded-lg text-sm border border-gray-600 bg-gray-900 hover:bg-gray-700 transition-colors">Plug-in hybrid</button>
+                <button type="button" data-power="ev" class="power px-3 py-2 rounded-lg text-sm border border-gray-600 bg-gray-900 hover:bg-gray-700 transition-colors">Fully electric</button>
+              </div>
+            </div>
+
+            <div>
+              <label for="hold" class="block text-sm font-medium text-gray-300 mb-2">
+                Years you'll keep it: <span id="holdOut" class="text-cyan-300 font-semibold">6</span>
+              </label>
+              <input id="hold" type="range" min="1" max="10" step="1" value="6" class="w-full accent-cyan-500" />
+              <p id="holdWarn" class="text-xs mt-2 text-amber-400 hidden">
+                Under four years you would have to repay the entire reduction on sale — the benefit is worth nothing to you.
+              </p>
+            </div>
+
+            <div>
+              <label for="usedAge" class="block text-sm font-medium text-gray-300 mb-2">
+                Used alternative: age at purchase — <span id="usedAgeOut" class="text-cyan-300 font-semibold">3 years</span>
+              </label>
+              <input id="usedAge" type="range" min="1" max="8" step="1" value="3" class="w-full accent-cyan-500" />
+              <label for="usedPrice" class="block text-xs text-gray-400 mt-3 mb-1.5">Its asking price (₪) — override with a real listing</label>
+              <div class="flex gap-2">
+                <input id="usedPrice" type="number" min="5000" step="1000"
+                  class="flex-1 bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                <button type="button" id="usedReset" class="text-xs px-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors">Reset</button>
+              </div>
+            </div>
+
+            <details class="group">
+              <summary class="cursor-pointer text-sm font-medium text-gray-300 hover:text-cyan-300 select-none">
+                Tax and market assumptions
+              </summary>
+              <div class="mt-4 space-y-3 text-sm">
+                <div class="flex items-center justify-between gap-3">
+                  <label for="rateStd" class="text-gray-400">Standard purchase tax (%)</label>
+                  <input id="rateStd" type="number" step="1" value={TAX.rateStandard} class="w-24 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-right" />
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <label for="rateEv" class="text-gray-400">EV purchase tax (%)</label>
+                  <input id="rateEv" type="number" step="1" value={TAX.rateEv} class="w-24 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-right" />
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <label for="rateOleh" class="text-gray-400">Oleh purchase tax (%)</label>
+                  <input id="rateOleh" type="number" step="1" value={TAX.rateOleh} class="w-24 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-right" />
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <label for="green" class="text-gray-400">Green-rating credit (₪)</label>
+                  <input id="green" type="number" step="250" value={TAX.greenCredit} class="w-24 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-right" />
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <label for="evCap" class="text-gray-400">EV benefit ceiling (₪)</label>
+                  <input id="evCap" type="number" step="1000" value={TAX.evCap} class="w-24 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-right" />
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <label for="vat" class="text-gray-400">VAT (%)</label>
+                  <input id="vat" type="number" step="1" value={TAX.vat} class="w-24 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-right" />
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <label for="margin" class="text-gray-400">Importer + dealer margin (% of taxable value)</label>
+                  <input id="margin" type="number" step="1" value="20" class="w-24 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-right" />
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <label for="maint" class="text-gray-400">Extra upkeep on the used car (₪/yr)</label>
+                  <input id="maint" type="number" step="250" value="2500" class="w-24 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-right" />
+                </div>
+                <p class="text-xs text-gray-500 pt-1 leading-relaxed">
+                  The margin figure is the one real estimate in the model — importers don't publish it. It is used
+                  only to work backwards from the showroom price to the taxable value, and the benefit's size is not
+                  very sensitive to it. Fuel, insurance and licensing are left out because they are the same
+                  whichever route you take.
+                </p>
+              </div>
+            </details>
+          </div>
+
+          <!-- Results -->
+          <div class="lg:col-span-3 min-w-0 space-y-5">
+
+            <div id="verdict" class="rounded-xl p-6 border"></div>
+
+            <div class="grid gap-4 sm:grid-cols-3">
+              <div class="bg-gray-800/70 rounded-xl p-5 border border-gray-700">
+                <div class="text-xs uppercase tracking-wider text-gray-500 mb-1.5">New, with benefit</div>
+                <div id="priceOleh" class="text-2xl font-bold text-cyan-300"></div>
+                <div id="priceOlehSub" class="text-xs text-gray-400 mt-1.5"></div>
+              </div>
+              <div class="bg-gray-800/70 rounded-xl p-5 border border-gray-700">
+                <div class="text-xs uppercase tracking-wider text-gray-500 mb-1.5">New, no benefit</div>
+                <div id="priceStd" class="text-2xl font-bold text-gray-200"></div>
+                <div id="priceStdSub" class="text-xs text-gray-400 mt-1.5"></div>
+              </div>
+              <div class="bg-gray-800/70 rounded-xl p-5 border border-gray-700">
+                <div class="text-xs uppercase tracking-wider text-gray-500 mb-1.5">Used instead</div>
+                <div id="priceUsed" class="text-2xl font-bold text-emerald-300"></div>
+                <div id="priceUsedSub" class="text-xs text-gray-400 mt-1.5"></div>
+              </div>
+            </div>
+
+            <div class="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
+              <h3 class="text-lg font-semibold mb-1">What it actually costs you to own</h3>
+              <p class="text-xs text-gray-500 mb-5">
+                Purchase price minus what the car is worth when you sell it, over your holding period. This is the
+                comparison that matters — a discount you get back on resale anyway was never really a discount.
+              </p>
+              <div id="tcoBars" class="space-y-4"></div>
+            </div>
+
+            <div class="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
+              <h3 class="text-lg font-semibold mb-1">Cost of ownership by how long you hold</h3>
+              <p class="text-xs text-gray-500 mb-4">
+                Where the lines cross is where the decision flips. The step in the benefit line at year four is the
+                clawback falling away.
+              </p>
+              <div id="chart" class="w-full max-w-full overflow-x-auto"></div>
+              <div class="flex flex-wrap gap-4 mt-4 text-xs">
+                <span class="flex items-center gap-2"><span class="w-3.5 h-0.5 bg-cyan-400 inline-block"></span>New with benefit</span>
+                <span class="flex items-center gap-2"><span class="w-3.5 h-0.5 bg-gray-400 inline-block"></span>New without</span>
+                <span class="flex items-center gap-2"><span class="w-3.5 h-0.5 bg-emerald-400 inline-block"></span>Used</span>
+              </div>
+            </div>
+
+            <div class="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
+              <h3 class="text-lg font-semibold mb-1">The benefit across powertrains</h3>
+              <p class="text-xs text-gray-500 mb-5">
+                What the oleh rate is worth on a car at this price, by what's under the bonnet. A negative bar means
+                the benefit would cost you money. The first three match because hybrids and plug-in hybrids lost
+                their own reduced rate — they are now taxed exactly like petrol, and only their green rating
+                separates them.
+              </p>
+              <div id="powerBars" class="space-y-3"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= The lock-in ================= -->
+      <section class="mb-16">
+        <h2 class="text-2xl font-bold mb-2 flex items-center gap-3">
+          <span class="w-1 h-7 bg-cyan-400 rounded-full"></span>The four-year lock is the real price
+        </h2>
+        <div class="grid gap-5 md:grid-cols-2">
+          <div class="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
+            <p class="text-gray-300 leading-relaxed mb-4">
+              Sell inside four years and you repay the whole reduction. Nothing is prorated: month 47 costs the same
+              as month one. So the benefit is not a discount on a car, it is a discount conditional on a four-year
+              commitment made in your first three years in the country — which is precisely the window in which
+              people change city, change job, discover they need a bigger car, or discover they don't need a car.
+            </p>
+            <p class="text-gray-300 leading-relaxed">
+              Price that option honestly. If there is a meaningful chance you'll want out before year four, the
+              benefit's expected value is a fraction of its headline value, and a used car you can sell on any
+              given Tuesday is worth more than the difference.
+            </p>
+          </div>
+          <div class="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
+            <div class="text-sm font-semibold text-gray-300 mb-4">What the benefit is worth if you sell in year…</div>
+            <div id="lockTable" class="space-y-2 text-sm"></div>
+            <p class="text-xs text-gray-500 mt-4">
+              One nuance in your favour: after the four years are up, the car sells at ordinary market value. The
+              buyer does not care what you paid for it, so the discount you took at the showroom stays in your
+              pocket rather than being handed back at resale.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= The EV wrinkle ================= -->
+      <section class="mb-16">
+        <h2 class="text-2xl font-bold mb-2 flex items-center gap-3">
+          <span class="w-1 h-7 bg-cyan-400 rounded-full"></span>The electric-car wrinkle worth asking about
+        </h2>
+        <div class="bg-gray-800/70 rounded-xl p-6 border border-amber-600/40">
+          <p class="text-gray-300 leading-relaxed mb-4">
+            Guides for olim say the same thing about EVs: don't use the benefit, because 48% already beats 50%. That
+            is true for a cheap electric car. It stops being true higher up the range, because the EV break is
+            capped at ₪22,000 — past that ceiling the effective rate climbs back toward 83% while the oleh rate
+            stays flat at 50%.
+          </p>
+          <p class="text-gray-300 leading-relaxed mb-4">
+            On the default assumptions the crossover sits at a taxable value of about
+            <span class="text-amber-300 font-semibold">₪67,000</span>, which is roughly a
+            <span class="text-amber-300 font-semibold" id="evCrossover">₪134,000</span> showroom price. Above that,
+            the arithmetic says the oleh rate is the better of the two on an EV as well — the opposite of the
+            standard advice.
+          </p>
+          <p class="text-sm text-gray-400 leading-relaxed">
+            Treat that as a question to put to a customs agent rather than a conclusion to act on. The interaction
+            between the two schemes is exactly the kind of thing where the regulation may not do what the
+            arithmetic suggests, and a five-minute phone call settles it before you sign anything.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= Rules ================= -->
+      <section class="mb-16">
+        <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+          <span class="w-1 h-7 bg-cyan-400 rounded-full"></span>The rules, in full
+        </h2>
+        <div class="grid gap-4 md:grid-cols-2">
+          {RULES.map((r) => (
+            <div class="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
+              <h3 class="font-semibold text-cyan-300 mb-2">{r.t}</h3>
+              <p class="text-sm text-gray-400 leading-relaxed">{r.d}</p>
+            </div>
+          ))}
+        </div>
+        <div class="mt-5 bg-gray-800/70 rounded-xl p-6 border border-gray-700">
+          <h3 class="font-semibold text-cyan-300 mb-2">Passport to passport — the option most people forget</h3>
+          <p class="text-sm text-gray-400 leading-relaxed">
+            An oleh leaving Israel inside their four years can sell to another oleh, and the tax break transfers
+            rather than being repaid. You get a car that is already depreciated <em>and</em> the reduced tax, which
+            on the numbers above is the strongest combination available. Both parties go to the local Customs
+            Authority office, which sets the car's value and any balance owing; the buyer brings a valid Israeli
+            licence and their teudat oleh, and a fresh four-year restriction starts from the day it is registered in
+            their name. The selling oleh owes no penalty. Supply is thin and unpredictable, which is the catch —
+            these come up through community groups rather than dealer forecourts.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= Where to check prices ================= -->
+      <section class="mb-16">
+        <h2 class="text-2xl font-bold mb-2 flex items-center gap-3">
+          <span class="w-1 h-7 bg-cyan-400 rounded-full"></span>Where to get the real numbers
+        </h2>
+        <p class="text-gray-400 mb-6 max-w-3xl">
+          The defaults above are seeded from published market reporting, not from live listings. Before you decide
+          anything, pull actual prices for the specific model you want — a fifteen-minute exercise that beats any
+          model, this one included.
+        </p>
+        <div class="grid gap-4 sm:grid-cols-2">
+          {MARKETS.map((m) => (
+            <a href={m.u} target="_blank" rel="noopener noreferrer"
+              class="block bg-gray-800/70 rounded-xl p-5 border border-gray-700 hover:border-cyan-600 transition-colors group">
+              <div class="font-semibold text-cyan-300 group-hover:text-cyan-200 mb-1.5">{m.t} →</div>
+              <p class="text-sm text-gray-400 leading-relaxed">{m.d}</p>
+            </a>
+          ))}
+        </div>
+        <p class="mt-5 text-sm text-gray-500 max-w-3xl">
+          A practical shortcut: find your model three years old on Yad2, and check it against the Levi Yitzhak book.
+          That single number — the used price — moves the answer more than every tax assumption on this page
+          combined.
+        </p>
+      </section>
+
+      <!-- ================= Sources ================= -->
+      <section class="mb-8">
+        <h2 class="text-2xl font-bold mb-5 flex items-center gap-3">
+          <span class="w-1 h-7 bg-cyan-400 rounded-full"></span>Sources
+        </h2>
+        <ul class="grid gap-2 sm:grid-cols-2">
+          {SOURCES.map((s) => (
+            <li>
+              <a href={s.u} target="_blank" rel="noopener noreferrer"
+                class="text-sm text-gray-400 hover:text-cyan-300 transition-colors">· {s.t}</a>
+            </li>
+          ))}
+        </ul>
+        <div class="mt-8 text-xs text-gray-500 leading-relaxed border-t border-gray-800 pt-6 max-w-3xl">
+          <p class="mb-2">
+            <strong class="text-gray-400">Rates current as of the 2026 tax year.</strong> Israeli vehicle taxation
+            is revised most Januaries and the electric-vehicle rate in particular has moved three times in as many
+            years, so check the current figures before relying on any of this.
+          </p>
+          <p>
+            This is a personal analysis, not tax or legal advice. Purchase tax is levied on a taxable value set by
+            the Tax Authority, which the model here infers from the showroom price rather than observes. Confirm
+            your own numbers with a customs agent or the importer before committing to anything.
+          </p>
+        </div>
+      </section>
+    </div>
+  </main>
+</Layout>
+
+<script is:inline define:vars={{ RESIDUAL }}>
+  (function () {
+    function init() {
+      const $ = (id) => document.getElementById(id);
+      if (!$('list')) return;
+
+      const nis = (n) =>
+        '₪' + Math.round(n).toLocaleString('en-US');
+      const pct = (n) => (n >= 0 ? '' : '−') + Math.abs(n).toFixed(1) + '%';
+
+      // Residual value as a share of original list price, at age `y`.
+      function residual(y) {
+        const t = Math.max(0, Math.min(RESIDUAL.length - 1, y));
+        const lo = Math.floor(t), hi = Math.ceil(t);
+        if (lo === hi) return RESIDUAL[lo];
+        return RESIDUAL[lo] + (RESIDUAL[hi] - RESIDUAL[lo]) * (t - lo);
+      }
+
+      let power = 'hybrid';
+      let usedTouched = false;
+
+      const num = (id, fallback) => {
+        const v = parseFloat($(id).value);
+        return isFinite(v) ? v : fallback;
+      };
+
+      // ---- the tax model -------------------------------------------------
+      // Showroom price = (1+vat) * (base + purchaseTax(base) + margin*base)
+      // We know the showroom price and solve backwards for `base`.
+      function model() {
+        const list = Math.max(1000, num('list', 180000));
+        const vat = num('vat', 18) / 100;
+        const m = num('margin', 20) / 100;
+        const rStd = num('rateStd', 83) / 100;
+        const rEv = num('rateEv', 48) / 100;
+        const rOleh = num('rateOleh', 50) / 100;
+        const green = num('green', 13650);
+        const evCap = num('evCap', 22000);
+        const preVat = list / (1 + vat);
+
+        let base;
+        if (power === 'ev') {
+          // Two regimes: the flat EV rate, or the 83% rate less a capped break.
+          base = preVat / (1 + rEv + m);
+          if (rStd * base - evCap > rEv * base) {
+            // The ceiling binds: the car is really taxed at the standard rate
+            // less a fixed break, not at the headline EV rate.
+            base = (preVat + evCap) / (1 + rStd + m);
+          }
+        } else {
+          base = (preVat + green) / (1 + rStd + m);
+        }
+        base = Math.max(1, base);
+
+        const taxStd =
+          power === 'ev'
+            ? Math.max(rEv * base, rStd * base - evCap)
+            : Math.max(0, rStd * base - green);
+        const taxOleh = rOleh * base;
+
+        const priceOleh = (1 + vat) * (base + taxOleh + m * base);
+        return {
+          list, vat, m, base, taxStd, taxOleh, priceOleh,
+          margin: m * base,
+          saving: list - priceOleh,
+          evCap, green, rStd, rEv, rOleh,
+        };
+      }
+
+      // Benefit value for an arbitrary powertrain, at the current price.
+      function savingFor(p) {
+        const prev = power;
+        power = p;
+        const r = model();
+        power = prev;
+        return r;
+      }
+
+      function defaultUsedPrice(mo, age) {
+        return mo.list * residual(age);
+      }
+
+      // Net cost of ownership: what you pay in, less what you get back out.
+      function costs(mo, hold, usedAge, usedPrice, maint) {
+        const resaleNew = mo.list * residual(hold);
+        const clawback = hold < 4 ? Math.max(0, mo.saving) : 0;
+        return {
+          oleh: mo.priceOleh + clawback - resaleNew,
+          std: mo.list - resaleNew,
+          used: usedPrice - mo.list * residual(usedAge + hold) + maint * hold,
+          resaleNew,
+          clawback,
+        };
+      }
+
+      // ---- rendering -----------------------------------------------------
+      function bar(label, value, max, colour, sub) {
+        const w = max > 0 ? Math.max(1.5, (Math.abs(value) / max) * 100) : 0;
+        return (
+          '<div>' +
+          '<div class="flex justify-between items-baseline mb-1.5 gap-3">' +
+          '<span class="text-sm text-gray-300">' + label + '</span>' +
+          '<span class="text-sm font-semibold ' + colour.text + '">' + nis(value) + '</span>' +
+          '</div>' +
+          '<div class="w-full bg-gray-900 rounded-full h-2.5 overflow-hidden">' +
+          '<div class="' + colour.bg + ' h-2.5 rounded-full transition-all duration-300" style="width:' + w + '%"></div>' +
+          '</div>' +
+          (sub ? '<div class="text-xs text-gray-500 mt-1">' + sub + '</div>' : '') +
+          '</div>'
+        );
+      }
+
+      function stackRows(el, parts, total) {
+        el.innerHTML =
+          parts
+            .map(function (p) {
+              const share = total > 0 ? (p.v / total) * 100 : 0;
+              return (
+                '<div class="flex items-center gap-3">' +
+                '<div class="w-28 shrink-0 text-xs text-gray-400">' + p.k + '</div>' +
+                '<div class="flex-1 bg-gray-900 rounded h-6 overflow-hidden">' +
+                '<div class="' + p.c + ' h-6 transition-all duration-300" style="width:' + Math.max(0.5, share) + '%"></div>' +
+                '</div>' +
+                '<div class="w-24 shrink-0 text-right text-xs font-medium text-gray-300">' + nis(p.v) + '</div>' +
+                '</div>'
+              );
+            })
+            .join('') +
+          '<div class="flex items-center gap-3 pt-2 mt-1 border-t border-gray-700">' +
+          '<div class="w-28 shrink-0 text-xs font-semibold text-gray-300">You pay</div>' +
+          '<div class="flex-1"></div>' +
+          '<div class="w-24 shrink-0 text-right text-sm font-bold text-cyan-300">' + nis(total) + '</div>' +
+          '</div>';
+      }
+
+      function lineChart(mo, usedAge, usedPrice, maint) {
+        const W = 560, H = 240, PL = 62, PR = 14, PT = 14, PB = 28;
+        const years = [];
+        for (let y = 1; y <= 10; y++) years.push(y);
+        const series = years.map(function (y) {
+          return costs(mo, y, usedAge, usedPrice, maint);
+        });
+        const all = series.flatMap(function (s) { return [s.oleh, s.std, s.used]; });
+        const lo = Math.min.apply(null, all.concat([0]));
+        const hi = Math.max.apply(null, all);
+        const span = hi - lo || 1;
+        const x = (y) => PL + ((y - 1) / 9) * (W - PL - PR);
+        const yy = (v) => PT + (1 - (v - lo) / span) * (H - PT - PB);
+        const path = (key) =>
+          series.map(function (s, i) { return (i ? 'L' : 'M') + x(years[i]).toFixed(1) + ' ' + yy(s[key]).toFixed(1); }).join(' ');
+
+        let gridlines = '';
+        for (let g = 0; g <= 4; g++) {
+          const v = lo + (span * g) / 4;
+          const gy = yy(v);
+          gridlines +=
+            '<line x1="' + PL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - PR) + '" y2="' + gy.toFixed(1) + '" stroke="#374151" stroke-width="1"/>' +
+            '<text x="' + (PL - 8) + '" y="' + (gy + 3.5).toFixed(1) + '" text-anchor="end" font-size="10" fill="#6b7280">' + nis(v) + '</text>';
+        }
+        let xlabels = '';
+        years.forEach(function (y) {
+          xlabels += '<text x="' + x(y).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10" fill="#6b7280">' + y + '</text>';
+        });
+
+        $('chart').innerHTML =
+          '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="min-width:520px" role="img" aria-label="Net cost of ownership by years held">' +
+          gridlines + xlabels +
+          '<line x1="' + x(4) + '" y1="' + PT + '" x2="' + x(4) + '" y2="' + (H - PB) + '" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3 3"/>' +
+          '<text x="' + (x(4) + 5) + '" y="' + (PT + 11) + '" font-size="10" fill="#f59e0b">lock lifts</text>' +
+          '<path d="' + path('std') + '" fill="none" stroke="#9ca3af" stroke-width="2"/>' +
+          '<path d="' + path('used') + '" fill="none" stroke="#34d399" stroke-width="2"/>' +
+          '<path d="' + path('oleh') + '" fill="none" stroke="#22d3ee" stroke-width="2.5"/>' +
+          '</svg>';
+      }
+
+      function render() {
+        const mo = model();
+        const hold = parseInt($('hold').value, 10);
+        const usedAge = parseInt($('usedAge').value, 10);
+        const maint = num('maint', 2500);
+
+        $('holdOut').textContent = hold;
+        $('usedAgeOut').textContent = usedAge + (usedAge === 1 ? ' year' : ' years');
+        $('holdWarn').classList.toggle('hidden', hold >= 4);
+
+        if (!usedTouched) $('usedPrice').value = Math.round(defaultUsedPrice(mo, usedAge) / 500) * 500;
+        const usedPrice = Math.max(1000, num('usedPrice', defaultUsedPrice(mo, usedAge)));
+
+        // Tax stacks
+        stackRows($('stackStd'), [
+          { k: 'Taxable value', v: mo.base, c: 'bg-gray-500' },
+          { k: 'Purchase tax', v: mo.taxStd, c: 'bg-rose-500' },
+          { k: 'Importer margin', v: mo.margin, c: 'bg-gray-600' },
+          { k: 'VAT', v: mo.list - (mo.base + mo.taxStd + mo.margin), c: 'bg-amber-500' },
+        ], mo.list);
+
+        stackRows($('stackOleh'), [
+          { k: 'Taxable value', v: mo.base, c: 'bg-gray-500' },
+          { k: 'Purchase tax', v: mo.taxOleh, c: 'bg-rose-500' },
+          { k: 'Importer margin', v: mo.margin, c: 'bg-gray-600' },
+          { k: 'VAT', v: mo.priceOleh - (mo.base + mo.taxOleh + mo.margin), c: 'bg-amber-500' },
+        ], mo.priceOleh);
+
+        // Headline prices
+        const savePct = (mo.saving / mo.list) * 100;
+        $('priceOleh').textContent = nis(mo.priceOleh);
+        $('priceOlehSub').innerHTML =
+          mo.saving >= 0
+            ? '<span class="text-emerald-400">' + nis(mo.saving) + ' off</span> · ' + pct(savePct)
+            : '<span class="text-rose-400">' + nis(-mo.saving) + ' more</span> than the standard price';
+        $('priceStd').textContent = nis(mo.list);
+        $('priceStdSub').textContent = 'Purchase tax ' + nis(mo.taxStd) + ' of it';
+        $('priceUsed').textContent = nis(usedPrice);
+        $('priceUsedSub').textContent =
+          usedAge + (usedAge === 1 ? ' year' : ' years') + ' old · ' + Math.round((1 - usedPrice / mo.list) * 100) + '% below new';
+
+        // Cost of ownership
+        const c = costs(mo, hold, usedAge, usedPrice, maint);
+        const maxC = Math.max(c.oleh, c.std, c.used, 1);
+        $('tcoBars').innerHTML =
+          bar('New with the benefit', c.oleh, maxC, { text: 'text-cyan-300', bg: 'bg-cyan-500' },
+            c.clawback > 0 ? 'Includes ' + nis(c.clawback) + ' clawback — sold before year four' : null) +
+          bar('New at the standard price', c.std, maxC, { text: 'text-gray-300', bg: 'bg-gray-500' }, null) +
+          bar('Used, ' + usedAge + ' years old', c.used, maxC, { text: 'text-emerald-300', bg: 'bg-emerald-500' },
+            'Includes ' + nis(maint * hold) + ' extra upkeep over ' + hold + ' years');
+
+        // Verdict
+        const best = Math.min(c.oleh, c.std, c.used);
+        const gapUsed = c.oleh - c.used;
+        const breakEvenUsed = c.oleh + mo.list * residual(usedAge + hold) - maint * hold;
+        let tone, head, body;
+        if (mo.saving <= 0) {
+          tone = 'bg-rose-950/40 border-rose-700/50';
+          head = "Don't use the benefit on this car";
+          body =
+            'At this price the standard rate for this powertrain already beats the oleh rate — using the benefit would cost you ' +
+            nis(-mo.saving) + ' extra and lock the car up for four years. Save the benefit for a different car.';
+        } else if (hold < 4) {
+          tone = 'bg-amber-950/40 border-amber-700/50';
+          head = 'Selling this early wipes the benefit out';
+          body =
+            'Sell in year ' + hold + ' and you repay the whole ' + nis(mo.saving) +
+            ' reduction. Nothing is prorated, so buying with the benefit costs you exactly what buying without it would have. ' +
+            (c.used < c.oleh
+              ? 'The used car is ' + nis(c.oleh - c.used) + ' cheaper to own over that period. Either commit to four years or leave the benefit for a later car.'
+              : 'New still works out ' + nis(c.used - c.oleh) + ' cheaper than the used alternative here — but you are getting nothing at all from the benefit itself.');
+        } else if (best === c.used) {
+          tone = 'bg-emerald-950/40 border-emerald-700/50';
+          head = 'Buying used still wins';
+          body =
+            'The benefit is worth ' + nis(mo.saving) + ' (' + pct(savePct) + ' off the sticker), but over ' + hold +
+            ' years the used car costs you ' + nis(gapUsed) + ' less to own. The depreciation someone else already ate is bigger than the tax break. ' +
+            'For new-with-benefit to win, that used car would have to be priced above ' + nis(breakEvenUsed) + '.';
+        } else if (best === c.oleh) {
+          tone = 'bg-cyan-950/40 border-cyan-700/50';
+          head = 'Buying new with the benefit wins';
+          body =
+            'Over ' + hold + ' years the benefit is worth ' + nis(mo.saving) + ' up front (' + pct(savePct) +
+            ' off) and comes out ' + nis(-gapUsed) + ' ahead of the used alternative. Holding past year four is what makes it work — ' +
+            'the used car would need to drop below ' + nis(breakEvenUsed) + ' to flip it back.';
+        } else {
+          tone = 'bg-amber-950/40 border-amber-700/50';
+          head = 'Nothing here comes out ahead';
+          body =
+            'On these assumptions no route is clearly cheapest — the three are within noise of each other. Pull a real used listing for this model and put its price in; that number decides it.';
+        }
+        $('verdict').className = 'rounded-xl p-6 border ' + tone;
+        $('verdict').innerHTML =
+          '<div class="text-xl font-bold mb-2">' + head + '</div>' +
+          '<p class="text-sm text-gray-300 leading-relaxed">' + body + '</p>';
+
+        // Powertrain comparison
+        const labels = { ice: 'Petrol / diesel', hybrid: 'Hybrid', phev: 'Plug-in hybrid', ev: 'Fully electric' };
+        const rows = ['ice', 'hybrid', 'phev', 'ev'].map(function (p) {
+          const r = savingFor(p);
+          return { p: p, v: r.saving, pctv: (r.saving / r.list) * 100 };
+        });
+        const maxAbs = Math.max.apply(null, rows.map(function (r) { return Math.abs(r.v); }).concat([1]));
+        $('powerBars').innerHTML = rows
+          .map(function (r) {
+            const good = r.v >= 0;
+            return bar(
+              labels[r.p] + (r.p === power ? ' <span class="text-cyan-400">(selected)</span>' : ''),
+              r.v,
+              maxAbs,
+              good ? { text: 'text-emerald-300', bg: 'bg-emerald-500' } : { text: 'text-rose-300', bg: 'bg-rose-500' },
+              pct(r.pctv) + ' of list price'
+            );
+          })
+          .join('');
+
+        // Lock-in table
+        let lock = '';
+        for (let y = 1; y <= 5; y++) {
+          const kept = y >= 4 ? mo.saving : 0;
+          lock +=
+            '<div class="flex justify-between items-center py-1.5 border-b border-gray-700/50 last:border-0">' +
+            '<span class="text-gray-400">Year ' + y + '</span>' +
+            '<span class="' + (kept > 0 ? 'text-emerald-300 font-semibold' : 'text-rose-300') + '">' +
+            (kept > 0 ? nis(kept) + ' kept' : 'Nothing — full repayment') +
+            '</span></div>';
+        }
+        $('lockTable').innerHTML = lock;
+
+        // EV crossover, in showroom-price terms
+        const crossBase = mo.evCap / (mo.rStd - mo.rOleh);
+        const crossList = (1 + mo.vat) * (crossBase * (1 + mo.rOleh + mo.m));
+        $('evCrossover').textContent = nis(crossList);
+
+        lineChart(mo, usedAge, usedPrice, maint);
+      }
+
+      function setPower(p) {
+        power = p;
+        document.querySelectorAll('.power').forEach(function (b) {
+          const on = b.dataset.power === p;
+          b.classList.toggle('bg-cyan-600', on);
+          b.classList.toggle('border-cyan-500', on);
+          b.classList.toggle('bg-gray-900', !on);
+          b.classList.toggle('border-gray-600', !on);
+        });
+        render();
+      }
+
+      ['list', 'hold', 'usedAge', 'vat', 'margin', 'rateStd', 'rateEv', 'rateOleh', 'green', 'evCap', 'maint'].forEach(
+        function (id) {
+          $(id).addEventListener('input', function () {
+            if (id === 'list' || id === 'usedAge') usedTouched = false;
+            render();
+          });
+        }
+      );
+      $('usedPrice').addEventListener('input', function () { usedTouched = true; render(); });
+      $('usedReset').addEventListener('click', function () { usedTouched = false; render(); });
+      document.querySelectorAll('.power').forEach(function (b) {
+        b.addEventListener('click', function () { setPower(b.dataset.power); });
+      });
+      document.querySelectorAll('.preset').forEach(function (b) {
+        b.addEventListener('click', function () {
+          $('list').value = b.dataset.price;
+          usedTouched = false;
+          setPower(b.dataset.power);
+        });
+      });
+
+      setPower('hybrid');
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+    document.addEventListener('astro:page-load', init);
+  })();
+</script>
