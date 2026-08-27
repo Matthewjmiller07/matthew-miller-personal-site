@@ -3,665 +3,663 @@ import Layout from '../layouts/Layout.astro';
 ---
 
 <Layout
-  title="Micrography Art Generator"
-  description="Transform any image and Sefaria text into beautiful micrography art. Upload an image, select a Hebrew text reference, and create stunning text-based artwork."
+  title="Micrography — Draw with Words"
+  description="Micrography is the thousand-year-old Jewish scribal art of drawing with words. Turn any image, name, or verse into artwork made entirely of letters — tone built from ink density, letter weight, and text that reads."
 >
   <style>
-    .micrography-container {
-      max-width: 1200px;
+    /* ————— Scriptorium tokens ————— */
+    .scriptorium {
+      --paper: #ede3cc;
+      --paper-deep: #e2d5b6;
+      --paper-edge: #d4c39d;
+      --ink: #241c0f;
+      --ink-soft: #4f4227;
+      --ink-faint: #7d6d4e;
+      --rule: rgba(88, 66, 33, 0.25);
+      --rubric: #8a2417;
+      --rubric-soft: rgba(138, 36, 23, 0.12);
+      --panel: #f4ecda;
+      --serif: "Frank Ruhl Libre", "Noto Serif Hebrew", Georgia, serif;
+      --sans: "Inter", system-ui, sans-serif;
+      --mono: "JetBrains Mono", monospace;
+
+      max-width: 1100px;
       margin: 0 auto;
-      padding: 2rem 1rem;
+      padding: 2.5rem 1.25rem 4rem;
+      font-family: var(--sans);
+      color: var(--ink);
     }
-    
-    .hero-section {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 16px;
-      padding: 2rem;
-      margin-bottom: 2rem;
-      color: white;
-      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+
+    :global(.dark) .scriptorium {
+      --paper: #17120b;
+      --paper-deep: #1e1810;
+      --paper-edge: #33291a;
+      --ink: #e9dfc6;
+      --ink-soft: #c4b48d;
+      --ink-faint: #8d7d5c;
+      --rule: rgba(201, 178, 128, 0.16);
+      --rubric: #c4573f;
+      --rubric-soft: rgba(196, 87, 63, 0.14);
+      --panel: #1c160e;
     }
-    
-    .hero-section h1 {
-      margin: 0 0 0.5rem 0;
-      font-size: 2.2rem;
-      font-weight: 700;
+
+    /* ————— Hero: a live specimen ————— */
+    .hero {
+      position: relative;
+      background: var(--paper);
+      border: 1px solid var(--paper-edge);
+      padding: 2.75rem 2rem 2.25rem;
+      margin-bottom: 3rem;
+      /* sirtut — the scribe's scored guidelines */
+      background-image: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 27px,
+        var(--rule) 27px,
+        var(--rule) 28px
+      );
+      box-shadow: 0 1px 0 var(--paper-edge), 0 12px 30px -18px rgba(30, 20, 5, 0.5);
     }
-    
-    .hero-section p {
-      margin: 0;
-      font-size: 1.1rem;
-      opacity: 0.95;
-    }
-    
-    .control-panel {
-      background: white;
-      dark: bg-gray-800;
-      border-radius: 16px;
-      padding: 1.5rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      margin-bottom: 2rem;
-    }
-    
-    .control-section {
-      margin-bottom: 1.5rem;
-    }
-    
-    .control-section:last-child {
-      margin-bottom: 0;
-    }
-    
-    .section-title {
-      font-size: 0.85rem;
-      font-weight: 600;
+
+    .hero-eyebrow {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.22em;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #667eea;
-      margin-bottom: 0.75rem;
+      color: var(--rubric);
+      margin: 0 0 1.25rem;
     }
-    
-    .tab-bar {
-      display: flex;
-      border-bottom: 2px solid #e2e8f0;
-      margin-bottom: 1rem;
-      gap: 0;
-    }
-    
-    .tab-btn {
-      background: none;
-      border: none;
-      padding: 0.6rem 1.1rem;
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: #718096;
-      cursor: pointer;
-      border-bottom: 3px solid transparent;
-      margin-bottom: -2px;
-      transition: all 0.15s ease;
-    }
-    
-    .tab-btn:hover { color: #667eea; }
-    
-    .tab-btn.active {
-      color: #667eea;
-      border-bottom-color: #667eea;
-    }
-    
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-    
-    .custom-textarea {
+
+    #heroCanvas {
+      display: block;
       width: 100%;
-      min-height: 110px;
-      padding: 0.75rem 1rem;
-      border: 2px solid #e2e8f0;
-      border-radius: 8px;
+      max-width: 720px;
+      height: auto;
+      margin: 0 auto 1.5rem;
+    }
+
+    .hero h1 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+      letter-spacing: 0.01em;
+      margin: 0 0 0.6rem;
+      color: var(--ink);
+    }
+
+    .hero-sub {
+      max-width: 58ch;
       font-size: 1rem;
-      resize: vertical;
-      transition: all 0.2s ease;
-      background: white;
-      color: #2d3748;
-      font-family: "Noto Sans Hebrew", "FrankRuehl", "David", inherit;
+      line-height: 1.65;
+      color: var(--ink-soft);
+      margin: 0 0 1rem;
     }
-    
-    .custom-textarea:focus {
-      outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+
+    .hero-lore {
+      max-width: 62ch;
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: var(--ink-faint);
+      margin: 0;
+      border-top: 1px solid var(--rule);
+      padding-top: 0.9rem;
     }
-    
-    .custom-textarea::placeholder { color: #a0aec0; }
-    
-    .text-char-count {
-      font-size: 0.78rem;
-      color: #a0aec0;
-      text-align: right;
-      margin-top: 0.25rem;
+
+    /* ————— Workbench panels ————— */
+    .workbench {
+      background: var(--panel);
+      border: 1px solid var(--paper-edge);
+      padding: 1.75rem 1.5rem;
+      margin-bottom: 2.5rem;
     }
-    
-    .dark .tab-bar { border-color: #374151; }
-    .dark .tab-btn { color: #9ca3af; }
-    .dark .tab-btn.active { color: #a78bfa; border-bottom-color: #a78bfa; }
-    .dark .custom-textarea {
-      background: #111827;
-      border-color: #374151;
-      color: #f9fafb;
-    }
-    
-    .source-tab-bar {
+
+    .step-title {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 1.02rem;
+      color: var(--ink);
+      margin-bottom: 0.9rem;
       display: flex;
-      border-bottom: 2px solid #e2e8f0;
+      align-items: baseline;
+      gap: 0.55rem;
+    }
+
+    .step-letter {
+      font-family: var(--serif);
+      color: var(--rubric);
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    .step-hint { font-size: 0.82rem; color: var(--ink-faint); line-height: 1.55; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+    @media (min-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+    }
+
+    .control-section { margin-bottom: 0; }
+    .section-block { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); }
+
+    /* Tabs */
+    .tab-bar, .source-tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--paper-edge);
       margin-bottom: 1rem;
       gap: 0;
+      flex-wrap: wrap;
     }
-    
-    .source-tab-btn {
+
+    .tab-btn, .source-tab-btn {
       background: none;
       border: none;
-      padding: 0.55rem 1rem;
+      padding: 0.55rem 0.9rem;
+      font-family: var(--sans);
       font-size: 0.88rem;
       font-weight: 600;
-      color: #718096;
+      color: var(--ink-faint);
       cursor: pointer;
-      border-bottom: 3px solid transparent;
-      margin-bottom: -2px;
-      transition: all 0.15s ease;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s ease;
     }
-    
-    .source-tab-btn:hover { color: #667eea; }
-    
-    .source-tab-btn.active {
-      color: #667eea;
-      border-bottom-color: #667eea;
+
+    .tab-btn:hover, .source-tab-btn:hover { color: var(--ink); }
+    .tab-btn.active, .source-tab-btn.active {
+      color: var(--ink);
+      border-bottom-color: var(--rubric);
     }
-    
-    .source-panel { display: none; }
-    .source-panel.active { display: block; }
-    
-    .shape-word-input {
+
+    .tab-panel, .source-panel { display: none; }
+    .tab-panel.active, .source-panel.active { display: block; }
+
+    /* Inputs */
+    .text-input, .custom-textarea, .shape-word-input {
       width: 100%;
-      padding: 0.75rem 1rem;
-      border: 2px solid #e2e8f0;
-      border-radius: 8px;
-      font-size: 1.8rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-align: center;
-      transition: all 0.2s ease;
-      background: white;
-      color: #2d3748;
+      padding: 0.7rem 0.9rem;
+      border: 1px solid var(--paper-edge);
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 1rem;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      border-radius: 2px;
     }
-    
-    .shape-word-input:focus {
+
+    .text-input:focus, .custom-textarea:focus, .shape-word-input:focus {
       outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+      border-color: var(--rubric);
+      box-shadow: 0 0 0 3px var(--rubric-soft);
     }
-    
-    .shape-word-input::placeholder { color: #c0c0c0; font-size: 1.2rem; font-weight: 400; }
-    
+
+    .text-input::placeholder, .custom-textarea::placeholder, .shape-word-input::placeholder {
+      color: var(--ink-faint);
+      opacity: 0.7;
+    }
+
+    .custom-textarea {
+      min-height: 110px;
+      resize: vertical;
+      font-family: var(--serif);
+    }
+
+    .shape-word-input {
+      font-family: var(--serif);
+      font-size: 1.7rem;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+    .shape-word-input::placeholder { font-size: 1.1rem; font-weight: 400; letter-spacing: normal; }
+
+    .text-char-count {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--ink-faint);
+      text-align: right;
+      margin-top: 0.3rem;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.88rem;
+      color: var(--ink-soft);
+    }
+    .checkbox-row input { width: 16px; height: 16px; accent-color: var(--rubric); }
+
+    /* File input */
+    .file-input-wrapper { position: relative; display: block; width: 100%; }
+    .file-input-wrapper input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .file-input-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1.1rem 1.5rem;
+      border: 1px dashed var(--ink-faint);
+      background: var(--paper);
+      cursor: pointer;
+      transition: border-color 0.15s ease;
+      color: var(--ink-soft);
+      font-weight: 500;
+      font-size: 0.92rem;
+    }
+    .file-input-label:hover { border-color: var(--rubric); }
+    .file-input-wrapper.has-file .file-input-label {
+      border-style: solid;
+      border-color: var(--rubric);
+      color: var(--ink);
+    }
+
+    /* Style preset swatches */
+    .style-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .style-card {
+      border: 1px solid var(--paper-edge);
+      background: var(--paper);
+      cursor: pointer;
+      padding: 0;
+      text-align: left;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      font-family: var(--sans);
+    }
+    .style-card:hover { border-color: var(--ink-faint); }
+    .style-card.active {
+      border-color: var(--rubric);
+      box-shadow: 0 0 0 3px var(--rubric-soft);
+    }
+
+    .style-swatch {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--serif);
+      font-size: 1.5rem;
+      overflow: hidden;
+      line-height: 1;
+    }
+
+    .style-name {
+      display: block;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--ink-soft);
+      border-top: 1px solid var(--paper-edge);
+    }
+
+    /* Sliders */
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+      font-weight: 500;
+      margin-bottom: 0.4rem;
+    }
+    .slider-label .val { font-family: var(--mono); font-size: 0.78rem; color: var(--ink-faint); }
+
+    .density-slider {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--paper-edge);
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .density-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--rubric);
+      cursor: pointer;
+      border: 2px solid var(--paper);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .density-slider::-moz-range-thumb {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--rubric);
+      cursor: pointer;
+      border: 2px solid var(--paper);
+    }
+
+    .density-labels {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--ink-faint);
+      margin-top: 0.3rem;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: var(--rubric);
+      color: #f6efdd;
+      border: none;
+      padding: 0.85rem 1.6rem;
+      font-family: var(--sans);
+      font-weight: 600;
+      font-size: 0.98rem;
+      cursor: pointer;
+      transition: filter 0.15s ease, transform 0.1s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-radius: 2px;
+    }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.12); }
+    .btn-primary:active:not(:disabled) { transform: translateY(1px); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--ink-soft);
+      border: 1px solid var(--paper-edge);
+      padding: 0.78rem 1.2rem;
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: border-color 0.15s ease, color 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-radius: 2px;
+    }
+    .btn-secondary:hover { border-color: var(--rubric); color: var(--ink); }
+    .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .actions-row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1.75rem;
+    }
+
+    /* Result — mounted like a plate in a folio */
+    .result-container {
+      display: none;
+      background: var(--panel);
+      border: 1px solid var(--paper-edge);
+      padding: 1.5rem;
+    }
+    .result-container.visible { display: block; }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .result-title {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--ink);
+    }
+
+    .canvas-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 200px;
+      background: var(--paper-deep);
+      padding: 1.5rem;
+      overflow: auto;
+    }
+
+    #resultCanvas {
+      max-width: 100%;
+      height: auto;
+      box-shadow: 0 2px 6px rgba(20, 12, 2, 0.25), 0 14px 34px -14px rgba(20, 12, 2, 0.4);
+    }
+
+    .canvas-container.transparent-preview {
+      background-image: linear-gradient(45deg, #b9ac8f 25%, transparent 25%),
+                        linear-gradient(-45deg, #b9ac8f 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #b9ac8f 75%),
+                        linear-gradient(-45deg, transparent 75%, #b9ac8f 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+      background-color: var(--paper-deep);
+    }
+
+    .plate-caption {
+      margin-top: 1rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      color: var(--ink-faint);
+      text-align: center;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    /* Misc feedback */
+    .progress-container { display: none; margin-top: 1rem; }
+    .progress-container.visible { display: block; }
+    .progress-bar {
+      width: 100%; height: 3px;
+      background: var(--paper-edge);
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--rubric);
+      width: 0%;
+      transition: width 0.1s ease;
+    }
+    .progress-text {
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--ink-faint);
+      margin-top: 0.4rem;
+    }
+
+    .error-message {
+      background: var(--rubric-soft);
+      color: var(--rubric);
+      border-left: 3px solid var(--rubric);
+      padding: 0.7rem 1rem;
+      margin-top: 1rem;
+      display: none;
+      font-size: 0.88rem;
+    }
+    .error-message.visible { display: block; }
+
+    .fetch-status {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--ink-faint);
+      margin-top: 0.5rem;
+      min-height: 1.2em;
+    }
+
+    .text-preview {
+      background: var(--paper);
+      border: 1px solid var(--paper-edge);
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 0.95rem;
+      line-height: 1.9;
+      max-height: 150px;
+      overflow-y: auto;
+      display: none;
+      direction: rtl;
+      text-align: right;
+      font-family: var(--serif);
+      color: var(--ink-soft);
+    }
+    .text-preview.visible { display: block; }
+
+    .preview-container { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+    .preview-box { flex: 1; min-width: 180px; max-width: 280px; }
+    .preview-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--ink-faint);
+      margin-bottom: 0.4rem;
+    }
+    .preview-image { width: 100%; border: 1px solid var(--paper-edge); }
+
     .shape-options {
       display: flex;
       gap: 1rem;
       margin-top: 0.75rem;
       flex-wrap: wrap;
       align-items: center;
-    }
-    
-    .shape-options label {
       font-size: 0.85rem;
-      color: #4a5568;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
+      color: var(--ink-soft);
+    }
+    .shape-options select {
+      padding: 0.25rem 0.45rem;
+      border: 1px solid var(--paper-edge);
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 0.85rem;
+      border-radius: 2px;
+    }
+
+    details.advanced { margin-top: 1.5rem; }
+    details.advanced summary {
       cursor: pointer;
-    }
-    
-    .dark .source-tab-bar { border-color: #374151; }
-    .dark .source-tab-btn { color: #9ca3af; }
-    .dark .source-tab-btn.active { color: #a78bfa; border-bottom-color: #a78bfa; }
-    .dark .shape-word-input { background: #111827; border-color: #374151; color: #f9fafb; }
-    
-    .file-input-wrapper {
-      position: relative;
-      display: inline-block;
-      width: 100%;
-    }
-    
-    .file-input-wrapper input[type="file"] {
-      position: absolute;
-      left: 0;
-      top: 0;
-      opacity: 0;
-      cursor: pointer;
-      width: 100%;
-      height: 100%;
-    }
-    
-    .file-input-label {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 1rem 1.5rem;
-      border: 2px dashed #cbd5e0;
-      border-radius: 12px;
-      background: #f7fafc;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      color: #4a5568;
-      font-weight: 500;
-    }
-    
-    .file-input-label:hover {
-      border-color: #667eea;
-      background: #edf2f7;
-    }
-    
-    .file-input-wrapper.has-file .file-input-label {
-      border-color: #48bb78;
-      background: #f0fff4;
-      color: #22543d;
-    }
-    
-    .text-input {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      border: 2px solid #e2e8f0;
-      border-radius: 8px;
-      font-size: 1rem;
-      transition: all 0.2s ease;
-      background: white;
-      color: #2d3748;
-    }
-    
-    .text-input:focus {
-      outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
-    }
-    
-    .text-input::placeholder {
-      color: #a0aec0;
-    }
-    
-    .density-slider {
-      width: 100%;
-      height: 6px;
-      border-radius: 3px;
-      background: #e2e8f0;
-      outline: none;
-      -webkit-appearance: none;
-    }
-    
-    .density-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    
-    .density-slider::-moz-range-thumb {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      cursor: pointer;
-      border: none;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    
-    .density-labels {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.8rem;
-      color: #718096;
-      margin-top: 0.25rem;
-    }
-    
-    .btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      padding: 0.875rem 1.5rem;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .btn-primary:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
-    }
-    
-    .btn-primary:active:not(:disabled) {
-      transform: translateY(0);
-    }
-    
-    .btn-primary:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    
-    .btn-secondary {
-      background: white;
-      color: #4a5568;
-      border: 2px solid #e2e8f0;
-      padding: 0.75rem 1.25rem;
-      border-radius: 8px;
-      font-weight: 500;
-      font-size: 0.95rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .btn-secondary:hover {
-      border-color: #667eea;
-      color: #667eea;
-      background: #f7fafc;
-    }
-    
-    .result-container {
-      background: white;
-      border-radius: 16px;
-      padding: 1.5rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      display: none;
-    }
-    
-    .result-container.visible {
-      display: block;
-    }
-    
-    .result-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-    
-    .result-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: #2d3748;
-    }
-    
-    .canvas-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 200px;
-      background: #f7fafc;
-      border-radius: 12px;
-      padding: 1rem;
-      overflow: auto;
-    }
-    
-    #resultCanvas {
-      max-width: 100%;
-      height: auto;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    
-    .preview-container {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-    
-    .preview-box {
-      flex: 1;
-      min-width: 200px;
-      max-width: 300px;
-    }
-    
-    .preview-label {
       font-size: 0.85rem;
       font-weight: 600;
-      color: #718096;
+      color: var(--ink-faint);
+      user-select: none;
+    }
+    details.advanced summary:hover { color: var(--ink); }
+    details.advanced[open] summary { margin-bottom: 0.9rem; }
+
+    .verse-option {
+      border: 1px solid var(--paper-edge);
+      padding: 0.6rem 0.8rem;
       margin-bottom: 0.5rem;
-    }
-    
-    .preview-image {
-      width: 100%;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    
-    .progress-container {
-      display: none;
-      margin-top: 1rem;
-    }
-    
-    .progress-container.visible {
-      display: block;
-    }
-    
-    .progress-bar {
-      width: 100%;
-      height: 8px;
-      background: #e2e8f0;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-    
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      width: 0%;
-      transition: width 0.1s ease;
-    }
-    
-    .progress-text {
-      text-align: center;
-      font-size: 0.875rem;
-      color: #4a5568;
-      margin-top: 0.5rem;
-    }
-    
-    .error-message {
-      background: #fed7d7;
-      color: #742a2a;
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      margin-top: 1rem;
-      display: none;
-      font-size: 0.9rem;
-    }
-    
-    .error-message.visible {
-      display: block;
-    }
-    
-    .text-preview {
-      background: #f7fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-top: 1rem;
-      font-size: 0.9rem;
-      max-height: 150px;
-      overflow-y: auto;
-      display: none;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      background: var(--paper);
       direction: rtl;
       text-align: right;
-      font-family: "FrankRuehl", "Noto Sans Hebrew", "David", serif;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      font-family: var(--serif);
+      color: var(--ink-soft);
     }
-    
-    .text-preview.visible {
-      display: block;
+    .verse-option:hover { border-color: var(--rubric); }
+    .verse-option.selected { border-color: var(--rubric); box-shadow: 0 0 0 3px var(--rubric-soft); }
+    .verse-ref {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--ink-faint);
+      direction: ltr;
+      text-align: left;
+      margin-bottom: 0.2rem;
     }
-    
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-    }
-    
-    @media (min-width: 768px) {
-      .grid-2 {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-    
-    .actions-row {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-top: 1.5rem;
-    }
-    
-    .dark .control-panel,
-    .dark .result-container {
-      background: #1f2937;
-    }
-    
-    .dark .text-input {
-      background: #111827;
-      border-color: #374151;
-      color: #f9fafb;
-    }
-    
-    .dark .text-input::placeholder {
-      color: #6b7280;
-    }
-    
-    .dark .file-input-label {
-      background: #1f2937;
-      border-color: #4b5563;
-      color: #d1d5db;
-    }
-    
-    .dark .file-input-label:hover {
-      border-color: #667eea;
-      background: #374151;
-    }
-    
-    .dark .file-input-wrapper.has-file .file-input-label {
-      background: #064e3b;
-      border-color: #10b981;
-      color: #6ee7b7;
-    }
-    
-    .dark .section-title {
-      color: #a78bfa;
-    }
-    
-    .dark .btn-secondary {
-      background: #1f2937;
-      border-color: #4b5563;
-      color: #d1d5db;
-    }
-    
-    .dark .btn-secondary:hover {
-      border-color: #a78bfa;
-      color: #a78bfa;
-    }
-    
-    .dark .result-title {
-      color: #f9fafb;
-    }
-    
-    .dark .canvas-container {
-      background: #111827;
-    }
-    
-    /* Checkerboard to show transparency */
-    .canvas-container.transparent-preview {
-      background-image: linear-gradient(45deg, #ccc 25%, transparent 25%),
-                        linear-gradient(-45deg, #ccc 25%, transparent 25%),
-                        linear-gradient(45deg, transparent 75%, #ccc 75%),
-                        linear-gradient(-45deg, transparent 75%, #ccc 75%);
-      background-size: 16px 16px;
-      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
-      background-color: #fff;
-    }
-    
-    .dark .text-preview {
-      background: #111827;
-      border-color: #374151;
-      color: #d1d5db;
-    }
-    
-    .dark .density-slider {
-      background: #374151;
-    }
-    
-    .dark .progress-bar {
-      background: #374151;
+
+    @media (prefers-reduced-motion: reduce) {
+      .scriptorium * { transition: none !important; }
     }
   </style>
 
-  <div class="micrography-container">
-    <div class="hero-section">
-      <h1>Micrography Art Generator</h1>
-      <p>Transform any image and Hebrew text from Sefaria into beautiful micrography art. Each pixel becomes a letter, creating stunning text-based imagery.</p>
-    </div>
+  <div class="scriptorium">
+    <header class="hero">
+      <p class="hero-eyebrow">מְלֶאכֶת סוֹפְרִים · The Scribe's Art</p>
+      <canvas id="heroCanvas" aria-hidden="true"></canvas>
+      <h1>Micrography — drawing with words</h1>
+      <p class="hero-sub">
+        Turn any image, name, or verse into artwork made entirely of letters.
+        The tone comes from the text itself: faint, tiny strokes in the light, dense
+        overlapping letters in the shadow — and every mark is a word that reads.
+      </p>
+      <p class="hero-lore">
+        Jewish scribes have practiced micrography for over a thousand years, weaving
+        the Masoretic notes of Bible manuscripts into carpet pages, animals, and
+        portraits. The title above is drawn the same way — from the opening verses of
+        Genesis — by the engine on this page.
+      </p>
+    </header>
 
-    <div class="control-panel">
+    <div class="workbench">
       <div class="grid-2">
         <div class="control-section">
-          <div class="section-title">1. Shape Source</div>
-          
+          <div class="step-title"><span class="step-letter">א</span> The Shape</div>
+
           <div class="source-tab-bar">
-            <button class="source-tab-btn active" data-source="image">Upload Image</button>
-            <button class="source-tab-btn" data-source="word">Word / Name</button>
+            <button class="source-tab-btn active" data-source="image">Upload image</button>
+            <button class="source-tab-btn" data-source="word">Word or name</button>
           </div>
-          
+
           <!-- Image source panel -->
           <div class="source-panel active" id="source-image">
             <div class="file-input-wrapper" id="fileWrapper">
               <input type="file" id="imageInput" accept="image/*" />
               <div class="file-input-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <span id="fileLabelText">Choose an image...</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span id="fileLabelText">Choose an image — portraits work best</span>
               </div>
             </div>
-            <div id="imagePreview" class="preview-container" style="margin-top: 1rem;"></div>
+            <div id="imagePreview" class="preview-container"></div>
           </div>
-          
+
           <!-- Word/Name shape panel -->
           <div class="source-panel" id="source-word">
             <input type="text" id="shapeWord" class="shape-word-input" placeholder="Matthew, אמת, שלום..." maxlength="40" />
-            <div style="margin-top: 0.5rem; font-size: 0.82rem; color: #718096;">
+            <div class="step-hint" style="margin-top: 0.5rem;">
               Type a name, word, or phrase — the fill text will form these letters
             </div>
             <div class="shape-options">
               <label>
-                Font size:
-                <select id="shapeFontSize" style="margin-left:0.3rem; padding:0.2rem 0.4rem; border-radius:6px; border:1px solid #e2e8f0; font-size:0.85rem;">
+                Letter size:
+                <select id="shapeFontSize">
                   <option value="200">Small</option>
                   <option value="320" selected>Medium</option>
                   <option value="480">Large</option>
                   <option value="640">X-Large</option>
                 </select>
               </label>
-              <label>
-                BG:
-                <input type="color" id="shapeBgColor" value="#ffffff" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:0;" />
-              </label>
-              <label>
-                Text color:
-                <input type="color" id="shapeTextColor" value="#1a1a2e" style="width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:0;" />
-              </label>
             </div>
           </div>
         </div>
 
         <div class="control-section">
-          <div class="section-title">2. Text Source</div>
-          
+          <div class="step-title"><span class="step-letter">ב</span> The Text</div>
+
           <div class="tab-bar">
-            <button class="tab-btn active" data-tab="sefaria">Sefaria Reference</button>
-            <button class="tab-btn" data-tab="nameverse">Name Verse ✡</button>
-            <button class="tab-btn" data-tab="custom">Custom Text</button>
+            <button class="tab-btn active" data-tab="sefaria">Sefaria</button>
+            <button class="tab-btn" data-tab="nameverse">Name verse ✡</button>
+            <button class="tab-btn" data-tab="custom">Custom</button>
           </div>
-          
+
           <!-- Sefaria tab -->
           <div class="tab-panel active" id="tab-sefaria">
             <input type="text" id="textRef" class="text-input" placeholder="e.g., Genesis, Psalms 23, Exodus 20:1-14" />
-            <div style="margin-top: 0.4rem; font-size: 0.82rem; color: #718096;">
-              Whole book: <strong>Genesis</strong> &nbsp;·&nbsp; Chapter: <strong>Psalms 23</strong> &nbsp;·&nbsp; Verse: <strong>Genesis 1:1</strong> &nbsp;·&nbsp; Range: <strong>Exodus 20:1-14</strong>
+            <div class="step-hint" style="margin-top: 0.4rem;">
+              Whole book: <strong>Genesis</strong> · Chapter: <strong>Psalms 23</strong> · Verse: <strong>Genesis 1:1</strong> · Range: <strong>Exodus 20:1-14</strong>
             </div>
             <div style="margin-top: 0.75rem;">
-              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; color: #4a5568;">
-                <input type="checkbox" id="removeVowels" checked style="width: 18px; height: 18px; accent-color: #667eea;" />
+              <label class="checkbox-row">
+                <input type="checkbox" id="removeVowels" checked />
                 Remove vowels &amp; cantillation marks
               </label>
             </div>
@@ -670,121 +668,133 @@ import Layout from '../layouts/Layout.astro';
 
           <!-- Name Verse tab -->
           <div class="tab-panel" id="tab-nameverse">
-            <div style="font-size:0.85rem; color:#4a5568; margin-bottom:0.6rem; line-height:1.5;">
-              <strong>סגולה:</strong> Find a verse that begins with the first letter of your Hebrew name and ends with the last letter — to be said before <em>יהיו לרצון</em> in Shemoneh Esrei.
+            <div class="step-hint" style="margin-bottom: 0.6rem;">
+              <strong>סגולה:</strong> Find a verse that begins with the first letter of your Hebrew name and ends with the last — said before <em>יהיו לרצון</em> in Shemoneh Esrei.
             </div>
-            <input type="text" id="hebrewNameInput" class="text-input" placeholder="שמך בעברית, e.g. מתתיהו, רחל, דוד..." dir="rtl" style="font-size:1.2rem; text-align:right;" />
-            <button id="findVerseBtn" class="btn-secondary" style="margin-top:0.6rem; width:100%;">
-              🔍 Find Name Verse
+            <input type="text" id="hebrewNameInput" class="text-input" placeholder="שמך בעברית, e.g. מתתיהו, רחל, דוד..." dir="rtl" style="font-size:1.2rem; text-align:right; font-family: var(--serif);" />
+            <button id="findVerseBtn" class="btn-secondary" style="margin-top:0.6rem; width:100%; justify-content:center;">
+              Find name verse
             </button>
             <div id="nameVerseResults" style="margin-top:0.75rem;"></div>
           </div>
-          
+
           <!-- Custom text tab -->
           <div class="tab-panel" id="tab-custom">
-            <textarea id="customTextInput" class="custom-textarea" placeholder="Type or paste any text here — English, Hebrew, or any language..."></textarea>
+            <textarea id="customTextInput" class="custom-textarea" placeholder="Type or paste any text — English, Hebrew, or any language..."></textarea>
             <div class="text-char-count"><span id="charCount">0</span> characters</div>
           </div>
         </div>
       </div>
 
-      <div class="control-section" style="margin-top: 1.5rem;">
-        <div class="section-title">3. Color Replace <span style="font-size:0.78rem; font-weight:400; color:#718096;">(image mode only)</span></div>
-        <div style="font-size:0.82rem; color:#718096; margin-bottom:0.6rem; line-height:1.5;">
-          Pixels matching the target color become micrography text. All other pixels are drawn as-is.
+      <div class="section-block">
+        <div class="step-title"><span class="step-letter">ג</span> The Style</div>
+        <div class="style-grid" id="styleGrid">
+          <button class="style-card active" data-style="ink" type="button">
+            <span class="style-swatch" style="background:#efe6d2; color:#241c0f;">אבג</span>
+            <span class="style-name">Classic ink</span>
+          </button>
+          <button class="style-card" data-style="sepia" type="button">
+            <span class="style-swatch" style="background:#e9dcc0; color:#5a3a18;">אבג</span>
+            <span class="style-name">Sepia</span>
+          </button>
+          <button class="style-card" data-style="night" type="button">
+            <span class="style-swatch" style="background:#16110a; color:#eadfc2;">אבג</span>
+            <span class="style-name">Night</span>
+          </button>
+          <button class="style-card" data-style="color" type="button">
+            <span class="style-swatch" style="background:linear-gradient(120deg,#8a2417,#a5762a,#3d5a80); color:#fff;">אבג</span>
+            <span class="style-name">Color mosaic</span>
+          </button>
         </div>
-        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.9rem; color:#4a5568; margin-bottom:0.75rem;">
-          <input type="checkbox" id="enableColorReplace" style="width:18px;height:18px;accent-color:#667eea;" />
-          Enable color replacement
-        </label>
-        <div id="colorReplacePanel" style="display:none;">
-          <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-start;">
-            <div>
-              <div style="font-size:0.82rem; color:#718096; margin-bottom:0.3rem;">Target color (becomes micrography)</div>
-              <div style="display:flex; align-items:center; gap:0.5rem;">
-                <input type="color" id="targetColor" value="#ffffff" style="width:40px;height:32px;border:none;border-radius:6px;cursor:pointer;padding:0;" />
-                <input type="text" id="targetColorHex" value="#ffffff" maxlength="7"
-                  style="width:80px;padding:0.3rem 0.5rem;border:1px solid #e2e8f0;border-radius:6px;font-size:0.85rem;font-family:monospace;" />
-                <button id="eyedropperBtn" title="Pick color from image" style="
-                  padding:0.3rem 0.6rem; border:1px solid #e2e8f0; border-radius:6px;
-                  background:white; cursor:pointer; font-size:0.85rem; color:#4a5568;
-                  display:flex; align-items:center; gap:0.3rem;
-                ">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13.5V20a2 2 0 0 0 2 2h.5"/><path d="M22 13.5V20a2 2 0 0 1-2 2h-.5"/><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M7 9.5L2 12"/><path d="M17 9.5L22 12"/><path d="M12 17v5"/></svg>
-                  Eyedropper
-                </button>
-              </div>
-              <div style="font-size:0.78rem; color:#718096; margin-top:0.3rem;">Or click the image preview to sample a color</div>
-            </div>
-            <div style="width:100%;">
-              <div style="font-size:0.82rem; color:#718096; margin-bottom:0.3rem;">
-                Match strictness: <span id="toleranceValue">30</span>
-                <span style="font-size:0.75rem; color:#a0aec0;">(0 = exact color only &nbsp;·&nbsp; 50 = similar shades &nbsp;·&nbsp; 128 = broad range)</span>
-              </div>
-              <input type="range" id="toleranceSlider" min="0" max="128" value="30" style="width:100%;" />
-            </div>
-          </div>
-          <div id="colorReplacePreview" style="margin-top:0.75rem; font-size:0.82rem; color:#718096;"></div>
+        <div style="margin-top: 1rem;">
+          <input type="text" id="captionInput" class="text-input" placeholder="Optional caption drawn beneath the artwork — e.g. a name or title" style="font-family: var(--serif);" />
         </div>
       </div>
 
-      <div class="control-section" style="margin-top: 1.5rem;">
-        <div class="section-title">4. Adjust Settings</div>
-        <div style="margin-bottom: 0.5rem; font-weight: 500; color: #4a5568;">
-          Density: <span id="densityValue">5</span> (lower = more detailed)
+      <div class="section-block">
+        <div class="step-title"><span class="step-letter">ד</span> Fine-tuning</div>
+        <div class="grid-2">
+          <div>
+            <div class="slider-label"><span>Letter density</span><span class="val"><span id="densityValue">5</span> · finer = more letters</span></div>
+            <input type="range" id="densitySlider" class="density-slider" min="2" max="12" value="5" />
+            <div class="density-labels"><span>fine</span><span>medium</span><span>coarse</span></div>
+          </div>
+          <div>
+            <div class="slider-label"><span>Ink contrast</span><span class="val" id="contrastValue">115</span></div>
+            <input type="range" id="contrastSlider" class="density-slider" min="60" max="200" value="115" />
+            <div class="density-labels"><span>soft wash</span><span>balanced</span><span>heavy ink</span></div>
+          </div>
         </div>
-        <input type="range" id="densitySlider" class="density-slider" min="2" max="12" value="5" />
-        <div class="density-labels">
-          <span>Fine (2)</span>
-          <span>Medium (5)</span>
-          <span>Coarse (12)</span>
-        </div>
-        <div style="margin-top: 0.75rem;">
-          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; color: #4a5568;">
-            <input type="checkbox" id="transparentBg" style="width: 18px; height: 18px; accent-color: #667eea;" />
+        <div style="margin-top: 1rem;">
+          <label class="checkbox-row">
+            <input type="checkbox" id="transparentBg" />
             Transparent background (PNG)
           </label>
         </div>
+
+        <details class="advanced">
+          <summary>Advanced: replace a color with text (photo overlay)</summary>
+          <div class="step-hint" style="margin-bottom:0.6rem;">
+            Pixels matching the target color become micrography text; the rest of the photo is kept as-is.
+          </div>
+          <label class="checkbox-row" style="margin-bottom:0.75rem;">
+            <input type="checkbox" id="enableColorReplace" />
+            Enable color replacement
+          </label>
+          <div id="colorReplacePanel" style="display:none;">
+            <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-start;">
+              <div>
+                <div class="step-hint" style="margin-bottom:0.3rem;">Target color (becomes micrography)</div>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                  <input type="color" id="targetColor" value="#ffffff" style="width:40px;height:32px;border:1px solid var(--paper-edge);border-radius:2px;cursor:pointer;padding:1px;background:var(--paper);" />
+                  <input type="text" id="targetColorHex" value="#ffffff" maxlength="7" class="text-input" style="width:90px; font-family:var(--mono); font-size:0.82rem; padding:0.35rem 0.5rem;" />
+                  <button id="eyedropperBtn" class="btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.82rem;" type="button">Eyedropper</button>
+                </div>
+                <div class="step-hint" style="margin-top:0.3rem;">Or click the image preview to sample a color</div>
+              </div>
+              <div style="width:100%;">
+                <div class="slider-label">
+                  <span>Match strictness</span>
+                  <span class="val"><span id="toleranceValue">30</span> (0 exact · 128 broad)</span>
+                </div>
+                <input type="range" id="toleranceSlider" class="density-slider" min="0" max="128" value="30" style="width:100%;" />
+              </div>
+            </div>
+            <div id="colorReplacePreview" class="fetch-status"></div>
+          </div>
+        </details>
       </div>
 
       <div class="actions-row">
         <button id="generateBtn" class="btn-primary" disabled>
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Generate Micrography
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+          Draw it
         </button>
-        <button id="fetchTextBtn" class="btn-secondary">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          Preview Text
-        </button>
-        <button id="loadSampleBtn" class="btn-secondary">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          Load Sample Image
-        </button>
+        <button id="fetchTextBtn" class="btn-secondary">Preview text</button>
+        <button id="loadSampleBtn" class="btn-secondary">Load sample portrait</button>
       </div>
-      <div id="fetchStatus" style="font-size:0.85rem; color:#718096; margin-top:0.5rem; min-height:1.2em;"></div>
+      <div id="fetchStatus" class="fetch-status"></div>
 
       <div id="errorMessage" class="error-message"></div>
-      
+
       <div id="progressContainer" class="progress-container">
-        <div class="progress-bar">
-          <div id="progressFill" class="progress-fill"></div>
-        </div>
-        <div id="progressText" class="progress-text">Processing...</div>
+        <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+        <div id="progressText" class="progress-text">Drawing...</div>
       </div>
     </div>
 
     <div id="resultContainer" class="result-container">
       <div class="result-header">
-        <div class="result-title">Your Micrography Art</div>
+        <div class="result-title">The finished plate</div>
         <button id="downloadBtn" class="btn-primary">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download Image
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download PNG
         </button>
       </div>
       <div class="canvas-container">
         <canvas id="resultCanvas"></canvas>
       </div>
-      <div id="textUsed" style="margin-top: 1rem; font-size: 0.85rem; color: #718096; text-align: center;"></div>
+      <div id="textUsed" class="plate-caption"></div>
     </div>
   </div>
 
@@ -792,60 +802,148 @@ import Layout from '../layouts/Layout.astro';
   <canvas id="processCanvas" style="display: none;"></canvas>
 
   <script>
-    // State
+    // ————— State —————
     let currentImage = null;
     let currentText = '';
     let isProcessing = false;
     let activeTab = 'sefaria';   // 'sefaria' | 'nameverse' | 'custom'
     let sourceMode = 'image';    // 'image' | 'word'
+    let activeStyle = 'ink';     // 'ink' | 'sepia' | 'night' | 'color'
 
-    // DOM elements
-    const imageInput = document.getElementById('imageInput');
-    const fileWrapper = document.getElementById('fileWrapper');
-    const fileLabelText = document.getElementById('fileLabelText');
-    const imagePreview = document.getElementById('imagePreview');
-    const shapeWord = document.getElementById('shapeWord');
-    const shapeFontSize = document.getElementById('shapeFontSize');
-    const shapeBgColor = document.getElementById('shapeBgColor');
-    const shapeTextColor = document.getElementById('shapeTextColor');
-    const textRef = document.getElementById('textRef');
-    const removeVowels = document.getElementById('removeVowels');
-    const textPreview = document.getElementById('textPreview');
-    const customTextInput = document.getElementById('customTextInput');
-    const charCount = document.getElementById('charCount');
-    const hebrewNameInput = document.getElementById('hebrewNameInput');
-    const findVerseBtn = document.getElementById('findVerseBtn');
-    const nameVerseResults = document.getElementById('nameVerseResults');
-    const densitySlider = document.getElementById('densitySlider');
-    const densityValue = document.getElementById('densityValue');
-    const generateBtn = document.getElementById('generateBtn');
-    const fetchTextBtn = document.getElementById('fetchTextBtn');
-    const loadSampleBtn = document.getElementById('loadSampleBtn');
-    const errorMessage = document.getElementById('errorMessage');
-    const fetchStatus = document.getElementById('fetchStatus');
-    const progressContainer = document.getElementById('progressContainer');
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-    const resultContainer = document.getElementById('resultContainer');
-    const resultCanvas = document.getElementById('resultCanvas');
-    const processCanvas = document.getElementById('processCanvas');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const textUsed = document.getElementById('textUsed');
-    const transparentBg = document.getElementById('transparentBg');
+    // ————— Style presets —————
+    // mono presets carry the whole Marx-poster look: one ink, tone from letters
+    const STYLE_PRESETS = {
+      ink:   { paper: '#efe6d2', ink: [36, 28, 15],   invert: false, mode: 'mono' },
+      sepia: { paper: '#e9dcc0', ink: [90, 58, 24],   invert: false, mode: 'mono' },
+      night: { paper: '#16110a', ink: [234, 223, 194], invert: true,  mode: 'mono' },
+      color: { paper: '#787878', ink: [0, 0, 0],      invert: false, mode: 'color' },
+    };
+
+    // ————— DOM —————
+    const $ = (id) => document.getElementById(id);
+    const imageInput = $('imageInput');
+    const fileWrapper = $('fileWrapper');
+    const fileLabelText = $('fileLabelText');
+    const imagePreview = $('imagePreview');
+    const shapeWord = $('shapeWord');
+    const shapeFontSize = $('shapeFontSize');
+    const textRef = $('textRef');
+    const removeVowels = $('removeVowels');
+    const textPreview = $('textPreview');
+    const customTextInput = $('customTextInput');
+    const charCount = $('charCount');
+    const hebrewNameInput = $('hebrewNameInput');
+    const findVerseBtn = $('findVerseBtn');
+    const nameVerseResults = $('nameVerseResults');
+    const densitySlider = $('densitySlider');
+    const densityValue = $('densityValue');
+    const contrastSlider = $('contrastSlider');
+    const contrastValue = $('contrastValue');
+    const captionInput = $('captionInput');
+    const generateBtn = $('generateBtn');
+    const fetchTextBtn = $('fetchTextBtn');
+    const loadSampleBtn = $('loadSampleBtn');
+    const errorMessage = $('errorMessage');
+    const fetchStatus = $('fetchStatus');
+    const progressContainer = $('progressContainer');
+    const progressFill = $('progressFill');
+    const progressText = $('progressText');
+    const resultContainer = $('resultContainer');
+    const resultCanvas = $('resultCanvas');
+    const processCanvas = $('processCanvas');
+    const downloadBtn = $('downloadBtn');
+    const textUsed = $('textUsed');
+    const transparentBg = $('transparentBg');
     const canvasContainer = resultCanvas.closest('.canvas-container');
-    const enableColorReplace = document.getElementById('enableColorReplace');
-    const colorReplacePanel = document.getElementById('colorReplacePanel');
-    const targetColorPicker = document.getElementById('targetColor');
-    const targetColorHex = document.getElementById('targetColorHex');
-    const eyedropperBtn = document.getElementById('eyedropperBtn');
-    const toleranceSlider = document.getElementById('toleranceSlider');
-    const toleranceValue = document.getElementById('toleranceValue');
-    const colorReplacePreview = document.getElementById('colorReplacePreview');
+    const enableColorReplace = $('enableColorReplace');
+    const colorReplacePanel = $('colorReplacePanel');
+    const targetColorPicker = $('targetColor');
+    const targetColorHex = $('targetColorHex');
+    const eyedropperBtn = $('eyedropperBtn');
+    const toleranceSlider = $('toleranceSlider');
+    const toleranceValue = $('toleranceValue');
+    const colorReplacePreview = $('colorReplacePreview');
 
-    // Sample image data - a simple geometric pattern
-    const sampleImageData = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23667eea"/><stop offset="50%" style="stop-color:%23764ba2"/><stop offset="100%" style="stop-color:%23f093fb"/></linearGradient></defs><rect width="300" height="400" fill="url(%23g1)"/><circle cx="150" cy="120" r="80" fill="white" opacity="0.9"/><circle cx="150" cy="120" r="60" fill="url(%23g1)" opacity="0.8"/><ellipse cx="150" cy="280" rx="100" ry="60" fill="white" opacity="0.6"/><ellipse cx="150" cy="280" rx="70" ry="40" fill="url(%23g1)" opacity="0.7"/></svg>')}`;
+    const HEBREW_FONT = '"Noto Serif Hebrew", "Frank Ruhl Libre", "FrankRuehl", "David", serif';
 
-    // Source tab switching (Image vs Word/Name)
+    // setTimeout is heavily throttled in background tabs; MessageChannel is not
+    const tickChannel = new MessageChannel();
+    const tickQueue = [];
+    tickChannel.port1.onmessage = () => { const fn = tickQueue.shift(); if (fn) fn(); };
+    function nextTick(fn) { tickQueue.push(fn); tickChannel.port2.postMessage(0); }
+
+    // ————— Hero: the title, drawn in micrography by this same engine —————
+    const HERO_FILL = 'בראשית ברא אלהים את השמים ואת הארץ והארץ היתה תהו ובהו וחשך על פני תהום ורוח אלהים מרחפת על פני המים ויאמר אלהים יהי אור ויהי אור וירא אלהים את האור כי טוב ויבדל אלהים בין האור ובין החשך ויקרא אלהים לאור יום ולחשך קרא לילה ויהי ערב ויהי בקר יום אחד';
+
+    async function renderHero() {
+      const canvas = $('heroCanvas');
+      if (!canvas) return;
+      try {
+        await Promise.race([
+          document.fonts.ready.then(() => document.fonts.load(`700 100px ${HEBREW_FONT}`)),
+          new Promise(r => setTimeout(r, 2500)),
+        ]);
+      } catch {}
+      const isDark = document.documentElement.classList.contains('dark');
+      const inkColor = isDark ? [233, 223, 198] : [36, 28, 15];
+
+      const word = 'מיקרוגרפיה';
+      const W = 1440, H = 400, pad = 30;
+
+      // Mask: the big word
+      const mask = document.createElement('canvas');
+      mask.width = W; mask.height = H;
+      const mCtx = mask.getContext('2d');
+      mCtx.fillStyle = '#fff';
+      mCtx.fillRect(0, 0, W, H);
+      // Size the word to fit
+      let fs = 320;
+      mCtx.font = `700 ${fs}px ${HEBREW_FONT}`;
+      const w0 = mCtx.measureText(word).width;
+      fs = Math.floor(fs * (W - pad * 2) / w0);
+      mCtx.font = `700 ${fs}px ${HEBREW_FONT}`;
+      mCtx.fillStyle = '#000';
+      mCtx.textAlign = 'center';
+      mCtx.textBaseline = 'middle';
+      mCtx.fillText(word, W / 2, H / 2 + fs * 0.05);
+      // Fatten the strokes so the sampling grid lands enough letters inside
+      mCtx.strokeStyle = '#000';
+      mCtx.lineWidth = Math.max(6, fs * 0.06);
+      mCtx.strokeText(word, W / 2, H / 2 + fs * 0.05);
+      const mPx = mCtx.getImageData(0, 0, W, H).data;
+
+      // Fill with tiny Bereshit text, RTL
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, W, H);
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'left';
+      ctx.direction = 'ltr';
+      const cell = 7;
+      const cols = Math.ceil(W / cell), rows = Math.ceil(H / cell);
+      let ti = 0;
+      for (let row = 0; row < rows; row++) {
+        for (let c = 0; c < cols; c++) {
+          const col = cols - 1 - c; // RTL
+          const mx = Math.min(col * cell + 3, W - 1);
+          const my = Math.min(row * cell + 3, H - 1);
+          const idx = (my * W + mx) * 4;
+          if (mPx[idx] < 128) {
+            const ch = HERO_FILL[ti % HERO_FILL.length];
+            if (ch === ' ') { ti++; continue; }
+            const size = cell + 2.5 + (Math.random() * 2 - 1);
+            const alpha = 0.85 + Math.random() * 0.15;
+            ctx.font = `${size.toFixed(1)}px ${HEBREW_FONT}`;
+            ctx.fillStyle = `rgba(${inkColor[0]},${inkColor[1]},${inkColor[2]},${alpha})`;
+            ctx.fillText(ch, col * cell + (Math.random() - 0.5), row * cell + (Math.random() - 0.5));
+            ti++;
+          }
+        }
+      }
+    }
+    renderHero();
+
+    // ————— UI wiring —————
     document.querySelectorAll('.source-tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.source-tab-btn').forEach(b => b.classList.remove('active'));
@@ -853,16 +951,13 @@ import Layout from '../layouts/Layout.astro';
         btn.classList.add('active');
         sourceMode = btn.dataset.source;
         document.getElementById(`source-${sourceMode}`).classList.add('active');
-        // Hide Load Sample in word mode
         loadSampleBtn.style.display = sourceMode === 'word' ? 'none' : '';
         checkCanGenerate();
       });
     });
-    
-    // Shape word input — enable generate as you type
+
     shapeWord.addEventListener('input', checkCanGenerate);
 
-    // Fill text tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -870,22 +965,27 @@ import Layout from '../layouts/Layout.astro';
         btn.classList.add('active');
         activeTab = btn.dataset.tab;
         document.getElementById(`tab-${activeTab}`).classList.add('active');
-        // Show/hide fetch button (only for sefaria tab)
         fetchTextBtn.style.display = activeTab === 'sefaria' ? '' : 'none';
         if (activeTab !== 'nameverse') currentText = '';
         checkCanGenerate();
       });
     });
 
-    // Name verse lookup
+    document.querySelectorAll('.style-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.style-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        activeStyle = card.dataset.style;
+      });
+    });
+
     hebrewNameInput.addEventListener('input', () => {
       nameVerseResults.innerHTML = '';
       if (activeTab === 'nameverse') { currentText = ''; checkCanGenerate(); }
     });
 
     findVerseBtn.addEventListener('click', () => findNameVerse());
-    
-    // Custom text character counter + live enable
+
     customTextInput.addEventListener('input', () => {
       const val = customTextInput.value;
       charCount.textContent = val.length;
@@ -893,46 +993,39 @@ import Layout from '../layouts/Layout.astro';
       checkCanGenerate();
     });
 
-    // Event listeners
     imageInput.addEventListener('change', handleImageUpload);
-    densitySlider.addEventListener('input', (e) => {
-      densityValue.textContent = e.target.value;
-    });
+    densitySlider.addEventListener('input', (e) => { densityValue.textContent = e.target.value; });
+    contrastSlider.addEventListener('input', (e) => { contrastValue.textContent = e.target.value; });
     generateBtn.addEventListener('click', generateMicrography);
     fetchTextBtn.addEventListener('click', fetchAndPreviewText);
     loadSampleBtn.addEventListener('click', loadSampleImage);
     downloadBtn.addEventListener('click', downloadResult);
-    
-    // Enable generate button as soon as image is loaded (text fetched on generate click)
+
     textRef.addEventListener('input', () => {
-      currentText = ''; // clear cached text when ref changes
+      currentText = '';
       checkCanGenerate();
     });
 
     async function loadSampleImage() {
-      try {
-        const img = new Image();
-        img.onload = () => {
-          currentImage = img;
-          updateFileLabel('Sample image loaded');
-          showImagePreview(img);
-          checkCanGenerate();
-        };
-        img.src = sampleImageData;
-      } catch (err) {
-        showError('Failed to load sample image');
-      }
+      const img = new Image();
+      img.onload = () => {
+        currentImage = img;
+        updateFileLabel('Sample portrait loaded');
+        showImagePreview(img);
+        checkCanGenerate();
+        hideError();
+      };
+      img.onerror = () => showError('Failed to load the sample portrait');
+      img.src = '/images/matthew-selfie.jpg';
     }
 
     function handleImageUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
-
       if (!file.type.startsWith('image/')) {
         showError('Please upload an image file');
         return;
       }
-
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
@@ -943,9 +1036,7 @@ import Layout from '../layouts/Layout.astro';
           checkCanGenerate();
           hideError();
         };
-        img.onerror = () => {
-          showError('Failed to load image');
-        };
+        img.onerror = () => showError('Failed to load image');
         img.src = event.target.result;
       };
       reader.readAsDataURL(file);
@@ -959,18 +1050,16 @@ import Layout from '../layouts/Layout.astro';
     function showImagePreview(img) {
       imagePreview.innerHTML = `
         <div class="preview-box">
-          <div class="preview-label">Preview (${img.naturalWidth}x${img.naturalHeight})</div>
+          <div class="preview-label">source · ${img.naturalWidth}×${img.naturalHeight}</div>
           <img src="${img.src}" class="preview-image" alt="Preview" style="cursor:crosshair;" title="Click to sample a color" />
         </div>
       `;
     }
 
+    // ————— Sefaria text fetching —————
     async function fetchAndPreviewText() {
       const ref = textRef.value.trim();
-      if (!ref) {
-        showError('Please enter a text reference');
-        return;
-      }
+      if (!ref) { showError('Please enter a text reference'); return; }
 
       fetchTextBtn.disabled = true;
       fetchTextBtn.textContent = 'Loading...';
@@ -990,28 +1079,20 @@ import Layout from '../layouts/Layout.astro';
         showError(err.message);
       } finally {
         fetchTextBtn.disabled = false;
-        fetchTextBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Preview Text`;
+        fetchTextBtn.textContent = 'Preview text';
       }
     }
 
     async function fetchSefariaText(ref) {
       const encodedRef = encodeURIComponent(ref.trim());
-      
-      // Use v2 API with padding=0 for clean response
       const url = `https://www.sefaria.org/api/texts/${encodedRef}?context=0&pad=0&commentary=0`;
       const response = await fetch(url);
-      
       if (!response.ok) {
         throw new Error(`Sefaria API error (${response.status}) — check your reference`);
       }
-      
       const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      if (data.error) throw new Error(data.error);
 
-      // Collect all Hebrew text — flatten deeply nested arrays
       let hebrewText = null;
       if (data.he) {
         hebrewText = data.he;
@@ -1019,54 +1100,39 @@ import Layout from '../layouts/Layout.astro';
         const hv = data.versions.find(v => v.language === 'he' || v.actualLanguage === 'he');
         if (hv) hebrewText = hv.text;
       }
-      
       if (!hebrewText || (Array.isArray(hebrewText) && hebrewText.length === 0)) {
         throw new Error('No Hebrew text found — try a more specific reference like "Genesis 1" or "Psalms 23"');
       }
 
-      // Deep-flatten any nesting level (whole book = 3 levels deep)
       function deepFlatten(arr) {
         if (!Array.isArray(arr)) return arr ? [arr] : [];
         return arr.flatMap(item => Array.isArray(item) ? deepFlatten(item) : [item]);
       }
-      
-      let verses = deepFlatten(hebrewText).filter(Boolean);
-      let text = verses.join(' ');
-      
-      // Strip HTML tags Sefaria sometimes includes
+
+      let text = deepFlatten(hebrewText).filter(Boolean).join(' ');
       text = text.replace(/<[^>]+>/g, ' ');
-      
-      // Replace Hebrew hyphen maqaf with space
-      text = text.replace(/\u05BE/g, ' ');
-      
+      text = text.replace(/־/g, ' ');
       if (removeVowels.checked) {
         text = text.replace(/[\u0591-\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]/g, '');
       }
-      
-      // Keep Hebrew letters only (strip punctuation, latin, numbers)
-      text = text.replace(/[^\u05D0-\u05EA\s]/g, '');
+      text = text.replace(/[^א-ת\s]/g, '');
       text = text.replace(/\s+/g, ' ').trim();
-      
       if (!text) throw new Error('Text was empty after processing — try a different reference');
-      
       return text;
     }
 
-    // Map final (sofit) letters to their base form for matching
+    // ————— Name verse lookup —————
     const sofitMap = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' };
     function normalizeHebrew(ch) { return sofitMap[ch] || ch; }
 
-    // Strip nikud/cantillation from a verse for use as fill text
     function stripNikud(text) {
       return text
-        .replace(/[\u0591-\u05C7]/g, '') // cantillation + vowels
-        .replace(/[^\u05D0-\u05EA\s]/g, '')
+        .replace(/[\u0591-\u05C7]/g, "")
+        .replace(/[^א-ת\s]/g, '')
         .replace(/\s+/g, ' ').trim();
     }
 
-    // Cache the verse database after first load
     let nameVersesDB = null;
-
     async function loadNameVersesDB() {
       if (nameVersesDB) return nameVersesDB;
       const resp = await fetch('/name-verses.json');
@@ -1078,25 +1144,22 @@ import Layout from '../layouts/Layout.astro';
     async function findNameVerse() {
       const name = hebrewNameInput.value.trim();
       if (!name) {
-        nameVerseResults.innerHTML = '<div style="color:#e53e3e;">Please enter your Hebrew name</div>';
+        nameVerseResults.innerHTML = '<div class="error-message visible">Please enter your Hebrew name</div>';
         return;
       }
-
-      const hebrewOnly = name.replace(/[^\u05D0-\u05EA]/g, '');
+      const hebrewOnly = name.replace(/[^א-ת]/g, '');
       if (hebrewOnly.length === 0) {
-        nameVerseResults.innerHTML = '<div style="color:#e53e3e;">Please enter your name in Hebrew letters</div>';
+        nameVerseResults.innerHTML = '<div class="error-message visible">Please enter your name in Hebrew letters</div>';
         return;
       }
-
       const firstLetter = normalizeHebrew(hebrewOnly[0]);
       const lastLetter = normalizeHebrew(hebrewOnly[hebrewOnly.length - 1]);
 
-      nameVerseResults.innerHTML = '<div style="color:#718096; font-size:0.85rem;">Searching...</div>';
+      nameVerseResults.innerHTML = '<div class="fetch-status">Searching...</div>';
       findVerseBtn.disabled = true;
 
       try {
         const db = await loadNameVersesDB();
-
         const matches = db.filter(v =>
           normalizeHebrew(v.startLetter) === firstLetter &&
           normalizeHebrew(v.endLetter) === lastLetter
@@ -1104,50 +1167,35 @@ import Layout from '../layouts/Layout.astro';
 
         if (matches.length === 0) {
           nameVerseResults.innerHTML = `
-            <div style="color:#e53e3e; font-size:0.9rem;">
+            <div class="error-message visible">
               No verses found starting with <strong>${firstLetter}</strong> and ending with <strong>${lastLetter}</strong>.
               Try a different form of your name.
             </div>`;
         } else {
           const display = matches.slice(0, 10);
-          let html = `<div style="font-size:0.85rem; color:#4a5568; margin-bottom:0.5rem;">
-            Found <strong>${matches.length}</strong> verse${matches.length > 1 ? 's' : ''} for 
+          let html = `<div class="step-hint" style="margin-bottom:0.5rem;">
+            Found <strong>${matches.length}</strong> verse${matches.length > 1 ? 's' : ''} for
             <strong>${firstLetter}...${lastLetter}</strong> — click one to use it:
           </div>`;
           display.forEach((v, i) => {
             const refStr = `${v.ref.book} ${v.ref.chapter}:${v.ref.verse}`;
             html += `
-              <div class="verse-option" data-index="${i}" style="
-                border:1px solid #e2e8f0; border-radius:8px; padding:0.6rem 0.8rem;
-                margin-bottom:0.5rem; cursor:pointer; transition:all 0.15s;
-                background:white; direction:rtl; text-align:right; font-size:0.92rem; line-height:1.6;
-              ">
-                <div style="font-size:0.75rem; color:#718096; direction:ltr; text-align:left; margin-bottom:0.2rem;">${refStr}</div>
-                <div style="color:#2d3748;">${v.text}</div>
+              <div class="verse-option" data-index="${i}">
+                <div class="verse-ref">${refStr}</div>
+                <div>${v.text}</div>
               </div>`;
           });
           if (matches.length > 10) {
-            html += `<div style="font-size:0.82rem; color:#718096; margin-top:0.3rem;">...and ${matches.length - 10} more</div>`;
+            html += `<div class="step-hint" style="margin-top:0.3rem;">...and ${matches.length - 10} more</div>`;
           }
           nameVerseResults.innerHTML = html;
 
           nameVerseResults.querySelectorAll('.verse-option').forEach((el, i) => {
-            el.addEventListener('mouseenter', () => el.style.borderColor = '#667eea');
-            el.addEventListener('mouseleave', () => {
-              el.style.borderColor = el.classList.contains('selected') ? '#667eea' : '#e2e8f0';
-            });
             el.addEventListener('click', () => {
-              nameVerseResults.querySelectorAll('.verse-option').forEach(e => {
-                e.classList.remove('selected');
-                e.style.background = 'white';
-                e.style.borderColor = '#e2e8f0';
-              });
+              nameVerseResults.querySelectorAll('.verse-option').forEach(e => e.classList.remove('selected'));
               el.classList.add('selected');
-              el.style.background = '#eef2ff';
-              el.style.borderColor = '#667eea';
-              // Use pre-stripped textNoNikud if available, else strip on the fly
               currentText = display[i].textNoNikud
-                ? display[i].textNoNikud.replace(/[^\u05D0-\u05EA\s]/g, '').replace(/\s+/g, ' ').trim()
+                ? display[i].textNoNikud.replace(/[^א-ת\s]/g, '').replace(/\s+/g, ' ').trim()
                 : stripNikud(display[i].text);
               const refStr = `${display[i].ref.book} ${display[i].ref.chapter}:${display[i].ref.verse}`;
               fetchStatus.textContent = `✓ ${refStr} (${currentText.length} chars)`;
@@ -1156,10 +1204,7 @@ import Layout from '../layouts/Layout.astro';
           });
         }
       } catch (err) {
-        nameVerseResults.innerHTML = `
-          <div style="color:#e53e3e; font-size:0.85rem; line-height:1.6;">
-            <strong>Error:</strong> ${err.message}
-          </div>`;
+        nameVerseResults.innerHTML = `<div class="error-message visible"><strong>Error:</strong> ${err.message}</div>`;
       } finally {
         findVerseBtn.disabled = false;
       }
@@ -1173,17 +1218,17 @@ import Layout from '../layouts/Layout.astro';
       if (activeTab === 'custom') {
         hasFillText = customTextInput.value.trim().length > 0;
       } else if (activeTab === 'nameverse') {
-        hasFillText = currentText.length > 0; // set after verse selected
+        hasFillText = currentText.length > 0;
       } else {
         hasFillText = textRef.value.trim().length > 0;
       }
       generateBtn.disabled = !(hasShape && hasFillText);
     }
 
+    // ————— Generation —————
     async function generateMicrography() {
       if (isProcessing) return;
-      
-      // Validate shape source
+
       if (sourceMode === 'word' && !shapeWord.value.trim()) {
         showError('Please enter a word or name');
         shapeWord.focus();
@@ -1206,9 +1251,7 @@ import Layout from '../layouts/Layout.astro';
           showError('Please find and select a name verse first');
           return;
         }
-        // currentText already set when user clicked a verse option
       } else {
-        // Sefaria: fetch/re-fetch if ref changed or text not loaded
         const ref = textRef.value.trim();
         if (!ref) {
           showError('Please enter a text reference first');
@@ -1232,25 +1275,25 @@ import Layout from '../layouts/Layout.astro';
 
       isProcessing = true;
       generateBtn.disabled = true;
-      generateBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="20"/></svg>
-        Generating...
-      `;
+      generateBtn.textContent = 'Drawing...';
       progressContainer.classList.add('visible');
       resultContainer.classList.remove('visible');
       hideError();
 
       try {
+        try { await document.fonts.load(`700 20px ${HEBREW_FONT}`); } catch {}
         if (sourceMode === 'word') {
           await processShape();
+        } else if (enableColorReplace.checked) {
+          await processColorReplace();
+        } else if (STYLE_PRESETS[activeStyle].mode === 'mono') {
+          await processImageInk();
         } else {
-          await processImage();
+          await processImageColor();
         }
         resultContainer.classList.add('visible');
         canvasContainer.classList.toggle('transparent-preview', transparentBg.checked);
-        textUsed.textContent = `Text used (${currentText.length} characters): ${currentText.substring(0, 100)}${currentText.length > 100 ? '...' : ''}`;
-        
-        // Smooth scroll to result
+        textUsed.textContent = `Text used (${currentText.length.toLocaleString()} characters): ${currentText.substring(0, 100)}${currentText.length > 100 ? '...' : ''}`;
         resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (err) {
         showError('Error generating micrography: ' + err.message);
@@ -1258,254 +1301,210 @@ import Layout from '../layouts/Layout.astro';
         isProcessing = false;
         generateBtn.disabled = false;
         generateBtn.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Generate Micrography
-        `;
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+          Draw it`;
         progressContainer.classList.remove('visible');
       }
     }
 
-    async function processImage() {
-      const sampleDensity = parseInt(densitySlider.value);
-      const fontSize = 12;
-      const fontDrawSize = 14;
-      const imgMargin = 10;
+    // Sample the image into a luminance grid at cols × rows
+    function sampleLuminance(cols, rows) {
+      const pCtx = processCanvas.getContext('2d', { willReadFrequently: true });
+      processCanvas.width = cols;
+      processCanvas.height = rows;
+      pCtx.drawImage(currentImage, 0, 0, cols, rows);
+      const px = pCtx.getImageData(0, 0, cols, rows).data;
+      const lum = new Float32Array(cols * rows);
+      for (let i = 0; i < cols * rows; i++) {
+        const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2], a = px[i * 4 + 3];
+        // Transparent source pixels count as paper
+        lum[i] = a < 40 ? 255 : 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      }
+      return lum;
+    }
 
-      const colorReplaceEnabled = enableColorReplace.checked;
+    // Percentile auto-contrast: map [p2..p98] → [0..255]
+    function autoContrast(lum) {
+      const sorted = Float32Array.from(lum).sort();
+      const lo = sorted[Math.floor(sorted.length * 0.02)];
+      const hi = sorted[Math.floor(sorted.length * 0.98)];
+      const range = Math.max(hi - lo, 1);
+      const out = new Float32Array(lum.length);
+      for (let i = 0; i < lum.length; i++) {
+        out[i] = Math.min(255, Math.max(0, ((lum[i] - lo) / range) * 255));
+      }
+      return out;
+    }
 
-      // Resize image for pixel sampling
-      let { width, height } = await resizeImage(currentImage);
+    function isHebrewFill() {
+      return activeTab === 'sefaria' || activeTab === 'nameverse' || /[א-ת]/.test(currentText.slice(0, 100));
+    }
 
-      // Setup process canvas for reading pixels
-      const pCtx = processCanvas.getContext('2d');
-      processCanvas.width = width;
-      processCanvas.height = height;
-      pCtx.drawImage(currentImage, 0, 0, width, height);
+    // Optional caption band drawn beneath the artwork, like the title line
+    // on classic micrography posters
+    function drawCaption(ctx, outW, artH, capH, inkRGB) {
+      const caption = captionInput.value.trim();
+      if (!caption) return;
+      const [r, g, b] = inkRGB;
+      ctx.strokeStyle = `rgba(${r},${g},${b},0.5)`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(outW * 0.18, artH + capH * 0.12);
+      ctx.lineTo(outW * 0.82, artH + capH * 0.12);
+      ctx.stroke();
+      let fs = Math.floor(capH * 0.52);
+      ctx.font = `700 ${fs}px ${HEBREW_FONT}`;
+      const cw = ctx.measureText(caption).width;
+      if (cw > outW * 0.9) {
+        fs = Math.floor(fs * outW * 0.9 / cw);
+        ctx.font = `700 ${fs}px ${HEBREW_FONT}`;
+      }
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.direction = /[א-ת]/.test(caption) ? 'rtl' : 'ltr';
+      ctx.fillText(caption, outW / 2, artH + capH * 0.58);
+      // restore defaults used by the letter loops
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.direction = 'ltr';
+    }
 
-      // Setup result canvas
+    // ————— Classic ink engine: tone from the letters themselves —————
+    async function processImageInk() {
+      const preset = STYLE_PRESETS[activeStyle];
+      const density = parseInt(densitySlider.value);          // 2 (fine) – 12 (coarse)
+      const punch = parseInt(contrastSlider.value) / 115;     // ~0.5 – 1.75
+
+      // Grid: aim for a wide output; finer density = more cells
+      const aspect = currentImage.naturalHeight / currentImage.naturalWidth;
+      const cols = Math.max(40, Math.round(340 - density * 22));
+      const rows = Math.max(30, Math.round(cols * aspect));
+
+      let lum = sampleLuminance(cols, rows);
+      lum = autoContrast(lum);
+
+      const cell = 13;                                        // output px per letter cell
+      const outW = cols * cell;
+      const artH = rows * cell;
+      const caption = captionInput.value.trim();
+      const capH = caption ? Math.max(56, Math.min(300, Math.round(outW * 0.09))) : 0;
+      const outH = artH + capH;
+
       const rCtx = resultCanvas.getContext('2d');
+      resultCanvas.width = outW;
+      resultCanvas.height = outH;
 
-      let outputWidth, outputHeight;
-      let crTargetR = 0, crTargetG = 0, crTargetB = 0, crTol = 0;
+      const [ir, ig, ib] = preset.ink;
 
-      if (colorReplaceEnabled) {
-        // Color replace mode: output = original image size so base stays full-res
-        outputWidth = currentImage.naturalWidth;
-        outputHeight = currentImage.naturalHeight;
-        resultCanvas.width = outputWidth;
-        resultCanvas.height = outputHeight;
-        // Draw full-quality original as base layer
-        rCtx.drawImage(currentImage, 0, 0, outputWidth, outputHeight);
-
-        const tHex = targetColorPicker.value;
-        crTargetR = parseInt(tHex.slice(1, 3), 16);
-        crTargetG = parseInt(tHex.slice(3, 5), 16);
-        crTargetB = parseInt(tHex.slice(5, 7), 16);
-        crTol = parseInt(toleranceSlider.value);
-      } else {
-        // Normal mode: output = scaled-down text grid
-        outputWidth = Math.floor(width * fontSize / sampleDensity) + imgMargin;
-        outputHeight = Math.floor(height * fontSize / sampleDensity) + imgMargin;
-        resultCanvas.width = outputWidth;
-        resultCanvas.height = outputHeight;
-        if (!transparentBg.checked) {
-          rCtx.fillStyle = '#787878';
-          rCtx.fillRect(0, 0, outputWidth, outputHeight);
+      if (!transparentBg.checked) {
+        rCtx.fillStyle = preset.paper;
+        rCtx.fillRect(0, 0, outW, outH);
+        // Faint mottling so the paper doesn't read as flat digital fill
+        rCtx.fillStyle = preset.invert ? 'rgba(255,240,200,0.02)' : 'rgba(80,55,20,0.025)';
+        for (let i = 0; i < 400; i++) {
+          rCtx.fillRect(Math.random() * outW, Math.random() * outH, 1 + Math.random() * 3, 1 + Math.random() * 3);
         }
       }
 
-      // Get image data
-      const imageData = pCtx.getImageData(0, 0, width, height);
-      const pixels = imageData.data;
-
-      // Detect if text is Hebrew (RTL) or LTR
-      const isHebrew = activeTab === 'sefaria' || activeTab === 'nameverse' || /[\u05D0-\u05EA]/.test(currentText.slice(0, 100));
-
-      // Scale factors from sampled-image coords → output canvas coords (color replace mode)
-      const scaleX = currentImage.naturalWidth / width;
-      const scaleY = currentImage.naturalHeight / height;
-
-      // In color-replace mode: use tiny font for dense artistic micrography
-      const crFontSize = colorReplaceEnabled ? 7 : fontDrawSize;
-      // Cell size matches font for tight packing
-      const crCellW = colorReplaceEnabled ? crFontSize : fontSize;
-      const crCellH = colorReplaceEnabled ? crFontSize : fontSize;
-
-      rCtx.font = `${crFontSize}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
-      rCtx.textAlign = 'left';
       rCtx.textBaseline = 'top';
+      rCtx.textAlign = 'left';
       rCtx.direction = 'ltr';
 
-      // Process pixels and draw text
+      const hebrew = isHebrewFill();
+      const cutoff = 0.12;
       let textIndex = 0;
-      let colCount, totalPixels;
+      const total = rows * cols;
+      let done = 0;
+      let lastFont = '';
 
-      if (colorReplaceEnabled) {
-        // Dense grid: iterate at font-size intervals on output canvas
-        colCount = Math.ceil(outputWidth / crCellW);
-        totalPixels = Math.ceil(outputHeight / crCellH) * colCount;
-      } else {
-        // Normal mode: sample at density intervals
-        colCount = Math.ceil(width / sampleDensity);
-        totalPixels = Math.ceil(height / sampleDensity) * colCount;
-      }
-
-      let processedPixels = 0;
-
-      // Process in chunks for UI responsiveness
-      const chunkSize = 1000;
-      
       await new Promise((resolve, reject) => {
         function processChunk() {
           try {
-            const chunkEnd = Math.min(processedPixels + chunkSize, totalPixels);
-            
-            for (let i = processedPixels; i < chunkEnd; i++) {
-              const row = Math.floor(i / colCount);
-              const col = i % colCount;
+            const end = Math.min(done + 1500, total);
+            for (let i = done; i < end; i++) {
+              const row = Math.floor(i / cols);
+              const col = hebrew ? (cols - 1 - (i % cols)) : (i % cols);
 
-              if (colorReplaceEnabled) {
-                // Dense mode: position on output canvas, sample corresponding base image pixel
-                const drawX = col * crCellW;
-                const drawY = row * crCellH;
-                // Map output coords back to sampled image coords
-                const sampleX = Math.floor(drawX / scaleX);
-                const sampleY = Math.floor(drawY / scaleY);
-                if (sampleX >= width || sampleY >= height) continue;
+              const L = lum[row * cols + col] / 255;
+              // Darkness drives the ink; Night style inverts (light areas glow)
+              let d = preset.invert ? L : 1 - L;
+              d = Math.pow(d, 1 / punch);
+              d = d * d * (3 - 2 * d);                        // S-curve: clean highlights, deep shadows
+              if (d < cutoff) continue;                        // paper breathes
 
-                const pixelIndex = (sampleY * width + sampleX) * 4;
-                const r = pixels[pixelIndex];
-                const g = pixels[pixelIndex + 1];
-                const b = pixels[pixelIndex + 2];
+              const ch = currentText[textIndex % currentText.length];
+              textIndex++;
+              if (ch === ' ') continue;
 
-                const dist = Math.sqrt(
-                  (r - crTargetR) ** 2 + (g - crTargetG) ** 2 + (b - crTargetB) ** 2
-                );
-                if (dist <= crTol) {
-                  // Darken the pixel color for contrast (multiply by 0.6)
-                  const darkR = Math.floor(r * 0.6);
-                  const darkG = Math.floor(g * 0.6);
-                  const darkB = Math.floor(b * 0.6);
-                  rCtx.fillStyle = `rgb(${darkR},${darkG},${darkB})`;
-                  const char = currentText[textIndex % currentText.length];
-                  rCtx.fillText(char, drawX, drawY);
-                  textIndex++;
-                }
-                // Not matched → base image shows through
-              } else {
-                // Normal mode: sample at density intervals
-                const y = row * sampleDensity;
-                const x = isHebrew
-                  ? width - 1 - (col * sampleDensity)
-                  : col * sampleDensity;
-                
-                if (y >= height || x < 0 || x >= width) continue;
-                
-                const pixelIndex = (y * width + x) * 4;
-                const r = pixels[pixelIndex];
-                const g = pixels[pixelIndex + 1];
-                const b = pixels[pixelIndex + 2];
+              // The whole trick: size, weight, and opacity all follow the tone.
+              // Size quantized to half-pixels so the font string can be cached —
+              // setting ctx.font is the hottest operation in this loop.
+              const size = Math.round(cell * (0.55 + 1.1 * Math.pow(d, 1.35)) * 2) / 2;
+              const weight = d > 0.5 ? 700 : 400;
+              const alpha = 0.32 + 0.68 * d;
+              const font = `${weight} ${size}px ${HEBREW_FONT}`;
+              if (font !== lastFont) { rCtx.font = font; lastFont = font; }
+              rCtx.fillStyle = `rgba(${ir},${ig},${ib},${alpha.toFixed(3)})`;
 
-                const drawX = isHebrew
-                  ? outputWidth - (col + 1) * fontSize - imgMargin / 2
-                  : col * fontSize + imgMargin / 2;
-                const drawY = row * fontSize + imgMargin / 2;
-
-                let color = `rgb(${r},${g},${b})`;
-                if (r > 250 && g > 250 && b > 250) color = 'rgb(0,0,0)';
-                const char = currentText[textIndex % currentText.length];
-                rCtx.fillStyle = color;
-                rCtx.fillText(char, drawX, drawY);
-                textIndex++;
-              }
+              const jx = (Math.random() - 0.5) * 1.2;
+              const jy = (Math.random() - 0.5) * 1.2;
+              const x = col * cell - (size - cell) / 2 + jx;
+              const y = row * cell - (size - cell) / 2 + jy;
+              rCtx.fillText(ch, x, y);
+              // Deep shadow: overstrike to build true ink mass
+              if (d > 0.78) rCtx.fillText(ch, x + 0.6, y + 0.4);
             }
-            
-            processedPixels = chunkEnd;
-            
-            // Update progress
-            const progress = Math.round((processedPixels / totalPixels) * 100);
+            done = end;
+            const progress = Math.round((done / total) * 100);
             progressFill.style.width = `${progress}%`;
-            progressText.textContent = `Processing... ${progress}%`;
-            
-            if (processedPixels < totalPixels) {
-              setTimeout(processChunk, 0);
+            progressText.textContent = `Drawing... ${progress}%`;
+            if (done < total) {
+              nextTick(processChunk);
             } else {
+              drawCaption(rCtx, outW, artH, capH, preset.ink);
               resolve();
             }
-          } catch (err) {
-            reject(err);
-          }
+          } catch (err) { reject(err); }
         }
-        
         processChunk();
       });
     }
 
-    async function processShape() {
-      const word = shapeWord.value.trim();
-      const fillFontSize = parseInt(densitySlider.value) <= 4 ? 8 : parseInt(densitySlider.value) <= 7 ? 10 : 12;
-      const shapePx = parseInt(shapeFontSize.value);
-      const bgColor = shapeBgColor.value;
-      const fillColor = shapeTextColor.value;
-      const padding = 40;
+    // ————— Color mosaic engine (per-letter image color) —————
+    async function processImageColor() {
+      const density = parseInt(densitySlider.value);
+      const aspect = currentImage.naturalHeight / currentImage.naturalWidth;
+      const cols = Math.max(40, Math.round(340 - density * 22));
+      const rows = Math.max(30, Math.round(cols * aspect));
 
-      // Detect if fill text is Hebrew (RTL)
-      const isHebrew = activeTab === 'sefaria' || activeTab === 'nameverse' || /[\u05D0-\u05EA]/.test(currentText.slice(0, 100));
-      // Detect if the shape word itself is Hebrew/RTL
-      const shapeIsHebrew = /[\u05D0-\u05EA]/.test(word);
+      const pCtx = processCanvas.getContext('2d', { willReadFrequently: true });
+      processCanvas.width = cols;
+      processCanvas.height = rows;
+      pCtx.drawImage(currentImage, 0, 0, cols, rows);
+      const px = pCtx.getImageData(0, 0, cols, rows).data;
 
-      // Step 1: render the shape word onto a temp canvas to get its mask
-      const maskCanvas = document.createElement('canvas');
-      const mCtx = maskCanvas.getContext('2d');
-      const shapeFont = shapeIsHebrew
-        ? `bold ${shapePx}px "Noto Sans Hebrew", "FrankRuehl", serif`
-        : `bold ${shapePx}px "Georgia", "Times New Roman", serif`;
-      mCtx.font = shapeFont;
-      const measured = mCtx.measureText(word);
-      const maskW = Math.ceil(measured.width) + padding * 2;
-      const maskH = shapePx + padding * 2;
-      maskCanvas.width = maskW;
-      maskCanvas.height = maskH;
-
-      // Fill background
-      mCtx.fillStyle = bgColor;
-      mCtx.fillRect(0, 0, maskW, maskH);
-
-      // Draw word big
-      mCtx.font = shapeFont;
-      mCtx.fillStyle = '#000000';
-      mCtx.textBaseline = 'alphabetic';
-      mCtx.direction = shapeIsHebrew ? 'rtl' : 'ltr';
-      const textX = shapeIsHebrew ? maskW - padding : padding;
-      mCtx.fillText(word, textX, shapePx + padding * 0.6);
-
-      // Step 2: read mask pixels
-      const maskData = mCtx.getImageData(0, 0, maskW, maskH);
-      const mPx = maskData.data;
-
-      // Step 3: set up result canvas (scale up for fill chars)
-      const scale = fillFontSize;
-      const cols = Math.ceil(maskW / scale);
-      const rows = Math.ceil(maskH / scale);
-      const outW = cols * scale + 4;
-      const outH = rows * scale + 4;
+      const cell = 13;
+      const outW = cols * cell;
+      const artH = rows * cell;
+      const caption = captionInput.value.trim();
+      const capH = caption ? Math.max(56, Math.min(300, Math.round(outW * 0.09))) : 0;
+      const outH = artH + capH;
 
       const rCtx = resultCanvas.getContext('2d');
       resultCanvas.width = outW;
       resultCanvas.height = outH;
       if (!transparentBg.checked) {
-        rCtx.fillStyle = bgColor;
+        rCtx.fillStyle = '#787878';
         rCtx.fillRect(0, 0, outW, outH);
       }
 
-      // Always left-align and position chars by exact cell — avoids RTL direction bugs
-      rCtx.font = `${scale + 2}px "Noto Sans Hebrew", "FrankRuehl", "David", "Segoe UI", serif`;
+      rCtx.font = `${cell + 1}px ${HEBREW_FONT}`;
       rCtx.textBaseline = 'top';
       rCtx.textAlign = 'left';
-      rCtx.direction = 'ltr'; // force LTR so drawX is always the left edge of the char
+      rCtx.direction = 'ltr';
 
-      // Step 4: for each cell, check if mask pixel is dark (inside letter shape)
-      // For Hebrew fill text we iterate columns right-to-left so reading order is RTL
+      const hebrew = isHebrewFill();
       let textIndex = 0;
       const total = rows * cols;
       let done = 0;
@@ -1513,74 +1512,235 @@ import Layout from '../layouts/Layout.astro';
       await new Promise((resolve, reject) => {
         function processChunk() {
           try {
-            const end = Math.min(done + 800, total);
+            const end = Math.min(done + 1500, total);
             for (let i = done; i < end; i++) {
               const row = Math.floor(i / cols);
-              // Hebrew fill: iterate cols right→left so text reads RTL naturally
-              const col = isHebrew ? (cols - 1 - (i % cols)) : (i % cols);
+              const col = hebrew ? (cols - 1 - (i % cols)) : (i % cols);
+              const idx = (row * cols + col) * 4;
+              const r = px[idx], g = px[idx + 1], b = px[idx + 2];
 
-              // Sample center of this cell from the mask
-              const maskX = Math.min(col * scale + Math.floor(scale / 2), maskW - 1);
-              const maskY = Math.min(row * scale + Math.floor(scale / 2), maskH - 1);
-              const idx = (maskY * maskW + maskX) * 4;
-              const r = mPx[idx], g = mPx[idx + 1], b = mPx[idx + 2];
-              const brightness = (r + g + b) / 3;
-
-              // Only draw where the letter is dark (inside the shape)
-              if (brightness < 128) {
-                const char = currentText[textIndex % currentText.length];
-                // Always draw at the left edge of the cell
-                const drawX = col * scale + 1;
-                const drawY = row * scale + 1;
-                rCtx.fillStyle = fillColor;
-                rCtx.fillText(char, drawX, drawY);
-                textIndex++;
-              }
+              let color = `rgb(${r},${g},${b})`;
+              if (r > 250 && g > 250 && b > 250) color = 'rgb(0,0,0)';
+              const ch = currentText[textIndex % currentText.length];
+              textIndex++;
+              if (ch === ' ') continue;
+              rCtx.fillStyle = color;
+              rCtx.fillText(ch, col * cell, row * cell);
             }
             done = end;
-            progressFill.style.width = `${Math.round(done / total * 100)}%`;
-            progressText.textContent = `Processing... ${Math.round(done / total * 100)}%`;
+            const progress = Math.round((done / total) * 100);
+            progressFill.style.width = `${progress}%`;
+            progressText.textContent = `Drawing... ${progress}%`;
             if (done < total) {
-              setTimeout(processChunk, 0);
+              nextTick(processChunk);
             } else {
+              drawCaption(rCtx, outW, artH, capH, [17, 17, 17]);
               resolve();
             }
-          } catch (err) {
-            reject(err);
-          }
+          } catch (err) { reject(err); }
         }
         processChunk();
       });
     }
 
-    function resizeImage(img) {
-      return new Promise((resolve) => {
-        const maxWidth = 300;
-        const maxHeight = 400;
-        
-        let width = img.naturalWidth;
-        let height = img.naturalHeight;
-        
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round(height * (maxWidth / width));
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round(width * (maxHeight / height));
-            height = maxHeight;
-          }
+    // ————— Photo overlay: replace one color with text, keep the rest —————
+    async function processColorReplace() {
+      const sampleW = Math.min(currentImage.naturalWidth, 300);
+      const sampleH = Math.round(sampleW * currentImage.naturalHeight / currentImage.naturalWidth);
+
+      const pCtx = processCanvas.getContext('2d', { willReadFrequently: true });
+      processCanvas.width = sampleW;
+      processCanvas.height = sampleH;
+      pCtx.drawImage(currentImage, 0, 0, sampleW, sampleH);
+      const pixels = pCtx.getImageData(0, 0, sampleW, sampleH).data;
+
+      const outputWidth = currentImage.naturalWidth;
+      const outputHeight = currentImage.naturalHeight;
+      const rCtx = resultCanvas.getContext('2d');
+      resultCanvas.width = outputWidth;
+      resultCanvas.height = outputHeight;
+      rCtx.drawImage(currentImage, 0, 0, outputWidth, outputHeight);
+
+      const tHex = targetColorPicker.value;
+      const crTargetR = parseInt(tHex.slice(1, 3), 16);
+      const crTargetG = parseInt(tHex.slice(3, 5), 16);
+      const crTargetB = parseInt(tHex.slice(5, 7), 16);
+      const crTol = parseInt(toleranceSlider.value);
+
+      const scaleX = outputWidth / sampleW;
+      const scaleY = outputHeight / sampleH;
+      const fontSize = 7;
+
+      rCtx.font = `${fontSize}px ${HEBREW_FONT}`;
+      rCtx.textAlign = 'left';
+      rCtx.textBaseline = 'top';
+      rCtx.direction = 'ltr';
+
+      const colCount = Math.ceil(outputWidth / fontSize);
+      const total = Math.ceil(outputHeight / fontSize) * colCount;
+      let textIndex = 0;
+      let done = 0;
+
+      await new Promise((resolve, reject) => {
+        function processChunk() {
+          try {
+            const end = Math.min(done + 1500, total);
+            for (let i = done; i < end; i++) {
+              const row = Math.floor(i / colCount);
+              const col = i % colCount;
+              const drawX = col * fontSize;
+              const drawY = row * fontSize;
+              const sampleX = Math.floor(drawX / scaleX);
+              const sampleY = Math.floor(drawY / scaleY);
+              if (sampleX >= sampleW || sampleY >= sampleH) continue;
+
+              const pixelIndex = (sampleY * sampleW + sampleX) * 4;
+              const r = pixels[pixelIndex];
+              const g = pixels[pixelIndex + 1];
+              const b = pixels[pixelIndex + 2];
+
+              const dist = Math.sqrt(
+                (r - crTargetR) ** 2 + (g - crTargetG) ** 2 + (b - crTargetB) ** 2
+              );
+              if (dist <= crTol) {
+                const darkR = Math.floor(r * 0.6);
+                const darkG = Math.floor(g * 0.6);
+                const darkB = Math.floor(b * 0.6);
+                rCtx.fillStyle = `rgb(${darkR},${darkG},${darkB})`;
+                const ch = currentText[textIndex % currentText.length];
+                rCtx.fillText(ch, drawX, drawY);
+                textIndex++;
+              }
+            }
+            done = end;
+            const progress = Math.round((done / total) * 100);
+            progressFill.style.width = `${progress}%`;
+            progressText.textContent = `Drawing... ${progress}%`;
+            if (done < total) nextTick(processChunk);
+            else resolve();
+          } catch (err) { reject(err); }
         }
-        
-        resolve({ width, height });
+        processChunk();
+      });
+    }
+
+    // ————— Word shape engine —————
+    async function processShape() {
+      const preset = STYLE_PRESETS[activeStyle];
+      const word = shapeWord.value.trim();
+      const density = parseInt(densitySlider.value);
+      const fillFontSize = density <= 4 ? 8 : density <= 7 ? 10 : 12;
+      const shapePx = parseInt(shapeFontSize.value);
+      const padding = 40;
+
+      const monoStyle = preset.mode === 'mono';
+      const paperColor = monoStyle ? preset.paper : '#ffffff';
+      const [ir, ig, ib] = monoStyle ? preset.ink : [26, 26, 46];
+
+      const fillHebrew = isHebrewFill();
+      const shapeIsHebrew = /[א-ת]/.test(word);
+
+      // Step 1: render the shape word onto a mask canvas
+      const maskCanvas = document.createElement('canvas');
+      const mCtx = maskCanvas.getContext('2d');
+      const shapeFont = shapeIsHebrew
+        ? `bold ${shapePx}px ${HEBREW_FONT}`
+        : `bold ${shapePx}px "Frank Ruhl Libre", "Georgia", serif`;
+      mCtx.font = shapeFont;
+      const measured = mCtx.measureText(word);
+      const maskW = Math.ceil(measured.width) + padding * 2;
+      const maskH = shapePx + padding * 2;
+      maskCanvas.width = maskW;
+      maskCanvas.height = maskH;
+
+      mCtx.fillStyle = '#ffffff';
+      mCtx.fillRect(0, 0, maskW, maskH);
+      mCtx.font = shapeFont;
+      mCtx.fillStyle = '#000000';
+      mCtx.textBaseline = 'alphabetic';
+      mCtx.direction = shapeIsHebrew ? 'rtl' : 'ltr';
+      const textX = shapeIsHebrew ? maskW - padding : padding;
+      mCtx.fillText(word, textX, shapePx + padding * 0.6);
+
+      const maskData = mCtx.getImageData(0, 0, maskW, maskH);
+      const mPx = maskData.data;
+
+      // Step 2: result canvas
+      const scale = fillFontSize;
+      const cols = Math.ceil(maskW / scale);
+      const rows = Math.ceil(maskH / scale);
+      const outW = cols * scale + 4;
+      const artH = rows * scale + 4;
+      const caption = captionInput.value.trim();
+      const capH = caption ? Math.max(56, Math.min(300, Math.round(outW * 0.09))) : 0;
+      const outH = artH + capH;
+
+      const rCtx = resultCanvas.getContext('2d');
+      resultCanvas.width = outW;
+      resultCanvas.height = outH;
+      if (!transparentBg.checked) {
+        rCtx.fillStyle = paperColor;
+        rCtx.fillRect(0, 0, outW, outH);
+        rCtx.fillStyle = preset.invert ? 'rgba(255,240,200,0.02)' : 'rgba(80,55,20,0.025)';
+        for (let i = 0; i < 250; i++) {
+          rCtx.fillRect(Math.random() * outW, Math.random() * outH, 1 + Math.random() * 3, 1 + Math.random() * 3);
+        }
+      }
+
+      rCtx.textBaseline = 'top';
+      rCtx.textAlign = 'left';
+      rCtx.direction = 'ltr';
+
+      let textIndex = 0;
+      const total = rows * cols;
+      let done = 0;
+      let lastFont = '';
+
+      await new Promise((resolve, reject) => {
+        function processChunk() {
+          try {
+            const end = Math.min(done + 800, total);
+            for (let i = done; i < end; i++) {
+              const row = Math.floor(i / cols);
+              const col = fillHebrew ? (cols - 1 - (i % cols)) : (i % cols);
+
+              const maskX = Math.min(col * scale + Math.floor(scale / 2), maskW - 1);
+              const maskY = Math.min(row * scale + Math.floor(scale / 2), maskH - 1);
+              const idx = (maskY * maskW + maskX) * 4;
+              const brightness = (mPx[idx] + mPx[idx + 1] + mPx[idx + 2]) / 3;
+
+              if (brightness < 128) {
+                const ch = currentText[textIndex % currentText.length];
+                textIndex++;
+                if (ch === ' ') continue;
+                // Organic scribal variation instead of uniform stamped letters
+                const size = Math.round((scale + 1.5 + (Math.random() * 2 - 1)) * 2) / 2;
+                const alpha = 0.78 + Math.random() * 0.22;
+                const font = `${size}px ${HEBREW_FONT}`;
+                if (font !== lastFont) { rCtx.font = font; lastFont = font; }
+                rCtx.fillStyle = `rgba(${ir},${ig},${ib},${alpha.toFixed(3)})`;
+                rCtx.fillText(ch, col * scale + 1 + (Math.random() - 0.5), row * scale + 1 + (Math.random() - 0.5));
+              }
+            }
+            done = end;
+            progressFill.style.width = `${Math.round(done / total * 100)}%`;
+            progressText.textContent = `Drawing... ${Math.round(done / total * 100)}%`;
+            if (done < total) {
+              nextTick(processChunk);
+            } else {
+              drawCaption(rCtx, outW, artH, capH, monoStyle ? preset.ink : [26, 26, 46]);
+              resolve();
+            }
+          } catch (err) { reject(err); }
+        }
+        processChunk();
       });
     }
 
     function downloadResult() {
       const link = document.createElement('a');
       link.download = `micrography-${Date.now()}.png`;
-      link.href = resultCanvas.toDataURL('image/png'); // always PNG to preserve transparency
+      link.href = resultCanvas.toDataURL('image/png');
       link.click();
     }
 
@@ -1593,7 +1753,6 @@ import Layout from '../layouts/Layout.astro';
       errorMessage.classList.remove('visible');
     }
 
-    // Toggle checkerboard preview when transparent option changes
     transparentBg.addEventListener('change', () => {
       canvasContainer.classList.toggle('transparent-preview', transparentBg.checked);
     });
@@ -1607,7 +1766,6 @@ import Layout from '../layouts/Layout.astro';
       toleranceValue.textContent = toleranceSlider.value;
     });
 
-    // Sync color picker ↔ hex input
     targetColorPicker.addEventListener('input', () => {
       targetColorHex.value = targetColorPicker.value;
     });
@@ -1617,7 +1775,6 @@ import Layout from '../layouts/Layout.astro';
       }
     });
 
-    // Eyedropper: use native EyeDropper API if available, else click-on-image
     eyedropperBtn.addEventListener('click', async () => {
       if (window.EyeDropper) {
         try {
@@ -1628,21 +1785,18 @@ import Layout from '../layouts/Layout.astro';
         } catch {}
       } else {
         colorReplacePreview.textContent = 'Eyedropper not supported — click directly on the image preview to pick a color';
-        colorReplacePanel.dataset.pickMode = '1';
       }
     });
 
-    // Click-on-image-preview to sample color
     imagePreview.addEventListener('click', (e) => {
       if (!currentImage) return;
-      const img = imagePreview.querySelector('img') || imagePreview.querySelector('canvas');
+      const img = imagePreview.querySelector('img');
       if (!img) return;
       const rect = img.getBoundingClientRect();
       const scaleX = currentImage.naturalWidth / rect.width;
       const scaleY = currentImage.naturalHeight / rect.height;
       const px = Math.floor((e.clientX - rect.left) * scaleX);
       const py = Math.floor((e.clientY - rect.top) * scaleY);
-      // Draw to temp canvas to sample pixel
       const tc = document.createElement('canvas');
       tc.width = currentImage.naturalWidth;
       tc.height = currentImage.naturalHeight;
@@ -1653,14 +1807,15 @@ import Layout from '../layouts/Layout.astro';
       targetColorPicker.value = hex;
       targetColorHex.value = hex;
       colorReplacePreview.textContent = `Sampled: ${hex} at (${px}, ${py})`;
-      colorReplacePanel.dataset.pickMode = '0';
       if (!enableColorReplace.checked) {
         enableColorReplace.checked = true;
         colorReplacePanel.style.display = '';
+        document.querySelector('details.advanced').open = true;
       }
     });
 
-    // Load sample reference on page load
+    // Default reference
     textRef.value = 'Genesis 1:1-5';
+
   </script>
 </Layout>
