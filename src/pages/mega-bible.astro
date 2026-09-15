@@ -439,26 +439,48 @@ body:has(.mb-page) > footer { display:none!important; }
   color:var(--modern); padding:.1rem .4rem; white-space:nowrap;
 }
 
-/* Biblical → Modern Hebrew section under a verse */
+/* Biblical → Modern Hebrew section under a verse. Collapsed by default, and
+   each entry collapses on its own — a verse can carry a dozen of these, so
+   opened they'd bury the text they annotate. */
 .verse-modern {
   margin-top:.5rem; padding:.6rem .8rem;
   background:var(--surface); border:1px solid var(--border);
   border-left:2px solid var(--modern-dim); direction:ltr;
 }
+.verse-modern > summary,
 .verse-modern-hdr {
   font-family:var(--sc); font-size:.5rem; letter-spacing:.18em; text-transform:uppercase;
-  color:var(--modern); margin-bottom:.45rem;
+  color:var(--modern);
 }
-.modern-entry { margin-bottom:.75rem; }
-.modern-entry:last-child { margin-bottom:0; }
+.verse-modern > summary { cursor:pointer; list-style:none; transition:color .12s; }
+.verse-modern > summary::-webkit-details-marker { display:none; }
+.verse-modern > summary::before { content:'\25B8\00a0'; }
+.verse-modern[open] > summary::before { content:'\25BE\00a0'; }
+.verse-modern > summary:hover { color:var(--text); }
+.verse-modern[open] > summary { margin-bottom:.5rem; }
+
+.modern-entry { border-top:1px solid var(--border); margin-top:.4rem; padding-top:.4rem; }
+.modern-entry:first-of-type { border-top:none; margin-top:0; padding-top:0; }
+.modern-entry > summary {
+  cursor:pointer; list-style:none;
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:.1rem .5rem;
+}
+.modern-entry > summary::-webkit-details-marker { display:none; }
+.modern-entry > summary::before {
+  content:'\25B8'; color:var(--modern); font-size:.55rem; flex-shrink:0;
+}
+.modern-entry[open] > summary::before { content:'\25BE'; }
+.modern-entry[open] > summary { margin-bottom:.35rem; }
+.modern-entry .m-body-wrap { padding-left:.85rem; }
 .modern-entry .m-heb {
   font-family:var(--heb); font-size:1.05rem; direction:rtl; text-align:right;
   color:var(--modern); line-height:1.7;
 }
 .modern-entry .m-kind {
   font-family:var(--sc); font-size:.55rem; letter-spacing:.15em; text-transform:uppercase;
-  color:var(--modern); display:block; margin-bottom:.25rem;
+  color:var(--modern);
 }
+.modern-entry > summary:hover .m-kind { color:var(--text); }
 .modern-entry .m-body {
   font-family:var(--display); font-size:.82rem; color:var(--text);
   line-height:1.6; margin:0 0 .3rem;
@@ -2147,21 +2169,27 @@ function modernLinkLabel(url: string, i: number): string {
 // sources[] and urls[] are independent lists on these rows — a url is not
 // guaranteed to belong to the source at the same index, so they render as two
 // separate lines rather than being zipped into linked source names.
-function modernEntryHtml(m: any): string {
+// `open` is for the word-detail panel, where you clicked a specific word and
+// want its note straight away; the per-verse list stays collapsed.
+function modernEntryHtml(m: any, open = false): string {
   const srcs = (Array.isArray(m.sources) ? m.sources : [m.sources]).filter(Boolean);
   const urls = (Array.isArray(m.urls) ? m.urls : [m.urls]).filter(Boolean);
   const links = urls.map((u: string, i: number) =>
     `<a href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(modernLinkLabel(u, i))}</a>`
   ).join(' · ');
   return `
-    <div class="modern-entry">
-      ${m.words ? `<div class="m-heb">${escHtml(m.words)}</div>` : ''}
-      <span class="m-kind">${escHtml(modernKind(m.literary_device))}</span>
-      ${m.comments  ? `<p class="m-body">${escHtml(m.comments)}</p>` : ''}
-      ${m.questions ? `<p class="m-q"><span class="m-lbl">Open question</span>${escHtml(m.questions)}</p>` : ''}
-      ${srcs.length ? `<div class="m-meta"><span class="m-lbl">Sources</span>${escHtml(srcs.join('; '))}</div>` : ''}
-      ${links       ? `<div class="m-meta"><span class="m-lbl">Links</span>${links}</div>` : ''}
-    </div>`;
+    <details class="modern-entry"${open ? ' open' : ''}>
+      <summary>
+        ${m.words ? `<span class="m-heb">${escHtml(m.words)}</span>` : ''}
+        <span class="m-kind">${escHtml(modernKind(m.literary_device))}</span>
+      </summary>
+      <div class="m-body-wrap">
+        ${m.comments  ? `<p class="m-body">${escHtml(m.comments)}</p>` : ''}
+        ${m.questions ? `<p class="m-q"><span class="m-lbl">Open question</span>${escHtml(m.questions)}</p>` : ''}
+        ${srcs.length ? `<div class="m-meta"><span class="m-lbl">Sources</span>${escHtml(srcs.join('; '))}</div>` : ''}
+        ${links       ? `<div class="m-meta"><span class="m-lbl">Links</span>${links}</div>` : ''}
+      </div>
+    </details>`;
 }
 
 // ── Hebrew text normalization & cross-version matching ─────────────────────
@@ -3235,10 +3263,10 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
 
   // Biblical → Modern Hebrew — what these words went on to do after the Bible.
   if (modern.length) {
-    const modernEl = document.createElement('div');
+    const modernEl = document.createElement('details');
     modernEl.className = 'verse-modern';
-    modernEl.innerHTML = `<div class="verse-modern-hdr">Biblical → Modern Hebrew</div>`
-      + modern.map(modernEntryHtml).join('');
+    modernEl.innerHTML = `<summary>Biblical → Modern Hebrew · ${modern.length}</summary>`
+      + modern.map(m => modernEntryHtml(m)).join('');
     block.appendChild(modernEl);
   }
 
@@ -3381,7 +3409,7 @@ function showDetail(text: string, lemma: string, morph: string, devices: any[], 
     html += `<div class="mb-detail-devices"><strong style="color:var(--muted)">Device:</strong> ${devHtml}</div>`;
   }
   if (modernEntries.length) {
-    html += `<div class="mb-detail-modern"><div class="sb-title">Biblical → Modern Hebrew</div>${modernEntries.map(modernEntryHtml).join('')}</div>`;
+    html += `<div class="mb-detail-modern"><div class="sb-title">Biblical → Modern Hebrew</div>${modernEntries.map(m => modernEntryHtml(m, true)).join('')}</div>`;
   }
   if (graetzEntries.length) {
     html += `<div class="mb-detail-emend"><div class="sb-title">Emendations</div>${graetzEntries.map(graetzEntryHtml).join('')}</div>`;
