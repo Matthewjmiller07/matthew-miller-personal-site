@@ -4,7 +4,7 @@ import Layout from '../layouts/Layout.astro';
 
 <Layout
   title="Mega Bible"
-  description="Unified Hebrew Bible reader with morphology, literary devices, and haftarah annotations."
+  description="Unified Hebrew Bible reader with morphology, literary devices, Biblical→Modern Hebrew usage from Ma’agarim, and haftarah annotations."
 >
 
 <style is:global>
@@ -18,6 +18,7 @@ body:has(.mb-page) > footer { display:none!important; }
   --border:rgba(201,162,87,.15); --border-hi:rgba(201,162,87,.4);
   --text:#e8d4aa; --muted:#8a7a5a; --faint:#3a3020;
   --gold:#c9a257; --gold-dim:rgba(201,162,87,.6);
+  --modern:#79b8a4; --modern-dim:rgba(121,184,164,.45);
   --heb:'Noto Serif Hebrew','Frank Ruhl Libre',serif;
   --display:'Cormorant Garamond',Georgia,serif;
   --sc:'Cormorant SC',Georgia,serif;
@@ -422,6 +423,64 @@ body:has(.mb-page) > footer { display:none!important; }
 .mb-page.no-haftarah .haftarah-section { display:none; }
 .mb-page.no-haftarah .haftarah-banner { display:none; }
 
+/* Modern Hebrew (Ma’agarim) word tie-in — a dotted rule ABOVE the word, so a
+   word can carry a device underline, a Graetz wavy underline and this at once. */
+.w.has-modern {
+  border-top:2px dotted var(--modern);
+  background:rgba(121,184,164,.10);
+}
+.mb-page.no-modern .w.has-modern { border-top-color:transparent; background:transparent; }
+.mb-page.no-modern .modern-badge { display:none; }
+.mb-page.no-modern .verse-modern { display:none; }
+
+.modern-badge {
+  font-family:var(--sc); font-size:.48rem; letter-spacing:.1em;
+  background:rgba(121,184,164,.12); border:1px solid var(--modern-dim);
+  color:var(--modern); padding:.1rem .4rem; white-space:nowrap;
+}
+
+/* Biblical → Modern Hebrew section under a verse */
+.verse-modern {
+  margin-top:.5rem; padding:.6rem .8rem;
+  background:var(--surface); border:1px solid var(--border);
+  border-left:2px solid var(--modern-dim); direction:ltr;
+}
+.verse-modern-hdr {
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--modern); margin-bottom:.45rem;
+}
+.modern-entry { margin-bottom:.75rem; }
+.modern-entry:last-child { margin-bottom:0; }
+.modern-entry .m-heb {
+  font-family:var(--heb); font-size:1.05rem; direction:rtl; text-align:right;
+  color:var(--modern); line-height:1.7;
+}
+.modern-entry .m-kind {
+  font-family:var(--sc); font-size:.55rem; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--modern); display:block; margin-bottom:.25rem;
+}
+.modern-entry .m-body {
+  font-family:var(--display); font-size:.82rem; color:var(--text);
+  line-height:1.6; margin:0 0 .3rem;
+}
+.modern-entry .m-q {
+  font-family:var(--display); font-size:.75rem; font-style:italic; color:var(--muted);
+  line-height:1.55; margin:0 0 .3rem;
+}
+.modern-entry .m-meta {
+  font-family:var(--display); font-size:.72rem; color:var(--muted); line-height:1.55;
+}
+.modern-entry .m-lbl {
+  font-family:var(--sc); font-size:.48rem; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--faint); margin-right:.35rem;
+}
+.modern-entry a { color:var(--modern); }
+.mb-detail-modern { grid-column:1/-1; }
+.mb-detail-modern .sb-title {
+  font-family:var(--sc); font-size:.55rem; letter-spacing:.25em;
+  color:var(--modern); text-transform:uppercase;
+}
+
 /* Device underline: applied inline as CSS variable */
 .w.has-dev {
   border-bottom-color:var(--dev-color);
@@ -801,6 +860,10 @@ body:has(.mb-page) > footer { display:none!important; }
           <label for="layerDevices">Literary Devices</label>
         </div>
         <div class="sb-row">
+          <input type="checkbox" id="layerModern" checked>
+          <label for="layerModern" title="Biblical → Modern Hebrew usage notes traced through Ma’agarim (Historical Dictionary Project)">Modern Hebrew</label>
+        </div>
+        <div class="sb-row">
           <input type="checkbox" id="layerHaftarah" checked>
           <label for="layerHaftarah">Haftarah</label>
         </div>
@@ -856,6 +919,10 @@ body:has(.mb-page) > footer { display:none!important; }
 
       <div class="sb-section">
         <div class="sb-title">Recently Added</div>
+        <div class="sb-recent-item">
+          <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Sep 15</span></div>
+          <span class="sb-recent-text">New "Modern Hebrew" layer: Biblical → Modern Hebrew usage notes traced through Ma’agarim mark the words they cover with a dotted rule and get their own section under the verse (Genesis 1 so far)</span>
+        </div>
         <div class="sb-recent-item">
           <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Jul 26</span></div>
           <span class="sb-recent-text">Personal notes now show up in their own "My Notes" section under a verse and in the All Devices browser, kept separate from the literary-device annotations</span>
@@ -1381,6 +1448,7 @@ haftParshasel.addEventListener('change', updateLoadBtn);
 const LAYER_PARAMS: Array<[string, string]> = [
   ['layerMorph', 'lmorph'], ['layerDevices', 'ldev'],
   ['layerHaftarah', 'lhaft'], ['layerGraetz', 'lgraetz'],
+  ['layerModern', 'lmodern'],
   ['posNoun', 'pnoun'], ['posVerb', 'pverb'],
   ['posProper', 'pproper'], ['posAdverb', 'padverb'],
 ];
@@ -1556,6 +1624,7 @@ setupLayerToggle('layerMorph',    'no-morph');
 setupLayerToggle('layerDevices',  'no-devices');
 setupLayerToggle('layerHaftarah', 'no-haftarah');
 setupLayerToggle('layerGraetz',   'no-graetz');
+setupLayerToggle('layerModern',   'no-modern');
 setupLayerToggle('posNoun',   'no-pos-noun');
 setupLayerToggle('posVerb',   'no-pos-verb');
 setupLayerToggle('posProper', 'no-pos-proper');
@@ -2023,6 +2092,78 @@ async function fetchDevices(book: string): Promise<any[]> {
   } catch { return []; }
 }
 
+
+// ── Biblical → Modern Hebrew (Ma’agarim) ────────────────────────────
+// These usage notes live in the Tanakh Annotations table rather than
+// literary_bible: they describe what a biblical word or construction did
+// *after* the Bible (post-1800 attestations in the Academy of the Hebrew
+// Language's historical corpus), so they are a separate layer from the
+// literary devices, not another device. They are tagged by a
+// "Biblical → Modern Hebrew: <kind>" prefix in the literary_device column.
+const MODERN_TABLE  = 'Tanakh Annotations';
+const MODERN_PREFIX = /^Biblical\s*(?:→|->)\s*Modern Hebrew\s*:?\s*/i;
+const modernCache = new Map<string, any[]>();
+
+async function fetchModern(book: string): Promise<any[]> {
+  if (modernCache.has(book)) return modernCache.get(book)!;
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  let rows: any[] = [];
+  try {
+    // No spaces in the ilike pattern — a literal "Biblical*Modern Hebrew*" would
+    // have to survive form-decoding on the way to PostgREST.
+    const query = 'select=book,chapter,verse,literary_device,words,sources,urls,comments,questions'
+      + `&book=eq.${encodeURIComponent(book)}`
+      + '&literary_device=ilike.Biblical*Modern*Hebrew*'
+      + '&order=chapter,verse,id';
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/${encodeURIComponent(MODERN_TABLE)}?${query}`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (r.ok) {
+      const raw = await r.json();
+      rows = Array.isArray(raw) ? raw.filter((x: any) => MODERN_PREFIX.test(x.literary_device || '')) : [];
+    }
+  } catch { rows = []; }
+  modernCache.set(book, rows);
+  return rows;
+}
+
+function escHtml(s: any): string {
+  return String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c] as string));
+}
+
+// "Biblical → Modern Hebrew: lexical continuity …" → "lexical continuity …"
+function modernKind(device: string): string {
+  return (device || '').replace(MODERN_PREFIX, '').trim() || 'usage';
+}
+
+function modernLinkLabel(url: string, i: number): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    return `${host.includes('hebrew-academy') ? 'Ma’agarim' : host} ${i + 1}`;
+  } catch { return `Link ${i + 1}`; }
+}
+
+// sources[] and urls[] are independent lists on these rows — a url is not
+// guaranteed to belong to the source at the same index, so they render as two
+// separate lines rather than being zipped into linked source names.
+function modernEntryHtml(m: any): string {
+  const srcs = (Array.isArray(m.sources) ? m.sources : [m.sources]).filter(Boolean);
+  const urls = (Array.isArray(m.urls) ? m.urls : [m.urls]).filter(Boolean);
+  const links = urls.map((u: string, i: number) =>
+    `<a href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(modernLinkLabel(u, i))}</a>`
+  ).join(' · ');
+  return `
+    <div class="modern-entry">
+      ${m.words ? `<div class="m-heb">${escHtml(m.words)}</div>` : ''}
+      <span class="m-kind">${escHtml(modernKind(m.literary_device))}</span>
+      ${m.comments  ? `<p class="m-body">${escHtml(m.comments)}</p>` : ''}
+      ${m.questions ? `<p class="m-q"><span class="m-lbl">Open question</span>${escHtml(m.questions)}</p>` : ''}
+      ${srcs.length ? `<div class="m-meta"><span class="m-lbl">Sources</span>${escHtml(srcs.join('; '))}</div>` : ''}
+      ${links       ? `<div class="m-meta"><span class="m-lbl">Links</span>${links}</div>` : ''}
+    </div>`;
+}
+
 // ── Hebrew text normalization & cross-version matching ─────────────────────
 // The word-level Hebrew text comes from the local OSHB/WLC XML, which is a
 // *different* underlying edition than whatever Sefaria version a literary
@@ -2306,9 +2447,10 @@ async function renderRange(
   setStatus('');
 
   try {
-    const [xmlDoc, devices, getVerseText] = await Promise.all([
+    const [xmlDoc, devices, modern, getVerseText] = await Promise.all([
       fetchXml(book),
       fetchDevices(book),
+      fetchModern(book),
       loadSelectedTranslationsForBook(book),
     ]);
     populateSefariaVersions(book);
@@ -2401,8 +2543,11 @@ async function renderRange(
         const verseDevices = devices.filter(
           d => String(d.chapter) === String(ch) && String(d.verse) === String(vNum)
         );
+        const verseModern = modern.filter(
+          m => String(m.chapter) === String(ch) && String(m.verse) === String(vNum)
+        );
         const translations = getVerseText(ch, vNum);
-        const block = buildVerseBlock(verseNode, book, ch, vNum, verseDevices, translations);
+        const block = buildVerseBlock(verseNode, book, ch, vNum, verseDevices, translations, verseModern);
         verseBlocks.push(block);
         verseCount++;
       }
@@ -2882,7 +3027,7 @@ function buildHaftarahViz(parsha: string): HTMLElement {
 }
 
 // ── Verse block builder ────────────────────────────────────────────────────
-function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number, devices: any[], translations: {label: string, text: string}[] = []) {
+function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number, devices: any[], translations: {label: string, text: string}[] = [], modern: any[] = []) {
   const block = document.createElement('div');
   block.className = 'verse-block';
   block.dataset.verseRef = `${book} ${ch}:${v}`;
@@ -2912,6 +3057,16 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
       badgesRow.appendChild(badge);
     });
     ref.appendChild(badgesRow);
+  }
+
+  // Modern Hebrew badge — overview of the verse's Ma’agarim usage notes
+  // (individual words tied to an entry get a dotted rule below).
+  if (modern.length) {
+    const badge = document.createElement('span');
+    badge.className = 'modern-badge';
+    badge.textContent = modern.length === 1 ? 'Modern Hebrew' : `Modern Hebrew ×${modern.length}`;
+    badge.title = modern.map(m => modernKind(m.literary_device)).join(' · ');
+    ref.appendChild(badge);
   }
 
   // Haftarah badges (Nevi'im)
@@ -2957,6 +3112,7 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
   const verseWordsNorm = words.map(wordEl => normalizeConsonants(wordEl.textContent || ''));
   const deviceSpans = matchPhraseSpans(verseWordsNorm, devices, d => d.words);
   const graetzSpans  = matchPhraseSpans(verseWordsNorm, gEntries, e => e.mt);
+  const modernSpans  = matchPhraseSpans(verseWordsNorm, modern, m => m.words);
 
   words.forEach((wordEl, i) => {
     const rawText = wordEl.textContent || '';
@@ -2970,6 +3126,7 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
 
     const matchedDevices = deviceSpans.get(i) || [];
     const matchedGraetz  = graetzSpans.get(i) || [];
+    const matchedModern  = modernSpans.get(i) || [];
 
     // Split by Lemma: render each prefix/root/suffix morpheme as its own
     // clickable, independently-colored sub-span inside the shared wrapper.
@@ -2986,7 +3143,7 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
         if (seg.morph) segSpan.title = seg.morph;
         segSpan.addEventListener('click', (e) => {
           e.stopPropagation();
-          showDetail(seg.text, seg.lemma, seg.morph, matchedDevices, matchedGraetz);
+          showDetail(seg.text, seg.lemma, seg.morph, matchedDevices, matchedGraetz, matchedModern);
         });
         span.appendChild(segSpan);
         codeParts.push({ morph: seg.morph, posClasses });
@@ -2999,7 +3156,7 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
       posClasses.forEach(c => span.classList.add(c));
       span.addEventListener('click', (e) => {
         e.stopPropagation();
-        showDetail(text, lemma, morph, matchedDevices, matchedGraetz);
+        showDetail(text, lemma, morph, matchedDevices, matchedGraetz, matchedModern);
       });
       const wordCode = morphCodeGroupEl([{ morph, posClasses }]);
       if (wordCode) span.appendChild(wordCode);
@@ -3019,6 +3176,13 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
       const names = matchedDevices.map(d => d.device?.toLowerCase() || '').filter(Boolean);
       span.dataset.devices = names.join(',');
       names.forEach(n => allDeviceNames.add(n));
+    }
+
+    // Modern Hebrew (Ma’agarim) match
+    if (matchedModern.length) {
+      span.classList.add('has-modern');
+      span.title = (span.title ? span.title + ' · ' : '')
+        + matchedModern.map((m: any) => modernKind(m.literary_device)).join(' · ');
     }
 
     // Emendation (Graetz) match
@@ -3067,6 +3231,15 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
       fn.innerHTML += `<span class="fn-device" style="color:${color}">${d.device}</span>${srcs ? '(' + srcs + ')' : ''}${d.notes ? ' — ' + d.notes : ''}<br>`;
     });
     block.appendChild(fn);
+  }
+
+  // Biblical → Modern Hebrew — what these words went on to do after the Bible.
+  if (modern.length) {
+    const modernEl = document.createElement('div');
+    modernEl.className = 'verse-modern';
+    modernEl.innerHTML = `<div class="verse-modern-hdr">Biblical → Modern Hebrew</div>`
+      + modern.map(modernEntryHtml).join('');
+    block.appendChild(modernEl);
   }
 
   // My Notes — personal notes, kept out of the literary-device apparatus above
@@ -3132,6 +3305,7 @@ async function buildHaftarahSection(parsha: string): Promise<HTMLElement> {
       if (!xmlDoc) continue;
       const bookCode = BOOK_XML[book];
       const bookDevices = await fetchDevices(book);
+      const bookModern  = await fetchModern(book);
 
       for (const {ch, v} of verseRefs) {
         const chId = `${bookCode}.${ch}`;
@@ -3145,7 +3319,8 @@ async function buildHaftarahSection(parsha: string): Promise<HTMLElement> {
         });
         if (!verseNode) continue;
         const vDevices = bookDevices.filter(d => String(d.chapter) === String(ch) && String(d.verse) === String(v));
-        section.appendChild(buildVerseBlock(verseNode, book, ch, v, vDevices));
+        const vModern  = bookModern.filter(m => String(m.chapter) === String(ch) && String(m.verse) === String(v));
+        section.appendChild(buildVerseBlock(verseNode, book, ch, v, vDevices, [], vModern));
       }
     }
   }
@@ -3178,7 +3353,7 @@ function showGraetzDetail(verseKey: string, entries: any[]) {
   detailPanel.classList.add('open');
 }
 
-function showDetail(text: string, lemma: string, morph: string, devices: any[], graetzEntries: any[] = []) {
+function showDetail(text: string, lemma: string, morph: string, devices: any[], graetzEntries: any[] = [], modernEntries: any[] = []) {
   detailWord.textContent = text;
 
   const lemmaId = `H${lemma.replace(/\D/g, '')}`;
@@ -3204,6 +3379,9 @@ function showDetail(text: string, lemma: string, morph: string, devices: any[], 
       return `<span style="color:${color};font-weight:600">${d.device}</span>`;
     }).join(' · ');
     html += `<div class="mb-detail-devices"><strong style="color:var(--muted)">Device:</strong> ${devHtml}</div>`;
+  }
+  if (modernEntries.length) {
+    html += `<div class="mb-detail-modern"><div class="sb-title">Biblical → Modern Hebrew</div>${modernEntries.map(modernEntryHtml).join('')}</div>`;
   }
   if (graetzEntries.length) {
     html += `<div class="mb-detail-emend"><div class="sb-title">Emendations</div>${graetzEntries.map(graetzEntryHtml).join('')}</div>`;

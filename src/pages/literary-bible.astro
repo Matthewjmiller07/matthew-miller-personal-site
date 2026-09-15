@@ -4,7 +4,7 @@ import Layout from '../layouts/Layout.astro';
 
 <Layout
   title="Literary Bible"
-  description="Explore literary devices in the Hebrew Bible — color-coded verses with device annotations pulled from Supabase, and live text from the Sefaria API."
+  description="Explore literary devices in the Hebrew Bible — color-coded verses with device annotations pulled from Supabase, Biblical→Modern Hebrew usage notes from Ma’agarim, and live text from the Sefaria API."
 >
 
 <style is:global>
@@ -27,6 +27,8 @@ import Layout from '../layouts/Layout.astro';
     --lb-faint:        #4a4030;
     --lb-gold:         #c9a257;
     --lb-gold-dim:     rgba(201,162,87,0.65);
+    --lb-modern:       #79b8a4;
+    --lb-modern-dim:   rgba(121,184,164,0.35);
     --lb-display:      'Cormorant Garamond', Georgia, serif;
     --lb-sc:           'Cormorant SC', Georgia, serif;
     --lb-mono:         'JetBrains Mono', monospace;
@@ -160,6 +162,7 @@ import Layout from '../layouts/Layout.astro';
   /* ── Mode tabs ── */
   .lb-tabs {
     display: flex;
+    flex-wrap: wrap;
     border-bottom: 1px solid var(--lb-border);
     margin-bottom: 1.75rem;
     animation: lbUp 0.9s 0.13s ease both;
@@ -191,16 +194,8 @@ import Layout from '../layouts/Layout.astro';
     transform-origin: left;
   }
 
-  /* Active state driven by Tailwind classes the JS adds */
-  .lb-page .lb-tab.active,
-  .lb-page .lb-tab.bg-indigo-500 {
-    color: var(--lb-gold) !important;
-  }
-  .lb-page .lb-tab.active::after,
-  .lb-page .lb-tab.bg-indigo-500::after { transform: scaleX(1); }
-  .lb-page .lb-tab.bg-indigo-500 { background: none !important; }
-  .lb-page .lb-tab.text-indigo-400 { color: var(--lb-muted) !important; }
-  .lb-page .lb-tab.text-white { color: var(--lb-gold) !important; }
+  .lb-page .lb-tab.active { color: var(--lb-gold) !important; }
+  .lb-page .lb-tab.active::after { transform: scaleX(1); }
   .lb-tab:hover { color: var(--lb-text); }
 
   /* ── Browse controls ── */
@@ -559,6 +554,94 @@ import Layout from '../layouts/Layout.astro';
   }
   .lb-close:hover { border-color: var(--lb-border-hi); color: var(--lb-gold) !important; }
 
+  /* ── Biblical → Modern Hebrew (Ma’agarim) notes ── */
+  .lb-modern {
+    border-top: 1px solid var(--lb-border);
+    margin-top: 1.1rem;
+    padding-top: 0.9rem;
+  }
+
+  .lb-modern-title,
+  details.lb-modern > summary {
+    font-family: var(--lb-sc);
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--lb-modern);
+  }
+
+  .lb-modern-title { margin-bottom: 0.85rem; }
+
+  details.lb-modern > summary {
+    cursor: pointer;
+    list-style: none;
+    transition: color 0.15s ease;
+  }
+  details.lb-modern > summary::-webkit-details-marker { display: none; }
+  details.lb-modern > summary::before { content: '\25B8\00a0'; }
+  details.lb-modern[open] > summary::before { content: '\25BE\00a0'; }
+  details.lb-modern > summary:hover { color: var(--lb-text); }
+  details.lb-modern[open] > summary { margin-bottom: 0.85rem; }
+
+  .lb-modern-entry {
+    border-left: 2px solid var(--lb-modern-dim);
+    padding-left: 0.9rem;
+    margin-bottom: 1.25rem;
+  }
+  .lb-modern-entry:last-child { margin-bottom: 0; }
+
+  .lb-modern-term {
+    font-family: var(--lb-heb);
+    direction: rtl;
+    text-align: right;
+    font-size: 1.2rem;
+    line-height: 1.8;
+    color: var(--lb-modern) !important;
+  }
+
+  .lb-modern-kind {
+    font-family: var(--lb-display);
+    font-style: italic;
+    font-size: 0.82rem;
+    color: var(--lb-muted) !important;
+    margin-bottom: 0.45rem;
+  }
+
+  .lb-modern-body {
+    font-size: 0.86rem;
+    line-height: 1.75;
+    color: var(--lb-text) !important;
+    margin: 0 0 0.6rem;
+  }
+
+  .lb-modern-q {
+    font-size: 0.79rem;
+    line-height: 1.65;
+    color: var(--lb-muted) !important;
+    margin: 0 0 0.6rem;
+  }
+
+  .lb-modern-lbl {
+    font-family: var(--lb-sc);
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--lb-faint) !important;
+    margin-right: 0.45rem;
+  }
+
+  .lb-modern-meta {
+    font-size: 0.75rem;
+    line-height: 1.7;
+    color: var(--lb-muted) !important;
+  }
+  .lb-modern-meta + .lb-modern-meta { margin-top: 0.2rem; }
+  .lb-modern-meta a {
+    color: var(--lb-modern) !important;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
   /* Staggered card animation */
   @keyframes lbUp {
     from { opacity: 0; transform: translateY(10px); }
@@ -576,6 +659,7 @@ import Layout from '../layouts/Layout.astro';
 
   @media (max-width: 600px) {
     .lb-inner { padding: 2rem 1.25rem 5rem; }
+    .lb-tab { padding: 0.7rem 0.75rem 0.6rem; letter-spacing: 0.16em; }
     .lb-title { font-size: 3rem; }
     .verse-card { padding: 1.5rem 0 !important; }
   }
@@ -587,7 +671,7 @@ import Layout from '../layouts/Layout.astro';
     <header class="lb-header">
       <p class="lb-eyebrow">Interactive Study Tool</p>
       <h1 class="lb-title">Literary <em>Bible</em></h1>
-      <p class="lb-subtitle">Color-coded literary devices in Tanakh — annotations from my research database, verse text pulled live from Sefaria.</p>
+      <p class="lb-subtitle">Color-coded literary devices in Tanakh — annotations from my research database, Biblical→Modern Hebrew usage traced through Ma’agarim, verse text pulled live from Sefaria.</p>
     </header>
 
     <!-- Filters -->
@@ -632,6 +716,7 @@ import Layout from '../layouts/Layout.astro';
     <div class="lb-tabs">
       <button id="modeDevices" class="lb-tab mode-btn active">Devices Only</button>
       <button id="modeBrowse"  class="lb-tab mode-btn">Browse Full Text</button>
+      <button id="modeModern"  class="lb-tab mode-btn">Modern Hebrew<span id="modernCount"></span></button>
     </div>
 
     <!-- Browse controls (hidden by default) -->
@@ -697,6 +782,11 @@ import Layout from '../layouts/Layout.astro';
 const SUPABASE_URL  = import.meta.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY  = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 const TABLE         = 'literary_bible';
+// Biblical → Modern Hebrew usage notes (Ma’agarim research) live alongside the
+// older device rows in the Tanakh Annotations table, tagged by their device prefix.
+const MODERN_TABLE  = 'Tanakh Annotations';
+const MODERN_PREFIX = /^Biblical\s*(?:→|->)\s*Modern Hebrew\s*:?\s*/i;
+const MODERN_COLOR  = '#79b8a4';
 
 // ─── Device colours — known devices get fixed colours; unknowns pull from palette
 const DEVICE_COLORS = {
@@ -848,8 +938,11 @@ let activeAliya   = '';
 let activeSort    = 'biblical';
 let chartInstance = null;
 const verseTextCache = {};
+let modernRows = [];
+const modernByVerse = new Map();
 
 // ─── URL param sync ──────────────────────────────────────────────────────────
+let mode = 'devices';            // 'devices' | 'browse' | 'modern'
 let browseMode = false;
 
 function syncURL() {
@@ -860,8 +953,8 @@ function syncURL() {
   if (activeParsha)  p.set('parsha',  activeParsha);
   if (activeAliya)   p.set('aliya',   activeAliya);
   if (activeSort !== 'biblical') p.set('sort', activeSort);
+  if (mode !== 'devices') p.set('mode', mode);
   if (browseMode) {
-    p.set('mode', 'browse');
     const bb = document.getElementById('browseBook')?.value;
     const bc = document.getElementById('browseChapter')?.value;
     if (bb) p.set('bbook', bb);
@@ -903,6 +996,177 @@ async function loadFromSupabase() {
   } catch (e) {
     setStatus(`Error loading data: ${e.message}`);
   }
+}
+
+
+// ─── Modern-usage fetch (Biblical → Modern Hebrew) ───────────────────────
+async function loadModernUsage() {
+  try {
+    const params = new URLSearchParams({
+      select: 'book,chapter,verse,literary_device,words,sources,urls,comments,questions,created_at',
+      literary_device: 'ilike.Biblical*Modern*Hebrew*',
+      order: 'book.asc,chapter.asc,verse.asc,id.asc',
+    });
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/${encodeURIComponent(MODERN_TABLE)}?${params}`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (!res.ok) throw new Error(`Supabase error ${res.status}`);
+    const raw = await res.json();
+    modernRows = raw
+      .filter(r => MODERN_PREFIX.test(r.literary_device || ''))
+      .map(r => ({ ...r, book: BOOK_NAME_FIX[r.book] || r.book }));
+  } catch {
+    modernRows = [];
+  }
+  modernByVerse.clear();
+  for (const r of modernRows) {
+    const key = `${r.book}|${r.chapter}|${r.verse}`;
+    if (!modernByVerse.has(key)) modernByVerse.set(key, []);
+    modernByVerse.get(key).push(r);
+  }
+  const badge = document.getElementById('modernCount');
+  if (badge) badge.textContent = modernRows.length ? ` (${modernRows.length})` : '';
+}
+
+// ─── Modern-usage rendering helpers ───────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// "Biblical → Modern Hebrew: lexical continuity ..." → "lexical continuity ..."
+function modernKind(device) {
+  return (device || '').replace(MODERN_PREFIX, '').trim() || 'usage';
+}
+
+function linkLabel(url, i) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    if (host.includes('hebrew-academy')) return `Ma’agarim ${i + 1}`;
+    return `${host} ${i + 1}`;
+  } catch {
+    return `Link ${i + 1}`;
+  }
+}
+
+// sources[] and urls[] are kept as independent lists in the sheet — a url is not
+// guaranteed to belong to the source at the same index, so they render separately.
+function modernEntryHtml(r) {
+  const srcs = (Array.isArray(r.sources) ? r.sources : [r.sources]).filter(Boolean);
+  const urls = (Array.isArray(r.urls) ? r.urls : [r.urls]).filter(Boolean);
+  const linksHtml = urls
+    .map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(linkLabel(u, i))}</a>`)
+    .join(' · ');
+  return `
+    <div class="lb-modern-entry">
+      ${r.words ? `<div class="lb-modern-term">${esc(r.words)}</div>` : ''}
+      <div class="lb-modern-kind">${esc(modernKind(r.literary_device))}</div>
+      ${r.comments  ? `<p class="lb-modern-body">${esc(r.comments)}</p>` : ''}
+      ${r.questions ? `<p class="lb-modern-q"><span class="lb-modern-lbl">Open question</span>${esc(r.questions)}</p>` : ''}
+      ${srcs.length ? `<div class="lb-modern-meta"><span class="lb-modern-lbl">Sources</span>${esc(srcs.join('; '))}</div>` : ''}
+      ${linksHtml   ? `<div class="lb-modern-meta"><span class="lb-modern-lbl">Links</span>${linksHtml}</div>` : ''}
+    </div>`;
+}
+
+function modernEntriesFor(book, chapter, verse) {
+  return modernByVerse.get(`${book}|${chapter}|${verse}`) || [];
+}
+
+// Collapsed panel appended to a device / browse verse card.
+function modernDetailsHtml(book, chapter, verse) {
+  const entries = modernEntriesFor(book, chapter, verse);
+  if (!entries.length) return '';
+  return `
+    <details class="lb-modern">
+      <summary>Modern Hebrew · ${entries.length}</summary>
+      ${entries.map(modernEntryHtml).join('')}
+    </details>`;
+}
+
+// ─── Modern Hebrew mode ───────────────────────────────────────
+function getFilteredModernRows() {
+  let rows = modernRows;
+  if (activeSection) {
+    const books = TANACH_BOOKS[activeSection] || [];
+    rows = rows.filter(r => books.includes(r.book));
+  }
+  if (activeBook) rows = rows.filter(r => r.book === activeBook);
+  if (activeParsha && PARSHAS[activeParsha]) {
+    const range = (activeAliya && PARSHAS[activeParsha][activeAliya]) || PARSHAS[activeParsha]['Whole Parsha'];
+    if (range) rows = filterByRange(rows, range);
+  }
+  return rows;
+}
+
+function groupModernByVerse(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    const key = `${row.book}|${row.chapter}|${row.verse}`;
+    if (!map.has(key)) map.set(key, { book: row.book, chapter: row.chapter, verse: row.verse, entries: [], newestAt: row.created_at });
+    const entry = map.get(key);
+    entry.entries.push(row);
+    if (row.created_at && (!entry.newestAt || row.created_at > entry.newestAt)) entry.newestAt = row.created_at;
+  }
+  const verses = [...map.values()];
+  if (activeSort === 'newest') {
+    verses.sort((a, b) => (b.newestAt || '').localeCompare(a.newestAt || ''));
+  } else {
+    verses.sort((a, b) => {
+      const ai = BOOK_ORDER.indexOf(a.book), bi = BOOK_ORDER.indexOf(b.book);
+      if (ai !== bi) return ai - bi;
+      if (a.chapter !== b.chapter) return a.chapter - b.chapter;
+      return a.verse - b.verse;
+    });
+  }
+  return verses;
+}
+
+async function renderModern() {
+  const grouped = groupModernByVerse(getFilteredModernRows());
+
+  if (grouped.length === 0) {
+    versesEl.innerHTML = modernRows.length
+      ? '<p class="text-center text-secondary-light dark:text-secondary-dark">No modern-usage notes yet for the selected filters.</p>'
+      : '<p class="text-center text-secondary-light dark:text-secondary-dark">No modern-usage notes found.</p>';
+    return;
+  }
+
+  setStatus(`Loading ${grouped.length} verse${grouped.length !== 1 ? 's' : ''} from Sefaria…`);
+  const BATCH = 10;
+  for (let i = 0; i < grouped.length; i += BATCH) {
+    await Promise.all(grouped.slice(i, i + BATCH).map(v => getVerseText(v.book, v.chapter, v.verse)));
+  }
+  clearStatus();
+
+  versesEl.innerHTML = grouped.map(v => {
+    const ref = `${v.book} ${v.chapter}:${v.verse}`;
+    const hebrewText = verseTextCache[ref] || '';
+    const sefariaRef = encodeURIComponent(`${SEFARIA_BOOK_MAP[v.book] || v.book} ${v.chapter}:${v.verse}`);
+    const dateStr = v.newestAt
+      ? new Date(v.newestAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '';
+    return `
+      <div class="verse-card bg-card-bg-light dark:bg-card-bg-dark border border-border-light dark:border-border-dark rounded-xl shadow-sm p-5"
+           data-ref="${esc(ref)}">
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <div class="flex flex-col gap-0.5">
+            <a href="https://www.sefaria.org/${sefariaRef}" target="_blank" rel="noopener"
+               class="text-sm font-semibold text-accent hover:underline">${esc(ref)}</a>
+            ${dateStr ? `<span class="text-xs text-secondary-light dark:text-secondary-dark">Added ${dateStr}</span>` : ''}
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full font-medium border"
+                style="background:${MODERN_COLOR};color:#111">${v.entries.length} note${v.entries.length !== 1 ? 's' : ''}</span>
+        </div>
+        ${hebrewText
+          ? `<p class="hebrew-text text-primary-light dark:text-primary-dark mb-3">${hebrewText}</p>`
+          : `<p class="text-xs text-secondary-light dark:text-secondary-dark italic mb-2">Hebrew text unavailable</p>`
+        }
+        <div class="lb-modern">
+          <div class="lb-modern-title">Biblical → Modern Hebrew</div>
+          ${v.entries.map(modernEntryHtml).join('')}
+        </div>
+      </div>`;
+  }).join('');
 }
 
 // ─── Build device pills from live data ──────────────────────────────────────
@@ -1131,6 +1395,7 @@ async function render() {
           : `<p class="text-xs text-secondary-light dark:text-secondary-dark italic mb-2">Hebrew text unavailable</p>`
         }
         ${footnotes.length ? `<div class="source-block">${footnotes.join('<br>')}</div>` : ''}
+        ${modernDetailsHtml(v.book, v.chapter, v.verse)}
         <div class="flex justify-end mt-3">
           <button class="suggest-btn flex items-center gap-1 text-xs px-3 py-1 rounded-full bg-green-600 text-white hover:bg-green-500 transition-colors" data-ref="${ref}">+ Suggest</button>
         </div>
@@ -1252,7 +1517,7 @@ sectionSel.addEventListener('change', () => {
   parshaWrap.style.display = 'none';
   aliyaWrap.style.display  = 'none';
   bookSel.value = ''; parshaSel.value = ''; aliyaSel.value = '';
-  syncURL(); render();
+  syncURL(); renderCurrent();
 });
 
 bookSel.addEventListener('change', () => {
@@ -1260,7 +1525,7 @@ bookSel.addEventListener('change', () => {
   activeParsha = activeAliya = '';
   parshaSel.value = ''; aliyaSel.value = '';
   populateParshaSelect(activeBook);
-  syncURL(); render();
+  syncURL(); renderCurrent();
 });
 
 parshaSel.addEventListener('change', () => {
@@ -1269,12 +1534,12 @@ parshaSel.addEventListener('change', () => {
   aliyaSel.value = '';
   if (activeParsha) populateAliyaSelect(activeParsha);
   else aliyaWrap.style.display = 'none';
-  syncURL(); render();
+  syncURL(); renderCurrent();
 });
 
 aliyaSel.addEventListener('change', () => {
   activeAliya = aliyaSel.value;
-  syncURL(); render();
+  syncURL(); renderCurrent();
 });
 
 // ─── Sort buttons ───────────────────────────────────────────────────────────
@@ -1283,14 +1548,14 @@ document.getElementById('sortBiblical').addEventListener('click', () => {
   document.getElementById('sortBiblical').classList.add('bg-indigo-500','text-white','border-indigo-400');
   document.getElementById('sortBiblical').classList.remove('bg-transparent');
   document.getElementById('sortNewest').classList.remove('bg-indigo-500','text-white','border-indigo-400');
-  syncURL(); render();
+  syncURL(); renderCurrent();
 });
 document.getElementById('sortNewest').addEventListener('click', () => {
   activeSort = 'newest';
   document.getElementById('sortNewest').classList.add('bg-indigo-500','text-white','border-indigo-400');
   document.getElementById('sortNewest').classList.remove('bg-transparent');
   document.getElementById('sortBiblical').classList.remove('bg-indigo-500','text-white','border-indigo-400');
-  syncURL(); render();
+  syncURL(); renderCurrent();
 });
 
 chartToggle.addEventListener('click', () => {
@@ -1322,6 +1587,7 @@ document.addEventListener('click', () => closeOpenTip());
 // ─── Browse mode ─────────────────────────────────────────────────────────────
 const modeDevicesBtn  = document.getElementById('modeDevices');
 const modeBrowseBtn   = document.getElementById('modeBrowse');
+const modeModernBtn   = document.getElementById('modeModern');
 const browseControls  = document.getElementById('browseControls');
 const deviceFiltersEl = document.getElementById('deviceFilters');
 const browseBookSel   = document.getElementById('browseBook');
@@ -1342,32 +1608,40 @@ const BOOK_CHAPTERS = {
   Ecclesiastes:12,Esther:10,Daniel:12,Ezra:10,Nehemiah:13,'1 Chronicles':29,'2 Chronicles':36,
 };
 
-function setMode(browse) {
-  browseMode = browse;
-  if (browse) {
-    modeDevicesBtn.classList.remove('bg-indigo-500','text-white');
-    modeDevicesBtn.classList.add('bg-transparent','text-indigo-400');
-    modeBrowseBtn.classList.add('bg-indigo-500','text-white');
-    modeBrowseBtn.classList.remove('bg-transparent','text-indigo-400');
-    browseControls.classList.remove('hidden');
-    deviceFiltersEl.classList.add('hidden');
+function setMode(next) {
+  mode = next;
+  browseMode = mode === 'browse';
+
+  modeDevicesBtn.classList.toggle('active', mode === 'devices');
+  modeBrowseBtn.classList.toggle('active',  mode === 'browse');
+  modeModernBtn.classList.toggle('active',  mode === 'modern');
+
+  browseControls.classList.toggle('hidden',  mode !== 'browse');
+  deviceFiltersEl.classList.toggle('hidden', mode !== 'devices');
+  chartToggle.classList.toggle('hidden',     mode !== 'devices');
+  if (mode !== 'devices') {
     chartBox.classList.add('hidden');
-    chartToggle.classList.add('hidden');
+    chartToggle.textContent = 'Show Chart';
+  }
+
+  if (mode === 'browse') {
     versesEl.innerHTML = '<p class="text-center text-secondary-light dark:text-secondary-dark">Select a book and chapter to read.</p>';
+  } else if (mode === 'modern') {
+    renderModern();
   } else {
-    modeBrowseBtn.classList.remove('bg-indigo-500','text-white');
-    modeBrowseBtn.classList.add('bg-transparent','text-indigo-400');
-    modeDevicesBtn.classList.add('bg-indigo-500','text-white');
-    modeDevicesBtn.classList.remove('bg-transparent','text-indigo-400');
-    browseControls.classList.add('hidden');
-    deviceFiltersEl.classList.remove('hidden');
-    chartToggle.classList.remove('hidden');
     render();
   }
 }
 
-modeDevicesBtn.addEventListener('click', () => { setMode(false); syncURL(); });
-modeBrowseBtn.addEventListener('click',  () => { setMode(true);  syncURL(); });
+// Filters and sort apply to whichever list is on screen.
+function renderCurrent() {
+  if (mode === 'modern') renderModern();
+  else if (mode !== 'browse') render();
+}
+
+modeDevicesBtn.addEventListener('click', () => { setMode('devices'); syncURL(); });
+modeBrowseBtn.addEventListener('click',  () => { setMode('browse');  syncURL(); });
+modeModernBtn.addEventListener('click',  () => { setMode('modern');  syncURL(); });
 
 browseBookSel.addEventListener('change', () => {
   const book = browseBookSel.value;
@@ -1473,7 +1747,7 @@ async function renderBrowseChapter(book, chapter) {
       footnotes.push(`<span style="color:${color};font-weight:600">${noteN}. (${d.device})${srcsHtml ? ' ' + srcsHtml : ''}</span>`);
     });
 
-    const hasBadges = devices.length > 0;
+    const hasBadges = devices.length > 0 || modernEntriesFor(book, chapter, verseNum).length > 0;
     return `
       <div class="verse-card bg-card-bg-light dark:bg-card-bg-dark border ${hasBadges ? 'border-indigo-400/40' : 'border-border-light dark:border-border-dark'} rounded-xl shadow-sm p-4">
         <div class="flex items-start justify-between gap-3 mb-2">
@@ -1489,6 +1763,7 @@ async function renderBrowseChapter(book, chapter) {
         </div>
         <p class="hebrew-text text-primary-light dark:text-primary-dark mb-2">${hebrewText}</p>
         ${footnotes.length ? `<div class="source-block">${footnotes.join('<br>')}</div>` : ''}
+        ${modernDetailsHtml(book, chapter, verseNum)}
       </div>`;
   }).join('');
 
@@ -1522,9 +1797,9 @@ function restoreFromURL() {
     document.getElementById('sortNewest').classList.remove('bg-indigo-500','text-white','border-indigo-400');
   }
 
-  const mode = p.get('mode');
-  if (mode === 'browse') {
-    setMode(true);
+  const urlMode = p.get('mode');
+  setMode(urlMode === 'browse' || urlMode === 'modern' ? urlMode : 'devices');
+  if (urlMode === 'browse') {
     const bb = p.get('bbook');
     const bc = p.get('bchapter');
     if (bb) {
@@ -1550,12 +1825,11 @@ function restoreFromURL() {
   if (typeof Chart === 'undefined') {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-    s.onload = async () => { await loadFromSupabase(); restoreFromURL(); if (!browseMode) render(); };
+    s.onload = async () => { await Promise.all([loadFromSupabase(), loadModernUsage()]); restoreFromURL(); };
     document.head.appendChild(s);
   } else {
-    await loadFromSupabase();
+    await Promise.all([loadFromSupabase(), loadModernUsage()]);
     restoreFromURL();
-    if (!browseMode) render();
   }
 })();
 </script>
