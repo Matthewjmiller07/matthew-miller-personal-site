@@ -145,28 +145,68 @@ export async function verifyImageUrl(url, { fetchImpl = fetch, timeoutMs = 20_00
 }
 
 /**
- * Ask the NLI Open Library API which file a DOCID holds. This is the only discovery
- * route that works from a server: NLI puts the IIIF manifest and catalogue hosts
- * behind a Cloudflare managed challenge that refuses datacenter IPs, while the API
- * answers anywhere once a (free) key is supplied. Returns null without a key.
+ * Ask the NLI Open Library API which file a DOCID holds.
+ *
+ * This is the only discovery route that works from a server, and it takes two hops.
+ * NLI blocks /IIIFv21/DOCID/{docid}/manifest at Cloudflare for datacenter IPs — but
+ * only that path. The API record carries a dc:relation pointing at the same manifest
+ * addressed by record id instead:
+ *
+ *   "dc:relation": "https://iiif.nli.org.il/IIIFv21/997002726620405171/manifest"
+ *
+ * which is NOT blocked. Fetching that gives the FL identifier. The API payload itself
+ * contains no FL — only a dc:thumbnail with a Rosetta IE id, which is returned as a
+ * fallback and never turned into an FL.
+ *
+ * Manifests can take 30s+ to build, hence the longer timeout.
  */
-export async function discoverViaNliApi(docId, { apiKey, fetchImpl = fetch, timeoutMs = 20_000 } = {}) {
+export async function discoverViaNliApi(docId, { apiKey, fetchImpl = fetch, timeoutMs = 20_000, manifestTimeoutMs = 60_000 } = {}) {
   if (!apiKey || !docId) return null;
-  const url = 'https://api.nli.org.il/openlibrary/search'
+
+  const searchUrl = 'https://api.nli.org.il/openlibrary/search'
     + `?api_key=${encodeURIComponent(apiKey)}`
     + `&query=any,contains,${encodeURIComponent(docId)}`
     + '&output_format=json';
+
+  let record;
   try {
-    const res = await fetchImpl(url, {
+    const res = await fetchImpl(searchUrl, {
       headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return null;
-    // The payload shape varies by record type, so scan it as text for an identifier
-    // rather than guessing at a field path.
-    const found = identifiersFromText(await res.text());
-    return found.serviceBase ? found : null;
+    record = await res.text();
   } catch {
     return null;
   }
+
+  // The Rosetta thumbnail is the consolation prize if the manifest hop fails.
+  const ieId = (record.match(/\bIE\d{4,}\b/) || [])[0] || null;
+
+  // dc:relation — the manifest addressed by record id, on the unblocked path.
+  const manifestUrl = (record.match(/https:\/\/iiif\.nli\.org\.il\/IIIFv21\/\d+\/manifest/) || [])[0] || null;
+  if (!manifestUrl) return ieId ? { serviceBase: null, flId: null, ieId, manifestUrl: null } : null;
+
+  try {
+    const res = await fetchImpl(manifestUrl, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(manifestTimeoutMs),
+    });
+    if (res.ok) {
+      const manifest = await res.json();
+      const images = imagesFromManifest(manifest);
+      if (images.length) {
+        return {
+          serviceBase: images[0].serviceBase,
+          flId: images[0].identifier,
+          ieId,
+          manifestUrl,
+          imageCount: images.length,
+          rights: rightsFromManifest(manifest),
+        };
+      }
+    }
+  } catch { /* fall back to the IE below */ }
+
+  return { serviceBase: null, flId: null, ieId, manifestUrl };
 }
