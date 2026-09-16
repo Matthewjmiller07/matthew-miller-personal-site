@@ -35,6 +35,7 @@
  *   node scripts/resolve-nli-images.mjs --dry-run  # look, don't save
  */
 
+import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 
 const TABLE = 'tanakh_nli_poster_evidence';
