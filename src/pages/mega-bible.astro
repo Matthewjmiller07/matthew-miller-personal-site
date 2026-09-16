@@ -1768,42 +1768,64 @@ function nliServiceBase(resource: any): string | null {
 async function nliResolveDocId(docId: string) {
   if (nliResolved.has(docId)) return nliResolved.get(docId);
 
-  let result: { thumb: string; full: string } | null = null;
+  let result: { base: string; thumb: string; full: string } | null = null;
+
+  // Ask our own server first. With NLI_API_KEY set it resolves the DOCID through
+  // the NLI Open Library API and stores the result, so the lookup happens once for
+  // everybody instead of in every visitor's browser.
   try {
-    const r = await fetch(`https://iiif.nli.org.il/IIIFv21/DOCID/${encodeURIComponent(docId)}/manifest`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (r.ok) {
-      const manifest = await r.json();
-      for (const seq of manifest?.sequences || []) {
-        for (const canvas of seq?.canvases || []) {
-          for (const image of canvas?.images || []) {
-            const base = nliServiceBase(image?.resource);
-            if (base) {
-              result = { base, thumb: `${base}/full/400,/0/default.jpg`, full: `${base}/full/max/0/default.jpg` };
-              break;
-            }
-          }
-          if (result) break;
-        }
-        if (result) break;
-      }
-    }
-  } catch { result = null; }
-
-  nliResolved.set(docId, result);
-
-  // Hand the discovery back so it is stored once rather than re-looked-up by every
-  // visitor. The endpoint re-validates it and only ever fills a row that has no
-  // image; a failure here changes nothing on screen.
-  if (result) {
-    fetch('/api/nli-resolve', {
+    const r = await fetch('/api/nli-resolve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ docId, serviceBase: result.base }),
-    }).catch(() => {});
+      body: JSON.stringify({ docId }),
+    });
+    if (r.ok) {
+      const data = await r.json();
+      if (data?.imageUrl) {
+        result = {
+          base: '',
+          full: data.imageUrl,
+          thumb: data.thumbnailUrl || data.imageUrl,
+        };
+      }
+    }
+  } catch { /* fall through to resolving it here */ }
+
+  // Otherwise do it here. NLI's manifest host refuses datacenter IPs but not
+  // ordinary browsers, so this is the route that works before a key is configured.
+  if (!result) {
+    try {
+      const r = await fetch(`https://iiif.nli.org.il/IIIFv21/DOCID/${encodeURIComponent(docId)}/manifest`, {
+        headers: { Accept: 'application/json' },
+      });
+      if (r.ok) {
+        const manifest = await r.json();
+        outer: for (const seq of manifest?.sequences || []) {
+          for (const canvas of seq?.canvases || []) {
+            for (const image of canvas?.images || []) {
+              const base = nliServiceBase(image?.resource);
+              if (base) {
+                result = { base, thumb: `${base}/full/400,/0/default.jpg`, full: `${base}/full/max/0/default.jpg` };
+                break outer;
+              }
+            }
+          }
+        }
+      }
+    } catch { result = null; }
+
+    // Hand the discovery back so it is stored once rather than re-looked-up by
+    // every visitor. A failure here changes nothing on screen.
+    if (result?.base) {
+      fetch('/api/nli-resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ docId, serviceBase: result.base }),
+      }).catch(() => {});
+    }
   }
 
+  nliResolved.set(docId, result);
   return result;
 }
 

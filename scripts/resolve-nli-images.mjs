@@ -46,14 +46,33 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 
-const TABLE = 'tanakh_nli_poster_evidence';
-const IIIF_HOST = 'iiif.nli.org.il';
-const IIIF_BASE = `https://${IIIF_HOST}/IIIFv21`;
-const ROSETTA_THUMB = 'https://rosetta.nli.org.il/delivery/DeliveryManagerServlet?dps_func=thumbnail&dps_pid=';
+// The identifier and validation rules live in src/lib/nli.js, shared with the
+// on-demand endpoint at src/pages/api/nli-resolve.js so the two cannot drift.
+import {
+  IIIF_HOST,
+  ROSETTA_THUMB,
+  buildImageUrls,
+  discoverViaNliApi,
+  identifierFromServiceBase,
+  identifiersFromText,
+  imagesFromManifest,
+  manifestUrlForDocId,
+  rightsFromManifest,
+  verifyImageUrl,
+} from '../src/lib/nli.js';
 
-/** Bounded size for the in-page thumbnail; the full image is only ever opened on demand. */
-const THUMBNAIL_SIZE = '400,';
-const FULL_SIZE = 'max';
+export {
+  buildImageUrls,
+  identifierFromServiceBase,
+  identifiersFromText,
+  imagesFromManifest,
+  manifestUrlForDocId,
+  rightsFromManifest,
+  serviceBaseFromResource,
+  verifyImageUrl,
+} from '../src/lib/nli.js';
+
+const TABLE = 'tanakh_nli_poster_evidence';
 
 const USER_AGENT =
   process.env.NLI_CONTACT_AGENT ||
@@ -64,118 +83,6 @@ const REQUEST_TIMEOUT_MS = 30_000;
 const RATE_LIMIT_MS = 600;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// ── URL construction ────────────────────────────────────────────────────────
-
-export function manifestUrlForDocId(docId) {
-  return `${IIIF_BASE}/DOCID/${encodeURIComponent(docId)}/manifest`;
-}
-
-export function buildImageUrls(serviceBase) {
-  const base = String(serviceBase).replace(/\/+$/, '');
-  return {
-    imageUrl: `${base}/full/${FULL_SIZE}/0/default.jpg`,
-    thumbnailUrl: `${base}/full/${THUMBNAIL_SIZE}/0/default.jpg`,
-  };
-}
-
-/**
- * IIIF Image API URLs end in {region}/{size}/{rotation}/{quality}.{format}. Strip
- * those four segments off an image resource's @id to recover the service base.
- * This reads back what NLI returned rather than inventing an identifier.
- */
-function serviceBaseFromResourceId(resourceId) {
-  if (typeof resourceId !== 'string' || !resourceId) return null;
-  const parts = resourceId.split(/[?#]/)[0].split('/');
-  if (parts.length < 5) return null;
-  if (!/\.[a-z]+$/i.test(parts[parts.length - 1])) return null;  // not a {quality}.{format} tail
-  return parts.slice(0, -4).join('/') || null;
-}
-
-/** The service block is authoritative; the resource @id is the fallback. */
-export function serviceBaseFromResource(resource) {
-  if (!resource || typeof resource !== 'object') return null;
-
-  const services = Array.isArray(resource.service) ? resource.service : [resource.service];
-  for (const service of services) {
-    const id = service && typeof service === 'object' ? service['@id'] || service.id : null;
-    if (typeof id === 'string' && id) return id.replace(/\/+$/, '');
-  }
-
-  return serviceBaseFromResourceId(resource['@id'] || resource.id);
-}
-
-/** Only an FL identifier NLI actually handed us counts; anything else stays null. */
-export function identifierFromServiceBase(serviceBase) {
-  if (!serviceBase) return null;
-  const last = String(serviceBase).split('/').filter(Boolean).pop() || '';
-  return /^FL\d+$/i.test(last) ? last : null;
-}
-
-// ── Manifest parsing ────────────────────────────────────────────────────────
-
-/** IIIF v2 lets a value be a bare string, a language map, or an array of either. */
-function firstValue(value) {
-  if (!value) return null;
-  if (typeof value === 'string') return value;
-  if (Array.isArray(value)) {
-    for (const entry of value) {
-      const found = firstValue(entry);
-      if (found) return found;
-    }
-    return null;
-  }
-  if (typeof value === 'object') return value['@id'] || value['@value'] || value.id || null;
-  return null;
-}
-
-export function rightsFromManifest(manifest) {
-  return {
-    attribution: firstValue(manifest?.attribution),
-    licenseUrl: firstValue(manifest?.license),
-  };
-}
-
-/**
- * Every image resource in the manifest, in order. An NLI object is usually a
- * single-page poster, but multi-canvas objects exist, so the caller is told how
- * many there were rather than this pretending page one is all there is.
- */
-export function imagesFromManifest(manifest) {
-  const found = [];
-  for (const sequence of Array.isArray(manifest?.sequences) ? manifest.sequences : []) {
-    for (const canvas of Array.isArray(sequence?.canvases) ? sequence.canvases : []) {
-      for (const image of Array.isArray(canvas?.images) ? canvas.images : []) {
-        const serviceBase = serviceBaseFromResource(image?.resource);
-        if (!serviceBase) continue;
-        found.push({
-          serviceBase,
-          identifier: identifierFromServiceBase(serviceBase),
-          canvasLabel: firstValue(canvas?.label),
-        });
-      }
-    }
-  }
-  return found;
-}
-
-/**
- * Last resort: the catalogue page. The viewer loads its image through IIIF or
- * Rosetta, so the identifiers are in the HTML even though the page is not JSON.
- * An FL is preferred; an IE only ever yields a Rosetta thumbnail, never a
- * manufactured FL.
- */
-export function identifiersFromHtml(html) {
-  const text = String(html || '');
-  const serviceBase = text.match(new RegExp(`https?://${IIIF_HOST.replace(/\./g, '\\.')}/IIIFv21/(FL\\d+)`, 'i'));
-  const bareFl = text.match(/\bFL\d{5,}\b/);
-  const ie = text.match(/\bIE\d{4,}\b/);
-  return {
-    serviceBase: serviceBase ? `${IIIF_BASE}/${serviceBase[1]}` : bareFl ? `${IIIF_BASE}/${bareFl[0]}` : null,
-    flId: serviceBase ? serviceBase[1] : bareFl ? bareFl[0] : null,
-    ieId: ie ? ie[0] : null,
-  };
-}
 
 // ── Network ─────────────────────────────────────────────────────────────────
 
@@ -196,49 +103,13 @@ async function httpGet(url, accept) {
 const getJson = async (url) => (await httpGet(url, 'application/json')).json();
 const getText = async (url) => (await httpGet(url, 'text/html')).text();
 
-/**
- * Confirm a URL really serves an image. A rights-restricted item answers 403, a
- * bad identifier 404, and a challenge page answers 200 with HTML — none may be
- * stored. HEAD is unreliable on these hosts, so this GETs a single byte.
- */
-export async function verifyImageUrl(url, fetchImpl = fetch) {
-  try {
-    const res = await fetchImpl(url, {
-      method: 'GET',
-      headers: { Accept: 'image/*', Range: 'bytes=0-0', 'User-Agent': USER_AGENT },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-    if (!res.ok) return { ok: false, status: res.status };
-    const type = (res.headers.get('content-type') || '').toLowerCase();
-    if (!type.startsWith('image/')) return { ok: false, status: res.status, contentType: type || '(none)' };
-    return { ok: true, status: res.status, contentType: type };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-}
-
 // ── Discovery ───────────────────────────────────────────────────────────────
-
-/** The NLI Open Library API, when a key is configured. Reachable from servers. */
-async function discoverViaApi(row, deps) {
-  const key = process.env.NLI_API_KEY;
-  if (!key || !row.nli_doc_id) return null;
-  const url = `https://api.nli.org.il/openlibrary/search?api_key=${encodeURIComponent(key)}`
-    + `&query=any,contains,${encodeURIComponent(row.nli_doc_id)}&output_format=json`;
-  try {
-    const payload = await (deps.fetchJson || getJson)(url);
-    const found = identifiersFromHtml(JSON.stringify(payload));
-    if (found.serviceBase) return { via: 'api', serviceBase: found.serviceBase, images: 1, ieId: found.ieId };
-  } catch { /* fall through to the next route */ }
-  return null;
-}
 
 /** One row's worth of work, network included. Returns what to write, or why not. */
 export async function resolveRow(row, deps = {}) {
   const fetchJson = deps.fetchJson || getJson;
   const fetchHtml = deps.fetchHtml || getText;
-  const verify = deps.verifyImageUrl || verifyImageUrl;
+  const verify = deps.verifyImageUrl || ((url) => verifyImageUrl(url, { userAgent: USER_AGENT, timeoutMs: REQUEST_TIMEOUT_MS }));
   const steps = { manifest: null, api: null, page: null };
 
   if (!row.nli_doc_id) return { skip: 'no-docid', steps };
@@ -270,15 +141,15 @@ export async function resolveRow(row, deps = {}) {
 
   // 2 — the Open Library API
   if (!serviceBase) {
-    const fromApi = await discoverViaApi(row, { fetchJson });
+    const fromApi = await discoverViaNliApi(row.nli_doc_id, { apiKey: process.env.NLI_API_KEY });
     steps.api = process.env.NLI_API_KEY ? (fromApi ? 'ok' : 'no match') : 'skipped (no NLI_API_KEY)';
-    if (fromApi) { serviceBase = fromApi.serviceBase; imageCount = fromApi.images; via = 'api'; ieId = fromApi.ieId; }
+    if (fromApi) { serviceBase = fromApi.serviceBase; imageCount = imageCount || 1; via = 'api'; ieId = ieId || fromApi.ieId; }
   }
 
   // 3 — the catalogue page the viewer itself loads
   if (!serviceBase && row.nli_url) {
     try {
-      const found = identifiersFromHtml(await fetchHtml(row.nli_url));
+      const found = identifiersFromText(await fetchHtml(row.nli_url));
       ieId = ieId || found.ieId;
       if (found.serviceBase) { serviceBase = found.serviceBase; imageCount = imageCount || 1; via = 'page'; steps.page = 'ok'; }
       else steps.page = found.ieId ? `only a Rosetta id (${found.ieId})` : 'no identifier found';

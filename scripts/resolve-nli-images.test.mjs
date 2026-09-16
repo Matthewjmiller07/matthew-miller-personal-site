@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import {
   buildImageUrls,
   identifierFromServiceBase,
-  identifiersFromHtml,
+  identifiersFromText,
   imagesFromManifest,
   isComplete,
   manifestUrlForDocId,
@@ -104,8 +104,8 @@ test('attribution and license are read in each shape IIIF v2 allows', () => {
 });
 
 test('catalogue HTML yields an FL service base, or an IE but never a made-up FL', () => {
-  assert.equal(identifiersFromHtml('<img src="https://iiif.nli.org.il/IIIFv21/FL123456/full/max/0/default.jpg">').flId, 'FL123456');
-  const ieOnly = identifiersFromHtml('<img src="...DeliveryManagerServlet?dps_func=thumbnail&dps_pid=IE4991542">');
+  assert.equal(identifiersFromText('<img src="https://iiif.nli.org.il/IIIFv21/FL123456/full/max/0/default.jpg">').flId, 'FL123456');
+  const ieOnly = identifiersFromText('<img src="...DeliveryManagerServlet?dps_func=thumbnail&dps_pid=IE4991542">');
   assert.equal(ieOnly.ieId, 'IE4991542');
   assert.equal(ieOnly.flId, null, 'an IE must never be turned into an FL');
   assert.equal(ieOnly.serviceBase, null);
