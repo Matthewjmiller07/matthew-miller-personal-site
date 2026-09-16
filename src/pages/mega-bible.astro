@@ -1748,7 +1748,7 @@ function restoreFromURL() {
 //
 // Strictly a fallback: it reads the manifest NLI serves, never invents an
 // identifier, and leaves the placeholder alone if anything at all goes wrong.
-const nliResolved = new Map<string, { thumb: string; full: string } | null>();
+const nliResolved = new Map<string, { base: string; thumb: string; full: string } | null>();
 
 function nliServiceBase(resource: any): string | null {
   if (!resource || typeof resource !== 'object') return null;
@@ -1780,7 +1780,7 @@ async function nliResolveDocId(docId: string) {
           for (const image of canvas?.images || []) {
             const base = nliServiceBase(image?.resource);
             if (base) {
-              result = { thumb: `${base}/full/400,/0/default.jpg`, full: `${base}/full/max/0/default.jpg` };
+              result = { base, thumb: `${base}/full/400,/0/default.jpg`, full: `${base}/full/max/0/default.jpg` };
               break;
             }
           }
@@ -1792,6 +1792,18 @@ async function nliResolveDocId(docId: string) {
   } catch { result = null; }
 
   nliResolved.set(docId, result);
+
+  // Hand the discovery back so it is stored once rather than re-looked-up by every
+  // visitor. The endpoint re-validates it and only ever fills a row that has no
+  // image; a failure here changes nothing on screen.
+  if (result) {
+    fetch('/api/nli-resolve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ docId, serviceBase: result.base }),
+    }).catch(() => {});
+  }
+
   return result;
 }
 
