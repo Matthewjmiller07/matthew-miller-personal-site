@@ -503,6 +503,101 @@ body:has(.mb-page) > footer { display:none!important; }
   color:var(--modern); text-transform:uppercase;
 }
 
+/* NLI poster evidence — a dated artefact showing the word in modern use. Framed
+   as evidence, not illustration: the matched form and what it means there are
+   part of the caption, and the image is never shown without its record link. */
+.nli-evidence { margin:.5rem 0 .2rem; }
+.nli-hdr {
+  font-family:var(--sc); font-size:.48rem; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:.4rem;
+}
+.nli-item {
+  display:flex; gap:.7rem; align-items:flex-start;
+  margin:0 0 .7rem; padding:.5rem; background:var(--bg);
+  border:1px solid var(--border);
+}
+.nli-item:last-child { margin-bottom:0; }
+@media (max-width:640px) { .nli-item { flex-direction:column; } }
+
+.nli-thumb {
+  flex-shrink:0; width:120px; padding:0; background:none; border:1px solid var(--border);
+  cursor:zoom-in; line-height:0; transition:border-color .12s;
+}
+.nli-thumb:hover, .nli-thumb:focus-visible { border-color:var(--modern); outline:none; }
+.nli-thumb img { width:100%; height:auto; display:block; }
+.nli-noimage {
+  flex-shrink:0; width:120px; min-height:76px;
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  border:1px dashed var(--border); color:var(--faint);
+  font-family:var(--sc); font-size:.45rem; letter-spacing:.14em; text-transform:uppercase;
+  padding:.5rem;
+}
+
+.nli-cap { flex:1; min-width:0; }
+.nli-title { font-family:var(--display); font-size:.85rem; line-height:1.45; margin-bottom:.15rem; }
+.nli-title a { color:var(--gold); }
+.nli-attest {
+  font-family:var(--display); font-size:.78rem; color:var(--text);
+  line-height:1.6; margin:.2rem 0;
+}
+.nli-attest .nli-heb { font-family:var(--heb); font-size:.95rem; color:var(--modern); }
+.nli-attest .nli-lbl {
+  font-family:var(--sc); font-size:.44rem; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--faint); margin-right:.35rem;
+}
+.nli-attest .nli-from { color:var(--muted); margin-left:.4rem; font-size:.74rem; }
+.nli-gloss {
+  font-family:var(--display); font-size:.78rem; color:var(--muted);
+  line-height:1.6; margin:.2rem 0;
+}
+.nli-meta, .nli-rights {
+  font-family:var(--display); font-size:.7rem; color:var(--muted); line-height:1.55;
+}
+.nli-rights { color:var(--faint); margin-top:.2rem; }
+.nli-rights a, .nli-meta a { color:var(--gold-dim); }
+.nli-tags { display:flex; flex-wrap:wrap; gap:.25rem; margin-top:.3rem; }
+.nli-tag {
+  font-family:var(--sc); font-size:.44rem; letter-spacing:.12em; text-transform:uppercase;
+  border:1px solid var(--border); color:var(--muted); padding:.05rem .3rem;
+}
+
+/* Count chip on an entry summary, so you can see which notes carry evidence
+   without opening every one. */
+.m-nli-chip {
+  font-family:var(--sc); font-size:.44rem; letter-spacing:.12em; text-transform:uppercase;
+  border:1px solid var(--modern-dim); color:var(--modern); padding:.05rem .3rem;
+  flex-shrink:0;
+}
+
+/* Lightbox for the full-size IIIF image */
+.nli-lightbox {
+  /* Above the site's sticky header (z-50), which the page's own panels sit under. */
+  position:fixed; inset:0; z-index:1000; display:none;
+  background:rgba(8,7,5,.94); padding:1.5rem;
+  flex-direction:column; align-items:center; justify-content:center; gap:.75rem;
+}
+.nli-lightbox.open { display:flex; }
+.nli-lightbox img {
+  max-width:100%; max-height:calc(100vh - 9rem); object-fit:contain;
+  border:1px solid var(--border);
+}
+.nli-lightbox-cap {
+  max-width:46rem; text-align:center; direction:ltr;
+  font-family:var(--display); font-size:.82rem; color:var(--text); line-height:1.6;
+}
+.nli-lightbox-cap a { color:var(--gold); }
+.nli-lightbox-rights {
+  font-family:var(--display); font-size:.7rem; color:var(--muted); margin-top:.25rem;
+}
+.nli-lightbox-rights a { color:var(--gold-dim); }
+.nli-lightbox-close {
+  position:absolute; top:1rem; right:1rem;
+  font-family:var(--sc); font-size:.55rem; letter-spacing:.2em; text-transform:uppercase;
+  background:none; border:1px solid var(--border); color:var(--muted);
+  padding:.3rem .7rem; cursor:pointer;
+}
+.nli-lightbox-close:hover { border-color:var(--gold); color:var(--gold); }
+
 /* Device underline: applied inline as CSS variable */
 .w.has-dev {
   border-bottom-color:var(--dev-color);
@@ -1012,6 +1107,13 @@ body:has(.mb-page) > footer { display:none!important; }
       </div>
     </main>
 
+  </div>
+
+  <!-- NLI IMAGE LIGHTBOX -->
+  <div id="nliLightbox" class="nli-lightbox" role="dialog" aria-modal="true" aria-label="National Library of Israel image">
+    <button id="nliLightboxClose" class="nli-lightbox-close">Close</button>
+    <img id="nliLightboxImg" src="" alt="">
+    <div id="nliLightboxCap" class="nli-lightbox-cap"></div>
   </div>
 
   <!-- WORD DETAIL PANEL -->
@@ -1634,6 +1736,60 @@ function restoreFromURL() {
   applyPendingSefariaVersions(pendingSefariaVersions);
 }
 
+
+// ── NLI image lightbox ─────────────────────────────────────────
+// The page shows a bounded thumbnail; the full IIIF image is only ever requested
+// when someone asks to see it. The caption keeps the record link and the rights
+// statement with the image rather than leaving them behind on the page.
+const nliLightbox      = document.getElementById('nliLightbox') as HTMLElement;
+const nliLightboxImg   = document.getElementById('nliLightboxImg') as HTMLImageElement;
+const nliLightboxCap   = document.getElementById('nliLightboxCap') as HTMLElement;
+const nliLightboxClose = document.getElementById('nliLightboxClose') as HTMLElement;
+
+// The reader lives in a fixed, offset .mb-page; reparenting the overlay to <body>
+// takes it out of that stacking context so it covers the site header too, Close
+// button included.
+document.body.appendChild(nliLightbox);
+
+function openNliLightbox(btn: HTMLElement) {
+  const full = btn.dataset.nliFull;
+  if (!full) return;
+  const title = btn.dataset.nliTitle || '';
+  const url = btn.dataset.nliUrl || '';
+  const attr = btn.dataset.nliAttr || '';
+  const license = btn.dataset.nliLicense || '';
+
+  nliLightboxImg.src = full;
+  nliLightboxImg.alt = title;
+
+  const rights = [
+    attr ? escHtml(attr) : '',
+    license ? `<a href="${escHtml(license)}" target="_blank" rel="noopener">Rights &amp; terms of use</a>` : '',
+  ].filter(Boolean).join(' · ');
+
+  nliLightboxCap.innerHTML =
+    (url ? `<a href="${escHtml(url)}" target="_blank" rel="noopener">${escHtml(title)}</a>` : escHtml(title))
+    + ` · <a href="${escHtml(url)}" target="_blank" rel="noopener">View at the National Library of Israel</a>`
+    + (rights ? `<div class="nli-lightbox-rights">${rights}</div>` : '');
+
+  nliLightbox.classList.add('open');
+}
+
+function closeNliLightbox() {
+  nliLightbox.classList.remove('open');
+  nliLightboxImg.src = '';
+}
+
+document.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement)?.closest?.('.nli-thumb') as HTMLElement | null;
+  if (btn) { e.preventDefault(); e.stopPropagation(); openNliLightbox(btn); }
+});
+nliLightboxClose.addEventListener('click', closeNliLightbox);
+nliLightbox.addEventListener('click', (e) => { if (e.target === nliLightbox) closeNliLightbox(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && nliLightbox.classList.contains('open')) closeNliLightbox();
+});
+
 // ── Layer toggles ──────────────────────────────────────────────────────────
 function setupLayerToggle(id: string, cls: string) {
   const el = document.getElementById(id) as HTMLInputElement;
@@ -2120,9 +2276,13 @@ async function fetchDevices(book: string): Promise<any[]> {
 // literary_bible: they describe what a biblical word or construction did
 // *after* the Bible (post-1800 attestations in the Academy of the Hebrew
 // Language's historical corpus), so they are a separate layer from the
-// literary devices, not another device. They are tagged by a
-// "Biblical → Modern Hebrew: <kind>" prefix in the literary_device column.
+// literary devices, not another device. Every one of them opens with
+// "Biblical" in the literary_device column — some as the full
+// "Biblical → Modern Hebrew: <kind>" prefix, others as a plain sentence like
+// "Biblical ritual animal becomes the social metaphor ‘scapegoat’" — while the
+// older literary-device rows never do, so that opening word is the whole test.
 const MODERN_TABLE  = 'Tanakh Annotations';
+const MODERN_DEVICE = /^Biblical\b/i;
 const MODERN_PREFIX = /^Biblical\s*(?:→|->)\s*Modern Hebrew\s*:?\s*/i;
 const modernCache = new Map<string, any[]>();
 
@@ -2131,11 +2291,9 @@ async function fetchModern(book: string): Promise<any[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
   let rows: any[] = [];
   try {
-    // No spaces in the ilike pattern — a literal "Biblical*Modern Hebrew*" would
-    // have to survive form-decoding on the way to PostgREST.
-    const query = 'select=book,chapter,verse,literary_device,words,sources,urls,comments,questions'
+    const query = 'select=id,book,chapter,verse,literary_device,words,sources,urls,comments,questions'
       + `&book=eq.${encodeURIComponent(book)}`
-      + '&literary_device=ilike.Biblical*Modern*Hebrew*'
+      + '&literary_device=ilike.Biblical*'
       + '&order=chapter,verse,id';
     const r = await fetch(
       `${SUPABASE_URL}/rest/v1/${encodeURIComponent(MODERN_TABLE)}?${query}`,
@@ -2143,11 +2301,63 @@ async function fetchModern(book: string): Promise<any[]> {
     );
     if (r.ok) {
       const raw = await r.json();
-      rows = Array.isArray(raw) ? raw.filter((x: any) => MODERN_PREFIX.test(x.literary_device || '')) : [];
+      rows = Array.isArray(raw) ? raw.filter((x: any) => MODERN_DEVICE.test(x.literary_device || '')) : [];
     }
   } catch { rows = []; }
   modernCache.set(book, rows);
   return rows;
+}
+
+
+// ── National Library of Israel poster evidence ────────────────────────
+// Some usage notes are backed by a dated artefact — a Tel Aviv civil-defence
+// poster using מקלט for a bomb shelter, say — held by the NLI. Those rows hang
+// off a Tanakh Annotations row by tanakh_annotation_id, several to one note and
+// one poster to several notes, so they are fetched by the ids of the notes this
+// book actually loaded and indexed back onto them.
+//
+// Image URLs are never built here. scripts/resolve-nli-images.mjs resolves them
+// from NLI's IIIF manifest and stores them; the page renders what it is given.
+const NLI_TABLE = 'tanakh_nli_poster_evidence';
+/**
+ * Keyed by annotation id, which is unique across books, so books merge into one
+ * index instead of replacing it — a Torah reading and its haftarah are rendered
+ * from two different books in the same pass.
+ */
+const nliByAnnotation = new Map<number, any[]>();
+const nliFetchedBooks = new Set<string>();
+
+async function fetchNliEvidence(book: string, annotationIds: number[]): Promise<void> {
+  if (nliFetchedBooks.has(book)) return;
+  nliFetchedBooks.add(book);
+
+  if (annotationIds.length && SUPABASE_URL && SUPABASE_KEY) {
+    try {
+      const query = 'select=id,tanakh_annotation_id,matched_word,matched_form_on_poster,tanakh_phrase,'
+        + 'nli_title,nli_url,nli_doc_id,nli_record_type,nli_material_type,nli_date_text,nli_owner,'
+        + 'nli_front_text,modern_context_gloss,tanakh_quote_status,match_quality,'
+        + 'image_url,thumbnail_url,image_attribution,image_license_url,image_identifier'
+        + `&tanakh_annotation_id=in.(${annotationIds.join(',')})`
+        + '&order=tanakh_annotation_id,id';
+      const r = await fetch(
+        `${SUPABASE_URL}/rest/v1/${NLI_TABLE}?${query}`,
+        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+      );
+      if (r.ok) {
+        const raw = await r.json();
+        for (const row of Array.isArray(raw) ? raw : []) {
+          const key = Number(row.tanakh_annotation_id);
+          if (!nliByAnnotation.has(key)) nliByAnnotation.set(key, []);
+          nliByAnnotation.get(key)!.push(row);
+        }
+      }
+    } catch { /* leave the notes without their evidence rather than failing the page */ }
+  }
+}
+
+function nliEvidenceFor(annotation: any): any[] {
+  const id = Number(annotation?.id);
+  return Number.isFinite(id) ? (nliByAnnotation.get(id) || []) : [];
 }
 
 function escHtml(s: any): string {
@@ -2166,12 +2376,104 @@ function modernLinkLabel(url: string, i: number): string {
   } catch { return `Link ${i + 1}`; }
 }
 
+
+// A IIIF Image API request ends in {region}/{size}/{rotation}/{quality}.{format};
+// swapping only the size segment of a URL the resolver already verified keeps us on
+// the documented API and off the multi-megabyte original. Anything that isn't shaped
+// like a IIIF request is left exactly as stored.
+const IIIF_REQUEST = /^(https?:\/\/.+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+\.[a-z]+)$/i;
+function iiifAtSize(url: string, size: string): string {
+  const m = IIIF_REQUEST.exec(url || '');
+  return m ? `${m[1]}/${m[2]}/${size}/${m[4]}/${m[5]}` : url;
+}
+
+/** What to show in the page: the stored thumbnail, else a bounded cut of the full image. */
+function nliDisplayImage(e: any): string | null {
+  if (e.thumbnail_url) return e.thumbnail_url;
+  if (e.image_url) return iiifAtSize(e.image_url, '400,');
+  return null;
+}
+
+/** What the lightbox opens: the full image, else whatever we do have. */
+function nliFullImage(e: any): string | null {
+  return e.image_url || e.thumbnail_url || null;
+}
+
+/**
+ * One piece of NLI evidence. The point of the block is the attestation — this
+ * biblical word, in this modern form, on a dated artefact — so the image is a
+ * citation with a caption, never decoration, and the record link is shown whether or
+ * not an image resolved.
+ */
+function nliEvidenceItemHtml(e: any): string {
+  const display = nliDisplayImage(e);
+  const full = nliFullImage(e);
+  const alt = `${e.nli_record_type || 'Item'}: ${e.nli_title || ''}`.trim();
+
+  const figure = display
+    ? `<button class="nli-thumb" type="button"
+              data-nli-full="${escHtml(full)}"
+              data-nli-title="${escHtml(e.nli_title)}"
+              data-nli-url="${escHtml(e.nli_url)}"
+              data-nli-attr="${escHtml(e.image_attribution)}"
+              data-nli-license="${escHtml(e.image_license_url)}"
+              title="View larger">
+         <img src="${escHtml(display)}" alt="${escHtml(alt)}" loading="lazy" decoding="async">
+       </button>`
+    : `<div class="nli-noimage">No image<br>available</div>`;
+
+  const tags = [e.nli_record_type, e.nli_material_type, e.match_quality && `${e.match_quality} match`]
+    .filter(Boolean)
+    .map((t: string) => `<span class="nli-tag">${escHtml(t)}</span>`)
+    .join('');
+
+  const meta = [e.nli_date_text, e.nli_owner].filter(Boolean).map(escHtml).join(' · ');
+
+  const rights = [
+    e.image_attribution ? escHtml(e.image_attribution) : '',
+    e.image_license_url
+      ? `<a href="${escHtml(e.image_license_url)}" target="_blank" rel="noopener">Rights &amp; terms of use</a>`
+      : '',
+  ].filter(Boolean).join(' · ');
+
+  return `
+    <figure class="nli-item">
+      ${figure}
+      <figcaption class="nli-cap">
+        <div class="nli-title">${e.nli_url
+          ? `<a href="${escHtml(e.nli_url)}" target="_blank" rel="noopener">${escHtml(e.nli_title)}</a>`
+          : escHtml(e.nli_title)}</div>
+        <div class="nli-attest">
+          <span class="nli-lbl">Attested as</span>
+          <span class="nli-heb">${escHtml(e.matched_form_on_poster || e.matched_word)}</span>
+          ${e.matched_form_on_poster && e.matched_form_on_poster !== e.matched_word
+            ? `<span class="nli-from">for biblical <span class="nli-heb">${escHtml(e.matched_word)}</span></span>`
+            : ''}
+        </div>
+        ${e.modern_context_gloss ? `<p class="nli-gloss">${escHtml(e.modern_context_gloss)}</p>` : ''}
+        ${meta ? `<div class="nli-meta">${meta}</div>` : ''}
+        ${tags ? `<div class="nli-tags">${tags}</div>` : ''}
+        ${rights ? `<div class="nli-rights">${rights}</div>` : ''}
+      </figcaption>
+    </figure>`;
+}
+
+function nliEvidenceHtml(rows: any[]): string {
+  if (!rows.length) return '';
+  return `
+    <div class="nli-evidence">
+      <div class="nli-hdr">Attested in use · National Library of Israel</div>
+      ${rows.map(nliEvidenceItemHtml).join('')}
+    </div>`;
+}
+
 // sources[] and urls[] are independent lists on these rows — a url is not
 // guaranteed to belong to the source at the same index, so they render as two
 // separate lines rather than being zipped into linked source names.
 // `open` is for the word-detail panel, where you clicked a specific word and
 // want its note straight away; the per-verse list stays collapsed.
 function modernEntryHtml(m: any, open = false): string {
+  const evidence = nliEvidenceFor(m);
   const srcs = (Array.isArray(m.sources) ? m.sources : [m.sources]).filter(Boolean);
   const urls = (Array.isArray(m.urls) ? m.urls : [m.urls]).filter(Boolean);
   const links = urls.map((u: string, i: number) =>
@@ -2182,9 +2484,11 @@ function modernEntryHtml(m: any, open = false): string {
       <summary>
         ${m.words ? `<span class="m-heb">${escHtml(m.words)}</span>` : ''}
         <span class="m-kind">${escHtml(modernKind(m.literary_device))}</span>
+        ${evidence.length ? `<span class="m-nli-chip">NLI ×${evidence.length}</span>` : ''}
       </summary>
       <div class="m-body-wrap">
         ${m.comments  ? `<p class="m-body">${escHtml(m.comments)}</p>` : ''}
+        ${nliEvidenceHtml(evidence)}
         ${m.questions ? `<p class="m-q"><span class="m-lbl">Open question</span>${escHtml(m.questions)}</p>` : ''}
         ${srcs.length ? `<div class="m-meta"><span class="m-lbl">Sources</span>${escHtml(srcs.join('; '))}</div>` : ''}
         ${links       ? `<div class="m-meta"><span class="m-lbl">Links</span>${links}</div>` : ''}
@@ -2481,6 +2785,7 @@ async function renderRange(
       fetchModern(book),
       loadSelectedTranslationsForBook(book),
     ]);
+    await fetchNliEvidence(book, modern.map((m: any) => m.id).filter(Boolean));
     populateSefariaVersions(book);
 
     if (!appendMode) main.innerHTML = '';
@@ -3334,6 +3639,7 @@ async function buildHaftarahSection(parsha: string): Promise<HTMLElement> {
       const bookCode = BOOK_XML[book];
       const bookDevices = await fetchDevices(book);
       const bookModern  = await fetchModern(book);
+      await fetchNliEvidence(book, bookModern.map((m: any) => m.id).filter(Boolean));
 
       for (const {ch, v} of verseRefs) {
         const chId = `${bookCode}.${ch}`;

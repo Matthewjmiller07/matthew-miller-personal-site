@@ -806,6 +806,10 @@ const TABLE         = 'literary_bible';
 // Biblical → Modern Hebrew usage notes (Ma’agarim research) live alongside the
 // older device rows in the Tanakh Annotations table, tagged by their device prefix.
 const MODERN_TABLE  = 'Tanakh Annotations';
+// Every modern-usage row opens with "Biblical" — some with the full
+// "Biblical → Modern Hebrew: <kind>" prefix, others as a plain sentence — while the
+// older literary-device rows never do, so that opening word is the whole test.
+const MODERN_DEVICE = /^Biblical\b/i;
 const MODERN_PREFIX = /^Biblical\s*(?:→|->)\s*Modern Hebrew\s*:?\s*/i;
 const MODERN_COLOR  = '#79b8a4';
 
@@ -1025,7 +1029,7 @@ async function loadModernUsage() {
   try {
     const params = new URLSearchParams({
       select: 'book,chapter,verse,literary_device,words,sources,urls,comments,questions,created_at',
-      literary_device: 'ilike.Biblical*Modern*Hebrew*',
+      literary_device: 'ilike.Biblical*',
       order: 'book.asc,chapter.asc,verse.asc,id.asc',
     });
     const res = await fetch(
@@ -1035,7 +1039,7 @@ async function loadModernUsage() {
     if (!res.ok) throw new Error(`Supabase error ${res.status}`);
     const raw = await res.json();
     modernRows = raw
-      .filter(r => MODERN_PREFIX.test(r.literary_device || ''))
+      .filter(r => MODERN_DEVICE.test(r.literary_device || ''))
       .map(r => ({ ...r, book: BOOK_NAME_FIX[r.book] || r.book }));
   } catch {
     modernRows = [];
