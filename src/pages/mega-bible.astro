@@ -569,6 +569,39 @@ body:has(.mb-page) > footer { display:none!important; }
   flex-shrink:0;
 }
 
+
+/* Share-this-section link. Every part of a verse that carries its own commentary
+   is addressable, so a note can be sent to someone rather than described to them. */
+.focus-share {
+  font-family:var(--sc); font-size:.44rem; letter-spacing:.14em; text-transform:uppercase;
+  background:none; border:1px solid var(--border); color:var(--faint);
+  padding:.05rem .3rem; margin-left:.4rem; cursor:pointer; vertical-align:middle;
+  transition:color .12s, border-color .12s;
+}
+/* Quiet by default — there is one on every section of every verse — but always
+   legible where there is no hover to reveal them. */
+.focus-share { opacity:.3; }
+.verse-block:hover .focus-share, .focus-share:focus-visible { opacity:1; }
+@media (hover: none) { .focus-share { opacity:.75; } }
+.focus-share:hover, .focus-share:focus-visible { color:var(--gold); border-color:var(--gold-dim); outline:none; opacity:1; }
+.focus-share.copied { opacity:1; }
+.focus-share.copied { color:var(--modern); border-color:var(--modern-dim); }
+
+/* Where a shared link lands. The ring fades on its own so it marks the spot
+   without permanently recolouring the page. */
+@keyframes focusFlash {
+  0%   { box-shadow:0 0 0 2px var(--gold), 0 0 18px rgba(201,162,87,.5); background:rgba(201,162,87,.16); }
+  70%  { box-shadow:0 0 0 2px var(--gold), 0 0 18px rgba(201,162,87,.5); background:rgba(201,162,87,.16); }
+  100% { box-shadow:0 0 0 2px transparent, 0 0 0 transparent; background:transparent; }
+}
+.focus-target {
+  animation:focusFlash 3.2s ease-out forwards;
+  scroll-margin-top:5rem; scroll-margin-bottom:4rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .focus-target { animation:none; box-shadow:0 0 0 2px var(--gold); }
+}
+
 /* Lightbox for the full-size IIIF image */
 .nli-lightbox {
   /* Above the site's sticky header (z-50), which the page's own panels sit under. */
@@ -1732,7 +1765,19 @@ function restoreFromURL() {
   }
 
   updateLoadBtn();
-  if (!loadBtn.disabled) handleLoad();
+
+  // ?focus=<section> lands on one commentary within a verse. It is a one-shot
+  // deep link, not page state, so it is applied after the load and then left out
+  // of syncURL — the Link buttons hand out the canonical URL.
+  const focusKey = p.get('focus') || '';
+  const focusRef = p.get('book') && p.get('chapter') && p.get('verse')
+    ? `${p.get('book')} ${p.get('chapter')}:${p.get('verse')}`
+    : '';
+
+  if (!loadBtn.disabled) {
+    const loading = handleLoad();
+    if (focusKey) Promise.resolve(loading).then(() => applyFocus(focusKey, focusRef));
+  }
   applyPendingSefariaVersions(pendingSefariaVersions);
 }
 
@@ -1865,6 +1910,89 @@ document.addEventListener('toggle', (e) => {
     fillNliPlaceholders(el);
   }
 }, true);
+
+
+// ── Deep links into one part of a verse ─────────────────────────────────────
+// A verse carries several independent commentaries — devices, my own notes, the
+// Modern Hebrew notes, the NLI evidence. Each is addressable as ?…&focus=<key>,
+// so "look at my note on Genesis 2:8" is a link rather than a description.
+const FOCUS_SECTIONS: Record<string, string> = {
+  verse:   'verse',
+  devices: 'sources',
+  notes:   'my notes',
+  modern:  'Modern Hebrew',
+  nli:     'NLI evidence',
+};
+
+function focusShareHtml(key: string, book: string, ch: number, v: number): string {
+  const qs = `book=${encodeURIComponent(book)}&chapter=${ch}&verse=${v}&focus=${key}`;
+  return `<button class="focus-share" type="button" data-share-qs="${escHtml(qs)}"
+            title="Copy a link to this ${escHtml(FOCUS_SECTIONS[key] || key)}">Link</button>`;
+}
+
+function focusShareEl(key: string, book: string, ch: number, v: number): HTMLElement {
+  const wrap = document.createElement('span');
+  wrap.innerHTML = focusShareHtml(key, book, ch, v);
+  return wrap.firstElementChild as HTMLElement;
+}
+
+// One delegated handler: the verse list is rebuilt on every render.
+document.addEventListener('click', async (e) => {
+  const btn = (e.target as HTMLElement)?.closest?.('.focus-share') as HTMLElement | null;
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();          // inside a <summary>, this would otherwise toggle it
+
+  const url = `${location.origin}${location.pathname}?${btn.dataset.shareQs}`;
+  const original = btn.textContent;
+  try {
+    await navigator.clipboard.writeText(url);
+    btn.textContent = 'Copied';
+  } catch {
+    // Clipboard is refused outside a secure context, so fall back to selecting it.
+    window.prompt('Copy this link:', url);
+    btn.textContent = original;
+    return;
+  }
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1600);
+});
+
+/**
+ * Land on the section a shared link names: open whatever is collapsed around it,
+ * scroll it into view and flash it. Runs once after a load, never on its own.
+ */
+function applyFocus(key: string, ref: string) {
+  if (!key) return;
+  if (!(key in FOCUS_SECTIONS)) return;
+  const blocks = Array.from(document.querySelectorAll('.verse-block')) as HTMLElement[];
+  const block = blocks.find(b => b.dataset.verseRef === ref)
+    || blocks.find(b => b.querySelector(`[data-focus="${key}"]`))
+    || blocks[0];
+  if (!block) return;
+
+  const target = (key === 'verse' ? block : block.querySelector(`[data-focus="${key}"]`)) as HTMLElement | null;
+  if (!target) return;
+
+  // Open the target itself and anything collapsed around it.
+  if (target instanceof HTMLDetailsElement) target.open = true;
+  let parent: HTMLElement | null = target.parentElement;
+  while (parent && parent !== document.body) {
+    if (parent instanceof HTMLDetailsElement) parent.open = true;
+    parent = parent.parentElement;
+  }
+  // An NLI link should land on the evidence with its entry already open.
+  if (key === 'nli') {
+    target.closest('details.modern-entry')?.setAttribute('open', '');
+    void fillNliPlaceholders(target);
+  }
+
+  requestAnimationFrame(() => {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('focus-target');
+    setTimeout(() => target.classList.remove('focus-target'), 3400);
+  });
+}
 
 // ── NLI image lightbox ─────────────────────────────────────────
 // The page shows a bounded thumbnail; the full IIIF image is only ever requested
@@ -2592,11 +2720,14 @@ function nliEvidenceItemHtml(e: any): string {
     </figure>`;
 }
 
-function nliEvidenceHtml(rows: any[]): string {
+function nliEvidenceHtml(rows: any[], m: any = null): string {
   if (!rows.length) return '';
+  const share = m?.book && m?.chapter && m?.verse
+    ? focusShareHtml('nli', m.book, Number(m.chapter), Number(m.verse))
+    : '';
   return `
-    <div class="nli-evidence">
-      <div class="nli-hdr">Attested in use · National Library of Israel</div>
+    <div class="nli-evidence" data-focus="nli">
+      <div class="nli-hdr">Attested in use · National Library of Israel${share}</div>
       ${rows.map(nliEvidenceItemHtml).join('')}
     </div>`;
 }
@@ -2622,7 +2753,7 @@ function modernEntryHtml(m: any, open = false): string {
       </summary>
       <div class="m-body-wrap">
         ${m.comments  ? `<p class="m-body">${escHtml(m.comments)}</p>` : ''}
-        ${nliEvidenceHtml(evidence)}
+        ${nliEvidenceHtml(evidence, m)}
         ${m.questions ? `<p class="m-q"><span class="m-lbl">Open question</span>${escHtml(m.questions)}</p>` : ''}
         ${srcs.length ? `<div class="m-meta"><span class="m-lbl">Sources</span>${escHtml(srcs.join('; '))}</div>` : ''}
         ${links       ? `<div class="m-meta"><span class="m-lbl">Links</span>${links}</div>` : ''}
@@ -3504,7 +3635,8 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
   ref.className = 'verse-ref';
   const sefariaBook = (SEFARIA_BOOK_MAP[book] || book).replace(/ /g,'_');
   const sefariaRef = encodeURIComponent(`${sefariaBook} ${ch}:${v}`);
-  ref.innerHTML = `<a href="https://www.sefaria.org/${sefariaRef}" target="_blank" rel="noopener">${book} ${ch}:${v}</a>`;
+  ref.innerHTML = `<a href="https://www.sefaria.org/${sefariaRef}" target="_blank" rel="noopener">${book} ${ch}:${v}</a>`
+    + focusShareHtml('verse', book, ch, v);
 
   // Literary device badges on verse header
   if (devices.length) {
@@ -3688,6 +3820,7 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
   if (devices.length) {
     const fn = document.createElement('div');
     fn.className = 'verse-footnotes';
+    fn.dataset.focus = 'devices';
     devices.forEach(d => {
       const color = deviceColor(d.device?.toLowerCase() || '');
       const srcParts = d.sources ? d.sources.split(';').map((s: string) => s.trim()) : [];
@@ -3697,6 +3830,7 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
       ).join(', ');
       fn.innerHTML += `<span class="fn-device" style="color:${color}">${d.device}</span>${srcs ? '(' + srcs + ')' : ''}${d.notes ? ' — ' + d.notes : ''}<br>`;
     });
+    fn.appendChild(focusShareEl('devices', book, ch, v));
     block.appendChild(fn);
   }
 
@@ -3704,7 +3838,9 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
   if (modern.length) {
     const modernEl = document.createElement('details');
     modernEl.className = 'verse-modern';
-    modernEl.innerHTML = `<summary>Biblical → Modern Hebrew · ${modern.length}</summary>`
+    modernEl.dataset.focus = 'modern';
+    modernEl.innerHTML =
+      `<summary>Biblical → Modern Hebrew · ${modern.length}${focusShareHtml('modern', book, ch, v)}</summary>`
       + modern.map(m => modernEntryHtml(m)).join('');
     block.appendChild(modernEl);
   }
@@ -3715,7 +3851,10 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
   if (myNotes.length) {
     const notesEl = document.createElement('div');
     notesEl.className = 'verse-mynotes';
-    notesEl.innerHTML = `<div class="verse-mynotes-hdr">My Notes</div>${myNotes.map(n => `<p>${n}</p>`).join('')}`;
+    notesEl.dataset.focus = 'notes';
+    notesEl.innerHTML =
+      `<div class="verse-mynotes-hdr">My Notes${focusShareHtml('notes', book, ch, v)}</div>`
+      + myNotes.map(n => `<p>${n}</p>`).join('');
     block.appendChild(notesEl);
   }
 
