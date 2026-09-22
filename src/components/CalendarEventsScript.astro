@@ -61,7 +61,29 @@
     return div.innerHTML;
   }
 
-  function renderEvents(listEl, countEl, events) {
+  // Language of the nearest page-level toggle scope an element sits in
+  // (defaults to English when there's no toggle on the page at all).
+  function getLang(el) {
+    return el.closest('.lang-scope')?.dataset.lang || 'en';
+  }
+
+  const STRINGS = {
+    en: {
+      loading: 'Loading events…',
+      loadError: 'Could not load events — try downloading the .ics instead.',
+      copied: 'Copied!',
+      eventCount: (n) => `${n} event${n === 1 ? '' : 's'}`,
+    },
+    he: {
+      loading: 'טוען אירועים…',
+      loadError: 'לא ניתן לטעון את האירועים — נסו להוריד את קובץ ה-.ics במקום.',
+      copied: 'הועתק!',
+      eventCount: (n) => `${n} אירועים`,
+    },
+  };
+
+  function renderEvents(listEl, countEl, events, lang) {
+    const t = STRINGS[lang] || STRINGS.en;
     const sorted = [...events].sort((a, b) => parseIcsDate(a.dtstart, a.allDay) - parseIcsDate(b.dtstart, b.allDay));
     const frag = document.createDocumentFragment();
     for (const ev of sorted) {
@@ -84,23 +106,25 @@
     }
     listEl.innerHTML = '';
     listEl.append(frag);
-    countEl.textContent = `${sorted.length} event${sorted.length === 1 ? '' : 's'}`;
+    countEl.textContent = t.eventCount(sorted.length);
   }
 
   async function loadEventsForButton(btn) {
+    const lang = getLang(btn);
+    const t = STRINGS[lang] || STRINGS.en;
     const panel = btn.nextElementSibling;
     const listEl = panel.querySelector('.events-list');
     const statusEl = panel.querySelector('.events-status');
     const countEl = panel.querySelector('.events-count');
-    statusEl.textContent = 'Loading events…';
+    statusEl.textContent = t.loading;
     try {
       const res = await fetch(btn.dataset.icsUrl);
       const text = await res.text();
-      renderEvents(listEl, countEl, parseIcs(text));
+      renderEvents(listEl, countEl, parseIcs(text), lang);
       statusEl.textContent = '';
       btn.dataset.loaded = 'true';
     } catch {
-      statusEl.textContent = 'Could not load events — try downloading the .ics instead.';
+      statusEl.textContent = t.loadError;
     }
   }
 
@@ -128,18 +152,20 @@
       });
     });
 
-    // Per-card English/Hebrew toggle — swaps name/description/note text,
-    // subscribe-button hrefs, the displayed ICS URL, and (if already open)
-    // the inline event list, all sourced from data-en/data-he attributes
-    // baked into the markup at build time.
+    // Page-level English/Hebrew toggle — swaps every [data-en]/[data-he] text
+    // node and [data-href-en]/[data-href-he] link inside the nearest
+    // .lang-scope ancestor (name/description/note, subscribe-button labels
+    // and hrefs, the displayed ICS URL, page copy), and — if the inline
+    // event viewer is already open — re-fetches it in the new language.
     document.querySelectorAll('.lang-toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const card = btn.closest('.calendar-card');
+        const scope = btn.closest('.lang-scope');
         const lang = btn.dataset.lang;
-        if (!card || card.dataset.lang === lang) return;
-        card.dataset.lang = lang;
+        if (!scope || scope.dataset.lang === lang) return;
+        scope.dataset.lang = lang;
+        scope.dir = lang === 'he' ? 'rtl' : 'ltr';
 
-        card.querySelectorAll('.lang-toggle-btn').forEach(b => {
+        scope.querySelectorAll('.lang-toggle-btn').forEach(b => {
           const active = b.dataset.lang === lang;
           b.classList.toggle('bg-accent', active);
           b.classList.toggle('text-white', active);
@@ -150,35 +176,38 @@
           b.classList.toggle('dark:text-secondary-dark', !active);
         });
 
-        card.querySelectorAll('[data-en]').forEach(el => {
+        scope.querySelectorAll('[data-en]').forEach(el => {
           const val = lang === 'he' ? (el.dataset.he || el.dataset.en) : el.dataset.en;
           el.textContent = val;
-          el.dir = lang === 'he' && el.dataset.he ? 'rtl' : 'ltr';
         });
 
-        card.querySelectorAll('[data-href-en]').forEach(el => {
+        scope.querySelectorAll('[data-en-html]').forEach(el => {
+          el.innerHTML = lang === 'he' ? (el.dataset.heHtml || el.dataset.enHtml) : el.dataset.enHtml;
+        });
+
+        scope.querySelectorAll('[data-href-en]').forEach(el => {
           const val = lang === 'he' ? (el.dataset.hrefHe || el.dataset.hrefEn) : el.dataset.hrefEn;
           el.setAttribute('href', val);
         });
 
-        const copyBtn = card.querySelector('.copy-btn');
-        if (copyBtn) {
-          copyBtn.dataset.copy = lang === 'he' ? (copyBtn.dataset.copyHe || copyBtn.dataset.copyEn) : copyBtn.dataset.copyEn;
-        }
+        scope.querySelectorAll('[data-placeholder-en]').forEach(el => {
+          el.placeholder = lang === 'he' ? (el.dataset.placeholderHe || el.dataset.placeholderEn) : el.dataset.placeholderEn;
+        });
 
-        const viewBtn = card.querySelector('.view-events-btn');
-        if (viewBtn) {
+        scope.querySelectorAll('.copy-btn').forEach(copyBtn => {
+          copyBtn.dataset.copy = lang === 'he' ? (copyBtn.dataset.copyHe || copyBtn.dataset.copyEn) : copyBtn.dataset.copyEn;
+        });
+
+        scope.querySelectorAll('.view-events-btn').forEach(viewBtn => {
           const url = lang === 'he' ? (viewBtn.dataset.icsUrlHe || viewBtn.dataset.icsUrlEn) : viewBtn.dataset.icsUrlEn;
-          if (url && url !== viewBtn.dataset.icsUrl) {
-            viewBtn.dataset.icsUrl = url;
-            viewBtn.dataset.loaded = 'false';
-            const panel = viewBtn.nextElementSibling;
-            panel.querySelector('.events-list').dir = lang === 'he' ? 'rtl' : 'ltr';
-            if (!panel.classList.contains('hidden')) {
-              loadEventsForButton(viewBtn);
-            }
+          if (!url || url === viewBtn.dataset.icsUrl) return;
+          viewBtn.dataset.icsUrl = url;
+          viewBtn.dataset.loaded = 'false';
+          const panel = viewBtn.nextElementSibling;
+          if (!panel.classList.contains('hidden')) {
+            loadEventsForButton(viewBtn);
           }
-        }
+        });
       });
     });
 
@@ -208,10 +237,12 @@
     document.querySelectorAll('.copy-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const text = btn.dataset.copy;
+        const label = btn.querySelector('.copy-btn-label');
         navigator.clipboard.writeText(text).then(() => {
-          const original = btn.innerHTML;
-          btn.innerHTML = btn.innerHTML.replace('Copy link', 'Copied!');
-          setTimeout(() => { btn.innerHTML = original; }, 2000);
+          if (!label) return;
+          const original = label.textContent;
+          label.textContent = STRINGS[getLang(btn)].copied;
+          setTimeout(() => { label.textContent = original; }, 2000);
         });
       });
     });

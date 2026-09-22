@@ -20,34 +20,17 @@ export interface Props {
 }
 
 const { cal, linkTitle = true } = Astro.props;
-const hasHebrew = Boolean(cal.nameHe);
 
 const googleCalHrefEn = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(cal.icsWebcal)}`;
 const googleCalHrefHe = cal.icsWebcalHe
   ? `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(cal.icsWebcalHe)}`
   : googleCalHrefEn;
+
+const eventCountEn = `📅 ${cal.eventCount} events`;
+const eventCountHe = `📅 ${cal.eventCount} אירועים`;
 ---
 
-<div class="calendar-card bg-card-bg-light dark:bg-card-bg-dark border border-border-light dark:border-border-dark rounded-xl p-6 shadow-sm" data-lang="en">
-  {hasHebrew && (
-    <div class="flex gap-1 mb-3" role="group" aria-label="Language">
-      <button
-        type="button"
-        class="lang-toggle-btn bg-accent text-white border-accent text-xs font-medium px-2.5 py-1 rounded-full border transition-colors"
-        data-lang="en"
-      >
-        English
-      </button>
-      <button
-        type="button"
-        class="lang-toggle-btn border-border-light dark:border-border-dark text-secondary-light dark:text-secondary-dark text-xs font-medium px-2.5 py-1 rounded-full border transition-colors"
-        data-lang="he"
-      >
-        עברית
-      </button>
-    </div>
-  )}
-
+<div class="calendar-card bg-card-bg-light dark:bg-card-bg-dark border border-border-light dark:border-border-dark rounded-xl p-6 shadow-sm">
   <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
     <div class="flex-1">
       <div class="flex flex-wrap items-center gap-2 mb-1">
@@ -69,17 +52,19 @@ const googleCalHrefHe = cal.icsWebcalHe
         <p class="text-xs text-secondary-light/70 dark:text-secondary-dark/70 italic mb-3" data-en={cal.note} data-he={cal.noteHe}>{cal.note}</p>
       )}
       <div class="flex flex-wrap items-center gap-4 text-xs text-secondary-light dark:text-secondary-dark">
-        <span>📅 {cal.eventCount} events</span>
+        <span data-en={eventCountEn} data-he={eventCountHe}>{eventCountEn}</span>
         <a
           href={cal.source}
           target="_blank"
           rel="noopener noreferrer"
           class="text-accent dark:text-accent-dark hover:underline"
+          data-en="View source ↗"
+          data-he="צפייה במקור ↗"
         >
           View source ↗
         </a>
         {linkTitle && (
-          <a href={`/calendars/${cal.slug}/`} class="text-accent dark:text-accent-dark hover:underline">
+          <a href={`/calendars/${cal.slug}/`} class="text-accent dark:text-accent-dark hover:underline" data-en="Full page ↗" data-he="לעמוד המלא ↗">
             Full page ↗
           </a>
         )}
@@ -99,7 +84,7 @@ const googleCalHrefHe = cal.icsWebcalHe
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        Add to Google Calendar
+        <span data-en="Add to Google Calendar" data-he="הוספה ליומן Google">Add to Google Calendar</span>
       </a>
       <a
         href={cal.icsWebcal}
@@ -110,7 +95,7 @@ const googleCalHrefHe = cal.icsWebcalHe
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        Apple / Outlook (webcal)
+        <span data-en="Apple / Outlook (webcal)" data-he="אפל / אאוטלוק (webcal)">Apple / Outlook (webcal)</span>
       </a>
       <a
         href={cal.icsHttps}
@@ -122,14 +107,18 @@ const googleCalHrefHe = cal.icsWebcalHe
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
-        Download .ics
+        <span data-en="Download .ics" data-he="הורדת קובץ .ics">Download .ics</span>
       </a>
     </div>
   </div>
 
   <!-- ICS URL display -->
   <div class="mt-4 pt-4 border-t border-border-light dark:border-border-dark">
-    <p class="text-xs text-secondary-light dark:text-secondary-dark mb-2 font-medium">Paste this URL into any calendar app (Outlook, Thunderbird, etc.):</p>
+    <p
+      class="text-xs text-secondary-light dark:text-secondary-dark mb-2 font-medium"
+      data-en="Paste this URL into any calendar app (Outlook, Thunderbird, etc.):"
+      data-he="הדביקו כתובת זו באפליקציית יומן כלשהי (Outlook, Thunderbird וכו׳):"
+    >Paste this URL into any calendar app (Outlook, Thunderbird, etc.):</p>
     <div class="flex items-center gap-2">
       <code class="ics-url-display text-xs bg-slate-100 dark:bg-slate-800 text-accent dark:text-accent-dark px-3 py-1.5 rounded flex-1 break-all" data-en={cal.icsHttps} data-he={cal.icsHttpsHe}>
         {cal.icsHttps}
@@ -143,7 +132,7 @@ const googleCalHrefHe = cal.icsWebcalHe
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
         </svg>
-        Copy
+        <span class="copy-btn-label" data-en="Copy" data-he="העתקה">Copy</span>
       </button>
     </div>
   </div>
@@ -158,7 +147,7 @@ const googleCalHrefHe = cal.icsWebcalHe
       data-loaded="false"
       aria-expanded="false"
     >
-      <span>View events inline</span>
+      <span data-en="View events inline" data-he="הצגת אירועים בעמוד">View events inline</span>
       <svg class="chevron w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
       </svg>
@@ -168,6 +157,8 @@ const googleCalHrefHe = cal.icsWebcalHe
         <input
           type="text"
           placeholder="Filter events…"
+          data-placeholder-en="Filter events…"
+          data-placeholder-he="סינון אירועים…"
           class="events-search flex-1 text-sm px-3 py-1.5 rounded border border-border-light dark:border-border-dark bg-transparent text-primary-light dark:text-primary-dark placeholder:text-secondary-light/60 dark:placeholder:text-secondary-dark/60"
         />
         <span class="events-count text-xs text-secondary-light dark:text-secondary-dark whitespace-nowrap"></span>

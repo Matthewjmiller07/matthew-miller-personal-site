@@ -12,31 +12,67 @@ export function getStaticPaths() {
 }
 
 const { cal } = Astro.props;
+const hasHebrew = Boolean(cal.nameHe);
+
+const subscribeItemsEn = [
+  '<strong>Google Calendar:</strong> Click "Add to Google Calendar" below, or go to Other Calendars → "+" → "From URL" and paste the <code class="text-xs bg-slate-200 dark:bg-slate-700 px-1 rounded">https://</code> URL.',
+  '<strong>Apple Calendar:</strong> Click "Apple / Outlook (webcal)" — the app will open and prompt you to subscribe.',
+  '<strong>Outlook / Thunderbird:</strong> Copy the <code class="text-xs bg-slate-200 dark:bg-slate-700 px-1 rounded">https://</code> URL and add it as a calendar from internet/URL.',
+  '<strong>One-time import:</strong> Use "Download .ics" to import a static snapshot (won\'t auto-update).',
+];
+const subscribeItemsHe = [
+  '<strong>יומן Google:</strong> לחצו על "הוספה ליומן Google" למטה, או עברו אל יומנים אחרים ← "+" ← "מכתובת URL" והדביקו את הכתובת <code class="text-xs bg-slate-200 dark:bg-slate-700 px-1 rounded">https://</code>.',
+  '<strong>יומן Apple:</strong> לחצו על "Apple / Outlook (webcal)" — האפליקציה תיפתח ותציע להירשם.',
+  '<strong>Outlook / Thunderbird:</strong> העתיקו את הכתובת <code class="text-xs bg-slate-200 dark:bg-slate-700 px-1 rounded">https://</code> והוסיפו אותה כיומן מהאינטרנט/מכתובת URL.',
+  '<strong>ייבוא חד-פעמי:</strong> השתמשו ב"הורדת קובץ .ics" כדי לייבא תמונת מצב סטטית (לא תתעדכן אוטומטית).',
+];
 ---
 
 <Layout
   title={cal.name}
   description={cal.description}
 >
-  <main class="max-w-4xl mx-auto px-4 py-10">
-    <a
-      href="/calendars"
-      class="inline-flex items-center gap-1 text-sm text-secondary-light dark:text-secondary-dark hover:text-accent dark:hover:text-accent-dark mb-6 transition-colors"
-    >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-      </svg>
-      All calendars
-    </a>
+  <main class="lang-scope max-w-4xl mx-auto px-4 py-10" data-lang="en">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <a
+        href="/calendars"
+        class="inline-flex items-center gap-1 text-sm text-secondary-light dark:text-secondary-dark hover:text-accent dark:hover:text-accent-dark transition-colors"
+        data-en="All calendars"
+        data-he="כל הלוחות"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        All calendars
+      </a>
+
+      {hasHebrew && (
+        <div class="flex gap-1" role="group" aria-label="Language">
+          <button
+            type="button"
+            class="lang-toggle-btn bg-accent text-white border-accent text-sm font-medium px-3 py-1.5 rounded-full border transition-colors"
+            data-lang="en"
+          >
+            English
+          </button>
+          <button
+            type="button"
+            class="lang-toggle-btn border-border-light dark:border-border-dark text-secondary-light dark:text-secondary-dark text-sm font-medium px-3 py-1.5 rounded-full border transition-colors"
+            data-lang="he"
+          >
+            עברית
+          </button>
+        </div>
+      )}
+    </div>
 
     <!-- How to subscribe -->
     <div class="bg-accent/10 border border-accent/30 rounded-xl p-5 mb-8">
-      <h2 class="font-semibold text-accent dark:text-accent-dark mb-2">How to subscribe</h2>
+      <h2 class="font-semibold text-accent dark:text-accent-dark mb-2" data-en="How to subscribe" data-he="איך להירשם">How to subscribe</h2>
       <ul class="text-sm text-secondary-light dark:text-secondary-dark space-y-1 list-disc list-inside">
-        <li><strong>Google Calendar:</strong> Click "Add to Google Calendar" below, or go to Other Calendars → "+" → "From URL" and paste the <code class="text-xs bg-slate-200 dark:bg-slate-700 px-1 rounded">https://</code> URL.</li>
-        <li><strong>Apple Calendar:</strong> Click "Apple / Outlook (webcal)" — the app will open and prompt you to subscribe.</li>
-        <li><strong>Outlook / Thunderbird:</strong> Copy the <code class="text-xs bg-slate-200 dark:bg-slate-700 px-1 rounded">https://</code> URL and add it as a calendar from internet/URL.</li>
-        <li><strong>One-time import:</strong> Use "Download .ics" to import a static snapshot (won't auto-update).</li>
+        {subscribeItemsEn.map((html, i) => (
+          <li data-en-html={html} data-he-html={subscribeItemsHe[i]} set:html={html} />
+        ))}
       </ul>
     </div>
 
