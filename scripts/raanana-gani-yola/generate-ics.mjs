@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Builds public/calendar/raanana_gani_yola.ics from
+ * Builds public/calendar/raanana_gani_yola.ics (English) and
+ * public/calendar/raanana_gani_yola_he.ics (Hebrew) from
  * src/data/raanana-gani-yola/events.json — vacation days, extended-day
  * (Yol"a) activity-hour windows, and holidays for Raanana's Gani Yol"a
  * kindergarten program, transcribed from the municipality's official
@@ -14,8 +15,6 @@ import path from 'node:path';
 
 const repoRoot = process.cwd();
 const eventsPath = path.join(repoRoot, 'src', 'data', 'raanana-gani-yola', 'events.json');
-const outPath = path.join(repoRoot, 'public', 'calendar', 'raanana_gani_yola.ics');
-
 const events = JSON.parse(fs.readFileSync(eventsPath, 'utf8'));
 
 function dateStamp(dateISO) {
@@ -56,31 +55,58 @@ function foldLine(line) {
   return out.join('\r\n');
 }
 
-const lines = [
-  'BEGIN:VCALENDAR',
-  'VERSION:2.0',
-  'PRODID:-//Raanana Gani Yol\'a//School Calendar//EN',
-  'CALSCALE:GREGORIAN',
-  'X-WR-CALNAME:Raanana Gani Yol\'a - School Calendar',
-  'X-WR-CALDESC:Vacation days, Yol\'a activity-hour windows, and holidays for Raanana\'s Gani Yol\'a kindergarten program',
-];
+function buildIcs({ calName, calDesc, titleField, descField }) {
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Raanana Gani Yol\'a//School Calendar//EN',
+    'CALSCALE:GREGORIAN',
+    foldLine(`X-WR-CALNAME:${escapeText(calName)}`),
+    foldLine(`X-WR-CALDESC:${escapeText(calDesc)}`),
+  ];
 
-const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date));
+  const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date));
 
-for (const ev of sorted) {
-  lines.push('BEGIN:VEVENT');
-  lines.push(`UID:${ev.id}@raanana-gani-yola.theothermatthewmiller.com`);
-  lines.push(`DTSTAMP:${dateStamp(ev.date)}T120000Z`);
-  lines.push(`DTSTART;VALUE=DATE:${dateStamp(ev.date)}`);
-  lines.push(`DTEND;VALUE=DATE:${nextDateStamp(ev.endDate ?? ev.date)}`);
-  lines.push(foldLine(`SUMMARY:${escapeText(ev.title)}`));
-  if (ev.description) lines.push(foldLine(`DESCRIPTION:${escapeText(ev.description)}`));
-  if (ev.category) lines.push(`CATEGORIES:${escapeText(ev.category)}`);
-  lines.push('END:VEVENT');
+  for (const ev of sorted) {
+    const title = ev[titleField] || ev.title;
+    const description = ev[descField] || ev.description;
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:${ev.id}@raanana-gani-yola.theothermatthewmiller.com`);
+    lines.push(`DTSTAMP:${dateStamp(ev.date)}T120000Z`);
+    lines.push(`DTSTART;VALUE=DATE:${dateStamp(ev.date)}`);
+    lines.push(`DTEND;VALUE=DATE:${nextDateStamp(ev.endDate ?? ev.date)}`);
+    lines.push(foldLine(`SUMMARY:${escapeText(title)}`));
+    if (description) lines.push(foldLine(`DESCRIPTION:${escapeText(description)}`));
+    if (ev.category) lines.push(`CATEGORIES:${escapeText(ev.category)}`);
+    lines.push('END:VEVENT');
+  }
+
+  lines.push('END:VCALENDAR');
+  return { lines, count: sorted.length };
 }
 
-lines.push('END:VCALENDAR');
+function writeIcs(outPath, { lines, count }) {
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, lines.join('\r\n') + '\r\n', 'utf8');
+  console.log(`Wrote ${count} events to ${path.relative(repoRoot, outPath)}`);
+}
 
-fs.mkdirSync(path.dirname(outPath), { recursive: true });
-fs.writeFileSync(outPath, lines.join('\r\n') + '\r\n', 'utf8');
-console.log(`Wrote ${sorted.length} events to ${path.relative(repoRoot, outPath)}`);
+writeIcs(
+  path.join(repoRoot, 'public', 'calendar', 'raanana_gani_yola.ics'),
+  buildIcs({
+    calName: 'Raanana Gani Yol\'a - School Calendar',
+    calDesc: 'Vacation days, Yol\'a activity-hour windows, and holidays for Raanana\'s Gani Yol\'a kindergarten program',
+    titleField: 'title',
+    descField: 'description',
+  })
+);
+
+writeIcs(
+  path.join(repoRoot, 'public', 'calendar', 'raanana_gani_yola_he.ics'),
+  buildIcs({
+    calName: 'גני יול"א רעננה - לוח שנת הלימודים',
+    calDesc: 'ימי חופשה, שעות פעילות יול"א מורחבת וחגים עבור גני יול"א ברעננה',
+    titleField: 'titleHe',
+    descField: 'descriptionHe',
+  })
+);

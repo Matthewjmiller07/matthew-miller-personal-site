@@ -87,14 +87,28 @@
     countEl.textContent = `${sorted.length} event${sorted.length === 1 ? '' : 's'}`;
   }
 
+  async function loadEventsForButton(btn) {
+    const panel = btn.nextElementSibling;
+    const listEl = panel.querySelector('.events-list');
+    const statusEl = panel.querySelector('.events-status');
+    const countEl = panel.querySelector('.events-count');
+    statusEl.textContent = 'Loading events…';
+    try {
+      const res = await fetch(btn.dataset.icsUrl);
+      const text = await res.text();
+      renderEvents(listEl, countEl, parseIcs(text));
+      statusEl.textContent = '';
+      btn.dataset.loaded = 'true';
+    } catch {
+      statusEl.textContent = 'Could not load events — try downloading the .ics instead.';
+    }
+  }
+
   document.addEventListener('astro:page-load', async () => {
     document.querySelectorAll('.view-events-btn').forEach(btn => {
       const panel = btn.nextElementSibling;
       const listEl = panel.querySelector('.events-list');
-      const statusEl = panel.querySelector('.events-status');
-      const countEl = panel.querySelector('.events-count');
       const searchInput = panel.querySelector('.events-search');
-      let loaded = false;
 
       btn.addEventListener('click', async () => {
         const wasExpanded = btn.getAttribute('aria-expanded') === 'true';
@@ -102,17 +116,8 @@
         panel.classList.toggle('hidden');
         btn.querySelector('.chevron').classList.toggle('rotate-180');
 
-        if (loaded || wasExpanded) return;
-        loaded = true;
-        statusEl.textContent = 'Loading events…';
-        try {
-          const res = await fetch(btn.dataset.icsUrl);
-          const text = await res.text();
-          renderEvents(listEl, countEl, parseIcs(text));
-          statusEl.textContent = '';
-        } catch {
-          statusEl.textContent = 'Could not load events — try downloading the .ics instead.';
-        }
+        if (btn.dataset.loaded === 'true' || wasExpanded) return;
+        await loadEventsForButton(btn);
       });
 
       searchInput.addEventListener('input', () => {
@@ -120,6 +125,60 @@
         listEl.querySelectorAll('.event-item').forEach(li => {
           li.classList.toggle('hidden', q.length > 0 && !li.dataset.search.includes(q));
         });
+      });
+    });
+
+    // Per-card English/Hebrew toggle — swaps name/description/note text,
+    // subscribe-button hrefs, the displayed ICS URL, and (if already open)
+    // the inline event list, all sourced from data-en/data-he attributes
+    // baked into the markup at build time.
+    document.querySelectorAll('.lang-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const card = btn.closest('.calendar-card');
+        const lang = btn.dataset.lang;
+        if (!card || card.dataset.lang === lang) return;
+        card.dataset.lang = lang;
+
+        card.querySelectorAll('.lang-toggle-btn').forEach(b => {
+          const active = b.dataset.lang === lang;
+          b.classList.toggle('bg-accent', active);
+          b.classList.toggle('text-white', active);
+          b.classList.toggle('border-accent', active);
+          b.classList.toggle('border-border-light', !active);
+          b.classList.toggle('dark:border-border-dark', !active);
+          b.classList.toggle('text-secondary-light', !active);
+          b.classList.toggle('dark:text-secondary-dark', !active);
+        });
+
+        card.querySelectorAll('[data-en]').forEach(el => {
+          const val = lang === 'he' ? (el.dataset.he || el.dataset.en) : el.dataset.en;
+          el.textContent = val;
+          el.dir = lang === 'he' && el.dataset.he ? 'rtl' : 'ltr';
+        });
+
+        card.querySelectorAll('[data-href-en]').forEach(el => {
+          const val = lang === 'he' ? (el.dataset.hrefHe || el.dataset.hrefEn) : el.dataset.hrefEn;
+          el.setAttribute('href', val);
+        });
+
+        const copyBtn = card.querySelector('.copy-btn');
+        if (copyBtn) {
+          copyBtn.dataset.copy = lang === 'he' ? (copyBtn.dataset.copyHe || copyBtn.dataset.copyEn) : copyBtn.dataset.copyEn;
+        }
+
+        const viewBtn = card.querySelector('.view-events-btn');
+        if (viewBtn) {
+          const url = lang === 'he' ? (viewBtn.dataset.icsUrlHe || viewBtn.dataset.icsUrlEn) : viewBtn.dataset.icsUrlEn;
+          if (url && url !== viewBtn.dataset.icsUrl) {
+            viewBtn.dataset.icsUrl = url;
+            viewBtn.dataset.loaded = 'false';
+            const panel = viewBtn.nextElementSibling;
+            panel.querySelector('.events-list').dir = lang === 'he' ? 'rtl' : 'ltr';
+            if (!panel.classList.contains('hidden')) {
+              loadEventsForButton(viewBtn);
+            }
+          }
+        }
       });
     });
 

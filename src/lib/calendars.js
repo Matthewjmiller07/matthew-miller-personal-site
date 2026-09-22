@@ -44,19 +44,29 @@ const rawCalendars = [
     slug: 'RaananaYola',
     id: 'raanana_gani_yola',
     name: 'Gani Yol"a Raanana — School Calendar (תשפ"ז)',
+    nameHe: 'גני יול"א רעננה — לוח שנת הלימודים (תשפ"ז)',
     description: 'Vacation days, extended-day (Yol"a) activity-hour windows, and holidays for Raanana\'s Gani Yol"a kindergarten program, school year 5787 (2026–2027). Transcribed from the municipality\'s official school-year calendar.',
+    descriptionHe: 'ימי חופשה, שעות פעילות יול"א מורחבת וחגים עבור גני יול"א ברעננה, שנת הלימודים תשפ"ז (2026–2027). מועתק מלוח השנה הרשמי של העירייה.',
     file: '/calendar/raanana_gani_yola.ics',
+    fileHe: '/calendar/raanana_gani_yola_he.ics',
     source: 'https://www.raanana.muni.il',
     tags: ['Raanana', 'School', 'Kindergarten'],
     eventCount: raananaGaniYolaEvents.length,
     note: 'Static for the 5787 school year — re-transcribed each year from the municipality\'s calendar, not auto-updated. Hanukkah and Purim party dates are set by the kindergarten staff closer to the time and aren\'t included. Per Ministry of Education/Yol"a policy, during vacation weeks there is no kindergarten activity on Fridays (this doesn\'t apply to regular in-session Fridays).',
+    noteHe: 'לוח סטטי לשנת הלימודים תשפ"ז — מועתק מחדש מדי שנה מלוח העירייה, אינו מתעדכן אוטומטית. מועדי מסיבות חנוכה ופורים נקבעים ע"י צוות הגן בסמוך למועד ואינם כלולים כאן. על פי מדיניות משרד החינוך/יול"א, בשבועות החופשה אין פעילות יול"א בימי שישי (אינו חל על ימי שישי רגילים בזמן לימודים).',
   },
 ];
 
 export function getCalendars() {
   return rawCalendars.map(cal => {
     const icsHttps = cal.external ? cal.file : `${siteBase}${cal.file}`;
-    return { ...cal, icsHttps, icsWebcal: icsHttps.replace(/^https:/, 'webcal:') };
+    const result = { ...cal, icsHttps, icsWebcal: icsHttps.replace(/^https:/, 'webcal:') };
+    if (cal.fileHe) {
+      const icsHttpsHe = cal.external ? cal.fileHe : `${siteBase}${cal.fileHe}`;
+      result.icsHttpsHe = icsHttpsHe;
+      result.icsWebcalHe = icsHttpsHe.replace(/^https:/, 'webcal:');
+    }
+    return result;
   });
 }
 
