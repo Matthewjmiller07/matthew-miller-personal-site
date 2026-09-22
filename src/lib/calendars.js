@@ -49,7 +49,7 @@ const rawCalendars = [
     source: 'https://www.raanana.muni.il',
     tags: ['Raanana', 'School', 'Kindergarten'],
     eventCount: raananaGaniYolaEvents.length,
-    note: 'Static for the 5787 school year — re-transcribed each year from the municipality\'s calendar, not auto-updated. Hanukkah and Purim party dates are set by the kindergarten staff closer to the time and aren\'t included. Per Ministry of Education/Yol"a policy, there is no kindergarten activity on Fridays throughout the year, including during vacation weeks.',
+    note: 'Static for the 5787 school year — re-transcribed each year from the municipality\'s calendar, not auto-updated. Hanukkah and Purim party dates are set by the kindergarten staff closer to the time and aren\'t included. Per Ministry of Education/Yol"a policy, during vacation weeks there is no kindergarten activity on Fridays (this doesn\'t apply to regular in-session Fridays).',
   },
 ];
 
