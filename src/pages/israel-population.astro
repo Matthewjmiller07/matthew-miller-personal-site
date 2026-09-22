@@ -1,0 +1,420 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Israel City Population Dashboard"
+  description="Live population breakdown by religion for top Israeli cities — Jews, Arabs, Christians, Druze — sourced from Israeli government open data."
+  scripts={[
+    { src: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js' }
+  ]}
+>
+
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --accent: #3b82f6;
+    --jewish: #3b82f6;
+    --arab: #22c55e;
+    --christian: #a78bfa;
+    --druze: #f59e0b;
+    --other: #64748b;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
+
+  .header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 60%);
+    border-bottom: 1px solid var(--border);
+    padding: 2rem 1.5rem 1.5rem;
+    text-align: center;
+  }
+  .header h1 {
+    font-size: 2rem; font-weight: 700; margin: 0 0 0.4rem;
+    background: linear-gradient(90deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .header p { color: var(--muted); margin: 0; font-size: 0.9rem; }
+
+  .source-badge {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: #1e293b; border: 1px solid var(--border);
+    border-radius: 999px; padding: 0.3rem 0.8rem;
+    font-size: 0.75rem; color: var(--muted); margin-top: 0.75rem;
+  }
+  .source-badge .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #22c55e; animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .controls {
+    max-width: 1400px; margin: 1.5rem auto 0; padding: 0 1.5rem;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  }
+  .controls label { color: var(--muted); font-size: 0.85rem; }
+  select {
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+    border-radius: 0.5rem; padding: 0.45rem 0.75rem; font-size: 0.85rem; cursor: pointer;
+  }
+  .refresh-btn {
+    margin-left: auto; background: var(--accent); color: white; border: none;
+    border-radius: 0.5rem; padding: 0.45rem 1rem; font-size: 0.85rem;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .refresh-btn:hover { opacity: 0.85; }
+  .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .status-bar {
+    max-width: 1400px; margin: 0.75rem auto 0; padding: 0 1.5rem;
+    font-size: 0.78rem; color: var(--muted);
+  }
+
+  .grid {
+    max-width: 1400px; margin: 1.5rem auto 0; padding: 0 1.5rem 3rem;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 1.25rem;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 1rem; overflow: hidden; transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card-header {
+    padding: 1rem 1.25rem 0.75rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;
+  }
+  .city-name { font-size: 1.15rem; font-weight: 700; margin: 0 0 0.2rem; }
+  .city-name .he { font-size: 0.85rem; color: var(--muted); margin-left: 0.4rem; font-weight: 400; }
+  .total-pop { font-size: 0.78rem; color: var(--muted); }
+  .total-pop strong { color: var(--text); font-size: 1rem; }
+  .card-body { padding: 1rem 1.25rem; }
+
+  .bars { display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 1rem; }
+  .bar-row { display: grid; grid-template-columns: 90px 1fr 60px; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+  .bar-label { color: var(--muted); }
+  .bar-track { height: 8px; background: #1e3a5f20; border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+  .bar-pct { color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+
+  .chart-wrap { position: relative; height: 140px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 0.75rem; }
+  .legend-item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.73rem; color: var(--muted); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  .summary-section { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem 1.5rem; }
+  .summary-section h2 {
+    font-size: 1rem; font-weight: 600; color: var(--muted);
+    margin: 0 0 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 1rem; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th {
+    background: #0f172a; color: var(--muted); font-weight: 500;
+    padding: 0.65rem 1rem; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--border);
+  }
+  th:not(:first-child) { text-align: right; }
+  td { padding: 0.6rem 1rem; border-bottom: 1px solid #1e293b; white-space: nowrap; vertical-align: middle; }
+  td:not(:first-child) { text-align: right; color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #ffffff06; }
+  .city-cell { font-weight: 600; color: var(--text); }
+  .city-cell small { display: block; color: var(--muted); font-weight: 400; font-size: 0.73rem; }
+  .pct-jewish { color: var(--jewish); }
+  .pct-arab { color: var(--arab); }
+  .pct-christian { color: var(--christian); }
+  .pct-druze { color: var(--druze); }
+
+  .loading-state, .error-state {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 300px; gap: 1rem; color: var(--muted);
+  }
+  .spinner {
+    width: 36px; height: 36px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .year-tag {
+    background: #1e3a5f; color: #60a5fa; font-size: 0.7rem;
+    padding: 0.15rem 0.5rem; border-radius: 999px; font-weight: 600;
+  }
+  @media (max-width: 500px) {
+    .grid { grid-template-columns: 1fr; }
+    .header h1 { font-size: 1.4rem; }
+  }
+</style>
+
+<div class="header">
+  <h1>Israel City Population Dashboard</h1>
+  <p>Population breakdown by religion/sector for top Israeli cities</p>
+  <div class="source-badge">
+    <span class="dot"></span>
+    Live data · Israeli Central Bureau of Statistics (data.gov.il)
+  </div>
+</div>
+
+<div class="controls">
+  <label for="sort-select">Sort by:</label>
+  <select id="sort-select">
+    <option value="total">Total population</option>
+    <option value="jewish">% Jewish</option>
+    <option value="arab">% Arab</option>
+    <option value="name">City name (A–Z)</option>
+  </select>
+  <label for="year-select" style="margin-left:0.5rem">Year:</label>
+  <select id="year-select">
+    <option value="latest">Latest available</option>
+  </select>
+  <button class="refresh-btn" id="refresh-btn">Refresh data</button>
+</div>
+
+<div class="status-bar" id="status-bar">Loading data from Israeli government open data portal…</div>
+
+<div id="main-content">
+  <div class="loading-state">
+    <div class="spinner"></div>
+    <p>Fetching CBS population data…</p>
+  </div>
+</div>
+
+<script>
+const RESOURCE_IDS = [
+  '64edd0ee-3d5d-43ce-8562-c336c24dbc1f',
+  '5c78e9fa-c2e2-4771-93ff-7f400a12f7ba',
+];
+const CKAN_BASE = '/api/israel-population';
+const CITIES_OF_INTEREST = [
+  { en: "Ra'anana",     he: 'רעננה' },
+  { en: 'Tel Aviv',      he: 'תל אביב - יפו' },
+  { en: 'Jerusalem',     he: 'ירושלים' },
+  { en: 'Haifa',         he: 'חיפה' },
+  { en: 'Rishon LeZion', he: 'ראשון לציון' },
+  { en: 'Petah Tikva',   he: 'פתח תקווה' },
+  { en: 'Ashdod',        he: 'אשדוד' },
+  { en: 'Netanya',       he: 'נתניה' },
+  { en: 'Beer Sheva',    he: 'באר שבע' },
+  { en: 'Holon',         he: 'חולון' },
+  { en: 'Bnei Brak',     he: 'בני ברק' },
+  { en: 'Bat Yam',       he: 'בת ים' },
+  { en: 'Ramat Gan',     he: 'רמת גן' },
+  { en: 'Ashkelon',      he: 'אשקלון' },
+  { en: 'Rehovot',       he: 'רחובות' },
+];
+const COLORS = { jewish:'#3b82f6', arab:'#22c55e', christian:'#a78bfa', druze:'#f59e0b', other:'#64748b' };
+const FIELD_MAP = {
+  cityName:    ['שם_יישוב','שם יישוב','settlement_name','city_name'],
+  total:       ['סך_הכל','סך הכל','total','Total'],
+  jewish:      ['יהודים','Jewish','jewish'],
+  arab:        ['מוסלמים','Moslem','muslim','Arab'],
+  christian:   ['נוצרים','Christian','christian'],
+  druze:       ['דרוזים','Druze','druze'],
+  other:       ['אחרים','Other','other'],
+  jewishOther: ['יהודים_ואחרים','יהודים ואחרים','Jewish and others'],
+  arabTotal:   ['ערבים','Arabs','arabs'],
+  year:        ['שנה','Year','year'],
+};
+
+function findField(row,keys){for(const k of keys){if(row[k]!==undefined&&row[k]!==null&&row[k]!=='')return k;}return null;}
+function getVal(row,keys){const k=findField(row,keys);return k?(parseFloat(row[k])||0):0;}
+function getStr(row,keys){const k=findField(row,keys);return k?String(row[k]).trim():'';}
+
+async function fetchResource(resourceId,limit=5000){
+  const url=`${CKAN_BASE}?resource_id=${resourceId}&limit=${limit}`;
+  const res=await fetch(url,{headers:{'Accept':'application/json'},signal:AbortSignal.timeout(15000)});
+  if(!res.ok)throw new Error(`HTTP ${res.status}`);
+  const json=await res.json();
+  if(!json.success)throw new Error('CKAN returned success=false');
+  return json.result;
+}
+async function fetchData(){
+  let lastErr;
+  for(const rid of RESOURCE_IDS){
+    try{const result=await fetchResource(rid);return{result,resourceId:rid};}catch(e){lastErr=e;}
+  }
+  throw lastErr;
+}
+
+function parseRows(records){
+  const cityMap={};
+  for(const row of records){
+    const name=getStr(row,FIELD_MAP.cityName);
+    if(!name)continue;
+    const matched=CITIES_OF_INTEREST.find(c=>c.he===name||name.includes(c.he.split(' ')[0])||c.en.toLowerCase()===name.toLowerCase());
+    if(!matched)continue;
+    const total=getVal(row,FIELD_MAP.total);
+    let jewish=getVal(row,FIELD_MAP.jewish),arab=getVal(row,FIELD_MAP.arab),christian=getVal(row,FIELD_MAP.christian),druze=getVal(row,FIELD_MAP.druze),other=getVal(row,FIELD_MAP.other);
+    const jewishOther=getVal(row,FIELD_MAP.jewishOther),arabTotal=getVal(row,FIELD_MAP.arabTotal);
+    if(jewishOther&&!jewish)jewish=jewishOther;
+    if(arabTotal&&!arab)arab=arabTotal;
+    if(total===0)continue;
+    if(!jewish&&!arab&&!arabTotal&&!jewishOther)continue;
+    if(!cityMap[matched.en]||total>cityMap[matched.en].total){
+      cityMap[matched.en]={en:matched.en,he:matched.he,total,jewish,arab,christian,druze,other,year:getStr(row,FIELD_MAP.year)||''};
+    }
+  }
+  for(const c of Object.values(cityMap)){
+    const acc=c.jewish+c.arab+c.christian+c.druze;
+    if(acc>0&&c.other===0&&c.total>acc)c.other=c.total-acc;
+    if(c.other<0)c.other=0;
+  }
+  return cityMap;
+}
+
+function detectYears(records){
+  const years=new Set();
+  for(const r of records){const y=getStr(r,FIELD_MAP.year);if(y&&/^\d{4}$/.test(y))years.add(y);}
+  return[...years].sort().reverse();
+}
+function pct(num,total){if(!total)return 0;return Math.round((num/total)*1000)/10;}
+function fmt(n){return n?n.toLocaleString('en-US'):'—';}
+
+let charts=[];
+function destroyCharts(){charts.forEach(c=>c.destroy());charts=[];}
+
+function renderDashboard(cities,sortBy='total'){
+  destroyCharts();
+  const sorted=[...cities].sort((a,b)=>{
+    if(sortBy==='total')return b.total-a.total;
+    if(sortBy==='jewish')return pct(b.jewish,b.total)-pct(a.jewish,a.total);
+    if(sortBy==='arab')return pct(b.arab,b.total)-pct(a.arab,a.total);
+    if(sortBy==='name')return a.en.localeCompare(b.en);
+    return 0;
+  });
+  const content=document.getElementById('main-content');
+  content.innerHTML=`
+    <div class="summary-section">
+      <h2>All Cities Overview</h2>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>City</th><th>Total Pop.</th>
+          <th style="color:${COLORS.jewish}">Jewish</th>
+          <th style="color:${COLORS.arab}">Muslim / Arab</th>
+          <th style="color:${COLORS.christian}">Christian</th>
+          <th style="color:${COLORS.druze}">Druze</th>
+          <th style="color:${COLORS.other}">Other</th>
+          <th>Year</th>
+        </tr></thead>
+        <tbody>${sorted.map(c=>`
+          <tr>
+            <td class="city-cell">${c.en}<small>${c.he}</small></td>
+            <td>${fmt(c.total)}</td>
+            <td class="pct-jewish">${pct(c.jewish,c.total)}%</td>
+            <td class="pct-arab">${pct(c.arab,c.total)}%</td>
+            <td class="pct-christian">${pct(c.christian,c.total)}%</td>
+            <td class="pct-druze">${pct(c.druze,c.total)}%</td>
+            <td>${pct(c.other,c.total)>0?pct(c.other,c.total)+'%':'—'}</td>
+            <td>${c.year?`<span class="year-tag">${c.year}</span>`:'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div>
+    </div>
+    <div class="grid" id="cards-grid"></div>`;
+
+  const grid=document.getElementById('cards-grid');
+  sorted.forEach(city=>{
+    const groups=[
+      {label:'Jewish',      val:city.jewish,    pct:pct(city.jewish,city.total),    color:COLORS.jewish},
+      {label:'Muslim/Arab', val:city.arab,      pct:pct(city.arab,city.total),      color:COLORS.arab},
+      {label:'Christian',   val:city.christian, pct:pct(city.christian,city.total), color:COLORS.christian},
+      {label:'Druze',       val:city.druze,     pct:pct(city.druze,city.total),     color:COLORS.druze},
+      {label:'Other',       val:city.other,     pct:pct(city.other,city.total),     color:COLORS.other},
+    ].filter(g=>g.val>0);
+    const canvasId=`chart-${city.en.replace(/\W/g,'_')}`;
+    const card=document.createElement('div');
+    card.className='card';
+    card.innerHTML=`
+      <div class="card-header">
+        <div>
+          <div class="city-name">${city.en}<span class="he">${city.he}</span></div>
+          <div class="total-pop">Total: <strong>${fmt(city.total)}</strong> residents${city.year?` (${city.year})`:''}</div>
+        </div>
+        ${city.year?`<span class="year-tag">${city.year}</span>`:''}
+      </div>
+      <div class="card-body">
+        <div class="bars">${groups.map(g=>`
+          <div class="bar-row">
+            <span class="bar-label">${g.label}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${g.pct}%;background:${g.color}"></div></div>
+            <span class="bar-pct">${g.pct}%</span>
+          </div>`).join('')}
+        </div>
+        <div class="chart-wrap"><canvas id="${canvasId}"></canvas></div>
+        <div class="legend">${groups.map(g=>`
+          <div class="legend-item"><div class="legend-dot" style="background:${g.color}"></div>${g.label}: ${fmt(g.val)}</div>`).join('')}
+        </div>
+      </div>`;
+    grid.appendChild(card);
+    requestAnimationFrame(()=>{
+      const ctx=document.getElementById(canvasId);
+      if(!ctx)return;
+      const ch=new Chart(ctx,{
+        type:'doughnut',
+        data:{labels:groups.map(g=>g.label),datasets:[{data:groups.map(g=>g.val),backgroundColor:groups.map(g=>g.color),borderColor:'#1e293b',borderWidth:2,hoverOffset:4}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmt(ctx.raw)} (${pct(ctx.raw,city.total)}%)`}}}}
+      });
+      charts.push(ch);
+    });
+  });
+}
+
+let allRecords=[],parsedCities={};
+
+async function load(){
+  const statusBar=document.getElementById('status-bar');
+  const refreshBtn=document.getElementById('refresh-btn');
+  const content=document.getElementById('main-content');
+  refreshBtn.disabled=true; refreshBtn.textContent='Loading…';
+  statusBar.textContent='Connecting to data.gov.il…';
+  content.innerHTML=`<div class="loading-state"><div class="spinner"></div><p>Fetching CBS population data…</p></div>`;
+  try{
+    const{result,resourceId}=await fetchData();
+    allRecords=result.records;
+    const total=result.total;
+    const years=detectYears(allRecords);
+    const yearSelect=document.getElementById('year-select');
+    yearSelect.innerHTML='<option value="latest">Latest available</option>';
+    years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;yearSelect.appendChild(o);});
+    parsedCities=parseRows(allRecords);
+    const cityCount=Object.keys(parsedCities).length;
+    if(cityCount===0){
+      const sampleFields=allRecords[0]?Object.keys(allRecords[0]).join(', '):'unknown';
+      content.innerHTML=`<div class="error-state"><p>Data fetched (${total} rows, resource ${resourceId}) but column mapping needs adjustment.</p><p style="font-size:0.75rem;color:#64748b">Detected fields: ${sampleFields}</p></div>`;
+      statusBar.textContent=`Fetched ${total} records — column names didn't match expected CBS format.`;
+      return;
+    }
+    statusBar.textContent=`Loaded ${total.toLocaleString()} locality records from CBS. Found ${cityCount} of ${CITIES_OF_INTEREST.length} requested cities. Resource: ${resourceId}`;
+    renderDashboard(Object.values(parsedCities),document.getElementById('sort-select').value);
+  }catch(err){
+    content.innerHTML=`
+      <div class="error-state">
+        <p>Could not reach data.gov.il API.</p>
+        <p style="font-size:0.8rem">${err.message}</p>
+        <p style="font-size:0.75rem;color:#64748b;max-width:500px;text-align:center">The server-side proxy failed to connect to the Israeli government API.</p>
+        <a href="https://data.gov.il/dataset/residents_in_israel_by_communities_and_age_groups" target="_blank" rel="noopener" style="color:#3b82f6;font-size:0.85rem;margin-top:0.5rem">Open CBS dataset on data.gov.il →</a>
+      </div>`;
+    statusBar.textContent=`Error: ${err.message}`;
+  }finally{
+    refreshBtn.disabled=false; refreshBtn.textContent='Refresh data';
+  }
+}
+
+document.getElementById('sort-select').addEventListener('change',e=>{
+  const cities=Object.values(parsedCities);
+  if(cities.length)renderDashboard(cities,e.target.value);
+});
+document.getElementById('year-select').addEventListener('change',e=>{
+  const year=e.target.value;
+  let filtered=year!=='latest'?allRecords.filter(r=>getStr(r,FIELD_MAP.year)===year):allRecords;
+  parsedCities=parseRows(filtered.length?filtered:allRecords);
+  const cities=Object.values(parsedCities);
+  if(cities.length)renderDashboard(cities,document.getElementById('sort-select').value);
+});
+document.getElementById('refresh-btn').addEventListener('click',load);
+load();
+</script>
+
+</Layout>
