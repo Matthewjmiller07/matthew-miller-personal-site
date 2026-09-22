@@ -1,18 +1,28 @@
 ---
+// Server-rendered (not statically prerendered) so the page can read the
+// ?lang= query param on each request and bake the right language into the
+// <title>/meta/OG tags — a static build can't vary those by query string,
+// which is why link previews (WhatsApp, etc.) for a ?lang=he URL were
+// showing the English title/description. Slug matching is case-insensitive.
+export const prerender = false;
+
 import Layout from '../../layouts/Layout.astro';
 import CalendarCard from '../../components/CalendarCard.astro';
 import CalendarEventsScript from '../../components/CalendarEventsScript.astro';
-import { getCalendars } from '../../lib/calendars';
+import { getCalendarBySlug } from '../../lib/calendars';
 
-export function getStaticPaths() {
-  return getCalendars().map(cal => ({
-    params: { slug: cal.slug },
-    props: { cal },
-  }));
+const cal = getCalendarBySlug(Astro.params.slug);
+if (!cal) {
+  return Astro.redirect('/calendars');
 }
 
-const { cal } = Astro.props;
 const hasHebrew = Boolean(cal.nameHe);
+const requestedLang = Astro.url.searchParams.get('lang');
+const lang = requestedLang === 'he' && hasHebrew ? 'he' : 'en';
+const t = (en, he) => (lang === 'he' && he) ? he : en;
+
+const pageTitle = t(cal.name, cal.nameHe);
+const pageDescription = t(cal.description, cal.descriptionHe);
 
 const subscribeItemsEn = [
   '<strong>Google Calendar:</strong> Click "Add to Google Calendar" below, or go to Other Calendars → "+" → "From URL" and paste the <code class="text-xs bg-slate-200 dark:bg-slate-700 px-1 rounded">https://</code> URL.',
@@ -29,10 +39,10 @@ const subscribeItemsHe = [
 ---
 
 <Layout
-  title={cal.name}
-  description={cal.description}
+  title={pageTitle}
+  description={pageDescription}
 >
-  <main class="lang-scope max-w-4xl mx-auto px-4 py-10" data-lang="en">
+  <main class="lang-scope max-w-4xl mx-auto px-4 py-10" data-lang={lang} dir={lang === 'he' ? 'rtl' : 'ltr'}>
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
       <a
         href="/calendars"
@@ -43,21 +53,27 @@ const subscribeItemsHe = [
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
-        All calendars
+        {t('All calendars', 'כל הלוחות')}
       </a>
 
       {hasHebrew && (
         <div class="flex gap-1" role="group" aria-label="Language">
           <button
             type="button"
-            class="lang-toggle-btn bg-accent text-white border-accent text-sm font-medium px-3 py-1.5 rounded-full border transition-colors"
+            class:list={[
+              'lang-toggle-btn text-sm font-medium px-3 py-1.5 rounded-full border transition-colors',
+              lang === 'en' ? 'bg-accent text-white border-accent' : 'border-border-light dark:border-border-dark text-secondary-light dark:text-secondary-dark',
+            ]}
             data-lang="en"
           >
             English
           </button>
           <button
             type="button"
-            class="lang-toggle-btn border-border-light dark:border-border-dark text-secondary-light dark:text-secondary-dark text-sm font-medium px-3 py-1.5 rounded-full border transition-colors"
+            class:list={[
+              'lang-toggle-btn text-sm font-medium px-3 py-1.5 rounded-full border transition-colors',
+              lang === 'he' ? 'bg-accent text-white border-accent' : 'border-border-light dark:border-border-dark text-secondary-light dark:text-secondary-dark',
+            ]}
             data-lang="he"
           >
             עברית
@@ -68,10 +84,10 @@ const subscribeItemsHe = [
 
     <!-- How to subscribe -->
     <div class="bg-accent/10 border border-accent/30 rounded-xl p-5 mb-8">
-      <h2 class="font-semibold text-accent dark:text-accent-dark mb-2" data-en="How to subscribe" data-he="איך להירשם">How to subscribe</h2>
+      <h2 class="font-semibold text-accent dark:text-accent-dark mb-2" data-en="How to subscribe" data-he="איך להירשם">{t('How to subscribe', 'איך להירשם')}</h2>
       <ul class="text-sm text-secondary-light dark:text-secondary-dark space-y-1 list-disc list-inside">
         {subscribeItemsEn.map((html, i) => (
-          <li data-en-html={html} data-he-html={subscribeItemsHe[i]} set:html={html} />
+          <li data-en-html={html} data-he-html={subscribeItemsHe[i]} set:html={t(html, subscribeItemsHe[i])} />
         ))}
       </ul>
     </div>
@@ -86,7 +102,7 @@ const subscribeItemsHe = [
       </div>
     )}
 
-    <CalendarCard cal={cal} linkTitle={false} />
+    <CalendarCard cal={cal} linkTitle={false} lang={lang} />
   </main>
 
   <CalendarEventsScript />

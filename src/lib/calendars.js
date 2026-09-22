@@ -71,5 +71,6 @@ export function getCalendars() {
 }
 
 export function getCalendarBySlug(slug) {
-  return getCalendars().find(cal => cal.slug === slug);
+  const needle = String(slug ?? '').toLowerCase();
+  return getCalendars().find(cal => cal.slug.toLowerCase() === needle);
 }

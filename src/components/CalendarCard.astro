@@ -17,14 +17,20 @@ export interface Props {
     icsWebcalHe?: string;
   };
   linkTitle?: boolean;
+  lang?: 'en' | 'he';
 }
 
-const { cal, linkTitle = true } = Astro.props;
+const { cal, linkTitle = true, lang = 'en' } = Astro.props;
+const t = (en, he) => (lang === 'he' && he) ? he : en;
 
 const googleCalHrefEn = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(cal.icsWebcal)}`;
 const googleCalHrefHe = cal.icsWebcalHe
   ? `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(cal.icsWebcalHe)}`
   : googleCalHrefEn;
+const googleCalHref = t(googleCalHrefEn, googleCalHrefHe);
+
+const icsWebcal = t(cal.icsWebcal, cal.icsWebcalHe);
+const icsHttps = t(cal.icsHttps, cal.icsHttpsHe);
 
 const eventCountEn = `📅 ${cal.eventCount} events`;
 const eventCountHe = `📅 ${cal.eventCount} אירועים`;
@@ -36,9 +42,9 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
       <div class="flex flex-wrap items-center gap-2 mb-1">
         <h2 class="text-xl font-bold text-primary-light dark:text-primary-dark">
           {linkTitle ? (
-            <a href={`/calendars/${cal.slug}/`} class="hover:underline" data-en={cal.name} data-he={cal.nameHe}>{cal.name}</a>
+            <a href={`/calendars/${cal.slug}/`} class="hover:underline" data-en={cal.name} data-he={cal.nameHe}>{t(cal.name, cal.nameHe)}</a>
           ) : (
-            <span data-en={cal.name} data-he={cal.nameHe}>{cal.name}</span>
+            <span data-en={cal.name} data-he={cal.nameHe}>{t(cal.name, cal.nameHe)}</span>
           )}
         </h2>
         {cal.tags.map(tag => (
@@ -47,12 +53,12 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
           </span>
         ))}
       </div>
-      <p class="text-sm text-secondary-light dark:text-secondary-dark mb-2" data-en={cal.description} data-he={cal.descriptionHe}>{cal.description}</p>
+      <p class="text-sm text-secondary-light dark:text-secondary-dark mb-2" data-en={cal.description} data-he={cal.descriptionHe}>{t(cal.description, cal.descriptionHe)}</p>
       {cal.note && (
-        <p class="text-xs text-secondary-light/70 dark:text-secondary-dark/70 italic mb-3" data-en={cal.note} data-he={cal.noteHe}>{cal.note}</p>
+        <p class="text-xs text-secondary-light/70 dark:text-secondary-dark/70 italic mb-3" data-en={cal.note} data-he={cal.noteHe}>{t(cal.note, cal.noteHe)}</p>
       )}
       <div class="flex flex-wrap items-center gap-4 text-xs text-secondary-light dark:text-secondary-dark">
-        <span data-en={eventCountEn} data-he={eventCountHe}>{eventCountEn}</span>
+        <span data-en={eventCountEn} data-he={eventCountHe}>{t(eventCountEn, eventCountHe)}</span>
         <a
           href={cal.source}
           target="_blank"
@@ -61,11 +67,11 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
           data-en="View source ↗"
           data-he="צפייה במקור ↗"
         >
-          View source ↗
+          {t('View source ↗', 'צפייה במקור ↗')}
         </a>
         {linkTitle && (
           <a href={`/calendars/${cal.slug}/`} class="text-accent dark:text-accent-dark hover:underline" data-en="Full page ↗" data-he="לעמוד המלא ↗">
-            Full page ↗
+            {t('Full page ↗', 'לעמוד המלא ↗')}
           </a>
         )}
       </div>
@@ -74,7 +80,7 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
     <!-- Action buttons -->
     <div class="flex flex-col gap-2 sm:min-w-[200px]">
       <a
-        href={googleCalHrefEn}
+        href={googleCalHref}
         data-href-en={googleCalHrefEn}
         data-href-he={googleCalHrefHe}
         target="_blank"
@@ -84,10 +90,10 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        <span data-en="Add to Google Calendar" data-he="הוספה ליומן Google">Add to Google Calendar</span>
+        <span data-en="Add to Google Calendar" data-he="הוספה ליומן Google">{t('Add to Google Calendar', 'הוספה ליומן Google')}</span>
       </a>
       <a
-        href={cal.icsWebcal}
+        href={icsWebcal}
         data-href-en={cal.icsWebcal}
         data-href-he={cal.icsWebcalHe}
         class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border-light dark:border-border-dark text-primary-light dark:text-primary-dark font-medium text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
@@ -95,10 +101,10 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        <span data-en="Apple / Outlook (webcal)" data-he="אפל / אאוטלוק (webcal)">Apple / Outlook (webcal)</span>
+        <span data-en="Apple / Outlook (webcal)" data-he="אפל / אאוטלוק (webcal)">{t('Apple / Outlook (webcal)', 'אפל / אאוטלוק (webcal)')}</span>
       </a>
       <a
-        href={cal.icsHttps}
+        href={icsHttps}
         data-href-en={cal.icsHttps}
         data-href-he={cal.icsHttpsHe}
         download
@@ -107,7 +113,7 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
-        <span data-en="Download .ics" data-he="הורדת קובץ .ics">Download .ics</span>
+        <span data-en="Download .ics" data-he="הורדת קובץ .ics">{t('Download .ics', 'הורדת קובץ .ics')}</span>
       </a>
     </div>
   </div>
@@ -118,13 +124,13 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
       class="text-xs text-secondary-light dark:text-secondary-dark mb-2 font-medium"
       data-en="Paste this URL into any calendar app (Outlook, Thunderbird, etc.):"
       data-he="הדביקו כתובת זו באפליקציית יומן כלשהי (Outlook, Thunderbird וכו׳):"
-    >Paste this URL into any calendar app (Outlook, Thunderbird, etc.):</p>
+    >{t('Paste this URL into any calendar app (Outlook, Thunderbird, etc.):', 'הדביקו כתובת זו באפליקציית יומן כלשהי (Outlook, Thunderbird וכו׳):')}</p>
     <div class="flex items-center gap-2">
       <code class="ics-url-display text-xs bg-slate-100 dark:bg-slate-800 text-accent dark:text-accent-dark px-3 py-1.5 rounded flex-1 break-all" data-en={cal.icsHttps} data-he={cal.icsHttpsHe}>
-        {cal.icsHttps}
+        {icsHttps}
       </code>
       <button
-        data-copy={cal.icsHttps}
+        data-copy={icsHttps}
         data-copy-en={cal.icsHttps}
         data-copy-he={cal.icsHttpsHe}
         class="copy-btn shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded border border-border-light dark:border-border-dark text-secondary-light dark:text-secondary-dark text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
@@ -132,7 +138,7 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
         </svg>
-        <span class="copy-btn-label" data-en="Copy" data-he="העתקה">Copy</span>
+        <span class="copy-btn-label" data-en="Copy" data-he="העתקה">{t('Copy', 'העתקה')}</span>
       </button>
     </div>
   </div>
@@ -141,13 +147,13 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
   <div class="mt-4 pt-4 border-t border-border-light dark:border-border-dark">
     <button
       class="view-events-btn w-full flex items-center justify-between gap-2 text-sm font-medium text-accent dark:text-accent-dark hover:opacity-80 transition-opacity"
-      data-ics-url={cal.icsHttps}
+      data-ics-url={icsHttps}
       data-ics-url-en={cal.icsHttps}
       data-ics-url-he={cal.icsHttpsHe}
       data-loaded="false"
       aria-expanded="false"
     >
-      <span data-en="View events inline" data-he="הצגת אירועים בעמוד">View events inline</span>
+      <span data-en="View events inline" data-he="הצגת אירועים בעמוד">{t('View events inline', 'הצגת אירועים בעמוד')}</span>
       <svg class="chevron w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
       </svg>
@@ -156,7 +162,7 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
       <div class="flex items-center justify-between gap-3 mb-2">
         <input
           type="text"
-          placeholder="Filter events…"
+          placeholder={t('Filter events…', 'סינון אירועים…')}
           data-placeholder-en="Filter events…"
           data-placeholder-he="סינון אירועים…"
           class="events-search flex-1 text-sm px-3 py-1.5 rounded border border-border-light dark:border-border-dark bg-transparent text-primary-light dark:text-primary-dark placeholder:text-secondary-light/60 dark:placeholder:text-secondary-dark/60"
