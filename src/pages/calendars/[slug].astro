@@ -1,0 +1,57 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import CalendarCard from '../../components/CalendarCard.astro';
+import CalendarEventsScript from '../../components/CalendarEventsScript.astro';
+import { getCalendars } from '../../lib/calendars';
+
+export function getStaticPaths() {
+  return getCalendars().map(cal => ({
+    params: { slug: cal.slug },
+    props: { cal },
+  }));
+}
+
+const { cal } = Astro.props;
+---
+
+<Layout
+  title={cal.name}
+  description={cal.description}
+>
+  <main class="max-w-4xl mx-auto px-4 py-10">
+    <a
+      href="/calendars"
+      class="inline-flex items-center gap-1 text-sm text-secondary-light dark:text-secondary-dark hover:text-accent dark:hover:text-accent-dark mb-6 transition-colors"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+      All calendars
+    </a>
+
+    <!-- How to subscribe -->
+    <div class="bg-accent/10 border border-accent/30 rounded-xl p-5 mb-8">
+      <h2 class="font-semibold text-accent dark:text-accent-dark mb-2">How to subscribe</h2>
+      <ul class="text-sm text-secondary-light dark:text-secondary-dark space-y-1 list-disc list-inside">
+        <li><strong>Google Calendar:</strong> Click "Add to Google Calendar" below, or go to Other Calendars → "+" → "From URL" and paste the <code class="text-xs bg-slate-200 dark:bg-slate-700 px-1 rounded">https://</code> URL.</li>
+        <li><strong>Apple Calendar:</strong> Click "Apple / Outlook (webcal)" — the app will open and prompt you to subscribe.</li>
+        <li><strong>Outlook / Thunderbird:</strong> Copy the <code class="text-xs bg-slate-200 dark:bg-slate-700 px-1 rounded">https://</code> URL and add it as a calendar from internet/URL.</li>
+        <li><strong>One-time import:</strong> Use "Download .ics" to import a static snapshot (won't auto-update).</li>
+      </ul>
+    </div>
+
+    {cal.id === 'jewish_holidays' && (
+      <div id="upcoming-holidays" class="bg-card-bg-light dark:bg-card-bg-dark border border-border-light dark:border-border-dark rounded-xl p-5 mb-8 hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold text-primary-light dark:text-primary-dark">Coming up on the Jewish calendar</h2>
+          <a href="https://whenarethejewishholidays.com" target="_blank" rel="noopener noreferrer" class="text-xs text-accent dark:text-accent-dark hover:underline">whenarethejewishholidays.com ↗</a>
+        </div>
+        <ul id="upcoming-holidays-list" class="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm"></ul>
+      </div>
+    )}
+
+    <CalendarCard cal={cal} linkTitle={false} />
+  </main>
+
+  <CalendarEventsScript />
+</Layout>
