@@ -157,59 +157,82 @@
     // .lang-scope ancestor (name/description/note, subscribe-button labels
     // and hrefs, the displayed ICS URL, page copy), and — if the inline
     // event viewer is already open — re-fetches it in the new language.
+    // The selected language is mirrored to the ?lang= URL parameter so the
+    // Hebrew or English version can be bookmarked/shared directly.
+    function applyLang(scope, lang) {
+      if (!scope || scope.dataset.lang === lang) return;
+      if (!scope.querySelector('.lang-toggle-btn')) return; // no Hebrew data on this page
+      scope.dataset.lang = lang;
+      scope.dir = lang === 'he' ? 'rtl' : 'ltr';
+
+      scope.querySelectorAll('.lang-toggle-btn').forEach(b => {
+        const active = b.dataset.lang === lang;
+        b.classList.toggle('bg-accent', active);
+        b.classList.toggle('text-white', active);
+        b.classList.toggle('border-accent', active);
+        b.classList.toggle('border-border-light', !active);
+        b.classList.toggle('dark:border-border-dark', !active);
+        b.classList.toggle('text-secondary-light', !active);
+        b.classList.toggle('dark:text-secondary-dark', !active);
+      });
+
+      scope.querySelectorAll('[data-en]').forEach(el => {
+        const val = lang === 'he' ? (el.dataset.he || el.dataset.en) : el.dataset.en;
+        el.textContent = val;
+      });
+
+      scope.querySelectorAll('[data-en-html]').forEach(el => {
+        el.innerHTML = lang === 'he' ? (el.dataset.heHtml || el.dataset.enHtml) : el.dataset.enHtml;
+      });
+
+      scope.querySelectorAll('[data-href-en]').forEach(el => {
+        const val = lang === 'he' ? (el.dataset.hrefHe || el.dataset.hrefEn) : el.dataset.hrefEn;
+        el.setAttribute('href', val);
+      });
+
+      scope.querySelectorAll('[data-placeholder-en]').forEach(el => {
+        el.placeholder = lang === 'he' ? (el.dataset.placeholderHe || el.dataset.placeholderEn) : el.dataset.placeholderEn;
+      });
+
+      scope.querySelectorAll('.copy-btn').forEach(copyBtn => {
+        copyBtn.dataset.copy = lang === 'he' ? (copyBtn.dataset.copyHe || copyBtn.dataset.copyEn) : copyBtn.dataset.copyEn;
+      });
+
+      scope.querySelectorAll('.view-events-btn').forEach(viewBtn => {
+        const url = lang === 'he' ? (viewBtn.dataset.icsUrlHe || viewBtn.dataset.icsUrlEn) : viewBtn.dataset.icsUrlEn;
+        if (!url || url === viewBtn.dataset.icsUrl) return;
+        viewBtn.dataset.icsUrl = url;
+        viewBtn.dataset.loaded = 'false';
+        const panel = viewBtn.nextElementSibling;
+        if (!panel.classList.contains('hidden')) {
+          loadEventsForButton(viewBtn);
+        }
+      });
+    }
+
+    function setUrlLang(lang) {
+      const url = new URL(location.href);
+      if (lang === 'en') {
+        url.searchParams.delete('lang');
+      } else {
+        url.searchParams.set('lang', lang);
+      }
+      history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+    }
+
     document.querySelectorAll('.lang-toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const scope = btn.closest('.lang-scope');
-        const lang = btn.dataset.lang;
-        if (!scope || scope.dataset.lang === lang) return;
-        scope.dataset.lang = lang;
-        scope.dir = lang === 'he' ? 'rtl' : 'ltr';
-
-        scope.querySelectorAll('.lang-toggle-btn').forEach(b => {
-          const active = b.dataset.lang === lang;
-          b.classList.toggle('bg-accent', active);
-          b.classList.toggle('text-white', active);
-          b.classList.toggle('border-accent', active);
-          b.classList.toggle('border-border-light', !active);
-          b.classList.toggle('dark:border-border-dark', !active);
-          b.classList.toggle('text-secondary-light', !active);
-          b.classList.toggle('dark:text-secondary-dark', !active);
-        });
-
-        scope.querySelectorAll('[data-en]').forEach(el => {
-          const val = lang === 'he' ? (el.dataset.he || el.dataset.en) : el.dataset.en;
-          el.textContent = val;
-        });
-
-        scope.querySelectorAll('[data-en-html]').forEach(el => {
-          el.innerHTML = lang === 'he' ? (el.dataset.heHtml || el.dataset.enHtml) : el.dataset.enHtml;
-        });
-
-        scope.querySelectorAll('[data-href-en]').forEach(el => {
-          const val = lang === 'he' ? (el.dataset.hrefHe || el.dataset.hrefEn) : el.dataset.hrefEn;
-          el.setAttribute('href', val);
-        });
-
-        scope.querySelectorAll('[data-placeholder-en]').forEach(el => {
-          el.placeholder = lang === 'he' ? (el.dataset.placeholderHe || el.dataset.placeholderEn) : el.dataset.placeholderEn;
-        });
-
-        scope.querySelectorAll('.copy-btn').forEach(copyBtn => {
-          copyBtn.dataset.copy = lang === 'he' ? (copyBtn.dataset.copyHe || copyBtn.dataset.copyEn) : copyBtn.dataset.copyEn;
-        });
-
-        scope.querySelectorAll('.view-events-btn').forEach(viewBtn => {
-          const url = lang === 'he' ? (viewBtn.dataset.icsUrlHe || viewBtn.dataset.icsUrlEn) : viewBtn.dataset.icsUrlEn;
-          if (!url || url === viewBtn.dataset.icsUrl) return;
-          viewBtn.dataset.icsUrl = url;
-          viewBtn.dataset.loaded = 'false';
-          const panel = viewBtn.nextElementSibling;
-          if (!panel.classList.contains('hidden')) {
-            loadEventsForButton(viewBtn);
-          }
-        });
+        applyLang(scope, btn.dataset.lang);
+        setUrlLang(btn.dataset.lang);
       });
     });
+
+    // Initialize from ?lang=en|he on page load (e.g. a shared/bookmarked link).
+    const urlLang = new URLSearchParams(location.search).get('lang');
+    if (urlLang === 'en' || urlLang === 'he') {
+      document.querySelectorAll('.lang-scope').forEach(scope => applyLang(scope, urlLang));
+    }
 
     // Upcoming holidays via the whenarethejewishholidays.com API
     const box = document.getElementById('upcoming-holidays');
