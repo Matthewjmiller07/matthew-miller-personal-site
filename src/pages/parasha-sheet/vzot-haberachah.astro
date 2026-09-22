@@ -1,0 +1,414 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import sheet from '../../data/parasha-sheets/vzot-haberachah.json';
+
+const { stats, topRoots, divine, hapax, tribes, entries } = sheet;
+
+const topMax = topRoots[0].count;
+const divMax = divine[0].n;
+const secMax = Math.max(...tribes.units.map((s) => s.words));
+
+const tiles = [
+  { n: stats.verses, l: 'verses' },
+  { n: stats.words, l: 'words' },
+  { n: stats.unique_lemmas, l: 'distinct roots' },
+  { n: hapax.length, l: 'hapax legomena' },
+];
+---
+
+<Layout
+  title={`${sheet.en} — parasha sheet`}
+  description={`A one-sheet study page for ${sheet.en} (${sheet.ref}): word and root counts from the OSHB morphology, the thirteen words that occur nowhere else in the Bible, what the parasha calls God, how Moses divided his blessing among the tribes (and the one he skipped), and Biblical→Modern Hebrew notes with poster evidence from the National Library of Israel.`}
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Frank+Ruhl+Libre:wght@400;700&display=swap"
+  />
+
+  <main class="ps-shell">
+    <!-- screen-only chrome; hidden when printed -->
+    <div class="ps-bar">
+      <div>
+        <a href="/mega-bible">Mega Bible</a> <span class="ps-sep">·</span> parasha sheet
+      </div>
+      <div class="ps-actions">
+        <a class="ps-btn" href={sheet.pdf} download>Download PDF</a>
+        <button class="ps-btn ps-btn-ghost" type="button" id="ps-print">Print</button>
+      </div>
+    </div>
+
+    <article class="sheet">
+      <!-- ───────────────────────── page 1 ───────────────────────── -->
+      <section class="page">
+        <div class="mast">
+          <div>
+            <div class="mast-he he">{sheet.he}</div>
+            <div class="mast-en">{sheet.en}</div>
+            <div class="mast-sub">{sheet.subtitle}</div>
+          </div>
+          <div class="mast-right">
+            <div>
+              Mega Bible<br />parasha sheet<br />
+              <span class="mast-site">theothermatthewmiller.com</span>
+            </div>
+            <img class="mast-logo" src="/images/logo.png" alt="" width="120" height="120" />
+          </div>
+        </div>
+
+        <h2>The parasha by the numbers</h2>
+        <div class="tiles">
+          {tiles.map((t) => (
+            <div class="tile">
+              <div class="tile-n">{t.n}</div>
+              <div class="tile-l">{t.l}</div>
+            </div>
+          ))}
+        </div>
+
+        <div class="charts">
+          <div class="chart">
+            <h2>Most frequent roots</h2>
+            {topRoots.map((t) => (
+              <div class="bar-row">
+                <div class="bar-label">
+                  <span class="he">{t.form}</span>
+                  {t.gloss && <span class="bar-sub">{t.gloss}</span>}
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill" style={`width:${((t.count / topMax) * 100).toFixed(1)}%`} />
+                </div>
+                <div class="bar-value">{t.count}</div>
+              </div>
+            ))}
+            <div class="note">
+              Averaging <strong>{stats.avg_per_verse} words</strong> a verse. The longest verse is
+              <strong> {stats.longest_verse.chapter}:{stats.longest_verse.verse}</strong> at {stats.longest_verse.words} words
+              — Moses climbing Mount Nebo to view the land he will not enter; the shortest,
+              <strong> {stats.shortest_verse.chapter}:{stats.shortest_verse.verse}</strong>, has only {stats.shortest_verse.words}
+              — his eye undimmed, his vigor unabated, at 120.
+            </div>
+          </div>
+
+          <div class="chart">
+            <h2>What the parasha calls God</h2>
+            {divine.map((d) => (
+              <div class="bar-row">
+                <div class="bar-label">
+                  <span class="he">{d.he}</span>
+                  <span class="bar-sub">{d.en}</span>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill" style={`width:${((d.n / divMax) * 100).toFixed(1)}%`} />
+                </div>
+                <div class="bar-value">{d.n}</div>
+              </div>
+            ))}
+            <div class="note">
+              Unlike Ha'azinu's six divine names, V'Zot HaBerachah mostly just says <span class="he">ה'</span> —
+              plainly, fifteen times, as Moses blesses each tribe "who loves the peoples," and one last time
+              as He buries Moses "by the mouth of the Name" (34:5).
+            </div>
+          </div>
+        </div>
+
+        <h2 class="mt">Thirteen words that occur nowhere else in the Bible</h2>
+        <div class="haps">
+          {hapax.map((h) => (
+            <div class="hap">
+              <span class="hap-ref">{h.ch}:{h.v}</span>
+              <span class="he hap-he">{h.he}</span>
+              <span class="hap-gloss">{h.gloss}</span>
+            </div>
+          ))}
+        </div>
+
+        <div class="note">
+          Hapax legomena, counted against the whole Tanakh: thirteen of this parasha's
+          {' '}{stats.unique_lemmas} roots are used exactly once in all of Scripture, and
+          {' '}{stats.once_only} more appear only once here. Half of them cluster in Moses' blessing of
+          Levi and Naphtali (33:3, 33:19, 33:25) — the poem gets hardest to translate exactly where it
+          is most affectionate.
+        </div>
+
+        <div class="foot">
+          <span>Counts computed from the OSHB/WLC morphology across the full Tanakh</span>
+          <span>1 / 2</span>
+        </div>
+      </section>
+
+      <!-- ───────────────────────── page 2 ───────────────────────── -->
+      <section class="page">
+        <h2>Biblical → Modern Hebrew</h2>
+
+        {entries.map((e) => (
+          <article class="entry">
+            {e.evidence.length > 0 && (
+              <div class="entry-figs">
+                {e.evidence.map((v) => (
+                  <figure class="fig">
+                    <a href={v.href} target="_blank" rel="noopener noreferrer">
+                      <img src={v.img} alt={v.title} loading="lazy" />
+                    </a>
+                    <figcaption>
+                      {v.credit}{v.date ? `, ${v.date}` : ''}<br />
+                      <span class="fig-id">{v.id}</span>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            )}
+            <div class="entry-head">
+              <span class="entry-ref">{e.chapter}:{e.verse}</span>
+              <span class="he entry-term">{e.term}</span>
+            </div>
+            <div class="entry-kind">{e.kind}</div>
+            <p class="entry-body">{e.comment}</p>
+            {e.evidence.map((v) => (
+              <div class="ev">
+                <div class="ev-head">
+                  Attested · National Library of Israel{v.date ? ` · ${v.date}` : ''}
+                </div>
+                <div class="ev-title he">{v.title}</div>
+                <div class="ev-gloss">{v.gloss}</div>
+              </div>
+            ))}
+          </article>
+        ))}
+
+        <h2 class="mt">The tribes Moses blessed</h2>
+        <div class="secs">
+          {tribes.units.map((s) => (
+            <div class="sec">
+              <div class="sec-bar" style={`height:${((s.words / secMax) * 28).toFixed(1)}pt`} />
+              <div class="sec-open he">{s.he}</div>
+              <div class="sec-ref">33:{s.from}{s.to !== s.from ? `–${s.to}` : ''}</div>
+              <div class="sec-n">{s.words} words</div>
+            </div>
+          ))}
+        </div>
+        <div class="note note-tight">
+          Ten blessings for eleven tribes (Joseph standing for both Ephraim and Manasseh) — and one
+          tribe, <strong>{tribes.missing}</strong>, gets no blessing at all. Ibn Ezra (on 33:6)
+          notes the gap and explains it by Simeon's own history: their territory was absorbed inside
+          Judah's allotment (Joshua 19:1, 9), so their share is folded into Judah's blessing rather than
+          named on its own — the one tribe Jacob himself had also rebuked (Genesis 49:5–7) goes
+          unmentioned twice.
+        </div>
+
+        <h2 class="mt">My notes</h2>
+        <div class="empty">
+          Nothing recorded yet — the notes field is empty for every verse of Deuteronomy 33–34.
+        </div>
+
+        <div class="foot">
+          <span>
+            Modern-usage notes traced through Ma'agarim · poster scans from the National Library of
+            Israel (<span class="he">מאוסף הספרייה הלאומית</span>), used under the Library's
+            {' '}<a href="https://www.nli.org.il/contenteditors/pages-for-terms-of-use/fair-use" target="_blank" rel="noopener noreferrer">fair-use terms</a>
+          </span>
+          <span>2 / 2</span>
+        </div>
+      </section>
+    </article>
+  </main>
+</Layout>
+
+<script>
+  document.getElementById('ps-print')?.addEventListener('click', () => window.print());
+</script>
+
+<style is:global>
+  /* The site ships a dark theme; this page is a paper document, so it opts out
+     locally rather than fighting the global styles. */
+  body:has(.ps-shell) { background: #17150f !important; }
+  body:has(.ps-shell) > footer { display: none !important; }
+
+  .ps-shell {
+    --ink: #2b2723;
+    --muted: #6f675c;
+    --faint: #a89f92;
+    --rule: #ddd4c4;
+    --surface: #faf7f0;
+    --accent: #9c6206;
+    --pad: 13mm 14mm;
+    min-height: 100vh;
+    padding: 1.25rem 1rem 3rem;
+    background: #17150f;
+    font-family: 'EB Garamond', Georgia, serif;
+  }
+
+  /* global.css forces `text-gray-200` onto every p/span/div via `.dark div` and friends,
+     which would bleach a light paper document. Same escape hatch the siddur page uses:
+     out-specify it and hand colour back to inheritance. The rules below are equally or
+     more specific and come later, so they still win. */
+  .dark .ps-shell, .dark .ps-shell * { color: inherit; }
+
+  .ps-shell .he { font-family: 'Frank Ruhl Libre', serif; direction: rtl; unicode-bidi: isolate; }
+
+  /* ── screen chrome ── */
+  .ps-bar {
+    max-width: 210mm; margin: 0 auto 1rem; display: flex; flex-wrap: wrap; gap: .75rem;
+    align-items: center; justify-content: space-between;
+    font-size: .8rem; letter-spacing: .12em; text-transform: uppercase;
+    color: #a89f92;
+  }
+  .ps-shell .ps-bar a { color: #d8b06a; text-decoration: none; }
+  .ps-shell .ps-bar a:hover { text-decoration: underline; }
+  .ps-shell .ps-sep { opacity: .5; padding: 0 .25rem; }
+  .ps-actions { display: flex; gap: .5rem; }
+  .ps-btn {
+    display: inline-block; padding: .4rem .85rem; border: 1px solid #5a4a28;
+    background: #241f14; color: #e8d4aa !important; border-radius: 3px;
+    font: inherit; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+    text-decoration: none; cursor: pointer;
+  }
+  .ps-btn:hover { background: #32291a; border-color: #8a7038; text-decoration: none; }
+  .ps-btn-ghost { background: transparent; }
+
+  /* ── the sheet itself ── */
+  .ps-shell .sheet { max-width: 210mm; margin: 0 auto; }
+  .ps-shell .sheet .page {
+    background: var(--surface); color: var(--ink);
+    padding: var(--pad); margin-bottom: 1.25rem;
+    font-size: 10pt; line-height: 1.5;
+    box-shadow: 0 2px 24px rgba(0, 0, 0, .55);
+  }
+  .ps-shell .sheet .page:last-child { margin-bottom: 0; }
+  .ps-shell .sheet p { margin: 0 0 5pt; }
+
+  .ps-shell .sheet .mast {
+    border-bottom: 2px solid var(--ink); padding-bottom: 5pt; margin-bottom: 9pt;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12pt;
+  }
+  .ps-shell .sheet .mast-he { font-size: 26pt; font-weight: 700; line-height: 1; }
+  .ps-shell .sheet .mast-en { font-size: 15pt; font-weight: 600; letter-spacing: .02em; }
+  .ps-shell .sheet .mast-sub { font-size: 9pt; color: var(--muted); font-style: italic; }
+  .ps-shell .sheet .mast-right {
+    display: flex; align-items: center; gap: 8pt; text-align: right;
+    font-size: 8.5pt; color: var(--muted);
+  }
+  .ps-shell .sheet .mast-logo { width: 30pt; height: 30pt; flex-shrink: 0; }
+  .ps-shell .sheet .mast-site { font-size: 7pt; color: var(--faint); letter-spacing: .02em; }
+
+  .ps-shell .sheet h2 {
+    font-size: 8pt; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 6pt; padding-bottom: 3pt;
+    border-bottom: 1px solid var(--rule);
+  }
+  .ps-shell .sheet h2.mt { margin-top: 9pt; }
+
+  .ps-shell .sheet .tiles { display: flex; gap: 7pt; margin-bottom: 10pt; }
+  .ps-shell .sheet .tile { flex: 1; border: 1px solid var(--rule); padding: 6pt 8pt; background: #fff; }
+  .ps-shell .sheet .tile-n { font-size: 20pt; font-weight: 600; line-height: 1; color: var(--accent); }
+  .ps-shell .sheet .tile-l {
+    font-size: 6.5pt; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--muted); margin-top: 3pt;
+  }
+
+  /* single-series bars: direct labels instead of a legend */
+  .ps-shell .sheet .charts { display: flex; gap: 15pt; }
+  .ps-shell .sheet .chart { flex: 1; min-width: 0; }
+  .ps-shell .sheet .bar-row { display: flex; align-items: center; gap: 6pt; margin-bottom: 2px; }
+  .ps-shell .sheet .bar-label { width: 92pt; flex-shrink: 0; font-size: 9pt; text-align: right; }
+  .ps-shell .sheet .bar-label .he { font-size: 11pt; }
+  .ps-shell .sheet .bar-sub {
+    display: block; font-size: 6.5pt; color: var(--faint); font-style: italic;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ps-shell .sheet .bar-track { flex: 1; height: 9pt; background: #efe9dc; }
+  .ps-shell .sheet .bar-fill { height: 100%; background: var(--accent); border-radius: 0 2px 2px 0; }
+  .ps-shell .sheet .bar-value {
+    width: 15pt; font-size: 8.5pt; color: var(--muted); text-align: right; flex-shrink: 0;
+  }
+
+  .ps-shell .sheet .note {
+    margin-top: 8pt; padding: 6pt 9pt; background: #fff;
+    border-left: 2px solid var(--accent); font-size: 9pt;
+  }
+  .ps-shell .sheet .note-tight { margin-top: 0; }
+  .ps-shell .sheet .note strong { font-weight: 600; }
+  .ps-shell .sheet .note .he { font-weight: 700; }
+  .ps-shell .sheet .mnem { font-family: 'Frank Ruhl Libre', serif; direction: rtl; unicode-bidi: isolate;
+                 font-size: 13pt; font-weight: 700; color: var(--accent); }
+
+  .ps-shell .sheet .haps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 22pt; }
+  .ps-shell .sheet .hap {
+    display: flex; align-items: baseline; gap: 5pt; padding: 1.5pt 0;
+    border-bottom: 1px dotted var(--rule);
+  }
+  .ps-shell .sheet .hap-ref {
+    font-size: 7pt; color: var(--faint); width: 22pt; flex-shrink: 0; letter-spacing: .03em;
+  }
+  .ps-shell .sheet .hap-he { font-size: 12pt; font-weight: 700; }
+  .ps-shell .sheet .hap-gloss {
+    font-size: 8pt; color: var(--muted); font-style: italic; margin-left: auto;
+    text-align: right; line-height: 1.25;
+  }
+
+  .ps-shell .sheet .entry { margin-bottom: 10pt; overflow: hidden; }
+  .ps-shell .sheet .entry-figs { float: right; margin: 0 0 6pt 10pt; display: flex; gap: 6pt; }
+  .ps-shell .sheet .fig { margin: 0; width: 66pt; }
+  .ps-shell .sheet .fig img { width: 100%; display: block; border: 1px solid var(--rule); background: #fff; }
+  .ps-shell .sheet .fig figcaption {
+    font-size: 6pt; color: var(--faint); line-height: 1.3; margin-top: 2pt; letter-spacing: .02em;
+  }
+  .ps-shell .sheet .entry-head { display: flex; align-items: baseline; gap: 7pt; }
+  .ps-shell .sheet .entry-ref {
+    font-size: 8pt; color: var(--accent); font-weight: 600; letter-spacing: .06em;
+  }
+  .ps-shell .sheet .entry-term { font-size: 15pt; font-weight: 700; }
+  .ps-shell .sheet .entry-kind { font-size: 8.5pt; font-style: italic; color: var(--muted); margin: 1pt 0 4pt; }
+  .ps-shell .sheet .entry-body { margin: 0 0 5pt; font-size: 9pt; }
+  .ps-shell .sheet .ev { border-left: 1px solid var(--rule); padding-left: 7pt; margin: 3pt 0 0 6pt; }
+  .ps-shell .sheet .ev-head {
+    font-size: 6.5pt; letter-spacing: .12em; text-transform: uppercase; color: var(--faint);
+  }
+  .ps-shell .sheet .ev-title { font-size: 9.5pt; margin: 1pt 0; display: inline-block; }
+  .ps-shell .sheet .ev-gloss { font-size: 8.5pt; color: var(--muted); }
+
+  .ps-shell .sheet .secs { display: flex; gap: 5pt; align-items: flex-end; margin-bottom: 3pt; flex-wrap: wrap; }
+  .ps-shell .sheet .sec { flex: 1; min-width: 34pt; text-align: center; }
+  .ps-shell .sheet .sec-bar { background: var(--accent); border-radius: 2px 2px 0 0; }
+  .ps-shell .sheet .sec-open { font-size: 9.5pt; font-weight: 700; margin-top: 3pt; }
+  .ps-shell .sheet .sec-ref { font-size: 6.5pt; color: var(--muted); letter-spacing: .03em; }
+  .ps-shell .sheet .sec-n { font-size: 6.5pt; color: var(--faint); }
+
+  .ps-shell .sheet .empty {
+    padding: 6pt 10pt; border: 1px dashed var(--rule); background: #fff;
+    font-size: 9pt; color: var(--muted);
+  }
+  .ps-shell .sheet .foot {
+    margin-top: 8pt; padding-top: 5pt; border-top: 1px solid var(--rule);
+    font-size: 7pt; color: var(--faint); display: flex; justify-content: space-between; gap: 10pt;
+  }
+  .ps-shell .sheet .foot a { color: inherit; text-decoration: underline; }
+
+  /* ── phones: the fixed pt layout is a printed page, so relax it ── */
+  @media (max-width: 720px) {
+    .ps-shell { --pad: 6mm 5mm; padding: 1rem .5rem 2rem; }
+    .ps-shell .sheet .charts { flex-direction: column; gap: 9pt; }
+    .ps-shell .sheet .haps { grid-template-columns: 1fr; }
+    .ps-shell .sheet .tiles { flex-wrap: wrap; }
+    .ps-shell .sheet .tile { flex: 1 1 40%; }
+    .ps-shell .sheet .entry-figs { float: none; margin: 0 0 6pt; }
+    .ps-shell .sheet .fig { width: 33%; }
+    .ps-shell .sheet .bar-label { width: 74pt; }
+    .ps-shell .sheet .sec-open { font-size: 8pt; }
+  }
+
+  /* ── print: drop the chrome, hand the paper straight to the printer ── */
+  @page { size: A4; margin: 13mm 14mm; }
+  @media print {
+    body:has(.ps-shell) { background: #fff !important; }
+    .ps-shell { padding: 0; background: #fff; min-height: 0; }
+    .ps-bar { display: none; }
+    .ps-shell .sheet { max-width: none; }
+    .ps-shell .sheet .page {
+      padding: 0; margin: 0; box-shadow: none; background: var(--surface);
+      page-break-after: always;
+    }
+    .ps-shell .sheet .page:last-child { page-break-after: auto; }
+    .ps-shell .sheet .entry { page-break-inside: avoid; }
+  }
+</style>
