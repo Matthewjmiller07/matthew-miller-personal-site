@@ -945,6 +945,7 @@ body:has(.mb-page) > footer { display:none!important; }
         <span class="mb-nav-label">Device</span>
         <select class="mb-sel" id="allDevSel" aria-label="Device filter">
           <option value="">All Devices</option>
+          <option value="__modern__">Modern Hebrew (all)</option>
         </select>
         <span class="mb-nav-label">Section</span>
         <select class="mb-sel" id="allSectSel" aria-label="Section filter">
@@ -1223,7 +1224,7 @@ const DEVICE_COLORS: Record<string,string> = {
   'waw-explicativum':'#90EE90','hendiadys':'#ADD8E6','synecdoche':'#FFA07A',
   'hapax':'#87CEFA','merism':'#FFB6C1','wordplay':'#FFFACD','euphemism':'#E0FFFF',
   'simile':'#DDA0DD','ambiguity':'#FA8072','melitza':'#C8A2C8','metaphor':'#FFDAB9',
-  'sarcasm':'#FFD700',
+  'sarcasm':'#FFD700','modern hebrew':'#79b8a4',
 };
 const COLOR_PALETTE = ['#B5EAD7','#FFDAC1','#C7CEEA','#E2F0CB','#D4A5A5','#AED6F1','#FCE4EC'];
 function deviceColor(d: string) {
@@ -1305,6 +1306,7 @@ let activeDevice = '';
 let navMode = 'chapter';
 let currentParsha = '';
 let allDevicesData: any[] = [];
+let allModernData: any[] = [];
 let splitMorphemes = false;
 let activeHighlightKey: string | null = null;
 let activeHighlightLabel: string = '';
@@ -2214,11 +2216,25 @@ async function handleAllDevicesLoad() {
     }
   }
 
-  // Apply filters
+  // Apply filters. "Modern Hebrew (all)" pulls from a separate table (see
+  // fetchModern/loadAllModern) rather than literary_bible, so it gets its
+  // own branch instead of the plain device-name equality check.
   const filterDev  = allDevSel.value;
   const filterSect = allSectSel.value;
-  let filtered = rows;
-  if (filterDev)  filtered = filtered.filter(r => (r.device || '').toLowerCase() === filterDev);
+  let filtered: any[];
+  if (filterDev === '__modern__') {
+    const modernRows = await loadAllModern();
+    filtered = modernRows.map(m => ({
+      book: m.book, chapter: m.chapter, verse: m.verse,
+      device: 'Modern Hebrew',
+      words: m.words,
+      notes: modernKind(m.literary_device) + (m.comments ? ` — ${m.comments}` : ''),
+      my_comments: undefined,
+    }));
+  } else {
+    filtered = rows;
+    if (filterDev) filtered = filtered.filter(r => (r.device || '').toLowerCase() === filterDev);
+  }
   if (filterSect === 'torah')   filtered = filtered.filter(r => TORAH_BOOKS.has(r.book));
   if (filterSect === 'neviim')  filtered = filtered.filter(r => NEVIIM_BOOKS.has(r.book));
   if (filterSect === 'ketuvim') filtered = filtered.filter(r => KETUVIM_BOOKS.has(r.book));
@@ -2228,7 +2244,8 @@ async function handleAllDevicesLoad() {
   // Context
   const ctx = document.createElement('div');
   ctx.className = 'mb-context';
-  ctx.innerHTML = `<span>Literary Devices</span> · <span class="chip-count">${filtered.length}</span> annotations`;
+  const ctxLabel = filterDev === '__modern__' ? 'Modern Hebrew' : 'Literary Devices';
+  ctx.innerHTML = `<span>${ctxLabel}</span> · <span class="chip-count">${filtered.length}</span> annotations`;
   main.appendChild(ctx);
 
   if (!filtered.length) {
@@ -2279,7 +2296,8 @@ async function handleAllDevicesLoad() {
     main.appendChild(div);
   });
 
-  setStatus(`${filtered.length} device${filtered.length !== 1 ? 's' : ''}`);
+  const unit = filterDev === '__modern__' ? 'note' : 'device';
+  setStatus(`${filtered.length} ${unit}${filtered.length !== 1 ? 's' : ''}`);
 }
 
 // ── Range parsing helpers ──────────────────────────────────────────────────
@@ -2565,6 +2583,27 @@ async function fetchModern(book: string): Promise<any[]> {
   return rows;
 }
 
+// Every Modern Hebrew row across the whole Tanakh, for the "All Devices"
+// cross-book browser (see handleAllDevicesLoad). Loaded once, lazily, the
+// first time that mode actually needs it — most sessions never touch it.
+async function loadAllModern(): Promise<any[]> {
+  if (allModernData.length) return allModernData;
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  try {
+    const query = 'select=id,book,chapter,verse,literary_device,words,sources,urls,comments,questions'
+      + '&literary_device=ilike.Biblical*'
+      + '&order=book,chapter,verse,id';
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/${encodeURIComponent(MODERN_TABLE)}?${query}`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (r.ok) {
+      const raw = await r.json();
+      allModernData = Array.isArray(raw) ? raw.filter((x: any) => MODERN_DEVICE.test(x.literary_device || '')) : [];
+    }
+  } catch { /* leave allModernData empty rather than failing the page */ }
+  return allModernData;
+}
 
 // ── National Library of Israel poster evidence ────────────────────────
 // Some usage notes are backed by a dated artefact — a Tel Aviv civil-defence
@@ -2979,10 +3018,12 @@ function applyVerseVisibility() {
 
 function updateDevicePills(allDevices: any[]) {
   devicePills.innerHTML = '';
-  // Build count map from current passage if available
+  // Build count map from current passage if available. Counts occurrences
+  // (data-dev-start, one per device row), not tagged words — a 3-word
+  // melitza phrase is one occurrence, not three.
   const countMap = new Map<string, number>();
-  main.querySelectorAll('.w[data-devices]').forEach(w => {
-    const ds = (w as HTMLElement).dataset.devices?.split(',') || [];
+  main.querySelectorAll('.w[data-dev-start]').forEach(w => {
+    const ds = (w as HTMLElement).dataset.devStart?.split(',') || [];
     ds.forEach(d => countMap.set(d, (countMap.get(d) || 0) + 1));
   });
 
@@ -3003,9 +3044,9 @@ function updateDevicePills(allDevices: any[]) {
         (b as HTMLElement).classList.toggle('active', (b as HTMLElement).dataset.device === val);
       });
       applyVerseVisibility();
-      // Update instance navigator
+      // Update instance navigator — one stop per occurrence, not per word.
       if (val) {
-        devInstances = Array.from(main.querySelectorAll(`.w[data-devices*="${val}"]`));
+        devInstances = Array.from(main.querySelectorAll(`.w[data-dev-start*="${val}"]`));
         devNav.classList.remove('hidden');
         devIdx = 0;
         scrollToDevInstance(0);
@@ -3713,6 +3754,17 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
   const graetzSpans  = matchPhraseSpans(verseWordsNorm, gEntries, e => e.mt);
   const modernSpans  = matchPhraseSpans(verseWordsNorm, modern, m => m.words);
 
+  // A multi-word phrase (e.g. a 3-word melitza) tags every word it spans, so
+  // counting tagged words directly overcounts "how many occurrences" by the
+  // phrase length. Track each device row's first word index so only that one
+  // word marks a countable occurrence — see updateDevicePills below.
+  const deviceStartIdx = new Map<any, number>();
+  for (const [i, items] of deviceSpans) {
+    for (const it of items) {
+      if (!deviceStartIdx.has(it) || i < deviceStartIdx.get(it)!) deviceStartIdx.set(it, i);
+    }
+  }
+
   words.forEach((wordEl, i) => {
     const rawText = wordEl.textContent || '';
     const text  = cleanHebWord(rawText);
@@ -3775,6 +3827,11 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
       const names = matchedDevices.map(d => d.device?.toLowerCase() || '').filter(Boolean);
       span.dataset.devices = names.join(',');
       names.forEach(n => allDeviceNames.add(n));
+      const startNames = matchedDevices
+        .filter(d => deviceStartIdx.get(d) === i)
+        .map(d => d.device?.toLowerCase() || '')
+        .filter(Boolean);
+      if (startNames.length) span.dataset.devStart = startNames.join(',');
     }
 
     // Modern Hebrew (Ma’agarim) match
