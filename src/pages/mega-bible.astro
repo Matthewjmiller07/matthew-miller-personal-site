@@ -905,7 +905,7 @@ body:has(.mb-page) > footer { display:none!important; }
         <button class="mb-mode-btn active" id="modeChapter" data-mode="chapter">By Chapter</button>
         <button class="mb-mode-btn" id="modeParsha" data-mode="parsha">By Parsha</button>
         <button class="mb-mode-btn" id="modeHaftarah" data-mode="haftarah">Haftarah</button>
-        <button class="mb-mode-btn" id="modeAllDevices" data-mode="alldevices">All Devices</button>
+        <button class="mb-mode-btn" id="modeAllDevices" data-mode="alldevices">Explore Literary Devices</button>
       </div>
     </div>
     <!-- Row 2: selects + load -->
@@ -1196,6 +1196,12 @@ const BOOK_CHAPTERS: Record<string,number> = {
   'Song of Songs':8,'Ruth':4,'Lamentations':5,'Ecclesiastes':12,'Esther':10,
   'Daniel':12,'Ezra':10,'Nehemiah':13,'1 Chronicles':29,'2 Chronicles':36,
 };
+// Canonical Tanakh order (BOOK_CHAPTERS' own key order), for sorting any
+// cross-book listing — Postgrest's `order=book` sorts book names
+// alphabetically ("1 Chronicles" before "Genesis"), which is not useful here.
+const BOOK_ORDER_INDEX: Record<string, number> = Object.fromEntries(
+  Object.keys(BOOK_CHAPTERS).map((b, i) => [b, i])
+);
 
 const CLASSIC_TRANSLATIONS: Record<string,string> = {
   kjv1611: 'King James (1611)',
@@ -2238,6 +2244,12 @@ async function handleAllDevicesLoad() {
   if (filterSect === 'torah')   filtered = filtered.filter(r => TORAH_BOOKS.has(r.book));
   if (filterSect === 'neviim')  filtered = filtered.filter(r => NEVIIM_BOOKS.has(r.book));
   if (filterSect === 'ketuvim') filtered = filtered.filter(r => KETUVIM_BOOKS.has(r.book));
+
+  // Canonical Tanakh order (Genesis first), not the alphabetical order the
+  // literary_bible fetch's `order=book,chapter,verse` actually produces.
+  filtered = [...filtered].sort((a, b) =>
+    (BOOK_ORDER_INDEX[a.book] ?? 999) - (BOOK_ORDER_INDEX[b.book] ?? 999)
+    || a.chapter - b.chapter || a.verse - b.verse);
 
   main.innerHTML = '';
 
