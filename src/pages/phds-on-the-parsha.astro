@@ -1,0 +1,101 @@
+---
+// /phds-on-the-parsha — launch page for the podcast. Each week pairs the parsha
+// with scholars who wrote a doctorate on its verses. The "shelf" is the list of
+// dissertations for the current parsha (src/data/phds-on-the-parsha/*.json).
+// Trailer + thumbnail are rendered by scripts/phds-on-the-parsha/build_trailer.py
+// and hosted on the Higgsfield CDN.
+import Layout from '../layouts/Layout.astro';
+import ep from '../data/phds-on-the-parsha/bereishit.json';
+
+const shabbat = new Date(`${ep.shabbat}T12:00:00Z`).toLocaleDateString('en-US', {
+  weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+});
+const sections = ep.sections.map((s) => ({ ...s, items: ep.shelf.filter((b) => b.section === s.id) }));
+---
+
+<Layout
+  title="PhDs on the Parsha"
+  description={`A podcast from The Other Matthew Miller: every week, the scholars who wrote a doctorate on the parsha. Season one opens with ${ep.parsha}.`}
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Frank+Ruhl+Libre:wght@700&display=swap" />
+
+  <main class="pp">
+    <section class="pp-hero">
+      <p class="pp-kicker">A podcast from The Other Matthew Miller</p>
+      <h1 class="pp-title"><span>PhDs</span> on the Parsha</h1>
+      <p class="pp-lede">
+        Every week the Jewish world reads the same portion. Every week, we find someone who spent years —
+        a whole dissertation — on one of its verses.
+      </p>
+
+      <div class="pp-video">
+        <video controls preload="metadata" playsinline poster={ep.thumbnail}>
+          <source src={ep.trailer} type="video/mp4" />
+        </video>
+      </div>
+      <p class="pp-premiere">
+        Premieres with <strong>Parashat {ep.parsha}</strong> <span class="pp-he" lang="he">{ep.hebrew}</span> · {ep.ref} · {shabbat}
+      </p>
+    </section>
+
+    <section class="pp-shelf">
+      <h2>The {ep.parsha} shelf</h2>
+      <p class="pp-sub">Doctoral dissertations written on the verses of this week's parsha.</p>
+
+      {sections.map((s) => (
+        <div class="pp-sec">
+          <h3>{s.title} <span>{s.range}</span></h3>
+          <ul>
+            {s.items.map((b) => (
+              <li>
+                <div class="pp-verse">{b.verses}</div>
+                <div>
+                  <p class="pp-book">{b.title}</p>
+                  <p class="pp-who"><strong>{b.name}</strong> · {b.institution}{b.year && `, ${b.year}`}</p>
+                  <p class="pp-angle">{b.angle}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
+
+    <section class="pp-cta">
+      <p>Wrote a dissertation on a verse in the Torah? We'd love to hear from you.</p>
+      <a href="mailto:matthewjmiller07@gmail.com?subject=PhDs%20on%20the%20Parsha">Pitch your parsha</a>
+    </section>
+  </main>
+</Layout>
+
+<style>
+  .pp { --gold: #f0b429; --gold-hi: #fff3c4; --orange: #e84c1e; --ink: #0b0906; --paper: #f4ecdc;
+    background: radial-gradient(ellipse at 50% 0%, #2a1a08 0%, var(--ink) 60%); color: var(--paper);
+    padding: 3rem 1rem 4rem; }
+  .pp-hero, .pp-shelf, .pp-cta { max-width: 64rem; margin: 0 auto; }
+  .pp-hero { text-align: center; }
+  .pp-kicker { font: 600 .8rem/1 system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; color: var(--orange); }
+  .pp-title { font-family: 'Cinzel', serif; font-weight: 800; font-size: clamp(2.4rem, 8vw, 5rem); line-height: 1.05; margin: .6rem 0 1rem; text-transform: uppercase; }
+  .pp-title span { display: block; font-size: 1.6em; text-transform: none; background: linear-gradient(var(--gold-hi), var(--gold) 55%, #b7791f);
+    -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 18px rgba(255,140,30,.35)); }
+  .pp-lede { max-width: 38rem; margin: 0 auto 2rem; font-size: 1.1rem; opacity: .85; }
+  .pp-video { border-radius: .75rem; overflow: hidden; box-shadow: 0 0 0 1px rgba(240,180,41,.25), 0 30px 80px rgba(0,0,0,.6); background: #000; }
+  .pp-video video { display: block; width: 100%; aspect-ratio: 16/9; }
+  .pp-premiere { margin-top: 1.25rem; font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .04em; }
+  .pp-he { font-family: 'Frank Ruhl Libre', serif; color: var(--gold); }
+  .pp-shelf { margin-top: 4rem; }
+  .pp-shelf h2 { font-family: 'Cinzel', serif; font-weight: 800; font-size: 2rem; color: var(--gold); }
+  .pp-sub { opacity: .75; margin-bottom: 2rem; }
+  .pp-sec h3 { font-family: 'Cinzel', serif; font-weight: 600; font-size: 1.25rem; border-bottom: 1px solid rgba(240,180,41,.3); padding-bottom: .4rem; margin: 2rem 0 1rem; }
+  .pp-sec h3 span { font: 500 .8rem system-ui, sans-serif; color: var(--orange); margin-left: .5rem; }
+  .pp-sec ul { list-style: none; padding: 0; display: grid; gap: 1rem; }
+  .pp-sec li { display: grid; grid-template-columns: 9rem 1fr; gap: 1rem; padding: 1rem; border-radius: .5rem; background: rgba(255,255,255,.035); }
+  .pp-verse { font: 600 .85rem system-ui, sans-serif; color: var(--gold); }
+  .pp-book { font-style: italic; font-size: 1.05rem; }
+  .pp-who { font-size: .9rem; opacity: .8; margin-top: .25rem; }
+  .pp-angle { font-size: .9rem; margin-top: .4rem; color: #e9d9b8; }
+  .pp-cta { margin-top: 4rem; text-align: center; }
+  .pp-cta a { display: inline-block; margin-top: .75rem; padding: .75rem 1.5rem; border-radius: 999px; background: var(--orange); color: #fff; font-weight: 700; }
+  @media (max-width: 640px) { .pp-sec li { grid-template-columns: 1fr; gap: .25rem; } }
+</style>
