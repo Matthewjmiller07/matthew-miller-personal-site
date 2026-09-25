@@ -1,0 +1,375 @@
+---
+import Layout from '../layouts/Layout.astro';
+import text from '../data/kohelet/text.json';
+import notes from '../data/kohelet/notes.json';
+import essays from '../data/kohelet/essays.json';
+import lectures from '../data/kohelet/lectures.json';
+
+const L = Object.fromEntries(lectures.map((l) => [l.key, l]));
+const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+// Highlight a consonantal word inside pointed Hebrew: allow niqqud/te'amim between letters,
+// and a space or maqaf wherever the note has a space.
+function highlight(he, words) {
+  let out = he;
+  for (const w of words) {
+    const pat = [...w].map((ch) => (ch === ' ' ? '[\\s\\u05BE]+' : ch + '[\\u0591-\\u05C7]*')).join('');
+    out = out.replace(new RegExp(pat), (m) => `<mark>${m}</mark>`);
+  }
+  return out;
+}
+
+const essayHtml = (p) => p.replace(/\[\[(\d+):(\d+)\]\]/g, '<a class="vref" href="#v-$1-$2">$1:$2</a>');
+
+const chapters = text.map((c) => ({
+  n: c.chapter,
+  verses: c.verses.map((v) => {
+    const vn = notes[`${c.chapter}:${v.n}`] || [];
+    return { ...v, notes: vn, heHtml: highlight(v.he, vn.map((x) => x.w).filter(Boolean)) };
+  }),
+}));
+const noteCount = Object.values(notes).flat().length;
+const lectureList = lectures.filter((l) => l.key !== 'trailer');
+---
+
+<Layout
+  title="Kohelet Reader"
+  description="Ecclesiastes in Hebrew and English with verse notes and essays drawn from J.J. Kimche's six-part lecture series."
+  image="/images/kohelet/hero.jpg"
+  imageAlt="A bearded man in a leather armchair exhaling breath into a shaft of light"
+>
+<style is:global>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Frank+Ruhl+Libre:wght@400;500&display=swap');
+  body:has(.kh) { background: #070707 !important; padding: 0 !important; }
+  .kh {
+    --bg: #070707; --panel: #111; --panel2: #171717; --line: rgba(255,255,255,.09);
+    --ink: #f3efe6; --muted: #a39d90; --faint: #6d685f; --gold: #f5c63c; --gold-d: rgba(245,198,60,.16);
+    --display: 'Oswald', 'Arial Narrow', sans-serif; --serif: 'Source Serif 4', Georgia, serif; --heb: 'Frank Ruhl Libre', 'Times New Roman', serif;
+    background: var(--bg); color: var(--ink); font-family: var(--serif); min-height: 100vh; overflow-x: clip;
+  }
+  .kh * { box-sizing: border-box; }
+  .kh a { color: inherit; }
+  .kh .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  .kh h1, .kh h2, .kh h3, .kh .disp { font-family: var(--display); text-transform: uppercase; letter-spacing: .01em; line-height: .98; margin: 0; }
+  .kh .gold { color: var(--gold); }
+  .kh .eyebrow { font-family: var(--display); text-transform: uppercase; letter-spacing: .18em; font-size: .78rem; color: var(--gold); }
+
+  /* hero */
+  .kh-hero { grid-template-columns: minmax(0, 1fr); position: relative; min-height: min(92vh, 820px); display: grid; align-items: end; isolation: isolate; }
+  .kh-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 30% 30%; z-index: -2; }
+  .kh-hero::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(7,7,7,.2) 0%, rgba(7,7,7,.35) 40%, rgba(7,7,7,.92) 72%), linear-gradient(0deg, #070707 0%, transparent 35%); }
+  .kh-hero .inner { display: grid; justify-items: end; text-align: right; padding: 0 20px 72px; max-width: 1120px; margin: 0 auto; width: 100%; }
+  .kh-hero h1 { font-size: clamp(3.2rem, 9vw, 7.6rem); font-weight: 700; }
+  .kh-hero p { max-width: 30rem; color: #d8d2c4; font-size: 1.12rem; line-height: 1.55; margin: 22px 0 28px; }
+  .kh .btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+  .kh .btn { font-family: var(--display); text-transform: uppercase; letter-spacing: .08em; font-size: .95rem; padding: 13px 22px; border: 1px solid var(--gold); background: var(--gold); color: #111; text-decoration: none; cursor: pointer; }
+  .kh .btn.ghost { background: transparent; color: var(--gold); }
+  .kh .btn:hover { filter: brightness(1.08); }
+
+  .kh section { padding: 88px 0; border-top: 1px solid var(--line); }
+  .kh .sec-head { display: flex; justify-content: space-between; align-items: end; gap: 24px; flex-wrap: wrap; margin-bottom: 36px; }
+  .kh .sec-head h2 { font-size: clamp(2.2rem, 5vw, 3.6rem); }
+  .kh .sec-head p { color: var(--muted); max-width: 34rem; margin: 0; line-height: 1.55; }
+
+  /* trailer */
+  .kh .trailer { display: grid; grid-template-columns: minmax(0,1.6fr) minmax(0,1fr); gap: 28px; align-items: start; }
+  .kh video { width: 100%; aspect-ratio: 16/9; background: #000; display: block; border: 1px solid var(--line); }
+  .kh .orig { background: var(--panel); border: 1px solid var(--line); padding: 20px; }
+  .kh .orig h3 { font-size: 1.3rem; margin: 6px 0 12px; }
+  .kh .orig p { color: var(--muted); font-size: .95rem; line-height: 1.5; }
+  .kh .yt-thumb { position: relative; display: block; width: 100%; aspect-ratio: 16/9; border: 0; padding: 0; cursor: pointer; background: #000 center/cover; margin-top: 12px; }
+  .kh .yt-thumb::after { content: '▶'; position: absolute; inset: 0; display: grid; place-items: center; font-size: 2.2rem; color: var(--gold); background: rgba(0,0,0,.35); }
+
+  /* essays */
+  .kh .essays { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .kh .ecard { background: var(--panel); border: 1px solid var(--line); cursor: pointer; text-align: left; color: inherit; padding: 0; font: inherit; display: flex; flex-direction: column; transition: border-color .2s, transform .2s; }
+  .kh .ecard:hover { border-color: var(--gold); transform: translateY(-2px); }
+  .kh .ecard img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+  .kh .ecard .b { padding: 18px 18px 22px; }
+  .kh .ecard h3 { font-size: 1.45rem; margin: 8px 0 10px; }
+  .kh .ecard p { color: var(--muted); margin: 0; line-height: 1.5; font-size: .98rem; }
+
+  /* reader */
+  .kh .rbar { position: sticky; top: 0; z-index: 20; background: rgba(7,7,7,.94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .kh .rbar .wrap { display: flex; align-items: center; gap: 14px; padding-top: 10px; padding-bottom: 10px; flex-wrap: wrap; }
+  .kh .chips { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; min-width: 0; }
+  .kh .chips a { font-family: var(--display); min-width: 36px; text-align: center; padding: 6px 8px; text-decoration: none; color: var(--muted); border: 1px solid transparent; }
+  .kh .chips a.on, .kh .chips a:hover { color: var(--gold); border-color: var(--gold-d); }
+  .kh .modes { display: flex; border: 1px solid var(--line); }
+  .kh .modes button { background: none; border: 0; color: var(--muted); font-family: var(--display); text-transform: uppercase; letter-spacing: .06em; padding: 7px 11px; cursor: pointer; font-size: .82rem; }
+  .kh .modes button[aria-pressed="true"] { background: var(--gold); color: #111; }
+  .kh .chapter { padding-top: 56px; scroll-margin-top: 64px; }
+  .kh .plate { position: relative; margin-bottom: 26px; }
+  .kh .plate img { width: 100%; aspect-ratio: 3/1; object-fit: cover; display: block; opacity: .85; }
+  .kh .plate h3 { position: absolute; left: 22px; bottom: 16px; font-size: clamp(2rem, 6vw, 4rem); text-shadow: 0 2px 20px #000; }
+  .kh .plate .heb { position: absolute; right: 22px; bottom: 16px; font-family: var(--heb); font-size: clamp(1.6rem, 4vw, 2.6rem); color: var(--gold); text-shadow: 0 2px 20px #000; }
+  .kh .verse { display: grid; grid-template-columns: 2.6rem minmax(0,1fr) minmax(0,1fr); gap: 0 28px; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,.04); scroll-margin-top: 80px; }
+  .kh .verse:target { background: linear-gradient(90deg, var(--gold-d), transparent 70%); }
+  .kh .vn { font-family: var(--display); color: var(--faint); font-size: .9rem; padding-top: 4px; text-decoration: none; }
+  .kh .verse.has .vn { color: var(--gold); }
+  .kh .en { font-size: 1.08rem; line-height: 1.65; color: #e6e0d3; }
+  .kh .he { font-family: var(--heb); direction: rtl; font-size: 1.5rem; line-height: 1.75; color: var(--ink); }
+  .kh .he mark { background: none; color: var(--gold); border-bottom: 2px solid var(--gold); }
+  .kh .notes { grid-column: 2 / -1; display: grid; gap: 10px; margin-top: 12px; }
+  .kh .note { background: var(--panel); border-left: 3px solid var(--gold); padding: 14px 16px; }
+  .kh .note .top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px; }
+  .kh .note .w { font-family: var(--heb); font-size: 1.25rem; color: var(--gold); }
+  .kh .note .lab { font-family: var(--display); text-transform: uppercase; letter-spacing: .04em; font-size: 1.02rem; }
+  .kh .note p { margin: 0; color: #d4cec0; line-height: 1.6; font-size: 1rem; }
+  .kh .note .src { margin-top: 8px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: .85rem; color: var(--faint); }
+  .kh .play { background: none; border: 1px solid var(--gold-d); color: var(--gold); font-family: var(--display); text-transform: uppercase; letter-spacing: .06em; font-size: .78rem; padding: 4px 9px; cursor: pointer; }
+  .kh .play:hover { border-color: var(--gold); }
+  .kh[data-mode="he"] .en, .kh[data-mode="en"] .he { display: none; }
+  .kh[data-mode="he"] .verse, .kh[data-mode="en"] .verse { grid-template-columns: 2.6rem minmax(0,1fr); }
+  .kh[data-mode="he"] .notes, .kh[data-mode="en"] .notes { grid-column: 2; }
+  .kh[data-notes="off"] .notes { display: none; }
+
+  /* lectures */
+  .kh .lects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .kh .lect { background: var(--panel); border: 1px solid var(--line); padding: 0 0 16px; }
+  .kh .lect .yt-thumb { margin: 0; }
+  .kh .lect h3 { font-size: 1.2rem; padding: 14px 16px 4px; }
+  .kh .lect span { display: block; padding: 0 16px; color: var(--muted); font-size: .9rem; }
+
+  .kh .fine { color: var(--faint); font-size: .9rem; line-height: 1.6; padding: 48px 0 80px; border-top: 1px solid var(--line); }
+  .kh .fine a { color: var(--muted); }
+
+  /* dialogs */
+  .kh dialog { border: 1px solid var(--line); background: #0d0d0d; color: var(--ink); padding: 0; max-width: min(960px, calc(100vw - 24px)); width: 100%; }
+  .kh dialog::backdrop { background: rgba(0,0,0,.82); }
+  .kh .dclose { position: absolute; top: 10px; right: 10px; z-index: 2; background: rgba(0,0,0,.6); color: var(--ink); border: 1px solid var(--line); width: 38px; height: 38px; font-size: 1.2rem; cursor: pointer; }
+  .kh #lecture-dlg iframe { width: 100%; aspect-ratio: 16/9; border: 0; display: block; }
+  .kh #lecture-dlg .cap { padding: 12px 16px; font-family: var(--display); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .kh #essay-dlg { max-width: min(780px, calc(100vw - 24px)); max-height: 92vh; }
+  .kh .essay img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+  .kh .essay .b { padding: 28px clamp(18px, 5vw, 56px) 48px; }
+  .kh .essay h2 { font-size: clamp(2rem, 5vw, 3rem); margin: 10px 0 12px; }
+  .kh .essay .dek { color: var(--muted); font-style: italic; font-size: 1.12rem; margin: 0 0 20px; }
+  .kh .essay .by { font-size: .85rem; color: var(--faint); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 10px 0; margin-bottom: 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .kh .essay p { font-size: 1.13rem; line-height: 1.75; color: #e2dccf; margin: 0 0 1.2em; }
+  .kh .essay p:first-of-type::first-letter { font-family: var(--display); float: left; font-size: 3.6rem; line-height: .9; padding: 4px 10px 0 0; color: var(--gold); }
+  .kh .vref { color: var(--gold) !important; text-decoration: none; border-bottom: 1px dotted var(--gold); font-size: .9em; }
+
+  @media (max-width: 860px) {
+    .kh .trailer, .kh .essays, .kh .lects { grid-template-columns: minmax(0, 1fr); }
+    .kh .verse { grid-template-columns: 2rem minmax(0, 1fr); }
+    .kh-hero p { max-width: 100%; }
+    .kh .verse .he { grid-column: 2; margin-bottom: 8px; }
+    .kh .verse .en { grid-column: 2; grid-row: 2; }
+    .kh .notes { grid-column: 1 / -1; }
+    .kh-hero .inner { justify-items: start; text-align: left; padding-bottom: 48px; }
+    .kh-hero::after { background: linear-gradient(0deg, #070707 10%, rgba(7,7,7,.55) 60%, rgba(7,7,7,.25)); }
+    .kh .btns { justify-content: flex-start; }
+    .kh .plate img { aspect-ratio: 2/1; }
+  }
+</style>
+
+<div class="kh" data-mode="both" data-notes="on">
+  <header class="kh-hero">
+    <img src="/images/kohelet/hero.jpg" alt="" />
+    <div class="inner">
+      <div class="eyebrow">A reader for Ecclesiastes · קֹהֶלֶת</div>
+      <h1>Everything<br />is <span class="gold">hevel.</span></h1>
+      <p>The full book in Hebrew and English, with {noteCount} notes on its verses and words and six essays, all drawn from J.J. Kimche’s six-part lecture series on the Bible’s great philosopher.</p>
+      <div class="btns">
+        <a class="btn" href="#read">Start reading</a>
+        <a class="btn ghost" href="#trailer">Watch the trailer</a>
+      </div>
+    </div>
+  </header>
+
+  <section id="trailer">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Ladies and gentlemen,<br /><span class="gold">you will die.</span></h2>
+        <p>Welcome to the Book of Ecclesiastes. A short trailer for the reader, and the original trailer for the series it is built on.</p>
+      </div>
+      <div class="trailer">
+        <video src="/videos/kohelet-trailer.mp4" poster="/images/kohelet/trailer-a.jpg" controls playsinline preload="metadata"></video>
+        <div class="orig">
+          <div class="eyebrow">The source</div>
+          <h3>Ecclesiastes, The Bible’s Great Philosopher</h3>
+          <p>J.J. Kimche’s six lectures on Kohelet: hevel, joy, God, death, and 2,300 years of commentary.</p>
+          <button class="yt-thumb" data-yt={L.trailer.id} data-t="0" data-cap="Series trailer" style={`background-image:url(https://i.ytimg.com/vi/${L.trailer.id}/hqdefault.jpg)`} aria-label="Play the series trailer"></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="essays">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Six <span class="gold">essays</span></h2>
+        <p>One for each lecture, written up as an essay in his voice. Verse references jump straight into the text.</p>
+      </div>
+      <div class="essays">
+        {essays.map((e) => (
+          <button class="ecard" data-essay={e.slug}>
+            <img src={`/images/kohelet/${e.image}.jpg`} alt="" loading="lazy" />
+            <div class="b">
+              <div class="eyebrow">{L[e.lecture].part}</div>
+              <h3>{e.title}</h3>
+              <p>{e.dek}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section id="read" style="padding-bottom:40px">
+    <div class="wrap sec-head" style="margin-bottom:24px">
+      <h2>The <span class="gold">text</span></h2>
+      <p>Words in <span class="gold">gold</span> carry a note. Each note links to the moment in the lecture it comes from.</p>
+    </div>
+    <nav class="rbar" aria-label="Chapters">
+      <div class="wrap">
+        <div class="chips">{chapters.map((c) => <a href={`#ch-${c.n}`} data-ch={c.n}>{c.n}</a>)}</div>
+        <div class="modes" role="group" aria-label="Language">
+          <button data-mode="both" aria-pressed="true">Both</button>
+          <button data-mode="he" aria-pressed="false">עב</button>
+          <button data-mode="en" aria-pressed="false">En</button>
+        </div>
+        <div class="modes"><button id="notes-toggle" aria-pressed="true">Notes</button></div>
+      </div>
+    </nav>
+    <div class="wrap">
+      {chapters.map((c) => (
+        <div class="chapter" id={`ch-${c.n}`} data-ch={c.n}>
+          <div class="plate">
+            <img src={`/images/kohelet/ch-${c.n}.jpg`} alt="" loading="lazy" />
+            <h3>Chapter {c.n}</h3>
+            <span class="heb">{['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב'][c.n - 1]}</span>
+          </div>
+          {c.verses.map((v) => (
+            <div class:list={['verse', { has: v.notes.length }]} id={`v-${c.n}-${v.n}`}>
+              <a class="vn" href={`#v-${c.n}-${v.n}`}>{v.n}</a>
+              <div class="he" lang="he" set:html={v.heHtml} />
+              <div class="en" set:html={v.en} />
+              {v.notes.length > 0 && (
+                <div class="notes">
+                  {v.notes.map((n) => (
+                    <div class="note">
+                      <div class="top">
+                        {n.w && <span class="w" lang="he">{n.w}</span>}
+                        <span class="lab">{n.label}</span>
+                      </div>
+                      <p>{n.body}</p>
+                      <div class="src">
+                        <button class="play" data-yt={L[n.L].id} data-t={n.t} data-cap={`${L[n.L].part}: ${L[n.L].title}`}>▶ {L[n.L].part} · {fmt(n.t)}</button>
+                        {n.ext && <span>Extends his argument in Part IV to a verse he doesn’t cite.</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section id="lectures">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>The <span class="gold">lectures</span></h2>
+        <p>Everything here comes from these six talks. Watch the originals.</p>
+      </div>
+      <div class="lects">
+        {lectureList.map((l) => (
+          <div class="lect">
+            <button class="yt-thumb" data-yt={l.id} data-t="0" data-cap={`${l.part}: ${l.title}`} style={`background-image:url(https://i.ytimg.com/vi/${l.id}/hqdefault.jpg)`} aria-label={`Play ${l.part}`}></button>
+            <h3>{l.part}: {l.title}</h3>
+            <span>{l.minutes} min</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap fine">
+    The essays and notes on this page were written by AI in J.J. Kimche’s voice, adapted from the public lectures in his
+    <a href="https://www.youtube.com/playlist?list=PLQa1rk36QXvI" target="_blank" rel="noopener">Ecclesiastes series</a>. He did not write or review them; for his actual words, follow the timestamp links.
+    The illustrations are AI-generated (FLUX 2 Klein) and are not photographs.
+    Hebrew text: Miqra according to the Masorah. English: The JPS Tanakh, Gender-Sensitive Edition. Both via <a href="https://www.sefaria.org/Ecclesiastes.1" target="_blank" rel="noopener">Sefaria</a>.
+    Verse numbers follow the Hebrew, so English chapter 5 runs one verse behind (English 5:1 is Hebrew 4:17).
+  </div>
+
+  <dialog id="lecture-dlg">
+    <button class="dclose" aria-label="Close">✕</button>
+    <iframe allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Lecture"></iframe>
+    <div class="cap"></div>
+  </dialog>
+
+  <dialog id="essay-dlg">
+    <button class="dclose" aria-label="Close">✕</button>
+    {essays.map((e) => (
+      <article class="essay" data-essay={e.slug} hidden>
+        <img src={`/images/kohelet/${e.image}.jpg`} alt="" loading="lazy" />
+        <div class="b">
+          <div class="eyebrow">{L[e.lecture].part} · {L[e.lecture].title}</div>
+          <h2>{e.title}</h2>
+          <p class="dek">{e.dek}</p>
+          <div class="by">
+            <span>In the voice of J.J. Kimche. AI-written from his lecture.</span>
+            <button class="play" data-yt={L[e.lecture].id} data-t="0" data-cap={`${L[e.lecture].part}: ${L[e.lecture].title}`}>▶ Watch the lecture</button>
+          </div>
+          {e.body.map((p) => <p set:html={essayHtml(p)} />)}
+        </div>
+      </article>
+    ))}
+  </dialog>
+</div>
+
+<script is:inline>
+(() => {
+  const root = document.querySelector('.kh');
+  const lec = document.getElementById('lecture-dlg');
+  const frame = lec.querySelector('iframe');
+  const ess = document.getElementById('essay-dlg');
+
+  function openLecture(id, t, cap) {
+    frame.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&start=${t}&rel=0`;
+    lec.querySelector('.cap').textContent = cap || '';
+    lec.showModal();
+  }
+  lec.addEventListener('close', () => { frame.src = 'about:blank'; });
+
+  root.addEventListener('click', (e) => {
+    const yt = e.target.closest('[data-yt]');
+    if (yt) { e.preventDefault(); openLecture(yt.dataset.yt, yt.dataset.t || 0, yt.dataset.cap); return; }
+    const card = e.target.closest('.ecard');
+    if (card) {
+      ess.querySelectorAll('.essay').forEach((a) => { a.hidden = a.dataset.essay !== card.dataset.essay; });
+      ess.showModal(); ess.scrollTop = 0; return;
+    }
+    if (e.target.closest('.dclose')) { e.target.closest('dialog').close(); return; }
+    const vref = e.target.closest('.vref');
+    if (vref && ess.open) ess.close();
+  });
+  [lec, ess].forEach((d) => d.addEventListener('click', (e) => { if (e.target === d) d.close(); }));
+
+  root.querySelectorAll('.modes [data-mode]').forEach((b) => b.addEventListener('click', () => {
+    root.dataset.mode = b.dataset.mode;
+    root.querySelectorAll('.modes [data-mode]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    try { localStorage.setItem('kh-mode', b.dataset.mode); } catch {}
+  }));
+  const nt = document.getElementById('notes-toggle');
+  nt.addEventListener('click', () => {
+    const on = root.dataset.notes !== 'on';
+    root.dataset.notes = on ? 'on' : 'off'; nt.setAttribute('aria-pressed', String(on));
+  });
+  try { const m = localStorage.getItem('kh-mode'); if (m) root.querySelector(`.modes [data-mode="${m}"]`)?.click(); } catch {}
+
+  const chips = [...root.querySelectorAll('.chips a')];
+  const io = new IntersectionObserver((es) => es.forEach((en) => {
+    if (!en.isIntersecting) return;
+    chips.forEach((c) => c.classList.toggle('on', c.dataset.ch === en.target.dataset.ch));
+    const on = chips.find((c) => c.classList.contains('on'));
+    if (on) on.parentElement.scrollLeft = on.offsetLeft - on.parentElement.clientWidth / 2;
+  }), { rootMargin: '-45% 0px -50% 0px' });
+  root.querySelectorAll('.chapter').forEach((c) => io.observe(c));
+})();
+</script>
+</Layout>
