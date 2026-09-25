@@ -123,7 +123,7 @@ T_CARDS = [fit_gold(c, 80 if i < 2 else 120) for i, c in enumerate(CARDS)]
 T_PHDS = gold_text("PhDs", CZ(250), stroke=5, glow=24)
 T_ONTHE = plain_text("ON THE PARSHA", CZ(84), (255, 250, 240))
 T_FROM = plain_text("A PODCAST FROM THE OTHER MATTHEW MILLER", MO(26), ORANGE)
-T_PREM = plain_text("PREMIERES WITH PARASHAT BEREISHIT", CZ(36), (240, 230, 210))
+T_PREM = plain_text("PREMIERES WITH PARSHAT BREISHIT", CZ(36), (240, 230, 210))
 T_URL = plain_text("theothermatthewmiller.com", MO(24), (200, 200, 200))
 
 # ---------- image prep ----------
@@ -403,7 +403,7 @@ pill = MO(30)
 d.rounded_rectangle((52, 40, 360, 92), 26, fill=ORANGE)
 d.text((72, 49), "NEW PODCAST", font=pill, fill="white")
 d.rounded_rectangle((52, 585, 530, 640), 8, fill=(0, 0, 0, 200), outline=ORANGE, width=3)
-d.text((70, 596), "EP. 1 · BEREISHIT", font=MO(32), fill=(255, 225, 150))
+d.text((70, 596), "EP. 1 · BREISHIT", font=MO(32), fill=(255, 225, 150))
 paste(th, plain_text("THE OTHER MATTHEW MILLER", MO(24), (235, 235, 235)), 32, 648)
 th.convert("RGB").save("thumb.jpg", quality=92)
 th.convert("RGB").save("thumb.webp", quality=82)
