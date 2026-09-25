@@ -1,21 +1,27 @@
 ---
-// /phds-on-the-parsha — launch page for the podcast. Each week pairs the parsha
-// with scholars who wrote a doctorate on its verses. The "shelf" is the list of
-// dissertations for the current parsha (src/data/phds-on-the-parsha/*.json).
-// Trailer + thumbnail are rendered by scripts/phds-on-the-parsha/build_trailer.py
-// and hosted on the Higgsfield CDN.
+// /phds-on-the-parsha — the podcast's season page. One episode per parsha, each
+// with a scholar whose doctorate is on that parsha. The schedule (Israel reading
+// calendar, 5787) lives in src/data/phds-on-the-parsha/season-5787.json; only the
+// featured dissertation is shown here, never backups or research notes.
+// Trailer + thumbnail are rendered by scripts/phds-on-the-parsha/build_trailer.py.
 import Layout from '../layouts/Layout.astro';
-import ep from '../data/phds-on-the-parsha/bereishit.json';
+import season from '../data/phds-on-the-parsha/season-5787.json';
 
-const shabbat = new Date(`${ep.shabbat}T12:00:00Z`).toLocaleDateString('en-US', {
-  weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
-});
-const sections = ep.sections.map((s) => ({ ...s, items: ep.shelf.filter((b) => b.section === s.id) }));
+const fmt = (iso: string) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+
+const books = [
+  { name: 'Breishit', he: 'בראשית', from: 1, to: 12 },
+  { name: 'Shemot', he: 'שמות', from: 13, to: 23 },
+  { name: 'Vayikra', he: 'ויקרא', from: 24, to: 33 },
+  { name: 'Bamidbar', he: 'במדבר', from: 34, to: 43 },
+  { name: 'Devarim', he: 'דברים', from: 44, to: 54 },
+].map((b) => ({ ...b, weeks: season.weeks.filter((w) => w.n >= b.from && w.n <= b.to) }));
 ---
 
 <Layout
   title="PhDs on the Parsha"
-  description={`A podcast from The Other Matthew Miller: every week, the scholars who wrote a doctorate on the parsha. Season one opens with ${ep.parsha}.`}
+  description="A podcast from The Other Matthew Miller: every week, one parsha and one scholar who wrote a doctorate on it. Season one opens with Parshat Breishit."
 >
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Frank+Ruhl+Libre:wght@700&display=swap" />
@@ -25,55 +31,71 @@ const sections = ep.sections.map((s) => ({ ...s, items: ep.shelf.filter((b) => b
       <p class="pp-kicker">A podcast from The Other Matthew Miller</p>
       <h1 class="pp-title"><span>PhDs</span> on the Parsha</h1>
       <p class="pp-lede">
-        Every week the Jewish world reads the same portion. Every week, we find someone who spent years —
-        a whole dissertation — on one of its verses.
+        Every week the Jewish world reads the same parsha. Every week, one guest who spent years —
+        a whole dissertation — on it.
       </p>
 
       <div class="pp-video">
-        <video controls preload="metadata" playsinline poster={ep.thumbnail}>
-          <source src={ep.trailer} type="video/mp4" />
+        <video controls preload="metadata" playsinline poster={season.thumbnail}>
+          <source src={season.trailer} type="video/mp4" />
         </video>
       </div>
       <p class="pp-premiere">
-        Premieres with <strong>Parshat {ep.parsha}</strong> <span class="pp-he" lang="he">{ep.hebrew}</span> · {ep.ref} · {shabbat}
+        Premieres with <strong>Parshat Breishit</strong> <span class="pp-he" lang="he">בראשית</span> · {fmt(season.weeks[0].date)}
       </p>
     </section>
 
-    <section class="pp-shelf">
-      <h2>The {ep.parsha} shelf</h2>
-      <p class="pp-sub">Doctoral dissertations written on the verses of this week's parsha.</p>
+    <section class="pp-season">
+      <h2>{season.season}</h2>
+      <p class="pp-sub">One parsha, one dissertation, every week. Follows the Israel reading calendar.</p>
 
-      {sections.map((s) => (
-        <div class="pp-sec">
-          <h3>{s.title} <span>{s.range}</span></h3>
-          <ul>
-            {s.items.map((b) => (
-              <li>
-                <div class="pp-verse">{b.verses}</div>
-                <div>
-                  <p class="pp-book">{b.title}</p>
-                  <p class="pp-who"><strong>{b.name}</strong> · {b.institution}{b.year && `, ${b.year}`}</p>
-                  <p class="pp-angle">{b.angle}</p>
+      {books.map((b) => (
+        <div class="pp-book">
+          <h3>{b.name} <span lang="he">{b.he}</span></h3>
+          <ol>
+            {b.weeks.map((w) => (
+              <li data-date={w.date}>
+                <div class="pp-when">
+                  <span class="pp-date">{fmt(w.date)}</span>
+                  <span class="pp-parsha">{w.parsha} <span lang="he">{w.hebrew}</span></span>
+                  <span class="pp-ref">{w.ref}</span>
                 </div>
+                {w.guest ? (
+                  <div>
+                    <p class="pp-diss">{w.guest.title}</p>
+                    <p class="pp-who"><strong>{w.guest.name}</strong>{w.guest.institution && ` · ${w.guest.institution}`}{w.guest.year && `, ${w.guest.year}`}</p>
+                    <p class="pp-angle">{w.guest.angle}</p>
+                  </div>
+                ) : (
+                  <div><p class="pp-tba">Dissertation to be announced</p></div>
+                )}
               </li>
             ))}
-          </ul>
+          </ol>
         </div>
       ))}
+      <p class="pp-note">Featured dissertations are subject to change as guests are confirmed.</p>
     </section>
 
     <section class="pp-cta">
-      <p>Wrote a dissertation on a verse in the Torah? We'd love to hear from you.</p>
+      <p>Wrote a dissertation on a parsha? We'd love to hear from you.</p>
       <a href="mailto:matthewjmiller07@gmail.com?subject=PhDs%20on%20the%20Parsha">Pitch your parsha</a>
     </section>
   </main>
 </Layout>
 
+<script>
+  // Highlight the next episode (this Shabbat's parsha, or the next one).
+  const today = new Date().toISOString().slice(0, 10);
+  const next = [...document.querySelectorAll<HTMLElement>('.pp-book li')].find((li) => (li.dataset.date ?? '') >= today);
+  next?.classList.add('pp-next');
+</script>
+
 <style>
   .pp { --gold: #f0b429; --gold-hi: #fff3c4; --orange: #e84c1e; --ink: #0b0906; --paper: #f4ecdc;
     background: radial-gradient(ellipse at 50% 0%, #2a1a08 0%, var(--ink) 60%); color: var(--paper);
     padding: 3rem 1rem 4rem; }
-  .pp-hero, .pp-shelf, .pp-cta { max-width: 64rem; margin: 0 auto; }
+  .pp-hero, .pp-season, .pp-cta { max-width: 64rem; margin: 0 auto; }
   .pp-hero { text-align: center; }
   .pp-kicker { font: 600 .8rem/1 system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; color: var(--orange); }
   .pp-title { font-family: 'Cinzel', serif; font-weight: 800; font-size: clamp(2.4rem, 8vw, 5rem); line-height: 1.05; margin: .6rem 0 1rem; text-transform: uppercase; }
@@ -83,19 +105,24 @@ const sections = ep.sections.map((s) => ({ ...s, items: ep.shelf.filter((b) => b
   .pp-video { border-radius: .75rem; overflow: hidden; box-shadow: 0 0 0 1px rgba(240,180,41,.25), 0 30px 80px rgba(0,0,0,.6); background: #000; }
   .pp-video video { display: block; width: 100%; aspect-ratio: 16/9; }
   .pp-premiere { margin-top: 1.25rem; font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .04em; }
-  .pp-he { font-family: 'Frank Ruhl Libre', serif; color: var(--gold); }
-  .pp-shelf { margin-top: 4rem; }
-  .pp-shelf h2 { font-family: 'Cinzel', serif; font-weight: 800; font-size: 2rem; color: var(--gold); }
-  .pp-sub { opacity: .75; margin-bottom: 2rem; }
-  .pp-sec h3 { font-family: 'Cinzel', serif; font-weight: 600; font-size: 1.25rem; border-bottom: 1px solid rgba(240,180,41,.3); padding-bottom: .4rem; margin: 2rem 0 1rem; }
-  .pp-sec h3 span { font: 500 .8rem system-ui, sans-serif; color: var(--orange); margin-left: .5rem; }
-  .pp-sec ul { list-style: none; padding: 0; display: grid; gap: 1rem; }
-  .pp-sec li { display: grid; grid-template-columns: 9rem 1fr; gap: 1rem; padding: 1rem; border-radius: .5rem; background: rgba(255,255,255,.035); }
-  .pp-verse { font: 600 .85rem system-ui, sans-serif; color: var(--gold); }
-  .pp-book { font-style: italic; font-size: 1.05rem; }
+  .pp-he, [lang="he"] { font-family: 'Frank Ruhl Libre', serif; color: var(--gold); }
+  .pp-season { margin-top: 4rem; }
+  .pp-season h2 { font-family: 'Cinzel', serif; font-weight: 800; font-size: 2rem; color: var(--gold); }
+  .pp-sub { opacity: .75; margin-bottom: 1rem; }
+  .pp-book h3 { font-family: 'Cinzel', serif; font-weight: 600; font-size: 1.4rem; border-bottom: 1px solid rgba(240,180,41,.3); padding-bottom: .4rem; margin: 2.5rem 0 1rem; }
+  .pp-book ol { list-style: none; padding: 0; display: grid; gap: .75rem; }
+  .pp-book li { display: grid; grid-template-columns: 11rem 1fr; gap: 1rem; padding: 1rem; border-radius: .5rem; background: rgba(255,255,255,.035); }
+  .pp-book li.pp-next { background: rgba(232,76,30,.14); box-shadow: inset 3px 0 0 var(--orange); }
+  .pp-when { display: flex; flex-direction: column; gap: .15rem; }
+  .pp-date { font: 600 .75rem system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--orange); }
+  .pp-parsha { font-family: 'Cinzel', serif; font-weight: 800; font-size: 1.05rem; }
+  .pp-ref { font-size: .8rem; opacity: .65; }
+  .pp-diss { font-style: italic; font-size: 1.02rem; }
   .pp-who { font-size: .9rem; opacity: .8; margin-top: .25rem; }
-  .pp-angle { font-size: .9rem; margin-top: .4rem; color: #e9d9b8; }
+  .pp-angle { font-size: .9rem; margin-top: .35rem; color: #e9d9b8; }
+  .pp-tba { font-size: .95rem; opacity: .55; font-style: italic; }
+  .pp-note { margin-top: 1.5rem; font-size: .85rem; opacity: .6; }
   .pp-cta { margin-top: 4rem; text-align: center; }
   .pp-cta a { display: inline-block; margin-top: .75rem; padding: .75rem 1.5rem; border-radius: 999px; background: var(--orange); color: #fff; font-weight: 700; }
-  @media (max-width: 640px) { .pp-sec li { grid-template-columns: 1fr; gap: .25rem; } }
+  @media (max-width: 640px) { .pp-book li { grid-template-columns: 1fr; gap: .4rem; } }
 </style>
