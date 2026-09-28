@@ -1,0 +1,394 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const examples = [
+  'Must one honor a parent who is abusive?',
+  'Why do we eat matzah on Pesach?',
+  'Why do we light Shabbat candles?',
+  'Lashon hara',
+  'Welcoming guests',
+];
+---
+
+<Layout
+  title="Source Sheet Creator"
+  description="Type a topic or question. Sources are gathered from Sefaria, judged for relevance by TypeSafe's Jev model, and laid out as a printable Hebrew–English source sheet."
+  image="/images/previews/source-sheet-creator.jpg"
+>
+  <main class="ssc">
+    <section class="ssc-intro no-print">
+      <div class="ssc-kicker">Jewish Studies · AI</div>
+      <h1>Source Sheet Creator</h1>
+      <p class="ssc-lede">
+        Type a topic or question. Candidate sources come from Sefaria's topic pages and full-text search,
+        <a href="https://typesafe.ai" target="_blank" rel="noopener">TypeSafe</a>'s Jev model judges each one,
+        and the best are laid out as a printable Hebrew–English sheet.
+      </p>
+
+      <form id="ssc-form" class="ssc-form" autocomplete="off">
+        <input id="ssc-q" name="q" type="text" maxlength="300" required
+          placeholder="e.g. Must one honor a parent who is abusive?" aria-label="Topic or question" />
+        <button id="ssc-go" type="submit">Create sheet</button>
+      </form>
+      <div class="ssc-examples">
+        <span>Try:</span>
+        {examples.map((e) => <button type="button" class="ssc-chip" data-q={e}>{e}</button>)}
+      </div>
+
+      <ol id="ssc-progress" class="ssc-progress" hidden></ol>
+      <p id="ssc-error" class="ssc-error" hidden></p>
+    </section>
+
+    <article id="ssc-sheet" class="ssc-sheet" hidden></article>
+
+    <section class="ssc-how no-print">
+      <h2>How it works</h2>
+      <ol>
+        <li><strong>Gather.</strong> The key terms of your request are looked up as Sefaria topic names and searched
+          as full text, both together and in adjacent pairs.</li>
+        <li><strong>Pick topics.</strong> Name matching is fuzzy: "abusive" can surface Rabbi Akiva. Jev answers one
+          yes/no question per matched topic ("is this a main subject of the request?") in a single call, and only those
+          topics' curated sources are kept.</li>
+        <li><strong>Judge.</strong> Up to 60 candidates are fetched in Hebrew and English. For each one, Jev rates
+          <em>relevance</em> (unrelated → passing mention → related → central) and whether the passage is
+          <em>substantive</em> rather than a heading or list of citations.</li>
+        <li><strong>Select in code.</strong> Rank = relevance/3 × (0.4 + 0.6 × substantive). The sheet keeps anything rated
+          at least "related", allows at most two sources per book, drops duplicate passages, and groups sources by
+          Tanakh, Mishnah, Talmud, Midrash, Halakhah and so on.</li>
+      </ol>
+      <p>
+        Jev returns typed judgments and calibrated probabilities rather than generated text. The model only judges
+        sources; it never writes or paraphrases them. Every word on the sheet comes from Sefaria. The same pipeline
+        also runs locally as a Python script behind a one-click Mac Dock app.
+      </p>
+    </section>
+  </main>
+</Layout>
+
+<style is:global>
+  .ssc { --paper:#fbf8f2; --ink:#1f1b16; --muted:#6b6258; --rule:#ddd3c4; --accent:#7a3b1d; --tag:#efe6d8;
+    max-width: 1040px; margin: 0 auto; padding: 48px 16px 80px; }
+  .ssc-intro { max-width: 760px; }
+  .ssc-kicker { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #b7794f; font-weight: 600; }
+  .ssc h1 { font-size: clamp(32px, 6vw, 48px); font-weight: 800; line-height: 1.1; margin: 8px 0 14px; }
+  .ssc-lede { font-size: 18px; line-height: 1.6; opacity: .85; }
+  .ssc-lede a { text-decoration: underline; text-underline-offset: 3px; }
+  .ssc-form { display: flex; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
+  .ssc-form input { flex: 1 1 320px; min-width: 0; font-size: 17px; padding: 14px 16px; border-radius: 10px;
+    border: 1px solid rgba(127,127,127,.35); background: rgba(127,127,127,.08); color: inherit; }
+  .ssc-form input:focus { outline: 2px solid #b7794f; outline-offset: 1px; }
+  .ssc-form button { font-size: 16px; font-weight: 600; padding: 14px 22px; border-radius: 10px;
+    background: #7a3b1d; color: #fff; border: 0; cursor: pointer; }
+  .ssc-form button:disabled { opacity: .55; cursor: progress; }
+  .ssc-examples { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; font-size: 14px; }
+  .ssc-examples span { opacity: .65; }
+  .ssc-chip { padding: 5px 12px; border-radius: 99px; border: 1px solid rgba(127,127,127,.35); background: transparent;
+    color: inherit; cursor: pointer; font-size: 13.5px; }
+  .ssc-chip:hover { border-color: #b7794f; }
+  .ssc-progress { margin: 24px 0 0; padding: 0; list-style: none; font-size: 15px; }
+  .ssc-progress li { padding: 3px 0; opacity: .6; }
+  .ssc-progress li.active { opacity: 1; }
+  .ssc-progress li.done { opacity: .8; }
+  .ssc-progress li::before { content: '○'; display: inline-block; width: 1.4em; }
+  .ssc-progress li.active::before { content: '◐'; color: #b7794f; }
+  .ssc-progress li.done::before { content: '●'; color: #b7794f; }
+  .ssc-error { margin-top: 18px; color: #e5484d; }
+
+  /* The sheet itself: paper in both themes, so it reads (and prints) like a handout. */
+  .ssc-sheet { margin-top: 40px; background: var(--paper); color: var(--ink); border-radius: 14px;
+    padding: 44px clamp(18px, 5vw, 56px) 36px; box-shadow: 0 10px 40px rgba(0,0,0,.25);
+    font-family: Georgia, 'Times New Roman', serif; font-size: 17px; line-height: 1.6; }
+  /* global.css colors every h/p/div/span for dark mode; the paper sheet keeps its own ink. */
+  .ssc .ssc-sheet :is(h2, h3, div, p, span, li, td, th, summary) { color: var(--ink); }
+  .ssc .ssc-sheet details :is(p, summary) { color: var(--muted); }
+  .ssc-sheet .mast { border-bottom: 2px solid var(--ink); padding-bottom: 16px; margin-bottom: 6px; display: flex;
+    flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; }
+  .ssc .ssc-sheet .mast .k { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-family: Inter, sans-serif; }
+  .ssc-sheet .mast h2 { font-size: clamp(26px, 4.5vw, 38px); line-height: 1.15; margin: 6px 0 8px; font-weight: 700; }
+  .ssc .ssc-sheet .mast .m { color: var(--muted); font-size: 14px; font-family: Inter, sans-serif; }
+  .ssc-sheet .print { font-family: Inter, sans-serif; font-size: 14px; padding: 8px 14px; border-radius: 8px;
+    border: 1px solid var(--rule); background: #fff; color: var(--ink); cursor: pointer; }
+  .ssc .ssc-sheet h3.sec { font-family: Inter, sans-serif; font-size: 13px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--accent); margin: 40px 0 0; padding-bottom: 6px; border-bottom: 1px solid var(--rule); font-weight: 700; }
+  .ssc-sheet .src { padding: 22px 0; border-bottom: 1px solid var(--rule); break-inside: avoid; }
+  .ssc-sheet .src-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 12px; }
+  .ssc .ssc-sheet .num { font-weight: 700; color: var(--accent); min-width: 1.4em; }
+  .ssc-sheet .ref { font-weight: 700; color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--rule); }
+  .ssc-sheet .ref:hover { border-color: var(--accent); }
+  .ssc .ssc-sheet .heref { font-family: 'Frank Ruhl Libre', serif; color: var(--muted); }
+  .ssc .ssc-sheet .rel { margin-left: auto; font-family: Inter, sans-serif; font-size: 12px; padding: 2px 9px; border-radius: 99px;
+    background: var(--tag); color: var(--muted); }
+  .ssc-sheet .txt.two { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .ssc-sheet .he { font-family: 'Frank Ruhl Libre', serif; font-size: 21px; line-height: 1.75; text-align: right; }
+  .ssc-sheet .en { font-size: 16.5px; }
+  .ssc-sheet details { margin-top: 36px; color: var(--muted); font-size: 14px; font-family: Inter, sans-serif; }
+  .ssc-sheet summary { cursor: pointer; }
+  .ssc-sheet .scroll { overflow-x: auto; }
+  .ssc-sheet table { border-collapse: collapse; width: 100%; margin-top: 12px; font-variant-numeric: tabular-nums; }
+  .ssc-sheet td, .ssc-sheet th { text-align: left; padding: 4px 12px 4px 0; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  .ssc-sheet tr.in td { color: var(--ink); font-weight: 600; }
+  @media (max-width: 720px) { .ssc-sheet .txt.two { grid-template-columns: 1fr; gap: 14px; } .ssc-sheet .txt.two .he { order: -1; } }
+
+  .ssc-how { max-width: 760px; margin-top: 64px; font-size: 16px; line-height: 1.65; opacity: .9; }
+  .ssc-how h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+  .ssc-how ol { list-style: decimal; padding-left: 1.3em; display: grid; gap: 10px; margin-bottom: 16px; }
+
+  @media print {
+    body > header, footer, .no-print, .ssc-sheet .print, .ssc-sheet details, .ssc-sheet .rel { display: none !important; }
+    body { background: #fff !important; }
+    .ssc { padding: 0; max-width: none; }
+    .ssc-sheet { margin: 0; box-shadow: none; border-radius: 0; padding: 0; background: #fff; font-size: 12pt; }
+    .ssc-sheet .he { font-size: 14pt; }
+    .ssc-sheet .ref { border: none; }
+  }
+</style>
+
+<script>
+  const SEFARIA = 'https://www.sefaria.org';
+  const API = '/api/source-sheet-jev';
+  const MAX_CANDIDATES = 60;
+  const MAX_SOURCES = 12;
+  const PER_BOOK = 2;
+  const MIN_RELEVANCE = 1.5;
+  const SCORE_BATCH = 12;
+  const DISPLAY_CHARS = 3000;
+  const STATE_CHARS = 1500;
+
+  const SECTIONS = ['Tanakh', 'Mishnah', 'Tosefta', 'Talmud', 'Midrash', 'Commentary', 'Halakhah', 'Responsa',
+    'Jewish Thought', 'Musar', 'Chasidut', 'Kabbalah', 'Liturgy', 'Second Temple'];
+  const EXCLUDED = new Set(['Reference']);
+  const STOPWORDS = new Set(`a an and are as at be but by can do does did for from how i if in into is it its me my
+    of on or should so than that the their them then there these they this to was we what when where which who whom
+    why will with would you your about one ones must may might according judaism jewish torah say says said`.split(/\s+/));
+
+  type Cand = {
+    ref: string; origin: string; heRef?: string; category?: string; categories?: string[]; book?: string;
+    he?: string; en?: string; relevance?: number; confidence?: number; substantive?: number; rank?: number;
+  };
+
+  // ------------------------------------------------------------ helpers
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+  const clip = (s = '', n: number) => (s.length <= n ? s : s.slice(0, n).replace(/\s+\S*$/, '') + ' …');
+  const para = (s = '') => s.split('\n').filter((l) => l.trim()).map(esc).join('<br>');
+  const sefariaUrl = (ref: string) => `${SEFARIA}/${encodeURIComponent(ref.replace(/ /g, '_')).replace(/%3A/g, ':').replace(/%2C/g, ',')}`;
+
+  function searchTerms(q: string) {
+    if (/[֐-׿]/.test(q)) return q;
+    const kept = (q.match(/[A-Za-z'\-]+/g) || []).filter((w) => !STOPWORDS.has(w.toLowerCase()));
+    return kept.join(' ') || q;
+  }
+  function subQueries(q: string) {
+    const t = searchTerms(q).split(/\s+/).filter(Boolean);
+    const pairs = t.slice(0, -1).map((w, i) => `${w} ${t[i + 1]}`);
+    return [...new Set([t.join(' '), ...pairs, ...t].filter(Boolean))];
+  }
+  function cleanText(t: string) {
+    const d = document.createElement('div');
+    d.innerHTML = t.replace(/<sup class="footnote-marker">[\s\S]*?<\/sup>/g, '')
+      .replace(/<i class="footnote">[\s\S]*?<\/i>/g, '').replace(/<br\s*\/?>/g, '\n');
+    return (d.textContent || '').replace(/[ \t]+/g, ' ').trim();
+  }
+  const flatten = (t: unknown): string[] => (typeof t === 'string' ? [t] : Array.isArray(t) ? t.flatMap(flatten) : []);
+
+  async function getJSON(url: string, init?: RequestInit) {
+    const r = await fetch(url, init);
+    if (!r.ok) throw new Error(`${r.status} ${url}`);
+    return r.json();
+  }
+  async function pool<T, R>(items: T[], n: number, fn: (x: T) => Promise<R>): Promise<R[]> {
+    const out: R[] = new Array(items.length);
+    let i = 0;
+    await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
+      while (i < items.length) { const k = i++; out[k] = await fn(items[k]); }
+    }));
+    return out;
+  }
+  const jev = (body: object) => getJSON(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  // ---------------------------------------------------------- retrieval
+  async function topicNames(q: string) {
+    const found = new Map<string, string>();
+    const lists = await Promise.all([...new Set([q, ...subQueries(q)])].map((s) =>
+      getJSON(`${SEFARIA}/api/name/${encodeURIComponent(s)}?limit=8`).then((d) => d.completion_objects || []).catch(() => [])));
+    for (const objs of lists) for (const o of objs) if (o.type === 'Topic' && !found.has(o.key)) found.set(o.key, o.title);
+    return found;
+  }
+
+  async function pickTopics(q: string, names: Map<string, string>) {
+    if (!names.size) return [];
+    const slugs = [...names.keys()].slice(0, 40);
+    const { nouls } = await jev({ action: 'topics', request: q, topics: slugs.map((s) => names.get(s)) });
+    return slugs.map((s, i) => [s, nouls[i]] as const).filter(([, n]) => n >= 0.5)
+      .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([s]) => s);
+  }
+
+  async function topicRefs(slug: string, limit: number): Promise<Cand[]> {
+    const d = await getJSON(`${SEFARIA}/api/topics/${slug}?with_refs=1`).catch(() => ({ refs: [] }));
+    const w = (x: any) => [Math.max(0, ...Object.values<number>(x.order?.curatedPrimacy || {})), x.order?.pr || 0];
+    return (d.refs || []).filter((x: any) => !x.is_sheet)
+      .sort((a: any, b: any) => { const [a1, a2] = w(a), [b1, b2] = w(b); return b1 - a1 || b2 - a2; })
+      .slice(0, limit).map((x: any) => ({ ref: x.ref, origin: `topic:${slug}` }));
+  }
+
+  async function searchOnce(q: string, size: number): Promise<string[]> {
+    const body = { query: q, type: 'text', field: 'naive_lemmatizer', slop: 10, size: size * 2, source_proj: true };
+    try {
+      // No JSON content-type: Sefaria's preflight rejects it, and a simple request needs no preflight.
+      const d = await getJSON(`${SEFARIA}/api/search-wrapper`, { method: 'POST', body: JSON.stringify(body) });
+      return d.hits.hits.filter((h: any) => !(h._source.categories || []).some((c: string) => EXCLUDED.has(c))).map((h: any) => h._source.ref);
+    } catch { return []; }
+  }
+
+  async function textSearch(q: string, limit: number): Promise<Cand[]> {
+    const n = searchTerms(q).split(/\s+/).filter(Boolean).length;
+    const queries = subQueries(q).slice(0, Math.max(1, n));  // all terms, then adjacent pairs
+    const results = await Promise.all(queries.map((s) => searchOnce(s, limit)));
+    const out = new Map<string, Cand>();
+    for (let i = 0; i < Math.max(0, ...results.map((r) => r.length)); i++)
+      for (const refs of results) if (refs[i] && !out.has(refs[i])) out.set(refs[i], { ref: refs[i], origin: 'search' });
+    return [...out.values()].slice(0, limit);
+  }
+
+  async function fetchText(c: Cand) {
+    try {
+      const d = await getJSON(`${SEFARIA}/api/v3/texts/${encodeURIComponent(c.ref)}?version=hebrew&version=english&return_format=text_only`);
+      for (const v of d.versions || []) {
+        const joined = flatten(v.text).filter(Boolean).map(cleanText).join('\n');
+        if (v.language === 'he' && !c.he) c.he = joined;
+        if (v.language === 'en' && !c.en) c.en = joined;
+      }
+      Object.assign(c, { heRef: d.heRef || '', category: d.primary_category || '', categories: d.categories || [], book: d.indexTitle || d.book || '' });
+      return !!(c.he || c.en) && !c.categories!.some((x) => EXCLUDED.has(x));
+    } catch { return false; }
+  }
+
+  // ------------------------------------------------------------ judging
+  async function score(q: string, cands: Cand[]) {
+    const batches: Cand[][] = [];
+    for (let i = 0; i < cands.length; i += SCORE_BATCH) batches.push(cands.slice(i, i + SCORE_BATCH));
+    await pool(batches, 3, async (batch) => {
+      const sources = batch.map((c) => ({ citation: c.ref, genre: (c.categories || []).join(' > '),
+        hebrew: clip(c.he, STATE_CHARS), english: clip(c.en, STATE_CHARS) }));
+      const { results } = await jev({ action: 'score', request: q, sources });
+      batch.forEach((c, i) => {
+        const r = results[i];
+        if (!r || r.error) return;
+        c.relevance = r.relevance; c.confidence = r.confidence; c.substantive = r.substantive;
+        c.rank = (r.relevance / 3) * (0.4 + 0.6 * r.substantive);  // relevance dominates; thin passages sink
+      });
+    });
+  }
+
+  function select(cands: Cand[]) {
+    const chosen: Cand[] = [], perBook = new Map<string, number>(), seen = new Set<string>();
+    for (const c of [...cands].sort((a, b) => (b.rank ?? 0) - (a.rank ?? 0))) {
+      if (c.relevance == null || c.relevance < MIN_RELEVANCE) continue;
+      const b = c.book || c.ref;
+      if ((perBook.get(b) || 0) >= PER_BOOK) continue;
+      const fp = (c.he || c.en || '').replace(/[^\p{L}\p{N}]+/gu, '').slice(0, 120);  // same passage in many siddurim
+      if (seen.has(fp)) continue;
+      seen.add(fp); perBook.set(b, (perBook.get(b) || 0) + 1); chosen.push(c);
+      if (chosen.length === MAX_SOURCES) break;
+    }
+    return chosen;
+  }
+
+  // ------------------------------------------------------------- render
+  const label = (s: number) => (s >= 2.5 ? 'Central' : s >= 1.5 ? 'Related' : 'Tangential');
+
+  function render(q: string, chosen: Cand[], scored: Cand[], topics: string[]) {
+    const groups = new Map<string, Cand[]>();
+    for (const c of chosen) {
+      const k = SECTIONS.includes(c.category!) ? c.category! : 'Other Sources';
+      groups.set(k, [...(groups.get(k) || []), c]);
+    }
+    const order = (k: string) => (SECTIONS.includes(k) ? SECTIONS.indexOf(k) : 99);
+    let n = 0;
+    const body = [...groups.entries()].sort((a, b) => order(a[0]) - order(b[0])).map(([cat, items]) =>
+      `<h3 class="sec">${esc(cat)}</h3>` + items.map((c) => {
+        n++;
+        const he = c.he ? `<div class="he" lang="he" dir="rtl">${para(clip(c.he, DISPLAY_CHARS))}</div>` : '';
+        const en = c.en ? `<div class="en">${para(clip(c.en, DISPLAY_CHARS))}</div>` : '';
+        return `<section class="src"><div class="src-h"><span class="num">${n}</span>
+          <a class="ref" href="${sefariaUrl(c.ref)}" target="_blank" rel="noopener">${esc(c.ref)}</a>
+          <span class="heref" dir="rtl">${esc(c.heRef || '')}</span>
+          <span class="rel" title="Jev relevance ${c.relevance!.toFixed(2)}/3 · substantive ${c.substantive!.toFixed(2)}">${label(c.relevance!)}</span></div>
+          <div class="txt ${he && en ? 'two' : 'one'}">${en}${he}</div></section>`;
+      }).join('')).join('');
+    const rows = [...scored].sort((a, b) => (b.rank ?? 0) - (a.rank ?? 0)).map((c) =>
+      `<tr class="${chosen.includes(c) ? 'in' : ''}"><td>${esc(c.ref)}</td><td>${c.relevance!.toFixed(2)}</td>
+       <td>${c.substantive!.toFixed(2)}</td><td>${c.rank!.toFixed(2)}</td><td>${esc(c.origin)}</td></tr>`).join('');
+    const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    return `<div class="mast"><div><div class="k">Source Sheet</div><h2>${esc(q)}</h2>
+        <div class="m">${date} · ${chosen.length} sources</div></div>
+        <button class="print" type="button" onclick="window.print()">Print / PDF</button></div>
+      ${body || '<p style="margin-top:24px">No sufficiently relevant sources were found. Try rephrasing, or use a shorter topic.</p>'}
+      <details><summary>How these sources were chosen</summary>
+        <p>${scored.length} candidates from Sefaria (topics: ${esc(topics.join(', ') || 'none')}; search: “${esc(searchTerms(q))}”),
+        each judged by Jev. Selected rows in bold.</p>
+        <div class="scroll"><table><tr><th>Ref</th><th>Relevance</th><th>Substantive</th><th>Rank</th><th>Found via</th></tr>${rows}</table></div>
+      </details>`;
+  }
+
+  // --------------------------------------------------------------- main
+  function init() {
+    const form = document.getElementById('ssc-form') as HTMLFormElement | null;
+    if (!form || form.dataset.bound) return;
+    form.dataset.bound = '1';
+    const input = document.getElementById('ssc-q') as HTMLInputElement;
+    const go = document.getElementById('ssc-go') as HTMLButtonElement;
+    const progress = document.getElementById('ssc-progress')!;
+    const errorEl = document.getElementById('ssc-error')!;
+    const sheet = document.getElementById('ssc-sheet')!;
+
+    const steps = ['Finding topics and searching Sefaria', 'Choosing on-subject topics with Jev', 'Fetching Hebrew and English texts', 'Scoring relevance with Jev', 'Laying out the sheet'];
+    const setStep = (i: number, note = '') => {
+      progress.innerHTML = steps.map((s, k) => `<li class="${k < i ? 'done' : k === i ? 'active' : ''}">${s}${k === i && note ? ` · ${esc(note)}` : ''}</li>`).join('');
+    };
+
+    document.querySelectorAll<HTMLButtonElement>('.ssc-chip').forEach((b) =>
+      b.addEventListener('click', () => { input.value = b.dataset.q!; form.requestSubmit(); }));
+
+    const params = new URLSearchParams(location.search);
+    if (params.get('q')) { input.value = params.get('q')!; queueMicrotask(() => form.requestSubmit()); }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = input.value.trim();
+      if (!q) return;
+      history.replaceState(null, '', `?q=${encodeURIComponent(q)}`);
+      go.disabled = true; errorEl.hidden = true; sheet.hidden = true; progress.hidden = false;
+      try {
+        setStep(0);
+        const [names, searched] = await Promise.all([topicNames(q), textSearch(q, MAX_CANDIDATES)]);
+        setStep(1, `${names.size} topic matches`);
+        const topics = await pickTopics(q, names);
+        const perTopic = Math.floor(MAX_CANDIDATES / 2 / Math.max(topics.length, 1));
+        const seen = new Map<string, Cand>();
+        for (const batch of [...(await Promise.all(topics.map((t) => topicRefs(t, perTopic)))), searched])
+          for (const c of batch) if (!seen.has(c.ref)) seen.set(c.ref, c);
+        let cands = [...seen.values()].slice(0, MAX_CANDIDATES);
+        setStep(2, `${cands.length} candidates`);
+        const ok = await pool(cands, 8, fetchText);
+        cands = cands.filter((_, i) => ok[i]);
+        setStep(3, `${cands.length} sources`);
+        await score(q, cands);
+        const scored = cands.filter((c) => c.relevance != null);
+        if (!scored.length) throw new Error('No sources could be scored. Please try again.');
+        setStep(4);
+        sheet.innerHTML = render(q, select(scored), scored, topics);
+        sheet.hidden = false; progress.hidden = true;
+        sheet.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (err: any) {
+        progress.hidden = true;
+        errorEl.textContent = `Something went wrong: ${err.message || err}`;
+        errorEl.hidden = false;
+      } finally {
+        go.disabled = false;
+      }
+    });
+  }
+
+  document.addEventListener('astro:page-load', init);
+  init();
+</script>
