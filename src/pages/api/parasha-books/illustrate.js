@@ -1,13 +1,14 @@
 // Illustrates a Parasha Book for an uploaded family with FLUX.2 [klein] on Replicate.
-//   POST { action: 'cast', people: [{ role, name, image }] }            -> { id }  character sheet from their photos
-//   POST { action: 'page', slug, page: 'cover'|n, sheet, people, sisters } -> { id }  one spread, drawn from the sheet
+//   POST { action: 'cast', people: [{ role, name, age, look, image }], notes?, seed? }   -> { id }  character sheet from their photos
+//   POST { action: 'cast', people, base: <sheet url>, notes }                           -> { id }  edit that sheet per the notes
+//   POST { action: 'page', slug, page: 'cover'|n, sheet, people, photos?, sisters }     -> { id }  one spread, drawn from the sheet
 //   POST { action: 'voice', slug, people, sisters }                    -> { id }  trailer narration retold for this cast
 //   GET  ?id=<prediction>                                                -> { status, output, error }
 //   GET  ?fetch=<replicate.delivery url>                                 -> image bytes (so the browser can save the book)
 // Prompts are built here from the book data — callers can't send arbitrary prompts.
 // If PARASHA_BOOKS_CODE is set, every call must carry it as `code`.
 import { bookBySlug, tell } from '../../../data/parasha-books/books.mjs';
-import { MODEL, ROLES, adaptScene, castSheetPrompt, customCast, imagePrompt } from '../../../data/parasha-books/prompts.mjs';
+import { MODEL, ROLES, adaptScene, castSheetPrompt, customCast, imagePrompt, sheetFixPrompt } from '../../../data/parasha-books/prompts.mjs';
 
 export const prerender = false;
 
@@ -18,6 +19,10 @@ const env = (k) => import.meta.env?.[k] || process.env[k] || '';
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
+// Free text that ends up inside a prompt: bounded, single line, no markup.
+const text = (v, max) => (typeof v === 'string' ? v.replace(/[\r\n<>{}\[\]]+/g, ' ').trim().slice(0, max) : '');
+const isPhoto = (img) => typeof img === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(img) && img.length <= MAX_IMAGE_CHARS;
+
 function cleanPeople(list) {
   if (!Array.isArray(list)) return null;
   const seen = new Set();
@@ -25,7 +30,12 @@ function cleanPeople(list) {
   for (const p of list.slice(0, 3)) {
     if (!ROLES.includes(p?.role) || seen.has(p.role)) return null;
     seen.add(p.role);
-    people.push({ role: p.role, name: typeof p.name === 'string' ? p.name.slice(0, 40).replace(/[^\p{L}\p{M}\s'-]/gu, '') : '' });
+    people.push({
+      role: p.role,
+      name: text(p.name, 40).replace(/[^\p{L}\p{M}\s'-]/gu, ''),
+      age: Number.isInteger(Number(p.age)) && p.age > 0 && p.age < 18 ? Number(p.age) : undefined,
+      look: text(p.look, 200),
+    });
   }
   // Keep a stable big → mid → baby order so the sheet matches the prompts.
   return people.length ? people.sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role)) : null;
@@ -60,10 +70,15 @@ export async function POST({ request }) {
       if (!people) return json({ error: 'Give 1–3 people, each with a distinct role' }, 400);
       const byRole = Object.fromEntries(body.people.map((p) => [p.role, p.image]));
       const images = people.map((p) => byRole[p.role]);
-      if (images.some((img) => typeof img !== 'string' || !/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > MAX_IMAGE_CHARS)) {
-        return json({ error: 'Each person needs a JPEG/PNG/WebP photo under ~300 KB' }, 400);
+      if (!images.every(isPhoto)) return json({ error: 'Each person needs a JPEG/PNG/WebP photo under ~300 KB' }, 400);
+      const notes = text(body.notes, 300);
+      const seed = Number.isInteger(body.seed) ? body.seed : undefined;
+      if (body.base) {
+        if (typeof body.base !== 'string' || !DELIVERY.test(body.base)) return json({ error: 'base must be a Replicate output URL' }, 400);
+        if (!notes) return json({ error: 'Say what to change' }, 400);
+        return json({ id: await predict({ prompt: sheetFixPrompt(people, notes), images: [...images, body.base], aspect_ratio: '16:9', seed }) });
       }
-      return json({ id: await predict({ prompt: castSheetPrompt(people), images, aspect_ratio: '16:9' }) });
+      return json({ id: await predict({ prompt: castSheetPrompt(people, notes), images, aspect_ratio: '16:9', seed }) });
     }
 
     if (body.action === 'page') {
@@ -73,8 +88,9 @@ export async function POST({ request }) {
       if (typeof body.sheet !== 'string' || !DELIVERY.test(body.sheet)) return json({ error: 'sheet must be a Replicate output URL' }, 400);
       const scene = body.page === 'cover' ? book.cover : book.pages[Number(body.page)]?.scene;
       if (!scene) return json({ error: 'Unknown page' }, 400);
+      const photos = Array.isArray(body.photos) ? body.photos.filter(isPhoto).slice(0, 3) : [];
       const prompt = imagePrompt(adaptScene(scene, people, !!body.sisters), customCast(people), people.length);
-      return json({ id: await predict({ prompt, images: [body.sheet], aspect_ratio: '3:2' }) });
+      return json({ id: await predict({ prompt, images: [body.sheet, ...photos], aspect_ratio: '3:2' }) });
     }
     if (body.action === 'voice') {
       // The stock narration says "three sisters"; smaller or non-sister casts get their own read,

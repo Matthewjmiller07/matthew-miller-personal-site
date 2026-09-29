@@ -33,3 +33,15 @@ Peshat-based picture books where the kids explore the weekly parasha. Pages live
 Where `replicate.delivery` / Sefaria aren't reachable (e.g. a cloud Claude session), add
 `{ "public/parasha-books/…": "<replicate url>" }` entries to `fetch-manifest.json` and push to a feature
 branch: `.github/workflows/parasha-books-fetch.yml` downloads them (and refreshes `verses.json`) and commits back.
+
+## Uploaded casts ("make your own")
+
+Runs on FLUX.2 [klein] **4B** (cheaper than the 9B used for the stock books). What testing showed:
+
+- **Character sheet:** two views per child — a big waist-up portrait next to full body — built from a *face close-up*
+  (the reader taps the face; the browser crops around it), with age and "what stands out" written into the prompt and
+  "realistic proportions for their age". Full-body-only sheets drift into generic chibi faces.
+- **Iterating:** "Fix this one" sends the photos plus the current sheet with the reader's notes (an edit); "Try a new one"
+  re-draws with a fresh seed. Earlier takes stay selectable.
+- **Pages:** references are the approved sheet + the photos, worded as "the child in image 1, drawn exactly as there".
+  Calling image 1 a sheet, or mentioning its two views, makes FLUX paint the child twice.

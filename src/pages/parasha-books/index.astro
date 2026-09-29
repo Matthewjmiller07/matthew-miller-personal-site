@@ -48,8 +48,8 @@ const names = listNames(castNames(defaultCast));
     <section class="maker" id="make">
       <h2>Make one with your own kids</h2>
       <p class="sub">
-        Upload a clear photo of each child (face and hair visible). FLUX.2 [klein] draws them into a character sheet, then
-        illustrates every page from it. Takes about two minutes. Photos go to Replicate for the illustrations and aren't stored here.
+        Upload a clear photo of each child and tap their face. FLUX.2 [klein] draws a character sheet — keep fixing it until
+        it looks like them — then illustrates every page from it. Photos go to Replicate for the illustrations and aren't stored here.
       </p>
       <form id="maker-form">
         <label class="row">Parasha
@@ -66,20 +66,40 @@ const names = listNames(castNames(defaultCast));
             <fieldset class="person" data-role={role}>
               <legend>{label}{req ? '' : ' (optional)'}</legend>
               <p class="hint">{hint}</p>
-              <input type="text" name={`${role}-name`} placeholder="Name" maxlength="40" required={req} />
-              <label class="photo">
-                <input type="file" name={`${role}-photo`} accept="image/*" required={req} />
+              <div class="two">
+                <input type="text" name={`${role}-name`} placeholder="Name" maxlength="40" required={req} />
+                <input type="number" name={`${role}-age`} placeholder="Age" min="0" max="17" />
+              </div>
+              <div class="photo">
                 <img alt="" hidden />
-                <span>Choose photo</span>
-              </label>
+                <i class="dot" hidden></i>
+                <label class="pick"><input type="file" name={`${role}-photo`} accept="image/*" /><span>Choose photo</span></label>
+              </div>
+              <p class="hint tap" hidden>Tap the face — the likeness is built from that close-up.</p>
+              <input type="text" name={`${role}-look`} maxlength="200" placeholder="What stands out? e.g. dark hair in a bow headband, gold earrings" />
             </fieldset>
           ))}
         </div>
         <label class="check"><input type="checkbox" name="sisters" checked /> They're sisters (keep “sister” in the story)</label>
         <label class="row code">Access code <input type="password" name="code" autocomplete="off" placeholder="if the site asks for one" /></label>
-        <button type="submit" class="go">Make our book</button>
+        <button type="submit" class="go">Draw the character sheet</button>
         <p class="status" id="maker-status" role="status"></p>
       </form>
+
+      <div id="sheet-step" class="pbm sheet-step" hidden>
+        <h3>Does this look like them?</h3>
+        <img id="sheet-view" alt="Character sheet" />
+        <div class="takes" id="sheet-takes"></div>
+        <label class="row notes">What should change?
+          <input type="text" id="sheet-notes" maxlength="300" placeholder="e.g. her face is thinner, hair darker and straighter, she looks older" />
+        </label>
+        <div class="actions">
+          <button type="button" id="sheet-ok">Looks right — illustrate the book</button>
+          <button type="button" id="sheet-fix">Fix this one</button>
+          <button type="button" id="sheet-new">Try a new one</button>
+        </div>
+        <p class="status" id="sheet-status" role="status"></p>
+      </div>
 
       <div id="maker-out" class="pbm" hidden>
         <div class="out-head">
@@ -120,27 +140,55 @@ const names = listNames(castNames(defaultCast));
   const out = $('maker-out');
   let current = null; // { book, cast, sisters, people, images: {cover, pages[], sheet}, blobs }
 
-  // Photo previews.
-  form.querySelectorAll('.photo input').forEach((input) => {
+  // Photo previews; tapping marks the face we crop to.
+  const focus = {};
+  form.querySelectorAll('.person').forEach((fs) => {
+    const role = fs.dataset.role;
+    const input = fs.querySelector('input[type=file]');
+    const img = fs.querySelector('.photo img');
+    const dot = fs.querySelector('.dot');
     input.addEventListener('change', () => {
-      const img = input.parentElement.querySelector('img');
       const f = input.files?.[0];
       if (!f) return;
       img.src = URL.createObjectURL(f);
       img.hidden = false;
-      input.parentElement.querySelector('span').textContent = 'Change photo';
+      dot.hidden = true;
+      delete focus[role];
+      fs.querySelector('.pick span').textContent = 'Change photo';
+      fs.querySelector('.tap').hidden = false;
+    });
+    img.addEventListener('click', (e) => {
+      const r = img.getBoundingClientRect();
+      // object-fit: contain — map the click back onto the picture itself.
+      const s = Math.min(r.width / img.naturalWidth, r.height / img.naturalHeight);
+      const w = img.naturalWidth * s, h = img.naturalHeight * s;
+      const x = (e.clientX - r.left - (r.width - w) / 2) / w;
+      const y = (e.clientY - r.top - (r.height - h) / 2) / h;
+      if (x < 0 || x > 1 || y < 0 || y > 1) return;
+      focus[role] = { x, y };
+      dot.style.left = `${e.clientX - r.left}px`;
+      dot.style.top = `${e.clientY - r.top}px`;
+      dot.hidden = false;
     });
   });
 
-  // Resize to ≤640px JPEG so the data URL stays well under the API's limit.
-  async function shrink(file) {
+  // JPEG data URL under the API's limit. With a focus point, crop a square around the face first:
+  // FLUX keeps a likeness far better from a close-up than from a small face in a full photo.
+  async function prepare(file, f) {
     const bmp = await createImageBitmap(file);
-    const scale = Math.min(1, 640 / Math.max(bmp.width, bmp.height));
+    let sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;
+    if (f) {
+      const side = Math.min(bmp.width, bmp.height) * 0.55;
+      sx = Math.min(Math.max(f.x * bmp.width - side / 2, 0), bmp.width - side);
+      sy = Math.min(Math.max(f.y * bmp.height - side * 0.45, 0), bmp.height - side);
+      sw = sh = side;
+    }
+    const scale = Math.min(1, 768 / Math.max(sw, sh));
     const c = document.createElement('canvas');
-    c.width = Math.round(bmp.width * scale);
-    c.height = Math.round(bmp.height * scale);
-    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-    for (const q of [0.85, 0.75, 0.6, 0.45]) {
+    c.width = Math.round(sw * scale);
+    c.height = Math.round(sh * scale);
+    c.getContext('2d').drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    for (const q of [0.88, 0.8, 0.7, 0.55, 0.4]) {
       const url = c.toDataURL('image/jpeg', q);
       if (url.length < 380_000) return url;
     }
@@ -198,12 +246,46 @@ const names = listNames(castNames(defaultCast));
     if (fig) fig.innerHTML = `<img src="${url}" alt="">`;
   }
 
+  // --- Step 1: the character sheet, iterated until it looks right -------------------------
+  let draft = null; // { book, cast, sisters, code, people (with photos), lite, takes: [url], chosen }
+  const sheetStatus = $('sheet-status');
+  const sheetButtons = ['sheet-ok', 'sheet-fix', 'sheet-new'].map($);
+
+  function showTakes() {
+    $('sheet-view').src = draft.takes[draft.chosen];
+    const strip = $('sheet-takes');
+    strip.innerHTML = '';
+    if (draft.takes.length < 2) return;
+    draft.takes.forEach((url, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = i === draft.chosen ? 'on' : '';
+      b.innerHTML = `<img src="${url}" alt="Take ${i + 1}">`;
+      b.addEventListener('click', () => { draft.chosen = i; showTakes(); });
+      strip.appendChild(b);
+    });
+  }
+
+  async function drawSheet(extra, label) {
+    sheetButtons.forEach((b) => (b.disabled = true));
+    sheetStatus.textContent = label;
+    try {
+      const url = await wait(await call({ action: 'cast', people: draft.people, code: draft.code, ...extra }));
+      draft.takes.push(url);
+      draft.chosen = draft.takes.length - 1;
+      showTakes();
+      sheetStatus.textContent = 'Not quite? Say what to change and fix it, or try a new one.';
+    } catch (err) {
+      sheetStatus.textContent = `Something went wrong: ${err.message}`;
+    } finally {
+      sheetButtons.forEach((b) => (b.disabled = false));
+      form.querySelector('.go').disabled = false;
+    }
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(form);
-    const book = bookBySlug[fd.get('slug')];
-    const sisters = !!fd.get('sisters');
-    const code = fd.get('code') || undefined;
     const people = [];
     const cast = {};
     try {
@@ -212,7 +294,9 @@ const names = listNames(castNames(defaultCast));
         const file = fd.get(`${role}-photo`);
         if (!name && !(file && file.size)) continue;
         if (!name || !(file && file.size)) throw new Error(`Give the ${role === 'big' ? 'big kid' : role === 'mid' ? 'little kid' : 'baby'} both a name and a photo`);
-        people.push({ role, name, image: await shrink(file) });
+        const age = Number(fd.get(`${role}-age`)) || undefined;
+        const look = String(fd.get(`${role}-look`) || '').trim();
+        people.push({ role, name, age, look, image: await prepare(file, focus[role]) });
         cast[role] = { name };
       }
       if (!cast.big) throw new Error('The big kid is required — they read the pesukim.');
@@ -220,50 +304,80 @@ const names = listNames(castNames(defaultCast));
       status.textContent = err.message;
       return;
     }
-
+    status.textContent = '';
     form.querySelector('.go').disabled = true;
+    draft = {
+      book: bookBySlug[fd.get('slug')],
+      cast,
+      sisters: !!fd.get('sisters'),
+      code: fd.get('code') || undefined,
+      people,
+      lite: people.map(({ role, name, age, look }) => ({ role, name, age, look })),
+      takes: [],
+      chosen: 0,
+    };
+    $('sheet-step').hidden = false;
+    $('sheet-view').removeAttribute('src');
+    $('sheet-takes').innerHTML = '';
+    $('sheet-step').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    drawSheet({}, 'Drawing the character sheet…');
+  });
+
+  $('sheet-fix').addEventListener('click', () => {
+    const notes = $('sheet-notes').value.trim();
+    if (!notes) { sheetStatus.textContent = 'Say what should change first.'; return; }
+    drawSheet({ base: draft.takes[draft.chosen], notes }, 'Fixing the sheet…');
+  });
+  $('sheet-new').addEventListener('click', () => {
+    drawSheet({ notes: $('sheet-notes').value.trim(), seed: Math.floor(Math.random() * 1e9) }, 'Drawing a new take…');
+  });
+
+  // --- Step 2: illustrate the book from the approved sheet ---------------------------------
+  $('sheet-ok').addEventListener('click', async () => {
+    if (!draft?.takes.length) return;
+    const { book, cast, sisters, code, people, lite } = draft;
+    const photos = people.map((p) => p.image);
+    sheetButtons.forEach((b) => (b.disabled = true));
     out.hidden = false;
     $('out-title').textContent = `Parashat ${book.parasha}: ${book.title}`;
-    $('sheet-img').removeAttribute('src');
     renderSpreads(book, cast, sisters);
     for (const b of out.querySelectorAll('.actions button')) b.disabled = true;
-    const images = { cover: null, pages: [], sheet: null };
+    const images = { cover: null, pages: [], sheet: draft.takes[draft.chosen] };
     current = { book, cast, sisters, people, images };
-    const lite = people.map(({ role, name }) => ({ role, name }));
+    $('sheet-img').src = images.sheet;
+    out.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     try {
-      status.textContent = 'Drawing your character sheet…';
-      images.sheet = await wait(await call({ action: 'cast', people, code }));
-      $('sheet-img').src = images.sheet;
       // The stock narration says "three sisters"; anyone else gets their own read, made alongside the pictures.
       const voiceJob = people.length === 3 && sisters
         ? null
         : call({ action: 'voice', slug: book.slug, people: lite, sisters, code }).then(wait).catch(() => null);
 
       status.textContent = 'Illustrating the book (13 pictures)…';
+      $('out-status').textContent = 'Illustrating the book (13 pictures)…';
       const jobs = ['cover', ...book.pages.map((_, i) => i)];
       let done = 0;
       const queue = [...jobs];
       await Promise.all([0, 1, 2, 3].map(async () => {
         while (queue.length) {
           const page = queue.shift();
-          const url = await wait(await call({ action: 'page', slug: book.slug, page, sheet: images.sheet, people: lite, sisters, code }));
+          const url = await wait(await call({ action: 'page', slug: book.slug, page, sheet: images.sheet, people: lite, photos, sisters, code }));
           if (page === 'cover') images.cover = url;
           else { images.pages[page] = url; setPageImage(page, url); }
-          status.textContent = `Illustrating the book… ${++done}/${jobs.length}`;
+          $('out-status').textContent = `Illustrating the book… ${++done}/${jobs.length}`;
         }
       }));
       if (voiceJob) {
-        status.textContent = 'Recording the trailer narration…';
+        $('out-status').textContent = 'Recording the trailer narration…';
         images.voice = await voiceJob;
       }
       status.textContent = 'Done! Scroll down to read it.';
-      $('out-status').textContent = 'Replicate links expire after an hour — download the book to keep it.';
+      $('out-status').textContent = 'Done! Replicate links expire after an hour — download the book to keep it.';
       for (const b of out.querySelectorAll('.actions button')) b.disabled = false;
     } catch (err) {
-      status.textContent = `Something went wrong: ${err.message}`;
+      $('out-status').textContent = `Something went wrong: ${err.message}`;
     } finally {
-      form.querySelector('.go').disabled = false;
+      sheetButtons.forEach((b) => (b.disabled = false));
     }
   });
 
@@ -575,10 +689,23 @@ const names = listNames(castNames(defaultCast));
   .person { border: 1px solid #4a3a28; border-radius: 16px; padding: 14px; display: grid; gap: 10px; margin: 0; }
   .person legend { font-weight: 700; padding: 0 6px; }
   .person .hint { margin: 0; color: #bfa98a; font-size: 13px; }
-  .photo { display: grid; place-items: center; border: 1px dashed #6d563b; border-radius: 12px; min-height: 150px; cursor: pointer; overflow: hidden; position: relative; }
-  .photo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  .photo img { width: 100%; height: 170px; object-fit: cover; }
-  .photo img:not([hidden]) + span { position: absolute; bottom: 6px; background: rgba(0,0,0,.6); padding: 3px 10px; border-radius: 999px; font-size: 13px; }
+  .person { align-content: start; }
+  .person .two { display: grid; grid-template-columns: 1fr 80px; gap: 8px; }
+  .person input[type=number] { font: 16px system-ui, sans-serif; padding: 10px 8px; border-radius: 10px; border: 1px solid #5a4630; background: #120c06; color: #f6ecdc; }
+  .photo { display: grid; place-items: center; border: 1px dashed #6d563b; border-radius: 12px; min-height: 150px; overflow: hidden; position: relative; }
+  .photo img { width: 100%; height: 220px; object-fit: contain; cursor: crosshair; background: #0d0904; }
+  .photo .dot { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border: 3px solid #f2b544; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0,0,0,.5); pointer-events: none; }
+  .photo .pick { cursor: pointer; }
+  .photo .pick input { display: none; }
+  .photo .pick span { display: inline-block; padding: 6px 12px; border-radius: 999px; background: rgba(0,0,0,.55); font-size: 13px; }
+  .photo img:not([hidden]) ~ .pick { position: absolute; bottom: 6px; }
+  .sheet-step { background: #120c06; border: 1px solid #3b2d1d; border-radius: 18px; padding: 20px; gap: 14px; }
+  .sheet-step #sheet-view { width: 100%; max-height: 70vh; object-fit: contain; border-radius: 12px; background: #fbf5ea; }
+  .sheet-step .takes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sheet-step .takes button { padding: 0; border: 2px solid transparent; border-radius: 8px; background: none; cursor: pointer; }
+  .sheet-step .takes button.on { border-color: #f2b544; }
+  .sheet-step .takes img { width: 120px; height: 68px; object-fit: cover; border-radius: 6px; display: block; }
+  .sheet-step .notes { max-width: none; }
   .check { display: flex; gap: 8px; align-items: center; }
   .go { justify-self: start; font: 700 17px system-ui, sans-serif; padding: 12px 22px; border-radius: 999px; border: 0; background: #f2b544; color: #1b130b; cursor: pointer; }
   .go:disabled { opacity: .6; cursor: progress; }
