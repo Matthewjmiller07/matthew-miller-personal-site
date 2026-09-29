@@ -158,7 +158,7 @@ def shot(src, dur, out, caption=None, zoom_in=True, still=False):
     else:
         fc = f"[0:v]{vf},setsar=1,{fade},format=yuv420p[v]"
     ff(*args, '-filter_complex', fc, '-map', '[v]', '-frames:v', str(frames), '-r', str(FPS),
-       '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', out)
+       '-c:v', 'libx264', '-preset', 'slow', '-crf', '25', out)
 
 
 def build(book, cast):
