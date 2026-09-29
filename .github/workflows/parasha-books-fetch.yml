@@ -1,12 +1,14 @@
 # Pulls generated Parasha Book media (Replicate outputs) into the repo.
 # Replicate's delivery URLs expire after an hour, so whenever the fetch manifest changes
 # this job downloads every listed file that isn't in the repo yet and commits it back.
+# It also refreshes the books' pesukim from Sefaria (verses.json).
 name: Parasha books — fetch media
 
 on:
   push:
     paths:
       - 'scripts/parasha-books/fetch-manifest.json'
+      - 'src/data/parasha-books/books.mjs'
   workflow_dispatch:
 
 permissions:
@@ -26,11 +28,13 @@ jobs:
           ref: ${{ github.ref }}
       - name: Download manifest entries
         run: node scripts/parasha-books/fetch-media.mjs
+      - name: Fetch pesukim from Sefaria
+        run: node scripts/parasha-books/fetch-sefaria.mjs
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
-          git add public/parasha-books
+          git add public/parasha-books src/data/parasha-books/verses.json
           if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
           git commit -m "Parasha books: fetch generated media"
           for i in 1 2 3; do git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break; sleep 5; done
