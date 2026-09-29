@@ -36,7 +36,8 @@ branch: `.github/workflows/parasha-books-fetch.yml` downloads them (and refreshe
 
 ## Uploaded casts ("make your own")
 
-Runs on FLUX.2 [klein] **4B** (cheaper than the 9B used for the stock books). What testing showed:
+Runs on **GPT Image 2 at `quality: low`** (about a cent an image). FLUX.2 [klein] 4B was tried first and was cheap, but
+the child's face drifted from page to page; GPT Image held the likeness on every test page. What testing showed:
 
 - **Character sheet:** two views per child — a big waist-up portrait next to full body — built from a *face close-up*
   (the reader taps the face; the browser crops around it), with age and "what stands out" written into the prompt and
@@ -46,7 +47,6 @@ Runs on FLUX.2 [klein] **4B** (cheaper than the 9B used for the stock books). Wh
 - **Reader's notes** ("put her in a dress") lead the sheet prompt and override the photo's clothes; both views must
   share one outfit and nothing else from the photo (pets, toys) is kept. Every accepted note travels with the sheet
   into the page prompts ("As approved: …").
-- **Pages:** for one child the browser crops the approved sheet to its full-body half and sends that + the face photo,
-  worded as "the child in image 1, drawn exactly as there". The whole two-view sheet (or calling it a sheet) makes FLUX
-  paint the child twice. Pages also say: face visible, never from behind, and every other figure (keruvim, grown-ups)
+- **Pages:** references are the approved sheet + the face photos ("<name> from the character sheet (image 1) … image 2
+  is their real photo"), drawn exactly once. (On FLUX 4B the whole two-view sheet made it paint the child twice.) Pages also say: face visible, never from behind, and every other figure (keruvim, grown-ups)
   must look different — otherwise FLUX lends the child's face and headband to the angels.

@@ -48,7 +48,7 @@ const names = listNames(castNames(defaultCast));
     <section class="maker" id="make">
       <h2>Make one with your own kids</h2>
       <p class="sub">
-        Upload a clear photo of each child and tap their face. FLUX.2 [klein] draws a character sheet — keep fixing it until
+        Upload a clear photo of each child and tap their face. GPT Image draws a character sheet — keep fixing it until
         it looks like them — then illustrates every page from it. Photos go to Replicate for the illustrations and aren't stored here.
       </p>
       <form id="maker-form">
@@ -121,7 +121,7 @@ const names = listNames(castNames(defaultCast));
     </section>
 
     <p class="credits">
-      Pesukim from <a href="https://www.sefaria.org">Sefaria</a>. Illustrations: FLUX.2 [klein] on Replicate.
+      Pesukim from <a href="https://www.sefaria.org">Sefaria</a>. Illustrations: FLUX.2 [klein] (stock books) and GPT Image 2 (your books) on Replicate.
       Trailer voice: MiniMax Speech; backtrack: MiniMax Music, ducked under the narrator. Peshat checks: Jev by TypeSafe.
     </p>
   </main>
@@ -374,23 +374,6 @@ const names = listNames(castNames(defaultCast));
     $('sheet-notes').value = '';
   });
 
-  // One child: the sheet is portrait (left) + full body (right). Handing FLUX both views makes it paint the child
-  // twice; the full-body half alone keeps one child with the same face and outfit on every page (tested on 4B).
-  async function figureOnly(url) {
-    const bmp = await createImageBitmap(await (await fetch(proxied(url))).blob());
-    const sx = Math.round(bmp.width * 0.5);
-    const c = document.createElement('canvas');
-    const scale = Math.min(1, 900 / bmp.height);
-    c.width = Math.round((bmp.width - sx) * scale);
-    c.height = Math.round(bmp.height * scale);
-    c.getContext('2d').drawImage(bmp, sx, 0, bmp.width - sx, bmp.height, 0, 0, c.width, c.height);
-    for (const q of [0.88, 0.78, 0.65]) {
-      const d = c.toDataURL('image/jpeg', q);
-      if (d.length < 380_000) return d;
-    }
-    return url;
-  }
-
   // --- Step 2: illustrate the book from the approved sheet ---------------------------------
   $('sheet-ok').addEventListener('click', async () => {
     if (!draft?.takes.length) return;
@@ -403,11 +386,7 @@ const names = listNames(castNames(defaultCast));
     for (const b of out.querySelectorAll('.actions button')) b.disabled = true;
     const images = { cover: null, pages: [], sheet: draft.takes[draft.chosen].url };
     const sheetNotes = draft.takes[draft.chosen].notes;
-    // What the pages are drawn from: the full-body crop for one child, the whole sheet otherwise.
-    let ref = images.sheet;
-    if (people.length === 1) {
-      try { ref = await figureOnly(images.sheet); } catch { /* fall back to the whole sheet */ }
-    }
+    const ref = images.sheet;
     current = { book, cast, sisters, people, images, code, lite, photos, sheetNotes, ref };
     $('sheet-img').src = images.sheet;
     out.scrollIntoView({ behavior: 'smooth', block: 'start' });

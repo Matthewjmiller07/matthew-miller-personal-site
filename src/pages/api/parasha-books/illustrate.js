@@ -1,4 +1,4 @@
-// Illustrates a Parasha Book for an uploaded family with FLUX.2 [klein] on Replicate.
+// Illustrates a Parasha Book for an uploaded family with GPT Image 2 (low quality) on Replicate.
 //   POST { action: 'cast', people: [{ role, name, age, look, image }], notes?, seed? }   -> { id }  character sheet from their photos
 //   POST { action: 'cast', people, base: <sheet url>, notes }                           -> { id }  edit that sheet per the notes
 //   POST { action: 'page', slug, page: 'cover'|n, sheet, people, photos?, sisters, sheetNotes?, notes?, seed? } -> { id }  one spread (redo: new seed + notes)
@@ -43,11 +43,21 @@ function cleanPeople(list) {
 
 const VOICE_MODEL = 'minimax/speech-2.8-hd';
 
+// GPT Image 2 on Replicate: low quality (about a cent an image) held a child's likeness across pages far better
+// than FLUX.2 klein 4B in side-by-side tests. It has no seed — a retry is simply another draw.
+const gptInput = ({ images, seed, ...rest }) => ({
+  ...rest,
+  input_images: images,
+  quality: 'low',
+  output_format: 'jpeg',
+  output_compression: 88,
+});
+
 async function predict(input, model = MODEL) {
   const res = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env('REPLICATE_API_TOKEN')}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input: model === MODEL ? { ...input, output_format: 'jpg', go_fast: false } : input }),
+    body: JSON.stringify({ input: model === MODEL ? gptInput(input) : input }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || `Replicate ${res.status}`);

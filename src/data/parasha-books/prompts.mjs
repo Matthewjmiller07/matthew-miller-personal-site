@@ -1,8 +1,10 @@
 // Prompt + story helpers shared by the generator script, the illustrate API and the in-browser maker.
 import { STYLE, tell } from './books.mjs';
 
-// Uploaded casts run on the cheaper 4B model; the stock books were drawn with 9B (scripts/parasha-books/generate.mjs).
-export const MODEL = 'black-forest-labs/flux-2-klein-4b';
+// Uploaded casts run on GPT Image 2 at low quality — in side-by-side tests it kept a child's face across pages far
+// better than FLUX.2 klein 4B, for about a cent an image. The stock books were drawn with FLUX.2 klein 9B
+// (scripts/parasha-books/generate.mjs).
+export const MODEL = 'openai/gpt-image-2';
 
 export const CAST =
   'the three sisters from the reference image, keeping their exact faces, hair and art style: the 6-year-old big sister with long wavy light-brown hair and a pink bow headband in a modest pink dress with short puffed sleeves; the 2-year-old toddler with dark-brown curly ringlets and a pink bow in a modest floral dress with short puffed sleeves; the one-year-old baby with dark wispy hair in a white short-sleeved onesie';
@@ -56,19 +58,16 @@ const who = (p) => {
 };
 
 // Pages are drawn from the approved sheet (image 1) plus each child's photo (images 2…).
-// Tested on 4B: calling image 1 a "sheet" or mentioning its two views makes FLUX paint the child twice;
-// "the child in image 1, drawn exactly as there" gives one child who still looks like the photo.
-// Without the last two sentences FLUX lends the child's face to angels and grown-ups, and draws the child
-// from behind as a generic kid.
 export function customCast(people, notes = '') {
   const one = people.length === 1;
+  const names = people.map((p) => p.name || ROLE_WORDS[p.role]);
   const refs = one
-    ? 'the child in image 1, drawn exactly as there — same face, skin tone, hair, outfit and art style (image 2 is their real photo, used only for the face)'
-    : `the ${people.length} children in image 1, each drawn exactly as there — same faces, skin tone, hair, outfits and art style (their real photos, used only for faces: ${people.map((p, i) => `image ${i + 2} is ${p.name || ROLE_WORDS[p.role]}`).join(', ')})`;
-  return `${refs}: ${people.map(who).join('; ')}${notes ? `. As approved: ${notes}` : ''}. Show ${one ? "the child's face" : "each child's face"} clearly, facing the viewer or three-quarter view, never from behind. Only ${one ? 'the child looks' : 'the children look'} like the reference — every other figure (angels, grown-ups, animals) has a completely different face, hair and clothing and no headband or bow`;
+    ? `${names[0]} from the character sheet (image 1) — the same face, hair, accessories and the same outfit; image 2 is their real photo, for the face`
+    : `${names.join(', ')} from the character sheet (image 1) — each with the same face, hair, accessories and outfit as there; their real photos, for their faces, are ${names.map((n, i) => `image ${i + 2} (${n})`).join(', ')}`;
+  return `${refs}. ${people.map(who).join('; ')}${notes ? `. As approved: ${notes}` : ''}. Draw ${one ? 'them' : 'each child'} exactly once, face clearly visible, never from behind. Only ${one ? 'they look' : 'the children look'} like the reference — every other figure (angels, grown-ups, animals) has a completely different face, hair and clothing. Keep the look of a hand-painted storybook illustration, not photorealistic`;
 }
 
-// What worked in testing (FLUX.2 klein 4B): a two-view sheet — big waist-up portrait + full body — per child,
+// What worked in testing (FLUX.2 klein 4B, and kept for GPT Image 2): a two-view sheet — big waist-up portrait + full body — per child,
 // the photo as the identity reference, the child's features written out, and "realistic proportions for their age".
 // Full-body-only sheets drift into generic chibi faces. The reader's notes lead the prompt (and win over the photo
 // for clothing), and both views must share one outfit, with nothing carried over from the photo but the child.
@@ -79,7 +78,7 @@ export function castSheetPrompt(people, notes = '') {
       ? "Character sheet of the child in image 1 for a children's picture book, two views of the same child side by side on a plain cream background: on the left a large waist-up portrait facing the viewer, on the right the same child full body standing."
       : `Character sheet of the ${n} children in the reference photos (${people.map((p, i) => `image ${i + 1} is ${p.name || ROLE_WORDS[p.role]}`).join('; ')}) for a children's picture book, on a plain cream background, left to right in that order: for each child a large waist-up portrait facing the viewer, with the same child full body standing next to it.`;
   const wish = notes ? ` Required changes, applied to every view: ${notes}.` : '';
-  return `${layout}${wish} Preserve each child's identity exactly from their own photo: face shape, eyes, eyebrows, nose, lips, skin tone, hair, hairline and accessories. ${people.map(who).join('. ')}. Realistic child proportions for their age (not chibi, normal-sized heads). Each child wears one outfit, identical in the portrait and the full-body view (the portrait shows the same neckline and sleeves) — ${notes ? 'as required above, otherwise ' : ''}modest, with sleeves; do not copy the clothes from the photo unless they fit. Leave out everything else from the photos: no pets, toys, objects or background. Warm gouache and watercolor, soft painterly edges, gentle warm light. Only ${n === 1 ? 'this one child' : `these ${n} children`}, no text.`;
+  return `${layout}${wish} Preserve each child's identity exactly from their own photo: face shape, eyes, eyebrows, nose, lips, skin tone, hair, hairline and accessories. ${people.map(who).join('. ')}. Realistic child proportions for their age (not chibi, normal-sized heads). Each child wears one outfit, identical in the portrait and the full-body view (the portrait shows the same neckline and sleeves) — ${notes ? 'as required above, otherwise ' : ''}modest, with sleeves; do not copy the clothes from the photo unless they fit. Leave out everything else from the photos: no pets, toys, objects or background. Hand-painted storybook illustration in warm gouache and watercolor, soft painterly edges, gentle warm light, not photorealistic. Only ${n === 1 ? 'this one child' : `these ${n} children`}, no text.`;
 }
 
 // Edit an existing sheet (the image after the photos) with the reader's notes; the photos stay the truth for faces.
