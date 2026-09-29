@@ -16,6 +16,7 @@ export default defineConfig({
       filter: (page) =>
         !page.includes('/aaron-33-film') &&
         !page.includes('/family') &&
+        !page.includes('/parasha-books') &&
         !page.includes('/dweck-sukkot-picks'),
     })
   ],
