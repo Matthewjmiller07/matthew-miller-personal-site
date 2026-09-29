@@ -330,7 +330,7 @@ export const books = [
         question: 'What did Hashem promise Avram if he would go?',
         answer: 'To make him a great nation, to bless him, make his name great — and that he would be a blessing (12:2).',
         scene:
-          'an ancient tent camp in Charan at dawn, beams of warm light falling from the sky onto the camp, an old bearded man seen from behind standing in the open looking up at the light; the three sisters peeking out from behind a tent flap',
+          'an ancient tent camp in Charan at dawn, beams of warm golden light falling from the sky, an old bearded man in robes seen from behind standing in the open looking up at the light; in the foreground the three sisters stand together beside a tent watching him in wonder, the baby held in the big sister\'s arms',
       },
       {
         ref: 'Genesis 12:4-6',
@@ -340,7 +340,7 @@ export const books = [
         question: 'How old was Avram when he left Charan?',
         answer: 'Seventy-five years old (12:4).',
         scene:
-          'a long caravan of camels and donkeys with travelers in robes far in the background through rolling golden hills; in the foreground the baby riding happily alone on a small gray donkey, the older girl holding its rope, the toddler marching alongside',
+          'rolling golden hills with a long caravan of camels and robed adult travelers far in the background; in the foreground the baby sitting alone on a small gray donkey laughing, the big sister walking beside it holding its rope, the toddler marching in front',
       },
       {
         ref: 'Genesis 12:7-8',
