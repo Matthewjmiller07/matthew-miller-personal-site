@@ -1,0 +1,578 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { books } from '../../data/parasha-books/books.mjs';
+import { defaultCast, castNames } from '../../data/parasha-books/cast.mjs';
+import { listNames } from '../../data/parasha-books/render.mjs';
+
+const names = listNames(castNames(defaultCast));
+---
+
+<Layout
+  title="Parasha Books"
+  description={`Peshat-based picture books where ${names} explore the weekly parasha — with printable PDFs and trailers. Make one with your own kids.`}
+  image="/parasha-books/bereshit/cover.jpg"
+>
+  <meta name="robots" content="noindex" slot="head" />
+  <main class="pbi">
+    <header class="intro">
+      <p class="kicker">Parasha Books</p>
+      <h1>Your kids, inside the parasha.</h1>
+      <p class="lede">
+        {names} open the Chumash and walk right into the story — watching the light switch on, riding the ark,
+        following Avram to Canaan. Every page follows the <em>peshat</em>: pesukim from Sefaria sit under each picture,
+        a “Look closely” question sends kids back to the text, and Jev checks each page against the verses.
+      </p>
+    </header>
+
+    <section class="shelf">
+      {books.map((b) => (
+        <article class="card" style={`--accent:${b.color}`}>
+          <a href={`/parasha-books/${b.slug}`} class="cover">
+            <img src={`/parasha-books/${b.slug}/cover.jpg`} alt="" loading="lazy" />
+            <span class="he" dir="rtl" lang="he">{b.hebrew}</span>
+          </a>
+          <div class="meta">
+            <div class="parasha">Parashat {b.parasha} · {b.range}</div>
+            <h2><a href={`/parasha-books/${b.slug}`}>{b.title}</a></h2>
+            <p>{b.tagline}</p>
+            <div class="links">
+              <a href={`/parasha-books/${b.slug}`}>Read</a>
+              <a href={`/parasha-books/${b.slug}#trailer`}>Trailer</a>
+              <a href={`/parasha-books/${b.slug}/book.pdf`} download>PDF</a>
+            </div>
+          </div>
+        </article>
+      ))}
+    </section>
+
+    <section class="maker" id="make">
+      <h2>Make one with your own kids</h2>
+      <p class="sub">
+        Upload a clear photo of each child (face and hair visible). FLUX.2 [klein] draws them into a character sheet, then
+        illustrates every page from it. Takes about two minutes. Photos go to Replicate for the illustrations and aren't stored here.
+      </p>
+      <form id="maker-form">
+        <label class="row">Parasha
+          <select name="slug">
+            {books.map((b) => <option value={b.slug}>{b.parasha} — {b.title}</option>)}
+          </select>
+        </label>
+        <div class="people">
+          {[
+            ['big', 'Big kid', 'Reads the pesukim and asks questions', true],
+            ['mid', 'Little kid', 'Points, counts, loves the animals', false],
+            ['baby', 'Baby', 'Coos, grabs, rides along', false],
+          ].map(([role, label, hint, req]) => (
+            <fieldset class="person" data-role={role}>
+              <legend>{label}{req ? '' : ' (optional)'}</legend>
+              <p class="hint">{hint}</p>
+              <input type="text" name={`${role}-name`} placeholder="Name" maxlength="40" required={req} />
+              <label class="photo">
+                <input type="file" name={`${role}-photo`} accept="image/*" required={req} />
+                <img alt="" hidden />
+                <span>Choose photo</span>
+              </label>
+            </fieldset>
+          ))}
+        </div>
+        <label class="check"><input type="checkbox" name="sisters" checked /> They're sisters (keep “sister” in the story)</label>
+        <label class="row code">Access code <input type="password" name="code" autocomplete="off" placeholder="if the site asks for one" /></label>
+        <button type="submit" class="go">Make our book</button>
+        <p class="status" id="maker-status" role="status"></p>
+      </form>
+
+      <div id="maker-out" class="pbm" hidden>
+        <div class="out-head">
+          <img id="sheet-img" alt="Character sheet" />
+          <div>
+            <h3 id="out-title"></h3>
+            <div class="actions">
+              <button type="button" id="play-trailer" disabled>▶ Play trailer</button>
+              <button type="button" id="rec-trailer" disabled>Record trailer (WebM)</button>
+              <button type="button" id="dl-html" disabled>Download book</button>
+              <button type="button" id="print-pdf" disabled>Print / save PDF</button>
+            </div>
+            <p class="status" id="out-status"></p>
+          </div>
+        </div>
+        <canvas id="trailer-canvas" width="1280" height="720" hidden></canvas>
+        <div id="out-spreads" class="spreads"></div>
+      </div>
+    </section>
+
+    <p class="credits">
+      Pesukim from <a href="https://www.sefaria.org">Sefaria</a>. Illustrations: FLUX.2 [klein] on Replicate.
+      Trailer voice: MiniMax Speech; backtrack: MiniMax Music, ducked under the narrator. Peshat checks: Jev by TypeSafe.
+    </p>
+  </main>
+</Layout>
+
+<script>
+  import { books, bookBySlug } from '../../data/parasha-books/books.mjs';
+  import { adaptStory } from '../../data/parasha-books/prompts.mjs';
+  import { bookHtml } from '../../data/parasha-books/render.mjs';
+  import verses from '../../data/parasha-books/verses.json';
+
+  const API = '/api/parasha-books/illustrate';
+  const $ = (id) => document.getElementById(id);
+  const form = $('maker-form');
+  const status = $('maker-status');
+  const out = $('maker-out');
+  let current = null; // { book, cast, sisters, people, images: {cover, pages[], sheet}, blobs }
+
+  // Photo previews.
+  form.querySelectorAll('.photo input').forEach((input) => {
+    input.addEventListener('change', () => {
+      const img = input.parentElement.querySelector('img');
+      const f = input.files?.[0];
+      if (!f) return;
+      img.src = URL.createObjectURL(f);
+      img.hidden = false;
+      input.parentElement.querySelector('span').textContent = 'Change photo';
+    });
+  });
+
+  // Resize to ≤640px JPEG so the data URL stays well under the API's limit.
+  async function shrink(file) {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 640 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * scale);
+    c.height = Math.round(bmp.height * scale);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    for (const q of [0.85, 0.75, 0.6, 0.45]) {
+      const url = c.toDataURL('image/jpeg', q);
+      if (url.length < 380_000) return url;
+    }
+    throw new Error('Photo is too large even after resizing');
+  }
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function call(body) {
+    const res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data.id;
+  }
+  async function wait(id) {
+    for (;;) {
+      await sleep(2000);
+      const r = await (await fetch(`${API}?id=${id}`)).json();
+      if (r.status === 'succeeded') return r.output;
+      if (r.status === 'failed' || r.status === 'canceled') throw new Error(r.error || r.status);
+    }
+  }
+  const proxied = (url) => `${API}?fetch=${encodeURIComponent(url)}`;
+
+  function renderSpreads(book, cast, sisters) {
+    const wrap = $('out-spreads');
+    wrap.innerHTML = '';
+    book.pages.forEach((p, i) => {
+      const el = document.createElement('article');
+      el.className = 'spread';
+      el.style.setProperty('--accent', book.color);
+      const vs = verses[p.ref] || [];
+      el.innerHTML = `
+        <figure><div class="ph">Illustrating…</div></figure>
+        <div class="words">
+          <div class="ref"></div><h2><span class="num">${i + 1}</span><span class="t"></span></h2>
+          <p class="story"></p>
+          <details class="look"><summary><b>Look closely:</b> <span class="q"></span></summary><p class="a"></p></details>
+          <div class="torah"><div class="label">From the Torah</div>${vs.map(() => '<div class="v"><p class="he" dir="rtl" lang="he"></p><p class="en"></p></div>').join('')}</div>
+        </div>`;
+      el.querySelector('.ref').textContent = p.ref.replace(/Genesis /g, 'Bereshit ');
+      el.querySelector('.t').textContent = p.title;
+      el.querySelector('.story').textContent = adaptStory(p.story, cast, sisters);
+      el.querySelector('.q').textContent = p.question;
+      el.querySelector('.a').textContent = p.answer;
+      el.querySelectorAll('.v').forEach((v, k) => {
+        v.querySelector('.he').textContent = `${vs[k].v.split(':')[1]} ${vs[k].he}`;
+        v.querySelector('.en').textContent = `${vs[k].v} ${vs[k].en}`;
+      });
+      wrap.appendChild(el);
+    });
+  }
+
+  function setPageImage(i, url) {
+    const fig = $('out-spreads').children[i]?.querySelector('figure');
+    if (fig) fig.innerHTML = `<img src="${url}" alt="">`;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const book = bookBySlug[fd.get('slug')];
+    const sisters = !!fd.get('sisters');
+    const code = fd.get('code') || undefined;
+    const people = [];
+    const cast = {};
+    try {
+      for (const role of ['big', 'mid', 'baby']) {
+        const name = String(fd.get(`${role}-name`) || '').trim();
+        const file = fd.get(`${role}-photo`);
+        if (!name && !(file && file.size)) continue;
+        if (!name || !(file && file.size)) throw new Error(`Give the ${role === 'big' ? 'big kid' : role === 'mid' ? 'little kid' : 'baby'} both a name and a photo`);
+        people.push({ role, name, image: await shrink(file) });
+        cast[role] = { name };
+      }
+      if (!cast.big) throw new Error('The big kid is required — they read the pesukim.');
+    } catch (err) {
+      status.textContent = err.message;
+      return;
+    }
+
+    form.querySelector('.go').disabled = true;
+    out.hidden = false;
+    $('out-title').textContent = `Parashat ${book.parasha}: ${book.title}`;
+    $('sheet-img').removeAttribute('src');
+    renderSpreads(book, cast, sisters);
+    for (const b of out.querySelectorAll('.actions button')) b.disabled = true;
+    const images = { cover: null, pages: [], sheet: null };
+    current = { book, cast, sisters, people, images };
+    const lite = people.map(({ role, name }) => ({ role, name }));
+
+    try {
+      status.textContent = 'Drawing your character sheet…';
+      images.sheet = await wait(await call({ action: 'cast', people, code }));
+      $('sheet-img').src = images.sheet;
+
+      status.textContent = 'Illustrating the book (13 pictures)…';
+      const jobs = ['cover', ...book.pages.map((_, i) => i)];
+      let done = 0;
+      const queue = [...jobs];
+      await Promise.all([0, 1, 2, 3].map(async () => {
+        while (queue.length) {
+          const page = queue.shift();
+          const url = await wait(await call({ action: 'page', slug: book.slug, page, sheet: images.sheet, people: lite, sisters, code }));
+          if (page === 'cover') images.cover = url;
+          else { images.pages[page] = url; setPageImage(page, url); }
+          status.textContent = `Illustrating the book… ${++done}/${jobs.length}`;
+        }
+      }));
+      status.textContent = 'Done! Scroll down to read it.';
+      $('out-status').textContent = 'Replicate links expire after an hour — download the book to keep it.';
+      for (const b of out.querySelectorAll('.actions button')) b.disabled = false;
+    } catch (err) {
+      status.textContent = `Something went wrong: ${err.message}`;
+    } finally {
+      form.querySelector('.go').disabled = false;
+    }
+  });
+
+  // --- Download / print -------------------------------------------------------------------
+  async function asDataUrl(url) {
+    const blob = await (await fetch(proxied(url))).blob();
+    return await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
+  }
+
+  async function standaloneHtml() {
+    const { book, cast, sisters, images } = current;
+    $('out-status').textContent = 'Packing the pictures into one file…';
+    const embedded = {
+      cover: await asDataUrl(images.cover),
+      sheet: await asDataUrl(images.sheet),
+      pages: await Promise.all(images.pages.map(asDataUrl)),
+    };
+    $('out-status').textContent = '';
+    return bookHtml(book, cast, verses, {
+      images: embedded,
+      fontBase: location.origin,
+      story: (t) => adaptStory(t, cast, sisters),
+    });
+  }
+
+  $('dl-html').addEventListener('click', async () => {
+    const html = await standaloneHtml();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    a.download = `${current.book.slug}-${current.cast.big.name.toLowerCase().replace(/\W+/g, '-')}.html`;
+    a.click();
+  });
+
+  $('print-pdf').addEventListener('click', async () => {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(await standaloneHtml());
+    w.document.close();
+    w.addEventListener('load', () => setTimeout(() => w.print(), 400));
+  });
+
+  // --- In-browser trailer: the parasha's voice + music, your pictures -----------------------
+  const W = 1280, H = 720;
+  async function loadImage(url) {
+    const img = new Image();
+    img.src = URL.createObjectURL(await (await fetch(proxied(url))).blob());
+    await img.decode();
+    return img;
+  }
+
+  function segments(t, n) {
+    // Mirrors scripts/parasha-books/make-trailer.py: images split each line's span; last line ends on the title card.
+    const segs = [];
+    t.lines.forEach((line, li) => {
+      const a = t.bounds[li], b = t.bounds[li + 1];
+      let shots = t.shots[li];
+      const pieces = [];
+      if (li === t.lines.length - 1 && shots.includes('title')) {
+        const imgs = shots.filter((s) => s !== 'title');
+        const speakEnd = t.leadIn + t.voice + 0.3;
+        if (imgs.length) pieces.push([a, speakEnd, imgs]);
+        pieces.push([imgs.length ? speakEnd : a, b, ['title']]);
+      } else pieces.push([a, b, shots]);
+      for (const [sa, sb, imgs] of pieces) {
+        const each = (sb - sa) / imgs.length;
+        imgs.forEach((s, k) => segs.push({ start: sa + k * each, end: sa + (k + 1) * each, shot: s, caption: k === 0 && s !== 'title' ? line : null, dir: segs.length % 2 }));
+      }
+    });
+    return segs;
+  }
+
+  function wrapText(ctx, text, maxW) {
+    const words = text.split(' '), lines = [];
+    let cur = '';
+    for (const w of words) {
+      const t = (cur + ' ' + w).trim();
+      if (ctx.measureText(t).width <= maxW) cur = t; else { lines.push(cur); cur = w; }
+    }
+    return [...lines, cur];
+  }
+
+  function drawCover(ctx, img, p, dir) {
+    const z = 1 + 0.14 * (dir ? 1 - p : p);
+    const s = Math.max(W / img.width, H / img.height) * z;
+    const w = img.width * s, h = img.height * s;
+    const dx = (dir ? -1 : 1) * 30 * p;
+    ctx.drawImage(img, (W - w) / 2 + dx, (H - h) / 2, w, h);
+  }
+
+  function drawTitle(ctx, cover, book, cast) {
+    ctx.save();
+    ctx.filter = 'blur(6px) brightness(0.38)';
+    drawCover(ctx, cover, 0, 0);
+    ctx.restore();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff0d7';
+    ctx.font = 'italic 30px PBCrimson, Georgia, serif';
+    ctx.fillText('A Parasha Book', W / 2, 130);
+    ctx.fillStyle = '#f2c878';
+    ctx.font = '700 80px PBHeb, serif';
+    ctx.direction = 'rtl';
+    ctx.fillText(book.hebrew, W / 2, 240);
+    ctx.direction = 'ltr';
+    ctx.fillStyle = '#fffaee';
+    ctx.font = '700 120px PBShoulders, Impact, sans-serif';
+    ctx.fillText(`PARASHAT ${book.parasha.toUpperCase()}`, W / 2, 390);
+    ctx.font = '38px PBCrimson, Georgia, serif';
+    ctx.fillText(book.title, W / 2, 455);
+    const names = ['big', 'mid', 'baby'].map((r) => cast[r]?.name).filter(Boolean).join(' · ');
+    ctx.fillStyle = '#f2c878';
+    ctx.font = 'italic 32px PBCrimson, Georgia, serif';
+    ctx.fillText(`starring ${names}`, W / 2, 540);
+    ctx.fillStyle = '#fffaee';
+    ctx.font = '700 40px PBShoulders, Impact, sans-serif';
+    ctx.fillText('THIS SHABBAT', W / 2, 630);
+  }
+
+  function drawCaption(ctx, text) {
+    ctx.font = '700 48px PBShoulders, Impact, sans-serif';
+    ctx.textAlign = 'center';
+    const lines = wrapText(ctx, text.toUpperCase(), W - 240);
+    const top = H - 70 - lines.length * 54;
+    const g = ctx.createLinearGradient(0, top - 50, 0, H);
+    g.addColorStop(0, 'rgba(10,6,2,0)');
+    g.addColorStop(0.45, 'rgba(10,6,2,.6)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, top - 50, W, H - top + 50);
+    ctx.shadowColor = 'rgba(0,0,0,.8)';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#fff6e1';
+    lines.forEach((l, i) => ctx.fillText(l, W / 2, top + 40 + i * 54));
+    ctx.shadowBlur = 0;
+  }
+
+  async function playTrailer(record) {
+    const { book, cast, images } = current;
+    const btns = [$('play-trailer'), $('rec-trailer')];
+    btns.forEach((b) => (b.disabled = true));
+    $('out-status').textContent = 'Loading the trailer…';
+    try {
+      await Promise.all(['700 40px PBShoulders', '30px PBCrimson', 'italic 30px PBCrimson', '700 40px PBHeb'].map((f) => document.fonts.load(f)));
+      const base = `/parasha-books/${book.slug}`;
+      const t = await (await fetch(`${base}/trailer.json`)).json();
+      const pics = { 0: await loadImage(images.cover) };
+      for (const s of new Set(t.shots.flat().filter((s) => typeof s === 'number' && s > 0))) pics[s] = await loadImage(images.pages[s - 1]);
+      const segs = segments(t);
+
+      const ac = new AudioContext();
+      const buf = async (u) => ac.decodeAudioData(await (await fetch(u)).arrayBuffer());
+      const [voiceBuf, musicBuf] = await Promise.all([buf(`${base}/voice.mp3`), buf(`${base}/music.mp3`)]);
+      const outNode = ac.createGain();
+      outNode.connect(ac.destination);
+      const recDest = ac.createMediaStreamDestination();
+      outNode.connect(recDest);
+
+      const music = ac.createBufferSource();
+      music.buffer = musicBuf;
+      const duck = ac.createGain();
+      const fade = ac.createGain();
+      music.connect(duck).connect(fade).connect(outNode);
+      const voice = ac.createBufferSource();
+      voice.buffer = voiceBuf;
+      const vGain = ac.createGain();
+      vGain.gain.value = 1.4;
+      const analyser = ac.createAnalyser();
+      analyser.fftSize = 1024;
+      voice.connect(vGain).connect(outNode);
+      voice.connect(analyser);
+
+      const t0 = ac.currentTime + 0.15;
+      fade.gain.setValueAtTime(0, t0);
+      fade.gain.linearRampToValueAtTime(0.8, t0 + 1.2);
+      fade.gain.setValueAtTime(0.8, t0 + t.total - 3);
+      fade.gain.linearRampToValueAtTime(0, t0 + t.total);
+      music.start(t0);
+      music.stop(t0 + t.total + 0.1);
+      voice.start(t0 + t.leadIn);
+
+      const canvas = $('trailer-canvas');
+      canvas.hidden = false;
+      canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const ctx = canvas.getContext('2d');
+      let recorder, chunks = [];
+      if (record) {
+        const stream = new MediaStream([...canvas.captureStream(30).getVideoTracks(), ...recDest.stream.getAudioTracks()]);
+        recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm' });
+        recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+        recorder.start();
+      }
+      $('out-status').textContent = record ? 'Recording… keep this tab open.' : '';
+
+      const data = new Float32Array(analyser.fftSize);
+      await new Promise((resolve) => {
+        const frame = () => {
+          const now = ac.currentTime - t0;
+          // Sidechain-style ducking: follow the narrator's level and pull the music down under it.
+          analyser.getFloatTimeDomainData(data);
+          let rms = 0;
+          for (const x of data) rms += x * x;
+          rms = Math.sqrt(rms / data.length);
+          duck.gain.setTargetAtTime(rms > 0.015 ? 0.28 : 1, ac.currentTime, rms > 0.015 ? 0.03 : 0.35);
+
+          const seg = segs.find((s) => now >= s.start && now < s.end) || segs[segs.length - 1];
+          const p = Math.min(1, Math.max(0, (now - seg.start) / (seg.end - seg.start)));
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, W, H);
+          if (seg.shot === 'title') drawTitle(ctx, pics[0], book, cast);
+          else {
+            drawCover(ctx, pics[seg.shot], p, seg.dir);
+            if (seg.caption) drawCaption(ctx, seg.caption);
+          }
+          const edge = Math.min(now - seg.start, seg.end - now);
+          if (edge < 0.25 && seg.shot !== 'title') { ctx.fillStyle = `rgba(0,0,0,${1 - edge / 0.25})`; ctx.fillRect(0, 0, W, H); }
+          if (now < t.total) requestAnimationFrame(frame); else resolve();
+        };
+        requestAnimationFrame(frame);
+      });
+
+      if (recorder) {
+        await new Promise((r) => { recorder.onstop = r; recorder.stop(); });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' }));
+        a.download = `${book.slug}-trailer.webm`;
+        a.click();
+        $('out-status').textContent = 'Trailer saved.';
+      }
+      await ac.close();
+    } catch (err) {
+      $('out-status').textContent = `Trailer failed: ${err.message}`;
+    } finally {
+      btns.forEach((b) => (b.disabled = false));
+    }
+  }
+  $('play-trailer').addEventListener('click', () => playTrailer(false));
+  $('rec-trailer').addEventListener('click', () => playTrailer(true));
+</script>
+
+<style is:global>
+  @font-face { font-family: 'PBShoulders'; font-weight: 700; src: url('/parasha-books/fonts/BigShoulders-Bold.ttf'); }
+  @font-face { font-family: 'PBCrimson'; src: url('/parasha-books/fonts/CrimsonPro-Regular.ttf'); }
+  @font-face { font-family: 'PBCrimson'; font-style: italic; src: url('/parasha-books/fonts/CrimsonPro-Italic.ttf'); }
+  @font-face { font-family: 'PBHeb'; font-weight: 700; src: url('/fonts/NotoSerifHebrew-Bold.ttf'); }
+  @font-face { font-family: 'PBHeb'; src: url('/fonts/NotoSerifHebrew-Regular.ttf'); }
+
+  .pbi { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; font-family: 'PBCrimson', Georgia, serif; color: #f6ecdc; }
+  .pbi .kicker { font-family: 'PBShoulders', sans-serif; letter-spacing: .16em; text-transform: uppercase; color: #f2b544; margin: 0; }
+  .pbi h1 { font-family: 'PBShoulders', sans-serif; font-size: clamp(40px, 7vw, 76px); line-height: .95; margin: 6px 0 12px; }
+  .pbi .lede { font-size: 21px; line-height: 1.5; max-width: 780px; color: #e9dcc6; }
+
+  .shelf { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; margin: 34px 0 56px; }
+  .card { background: #fbf5ea; color: #2b2118; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 34px rgba(0,0,0,.3); display: flex; flex-direction: column; }
+  .card .cover { position: relative; display: block; }
+  .card .cover img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; display: block; transition: transform .4s; }
+  .card .cover:hover img { transform: scale(1.03); }
+  .card .cover .he { position: absolute; right: 14px; bottom: 10px; font-family: 'PBHeb', serif; font-weight: 700; font-size: 30px; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,.7); }
+  .card .meta { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .card .parasha { font-family: 'PBShoulders', sans-serif; color: var(--accent); letter-spacing: .08em; text-transform: uppercase; font-size: 13px; filter: brightness(.8); }
+  .card h2 { font-family: 'PBShoulders', sans-serif; font-size: 30px; line-height: 1; margin: 0; }
+  .card h2 a { color: inherit; text-decoration: none; }
+  .card p { margin: 0; font-size: 17px; line-height: 1.4; }
+  .card .links { margin-top: auto; padding-top: 10px; display: flex; gap: 8px; }
+  .card .links a { font: 600 14px system-ui, sans-serif; padding: 7px 13px; border-radius: 999px; background: var(--accent); color: #1b130b; text-decoration: none; }
+  .card .links a + a { background: transparent; border: 1px solid rgba(0,0,0,.25); color: #2b2118; }
+
+  .maker { background: #1d150d; border: 1px solid #3b2d1d; border-radius: 22px; padding: 28px; }
+  .maker h2 { font-family: 'PBShoulders', sans-serif; font-size: 40px; margin: 0; }
+  .maker .sub { font-size: 18px; color: #d9c7ab; max-width: 760px; }
+  .maker form { display: grid; gap: 16px; font: 15px system-ui, sans-serif; }
+  .maker .row { display: grid; gap: 6px; max-width: 420px; font-weight: 600; }
+  .maker select, .maker input[type=text], .maker input[type=password] { font: 16px system-ui, sans-serif; padding: 10px 12px; border-radius: 10px; border: 1px solid #5a4630; background: #120c06; color: #f6ecdc; }
+  .people { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .person { border: 1px solid #4a3a28; border-radius: 16px; padding: 14px; display: grid; gap: 10px; margin: 0; }
+  .person legend { font-weight: 700; padding: 0 6px; }
+  .person .hint { margin: 0; color: #bfa98a; font-size: 13px; }
+  .photo { display: grid; place-items: center; border: 1px dashed #6d563b; border-radius: 12px; min-height: 150px; cursor: pointer; overflow: hidden; position: relative; }
+  .photo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .photo img { width: 100%; height: 170px; object-fit: cover; }
+  .photo img:not([hidden]) + span { position: absolute; bottom: 6px; background: rgba(0,0,0,.6); padding: 3px 10px; border-radius: 999px; font-size: 13px; }
+  .check { display: flex; gap: 8px; align-items: center; }
+  .go { justify-self: start; font: 700 17px system-ui, sans-serif; padding: 12px 22px; border-radius: 999px; border: 0; background: #f2b544; color: #1b130b; cursor: pointer; }
+  .go:disabled { opacity: .6; cursor: progress; }
+  .status { min-height: 1.4em; color: #f2d7a6; margin: 0; }
+
+  .pbm { margin-top: 28px; display: grid; gap: 24px; }
+  .pbm .out-head { display: grid; grid-template-columns: minmax(200px, 420px) 1fr; gap: 20px; align-items: center; }
+  .pbm .out-head img { width: 100%; border-radius: 14px; background: #2a1f14; aspect-ratio: 16 / 9; object-fit: cover; }
+  .pbm h3 { font-family: 'PBShoulders', sans-serif; font-size: 30px; margin: 0 0 12px; }
+  .pbm .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pbm .actions button { font: 600 14px system-ui, sans-serif; padding: 9px 15px; border-radius: 999px; border: 1px solid #f2b544; background: transparent; color: #f6ecdc; cursor: pointer; }
+  .pbm .actions button:first-child { background: #f2b544; color: #1b130b; }
+  .pbm .actions button:disabled { opacity: .45; cursor: default; }
+  .pbm canvas { width: 100%; border-radius: 16px; background: #000; }
+  .pbm .spreads { display: grid; gap: 24px; }
+  .pbm .spread { display: grid; grid-template-columns: 1.15fr 1fr; background: #fbf5ea; color: #2b2118; border-radius: 18px; overflow: hidden; }
+  .pbm .spread figure { margin: 0; background: #e9dcc6; display: grid; place-items: center; min-height: 240px; }
+  .pbm .spread figure img { width: 100%; height: 100%; object-fit: cover; aspect-ratio: 3 / 2; display: block; }
+  .pbm .ph { font: 600 15px system-ui, sans-serif; color: #8a7358; animation: pbpulse 1.4s ease-in-out infinite; }
+  @keyframes pbpulse { 50% { opacity: .4; } }
+  .pbm .words { padding: 24px 26px; display: flex; flex-direction: column; gap: 12px; }
+  .pbm .ref { font-family: 'PBShoulders', sans-serif; color: var(--accent); letter-spacing: .08em; text-transform: uppercase; font-size: 13px; filter: brightness(.8); }
+  .pbm h2 { font-family: 'PBShoulders', sans-serif; font-size: 30px; line-height: 1; margin: 0; display: flex; gap: 10px; align-items: center; }
+  .pbm .num { background: var(--accent); color: #fff; border-radius: 50%; width: 34px; height: 34px; display: inline-grid; place-items: center; font-size: 18px; flex: none; }
+  .pbm .story { font-size: 19px; line-height: 1.5; margin: 0; }
+  .pbm .look { border-left: 4px solid var(--accent); background: rgba(0,0,0,.035); padding: 8px 14px; font-size: 16px; }
+  .pbm .look p { margin: 6px 0 2px; font-style: italic; color: #7a6a58; }
+  .pbm .torah { border-top: 1px solid rgba(0,0,0,.14); padding-top: 10px; margin-top: auto; }
+  .pbm .label { font-family: 'PBShoulders', sans-serif; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #7a6a58; }
+  .pbm .v { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pbm .v p { margin: 0 0 6px; }
+  .pbm .v .he { font-family: 'PBHeb', serif; font-size: 17px; line-height: 1.7; text-align: right; }
+  .pbm .v .en { font-size: 14px; line-height: 1.4; color: #4a3d30; }
+  .pbi .credits { font-size: 14px; color: #bfa98a; margin-top: 28px; }
+  .pbi .credits a { color: #f3d9a8; }
+
+  @media (max-width: 820px) {
+    .maker { padding: 18px; }
+    .pbm .out-head, .pbm .spread { grid-template-columns: 1fr; }
+    .pbm .v { grid-template-columns: 1fr; gap: 0; }
+  }
+</style>
