@@ -150,6 +150,8 @@ const examples = [
   const MAX_SOURCES = 12;
   const PER_BOOK = 2;
   const MIN_RELEVANCE = 1.5;
+  const MIN_SUBSTANTIVE = 0.5;
+  const MIN_WORDS = 12;  // below this, outside Tanakh, a "source" is a heading or chapter title
   const SCORE_BATCH = 12;
   const DISPLAY_CHARS = 3000;
   const STATE_CHARS = 1500;
@@ -188,6 +190,8 @@ const examples = [
       .replace(/<i class="footnote">[\s\S]*?<\/i>/g, '').replace(/<br\s*\/?>/g, '\n');
     return (d.textContent || '').replace(/[ \t]+/g, ' ').trim();
   }
+  const words = (s = '') => s.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+  const isStub = (c: Cand) => c.category !== 'Tanakh' && Math.max(words(c.he), words(c.en)) < MIN_WORDS;
   const flatten = (t: unknown): string[] => (typeof t === 'string' ? [t] : Array.isArray(t) ? t.flatMap(flatten) : []);
 
   async function getJSON(url: string, init?: RequestInit) {
@@ -258,7 +262,7 @@ const examples = [
         if (v.language === 'en' && !c.en) c.en = joined;
       }
       Object.assign(c, { heRef: d.heRef || '', category: d.primary_category || '', categories: d.categories || [], book: d.indexTitle || d.book || '' });
-      return !!(c.he || c.en) && !c.categories!.some((x) => EXCLUDED.has(x));
+      return !!(c.he || c.en) && !c.categories!.some((x) => EXCLUDED.has(x)) && !isStub(c);
     } catch { return false; }
   }
 
@@ -282,7 +286,7 @@ const examples = [
   function select(cands: Cand[]) {
     const chosen: Cand[] = [], perBook = new Map<string, number>(), seen = new Set<string>();
     for (const c of [...cands].sort((a, b) => (b.rank ?? 0) - (a.rank ?? 0))) {
-      if (c.relevance == null || c.relevance < MIN_RELEVANCE) continue;
+      if (c.relevance == null || c.relevance < MIN_RELEVANCE || (c.substantive ?? 0) < MIN_SUBSTANTIVE) continue;
       const b = c.book || c.ref;
       if ((perBook.get(b) || 0) >= PER_BOOK) continue;
       const fp = (c.he || c.en || '').replace(/[^\p{L}\p{N}]+/gu, '').slice(0, 120);  // same passage in many siddurim
