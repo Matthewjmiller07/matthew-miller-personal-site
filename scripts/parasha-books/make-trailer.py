@@ -64,7 +64,9 @@ def line_starts(voice, n_lines):
 
 
 def load_books():
-    code = "import('./src/data/parasha-books/books.mjs').then(m => console.log(JSON.stringify(m.books)))"
+    # Trailer lines carry cast markup ([[…|…]], {Group}); fill them for the default cast.
+    code = ("Promise.all([import('./src/data/parasha-books/books.mjs'), import('./src/data/parasha-books/cast.mjs')])"
+            ".then(([m, c]) => console.log(JSON.stringify(m.books.map((b) => ({ ...b, trailer: b.trailer.map((l) => m.castStory(l, c.defaultCast)) })))))")
     out = subprocess.run(['node', '-e', code], cwd=ROOT, capture_output=True, text=True, check=True).stdout
     return json.loads(out)
 

@@ -1,6 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { books } from '../../data/parasha-books/books.mjs';
+import { books, castStory } from '../../data/parasha-books/books.mjs';
 import { defaultCast, castNames } from '../../data/parasha-books/cast.mjs';
 import { listNames } from '../../data/parasha-books/render.mjs';
 
@@ -34,7 +34,7 @@ const names = listNames(castNames(defaultCast));
           <div class="meta">
             <div class="parasha">Parashat {b.parasha} · {b.range}</div>
             <h2><a href={`/parasha-books/${b.slug}`}>{b.title}</a></h2>
-            <p>{b.tagline}</p>
+            <p>{castStory(b.tagline, defaultCast)}</p>
             <div class="links">
               <a href={`/parasha-books/${b.slug}`}>Read</a>
               <a href={`/parasha-books/${b.slug}#trailer`}>Trailer</a>
@@ -108,7 +108,7 @@ const names = listNames(castNames(defaultCast));
 </Layout>
 
 <script>
-  import { books, bookBySlug } from '../../data/parasha-books/books.mjs';
+  import { books, bookBySlug, tell } from '../../data/parasha-books/books.mjs';
   import { adaptStory } from '../../data/parasha-books/prompts.mjs';
   import { bookHtml } from '../../data/parasha-books/render.mjs';
   import verses from '../../data/parasha-books/verses.json';
@@ -235,6 +235,10 @@ const names = listNames(castNames(defaultCast));
       status.textContent = 'Drawing your character sheet…';
       images.sheet = await wait(await call({ action: 'cast', people, code }));
       $('sheet-img').src = images.sheet;
+      // The stock narration says "three sisters"; anyone else gets their own read, made alongside the pictures.
+      const voiceJob = people.length === 3 && sisters
+        ? null
+        : call({ action: 'voice', slug: book.slug, people: lite, sisters, code }).then(wait).catch(() => null);
 
       status.textContent = 'Illustrating the book (13 pictures)…';
       const jobs = ['cover', ...book.pages.map((_, i) => i)];
@@ -249,6 +253,10 @@ const names = listNames(castNames(defaultCast));
           status.textContent = `Illustrating the book… ${++done}/${jobs.length}`;
         }
       }));
+      if (voiceJob) {
+        status.textContent = 'Recording the trailer narration…';
+        images.voice = await voiceJob;
+      }
       status.textContent = 'Done! Scroll down to read it.';
       $('out-status').textContent = 'Replicate links expire after an hour — download the book to keep it.';
       for (const b of out.querySelectorAll('.actions button')) b.disabled = false;
@@ -304,6 +312,29 @@ const names = listNames(castNames(defaultCast));
     img.src = URL.createObjectURL(await (await fetch(proxied(url))).blob());
     await img.decode();
     return img;
+  }
+
+  // A custom narration has its own timing: find its line breaks (the longest pauses) like make-trailer.py does.
+  function retime(t, voiceBuf, lines) {
+    const data = voiceBuf.getChannelData(0), rate = voiceBuf.sampleRate, win = Math.round(rate * 0.02);
+    const quiet = [];
+    let runStart = null;
+    for (let i = 0; i + win <= data.length; i += win) {
+      let sum = 0;
+      for (let k = i; k < i + win; k++) sum += data[k] * data[k];
+      const silent = Math.sqrt(sum / win) < 0.0126; // -38 dB
+      const at = i / rate;
+      if (silent && runStart === null) runStart = at;
+      if (!silent && runStart !== null) {
+        if (at - runStart >= 0.35 && runStart > 0.2) quiet.push([runStart, at]);
+        runStart = null;
+      }
+    }
+    const breaks = quiet.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0])).slice(0, lines.length - 1).sort((a, b) => a[0] - b[0]);
+    const total = t.leadIn + voiceBuf.duration + 3.5;
+    const bounds = [0, ...breaks.map(([, end]) => t.leadIn + end - 0.15), total];
+    while (bounds.length < lines.length + 1) bounds.splice(-1, 0, bounds.at(-2) + 1); // too few pauses: pad
+    return { ...t, lines, voice: voiceBuf.duration, total, bounds };
   }
 
   function segments(t, n) {
@@ -391,21 +422,25 @@ const names = listNames(castNames(defaultCast));
   }
 
   async function playTrailer(record) {
-    const { book, cast, images } = current;
+    const { book, cast, sisters, images } = current;
     const btns = [$('play-trailer'), $('rec-trailer')];
     btns.forEach((b) => (b.disabled = true));
     $('out-status').textContent = 'Loading the trailer…';
     try {
       await Promise.all(['700 40px PBShoulders', '30px PBCrimson', 'italic 30px PBCrimson', '700 40px PBHeb'].map((f) => document.fonts.load(f)));
       const base = `/parasha-books/${book.slug}`;
-      const t = await (await fetch(`${base}/trailer.json`)).json();
+      let t = await (await fetch(`${base}/trailer.json`)).json();
       const pics = { 0: await loadImage(images.cover) };
       for (const s of new Set(t.shots.flat().filter((s) => typeof s === 'number' && s > 0))) pics[s] = await loadImage(images.pages[s - 1]);
-      const segs = segments(t);
 
       const ac = new AudioContext();
       const buf = async (u) => ac.decodeAudioData(await (await fetch(u)).arrayBuffer());
-      const [voiceBuf, musicBuf] = await Promise.all([buf(`${base}/voice.mp3`), buf(`${base}/music.mp3`)]);
+      const [voiceBuf, musicBuf] = await Promise.all([
+        buf(images.voice ? proxied(images.voice) : `${base}/voice.mp3`),
+        buf(`${base}/music.mp3`),
+      ]);
+      if (images.voice) t = retime(t, voiceBuf, book.trailer.map((l) => tell(l, cast, sisters)));
+      const segs = segments(t);
       const outNode = ac.createGain();
       outNode.connect(ac.destination);
       const recDest = ac.createMediaStreamDestination();

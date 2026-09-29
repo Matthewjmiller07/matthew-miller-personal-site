@@ -20,7 +20,7 @@ export const books = [
     hebrew: 'בְּרֵאשִׁית',
     range: 'Genesis 1:1–6:8',
     title: 'In the Very Beginning',
-    tagline: 'Three sisters open a Chumash — and watch the world begin.',
+    tagline: '[[{Group} open|{BIG} opens]] a Chumash — and [[watch|watches]] the world begin.',
     color: '#f2b544',
     cover:
       'the three sisters standing at the edge of a vast glowing dawn, a huge open book of light behind them, swirling dark waters turning into sky, sea and green land, stars appearing',
@@ -28,7 +28,7 @@ export const books = [
       'Before the sea. Before the sky. Before anything at all…',
       'there was darkness — and water — and the spirit of God, hovering.',
       'Then came a voice. And a word. And the word was — LIGHT.',
-      'Three sisters. One Chumash. Six days that built the whole world.',
+      '[[{Group}|{BIG}]]. One Chumash. Six days that built the whole world.',
       'Oceans split from sky. Land rises. Stars ignite.',
       'And on the seventh day… everything stops. Holy.',
       'This Shabbat, the story begins again. Parashat Bereshit.',
@@ -38,7 +38,7 @@ export const books = [
         ref: 'Genesis 1:1-2',
         title: 'In the Very Beginning',
         story:
-          "It was Friday night, and the Chumash on the Shabbat table was glowing. {BIG} opened it to the very first page — and the room melted away. The three sisters were floating in a deep, quiet dark. There was no floor and no sky, only water, dark and deep. {MID} squeezed her sister's hand. {BABY} blinked her big eyes. \"Where are we?\" {BIG} whispered, and read the first words: the earth was empty and unformed, darkness was over the deep, and the spirit of God was hovering over the water.",
+          "It was Friday night, and the Chumash on the Shabbat table was glowing. {BIG} opened it to the very first page — and the room melted away. [[The {group} were|{BIG} was]] floating in a deep, quiet dark. There was no floor and no sky, only water, dark and deep. {MID} squeezed her sister's hand. {BABY} blinked her big eyes. \"Where are we?\" {BIG} whispered, and read the first words: the earth was empty and unformed, darkness was over the deep, and the spirit of God was hovering over the water.",
         question: 'What was over the deep before anything else was made?',
         answer: 'Darkness — and the spirit of God hovered over the water (1:2).',
         scene:
@@ -58,7 +58,7 @@ export const books = [
         ref: 'Genesis 1:6-8',
         title: 'A Sky in the Middle',
         story:
-          'On the second day there was water everywhere — above and below. God made a great expanse, a rakia, right in the middle, and it pushed the waters apart: some above, some below. {MID} lay back and looked up and up. "It\'s the sky!" she said. {BIG} nodded at the page. God called the expanse Sky. And there was evening and there was morning, a second day.',
+          'On the second day there was water everywhere — above and below. God made a great expanse, a rakia, right in the middle, and it pushed the waters apart: some above, some below. {MID} lay back and looked up and up. "It\'s the sky!" said {MID}. {BIG} nodded at the page. God called the expanse Sky. And there was evening and there was morning, a second day.',
         question: 'What did the sky separate?',
         answer: 'The waters below the expanse from the waters above it (1:7).',
         scene:
@@ -68,7 +68,7 @@ export const books = [
         ref: 'Genesis 1:9-13',
         title: 'Dry Land and Green Things',
         story:
-          'On the third day, the waters rushed together into one place — and dry land came up! The sisters landed with a soft bump. God called the dry land Earth and the gathered waters Seas. Then grass sprang up between their toes, then plants with seeds, then fruit trees, each one making fruit with its seeds inside, every kind after its own kind. {BABY} patted the grass. {MID} sniffed a blossom. And God saw that it was good.',
+          'On the third day, the waters rushed together into one place — and dry land came up! [[The {sisters}|{BIG}]] landed with a soft bump. God called the dry land Earth and the gathered waters Seas. Then grass sprang up between [[their|her]] toes, then plants with seeds, then fruit trees, each one making fruit with its seeds inside, every kind after its own kind. {BABY} patted the grass. {MID} sniffed a blossom. And God saw that it was good.',
         question: 'What did God call the gathered waters?',
         answer: 'Seas (1:10).',
         scene:
@@ -108,7 +108,7 @@ export const books = [
         ref: 'Genesis 2:1-3',
         title: 'The Seventh Day',
         story:
-          'The heavens and the earth were finished, and everything in them. Then came the seventh day, and God rested from all the work He had done. {BIG} read: God blessed the seventh day and made it holy. Everything went quiet and golden. {MID} whispered, "It\'s Shabbat." {BABY} snuggled in. The sisters sat together and did nothing at all — and it was the best feeling in the whole world.',
+          'The heavens and the earth were finished, and everything in them. Then came the seventh day, and God rested from all the work He had done. {BIG} read: God blessed the seventh day and made it holy. Everything went quiet and golden. {MID} whispered, "It\'s Shabbat." {BABY} snuggled in. [[The {sisters} sat together|{BIG} sat very still]] and did nothing at all — and it was the best feeling in the whole world.',
         question: 'What did God do to the seventh day?',
         answer: 'He blessed it and made it holy (2:3).',
         scene:
@@ -138,7 +138,7 @@ export const books = [
         ref: 'Genesis 2:16-17; Genesis 3:6; Genesis 3:23-24',
         title: 'Outside the Garden',
         story:
-          'God had given one rule: do not eat from the Tree of Knowing Good and Bad. But the woman saw the fruit was nice to look at, and she took some and ate, and gave some to her husband, and he ate. {MID} covered her eyes. Then God sent them out of the garden to work the ground. At the gate, keruvim stood with a flaming, turning sword to guard the way to the Tree of Life. The sisters held hands very tight. "One rule," said {BIG} quietly. "That\'s all it was."',
+          'God had given one rule: do not eat from the Tree of Knowing Good and Bad. But the woman saw the fruit was nice to look at, and she took some and ate, and gave some to her husband, and he ate. {MID} covered her eyes. Then God sent them out of the garden to work the ground. At the gate, keruvim stood with a flaming, turning sword to guard the way to the Tree of Life. [[The {sisters} held hands very tight.|{BIG} held the Chumash very tight.]] "One rule," said {BIG} quietly. "That\'s all it was."',
         question: 'What guarded the way to the Tree of Life?',
         answer: 'The keruvim and the fiery, ever-turning sword (3:24).',
         scene:
@@ -164,7 +164,7 @@ export const books = [
     hebrew: 'נֹחַ',
     range: 'Genesis 6:9–11:32',
     title: 'The Ark, the Dove and the Rainbow',
-    tagline: 'Three sisters climb aboard the ark and ride out the flood.',
+    tagline: '[[{Group} climb|{BIG} climbs]] aboard the ark and [[ride|rides]] out the flood.',
     color: '#4f8fc0',
     cover:
       'the three sisters at the open window of a huge wooden ark on stormy waters, a white dove flying toward them with an olive leaf, a rainbow breaking through the clouds behind',
@@ -173,7 +173,7 @@ export const books = [
       'But one man walked with God. His name… was Noach.',
       'Three hundred cubits of gopher wood. Pitch inside and out. Three decks.',
       'The fountains of the deep burst open. The windows of heaven — opened wide.',
-      'Forty days. Forty nights. And three sisters… on board.',
+      'Forty days. Forty nights. And [[{group}|{BIG}]]… on board.',
       'A raven. A dove. An olive leaf. And a promise written across the sky.',
       'All aboard. Parashat Noach.',
     ],
@@ -182,7 +182,7 @@ export const books = [
         ref: 'Genesis 6:9-13',
         title: 'A Man Who Walked with God',
         story:
-          'This time, when {BIG} opened the Chumash, a warm wind blew out of the pages — and the sisters were standing on a dusty hill. The land below was full of people, but it was full of chamas, too — people grabbing and hurting. "That\'s not how the world is supposed to be," said {MID}. {BIG} read: Noach was a righteous man, wholehearted in his generation. Noach walked with God. He had three sons: Shem, Cham and Yefet.',
+          'This time, when {BIG} opened the Chumash, a warm wind blew out of the pages — and [[the {sisters} were|she was]] standing on a dusty hill. The land below was full of people, but it was full of chamas, too — people grabbing and hurting. "That\'s not how the world is supposed to be," said {MID}. {BIG} read: Noach was a righteous man, wholehearted in his generation. Noach walked with God. He had three sons: Shem, Cham and Yefet.',
         question: 'What were the names of Noach\'s three sons?',
         answer: 'Shem, Cham and Yefet (6:10).',
         scene:
@@ -212,7 +212,7 @@ export const books = [
         ref: 'Genesis 7:11-16',
         title: 'The Door Closes',
         story:
-          'In the six hundredth year of Noach\'s life, in the second month, on the seventeenth day, all the fountains of the great deep burst open and the windows of the sky opened up. Rain fell for forty days and forty nights. The sisters hurried up the ramp. Then {BIG} read a line that made her stop: "And Hashem shut him in." The great door closed behind them — safe and dry.',
+          'In the six hundredth year of Noach\'s life, in the second month, on the seventeenth day, all the fountains of the great deep burst open and the windows of the sky opened up. Rain fell for forty days and forty nights. [[The {sisters} hurried|{BIG} hurried]] up the ramp. Then {BIG} read a line that made her stop: "And Hashem shut him in." The great door closed behind them — safe and dry.',
         question: 'Who shut the door of the ark?',
         answer: 'Hashem shut him in (7:16).',
         scene:
@@ -222,7 +222,7 @@ export const books = [
         ref: 'Genesis 7:17-24',
         title: 'The Ark Floats',
         story:
-          'The water rose and rose and lifted the ark right off the ground. The ark floated on the face of the waters, higher than the tallest mountains. Inside it was warm and noisy — mooing and roaring and chirping. The sisters peeked out of the tzohar at the gray water everywhere. {BIG} read that the waters swelled on the earth for one hundred and fifty days. "That\'s a long time to be on a boat," said {MID}.',
+          'The water rose and rose and lifted the ark right off the ground. The ark floated on the face of the waters, higher than the tallest mountains. Inside it was warm and noisy — mooing and roaring and chirping. [[The {sisters} peeked|{BIG} peeked]] out of the tzohar at the gray water everywhere. {BIG} read that the waters swelled on the earth for one hundred and fifty days. "That\'s a long time to be on a boat," said {MID}.',
         question: 'How long did the waters swell on the earth?',
         answer: 'One hundred and fifty days (7:24).',
         scene:
@@ -262,7 +262,7 @@ export const books = [
         ref: 'Genesis 8:15-20',
         title: 'Out of the Ark',
         story:
-          'God said to Noach: "Go out of the ark — you, your wife, your sons and your sons\' wives — and bring out every living thing with you." The big door opened. The animals poured out onto the dry, fresh land — running, hopping, flying. {MID} ran too. Then Noach built an altar to Hashem and brought offerings. The sisters stood quietly and watched the smoke rise.',
+          'God said to Noach: "Go out of the ark — you, your wife, your sons and your sons\' wives — and bring out every living thing with you." The big door opened. The animals poured out onto the dry, fresh land — running, hopping, flying. {MID} ran too. Then Noach built an altar to Hashem and brought offerings. [[The {sisters} stood|{BIG} stood]] quietly and watched the smoke rise.',
         question: 'What was the first thing Noach built after leaving the ark?',
         answer: 'An altar to Hashem (8:20).',
         scene:
@@ -308,7 +308,7 @@ export const books = [
     hebrew: 'לֶךְ־לְךָ',
     range: 'Genesis 12:1–17:27',
     title: 'Go! Avram\'s Great Journey',
-    tagline: 'Three sisters follow Avram and Sarai into the land of Canaan.',
+    tagline: '[[{Group} follow|{BIG} follows]] Avram and Sarai into the land of Canaan.',
     color: '#c9723e',
     cover:
       'the three sisters walking on a winding desert road toward golden hills of Canaan at sunrise, a caravan of camels and tents ahead, a sky full of fading stars',
@@ -318,7 +318,7 @@ export const books = [
       'He was seventy-five years old. And he went.',
       'Famine. Quarrels. Kings at war. Three hundred and eighteen men in the night.',
       'Look up at the stars. Count them — if you can.',
-      'Three sisters. One promise. A journey that never ends.',
+      '[[{Group}|{BIG}]]. One promise. A journey that never ends.',
       'Pack your bags. Parashat Lech Lecha.',
     ],
     pages: [
@@ -326,7 +326,7 @@ export const books = [
         ref: 'Genesis 12:1-3',
         title: 'Go!',
         story:
-          'This time the Chumash opened with just two words, and they rang out like a bell: "Lech lecha — Go!" The sisters found themselves in Charan, beside a big tent. Hashem was speaking to Avram: Go from your land, from your birthplace, and from your father\'s house, to the land that I will show you. I will make you a great nation and bless you, and you will be a blessing. {MID} whispered, "But where?" {BIG} looked at the page. "He doesn\'t say yet," she said. "Avram just has to go."',
+          'This time the Chumash opened with just two words, and they rang out like a bell: "Lech lecha — Go!" [[The {sisters} found themselves|{BIG} found herself]] in Charan, beside a big tent. Hashem was speaking to Avram: Go from your land, from your birthplace, and from your father\'s house, to the land that I will show you. I will make you a great nation and bless you, and you will be a blessing. {MID} whispered, "But where?" {BIG} looked at the page. "He doesn\'t say yet," she said. "Avram just has to go."',
         question: 'What did Hashem promise Avram if he would go?',
         answer: 'To make him a great nation, to bless him, make his name great — and that he would be a blessing (12:2).',
         scene:
@@ -336,7 +336,7 @@ export const books = [
         ref: 'Genesis 12:4-6',
         title: 'On the Road',
         story:
-          'Avram went, just as Hashem told him, and Lot went with him. Avram was seventy-five years old when he left Charan. He took Sarai his wife, and Lot, and everything they had, and all the people who were with them — and they set out for the land of Canaan. The sisters walked behind the caravan, holding hands in a row. {BABY} toddled along as fast as she could. {MID} asked, "Are we there yet?" about a hundred times. Finally they came to Shechem.',
+          'Avram went, just as Hashem told him, and Lot went with him. Avram was seventy-five years old when he left Charan. He took Sarai his wife, and Lot, and everything they had, and all the people who were with them — and they set out for the land of Canaan. [[The {sisters} walked behind the caravan, holding hands in a row.|{BIG} walked behind the caravan.]] {BABY} toddled along as fast as she could. About a hundred times, {MID} asked, "Are we there yet?" Finally they came to Shechem.',
         question: 'How old was Avram when he left Charan?',
         answer: 'Seventy-five years old (12:4).',
         scene:
@@ -416,7 +416,7 @@ export const books = [
         ref: 'Genesis 15:1-6',
         title: 'Count the Stars',
         story:
-          'Hashem said to Avram, "Don\'t be afraid, Avram — I am your shield." Then He took Avram outside and said: "Look at the sky and count the stars, if you can." The sisters lay on their backs and tried. {MID} got to "eleven!" and gave up. "So will your offspring be," Hashem said. {BIG} read the last part twice: Avram believed in Hashem, and Hashem counted it for him as righteousness.',
+          'Hashem said to Avram, "Don\'t be afraid, Avram — I am your shield." Then He took Avram outside and said: "Look at the sky and count the stars, if you can." [[The {sisters} lay on their backs|{BIG} lay on her back]] and tried. {MID} got to "eleven!" and gave up. "So will your offspring be," Hashem said. {BIG} read the last part twice: Avram believed in Hashem, and Hashem counted it for him as righteousness.',
         question: 'What did Hashem tell Avram to count?',
         answer: 'The stars — "so shall your offspring be" (15:5).',
         scene:
@@ -426,7 +426,7 @@ export const books = [
         ref: 'Genesis 16:7-16',
         title: 'The God Who Sees',
         story:
-          'An angel of Hashem found Hagar by a spring of water in the wilderness, on the road to Shur. "You will have a son," the angel said, "and you will call him Yishmael — because Hashem has heard you." Hagar called Hashem "El Ro\'i" — the God who sees me. {MID} splashed the cool water on her face. "He sees us too?" she asked. {BIG} nodded. Avram was eighty-six when Yishmael was born.',
+          'An angel of Hashem found Hagar by a spring of water in the wilderness, on the road to Shur. "You will have a son," the angel said, "and you will call him Yishmael — because Hashem has heard you." Hagar called Hashem "El Ro\'i" — the God who sees me. {MID} splashed the cool water on her face. "He sees us too?" asked {MID}. {BIG} nodded. Avram was eighty-six when Yishmael was born.',
         question: 'What does the name Yishmael mean?',
         answer: '"Hashem has heard" your suffering (16:11).',
         scene:
@@ -448,10 +448,31 @@ export const books = [
 
 export const bookBySlug = Object.fromEntries(books.map((b) => [b.slug, b]));
 
-// Fill {BIG}/{MID}/{BABY} with a cast's names.
-export function castStory(text, cast) {
-  return text
-    .replaceAll('{BIG}', cast.big?.name || 'the big sister')
-    .replaceAll('{MID}', cast.mid?.name || 'the little one')
-    .replaceAll('{BABY}', cast.baby?.name || 'the baby');
+// Tell a story for a cast.
+//   {BIG}/{MID}/{BABY}    — names
+//   {group} / {Group}     — "three sisters", "two sisters", "three friends", … (only used on the plural side)
+//   {sisters}             — "sisters" or "friends"
+//   [[plural|solo]]       — the first text for two or more children, the second when there is only one
+export function tell(text, cast, sisters = true) {
+  const n = ['big', 'mid', 'baby'].filter((r) => cast[r]?.name).length || 1;
+  const kin = sisters ? 'sisters' : 'friends';
+  const group = `${['one', 'one', 'two', 'three'][n]} ${kin}`;
+  let out = text.replace(/\[\[([^|\]]*)\|([^\]]*)\]\]/g, (_, many, one) => (n > 1 ? many : one));
+  // Drop sentences about roles nobody is playing.
+  const missing = ['BIG', 'MID', 'BABY'].filter((r) => !cast[r.toLowerCase()]?.name).map((r) => `{${r}}`);
+  if (missing.length) {
+    // Break only where a new sentence starts, so `"Wow!" she said.` stays in one piece.
+    const sentences = out.split(/(?<=[.!?]["”']?)\s+(?=["“A-Z{])/);
+    out = sentences.filter((x) => !missing.some((m) => x.includes(m))).join(' ').trim();
+  }
+  return out
+    .replaceAll('{Group}', group[0].toUpperCase() + group.slice(1))
+    .replaceAll('{group}', group)
+    .replaceAll('{sisters}', kin)
+    .replaceAll('{BIG}', cast.big?.name || '')
+    .replaceAll('{MID}', cast.mid?.name || '')
+    .replaceAll('{BABY}', cast.baby?.name || '');
 }
+
+// Fill a story for the default cast (three sisters).
+export const castStory = (text, cast) => tell(text, cast, true);

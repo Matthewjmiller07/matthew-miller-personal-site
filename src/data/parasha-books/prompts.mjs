@@ -1,5 +1,5 @@
 // Prompt + story helpers shared by the generator script, the illustrate API and the in-browser maker.
-import { STYLE } from './books.mjs';
+import { STYLE, tell } from './books.mjs';
 
 export const MODEL = 'black-forest-labs/flux-2-klein-9b';
 
@@ -26,6 +26,11 @@ export function adaptScene(scene, people, sisters = false) {
   if (!has.has('mid')) parts = parts.filter((s) => !/toddler/.test(s));
   if (!has.has('baby')) parts = parts.filter((s) => !/\bbaby\b/.test(s));
   let out = parts.join(', ');
+  if (people.length === 1) {
+    return out
+      .replace(/the three sisters/g, 'the child')
+      .replace(/the older girl|the big sister|her big sister/g, 'the child');
+  }
   if (!sisters) {
     out = out
       .replace(/the three sisters/g, COUNT[people.length])
@@ -48,24 +53,5 @@ export function castSheetPrompt(people) {
   return `Children's picture-book character sheet of the ${people.length === 1 ? 'child' : `${people.length} children`} from the reference photos, full body, standing side by side on a plain cream background — ${order}. Keep each child's real facial features, face shape, skin tone and hair from their own photo. Modest clothing with sleeves. Warm gouache and watercolor storybook illustration, soft painterly edges, gentle light, expressive, no text.`;
 }
 
-// Story text: fill names; drop sentences about roles nobody is playing; optionally de-sister.
-export function adaptStory(text, cast, sisters = true) {
-  const missing = ROLES.filter((r) => !cast[r]?.name).map((r) => `{${r.toUpperCase()}}`);
-  let out = text;
-  if (missing.length) {
-    const sentences = out.match(/[^.!?]+[.!?]+["”']?\s*/g) || [out];
-    out = sentences.filter((s) => !missing.some((m) => s.includes(m))).join('');
-  }
-  if (!sisters) {
-    out = out
-      .replace(/the three sisters/gi, (m) => (m[0] === 'T' ? 'The explorers' : 'the explorers'))
-      .replace(/her sister's/g, 'her friend\'s')
-      .replace(/\bsisters\b/g, 'friends')
-      .replace(/\bsister\b/g, 'friend');
-  }
-  return out
-    .replaceAll('{BIG}', cast.big?.name || '')
-    .replaceAll('{MID}', cast.mid?.name || '')
-    .replaceAll('{BABY}', cast.baby?.name || '')
-    .trim();
-}
+// Story text for an uploaded cast (see tell() in books.mjs for the markup).
+export const adaptStory = (text, cast, sisters = true) => tell(text, cast, sisters);

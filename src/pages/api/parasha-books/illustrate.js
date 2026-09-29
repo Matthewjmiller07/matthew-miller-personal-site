@@ -1,11 +1,12 @@
 // Illustrates a Parasha Book for an uploaded family with FLUX.2 [klein] on Replicate.
 //   POST { action: 'cast', people: [{ role, name, image }] }            -> { id }  character sheet from their photos
 //   POST { action: 'page', slug, page: 'cover'|n, sheet, people, sisters } -> { id }  one spread, drawn from the sheet
+//   POST { action: 'voice', slug, people, sisters }                    -> { id }  trailer narration retold for this cast
 //   GET  ?id=<prediction>                                                -> { status, output, error }
 //   GET  ?fetch=<replicate.delivery url>                                 -> image bytes (so the browser can save the book)
 // Prompts are built here from the book data — callers can't send arbitrary prompts.
 // If PARASHA_BOOKS_CODE is set, every call must carry it as `code`.
-import { bookBySlug } from '../../../data/parasha-books/books.mjs';
+import { bookBySlug, tell } from '../../../data/parasha-books/books.mjs';
 import { MODEL, ROLES, adaptScene, castSheetPrompt, customCast, imagePrompt } from '../../../data/parasha-books/prompts.mjs';
 
 export const prerender = false;
@@ -30,11 +31,13 @@ function cleanPeople(list) {
   return people.length ? people.sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role)) : null;
 }
 
-async function predict(input) {
-  const res = await fetch(`https://api.replicate.com/v1/models/${MODEL}/predictions`, {
+const VOICE_MODEL = 'minimax/speech-2.8-hd';
+
+async function predict(input, model = MODEL) {
+  const res = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env('REPLICATE_API_TOKEN')}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input: { ...input, output_format: 'jpg', go_fast: false } }),
+    body: JSON.stringify({ input: model === MODEL ? { ...input, output_format: 'jpg', go_fast: false } : input }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || `Replicate ${res.status}`);
@@ -73,6 +76,21 @@ export async function POST({ request }) {
       const prompt = imagePrompt(adaptScene(scene, people, !!body.sisters), customCast(people), people.length);
       return json({ id: await predict({ prompt, images: [body.sheet], aspect_ratio: '3:2' }) });
     }
+    if (body.action === 'voice') {
+      // The stock narration says "three sisters"; smaller or non-sister casts get their own read,
+      // in the same voice and pacing as scripts/parasha-books/generate.mjs.
+      const book = bookBySlug[body.slug];
+      const people = cleanPeople(body.people);
+      if (!book || !people) return json({ error: 'Unknown book or cast' }, 400);
+      const cast = Object.fromEntries(people.map((p) => [p.role, { name: p.name || 'our explorer' }]));
+      const text = book.trailer.map((l) => tell(l, cast, !!body.sisters)).join(' <#1.0#> ');
+      return json({
+        id: await predict(
+          { text, voice_id: 'English_Deep-VoicedGentleman', emotion: 'surprised', speed: 0.9, pitch: -2, sample_rate: 44100 },
+          VOICE_MODEL,
+        ),
+      });
+    }
     return json({ error: 'Unknown action' }, 400);
   } catch (err) {
     return json({ error: err.message }, 502);
@@ -85,7 +103,7 @@ export async function GET({ url }) {
     if (!DELIVERY.test(target)) return json({ error: 'Only Replicate output URLs' }, 400);
     const res = await fetch(target);
     if (!res.ok) return json({ error: `Fetch ${res.status}` }, 502);
-    return new Response(res.body, { headers: { 'Content-Type': res.headers.get('content-type') || 'image/jpeg' } });
+    return new Response(res.body, { headers: { 'Content-Type': res.headers.get('content-type') || 'application/octet-stream' } });
   }
 
   const id = url.searchParams.get('id');
@@ -94,6 +112,6 @@ export async function GET({ url }) {
     headers: { Authorization: `Bearer ${env('REPLICATE_API_TOKEN')}` },
   });
   const p = await res.json();
-  if (p.model && p.model !== MODEL) return json({ error: 'Not a Parasha Books prediction' }, 403);
+  if (p.model && p.model !== MODEL && p.model !== VOICE_MODEL) return json({ error: 'Not a Parasha Books prediction' }, 403);
   return json({ status: p.status, output: [p.output].flat().filter(Boolean)[0] || null, error: p.error || null }, res.status);
 }

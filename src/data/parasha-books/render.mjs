@@ -13,7 +13,7 @@ export function bookHtml(book, cast, verses, { images, fontBase = '..', story } 
   const tell = story || ((t) => castStory(t, cast));
   const spreads = book.pages
     .map((p, i) => {
-            const vs = verses[p.ref] || [];
+      const vs = verses[p.ref] || [];
       // Long passages get smaller type; very long ones move to their own page.
       const size = vs.reduce((n, v) => n + v.he.length + v.en.length, 0);
       const own = size > 1900;
@@ -118,17 +118,17 @@ html, body { margin: 0; background: #d9cfbf; color: var(--ink); font-family: 'Cr
     </div>
   </section>
   <section class="page intro">
-    <h2>Meet the explorers</h2>
+    <h2>Meet the ${names.length === 1 ? 'explorer' : 'explorers'}</h2>
     <img src="${images.sheet}" alt="${esc(listNames(names))}">
-    <p><b>${esc(listNames(names))}</b> are about to climb into Parashat ${esc(book.parasha)} (${esc(book.range)}).
-    Everything they see on these pages comes straight from the pesukim — the plain meaning, the <i>peshat</i>.
+    <p><b>${esc(listNames(names))}</b> ${names.length === 1 ? 'is' : 'are'} about to climb into Parashat ${esc(book.parasha)} (${esc(book.range)}).
+    Everything on these pages comes straight from the pesukim — the plain meaning, the <i>peshat</i>.
     Each picture page is followed by the words of the Torah it comes from, in Hebrew and English, and a question to look for in the text.</p>
   </section>
   ${spreads}
   <section class="page end">
     <div>
       <h2>The End</h2>
-      <p>${esc(book.tagline)} Read it again this Shabbat — and see how much more you can find in the pesukim.</p>
+      <p>${esc(tell(book.tagline))} Read it again this Shabbat — and see how much more you can find in the pesukim.</p>
       <p class="credits">Pesukim from Sefaria (Tanach with Nikkud · The Koren Jerusalem Bible). Illustrations made with FLUX.2 [klein]. Peshat fidelity checked with Jev.</p>
     </div>
   </section>
