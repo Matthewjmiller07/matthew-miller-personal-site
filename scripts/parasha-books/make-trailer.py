@@ -105,7 +105,12 @@ def caption_png(text, path):
         sd.text((x, y + i * 84 + 4), ln, font=fnt, fill=(0, 0, 0, 230))
         d.text((x, y + i * 84), ln, font=fnt, fill=(255, 246, 225, 255))
     shadow = shadow.filter(ImageFilter.GaussianBlur(8))
-    Image.alpha_composite(shadow, img).save(path)
+    band = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    bd = ImageDraw.Draw(band)
+    top = y - 70
+    for yy in range(top, H):  # soft dark gradient behind the words
+        bd.line([(0, yy), (W, yy)], fill=(10, 6, 2, int(150 * min(1, (yy - top) / 90))))
+    Image.alpha_composite(Image.alpha_composite(band, shadow), img).save(path)
 
 
 def title_card(book, cast, cover, path):

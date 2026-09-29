@@ -52,7 +52,7 @@ export const books = [
         question: 'What did God call the light? What did He call the darkness?',
         answer: 'The light He called Day, and the darkness Night (1:5).',
         scene:
-          'brilliant golden light bursting across dark water for the first time, the three sisters shielding their eyes and laughing in wonder, the baby reaching up toward the light',
+          'the primordial world on the first day of creation: brilliant golden light bursting across endless dark water for the first time, nothing else exists, no land, no buildings, no people; the three sisters floating above the water, shielding their eyes and laughing in wonder, the baby reaching up toward the light',
       },
       {
         ref: 'Genesis 1:6-8',
@@ -62,7 +62,7 @@ export const books = [
         question: 'What did the sky separate?',
         answer: 'The waters below the expanse from the waters above it (1:7).',
         scene:
-          'a great clear blue sky opening between shimmering waters above and a calm ocean below, the three sisters floating in the middle looking up in amazement',
+          'the primordial world on the second day of creation: a great clear blue sky opening up between shimmering glassy waters high above and a calm endless ocean below, no land anywhere, no buildings, no people; the three sisters floating in the open air in the middle, looking up in amazement',
       },
       {
         ref: 'Genesis 1:9-13',
@@ -92,7 +92,7 @@ export const books = [
         question: 'Who got the very first blessing in the Torah?',
         answer: 'The fish and the birds — "Be fruitful and multiply" (1:22).',
         scene:
-          'the three sisters at the seashore as colorful fish leap from the water, an enormous gentle sea creature arching in the distance, flocks of birds filling the sky, the toddler flapping her arms like wings',
+          'an untouched wild seashore on the fifth day of creation, no buildings, no people: colorful fish leaping from the water, an enormous gentle sea creature arching in the distance, flocks of birds filling the sky; the three sisters on the sand, the toddler flapping her arms like wings, the baby laughing at a fish',
       },
       {
         ref: 'Genesis 1:24-31',
@@ -122,7 +122,7 @@ export const books = [
         question: 'What two jobs did God give the man in the garden?',
         answer: 'To work it and to guard it — le\'ovdah ul\'shomrah (2:15).',
         scene:
-          'a lush garden full of fruit trees with a sparkling river running through it, two special tall trees in the middle, the toddler splashing with a little bucket, the older girl watering a plant, the baby sitting in the grass',
+          'a lush wild garden of Eden full of fruit trees with a sparkling river running through it, two special tall glowing trees in the middle, no buildings, no adults; the toddler splashing in the river with a little bucket, the older girl watering a plant, the baby sitting in the grass',
       },
       {
         ref: 'Genesis 2:19-20',
@@ -132,7 +132,7 @@ export const books = [
         question: 'Who gave the animals their names?',
         answer: 'Adam — whatever he called each living creature, that was its name (2:19).',
         scene:
-          'a long joyful parade of animals walking two and three at a time along a garden path, giraffe, zebra, hippo, peacock, ducks, the three sisters watching from behind a flowering bush, the toddler jumping excitedly',
+          'a long joyful parade of animals walking two and three at a time through the wild garden of Eden toward a sunlit clearing, giraffe, zebra, hippo, peacock, ducks, no buildings, no adults; the three sisters watching from behind a flowering bush, the toddler jumping excitedly, the baby pointing at a duck',
       },
       {
         ref: 'Genesis 2:16-17; Genesis 3:6; Genesis 3:23-24',
@@ -216,7 +216,7 @@ export const books = [
         question: 'Who shut the door of the ark?',
         answer: 'Hashem shut him in (7:16).',
         scene:
-          'dramatic storm, torrents of rain and water bursting up from the ground, the huge ark door closing, the three sisters just inside the doorway in warm lamplight looking out at the storm',
+          'a dramatic storm seen from inside the huge wooden ark: the great wooden side door swinging shut, through the closing gap torrents of rain and water bursting up from the ground, lightning; the three sisters just inside in warm lamplight, safe and dry',
       },
       {
         ref: 'Genesis 7:17-24',
@@ -246,7 +246,7 @@ export const books = [
         question: 'Why did the dove come back the first time?',
         answer: 'She found no resting place for her foot, because water was still on the face of the earth (8:9).',
         scene:
-          'a black raven flying out over wide water from the open ark window, and a white dove returning, a man\'s hand gently reaching out to take her in, the three sisters watching from beside the window',
+          'the open wooden window of the ark over wide flood water: a black raven flying away, and a white dove coming back, a bearded old man\'s arm in a brown robe sleeve reaching out to take the dove in (only his arm visible); the three sisters beside the window watching',
       },
       {
         ref: 'Genesis 8:10-12',
@@ -266,7 +266,7 @@ export const books = [
         question: 'What was the first thing Noach built after leaving the ark?',
         answer: 'An altar to Hashem (8:20).',
         scene:
-          'animals streaming joyfully out of the open ark onto fresh green land, birds flying up, a simple stone altar with a thin line of smoke in the distance, the three sisters running down the ramp',
+          'animals streaming joyfully out of the open ark down a wooden ramp onto fresh green land, birds flying up, a simple stone altar with a thin line of smoke far in the distance; the three sisters running down the ramp together',
       },
       {
         ref: 'Genesis 9:12-16',
@@ -330,7 +330,7 @@ export const books = [
         question: 'What did Hashem promise Avram if he would go?',
         answer: 'To make him a great nation, to bless him, make his name great — and that he would be a blessing (12:2).',
         scene:
-          'an ancient tent camp in Charan at dawn, beams of warm light falling from the sky onto the camp, a bearded man seen from behind looking up at the light, the three sisters peeking from behind a tent flap',
+          'an ancient tent camp in Charan at dawn, beams of warm light falling from the sky onto the camp, an old bearded man seen from behind standing in the open looking up at the light; the three sisters peeking out from behind a tent flap',
       },
       {
         ref: 'Genesis 12:4-6',
@@ -340,7 +340,7 @@ export const books = [
         question: 'How old was Avram when he left Charan?',
         answer: 'Seventy-five years old (12:4).',
         scene:
-          'a long caravan of camels, donkeys and people walking through rolling golden hills, the baby riding happily on a small gray donkey held by the older girl, the toddler marching alongside',
+          'a long caravan of camels and donkeys with travelers in robes far in the background through rolling golden hills; in the foreground the baby riding happily alone on a small gray donkey, the older girl holding its rope, the toddler marching alongside',
       },
       {
         ref: 'Genesis 12:7-8',
@@ -430,7 +430,7 @@ export const books = [
         question: 'What does the name Yishmael mean?',
         answer: '"Hashem has heard" your suffering (16:11).',
         scene:
-          'a small spring of clear water with a few palm trees in a vast sunlit wilderness, a woman in a traveler\'s cloak seen from behind kneeling by the spring bathed in a beam of soft light, the three sisters splashing water nearby',
+          'a small spring of clear water with a few palm trees in a vast sunlit wilderness; a grown woman in a dark traveler\'s cloak with a dark head scarf, seen from behind, kneeling by the spring in a soft beam of light; the three sisters splashing their hands in the water nearby',
       },
       {
         ref: 'Genesis 17:1-5; Genesis 17:15-19',

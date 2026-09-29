@@ -18,7 +18,9 @@ export const REF_URL =
 export const CAST =
   'the three sisters from the reference image, keeping their exact faces, hair and art style: the 6-year-old big sister with long wavy light-brown hair and a pink bow headband in a modest pink dress with short puffed sleeves; the 2-year-old toddler with dark-brown curly ringlets and a pink bow in a modest floral dress with short puffed sleeves; the one-year-old baby with dark wispy hair in a white short-sleeved onesie';
 
-export const imagePrompt = (scene, cast = CAST) => `${scene}. Characters: ${cast}. ${STYLE}`;
+// "Exactly three children" keeps FLUX from cloning a sister into the background.
+export const imagePrompt = (scene, cast = CAST) =>
+  `${scene}. Exactly three children, one of each, no other children. Characters: ${cast}. ${STYLE}`;
 
 // SSML-ish pauses MiniMax understands: <#0.5#>
 export const voiceScript = (lines) => lines.join(' <#1.0#> ');
