@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { books, castStory } from '../../src/data/parasha-books/books.mjs';
 import { defaultCast } from '../../src/data/parasha-books/cast.mjs';
-import { imagePrompt } from '../../src/data/parasha-books/prompts.mjs';
+import { imagePrompt, pickScene } from '../../src/data/parasha-books/prompts.mjs';
 
 export const REF_URL =
   'https://raw.githubusercontent.com/Matthewjmiller07/matthew-miller-personal-site/main/public/parasha-books/cast/sisters-modest.jpg';
@@ -26,12 +26,12 @@ export const musicPrompt = (book) =>
 export function jobs(book) {
   const dir = `public/parasha-books/${book.slug}`;
   const list = [
-    { kind: 'images', dest: `${dir}/cover.jpg`, model: 'black-forest-labs/flux-2-klein-9b', input: { prompt: imagePrompt(book.cover), images: [REF_URL], aspect_ratio: '3:2', output_format: 'jpg', go_fast: false } },
+    { kind: 'images', dest: `${dir}/cover.jpg`, model: 'black-forest-labs/flux-2-klein-9b', input: { prompt: imagePrompt(pickScene(book.cover)), images: [REF_URL], aspect_ratio: '3:2', output_format: 'jpg', go_fast: false } },
     ...book.pages.map((p, i) => ({
       kind: 'images',
       dest: `${dir}/page-${String(i + 1).padStart(2, '0')}.jpg`,
       model: 'black-forest-labs/flux-2-klein-9b',
-      input: { prompt: imagePrompt(p.scene), images: [REF_URL], aspect_ratio: '3:2', output_format: 'jpg', go_fast: false },
+      input: { prompt: imagePrompt(pickScene(p.scene)), images: [REF_URL], aspect_ratio: '3:2', output_format: 'jpg', go_fast: false },
     })),
     { kind: 'voice', dest: `${dir}/voice.mp3`, model: 'minimax/speech-2.8-hd', input: { text: voiceScript(book.trailer.map((l) => castStory(l, defaultCast))), voice_id: 'English_Deep-VoicedGentleman', emotion: 'surprised', speed: 0.9, pitch: -2, sample_rate: 44100 } },
     { kind: 'music', dest: `${dir}/music.mp3`, model: 'minimax/music-2.6', input: { prompt: musicPrompt(book), is_instrumental: true } },

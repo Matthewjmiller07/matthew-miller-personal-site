@@ -43,5 +43,10 @@ Runs on FLUX.2 [klein] **4B** (cheaper than the 9B used for the stock books). Wh
   "realistic proportions for their age". Full-body-only sheets drift into generic chibi faces.
 - **Iterating:** "Fix this one" sends the photos plus the current sheet with the reader's notes (an edit); "Try a new one"
   re-draws with a fresh seed. Earlier takes stay selectable.
-- **Pages:** references are the approved sheet + the photos, worded as "the child in image 1, drawn exactly as there".
-  Calling image 1 a sheet, or mentioning its two views, makes FLUX paint the child twice.
+- **Reader's notes** ("put her in a dress") lead the sheet prompt and override the photo's clothes; both views must
+  share one outfit and nothing else from the photo (pets, toys) is kept. Every accepted note travels with the sheet
+  into the page prompts ("As approved: …").
+- **Pages:** for one child the browser crops the approved sheet to its full-body half and sends that + the face photo,
+  worded as "the child in image 1, drawn exactly as there". The whole two-view sheet (or calling it a sheet) makes FLUX
+  paint the child twice. Pages also say: face visible, never from behind, and every other figure (keruvim, grown-ups)
+  must look different — otherwise FLUX lends the child's face and headband to the angels.

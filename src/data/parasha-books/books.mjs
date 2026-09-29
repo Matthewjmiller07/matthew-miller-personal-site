@@ -142,7 +142,7 @@ export const books = [
         question: 'What guarded the way to the Tree of Life?',
         answer: 'The keruvim and the fiery, ever-turning sword (3:24).',
         scene:
-          'the tall gate of a garden at dusk guarded by two shining winged angelic figures made of light and a slowly turning flaming sword, the three sisters outside holding hands, looking back at the glowing garden',
+          'the tall gate of a garden at dusk guarded by two towering keruvim — tall winged figures of pure golden light, twice as tall as a grown-up, faces hidden in their glow — and a slowly turning flaming sword, the three sisters outside holding hands, [[faces turned toward us as they glance|face turned toward us as she glances]] back at the glowing garden',
       },
       {
         ref: 'Genesis 6:5-8',

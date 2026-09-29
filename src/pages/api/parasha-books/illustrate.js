@@ -1,7 +1,7 @@
 // Illustrates a Parasha Book for an uploaded family with FLUX.2 [klein] on Replicate.
 //   POST { action: 'cast', people: [{ role, name, age, look, image }], notes?, seed? }   -> { id }  character sheet from their photos
 //   POST { action: 'cast', people, base: <sheet url>, notes }                           -> { id }  edit that sheet per the notes
-//   POST { action: 'page', slug, page: 'cover'|n, sheet, people, photos?, sisters, notes?, seed? } -> { id }  one spread (redo: new seed + notes)
+//   POST { action: 'page', slug, page: 'cover'|n, sheet, people, photos?, sisters, sheetNotes?, notes?, seed? } -> { id }  one spread (redo: new seed + notes)
 //   POST { action: 'voice', slug, people, sisters }                    -> { id }  trailer narration retold for this cast
 //   GET  ?id=<prediction>                                                -> { status, output, error }
 //   GET  ?fetch=<replicate.delivery url>                                 -> image bytes (so the browser can save the book)
@@ -85,13 +85,14 @@ export async function POST({ request }) {
       const book = bookBySlug[body.slug];
       const people = cleanPeople(body.people);
       if (!book || !people) return json({ error: 'Unknown book or cast' }, 400);
-      if (typeof body.sheet !== 'string' || !DELIVERY.test(body.sheet)) return json({ error: 'sheet must be a Replicate output URL' }, 400);
+      // The sheet is a Replicate output, or (one child) the browser's crop of its full-body half.
+      if (typeof body.sheet !== 'string' || !(DELIVERY.test(body.sheet) || isPhoto(body.sheet))) return json({ error: 'sheet must be a Replicate output URL or an image' }, 400);
       const scene = body.page === 'cover' ? book.cover : book.pages[Number(body.page)]?.scene;
       if (!scene) return json({ error: 'Unknown page' }, 400);
       const photos = Array.isArray(body.photos) ? body.photos.filter(isPhoto).slice(0, 3) : [];
       const notes = text(body.notes, 200);
       const seed = Number.isInteger(body.seed) ? body.seed : undefined;
-      const prompt = imagePrompt(adaptScene(scene, people, !!body.sisters), customCast(people), people.length) + (notes ? ` Make sure: ${notes}.` : '');
+      const prompt = imagePrompt(adaptScene(scene, people, !!body.sisters), customCast(people, text(body.sheetNotes, 600)), people.length) + (notes ? ` Make sure: ${notes}.` : '');
       return json({ id: await predict({ prompt, images: [body.sheet, ...photos], aspect_ratio: '3:2', seed }) });
     }
     if (body.action === 'voice') {
@@ -101,10 +102,10 @@ export async function POST({ request }) {
       const people = cleanPeople(body.people);
       if (!book || !people) return json({ error: 'Unknown book or cast' }, 400);
       const cast = Object.fromEntries(people.map((p) => [p.role, { name: p.name || 'our explorer' }]));
-      const text = book.trailer.map((l) => tell(l, cast, !!body.sisters)).join(' <#1.0#> ');
+      const script = book.trailer.map((l) => tell(l, cast, !!body.sisters)).join(' <#1.0#> ');
       return json({
         id: await predict(
-          { text, voice_id: 'English_Deep-VoicedGentleman', emotion: 'surprised', speed: 0.9, pitch: -2, sample_rate: 44100 },
+          { text: script, voice_id: 'English_Deep-VoicedGentleman', emotion: 'surprised', speed: 0.9, pitch: -2, sample_rate: 44100 },
           VOICE_MODEL,
         ),
       });

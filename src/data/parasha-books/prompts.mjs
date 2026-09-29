@@ -21,7 +21,11 @@ const COUNT = ['', 'the child', 'the two children', 'the three children'];
 
 // Retarget a scene written for "the three sisters" at an uploaded cast.
 // people: [{ role: 'big'|'mid'|'baby' }], sisters: keep "sister" wording.
+// Scenes may carry [[plural|solo]] choices, like story text.
+export const pickScene = (scene, n = 3) => scene.replace(/\[\[([^|\]]*)\|([^\]]*)\]\]/g, (_, many, one) => (n > 1 ? many : one));
+
 export function adaptScene(scene, people, sisters = false) {
+  scene = pickScene(scene, people.length);
   const has = new Set(people.map((p) => p.role));
   let parts = scene.split(/,\s|;\s/);
   if (!has.has('mid')) parts = parts.filter((s) => !/toddler/.test(s));
@@ -29,6 +33,7 @@ export function adaptScene(scene, people, sisters = false) {
   let out = parts.join(', ');
   if (people.length === 1) {
     return out
+      .replace(/,? (holding hands|hand in hand)( in a row)?/g, '')
       .replace(/the three sisters/g, 'the child')
       .replace(/the older girl|the big sister|her big sister/g, 'the child');
   }
@@ -53,31 +58,35 @@ const who = (p) => {
 // Pages are drawn from the approved sheet (image 1) plus each child's photo (images 2…).
 // Tested on 4B: calling image 1 a "sheet" or mentioning its two views makes FLUX paint the child twice;
 // "the child in image 1, drawn exactly as there" gives one child who still looks like the photo.
-export function customCast(people) {
-  if (people.length === 1) {
-    return `the child in image 1, drawn exactly as there — same face, skin tone, hair, clothing and art style (image 2 is their real photo, for their face): ${who(people[0])}`;
-  }
-  const photos = people.map((p, i) => `image ${i + 2} is ${p.name || ROLE_WORDS[p.role]}`).join(', ');
-  return `the ${people.length} children in image 1, each drawn exactly as there — same faces, skin tone, hair, clothing and art style (their real photos, for their faces: ${photos}): ${people.map(who).join('; ')}`;
+// Without the last two sentences FLUX lends the child's face to angels and grown-ups, and draws the child
+// from behind as a generic kid.
+export function customCast(people, notes = '') {
+  const one = people.length === 1;
+  const refs = one
+    ? 'the child in image 1, drawn exactly as there — same face, skin tone, hair, outfit and art style (image 2 is their real photo, used only for the face)'
+    : `the ${people.length} children in image 1, each drawn exactly as there — same faces, skin tone, hair, outfits and art style (their real photos, used only for faces: ${people.map((p, i) => `image ${i + 2} is ${p.name || ROLE_WORDS[p.role]}`).join(', ')})`;
+  return `${refs}: ${people.map(who).join('; ')}${notes ? `. As approved: ${notes}` : ''}. Show ${one ? "the child's face" : "each child's face"} clearly, facing the viewer or three-quarter view, never from behind. Only ${one ? 'the child looks' : 'the children look'} like the reference — every other figure (angels, grown-ups, animals) has a completely different face, hair and clothing and no headband or bow`;
 }
 
 // What worked in testing (FLUX.2 klein 4B): a two-view sheet — big waist-up portrait + full body — per child,
 // the photo as the identity reference, the child's features written out, and "realistic proportions for their age".
-// Full-body-only sheets drift into generic chibi faces.
+// Full-body-only sheets drift into generic chibi faces. The reader's notes lead the prompt (and win over the photo
+// for clothing), and both views must share one outfit, with nothing carried over from the photo but the child.
 export function castSheetPrompt(people, notes = '') {
   const n = people.length;
   const layout =
     n === 1
       ? "Character sheet of the child in image 1 for a children's picture book, two views of the same child side by side on a plain cream background: on the left a large waist-up portrait facing the viewer, on the right the same child full body standing."
       : `Character sheet of the ${n} children in the reference photos (${people.map((p, i) => `image ${i + 1} is ${p.name || ROLE_WORDS[p.role]}`).join('; ')}) for a children's picture book, on a plain cream background, left to right in that order: for each child a large waist-up portrait facing the viewer, with the same child full body standing next to it.`;
-  return `${layout} Preserve each child's identity exactly from their own photo: face shape, eyes, eyebrows, nose, lips, skin tone, hair, hairline and accessories. ${people.map(who).join('. ')}. Realistic child proportions for their age (not chibi, normal-sized heads). Modest clothing with sleeves, true to the photo. Warm gouache and watercolor, soft painterly edges, gentle warm light. Only ${n === 1 ? 'this one child' : `these ${n} children`}, no text.${notes ? ` Make sure: ${notes}.` : ''}`;
+  const wish = notes ? ` Required changes, applied to every view: ${notes}.` : '';
+  return `${layout}${wish} Preserve each child's identity exactly from their own photo: face shape, eyes, eyebrows, nose, lips, skin tone, hair, hairline and accessories. ${people.map(who).join('. ')}. Realistic child proportions for their age (not chibi, normal-sized heads). Each child wears one outfit, identical in the portrait and the full-body view (the portrait shows the same neckline and sleeves) — ${notes ? 'as required above, otherwise ' : ''}modest, with sleeves; do not copy the clothes from the photo unless they fit. Leave out everything else from the photos: no pets, toys, objects or background. Warm gouache and watercolor, soft painterly edges, gentle warm light. Only ${n === 1 ? 'this one child' : `these ${n} children`}, no text.`;
 }
 
 // Edit an existing sheet (the image after the photos) with the reader's notes; the photos stay the truth for faces.
 export function sheetFixPrompt(people, notes) {
   const n = people.length;
   const sheet = n + 1;
-  return `Image ${sheet} is a picture-book character sheet of the ${n === 1 ? 'child in image 1' : `children in images 1 to ${n}`}. Edit image ${sheet}: ${notes}. Make each face match their photo even more closely — face shape, eyes, nose, mouth, skin tone, hair. Otherwise keep the layout, poses, clothing and watercolor style of image ${sheet} unchanged. No text.`;
+  return `Image ${sheet} is a picture-book character sheet of the ${n === 1 ? 'child in image 1' : `children in images 1 to ${n}`}, drawn twice per child (portrait and full body). Change image ${sheet}: ${notes}. Apply the change to both views of ${n === 1 ? 'the child' : 'each child'}, so they match each other. Keep each face true to their photo — face shape, eyes, nose, mouth, skin tone, hair — and keep the layout and watercolor style. Remove any pets, toys or objects. No text.`;
 }
 
 // Story text for an uploaded cast (see tell() in books.mjs for the markup).

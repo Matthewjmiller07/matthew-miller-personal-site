@@ -260,7 +260,7 @@ const names = listNames(castNames(defaultCast));
     if (!f || !current) return;
     e.preventDefault();
     const i = [...$('out-spreads').children].indexOf(f.closest('.spread'));
-    const { book, sisters, code, lite, photos, images } = current;
+    const { book, sisters, code, lite, photos, images, sheetNotes, ref } = current;
     const btn = f.querySelector('button');
     const note = f.querySelector('input');
     btn.disabled = true;
@@ -268,7 +268,7 @@ const names = listNames(castNames(defaultCast));
     f.closest('figure').querySelector('.pic').classList.add('busy');
     try {
       const url = await wait(await call({
-        action: 'page', slug: book.slug, page: i, sheet: images.sheet, people: lite, photos, sisters, code,
+        action: 'page', slug: book.slug, page: i, sheet: ref, people: lite, photos, sisters, sheetNotes, code,
         notes: note.value.trim(), seed: Math.floor(Math.random() * 1e9),
       }));
       images.pages[i] = url;
@@ -284,16 +284,16 @@ const names = listNames(castNames(defaultCast));
   });
 
   // --- Step 1: the character sheet, iterated until it looks right -------------------------
-  let draft = null; // { book, cast, sisters, code, people (with photos), lite, takes: [url], chosen }
+  let draft = null; // { book, cast, sisters, code, people (with photos), lite, takes: [{ url, notes }], chosen }
   const sheetStatus = $('sheet-status');
   const sheetButtons = ['sheet-ok', 'sheet-fix', 'sheet-new'].map($);
 
   function showTakes() {
-    $('sheet-view').src = draft.takes[draft.chosen];
+    $('sheet-view').src = draft.takes[draft.chosen].url;
     const strip = $('sheet-takes');
     strip.innerHTML = '';
     if (draft.takes.length < 2) return;
-    draft.takes.forEach((url, i) => {
+    draft.takes.forEach(({ url }, i) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = i === draft.chosen ? 'on' : '';
@@ -303,12 +303,13 @@ const names = listNames(castNames(defaultCast));
     });
   }
 
-  async function drawSheet(extra, label) {
+  // notes: every change the reader asked for that led to this take — carried into the pages too.
+  async function drawSheet(extra, label, notes) {
     sheetButtons.forEach((b) => (b.disabled = true));
     sheetStatus.textContent = label;
     try {
       const url = await wait(await call({ action: 'cast', people: draft.people, code: draft.code, ...extra }));
-      draft.takes.push(url);
+      draft.takes.push({ url, notes });
       draft.chosen = draft.takes.length - 1;
       showTakes();
       sheetStatus.textContent = 'Not quite? Say what to change and fix it, or try a new one.';
@@ -357,17 +358,38 @@ const names = listNames(castNames(defaultCast));
     $('sheet-view').removeAttribute('src');
     $('sheet-takes').innerHTML = '';
     $('sheet-step').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    drawSheet({}, 'Drawing the character sheet…');
+    drawSheet({}, 'Drawing the character sheet…', '');
   });
 
   $('sheet-fix').addEventListener('click', () => {
     const notes = $('sheet-notes').value.trim();
     if (!notes) { sheetStatus.textContent = 'Say what should change first.'; return; }
-    drawSheet({ base: draft.takes[draft.chosen], notes }, 'Fixing the sheet…');
+    const prev = draft.takes[draft.chosen];
+    drawSheet({ base: prev.url, notes }, 'Fixing the sheet…', [prev.notes, notes].filter(Boolean).join('; '));
+    $('sheet-notes').value = '';
   });
   $('sheet-new').addEventListener('click', () => {
-    drawSheet({ notes: $('sheet-notes').value.trim(), seed: Math.floor(Math.random() * 1e9) }, 'Drawing a new take…');
+    const notes = [draft.takes[draft.chosen]?.notes, $('sheet-notes').value.trim()].filter(Boolean).join('; ');
+    drawSheet({ notes, seed: Math.floor(Math.random() * 1e9) }, 'Drawing a new take…', notes);
+    $('sheet-notes').value = '';
   });
+
+  // One child: the sheet is portrait (left) + full body (right). Handing FLUX both views makes it paint the child
+  // twice; the full-body half alone keeps one child with the same face and outfit on every page (tested on 4B).
+  async function figureOnly(url) {
+    const bmp = await createImageBitmap(await (await fetch(proxied(url))).blob());
+    const sx = Math.round(bmp.width * 0.5);
+    const c = document.createElement('canvas');
+    const scale = Math.min(1, 900 / bmp.height);
+    c.width = Math.round((bmp.width - sx) * scale);
+    c.height = Math.round(bmp.height * scale);
+    c.getContext('2d').drawImage(bmp, sx, 0, bmp.width - sx, bmp.height, 0, 0, c.width, c.height);
+    for (const q of [0.88, 0.78, 0.65]) {
+      const d = c.toDataURL('image/jpeg', q);
+      if (d.length < 380_000) return d;
+    }
+    return url;
+  }
 
   // --- Step 2: illustrate the book from the approved sheet ---------------------------------
   $('sheet-ok').addEventListener('click', async () => {
@@ -379,8 +401,14 @@ const names = listNames(castNames(defaultCast));
     $('out-title').textContent = `Parashat ${book.parasha}: ${book.title}`;
     renderSpreads(book, cast, sisters);
     for (const b of out.querySelectorAll('.actions button')) b.disabled = true;
-    const images = { cover: null, pages: [], sheet: draft.takes[draft.chosen] };
-    current = { book, cast, sisters, people, images, code, lite, photos };
+    const images = { cover: null, pages: [], sheet: draft.takes[draft.chosen].url };
+    const sheetNotes = draft.takes[draft.chosen].notes;
+    // What the pages are drawn from: the full-body crop for one child, the whole sheet otherwise.
+    let ref = images.sheet;
+    if (people.length === 1) {
+      try { ref = await figureOnly(images.sheet); } catch { /* fall back to the whole sheet */ }
+    }
+    current = { book, cast, sisters, people, images, code, lite, photos, sheetNotes, ref };
     $('sheet-img').src = images.sheet;
     out.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -398,7 +426,7 @@ const names = listNames(castNames(defaultCast));
       await Promise.all([0, 1, 2, 3].map(async () => {
         while (queue.length) {
           const page = queue.shift();
-          const url = await wait(await call({ action: 'page', slug: book.slug, page, sheet: images.sheet, people: lite, photos, sisters, code }));
+          const url = await wait(await call({ action: 'page', slug: book.slug, page, sheet: ref, people: lite, photos, sisters, sheetNotes, code }));
           if (page === 'cover') images.cover = url;
           else { images.pages[page] = url; setPageImage(page, url); }
           $('out-status').textContent = `Illustrating the book… ${++done}/${jobs.length}`;
