@@ -1,7 +1,7 @@
 // Illustrates a Parasha Book for an uploaded family with FLUX.2 [klein] on Replicate.
 //   POST { action: 'cast', people: [{ role, name, age, look, image }], notes?, seed? }   -> { id }  character sheet from their photos
 //   POST { action: 'cast', people, base: <sheet url>, notes }                           -> { id }  edit that sheet per the notes
-//   POST { action: 'page', slug, page: 'cover'|n, sheet, people, photos?, sisters }     -> { id }  one spread, drawn from the sheet
+//   POST { action: 'page', slug, page: 'cover'|n, sheet, people, photos?, sisters, notes?, seed? } -> { id }  one spread (redo: new seed + notes)
 //   POST { action: 'voice', slug, people, sisters }                    -> { id }  trailer narration retold for this cast
 //   GET  ?id=<prediction>                                                -> { status, output, error }
 //   GET  ?fetch=<replicate.delivery url>                                 -> image bytes (so the browser can save the book)
@@ -89,8 +89,10 @@ export async function POST({ request }) {
       const scene = body.page === 'cover' ? book.cover : book.pages[Number(body.page)]?.scene;
       if (!scene) return json({ error: 'Unknown page' }, 400);
       const photos = Array.isArray(body.photos) ? body.photos.filter(isPhoto).slice(0, 3) : [];
-      const prompt = imagePrompt(adaptScene(scene, people, !!body.sisters), customCast(people), people.length);
-      return json({ id: await predict({ prompt, images: [body.sheet, ...photos], aspect_ratio: '3:2' }) });
+      const notes = text(body.notes, 200);
+      const seed = Number.isInteger(body.seed) ? body.seed : undefined;
+      const prompt = imagePrompt(adaptScene(scene, people, !!body.sisters), customCast(people), people.length) + (notes ? ` Make sure: ${notes}.` : '');
+      return json({ id: await predict({ prompt, images: [body.sheet, ...photos], aspect_ratio: '3:2', seed }) });
     }
     if (body.action === 'voice') {
       // The stock narration says "three sisters"; smaller or non-sister casts get their own read,

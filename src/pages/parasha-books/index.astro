@@ -221,7 +221,13 @@ const names = listNames(castNames(defaultCast));
       el.style.setProperty('--accent', book.color);
       const vs = verses[p.ref] || [];
       el.innerHTML = `
-        <figure><div class="ph">Illustrating…</div></figure>
+        <figure>
+          <div class="pic"><div class="ph">Illustrating…</div></div>
+          <form class="redo" hidden>
+            <input type="text" maxlength="200" placeholder="What's wrong? (optional) e.g. only one child, no headband on the dog" />
+            <button type="submit">↻ Redraw</button>
+          </form>
+        </figure>
         <div class="words">
           <div class="ref"></div><h2><span class="num">${i + 1}</span><span class="t"></span></h2>
           <p class="story"></p>
@@ -243,8 +249,39 @@ const names = listNames(castNames(defaultCast));
 
   function setPageImage(i, url) {
     const fig = $('out-spreads').children[i]?.querySelector('figure');
-    if (fig) fig.innerHTML = `<img src="${url}" alt="">`;
+    if (!fig) return;
+    fig.querySelector('.pic').innerHTML = `<img src="${url}" alt="">`;
+    fig.querySelector('.redo').hidden = false;
   }
+
+  // Per-page redo: a fresh seed, plus the reader's note about what went wrong.
+  $('out-spreads').addEventListener('submit', async (e) => {
+    const f = e.target.closest('form.redo');
+    if (!f || !current) return;
+    e.preventDefault();
+    const i = [...$('out-spreads').children].indexOf(f.closest('.spread'));
+    const { book, sisters, code, lite, photos, images } = current;
+    const btn = f.querySelector('button');
+    const note = f.querySelector('input');
+    btn.disabled = true;
+    btn.textContent = 'Redrawing…';
+    f.closest('figure').querySelector('.pic').classList.add('busy');
+    try {
+      const url = await wait(await call({
+        action: 'page', slug: book.slug, page: i, sheet: images.sheet, people: lite, photos, sisters, code,
+        notes: note.value.trim(), seed: Math.floor(Math.random() * 1e9),
+      }));
+      images.pages[i] = url;
+      setPageImage(i, url);
+      note.value = '';
+    } catch (err) {
+      $('out-status').textContent = `Redraw failed: ${err.message}`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '↻ Redraw';
+      f.closest('figure').querySelector('.pic').classList.remove('busy');
+    }
+  });
 
   // --- Step 1: the character sheet, iterated until it looks right -------------------------
   let draft = null; // { book, cast, sisters, code, people (with photos), lite, takes: [url], chosen }
@@ -343,7 +380,7 @@ const names = listNames(castNames(defaultCast));
     renderSpreads(book, cast, sisters);
     for (const b of out.querySelectorAll('.actions button')) b.disabled = true;
     const images = { cover: null, pages: [], sheet: draft.takes[draft.chosen] };
-    current = { book, cast, sisters, people, images };
+    current = { book, cast, sisters, people, images, code, lite, photos };
     $('sheet-img').src = images.sheet;
     out.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -723,7 +760,14 @@ const names = listNames(castNames(defaultCast));
   .pbm .spreads { display: grid; gap: 24px; }
   .pbm .spread { display: grid; grid-template-columns: 1.15fr 1fr; background: #fbf5ea; color: #2b2118; border-radius: 18px; overflow: hidden; }
   .pbm .spread figure { margin: 0; background: #e9dcc6; display: grid; place-items: center; min-height: 240px; }
+  .pbm .spread figure { display: flex; flex-direction: column; align-items: stretch; }
+  .pbm .spread .pic { flex: 1; display: grid; place-items: center; min-height: 240px; transition: opacity .2s; }
+  .pbm .spread .pic.busy { opacity: .45; }
   .pbm .spread figure img { width: 100%; height: 100%; object-fit: cover; aspect-ratio: 3 / 2; display: block; }
+  .pbm .spread .redo { display: flex; gap: 6px; padding: 8px; background: #e9dcc6; }
+  .pbm .spread .redo input { flex: 1; min-width: 0; font: 14px system-ui, sans-serif; padding: 7px 10px; border-radius: 8px; border: 1px solid #c9b595; background: #fbf5ea; color: #2b2118; }
+  .pbm .spread .redo button { font: 600 13px system-ui, sans-serif; padding: 7px 12px; border-radius: 999px; border: 0; background: #2b2118; color: #fbf5ea; cursor: pointer; white-space: nowrap; }
+  .pbm .spread .redo button:disabled { opacity: .6; cursor: progress; }
   .pbm .ph { font: 600 15px system-ui, sans-serif; color: #8a7358; animation: pbpulse 1.4s ease-in-out infinite; }
   @keyframes pbpulse { 50% { opacity: .4; } }
   .pbm .words { padding: 24px 26px; display: flex; flex-direction: column; gap: 12px; }
