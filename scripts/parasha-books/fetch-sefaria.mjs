@@ -19,7 +19,12 @@ const clean = (s) =>
 
 async function get(ref, version) {
   const url = `https://www.sefaria.org/api/v3/texts/${encodeURIComponent(ref)}?version=${encodeURIComponent(version)}`;
-  const res = await fetch(url);
+  let res;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    res = await fetch(url);
+    if (res.ok || res.status < 500) break;
+    await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt));
+  }
   if (!res.ok) throw new Error(`${ref} ${version}: HTTP ${res.status}`);
   const data = await res.json();
   const v = data.versions?.[0];
