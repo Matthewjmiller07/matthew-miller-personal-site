@@ -14,6 +14,18 @@ export function bookHtml(book, cast, verses, { images, fontBase = '..', story } 
   const spreads = book.pages
     .map((p, i) => {
             const vs = verses[p.ref] || [];
+      // Long passages get smaller type; very long ones move to their own page.
+      const size = vs.reduce((n, v) => n + v.he.length + v.en.length, 0);
+      const own = size > 1900;
+      const torah = `
+    <div class="torah${!own && size > 1100 ? ' dense' : ''}">
+      <div class="label">From the Torah · ${esc(p.ref.replace(/Genesis /g, 'Bereshit '))}</div>
+      ${vs
+        .map(
+          (v) => `<div class="v"><div class="he" dir="rtl" lang="he"><sup>${esc(v.v.split(':')[1])}</sup> ${esc(v.he)}</div><div class="en"><sup>${esc(v.v)}</sup> ${esc(v.en)}</div></div>`,
+        )
+        .join('')}
+    </div>`;
       return `
   <section class="page picture">
     <img src="${images.pages[i]}" alt="${esc(p.title)}">
@@ -23,16 +35,12 @@ export function bookHtml(book, cast, verses, { images, fontBase = '..', story } 
     <header><span class="ref">${esc(p.ref.replace(/Genesis /g, 'Bereshit '))}</span><h2>${esc(p.title)}</h2></header>
     <p class="story">${esc(tell(p.story))}</p>
     <div class="look"><b>Look closely:</b> ${esc(p.question)}<div class="answer">${esc(p.answer)}</div></div>
-    <div class="torah">
-      <div class="label">From the Torah</div>
-      ${vs
-        .map(
-          (v) => `<div class="v"><div class="he" dir="rtl" lang="he"><sup>${esc(v.v.split(':')[1])}</sup> ${esc(v.he)}</div><div class="en"><sup>${esc(v.v)}</sup> ${esc(v.en)}</div></div>`,
-        )
-        .join('')}
-    </div>
+    ${own ? '' : torah}
     <footer>${esc(book.parasha)} · ${i + 1}</footer>
-  </section>`;
+  </section>${own ? `
+  <section class="page text torah-page">${torah}
+    <footer>${esc(book.parasha)} · ${i + 1}</footer>
+  </section>` : ''}`;
     })
     .join('');
 
@@ -72,6 +80,11 @@ html, body { margin: 0; background: #d9cfbf; color: var(--ink); font-family: 'Cr
 .torah .he { font-family: 'NotoHeb', serif; font-size: 11.5pt; line-height: 1.55; text-align: right; }
 .torah .en { font-size: 9.5pt; line-height: 1.35; color: #4a3d30; }
 .torah sup { color: var(--accent); font-size: 7pt; }
+.torah.dense .he { font-size: 10pt; line-height: 1.45; }
+.torah.dense .en { font-size: 8.5pt; line-height: 1.28; }
+.torah-page .torah { margin-top: 0; border-top: 0; }
+.torah-page .torah .he { font-size: 12.5pt; }
+.torah-page .torah .en { font-size: 10.5pt; }
 .text footer { position: absolute; bottom: .25in; right: .8in; font-size: 9pt; color: var(--muted); }
 .cover .title { position: absolute; inset: auto 0 0 0; padding: .9in .7in .55in; color: #fff8ec;
   background: linear-gradient(to top, rgba(20,12,4,.85), rgba(20,12,4,.45) 65%, transparent); }
