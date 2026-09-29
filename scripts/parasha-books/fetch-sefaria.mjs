@@ -5,7 +5,7 @@ import { books } from '../../src/data/parasha-books/books.mjs';
 
 const OUT = new URL('../../src/data/parasha-books/verses.json', import.meta.url);
 const HE = 'Tanach with Nikkud';
-const EN = 'Tanakh: The Holy Scriptures, published by JPS';
+const EN = 'The Koren Jerusalem Bible';
 
 const clean = (s) =>
   String(s)

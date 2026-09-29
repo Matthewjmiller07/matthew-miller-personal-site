@@ -14,6 +14,8 @@ export const STYLE =
 export const books = [
   {
     slug: 'bereshit',
+    // Trailer: which pages play under each voiceover line (0 = cover, 'title' = title card).
+    trailerShots: [[1], [3], [2], [7, 10], [4, 5], [8], [12, 'title']],
     parasha: 'Bereshit',
     hebrew: 'בְּרֵאשִׁית',
     range: 'Genesis 1:1–6:8',
@@ -156,6 +158,8 @@ export const books = [
   },
   {
     slug: 'noach',
+    // Trailer: which pages play under each voiceover line (0 = cover, 'title' = title card).
+    trailerShots: [[1], [6], [2], [4], [3, 5], [7, 8, 10], [9, 'title']],
     parasha: 'Noach',
     hebrew: 'נֹחַ',
     range: 'Genesis 6:9–11:32',
@@ -298,6 +302,8 @@ export const books = [
   },
   {
     slug: 'lech-lecha',
+    // Trailer: which pages play under each voiceover line (0 = cover, 'title' = title card).
+    trailerShots: [[1], [2], [3], [4, 5, 8], [10], [7, 11], [12, 'title']],
     parasha: 'Lech Lecha',
     hebrew: 'לֶךְ־לְךָ',
     range: 'Genesis 12:1–17:27',
