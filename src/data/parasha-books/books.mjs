@@ -336,11 +336,11 @@ export const books = [
         ref: 'Genesis 12:4-6',
         title: 'On the Road',
         story:
-          'Avram went, just as Hashem told him, and Lot went with him. Avram was seventy-five years old when he left Charan. He took Sarai his wife, and Lot, and everything they had, and all the people who were with them — and they set out for the land of Canaan. The sisters walked behind the caravan. {BIG} carried {BABY} on her hip, and {MID} held her hand and asked, "Are we there yet?" about a hundred times. Finally they came to Shechem.',
+          'Avram went, just as Hashem told him, and Lot went with him. Avram was seventy-five years old when he left Charan. He took Sarai his wife, and Lot, and everything they had, and all the people who were with them — and they set out for the land of Canaan. The sisters walked behind the caravan, holding hands in a row. {BABY} toddled along as fast as she could. {MID} asked, "Are we there yet?" about a hundred times. Finally they came to Shechem.',
         question: 'How old was Avram when he left Charan?',
         answer: 'Seventy-five years old (12:4).',
         scene:
-          'a dusty road winding through rolling golden hills toward Canaan, a long caravan of camels, donkeys and robed adult travelers walking ahead in the middle distance; in the foreground the three sisters walk along the road in a row following the caravan, the big sister carrying the baby on her hip, the toddler holding her hand and marching',
+          'a dusty road winding through rolling golden hills toward Canaan, a long caravan of camels, donkeys and robed adult travelers walking ahead in the middle distance; in the foreground the three sisters walk hand in hand in a row along the road following the caravan, seen from the front, the baby toddling on the right',
       },
       {
         ref: 'Genesis 12:7-8',
