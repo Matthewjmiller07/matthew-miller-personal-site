@@ -19,7 +19,7 @@ import tempfile
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FONTS = os.path.join(ROOT, 'scripts', 'parasha-books', 'fonts')
+FONTS = os.path.join(ROOT, 'public', 'parasha-books', 'fonts')
 HEB_FONT = os.path.join(ROOT, 'public', 'fonts', 'NotoSerifHebrew-Bold.ttf')
 W, H, FPS = 1920, 1080, 30
 LEAD_IN = 1.2  # seconds of music before the narrator starts
