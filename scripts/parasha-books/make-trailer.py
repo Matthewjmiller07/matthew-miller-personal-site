@@ -222,11 +222,12 @@ def build(book, cast):
         f"[bed][sc]sidechaincompress=threshold=0.006:ratio=20:attack=10:release=350:makeup=1[ducked];"
         f"aevalsrc='0.9*exp(-2.2*t)*sin(2*PI*(58-22*t)*t)':s=44100:d=2.5,aformat=channel_layouts=stereo,"
         f"adelay={hit_at}|{hit_at}[hit];"
-        f"[ducked][vo][hit]amix=inputs=3:normalize=0:duration=first,loudnorm=I=-15:TP=-1.5:LRA=9[a]"
+        f"[ducked][vo][hit]amix=inputs=3:normalize=0:duration=first,loudnorm=I=-15:TP=-1.5:LRA=9,aresample=48000[a]"
     )
     out = os.path.join(d, 'trailer.mp4')
     ff('-i', voice, '-i', music, '-i', video, '-filter_complex', fc,
-       '-map', '2:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
+       '-map', '2:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000',  # loudnorm upsamples; browsers want 44.1/48 kHz
+       
        '-movflags', '+faststart', '-shortest', out)
     Image.open(title).resize((1280, 720), Image.LANCZOS).save(os.path.join(d, 'trailer-poster.jpg'), quality=86)
     # Timings for the in-browser trailer player (custom casts reuse this voice + music).
