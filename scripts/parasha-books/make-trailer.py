@@ -213,10 +213,13 @@ def build(book, cast):
     hit_at = int((LEAD_IN + vdur + 0.3) * 1000)
     fc = (
         f"[1:a]aformat=sample_rates=44100:channel_layouts=stereo,atrim=0:{total:.2f},"
-        f"afade=t=in:d=1.2,afade=t=out:st={total - 3:.2f}:d=3,volume=0.9[bed];"
+        f"afade=t=in:d=1.2,afade=t=out:st={total - 3:.2f}:d=3,"
+        # Bed dip: glide down ~7 dB as the narrator comes in, swell back up for the title card…
+        f"volume='0.9*(1-0.55*clip((t-{LEAD_IN - 0.4:.2f})/0.6,0,1)*clip(({LEAD_IN + vdur + 0.2:.2f}-t)/1.2,0,1))':eval=frame[bed];"
         f"[0:a]aformat=sample_rates=44100:channel_layouts=stereo,adelay={int(LEAD_IN * 1000)}|{int(LEAD_IN * 1000)},"
         f"apad=whole_dur={total:.2f},volume=1.6,asplit=2[vo][sc];"
-        f"[bed][sc]sidechaincompress=threshold=0.02:ratio=10:attack=15:release=450:makeup=1[ducked];"
+        # …and the sidechain pulls it down further under every word.
+        f"[bed][sc]sidechaincompress=threshold=0.006:ratio=20:attack=10:release=350:makeup=1[ducked];"
         f"aevalsrc='0.9*exp(-2.2*t)*sin(2*PI*(58-22*t)*t)':s=44100:d=2.5,aformat=channel_layouts=stereo,"
         f"adelay={hit_at}|{hit_at}[hit];"
         f"[ducked][vo][hit]amix=inputs=3:normalize=0:duration=first,loudnorm=I=-15:TP=-1.5:LRA=9[a]"

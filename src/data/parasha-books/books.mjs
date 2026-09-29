@@ -330,17 +330,17 @@ export const books = [
         question: 'What did Hashem promise Avram if he would go?',
         answer: 'To make him a great nation, to bless him, make his name great — and that he would be a blessing (12:2).',
         scene:
-          'an ancient tent camp in Charan at dawn, beams of warm golden light falling from the sky, an old bearded man in robes seen from behind standing in the open looking up at the light; in the foreground the three sisters stand together beside a tent watching him in wonder, the baby held in the big sister\'s arms',
+          'wide view of an ancient tent camp in Charan at dawn, huge beams of warm golden light pouring down from the sky, far away in the middle distance a tiny white-bearded old man in a brown robe stands alone looking up into the light; in the foreground the three sisters stand in a row looking up at the light in wonder',
       },
       {
         ref: 'Genesis 12:4-6',
         title: 'On the Road',
         story:
-          'Avram went, just as Hashem told him, and Lot went with him. Avram was seventy-five years old when he left Charan. He took Sarai his wife, and Lot, and everything they had, and all the people who were with them — and they set out for the land of Canaan. The sisters walked with the caravan. {BABY} rode on a very patient donkey. {MID} asked, "Are we there yet?" about a hundred times. Finally they came to Shechem.',
+          'Avram went, just as Hashem told him, and Lot went with him. Avram was seventy-five years old when he left Charan. He took Sarai his wife, and Lot, and everything they had, and all the people who were with them — and they set out for the land of Canaan. The sisters walked behind the caravan. {BIG} carried {BABY} on her hip, and {MID} held her hand and asked, "Are we there yet?" about a hundred times. Finally they came to Shechem.',
         question: 'How old was Avram when he left Charan?',
         answer: 'Seventy-five years old (12:4).',
         scene:
-          'rolling golden hills with a long caravan of camels and robed adult travelers far in the background; in the foreground the baby sitting alone on a small gray donkey laughing, the big sister walking beside it holding its rope, the toddler marching in front',
+          'a dusty road winding through rolling golden hills toward Canaan, a long caravan of camels, donkeys and robed adult travelers walking ahead in the middle distance; in the foreground the three sisters walk along the road in a row following the caravan, the big sister carrying the baby on her hip, the toddler holding her hand and marching',
       },
       {
         ref: 'Genesis 12:7-8',
