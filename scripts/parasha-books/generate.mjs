@@ -10,17 +10,11 @@
 // Then: python3 scripts/parasha-books/make-trailer.py && node scripts/parasha-books/make-pdf.mjs
 import fs from 'node:fs';
 import path from 'node:path';
-import { books, STYLE } from '../../src/data/parasha-books/books.mjs';
+import { books } from '../../src/data/parasha-books/books.mjs';
+import { imagePrompt } from '../../src/data/parasha-books/prompts.mjs';
 
 export const REF_URL =
   'https://raw.githubusercontent.com/Matthewjmiller07/matthew-miller-personal-site/main/public/parasha-books/cast/sisters-modest.jpg';
-
-export const CAST =
-  'the three sisters from the reference image, keeping their exact faces, hair and art style: the 6-year-old big sister with long wavy light-brown hair and a pink bow headband in a modest pink dress with short puffed sleeves; the 2-year-old toddler with dark-brown curly ringlets and a pink bow in a modest floral dress with short puffed sleeves; the one-year-old baby with dark wispy hair in a white short-sleeved onesie';
-
-// "Exactly three children" keeps FLUX from cloning a sister into the background.
-export const imagePrompt = (scene, cast = CAST) =>
-  `${scene}. Exactly three children, one of each, no other children. Characters: ${cast}. ${STYLE}`;
 
 // SSML-ish pauses MiniMax understands: <#0.5#>
 export const voiceScript = (lines) => lines.join(' <#1.0#> ');

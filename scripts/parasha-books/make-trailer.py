@@ -226,6 +226,11 @@ def build(book, cast):
        '-map', '2:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
        '-movflags', '+faststart', '-shortest', out)
     Image.open(title).resize((1280, 720), Image.LANCZOS).save(os.path.join(d, 'trailer-poster.jpg'), quality=86)
+    # Timings for the in-browser trailer player (custom casts reuse this voice + music).
+    with open(os.path.join(d, 'trailer.json'), 'w') as fh:
+        json.dump({'leadIn': LEAD_IN, 'voice': round(vdur, 3), 'total': round(total, 3),
+                   'bounds': [round(b, 3) for b in bounds], 'lines': book['trailer'],
+                   'shots': book['trailerShots']}, fh, indent=1)
     shutil.rmtree(tmp)
     print(f"✓ {book['slug']}: {total:.1f}s → {os.path.relpath(out, ROOT)}")
 
