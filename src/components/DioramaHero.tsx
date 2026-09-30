@@ -72,6 +72,7 @@ const DioramaHero = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [interacted, setInteracted] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -288,6 +289,53 @@ const DioramaHero = ({
       mouse.tx = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.ty = (e.clientY / window.innerHeight) * 2 - 1;
     };
+    // ---------- Drag to spin the monument ----------
+    // Horizontal drags rotate the model; vertical touch drags still scroll the
+    // page (the wrapper uses touch-action: pan-y so the browser owns those).
+    const drag = {
+      yaw: 0, pitch: 0,
+      vyaw: 0, vpitch: 0,
+      dragging: false, lastX: 0, lastY: 0,
+      reset: false,
+    };
+    const PITCH_MIN = -0.22;
+    const PITCH_MAX = 0.3;
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      drag.dragging = true;
+      drag.reset = false;
+      drag.lastX = e.clientX;
+      drag.lastY = e.clientY;
+      drag.vyaw = 0;
+      drag.vpitch = 0;
+      wrap.style.cursor = 'grabbing';
+      try { wrap.setPointerCapture(e.pointerId); } catch { /* noop */ }
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!drag.dragging) return;
+      setInteracted(true);
+      const dx = e.clientX - drag.lastX;
+      const dy = e.clientY - drag.lastY;
+      drag.lastX = e.clientX;
+      drag.lastY = e.clientY;
+      drag.yaw += dx * 0.006;
+      drag.pitch = THREE.MathUtils.clamp(drag.pitch + dy * 0.0035, PITCH_MIN, PITCH_MAX);
+      drag.vyaw = dx * 0.006;
+      drag.vpitch = dy * 0.0035;
+      if (reducedMotion && model) {
+        // No animation loop in reduced-motion mode: re-render on demand.
+        model.rotation.y = drag.yaw;
+        model.rotation.x = drag.pitch;
+        composer.render();
+      }
+    };
+    const onUp = () => {
+      if (!drag.dragging) return;
+      drag.dragging = false;
+      wrap.style.cursor = 'grab';
+    };
+    // Double-click eases the monument back to its composed resting pose.
+    const onDbl = () => { drag.reset = true; };
     let wide = window.innerWidth >= 1024;
     const resize = () => {
       const w = wrap.clientWidth || 1;
@@ -302,6 +350,11 @@ const DioramaHero = ({
 
     window.addEventListener('pointermove', onMouse, { passive: true });
     window.addEventListener('resize', resize);
+    wrap.addEventListener('pointerdown', onDown);
+    wrap.addEventListener('pointermove', onMove);
+    wrap.addEventListener('pointerup', onUp);
+    wrap.addEventListener('pointercancel', onUp);
+    wrap.addEventListener('dblclick', onDbl);
     resize();
 
     // ---------- Loop ----------
@@ -348,8 +401,27 @@ const DioramaHero = ({
       lookTarget.set(xOff, wide ? 1.3 : 2.2, 0);
       camera.lookAt(lookTarget);
 
-      // Model: barely-there turntable when idle
-      if (model && !reducedMotion) model.rotation.y = Math.sin(t * 0.12) * 0.12;
+      // Model: idle sway plus user drag (with inertia); double-click eases
+      // the monument back to its composed resting pose.
+      if (model) {
+        if (!drag.dragging) {
+          drag.yaw += drag.vyaw;
+          drag.pitch = THREE.MathUtils.clamp(drag.pitch + drag.vpitch, PITCH_MIN, PITCH_MAX);
+          drag.vyaw *= 0.94;
+          drag.vpitch *= 0.94;
+          if (drag.reset) {
+            drag.yaw += (0 - drag.yaw) * 0.12;
+            drag.pitch += (0 - drag.pitch) * 0.12;
+            if (Math.abs(drag.yaw) < 0.002 && Math.abs(drag.pitch) < 0.002) {
+              drag.yaw = 0;
+              drag.pitch = 0;
+              drag.reset = false;
+            }
+          }
+        }
+        model.rotation.y = (reducedMotion ? 0 : Math.sin(t * 0.12) * 0.12) + drag.yaw;
+        model.rotation.x = drag.pitch;
+      }
 
       composer.render();
       if (firstFrame) {
@@ -382,6 +454,11 @@ const DioramaHero = ({
       io.disconnect();
       window.removeEventListener('pointermove', onMouse);
       window.removeEventListener('resize', resize);
+      wrap.removeEventListener('pointerdown', onDown);
+      wrap.removeEventListener('pointermove', onMove);
+      wrap.removeEventListener('pointerup', onUp);
+      wrap.removeEventListener('pointercancel', onUp);
+      wrap.removeEventListener('dblclick', onDbl);
       scene.traverse((o) => {
         const mesh = o as THREE.Mesh;
         if (mesh.isMesh) {
@@ -400,7 +477,12 @@ const DioramaHero = ({
   }, [modelUrl]);
 
   return (
-    <div ref={wrapRef} className={`absolute inset-0 overflow-hidden ${className}`} aria-hidden="true">
+    <div
+      ref={wrapRef}
+      className={`absolute inset-0 cursor-grab overflow-hidden select-none ${className}`}
+      style={{ touchAction: 'pan-y' }}
+      aria-hidden="true"
+    >
       {!failed ? (
         <canvas ref={canvasRef} className="block h-full w-full" />
       ) : (
@@ -444,6 +526,14 @@ const DioramaHero = ({
           Preparing the diorama
         </p>
       </div>
+      {/* drag hint — fades away the first time the monument is touched */}
+      {ready && !failed && !interacted && (
+        <div className="pointer-events-none absolute right-6 bottom-6">
+          <p className="text-[11px] tracking-[0.3em] text-[#c9a86a]/60 uppercase">
+            Drag to explore
+          </p>
+        </div>
+      )}
     </div>
   );
 };
