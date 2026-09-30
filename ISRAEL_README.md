@@ -101,19 +101,33 @@ house number at all — those need the other route: unlock the page, open **Shul
 ## Israel in numbers
 
 Below the tracker sits a second React island, `src/components/israel/IsraelNumbers.tsx`,
-rendering open-data charts in five tabs: the shekel (Bank of Israel USD/EUR/GBP rates
+rendering open-data charts in seven tabs: the shekel (Bank of Israel USD/EUR/GBP rates
 since 2006), the Kinneret (monthly level since 1966 with the red lines, plus winter
 gains), people (population since 1960 and aliyah by year and by country), how Raanana
-voted (official per-locality results for the 19th–25th Knessets from data.gov.il), and
-live Raanana weather (Open-Meteo, fetched in the browser).
+voted (official per-locality results for the 19th–25th Knessets from data.gov.il),
+Raanana's ages (population by age band, census demographics, and a Jews/Arabs-by-city
+comparison), crime in Raanana (police case counts 2021–2025 by year, offense group,
+and quarter), and live Raanana weather (Open-Meteo, fetched in the browser).
 
 The data is refreshed at build time by `scripts/fetch-israel-stats.mjs` into
 `public/data/israel-stats/*.json`, which are committed to git:
 
 ```bash
-node scripts/fetch-israel-stats.mjs           # refresh all four files
+node scripts/fetch-israel-stats.mjs           # refresh all six files
 node scripts/fetch-israel-stats.mjs --offline  # keep the committed copies
 ```
+
+The Raanana tab (`raanana.json`) draws on three more data.gov.il datasets: CBS
+residents by locality and age group (age bands), the 2022 Population and Housing
+Census "selected data by locality and statistical area" (demographics: religion,
+birthplace, continent of birth, median age, academic degrees), and the Israel
+Police crime-records dataset 2021–2025 (yearly case counts for locality 8700,
+aggregated by offense group and quarter). Two caveats are documented on the page:
+the census gives one majority-religion code per statistical area, so the city
+comparison shows the share of each city's population living in Jewish-,
+Muslim-, Christian-, Druze-, or other-majority areas (not individual religion);
+and the police figures are filed cases in the published dataset, not a measure
+of unreported crime.
 
 Netlify runs the script on every build. Each source is fetched independently — if one
 fails, its previously committed file is kept and the build carries on. Two quirks

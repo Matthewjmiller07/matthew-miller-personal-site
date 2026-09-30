@@ -62,13 +62,38 @@ interface ElectionsData {
   elections: Election[];
 }
 
-type Tab = 'shekel' | 'kinneret' | 'people' | 'elections' | 'weather';
+interface RaananaData {
+  updated: string;
+  ageGroups: { label: string; v: number }[];
+  ageTotal: number;
+  census: {
+    year: number;
+    popApprox: number;
+    religion: string;
+    bornIsraelPct: number;
+    bornAbroadPct: number;
+    foreignersPct: number;
+    medianAge: number;
+    academicPct: number;
+    ageBands: { label: string; pct: number }[];
+    birthContinent: { label: string; pct: number }[];
+  };
+  religionByCity: { city: string; total: number; shares: { religion: string; pct: number }[] }[];
+  crime: {
+    source: string;
+    years: { year: number; total: number; groups: { name: string; v: number }[]; quarters: { q: string; v: number }[] }[];
+  };
+}
+
+type Tab = 'shekel' | 'kinneret' | 'people' | 'elections' | 'ages' | 'crime' | 'weather';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'shekel', label: 'The shekel' },
   { key: 'kinneret', label: 'Kinneret' },
   { key: 'people', label: 'People' },
   { key: 'elections', label: 'How Raanana voted' },
+  { key: 'ages', label: "Raanana's ages" },
+  { key: 'crime', label: 'Crime in Raanana' },
   { key: 'weather', label: 'Weather now' },
 ];
 
@@ -555,6 +580,356 @@ function ElectionsTab({ data }: { data: ElectionsData | null }) {
   );
 }
 
+/* -------------------------------------------------------------------- ages */
+
+const CITY_EN: Record<string, string> = {
+  'ירושלים': 'Jerusalem',
+  'תל אביב -יפו': 'Tel Aviv–Yafo',
+  'חיפה': 'Haifa',
+  'באר שבע': 'Beersheba',
+  'רעננה': 'Raanana',
+  'כפר סבא': 'Kfar Saba',
+  'הוד השרון': 'Hod HaSharon',
+  'בני ברק': 'Bnei Brak',
+  'אום אל-פחם': 'Umm al-Fahm',
+};
+
+const RELIGION_EN: Record<string, string> = {
+  'יהודים': 'Jews',
+  'מוסלמים': 'Muslims',
+  'נוצרים': 'Christians',
+  'דרוזים': 'Druze',
+  'דת אחרת': 'Other',
+};
+
+const RELIGION_COLORS: Record<string, string> = {
+  Jews: '#38bdf8',
+  Muslims: '#4ade80',
+  Christians: '#c084fc',
+  Druze: '#fbbf24',
+  Other: '#64748b',
+};
+
+function AgesTab({ data }: { data: RaananaData | null }) {
+  const [mode, setMode] = useState<'bands' | 'who' | 'religion'>('bands');
+  const bandRows = useMemo(() => {
+    const total = data?.ageTotal ?? 1;
+    return (data?.ageGroups ?? []).map((g) => ({
+      label: g.label,
+      v: g.v,
+      pct: (100 * g.v) / total,
+    }));
+  }, [data]);
+  const continentRows = useMemo(
+    () => (data?.census.birthContinent ?? []).map((c) => ({ name: c.label, v: c.pct })),
+    [data]
+  );
+  const religionRows = useMemo(
+    () =>
+      (data?.religionByCity ?? []).map((c) => {
+        const row: Record<string, string | number> = { city: CITY_EN[c.city] ?? c.city };
+        for (const s of c.shares) row[RELIGION_EN[s.religion] ?? s.religion] = s.pct;
+        return row;
+      }),
+    [data]
+  );
+  const religionKeys = useMemo(() => {
+    const seen = new Set<string>();
+    for (const c of data?.religionByCity ?? [])
+      for (const s of c.shares) seen.add(RELIGION_EN[s.religion] ?? s.religion);
+    return ['Jews', 'Muslims', 'Christians', 'Druze', 'Other'].filter((k) => seen.has(k));
+  }, [data]);
+  if (!data) return <p className="il-empty">Raanana data didn’t load.</p>;
+  const c = data.census;
+  return (
+    <div className="iln-pane">
+      <div className="iln-row">
+        <button
+          className={`il-btn il-btn-sm ${mode === 'bands' ? 'is-active' : ''}`}
+          onClick={() => setMode('bands')}
+        >
+          Age bands
+        </button>
+        <button
+          className={`il-btn il-btn-sm ${mode === 'who' ? 'is-active' : ''}`}
+          onClick={() => setMode('who')}
+        >
+          Who lives here
+        </button>
+        <button
+          className={`il-btn il-btn-sm ${mode === 'religion' ? 'is-active' : ''}`}
+          onClick={() => setMode('religion')}
+        >
+          Jews &amp; Arabs by city
+        </button>
+      </div>
+      {mode === 'bands' && (
+        <>
+          <Tiles
+            items={[
+              { value: fmtInt(data.ageTotal), label: 'residents (CBS)' },
+              {
+                value: fmtPct(bandRows.reduce((s, r) => s + (r.label === '65+' ? r.pct : 0), 0)),
+                label: 'are 65 or older',
+              },
+              {
+                value: fmtPct(bandRows.filter((r) => ['0–5', '6–18'].includes(r.label)).reduce((s, r) => s + r.pct, 0)),
+                label: 'are under 19',
+              },
+            ]}
+          />
+          <div className="iln-chart">
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={bandRows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" tick={{ fill: '#cbd5e1', fontSize: 13 }} tickLine={false} axisLine={{ stroke: GRID }} />
+                <YAxis
+                  tick={{ fill: AXIS, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: number) => `${Math.round(v / 1000)}k`}
+                  width={44}
+                />
+                <Tooltip
+                  content={
+                    <ChartTip
+                      format={(v: number, _n: string, p: any) => `${fmtInt(v)} · ${fmtPct(p?.payload?.pct ?? 0)}`}
+                    />
+                  }
+                />
+                <Bar dataKey="v" name="residents" fill="#38bdf8" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="il-hint">
+            Residents by age band, Central Bureau of Statistics via data.gov.il — {fmtInt(data.ageTotal)} people
+            in all. Raanana skews young at the bottom and old at the top: nearly a
+            quarter are kids, and a fifth are 65+.
+          </p>
+        </>
+      )}
+      {mode === 'who' && (
+        <>
+          <Tiles
+            items={[
+              { value: `${c.medianAge}`, label: `median age (census ${c.year})` },
+              { value: fmtPct(c.bornIsraelPct), label: 'born in Israel' },
+              { value: fmtPct(c.bornAbroadPct), label: 'born abroad' },
+              { value: fmtPct(c.academicPct), label: 'hold an academic degree' },
+              { value: fmtPct(c.foreignersPct), label: 'foreign citizens' },
+            ]}
+          />
+          <div className="iln-chart">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={continentRows} layout="vertical" margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke={GRID} strokeDasharray="3 3" horizontal={false} />
+                <XAxis
+                  type="number"
+                  tick={{ fill: AXIS, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={fmtPct}
+                  domain={[0, 40]}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  tick={{ fill: '#cbd5e1', fontSize: 13 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={90}
+                />
+                <Tooltip content={<ChartTip format={(v: number) => fmtPct(v)} />} />
+                <Bar dataKey="v" name="share" fill="#fbbf24" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="il-hint">
+            Where Raanana’s residents were born, by continent — {c.year} census. A third
+            were born in Israel, nearly a third in Europe (the French and Anglo
+            immigration shows), and the rest spread across the Americas, Asia, and Africa.
+          </p>
+        </>
+      )}
+      {mode === 'religion' && (
+        <>
+          <div className="iln-chart">
+            <ResponsiveContainer width="100%" height={Math.max(300, religionRows.length * 44)}>
+              <BarChart data={religionRows} layout="vertical" margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke={GRID} strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" hide domain={[0, 100]} />
+                <YAxis
+                  type="category"
+                  dataKey="city"
+                  tick={{ fill: '#cbd5e1', fontSize: 13 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={110}
+                />
+                <Tooltip content={<ChartTip format={(v: number) => fmtPct(v)} />} />
+                {religionKeys.map((k) => (
+                  <Bar key={k} dataKey={k} name={k} stackId="rel" fill={RELIGION_COLORS[k] ?? '#475569'} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="il-hint">
+            Share of each city’s census population living in statistical areas whose
+            majority religion is Jewish, Muslim, Christian, Druze, or other — 2022
+            census via data.gov.il. Raanana, like its Sharon neighbors, sits entirely
+            in Jewish-majority areas; Jerusalem and Haifa show the mixed reality.
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------- crime */
+
+function CrimeTab({ data }: { data: RaananaData | null }) {
+  const [mode, setMode] = useState<'trend' | 'types'>('trend');
+  const [year, setYear] = useState(2025);
+  const years = data?.crime.years ?? [];
+  const trendRows = useMemo(() => years.map((y) => ({ year: String(y.year), total: y.total })), [years]);
+  const sel = years.find((y) => y.year === year) ?? years[years.length - 1];
+  const typeRows = useMemo(
+    () => (sel?.groups ?? []).map((g) => ({ name: g.name, v: g.v })),
+    [sel]
+  );
+  const quarterRows = useMemo(
+    () => (sel?.quarters ?? []).map((q) => ({ q: q.q, v: q.v })),
+    [sel]
+  );
+  if (!data || !sel) return <p className="il-empty">Crime data didn’t load.</p>;
+  const last = years[years.length - 1];
+  const first = years[0];
+  const change = last && first ? ((last.total - first.total) / first.total) * 100 : 0;
+  return (
+    <div className="iln-pane">
+      <div className="iln-row">
+        <button
+          className={`il-btn il-btn-sm ${mode === 'trend' ? 'is-active' : ''}`}
+          onClick={() => setMode('trend')}
+        >
+          Trend 2021–2025
+        </button>
+        <button
+          className={`il-btn il-btn-sm ${mode === 'types' ? 'is-active' : ''}`}
+          onClick={() => setMode('types')}
+        >
+          By type &amp; quarter
+        </button>
+      </div>
+      {mode === 'trend' && (
+        <>
+          <Tiles
+            items={[
+              { value: fmtInt(last.total), label: `police cases in ${last.year}` },
+              {
+                value: `${change >= 0 ? '+' : ''}${change.toFixed(0)}%`,
+                label: `vs ${first.year}`,
+              },
+              { value: fmtInt(Math.round(last.total / 4)), label: 'avg per quarter' },
+            ]}
+          />
+          <div className="iln-chart">
+            <ResponsiveContainer width="100%" height={320}>
+              <ComposedChart data={trendRows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="year" tick={{ fill: '#cbd5e1', fontSize: 13 }} tickLine={false} axisLine={{ stroke: GRID }} />
+                <YAxis
+                  tick={{ fill: AXIS, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: number) => `${(v / 1000).toFixed(1)}k`}
+                  width={44}
+                />
+                <Tooltip content={<ChartTip format={(v: number) => `${fmtInt(v)} cases`} />} />
+                <Bar dataKey="total" name="police cases" fill="#f87171" radius={[4, 4, 0, 0]} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="il-hint">
+            Filed police cases in Raanana per year, from the Israel Police open
+            dataset. These are cases that reached the police — not a measure of
+            unreported crime.
+          </p>
+        </>
+      )}
+      {mode === 'types' && (
+        <>
+          <div className="iln-row">
+            {years.map((y) => (
+              <button
+                key={y.year}
+                className={`il-btn il-btn-sm ${y.year === sel.year ? 'is-active' : ''}`}
+                onClick={() => setYear(y.year)}
+              >
+                {y.year}
+              </button>
+            ))}
+          </div>
+          <Tiles
+            items={[
+              { value: fmtInt(sel.total), label: `cases in ${sel.year}` },
+              {
+                value: sel.groups[0] ? sel.groups[0].name : '—',
+                label: sel.groups[0] ? `most common: ${fmtInt(sel.groups[0].v)}` : 'most common type',
+              },
+            ]}
+          />
+          <div className="iln-chart">
+            <ResponsiveContainer width="100%" height={Math.max(260, typeRows.length * 40)}>
+              <BarChart data={typeRows} layout="vertical" margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke={GRID} strokeDasharray="3 3" horizontal={false} />
+                <XAxis
+                  type="number"
+                  tick={{ fill: AXIS, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${v}`)}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  tick={{ fill: '#cbd5e1', fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={130}
+                />
+                <Tooltip content={<ChartTip format={(v: number) => `${fmtInt(v)} cases`} />} />
+                <Bar dataKey="v" name="cases" fill="#f87171" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="iln-chart">
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={quarterRows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="q" tick={{ fill: '#cbd5e1', fontSize: 13 }} tickLine={false} axisLine={{ stroke: GRID }} />
+                <YAxis
+                  tick={{ fill: AXIS, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: number) => `${v}`}
+                  width={44}
+                />
+                <Tooltip content={<ChartTip format={(v: number) => `${fmtInt(v)} cases`} />} />
+                <Bar dataKey="v" name="cases" fill="#fb923c" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="il-hint">
+            {sel.year} in Raanana: cases by offense group and by quarter. Property
+            crime dominates, as in most Israeli cities.
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ----------------------------------------------------------------- weather */
 
 interface WeatherNow {
@@ -653,12 +1028,14 @@ export default function IsraelNumbers() {
   const [kinneret, setKinneret] = useState<KinneretData | null>(null);
   const [people, setPeople] = useState<PeopleData | null>(null);
   const [elections, setElections] = useState<ElectionsData | null>(null);
+  const [raanana, setRaanana] = useState<RaananaData | null>(null);
 
   useEffect(() => {
     fetchJson<FxData>('fx.json').then(setFx);
     fetchJson<KinneretData>('kinneret.json').then(setKinneret);
     fetchJson<PeopleData>('people.json').then(setPeople);
     fetchJson<ElectionsData>('elections.json').then(setElections);
+    fetchJson<RaananaData>('raanana.json').then(setRaanana);
   }, []);
 
   return (
@@ -680,6 +1057,8 @@ export default function IsraelNumbers() {
       {tab === 'kinneret' && <KinneretTab data={kinneret} />}
       {tab === 'people' && <PeopleTab data={people} />}
       {tab === 'elections' && <ElectionsTab data={elections} />}
+      {tab === 'ages' && <AgesTab data={raanana} />}
+      {tab === 'crime' && <CrimeTab data={raanana} />}
       {tab === 'weather' && <WeatherTab />}
     </div>
   );

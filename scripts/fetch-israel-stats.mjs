@@ -265,10 +265,212 @@ async function fetchElections() {
   };
 }
 
+/* ----------------------------------------------------------------- raanana --- */
+
+// Raanana age bands (CBS, locality code 8700). Datastore fields are Hebrew
+// ('גיל_0_5' … 'גיל_65_פלוס'); keys below match after stripping non-ASCII.
+const AGE_RESOURCE = '64edd0ee-3d5d-43ce-8562-c336c24dbc1f';
+const AGE_BANDS = [
+  ['_0_5', '0–5'],
+  ['_6_18', '6–18'],
+  ['_19_45', '19–45'],
+  ['_46_55', '46–55'],
+  ['_56_64', '56–64'],
+  ['_65_', '65+'],
+];
+
+// 2022 census: selected data by locality and statistical area.
+const CENSUS_RESOURCE = '9a9e085f-3bc8-41df-b15f-be0daaf99e30';
+
+// Police "crime records" dataset (תיקי פשיעה), one resource per year.
+// Each record is a filed case; totals are dataset records, not a claim about
+// unreported crime.
+const CRIME_RESOURCES = [
+  { year: 2021, resource: '3f71fd16-25b8-4cfe-8661-e6199db3eb12' },
+  { year: 2022, resource: 'a59f3e9e-a7fe-4375-97d0-76cea68382c1' },
+  { year: 2023, resource: '32aacfc9-3524-4fba-a282-3af052380244' },
+  { year: 2024, resource: '5fc13c50-b6f3-4712-b831-a75e0f91a17e' },
+  { year: 2025, resource: 'e311b6a1-be5a-4a82-8298-f3afbee07b6b' },
+];
+
+const CRIME_GROUP_EN = {
+  'עבירות כלפי הרכוש': 'Property',
+  'עבירות סדר ציבורי': 'Public order',
+  'עבירות כלפי הסדר הציבורי': 'Public order',
+  'עבירות נגד גוף': 'Against the person',
+  'עבירות גוף': 'Against the person',
+  'עבירות נגד אדם': 'Against the person',
+  'עבירות מרמה': 'Fraud',
+  'עבירות כלפי המוסר': 'Morality',
+  'עבירות מוסר': 'Morality',
+  'עבירות מין': 'Sex offenses',
+  'עבירות כלכליות': 'Economic',
+  'עבירות תנועה': 'Traffic',
+  'עבירות ביטחון': 'Security',
+  'עבירות בטחון': 'Security',
+  'עבירות סמים': 'Drugs',
+  'עבירות נשק': 'Weapons',
+  'עבירות רשוי': 'Licensing',
+  'שאר עבירות': 'Other',
+  'סעיפי הגדרה': 'Other',
+  'שגיאת הזנה': 'Other',
+};
+
+/** All datastore records matching a free-text query (the filters= param is flaky). */
+async function datastoreAll(resource, q) {
+  const rows = [];
+  let offset = 0;
+  for (;;) {
+    const data = await getJson(
+      `https://data.gov.il/api/3/action/datastore_search?resource_id=${resource}` +
+        `&q=${encodeURIComponent(q)}&limit=2000&offset=${offset}`
+    );
+    const recs = data.result.records;
+    rows.push(...recs);
+    offset += recs.length;
+    if (offset >= data.result.total || !recs.length) break;
+  }
+  return rows;
+}
+
+async function fetchRaanana() {
+  // --- age bands ---------------------------------------------------------
+  const ageRows = await datastoreAll(AGE_RESOURCE, 'רעננה');
+  const ageRow = ageRows.find((r) => String(r.sml_yeshuv ?? r['סמל_ישוב']) === String(RAANANA_SEMEL));
+  if (!ageRow) throw new Error('no Raanana row in age dataset');
+  const keys = Object.keys(ageRow);
+  const pick = (band) => {
+    const k = keys.find((x) => x.replace(/[^0-9a-z_]/gi, '') === band);
+    return k ? Number(ageRow[k]) : NaN;
+  };
+  const ageGroups = AGE_BANDS.map(([key, label]) => ({ label, v: pick(key) })).filter(
+    (g) => Number.isFinite(g.v)
+  );
+  const ageTotal = ageGroups.reduce((s, g) => s + g.v, 0);
+  log(`Raanana ages: ${ageGroups.length} bands, total ${ageTotal.toLocaleString('en-US')}`);
+
+  // --- census 2022 locality row ------------------------------------------
+  const censusRows = await datastoreAll(CENSUS_RESOURCE, 'רעננה');
+  const locRow = censusRows.find(
+    (r) => r.LocNameHeb === 'רעננה' && !r.StatArea
+  );
+  if (!locRow) throw new Error('no Raanana locality row in census dataset');
+  const census = {
+    year: 2022,
+    popApprox: Number(locRow.pop_approx),
+    religion: locRow.ReligionHeb,
+    bornIsraelPct: Number(locRow.j_isr_pcnt),
+    bornAbroadPct: Number(locRow.j_abr_pcnt),
+    foreignersPct: Number(locRow.Foreign_pcnt),
+    medianAge: Number(locRow.age_median),
+    academicPct: Number(locRow.AcadmCert_pcnt),
+    ageBands: [
+      { label: '0–19', pct: Number(locRow.age0_19_pcnt) },
+      { label: '20–64', pct: Number(locRow.age20_64_pcnt) },
+      { label: '65+', pct: Number(locRow.age65_pcnt) },
+    ],
+    birthContinent: [
+      { label: 'Israel', pct: Number(locRow.israel_pcnt) },
+      { label: 'Europe', pct: Number(locRow.europe_pcnt) },
+      { label: 'Americas', pct: Number(locRow.america_pcnt) },
+      { label: 'Asia', pct: Number(locRow.asia_pcnt) },
+      { label: 'Africa', pct: Number(locRow.africa_pcnt) },
+    ],
+  };
+
+  // --- religion mix per city: share of the census population living in
+  //     statistical areas whose majority religion is X --------------------
+  const RELIGION_CITIES = [
+    'ירושלים',
+    'תל אביב -יפו',
+    'חיפה',
+    'באר שבע',
+    'רעננה',
+    'כפר סבא',
+    'הוד השרון',
+    'בני ברק',
+    'אום אל-פחם',
+  ];
+  const RELIGION_ORDER = ['יהודים', 'מוסלמים', 'נוצרים', 'דרוזים', 'דת אחרת'];
+  const religionByCity = [];
+  for (const city of RELIGION_CITIES) {
+    const rows = await datastoreAll(CENSUS_RESOURCE, city);
+    const byRel = {};
+    let total = 0;
+    for (const r of rows) {
+      if (r.LocNameHeb !== city || !r.StatArea || !r.pop_approx) continue;
+      const rel = r.ReligionHeb ?? 'אחר';
+      byRel[rel] = (byRel[rel] ?? 0) + Number(r.pop_approx);
+      total += Number(r.pop_approx);
+    }
+    const shares = {};
+    for (const rel of Object.keys(byRel)) {
+      shares[rel] = total ? (100 * byRel[rel]) / total : 0;
+    }
+    religionByCity.push({
+      city,
+      total: Math.round(total),
+      shares: RELIGION_ORDER.filter((r) => shares[r] > 0).map((r) => ({
+        religion: r,
+        pct: Math.round(shares[r] * 10) / 10,
+      })),
+    });
+    log(`religion ${city}: ${religionByCity[religionByCity.length - 1].shares.map((s) => `${s.religion} ${s.pct}%`).join(' / ')}`);
+  }
+
+  // --- crime 2021–2025 ----------------------------------------------------
+  const crimeYears = [];
+  for (const { year, resource } of CRIME_RESOURCES) {
+    const rows = await datastoreAll(resource, 'רעננה');
+    const local = rows.filter((r) => r.Yeshuv === 'רעננה');
+    const groups = {};
+    const quarters = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+    for (const r of local) {
+      const g = r.StatisticGroup ?? 'אחר';
+      groups[g] = (groups[g] ?? 0) + 1;
+      if (quarters[r.Quarter] !== undefined) quarters[r.Quarter] += 1;
+    }
+    const groupRows = Object.entries(groups)
+      .map(([he, v]) => ({ name: CRIME_GROUP_EN[he] ?? 'Other', v }))
+      .sort((a, b) => b.v - a.v);
+    // Fold the long tail of tiny/misc groups into "Other" for a clean chart.
+    const top = groupRows.filter((g) => g.name !== 'Other' && g.v >= 10);
+    const otherV = groupRows.filter((g) => !top.includes(g)).reduce((s, g) => s + g.v, 0);
+    if (otherV > 0) top.push({ name: 'Other', v: otherV });
+    crimeYears.push({
+      year,
+      total: local.length,
+      groups: top.sort((a, b) => b.v - a.v),
+      quarters: ['Q1', 'Q2', 'Q3', 'Q4'].map((q) => ({ q, v: quarters[q] })),
+    });
+    log(`crime ${year}: ${local.length} Raanana records`);
+  }
+
+  return {
+    updated: today(),
+    localityEn: "Ra'anana",
+    semel: RAANANA_SEMEL,
+    ageGroups,
+    ageTotal,
+    census,
+    religionByCity,
+    crime: {
+      source: 'Israel Police crime-records dataset via data.gov.il (filed cases, not unreported crime)',
+      years: crimeYears,
+    },
+    sources: [
+      'CBS via data.gov.il — residents by locality and age group',
+      '2022 Population and Housing Census via data.gov.il — selected data by locality/statistical area',
+      'Israel Police via data.gov.il — crime records 2021–2025',
+    ],
+  };
+}
+
 /* ------------------------------------------------------------------ main --- */
 
 await resilient('fx.json', fetchFx);
 await resilient('kinneret.json', fetchKinneret);
 await resilient('people.json', fetchPeople);
 await resilient('elections.json', fetchElections);
+await resilient('raanana.json', fetchRaanana);
 log('done');
