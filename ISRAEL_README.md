@@ -12,6 +12,8 @@ Anyone can read it. Adding entries needs a passcode.
 | --- | --- |
 | `src/pages/israel.astro` | The page — hero, styles, and the React island |
 | `src/components/israel/` | The tracker: map, forms, lists, stats |
+| `src/components/israel/IsraelNumbers.tsx` | The open-data charts below the tracker |
+| `scripts/fetch-israel-stats.mjs` | Refreshes `public/data/israel-stats/*.json` |
 | `src/pages/api/israel.js` | The only write path; service-role key behind a passcode |
 | `scripts/build-israel-places.mjs` | Rebuilds the settlement list and the region polygons |
 | `scripts/geocode-israel-shuls.mjs` | Turns shul street addresses into map pins |
@@ -95,6 +97,36 @@ is full of floor numbers, landmarks and parentheticals that geocoders choke on),
 honours Nominatim's one-request-per-second policy. Two addresses in the list have no
 house number at all — those need the other route: unlock the page, open **Shuls**, hit
 **Pin**, and click the spot on the map.
+
+## Israel in numbers
+
+Below the tracker sits a second React island, `src/components/israel/IsraelNumbers.tsx`,
+rendering open-data charts in five tabs: the shekel (Bank of Israel USD/EUR/GBP rates
+since 2006), the Kinneret (monthly level since 1966 with the red lines, plus winter
+gains), people (population since 1960 and aliyah by year and by country), how Raanana
+voted (official per-locality results for the 19th–25th Knessets from data.gov.il), and
+live Raanana weather (Open-Meteo, fetched in the browser).
+
+The data is refreshed at build time by `scripts/fetch-israel-stats.mjs` into
+`public/data/israel-stats/*.json`, which are committed to git:
+
+```bash
+node scripts/fetch-israel-stats.mjs           # refresh all four files
+node scripts/fetch-israel-stats.mjs --offline  # keep the committed copies
+```
+
+Netlify runs the script on every build. Each source is fetched independently — if one
+fails, its previously committed file is kept and the build carries on. Two quirks
+worth knowing when the election data misbehaves:
+
+- Older Knesset resources on data.gov.il ingest every column as text and spell the
+  locality-code field differently (`סמל ישוב` vs `סמל יישוב`), so the script discovers
+  the field and its type per resource instead of assuming.
+- Ballot letters get re-used by different parties every election (טב was Habayit
+  Hayehudi, then the Union of Right-Wing Parties, then Yamina). The letter→party
+  table in the script was checked against Hebrew Wikipedia's per-election pages on
+  2026-09-30; if a future fetch warns about unmapped letters, that's the table to
+  extend.
 
 ## Everyday use
 
