@@ -288,12 +288,6 @@ const DioramaHero = ({
       mouse.tx = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.ty = (e.clientY / window.innerHeight) * 2 - 1;
     };
-    let scrollP = 0;
-    const onScroll = () => {
-      const h = wrap.getBoundingClientRect();
-      const total = Math.max(1, h.height - window.innerHeight);
-      scrollP = Math.min(1, Math.max(0, -h.top / total));
-    };
     let wide = window.innerWidth >= 1024;
     const resize = () => {
       const w = wrap.clientWidth || 1;
@@ -304,14 +298,11 @@ const DioramaHero = ({
       renderer.setSize(w, hgt, false);
       composer.setSize(w, hgt);
       bloom.setSize(w, hgt);
-      onScroll();
     };
 
     window.addEventListener('pointermove', onMouse, { passive: true });
-    window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', resize);
     resize();
-    onScroll();
 
     // ---------- Loop ----------
     const clock = new THREE.Clock();
@@ -348,8 +339,8 @@ const DioramaHero = ({
       const angle = sway + mouse.x * 0.22;
       // On narrow screens the monument drops to the lower half, clear of the
       // centered headline; no scroll dolly there.
-      const radius = (wide ? THREE.MathUtils.lerp(9.4, 7.0, scrollP) : 10.5) + mouse.y * -0.35;
-      const height = (wide ? THREE.MathUtils.lerp(3.1, 2.0, scrollP) : 2.8) + mouse.y * -0.25;
+      const radius = (wide ? 9.4 : 10.5) + mouse.y * -0.35;
+      const height = (wide ? 3.1 : 2.8) + mouse.y * -0.25;
       // Negative xOff swings the camera left of the model, placing the
       // monument right-of-center on wide screens without clipping it.
       const xOff = wide ? -1.0 : 0;
