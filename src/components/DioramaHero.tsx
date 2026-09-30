@@ -381,7 +381,6 @@ const DioramaHero = ({
       cancelAnimationFrame(raf);
       io.disconnect();
       window.removeEventListener('pointermove', onMouse);
-      window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', resize);
       scene.traverse((o) => {
         const mesh = o as THREE.Mesh;
