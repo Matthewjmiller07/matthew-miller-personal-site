@@ -1,0 +1,365 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="fonts-local.css">
+<style>
+:root{--gold:#f4c46a;--gold2:#ffdf9e;--teal:#5fd8e6;--teal2:#b5f3fa;--red:#ff4d5e;--ink:#08070c;--paper:#efe6d2;--mute:#9a94a6}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--ink)}
+#bg{position:absolute;inset:0}
+#stage{position:absolute;inset:0;overflow:hidden}
+.scene{position:absolute;inset:0;display:none}
+.abs{position:absolute}
+.c{position:absolute;left:0;right:0;text-align:center}
+.he{font-family:'Frank Ruhl Libre',serif;direction:rtl;unicode-bidi:isolate}
+.rashi{font-family:'Noto Rashi Hebrew',serif;direction:rtl}
+.heb{font-family:'Heebo',sans-serif;direction:rtl}
+.disp{font-family:'Bebas Neue',sans-serif;letter-spacing:.04em}
+.en{font-family:'Inter',sans-serif;color:var(--paper)}
+.gold{color:var(--gold)}.teal{color:var(--teal)}.red{color:var(--red)}.mute{color:var(--mute)}
+.glowg{text-shadow:0 0 40px rgba(244,196,106,.55),0 0 4px rgba(255,223,158,.6)}
+.glowt{text-shadow:0 0 40px rgba(95,216,230,.5),0 0 4px rgba(181,243,250,.6)}
+.hl{--g:0;white-space:nowrap;border-radius:10px;padding:0 .12em;background:rgba(244,196,106,calc(var(--g)*.28));box-shadow:0 0 calc(var(--g)*40px) rgba(244,196,106,calc(var(--g)*.5)),inset 0 0 0 calc(var(--g)*3px) rgba(255,223,158,calc(var(--g)*.9))}
+.hlt{--g:0;white-space:nowrap;border-radius:10px;padding:0 .12em;background:rgba(95,216,230,calc(var(--g)*.25));box-shadow:0 0 calc(var(--g)*40px) rgba(95,216,230,calc(var(--g)*.5)),inset 0 0 0 calc(var(--g)*3px) rgba(181,243,250,calc(var(--g)*.9))}
+.tag{display:inline-block;font-family:'Inter';font-weight:800;font-size:22px;letter-spacing:.22em;text-transform:uppercase;padding:10px 22px;border-radius:999px}
+.tag.g{color:#1a1206;background:var(--gold)}.tag.t{color:#04181b;background:var(--teal)}
+.tag.o{color:var(--paper);border:2px solid rgba(239,230,210,.35)}
+.card{position:absolute;top:250px;width:800px;height:600px;border-radius:28px;padding:48px;background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015));}
+.card.g{right:110px;border:2px solid rgba(244,196,106,.55);box-shadow:0 0 80px rgba(244,196,106,.15),inset 0 0 60px rgba(244,196,106,.06)}
+.card.t{left:110px;border:2px solid rgba(95,216,230,.55);box-shadow:0 0 80px rgba(95,216,230,.15),inset 0 0 60px rgba(95,216,230,.06)}
+.line{position:absolute;height:3px}
+.quote{border-right:6px solid var(--gold);padding-right:34px}
+.src{font-family:'Inter';font-weight:600;font-size:24px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+.bar{position:absolute;left:0;right:0;height:1080px}
+table.sb{border-collapse:separate;border-spacing:0 14px;margin:0 auto}
+table.sb td{font-size:40px;padding:14px 40px}
+.pin{position:absolute;width:34px;height:34px;border-radius:50%}
+</style></head>
+<body>
+<canvas id="bg" width="1920" height="1080"></canvas>
+<div id="stage"></div>
+<script>
+const stage=document.getElementById('stage');
+const S=[];let T=0;
+const E={lin:t=>t,out:t=>1-Math.pow(1-t,3),in:t=>t*t*t,io:t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2,
+ expo:t=>t>=1?1:1-Math.pow(2,-10*t),back:t=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2)}};
+const DEF={o:1,x:0,y:0,s:1,sx:1,r:0,b:0,c:1,cl:1,g:0};
+function scene(dur,mood,html,setup){
+  const el=document.createElement('div');el.className='scene';el.innerHTML=html;stage.appendChild(el);
+  const sc={el,start:T,dur,mood,items:new Map()};
+  const a=(sel,at,d,from,to,opt={})=>{
+    const els=sel==='@'?[el]:[...el.querySelectorAll(sel)];
+    els.forEach((e,i)=>{
+      const st=at+(opt.stagger||0)*i;
+      if(!sc.items.has(e))sc.items.set(e,{});
+      const it=sc.items.get(e);
+      for(const k of new Set([...Object.keys(from),...Object.keys(to)])){
+        (it[k]=it[k]||[]).push({at:st,d,f:from[k]??DEF[k],t:to[k]??DEF[k],e:E[opt.ease||'out']});
+        it[k].sort((p,q)=>p.at-q.at);
+      }
+    });
+  };
+  // common helpers
+  a.in=(sel,at,opt={})=>a(sel,at,opt.d||.9,{o:0,y:opt.y??40,b:opt.b??10,s:opt.s??1},{o:1,y:0,b:0,s:1},opt);
+  a.out=(sel,at,opt={})=>a(sel,at,opt.d||.5,{o:1},{o:0,y:opt.y??-20},{ease:'in',...opt});
+  a.wipe=(sel,at,opt={})=>a(sel,at,opt.d||1.1,{c:0,o:1},{c:1,o:1},{ease:'io',...opt});
+  a.wipel=(sel,at,opt={})=>a(sel,at,opt.d||1.1,{cl:0,o:1},{cl:1,o:1},{ease:'io',...opt});
+  a.glow=(sel,at,opt={})=>a(sel,at,opt.d||.6,{g:0},{g:1},opt);
+  setup&&setup(a);
+  S.push(sc);T+=dur;
+}
+function val(list,lt){
+  if(lt<list[0].at)return list[0].f;
+  let cur=list[0];for(const k of list)if(k.at<=lt)cur=k;
+  const p=Math.min(1,Math.max(0,(lt-cur.at)/cur.d));return cur.f+(cur.t-cur.f)*cur.e(p);
+}
+function renderAt(t){
+  for(const sc of S){
+    const lt=t-sc.start;const on=lt>=0&&lt<sc.dur;
+    sc.el.style.display=on?'block':'none';if(!on)continue;
+    const fo=Math.min(1,(sc.dur-lt)/.45);
+    sc.el.style.opacity=fo;
+    for(const [e,it] of sc.items){
+      const v={...DEF};for(const k in it)v[k]=val(it[k],lt);
+      e.style.opacity=v.o;
+      e.style.transform=`translate(${v.x}px,${v.y}px) scale(${v.s}) scaleX(${v.sx}) rotate(${v.r}deg)`;
+      e.style.filter=v.b>0.05?`blur(${v.b}px)`:'none';
+      if(it.c)e.style.clipPath=`inset(-20% -20% -20% ${(1-v.c)*100}%)`;
+      if(it.cl)e.style.clipPath=`inset(-20% ${(1-v.cl)*100}% -20% -20%)`;
+      if(it.g)e.style.setProperty('--g',v.g);
+    }
+  }
+  drawBG(t);
+}
+// ---------- background ----------
+const cv=document.getElementById('bg'),cx=cv.getContext('2d');
+let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const P=Array.from({length:140},()=>({x:rnd()*1920,y:rnd()*1080,v:10+rnd()*40,r:.6+rnd()*2.4,ph:rnd()*6.28,w:rnd()}));
+const MOOD={g:[244,196,106],t:[95,216,230],n:[180,160,200],r:[255,77,94]};
+function moodAt(t){
+  for(let i=0;i<S.length;i++){const sc=S[i];if(t>=sc.start&&t<sc.start+sc.dur){
+    const cur=MOOD[sc.mood],prev=i?MOOD[S[i-1].mood]:cur;const k=Math.min(1,(t-sc.start)/1.5);const e=k*k*(3-2*k);
+    return cur.map((v,j)=>prev[j]+(v-prev[j])*e);}}
+  return MOOD.n;
+}
+function drawBG(t){
+  const [r,g,b]=moodAt(t).map(Math.round);
+  cx.fillStyle='#08070c';cx.fillRect(0,0,1920,1080);
+  const gx=960+Math.sin(t*.13)*260,gy=540+Math.cos(t*.11)*120;
+  let gr=cx.createRadialGradient(gx,gy,0,gx,gy,1100);
+  gr.addColorStop(0,`rgba(${r},${g},${b},0.16)`);gr.addColorStop(.5,`rgba(${r},${g},${b},0.04)`);gr.addColorStop(1,'rgba(0,0,0,0)');
+  cx.fillStyle=gr;cx.fillRect(0,0,1920,1080);
+  // faint rotating hebrew letter ring
+  cx.save();cx.translate(960,540);cx.rotate(t*.02);cx.font='700 46px "Frank Ruhl Libre"';
+  cx.fillStyle=`rgba(${r},${g},${b},0.05)`;const AL='אבגדהוזחטיכלמנסעפצקרשת';
+  for(let i=0;i<44;i++){cx.save();cx.rotate(i/44*Math.PI*2);cx.fillText(AL[i%22],0,-520);cx.restore();}
+  cx.restore();
+  for(const p of P){
+    const y=((p.y-t*p.v)%1180+1180)%1180-50;const x=p.x+Math.sin(t*.7+p.ph)*30;
+    const a=.25+.35*Math.sin(t*2+p.ph*3)**2;
+    cx.fillStyle=`rgba(${r},${g},${b},${a*(.4+p.w*.6)})`;cx.beginPath();cx.arc(x,y,p.r,0,7);cx.fill();
+  }
+  // vignette + scanline grain
+  gr=cx.createRadialGradient(960,540,400,960,540,1250);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,.75)');
+  cx.fillStyle=gr;cx.fillRect(0,0,1920,1080);
+}
+
+// ================= SCENES =================
+const SRC=(t)=>`<div class="c src" style="top:84px">${t}</div>`;
+
+// 1 COLD OPEN
+scene(9,'n',`
+<div class="c he gold glowg" id="a" style="top:250px;font-size:150px;font-weight:900">בֵּין הַקֹּדֶשׁ וּבֵין הַחֹל</div>
+<div class="c he teal glowt" id="b" style="top:500px;font-size:150px;font-weight:900">בֵּין קֹדֶשׁ לְחֹל</div>
+<div class="c en" id="c" style="top:800px;font-size:46px;font-weight:600">Same blessing. Two wordings.</div>
+<div class="c disp red" id="d" style="top:870px;font-size:110px">WHY?</div>`,a=>{
+  a.wipe('#a',.4,{d:1.4});a.wipe('#b',2,{d:1.2});a.in('#c',3.6);a('#d',5.6,.5,{o:0,s:2.4,b:20},{o:1,s:1,b:0},{ease:'back'});
+});
+// 2 TITLE
+scene(8,'g',`
+<div class="c en mute" id="k" style="top:200px;font-size:30px;font-weight:600;letter-spacing:.35em">RAV YAAKOV KAMENETSKY ON</div>
+<div class="c disp gold glowg" id="t" style="top:270px;font-size:210px;line-height:1">THE LANGUAGE</div>
+<div class="c disp" id="t2" style="top:460px;font-size:210px;line-height:1;color:var(--paper)">OF BLESSING</div>
+<div class="c he teal glowt" id="h" style="top:680px;font-size:72px;font-weight:700">לְשׁוֹן הַמִּקְרָא · לְשׁוֹן חֲכָמִים</div>
+<div class="c en mute" id="s" style="top:830px;font-size:30px">Biblical vs. Rabbinic Hebrew in our prayers — from <span class="he" style="color:var(--paper)">אמת ליעקב</span>, Vayikra</div>`,a=>{
+  a.in('#k',.2);a('#t',.5,1,{o:0,s:1.6,b:30},{o:1,s:1,b:0},{ease:'expo'});a('#t2',.9,1,{o:0,s:1.6,b:30},{o:1,s:1,b:0},{ease:'expo'});
+  a.wipe('#h',2);a.in('#s',3.2);a('@',0,8,{s:1},{s:1.04},{ease:'lin'});
+});
+// 3 TWO LANGUAGES
+scene(15,'n',`
+<div class="c disp" id="q0" style="top:90px;font-size:80px;color:var(--paper)">HEBREW HAS TWO VOICES</div>
+<div class="card g" id="cg"><div class="he gold glowg" style="font-size:96px;font-weight:900;text-align:right">לְשׁוֹן הַמִּקְרָא</div>
+ <div class="tag g" style="margin-top:20px">Leshon HaMikra</div>
+ <div class="en" style="font-size:40px;margin-top:40px;line-height:1.35">Biblical Hebrew.<br><b class="gold">The Torah's own words.</b></div>
+ <div class="en mute" style="font-size:30px;margin-top:30px">Written on the parchment of the Sefer Torah.</div></div>
+<div class="card t" id="ct"><div class="he teal glowt" style="font-size:96px;font-weight:900;text-align:right">לְשׁוֹן חֲכָמִים</div>
+ <div class="tag t" style="margin-top:20px">Leshon Chachamim</div>
+ <div class="en" style="font-size:40px;margin-top:40px;line-height:1.35">Rabbinic Hebrew.<br><b class="teal">The idiom of the Mishnah &amp; the Sages.</b></div>
+ <div class="en mute" style="font-size:30px;margin-top:30px">How Chazal spoke, taught and legislated.</div></div>
+<div class="c en" id="q" style="top:910px;font-size:48px;font-weight:800">Chazal composed our blessings. <span class="red">But in whose Hebrew?</span></div>`,a=>{
+  a.in('#q0',.2);a('#cg',.8,1,{o:0,x:200,r:4},{o:1,x:0,r:0},{ease:'expo'});a('#ct',1.6,1,{o:0,x:-200,r:-4},{o:1,x:0,r:0},{ease:'expo'});
+  a.in('#q',8);
+});
+// 4 FIGHTERS
+scene(11,'n',`
+<div class="c disp mute" id="k" style="top:90px;font-size:60px;letter-spacing:.3em">THE CONTENDERS</div>
+<div class="card g" id="cg" style="text-align:right"><div class="tag g">Shulchan Aruch</div>
+ <div class="he gold glowg" style="font-size:140px;font-weight:900;margin-top:30px">הַמְחַבֵּר</div>
+ <div class="en" style="font-size:44px;font-weight:800;margin-top:10px">R. Yosef Karo</div>
+ <div class="en mute" style="font-size:32px;margin-top:16px;line-height:1.5">"The Mechaber" — the Author<br>Lived in <b class="gold">Tzfat, Eretz Yisrael</b></div></div>
+<div class="card t" id="ct" style="text-align:right"><div class="tag t">HaMapah</div>
+ <div class="he teal glowt" style="font-size:140px;font-weight:900;margin-top:30px">הָרְמָ״א</div>
+ <div class="en" style="font-size:44px;font-weight:800;margin-top:10px">R. Moshe Isserles</div>
+ <div class="en mute" style="font-size:32px;margin-top:16px;line-height:1.5">Glosses for Ashkenaz<br>Lived in <b class="teal">Kraków, Poland</b></div></div>
+<div class="c disp red" id="vs" style="top:470px;font-size:170px;text-shadow:0 0 50px rgba(255,77,94,.6)">VS</div>`,a=>{
+  a.in('#k',.1);a('#cg',.4,.8,{o:0,x:500},{o:1,x:0},{ease:'expo'});a('#ct',.4,.8,{o:0,x:-500},{o:1,x:0},{ease:'expo'});
+  a('#vs',1.3,.6,{o:0,s:4,r:-20},{o:1,s:1,r:0},{ease:'back'});
+});
+// ROUND CARD helper
+function round(n,en,he){
+  scene(3.6,'r',`<div class="c disp red" id="r" style="top:250px;font-size:90px;letter-spacing:.4em">ROUND ${n}</div>
+  <div class="c disp" id="e" style="top:360px;font-size:230px;color:var(--paper);line-height:1">${en}</div>
+  <div class="c he gold glowg" id="h" style="top:610px;font-size:110px;font-weight:900">${he}</div>`,a=>{
+    a('#r',.05,.5,{o:0,sx:3},{o:1,sx:1},{ease:'expo'});a('#e',.25,.6,{o:0,s:2.2,b:25},{o:1,s:1,b:0},{ease:'expo'});a.wipe('#h',.8,{d:.8});
+    a('@',0,3.6,{s:1},{s:1.06},{ease:'lin'});
+  });
+}
+// verse helper
+function verse(dur,ref,heb,en,cap){
+  scene(dur,'g',`${SRC('THE TORAH · '+ref)}
+  <div class="c he gold glowg" id="v" style="top:240px;font-size:110px;font-weight:700;line-height:1.5;padding:0 120px">${heb}</div>
+  <div class="c en" id="e" style="top:560px;font-size:42px;font-style:italic;color:var(--paper);padding:0 200px">${en}</div>
+  <div class="c en mute" id="cap" style="top:760px;font-size:40px;line-height:1.45;padding:0 220px">${cap}</div>`,a=>{
+    a.wipe('#v',.4,{d:1.8});a.glow('.hl',2.6,{stagger:.4});a.in('#e',2.2);a.in('#cap',3.6);
+  });
+}
+// split helper
+function split(dur,title,ctx,rheb,ren,lheb,len,extra=''){
+  scene(dur,'n',`<div class="c disp" id="ti" style="top:70px;font-size:76px;color:var(--paper)">${title}</div>
+  <div class="c en mute" id="cx" style="top:165px;font-size:30px">${ctx}</div>
+  <div class="card g" id="cg" style="top:250px;height:500px;text-align:right"><div class="tag g">Mechaber · Torah's phrasing</div>
+    <div class="he gold glowg" style="font-size:78px;font-weight:900;margin-top:50px;line-height:1.35">${rheb}</div>
+    <div class="en" style="font-size:34px;margin-top:30px;text-align:left;font-style:italic">${ren}</div></div>
+  <div class="card t" id="ct" style="top:250px;height:500px;text-align:right"><div class="tag t">Rema · Sages' phrasing</div>
+    <div class="he teal glowt" style="font-size:78px;font-weight:900;margin-top:50px;line-height:1.35">${lheb}</div>
+    <div class="en" style="font-size:34px;margin-top:30px;text-align:left;font-style:italic">${len}</div></div>${extra}`,a=>{
+    a.in('#ti',.1);a.in('#cx',.4);a('#cg',.8,.9,{o:0,y:80,b:12},{o:1,y:0,b:0},{ease:'expo'});a('#ct',2.4,.9,{o:0,y:80,b:12},{o:1,y:0,b:0},{ease:'expo'});
+    a.glow('.hl',1.8,{stagger:.3});a.glow('.hlt',3.4,{stagger:.3});a.in('#x',5.5);a.in('#x2',6.5);
+  });
+}
+// quote helper (Rav Yaakov's words)
+function rq(dur,label,heb,en,mood='g',post=''){
+  scene(dur,mood,`<div class="c src" id="l" style="top:150px">${label}</div>
+  <div class="abs he" id="q" style="top:250px;right:200px;left:200px;font-size:76px;font-weight:700;line-height:1.55;color:var(--paper);text-align:center">״${heb}״</div>
+  <div class="c en" id="e" style="top:690px;font-size:46px;font-weight:600;line-height:1.4;padding:0 230px"><span class="gold">“</span>${en}<span class="gold">”</span></div>${post}`,a=>{
+    a.in('#l',.1);a.wipe('#q',.4,{d:2.2});a.glow('.hl',2.8,{stagger:.35});a.in('#e',2.8);a.in('#p',5);
+  });
+}
+const RY='RAV YAAKOV · אמת ליעקב';
+
+// ---- ROUND 1: HAVDALAH
+round(1,'HAVDALAH','הַבְדָּלָה');
+verse(10,'VAYIKRA 10:10','וּלְהַבְדִּיל <span class="hl">בֵּין</span> הַקֹּדֶשׁ <span class="hl">וּבֵין</span> הַחֹל',
+ '“…to distinguish between the holy and between the mundane”',
+ 'The Torah says <b class="gold">“bein”</b> twice — <i>between</i> the holy <i>and between</i> the mundane.');
+split(13,'THE QUICK HAVDALAH','Said after Shabbat before doing work, if you haven\'t yet made havdalah · O.C. 299:10',
+ 'הַמַּבְדִּיל <span class="hl">בֵּין</span> הַקֹּדֶשׁ <span class="hl">וּבֵין</span> הַחֹל','“…between the holy and between the mundane”',
+ 'הַמַּבְדִּיל <span class="hlt">בֵּין</span> קֹדֶשׁ <span class="hlt">לְחֹל</span>','“…between holy and mundane”',
+ `<div class="c en" id="x" style="top:800px;font-size:40px">Two <b class="gold">bein</b>s = the verse. &nbsp; One <b class="teal">bein</b> + <b class="teal">le-</b> = the Mishnah's style.</div>`);
+rq(11,RY+' · SHEMINI','ומדוע נקט המחבר <span class="hl">ב׳ פעמים ׳בין׳</span> שהוא לשון התורה',
+ 'So why did the Mechaber say <b class="gold">“bein” twice</b> — which is the language of the Torah?');
+
+// ---- ROUND 2: CHALLAH
+round(2,'CHALLAH','הַפְרָשַׁת חַלָּה');
+verse(11,'BAMIDBAR 15:20','רֵאשִׁית עֲרִסֹתֵכֶם חַלָּה תָּרִימוּ <span class="hl">תְרוּמָה</span>',
+ '“The first of your dough — a loaf — you shall set apart as a terumah”',
+ 'In the Torah\'s language, separating challah is an act of <b class="gold">terumah</b>.<br>In the Mishnah, the mitzvah is simply called <b class="teal">challah</b>.');
+split(14,'THE BLESSING ON CHALLAH','Shulchan Aruch, Yoreh De\'ah 328:1 — “…asher kideshanu b\'mitzvotav v\'tzivanu…”',
+ 'לְהַפְרִישׁ <span class="hl">תְּרוּמָה</span>','“…to separate terumah”',
+ 'לְהַפְרִישׁ <span class="hlt">חַלָּה</span>','“…to separate challah”',
+ `<div class="c he" id="x" style="top:790px;font-size:44px;color:var(--paper)">הגר״א: ״באיזו סגנון צריך לברך, אם <span class="gold">בלשון המקרא</span> או <span class="teal">בלשון המשנה</span>״</div>
+  <div class="c en mute" id="x2" style="top:870px;font-size:34px">The Vilna Gaon: the whole dispute is about <i>style</i> — do we bless in the Torah's language, or the Mishnah's?</div>`);
+
+// ---- ROUND 3: SHEMINI ATZERET
+round(3,'SHEMINI ATZERET','שְׁמִינִי עֲצֶרֶת');
+verse(11,'VAYIKRA 23:36','<span class="hl">בַּיּוֹם הַשְּׁמִינִי</span> מִקְרָא קֹדֶשׁ יִהְיֶה לָכֶם … עֲצֶרֶת הִוא',
+ '“On the eighth day there shall be a holy convocation for you … it is an atzeret”',
+ 'The festival\'s <b class="gold">name</b> in the Torah is simply <b class="gold">“the eighth day”</b>.<br>That it is an <i>atzeret</i> is a description, not the title.');
+rq(12,RY+' · EMOR','בלשון התורה שם החג הוא <span class="hl">׳שמיני׳</span> … ורק בלשון חז״ל נקרא שם החג <span class="hl">שמיני עצרת</span>',
+ 'In the Torah\'s language the holiday is named <b class="gold">“Shemini”</b>… only in Chazal\'s language is it called <b class="teal">“Shemini Atzeret.”</b>');
+split(14,'KIDDUSH &amp; AMIDAH','“Va-titen lanu… et yom…” — Orach Chaim 668:1',
+ 'יוֹם <span class="hl">שְׁמִינִי</span> חַג הָעֲצֶרֶת הַזֶּה','“the eighth day, this festival of Atzeret”',
+ 'יוֹם <span class="hlt">שְׁמִינִי עֲצֶרֶת</span> הַזֶּה','“this day of Shemini Atzeret” — “and our custom is…”',
+ `<div class="c en" id="x" style="top:800px;font-size:40px">Torah: the name is <b class="gold">Shemini</b>. &nbsp; Sages: the name is <b class="teal">Shemini Atzeret</b>.</div>`);
+
+// ---- THEORY 1
+scene(15,'g',`<div class="c src" id="l" style="top:90px">RAV YAAKOV'S FIRST THEORY</div>
+<div class="c he" id="q" style="top:150px;font-size:62px;font-weight:700;color:var(--paper);padding:0 160px;line-height:1.5">״ונראה שפליגי אי חז״ל תקנו הברכות לפי <span class="hl">לשון התורה</span> או לפי <span class="hlt">לשון חכמים</span>״</div>
+<div class="c en" id="e" style="top:360px;font-size:38px;padding:0 240px;line-height:1.4">They argue about a single question: did Chazal word the blessings in <b class="gold">the Torah's language</b> or in <b class="teal">the Sages' language</b>?</div>
+<div class="c" id="tb" style="top:510px"><table class="sb en">
+<tr class="rw"><td class="mute" style="font-size:28px;letter-spacing:.2em">THE SCOREBOARD</td><td class="teal disp" style="font-size:52px">REMA</td><td class="gold disp" style="font-size:52px">MECHABER</td></tr>
+<tr class="rw"><td>Havdalah</td><td class="teal">Sages ✓</td><td class="gold">Torah ✓</td></tr>
+<tr class="rw"><td>Challah</td><td class="teal">Sages ✓</td><td class="gold">Torah ✓</td></tr>
+<tr class="rw"><td>Shemini Atzeret</td><td class="teal">Sages ✓</td><td class="gold">Torah ✓</td></tr></table></div>
+<div class="c" id="z" style="top:930px"><span class="he gold glowg" style="font-size:58px;font-weight:900">אזלי לשיטתייהו</span><span class="en" style="font-size:36px;font-weight:600;margin-left:24px">— each is perfectly consistent.</span></div>`,a=>{
+  a.in('#l',.1);a.wipe('#q',.3,{d:2});a.glow('.hl,.hlt',2.4);a.in('#e',2.6);a.in('.rw',4.4,{stagger:.7,y:20});a('#z',8,.7,{o:0,s:1.4,b:15},{o:1,s:1,b:0},{ease:'back'});
+});
+// ---- PLOT TWIST
+scene(8,'r',`<div class="c disp red" id="w" style="top:230px;font-size:240px;line-height:1">BUT WAIT.</div>
+<div class="c he" id="h" style="top:520px;font-size:84px;font-weight:900;color:var(--paper)">עוֹד י״ל — דהמחבר והרמ״א <span class="hl">לא פליגי</span></div>
+<div class="c en" id="e" style="top:700px;font-size:50px;font-weight:600">Maybe the Mechaber and the Rema <b class="red">don't disagree at all.</b></div>`,a=>{
+  a('#w',.1,.35,{o:0,s:3,x:-30},{o:1,s:1,x:0},{ease:'expo'});a('#w',.5,.08,{x:-14},{x:14},{ease:'lin'});a('#w',.6,.08,{x:14},{x:0},{ease:'lin'});
+  a.wipe('#h',1.3,{d:1.4});a.glow('.hl',2.8);a.in('#e',3.2);
+});
+// ---- THEORY 2: THE RULE
+scene(17,'n',`<div class="c src" id="l" style="top:80px">RAV YAAKOV'S SECOND THEORY</div>
+<div class="c he" id="q" style="top:140px;font-size:52px;font-weight:700;color:var(--paper);padding:0 140px;line-height:1.55">״דאם המצוה היא <span class="hl">דאורייתא</span> תקנו ברכתה בלשון המקרא, ואם קיום המצוה אינה אלא <span class="hlt">מדרבנן</span> גם נוסחת הברכה בלשון חכמים תקנוה״</div>
+<div class="abs" id="r1" style="top:470px;left:160px;right:160px;height:170px;border-radius:24px;border:2px solid rgba(244,196,106,.6);display:flex;align-items:center;justify-content:space-between;padding:0 60px;background:rgba(244,196,106,.07)">
+ <div class="en" style="font-size:40px;font-weight:800">Mitzvah is <span class="gold">from the Torah</span><div class="he gold" style="font-size:40px;text-align:left;direction:ltr">דְּאוֹרַיְתָא</div></div>
+ <div class="disp gold" style="font-size:90px">→</div>
+ <div class="en" style="font-size:40px;font-weight:800">Blessing in <span class="gold">Torah language</span></div></div>
+<div class="abs" id="r2" style="top:670px;left:160px;right:160px;height:170px;border-radius:24px;border:2px solid rgba(95,216,230,.6);display:flex;align-items:center;justify-content:space-between;padding:0 60px;background:rgba(95,216,230,.07)">
+ <div class="en" style="font-size:40px;font-weight:800">Mitzvah is <span class="teal">rabbinic</span><div class="he teal" style="font-size:40px;text-align:left;direction:ltr">דְּרַבָּנָן</div></div>
+ <div class="disp teal" style="font-size:90px">→</div>
+ <div class="en" style="font-size:40px;font-weight:800">Blessing in <span class="teal">the Sages' language</span></div></div>
+<div class="c disp" id="z" style="top:900px;font-size:66px;color:var(--paper)">THE WORDS FOLLOW THE <span class="red">SOURCE</span> OF THE OBLIGATION.</div>`,a=>{
+  a.in('#l',.1);a.wipe('#q',.3,{d:2.6});a.glow('.hl,.hlt',3);a('#r1',4.5,.9,{o:0,x:-120},{o:1,x:0},{ease:'expo'});a('#r2',6.5,.9,{o:0,x:-120},{o:1,x:0},{ease:'expo'});
+  a('#z',9.5,.7,{o:0,s:1.3,b:12},{o:1,s:1,b:0},{ease:'back'});
+});
+// ---- MAP: CHALLAH
+scene(17,'n',`<div class="c disp" id="ti" style="top:70px;font-size:80px;color:var(--paper)">IT DEPENDS WHERE YOU LIVE</div>
+<svg class="abs" id="arc" style="left:0;top:0" width="1920" height="1080"><path d="M520 470 Q 960 160 1400 640" fill="none" stroke="url(#gg)" stroke-width="4" stroke-dasharray="14 12"/>
+<defs><linearGradient id="gg" x1="0" x2="1"><stop offset="0" stop-color="#5fd8e6"/><stop offset="1" stop-color="#f4c46a"/></linearGradient></defs></svg>
+<div class="pin" id="p1" style="left:1383px;top:623px;background:var(--gold);box-shadow:0 0 0 14px rgba(244,196,106,.18),0 0 60px var(--gold)"></div>
+<div class="pin" id="p2" style="left:503px;top:453px;background:var(--teal);box-shadow:0 0 0 14px rgba(95,216,230,.18),0 0 60px var(--teal)"></div>
+<div class="abs" id="m1" style="left:1150px;top:690px;width:620px;text-align:right">
+ <div class="disp gold" style="font-size:64px">TZFAT · ERETZ YISRAEL</div>
+ <div class="en" style="font-size:32px;line-height:1.4;margin-top:6px">Challah in the Land is a <b class="gold">Torah</b> obligation</div>
+ <div class="he gold glowg" style="font-size:70px;font-weight:900;margin-top:10px">לְהַפְרִישׁ תְּרוּמָה</div></div>
+<div class="abs" id="m2" style="left:200px;top:220px;width:720px">
+ <div class="disp teal" style="font-size:64px">KRAKÓW · CHUTZ LA'ARETZ</div>
+ <div class="en" style="font-size:32px;line-height:1.4;margin-top:6px">Challah outside the Land is <b class="teal">rabbinic</b></div>
+ <div class="he teal glowt" style="font-size:70px;font-weight:900;margin-top:10px;text-align:left">לְהַפְרִישׁ חַלָּה</div></div>
+<div class="c he" id="q" style="top:940px;font-size:40px;color:var(--paper)">״המחבר <span class="gold">שהיה בא״י</span> דמצות חלה שלה היא מן התורה … אבל הרמ״א <span class="teal">שהיה בחו״ל</span> כתב או להפריש חלה״</div>`,a=>{
+  a.in('#ti',.1);a.wipel('#arc',.6,{d:1.6});a('#p1',1.6,.5,{o:0,s:3},{o:1,s:1},{ease:'back'});a('#p2',.6,.5,{o:0,s:3},{o:1,s:1},{ease:'back'});
+  a.in('#m1',2.4);a.in('#m2',5);a.wipe('#q',8,{d:2});
+});
+// ---- HAVDALAH REVISITED
+scene(19,'n',`<div class="c disp" id="ti" style="top:70px;font-size:80px;color:var(--paper)">BACK TO HAVDALAH: TORAH OR RABBINIC?</div>
+<div class="c en mute" id="cx" style="top:175px;font-size:32px">Rambam: <b class="gold">d'oraita</b>, like Kiddush. Others: <b class="teal">d'rabbanan</b>. The test case is <b style="color:var(--paper)">women</b> (Magen Avraham, O.C. 296).</div>
+<div class="card g" id="cg" style="top:270px;height:560px;text-align:right"><div class="tag g">Mechaber · O.C. 296:8</div>
+ <div class="he" style="font-size:52px;font-weight:700;margin-top:34px;color:var(--paper);line-height:1.45">״נשים חייבות בהבדלה כשם שחייבות בקידוש״</div>
+ <div class="en" style="font-size:30px;text-align:left;margin-top:16px">Women are obligated — <b class="gold">it's from the Torah.</b></div>
+ <div class="he gold glowg" style="font-size:66px;font-weight:900;margin-top:30px">בֵּין הַקֹּדֶשׁ וּבֵין הַחֹל</div></div>
+<div class="card t" id="ct" style="top:270px;height:560px;text-align:right"><div class="tag t">Rema · ibid.</div>
+ <div class="he" style="font-size:52px;font-weight:700;margin-top:34px;color:var(--paper);line-height:1.45">״לא יבדילו לעצמן רק ישמעו הבדלה מאנשים״</div>
+ <div class="en" style="font-size:30px;text-align:left;margin-top:16px">Worried it's <b class="teal">only rabbinic.</b></div>
+ <div class="he teal glowt" style="font-size:66px;font-weight:900;margin-top:30px">בֵּין קֹדֶשׁ לְחֹל</div></div>
+<div class="c en" id="z" style="top:880px;font-size:44px;font-weight:700">Each one's <i>wording</i> matches his view of the mitzvah's <i>source</i>.</div>`,a=>{
+  a.in('#ti',.1);a.in('#cx',.6);a('#cg',2.4,.9,{o:0,y:80},{o:1,y:0},{ease:'expo'});a('#ct',6.5,.9,{o:0,y:80},{o:1,y:0},{ease:'expo'});a.in('#z',11);
+});
+// ---- SHEMINI ATZERET REVISITED
+scene(14,'n',`<div class="c disp" id="ti" style="top:70px;font-size:80px;color:var(--paper)">AND SHEMINI ATZERET?</div>
+<div class="abs" id="l1" style="right:140px;top:220px;width:760px;text-align:right">
+ <div class="tag g">Mechaber · Eretz Yisrael</div>
+ <div class="en" style="font-size:40px;margin-top:30px;line-height:1.45;text-align:left">One day. Shemini Atzeret is <b class="gold">always</b> from the Torah.</div>
+ <div class="he gold glowg" style="font-size:64px;font-weight:900;margin-top:30px">יוֹם שְׁמִינִי חַג הָעֲצֶרֶת הַזֶּה</div></div>
+<div class="abs" id="l2" style="left:140px;top:220px;width:760px;text-align:right">
+ <div class="tag t">Rema · Chutz La'aretz</div>
+ <div class="en" style="font-size:40px;margin-top:30px;line-height:1.45;text-align:left">Two days: <b class="gold">Shemini Atzeret</b> (Torah)<br>+ <b class="teal">Simchat Torah</b> (yom tov sheni — rabbinic).</div>
+ <div class="disp red" style="font-size:110px;margin-top:10px;text-align:center">? ? ?</div></div>
+<div class="c en" id="z" style="top:820px;font-size:46px;font-weight:700">So by Theory #2, the Rema would need <span class="red">two different wordings</span>…</div>`,a=>{
+  a.in('#ti',.1);a('#l1',.8,.9,{o:0,x:150},{o:1,x:0},{ease:'expo'});a('#l2',4,.9,{o:0,x:-150},{o:1,x:0},{ease:'expo'});a.in('#z',8.5);
+});
+// ---- THE ZINGER
+scene(20,'r',`<div class="c disp" id="ti" style="top:60px;font-size:76px;color:var(--paper)">THE PROBLEM</div>
+<div class="abs" id="d1" style="right:180px;top:180px;width:700px;height:330px;border-radius:24px;border:2px solid rgba(244,196,106,.6);text-align:center;padding-top:30px;background:rgba(244,196,106,.06)">
+ <div class="disp gold" style="font-size:52px">DAY 1 · SHEMINI ATZERET</div><div class="en mute" style="font-size:28px">Torah-level → Torah language</div>
+ <div class="he gold glowg" style="font-size:100px;font-weight:900;margin-top:24px">יוֹם שְׁמִינִי</div></div>
+<div class="abs" id="d2" style="left:180px;top:180px;width:700px;height:330px;border-radius:24px;border:2px solid rgba(95,216,230,.6);text-align:center;padding-top:30px;background:rgba(95,216,230,.06)">
+ <div class="disp teal" style="font-size:52px">DAY 2 · SIMCHAT TORAH</div><div class="en mute" style="font-size:28px">Rabbinic → Sages' language</div>
+ <div class="he teal glowt" style="font-size:100px;font-weight:900;margin-top:24px">שְׁמִינִי עֲצֶרֶת</div></div>
+<div class="line" id="x1" style="left:150px;top:340px;width:1620px;height:12px;background:var(--red);border-radius:8px;box-shadow:0 0 40px var(--red)"></div>
+<div class="c he" id="q" style="top:560px;font-size:76px;font-weight:900;color:var(--paper)">״אתי <span class="hl" style="--g:0">לזלזולי</span> ביום טוב של שמחת תורה״</div>
+<div class="c en" id="e" style="top:680px;font-size:42px;font-weight:600">A different, “lesser” formula on day two would come to <b class="red">belittle Simchat Torah</b>.</div>
+<div class="c en mute" id="s" style="top:790px;font-size:34px">So in chutz la'aretz both days get the Sages' name:</div>
+<div class="c he teal glowt" id="f" style="top:840px;font-size:120px;font-weight:900">יוֹם שְׁמִינִי עֲצֶרֶת הַזֶּה</div>`,a=>{
+  a.in('#ti',.1);a('#d1',.5,.8,{o:0,y:60},{o:1,y:0},{ease:'expo'});a('#d2',1.8,.8,{o:0,y:60},{o:1,y:0},{ease:'expo'});
+  a('#x1',4.2,.45,{o:1,sx:0,r:-3},{o:1,sx:1,r:-3},{ease:'expo'});a('#x1',9,.5,{o:1,r:-3},{o:0,r:-3});
+  a.wipe('#q',5,{d:1.4});a.glow('.hl',6.4);a.in('#e',6.8);
+  a('#d1,#d2,#q,#e,#ti',10.2,.6,{o:1},{o:0,b:10},{ease:'in'});
+  a('#f',11.8,1,{o:0,s:1.8,b:30,y:-200},{o:1,s:1.15,b:0,y:-360},{ease:'expo'});
+  a('#s',11,1,{o:0,y:-380},{o:1,y:-420});
+});
+// ---- OUTRO
+scene(16,'g',`<div class="c disp" id="t" style="top:150px;font-size:96px;color:var(--paper);line-height:1.1;padding:0 200px">THE WORDS OF A BLESSING CARRY<br><span class="gold glowg">THE FINGERPRINT OF ITS SOURCE.</span></div>
+<div class="c he" id="h" style="top:430px;font-size:90px;font-weight:900"><span class="gold glowg">לְשׁוֹן הַמִּקְרָא</span> <span class="mute">·</span> <span class="teal glowt">לְשׁוֹן חֲכָמִים</span></div>
+<div class="c en mute" id="s" style="top:620px;font-size:30px;line-height:1.6">Based on <b style="color:var(--paper)">Emet LeYaakov</b> by Rav Yaakov Kamenetsky zt״l<br>Vayikra — Parashat Shemini (10:10) &amp; Parashat Emor (23:36) · with Shulchan Aruch O.C. 296, 299, 668 · Y.D. 328</div>
+<div class="c he gold glowg" id="cs" style="top:800px;font-size:130px;font-weight:900">חַג שָׂמֵחַ</div>
+<div class="c en mute" id="dq" style="top:990px;font-size:26px;letter-spacing:.3em">וְדוֹ״ק</div>`,a=>{
+  a('#t',.2,1.2,{o:0,b:20,s:1.1},{o:1,b:0,s:1},{ease:'expo'});a.wipe('#h',2);a.in('#s',3.6);a('#cs',6,1,{o:0,s:2,b:30},{o:1,s:1,b:0},{ease:'expo'});a.in('#dq',7.5);
+  a('@',0,16,{s:1},{s:1.05},{ease:'lin'});
+});
+
+window.TOTAL=T;window.SCENES=S.map(s=>({start:s.start,dur:s.dur,mood:s.mood}));window.renderAt=renderAt;
+if(!location.search.includes('render')){const t0=performance.now();const loop=()=>{const t=((performance.now()-t0)/1000)%T;renderAt(t);requestAnimationFrame(loop)};document.fonts.ready.then(loop);}
+</script></body></html>
