@@ -568,6 +568,46 @@ import Layout from '../layouts/Layout.astro';
     }
     .verse-option:hover { border-color: var(--rubric); }
     .verse-option.selected { border-color: var(--rubric); box-shadow: 0 0 0 3px var(--rubric-soft); }
+    .verse-list { max-height: 340px; overflow-y: auto; padding: 3px; }
+    .verse-chosen {
+      margin-top: 0.75rem;
+      padding: 0.7rem 0.9rem;
+      border-left: 3px solid var(--rubric);
+      background: var(--rubric-soft);
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+      line-height: 1.55;
+    }
+    .verse-chosen strong { color: var(--ink); }
+    .verse-chosen .btn-secondary { margin-top: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.82rem; }
+
+    /* Technique cards */
+    .technique-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 0.75rem;
+    }
+    .technique-card {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.3rem;
+      text-align: left;
+      padding: 0.8rem 0.9rem 0.9rem;
+      border: 1px solid var(--paper-edge);
+      background: var(--paper);
+      color: var(--ink-soft);
+      cursor: pointer;
+      font-family: var(--sans);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .technique-card svg { width: 60px; height: 40px; color: var(--ink-faint); }
+    .technique-card:hover { border-color: var(--ink-faint); }
+    .technique-card.active { border-color: var(--rubric); box-shadow: 0 0 0 3px var(--rubric-soft); }
+    .technique-card.active svg { color: var(--rubric); }
+    .technique-name { font-family: var(--serif); font-weight: 700; font-size: 0.98rem; color: var(--ink); }
+    .technique-desc { font-size: 0.78rem; line-height: 1.5; color: var(--ink-faint); }
+
     .verse-ref {
       font-family: var(--mono);
       font-size: 0.68rem;
@@ -675,6 +715,7 @@ import Layout from '../layouts/Layout.astro';
             <button id="findVerseBtn" class="btn-secondary" style="margin-top:0.6rem; width:100%; justify-content:center;">
               Find name verse
             </button>
+            <div id="nameVerseChosen"></div>
             <div id="nameVerseResults" style="margin-top:0.75rem;"></div>
           </div>
 
@@ -687,7 +728,40 @@ import Layout from '../layouts/Layout.astro';
       </div>
 
       <div class="section-block">
-        <div class="step-title"><span class="step-letter">ג</span> The Style</div>
+        <div class="step-title"><span class="step-letter">ג</span> The Technique</div>
+        <div class="step-hint" style="margin-bottom:0.8rem;">
+          How the letters build the picture — each one is drawn from a tradition of hand micrography.
+        </div>
+        <div class="technique-grid" id="techniqueGrid">
+          <button class="technique-card active" data-technique="grid" type="button">
+            <svg viewBox="0 0 60 40" aria-hidden="true"><g fill="currentColor"><rect x="4" y="6" width="52" height="3" opacity=".35"/><rect x="4" y="13" width="52" height="4" opacity=".6"/><rect x="4" y="21" width="52" height="5"/><rect x="4" y="30" width="52" height="3" opacity=".45"/></g></svg>
+            <span class="technique-name">Tonal rows</span>
+            <span class="technique-desc">Dense lines of text; letter size and weight make the shading — the classic poster portrait.</span>
+          </button>
+          <button class="technique-card" data-technique="engrave" type="button">
+            <svg viewBox="0 0 60 40" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 8 C18 8 22 14 30 14 S44 8 58 8"/><path d="M2 16 C18 16 22 24 30 24 S44 16 58 16"/><path d="M2 24 C18 24 22 31 30 31 S44 24 58 24"/><path d="M2 32 C18 32 22 37 30 37 S44 32 58 32"/></g></svg>
+            <span class="technique-name">Engraving</span>
+            <span class="technique-desc">Lines of text that swell and bend over the form, with cross-hatching in the shadows — like a banknote or hedcut.</span>
+          </button>
+          <button class="technique-card" data-technique="contour" type="button">
+            <svg viewBox="0 0 60 40" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="30" cy="20" rx="26" ry="16"/><ellipse cx="30" cy="20" rx="18" ry="11"/><ellipse cx="30" cy="20" rx="10" ry="6"/></g></svg>
+            <span class="technique-name">Contour lines</span>
+            <span class="technique-desc">Text traces the outlines of the shape, ring within ring — the masora figurata of medieval Bibles.</span>
+          </button>
+          <button class="technique-card" data-technique="spiral" type="button">
+            <svg viewBox="0 0 60 40" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.6" d="M30 20 m0 0 a2 2 0 0 1 4 0 a5 5 0 0 1 -9 0 a8 8 0 0 1 15 0 a11 11 0 0 1 -21 0 a14 14 0 0 1 27 0 a17 17 0 0 1 -33 0"/></svg>
+            <span class="technique-name">Spiral</span>
+            <span class="technique-desc">One unbroken line of text winds out from the center; the image lives in its thickness.</span>
+          </button>
+        </div>
+        <label class="checkbox-row" id="crossHatchRow" style="margin-top:0.8rem; display:none;">
+          <input type="checkbox" id="crossHatch" checked />
+          Cross-hatch the shadows with a second layer of text
+        </label>
+      </div>
+
+      <div class="section-block">
+        <div class="step-title"><span class="step-letter">ד</span> The Ink</div>
         <div class="style-grid" id="styleGrid">
           <button class="style-card active" data-style="ink" type="button">
             <span class="style-swatch" style="background:#efe6d2; color:#241c0f;">אבג</span>
@@ -701,18 +775,34 @@ import Layout from '../layouts/Layout.astro';
             <span class="style-swatch" style="background:#16110a; color:#eadfc2;">אבג</span>
             <span class="style-name">Night</span>
           </button>
+          <button class="style-card" data-style="parchment" type="button">
+            <span class="style-swatch" style="background:radial-gradient(circle,#ecdcb4 30%,#c9ad78); color:#3b2a14;">אבג</span>
+            <span class="style-name">Aged parchment</span>
+          </button>
+          <button class="style-card" data-style="gold" type="button">
+            <span class="style-swatch" style="background:#15203a; color:#d6b162;">אבג</span>
+            <span class="style-name">Gold on lapis</span>
+          </button>
+          <button class="style-card" data-style="rubric" type="button">
+            <span class="style-swatch" style="background:#efe6d2; color:#241c0f;">א<span style="color:#9a2a1a">ב</span>ג</span>
+            <span class="style-name">Ink &amp; rubric</span>
+          </button>
           <button class="style-card" data-style="color" type="button">
             <span class="style-swatch" style="background:linear-gradient(120deg,#8a2417,#a5762a,#3d5a80); color:#fff;">אבג</span>
             <span class="style-name">Color mosaic</span>
           </button>
         </div>
+        <label class="checkbox-row" style="margin-top: 1rem;">
+          <input type="checkbox" id="frameToggle" />
+          Carpet-page frame — a border woven from bands of the same text
+        </label>
         <div style="margin-top: 1rem;">
           <input type="text" id="captionInput" class="text-input" placeholder="Optional caption drawn beneath the artwork — e.g. a name or title" style="font-family: var(--serif);" />
         </div>
       </div>
 
       <div class="section-block">
-        <div class="step-title"><span class="step-letter">ד</span> Fine-tuning</div>
+        <div class="step-title"><span class="step-letter">ה</span> Fine-tuning</div>
         <div class="grid-2">
           <div>
             <div class="slider-label"><span>Letter density</span><span class="val"><span id="densityValue">5</span> · finer = more letters</span></div>
@@ -802,13 +892,17 @@ import Layout from '../layouts/Layout.astro';
   <canvas id="processCanvas" style="display: none;"></canvas>
 
   <script>
+    import { contours as d3contours } from 'd3-contour';
+    import { blur2 } from 'd3-array';
+
     // ————— State —————
     let currentImage = null;
     let currentText = '';
     let isProcessing = false;
     let activeTab = 'sefaria';   // 'sefaria' | 'nameverse' | 'custom'
     let sourceMode = 'image';    // 'image' | 'word'
-    let activeStyle = 'ink';     // 'ink' | 'sepia' | 'night' | 'color'
+    let activeStyle = 'ink';     // key of STYLE_PRESETS
+    let activeTechnique = 'grid'; // 'grid' | 'engrave' | 'contour' | 'spiral'
 
     // ————— Style presets —————
     // mono presets carry the whole Marx-poster look: one ink, tone from letters
@@ -816,6 +910,9 @@ import Layout from '../layouts/Layout.astro';
       ink:   { paper: '#efe6d2', ink: [36, 28, 15],   invert: false, mode: 'mono' },
       sepia: { paper: '#e9dcc0', ink: [90, 58, 24],   invert: false, mode: 'mono' },
       night: { paper: '#16110a', ink: [234, 223, 194], invert: true,  mode: 'mono' },
+      parchment: { paper: '#e6d3a8', ink: [59, 42, 20], invert: false, mode: 'mono', aged: true },
+      gold:  { paper: '#15203a', ink: [214, 177, 98],  invert: true,  mode: 'mono' },
+      rubric: { paper: '#efe6d2', ink: [36, 28, 15],  invert: false, mode: 'mono', accent: [154, 42, 26] },
       color: { paper: '#787878', ink: [0, 0, 0],      invert: false, mode: 'color' },
     };
 
@@ -863,6 +960,10 @@ import Layout from '../layouts/Layout.astro';
     const toleranceSlider = $('toleranceSlider');
     const toleranceValue = $('toleranceValue');
     const colorReplacePreview = $('colorReplacePreview');
+    const crossHatch = $('crossHatch');
+    const crossHatchRow = $('crossHatchRow');
+    const frameToggle = $('frameToggle');
+    const nameVerseChosen = $('nameVerseChosen');
 
     const HEBREW_FONT = '"Noto Serif Hebrew", "Frank Ruhl Libre", "FrankRuehl", "David", serif';
 
@@ -971,6 +1072,15 @@ import Layout from '../layouts/Layout.astro';
       });
     });
 
+    document.querySelectorAll('.technique-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.technique-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        activeTechnique = card.dataset.technique;
+        crossHatchRow.style.display = activeTechnique === 'engrave' ? '' : 'none';
+      });
+    });
+
     document.querySelectorAll('.style-card').forEach(card => {
       card.addEventListener('click', () => {
         document.querySelectorAll('.style-card').forEach(c => c.classList.remove('active'));
@@ -981,10 +1091,12 @@ import Layout from '../layouts/Layout.astro';
 
     hebrewNameInput.addEventListener('input', () => {
       nameVerseResults.innerHTML = '';
+      nameVerseChosen.innerHTML = '';
       if (activeTab === 'nameverse') { currentText = ''; checkCanGenerate(); }
     });
 
     findVerseBtn.addEventListener('click', () => findNameVerse());
+    hebrewNameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') findNameVerse(); });
 
     customTextInput.addEventListener('input', () => {
       const val = customTextInput.value;
@@ -1142,7 +1254,7 @@ import Layout from '../layouts/Layout.astro';
     }
 
     async function findNameVerse() {
-      const name = hebrewNameInput.value.trim();
+      const name = hebrewNameInput.value.trim().replace(/[<>&"]/g, '');
       if (!name) {
         nameVerseResults.innerHTML = '<div class="error-message visible">Please enter your Hebrew name</div>';
         return;
@@ -1172,42 +1284,64 @@ import Layout from '../layouts/Layout.astro';
               Try a different form of your name.
             </div>`;
         } else {
-          const display = matches.slice(0, 10);
           let html = `<div class="step-hint" style="margin-bottom:0.5rem;">
             Found <strong>${matches.length}</strong> verse${matches.length > 1 ? 's' : ''} for
-            <strong>${firstLetter}...${lastLetter}</strong> — click one to use it:
-          </div>`;
-          display.forEach((v, i) => {
-            const refStr = `${v.ref.book} ${v.ref.chapter}:${v.ref.verse}`;
+            <strong>${firstLetter}...${lastLetter}</strong> — tap one to use it:
+          </div><div class="verse-list">`;
+          matches.forEach((v, i) => {
             html += `
-              <div class="verse-option" data-index="${i}">
-                <div class="verse-ref">${refStr}</div>
+              <div class="verse-option" data-index="${i}" role="button" tabindex="0">
+                <div class="verse-ref">${v.ref.book} ${v.ref.chapter}:${v.ref.verse}</div>
                 <div>${v.text}</div>
               </div>`;
           });
-          if (matches.length > 10) {
-            html += `<div class="step-hint" style="margin-top:0.3rem;">...and ${matches.length - 10} more</div>`;
-          }
+          html += '</div>';
           nameVerseResults.innerHTML = html;
 
-          nameVerseResults.querySelectorAll('.verse-option').forEach((el, i) => {
-            el.addEventListener('click', () => {
-              nameVerseResults.querySelectorAll('.verse-option').forEach(e => e.classList.remove('selected'));
-              el.classList.add('selected');
-              currentText = display[i].textNoNikud
-                ? display[i].textNoNikud.replace(/[^א-ת\s]/g, '').replace(/\s+/g, ' ').trim()
-                : stripNikud(display[i].text);
-              const refStr = `${display[i].ref.book} ${display[i].ref.chapter}:${display[i].ref.verse}`;
-              fetchStatus.textContent = `✓ ${refStr} (${currentText.length} chars)`;
-              checkCanGenerate();
-            });
+          const choose = (el) => {
+            const v = matches[Number(el.dataset.index)];
+            nameVerseResults.querySelectorAll('.verse-option').forEach(e => e.classList.remove('selected'));
+            el.classList.add('selected');
+            currentText = v.textNoNikud
+              ? v.textNoNikud.replace(/[^א-ת\s]/g, '').replace(/\s+/g, ' ').trim()
+              : stripNikud(v.text);
+            const refStr = `${v.ref.book} ${v.ref.chapter}:${v.ref.verse}`;
+            fetchStatus.textContent = `✓ ${refStr} (${currentText.length} chars)`;
+
+            // Without a shape the Draw button can't enable — default to the
+            // name itself, which is what this verse belongs to anyway
+            const hasShape = sourceMode === 'word' ? shapeWord.value.trim() : currentImage;
+            if (!hasShape) useNameAsShape(name);
+
+            nameVerseChosen.innerHTML = `
+              <div class="verse-chosen">
+                ✓ Using <strong>${refStr}</strong> as the text
+                (${currentText.length} letters, repeated to fill the drawing).
+                ${sourceMode === 'word' && shapeWord.value.trim() === name
+                  ? `The shape is your name, <strong>${name}</strong>. Press <strong>Draw it</strong>.`
+                  : `<br><button type="button" class="btn-secondary" id="useNameShapeBtn">Draw it in the shape of ${name}</button>`}
+              </div>`;
+            const btn = document.getElementById('useNameShapeBtn');
+            if (btn) btn.addEventListener('click', () => { useNameAsShape(name); el.click(); });
+            checkCanGenerate();
+          };
+          nameVerseResults.querySelectorAll('.verse-option').forEach(el => {
+            el.addEventListener('click', () => choose(el));
+            el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(el); } });
           });
+          // Pick the first verse right away so the flow never dead-ends
+          choose(nameVerseResults.querySelector('.verse-option'));
         }
       } catch (err) {
         nameVerseResults.innerHTML = `<div class="error-message visible"><strong>Error:</strong> ${err.message}</div>`;
       } finally {
         findVerseBtn.disabled = false;
       }
+    }
+
+    function useNameAsShape(name) {
+      shapeWord.value = name;
+      document.querySelector('.source-tab-btn[data-source="word"]').click();
     }
 
     function checkCanGenerate() {
@@ -1282,14 +1416,10 @@ import Layout from '../layouts/Layout.astro';
 
       try {
         try { await document.fonts.load(`700 20px ${HEBREW_FONT}`); } catch {}
-        if (sourceMode === 'word') {
-          await processShape();
-        } else if (enableColorReplace.checked) {
+        if (sourceMode === 'image' && enableColorReplace.checked) {
           await processColorReplace();
-        } else if (STYLE_PRESETS[activeStyle].mode === 'mono') {
-          await processImageInk();
         } else {
-          await processImageColor();
+          await renderPlate();
         }
         resultContainer.classList.add('visible');
         canvasContainer.classList.toggle('transparent-preview', transparentBg.checked);
@@ -1307,12 +1437,22 @@ import Layout from '../layouts/Layout.astro';
       }
     }
 
+    function setProgress(frac) {
+      const pct = Math.round(Math.min(1, frac) * 100);
+      progressFill.style.width = `${pct}%`;
+      progressText.textContent = `Drawing... ${pct}%`;
+    }
+
+    // Yield to the browser every ~30ms so the progress bar paints
+    function yieldFrame() { return new Promise(r => nextTick(r)); }
+
     // Sample the image into a luminance grid at cols × rows
-    function sampleLuminance(cols, rows) {
+    function sampleLuminance(src, cols, rows) {
       const pCtx = processCanvas.getContext('2d', { willReadFrequently: true });
       processCanvas.width = cols;
       processCanvas.height = rows;
-      pCtx.drawImage(currentImage, 0, 0, cols, rows);
+      pCtx.clearRect(0, 0, cols, rows);
+      pCtx.drawImage(src, 0, 0, cols, rows);
       const px = pCtx.getImageData(0, 0, cols, rows).data;
       const lum = new Float32Array(cols * rows);
       for (let i = 0; i < cols * rows; i++) {
@@ -1320,7 +1460,7 @@ import Layout from '../layouts/Layout.astro';
         // Transparent source pixels count as paper
         lum[i] = a < 40 ? 255 : 0.2126 * r + 0.7152 * g + 0.0722 * b;
       }
-      return lum;
+      return { lum, px };
     }
 
     // Percentile auto-contrast: map [p2..p98] → [0..255]
@@ -1336,8 +1476,135 @@ import Layout from '../layouts/Layout.astro';
       return out;
     }
 
+    // Tone field: 0 = bare paper, 1 = full ink, after contrast + S-curve
+    function buildField(src, fw, fh, preset) {
+      const punch = parseInt(contrastSlider.value) / 115;
+      const { lum, px } = sampleLuminance(src, fw, fh);
+      const L = autoContrast(lum);
+      const dark = new Float32Array(fw * fh);
+      for (let i = 0; i < dark.length; i++) {
+        let d = preset.invert ? L[i] / 255 : 1 - L[i] / 255;
+        d = Math.pow(d, 1 / punch);
+        dark[i] = d * d * (3 - 2 * d);
+      }
+      return { w: fw, h: fh, dark, rgb: px };
+    }
+
+    function bilinear(arr, w, h, x, y) {
+      if (x < 0 || y < 0 || x > w - 1 || y > h - 1) return 0;
+      const x0 = Math.floor(x), y0 = Math.floor(y);
+      const x1 = Math.min(x0 + 1, w - 1), y1 = Math.min(y0 + 1, h - 1);
+      const fx = x - x0, fy = y - y0;
+      const a = arr[y0 * w + x0], b = arr[y0 * w + x1], c = arr[y1 * w + x0], d = arr[y1 * w + x1];
+      return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
+    }
+
     function isHebrewFill() {
       return activeTab === 'sefaria' || activeTab === 'nameverse' || /[א-ת]/.test(currentText.slice(0, 100));
+    }
+
+    function rgba([r, g, b], a) { return `rgba(${r},${g},${b},${a.toFixed(2)})`; }
+
+    // The word/name rendered as a black-on-white mask, used as the "image"
+    function buildWordMask() {
+      const word = shapeWord.value.trim();
+      const shapePx = parseInt(shapeFontSize.value);
+      const padding = Math.round(shapePx * 0.14);
+      const isHeb = /[א-ת]/.test(word);
+      const font = isHeb
+        ? `700 ${shapePx}px ${HEBREW_FONT}`
+        : `700 ${shapePx}px "Frank Ruhl Libre", "Georgia", serif`;
+      const c = document.createElement('canvas');
+      const ctx = c.getContext('2d');
+      ctx.font = font;
+      const m = ctx.measureText(word);
+      const asc = m.actualBoundingBoxAscent || shapePx * 0.75;
+      const desc = m.actualBoundingBoxDescent || shapePx * 0.2;
+      c.width = Math.ceil(m.width) + padding * 2;
+      c.height = Math.ceil(asc + desc) + padding * 2;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.font = font;
+      ctx.fillStyle = '#000';
+      ctx.textBaseline = 'alphabetic';
+      ctx.textAlign = 'center';
+      ctx.direction = isHeb ? 'rtl' : 'ltr';
+      ctx.fillText(word, c.width / 2, padding + asc);
+      return c;
+    }
+
+    // ————— Plate composition: paper, art, carpet frame, caption —————
+    async function renderPlate() {
+      const preset = STYLE_PRESETS[activeStyle];
+      const art = document.createElement('canvas');
+      const src = sourceMode === 'word' ? buildWordMask() : currentImage;
+
+      if (activeTechnique === 'grid') {
+        if (sourceMode === 'word') await drawWordGrid(art, src, preset);
+        else if (preset.mode === 'color') await drawGridColor(art, src);
+        else await drawGridInk(art, src, preset);
+      } else {
+        await drawPathArt(art, src, preset);
+      }
+      await composePlate(art, preset);
+    }
+
+    function paperFor(preset) {
+      if (preset.mode === 'color' && activeTechnique !== 'grid') return '#f4eee2';
+      return preset.paper;
+    }
+
+    function inkFor(preset) {
+      return preset.mode === 'color' ? [26, 22, 18] : preset.ink;
+    }
+
+    async function composePlate(art, preset) {
+      const frame = frameToggle.checked;
+      const W = art.width, H = art.height;
+      const m = frame ? Math.round(Math.max(W, H) * 0.075) : 0;
+      const outW = W + 2 * m;
+      const plateH = H + 2 * m;
+      const caption = captionInput.value.trim();
+      const capH = caption ? Math.max(56, Math.min(300, Math.round(outW * 0.09))) : 0;
+      const outH = plateH + capH;
+
+      resultCanvas.width = outW;
+      resultCanvas.height = outH;
+      const ctx = resultCanvas.getContext('2d');
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, outW, outH);
+
+      if (!transparentBg.checked) {
+        ctx.fillStyle = paperFor(preset);
+        ctx.fillRect(0, 0, outW, outH);
+        // Faint mottling so the paper doesn't read as flat digital fill
+        ctx.fillStyle = preset.invert ? 'rgba(255,240,200,0.02)' : 'rgba(80,55,20,0.025)';
+        const specks = Math.round(outW * outH / 9000);
+        for (let i = 0; i < specks; i++) {
+          ctx.fillRect(Math.random() * outW, Math.random() * outH, 1 + Math.random() * 3, 1 + Math.random() * 3);
+        }
+        if (preset.aged) {
+          // Foxing stains and a darkened, handled edge
+          for (let i = 0; i < 14; i++) {
+            const x = Math.random() * outW, y = Math.random() * outH;
+            const r = (0.03 + Math.random() * 0.12) * Math.max(outW, outH);
+            const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+            g.addColorStop(0, 'rgba(120,80,30,0.07)');
+            g.addColorStop(1, 'rgba(120,80,30,0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(x - r, y - r, r * 2, r * 2);
+          }
+          const v = ctx.createRadialGradient(outW / 2, outH / 2, Math.min(outW, outH) * 0.35, outW / 2, outH / 2, Math.hypot(outW, outH) / 2);
+          v.addColorStop(0, 'rgba(90,60,20,0)');
+          v.addColorStop(1, 'rgba(90,60,20,0.35)');
+          ctx.fillStyle = v;
+          ctx.fillRect(0, 0, outW, outH);
+        }
+      }
+
+      ctx.drawImage(art, m, m);
+      if (frame) await drawCarpetFrame(ctx, outW, plateH, m, preset);
+      drawCaption(ctx, outW, plateH, capH, inkFor(preset));
     }
 
     // Optional caption band drawn beneath the artwork, like the title line
@@ -1346,6 +1613,7 @@ import Layout from '../layouts/Layout.astro';
       const caption = captionInput.value.trim();
       if (!caption) return;
       const [r, g, b] = inkRGB;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.strokeStyle = `rgba(${r},${g},${b},0.5)`;
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -1370,179 +1638,513 @@ import Layout from '../layouts/Layout.astro';
       ctx.direction = 'ltr';
     }
 
-    // ————— Classic ink engine: tone from the letters themselves —————
-    async function processImageInk() {
-      const preset = STYLE_PRESETS[activeStyle];
+    // ————— Text on a path: the core of contour, engraving, spiral and frame —————
+    // Measured on a private context so the drawing context's font cache stays valid
+    const glyphWidths = new Map();
+    const measureCtx = document.createElement('canvas').getContext('2d');
+    function glyphWidth(ch, weight) {
+      const key = weight + ch;
+      let w = glyphWidths.get(key);
+      if (w === undefined) {
+        measureCtx.font = `${weight} 100px ${HEBREW_FONT}`;
+        w = measureCtx.measureText(ch).width / 100;
+        glyphWidths.set(key, w);
+      }
+      return w;
+    }
+
+    function makeCursor(text) {
+      let i = 0;
+      return {
+        peek: () => text[i % text.length],
+        advance: () => { i++; },
+      };
+    }
+
+    // Lay letters along a polyline. Letters stay upright relative to the
+    // line's direction; Hebrew is laid right-to-left so it reads correctly.
+    // o.tone(x, y) → 0..1 ink (≤0 leaves paper showing, text is not consumed)
+    // o.color(x, y, t) → fillStyle
+    function textAlongPath(ctx, pts, cursor, o) {
+      const n = pts.length;
+      if (n < 2) return;
+      const P = o.rtl ? pts.slice().reverse() : pts;
+      const flip = o.rtl ? Math.PI : 0;
+      const cum = new Float32Array(n);
+      for (let i = 1; i < n; i++) {
+        cum[i] = cum[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
+      }
+      const L = cum[n - 1];
+      if (L < o.base * 2) return;
+
+      let seg = 0;
+      let px = 0, py = 0, ang = 0;
+      const at = (s) => {
+        while (seg < n - 2 && cum[seg + 1] < s) seg++;
+        const a = P[seg], b = P[seg + 1];
+        const len = (cum[seg + 1] - cum[seg]) || 1;
+        const f = (s - cum[seg]) / len;
+        px = a[0] + (b[0] - a[0]) * f;
+        py = a[1] + (b[1] - a[1]) * f;
+        ang = Math.atan2(b[1] - a[1], b[0] - a[0]) + flip;
+      };
+
+      let lastFont = '';
+      let s = 0;
+      while (s < L) {
+        at(s);
+        const t = o.tone(px, py);
+        if (t <= 0) { s += o.base * 0.45; continue; }
+        const size = Math.round(o.base * (o.minScale + o.scaleRange * t) * 2) / 2;
+        const ch = cursor.peek();
+        if (ch === ' ') { cursor.advance(); s += size * 0.32; continue; }
+        const weight = t > 0.55 ? 700 : 400;
+        const w = glyphWidth(ch, weight) * size;
+        if (s + w > L) break;
+        at(s + w / 2);
+        const font = `${weight} ${size}px ${HEBREW_FONT}`;
+        if (font !== lastFont) { ctx.font = font; lastFont = font; }
+        ctx.fillStyle = o.color(px, py, t);
+        const c = Math.cos(ang), sn = Math.sin(ang);
+        ctx.setTransform(c, sn, -sn, c, px, py);
+        ctx.fillText(ch, 0, 0);
+        cursor.advance();
+        s += w + size * 0.05;
+      }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+
+    // Split a sampled polyline wherever it leaves the canvas
+    function clipRuns(points, W, H, out, minLen = 4) {
+      let run = [];
+      for (const p of points) {
+        if (p[0] >= 0 && p[1] >= 0 && p[0] < W && p[1] < H) {
+          run.push(p);
+        } else if (run.length) {
+          if (run.length >= minLen) out.push(run);
+          run = [];
+        }
+      }
+      if (run.length >= minLen) out.push(run);
+    }
+
+    // Parallel lines at angle theta, each bent sideways by the blurred tone
+    // (the engraver's trick: lines swell over the form like a relief)
+    function engravedLines(W, H, theta, spacing, relief, reliefAmp) {
+      const ux = Math.cos(theta), uy = Math.sin(theta);
+      const nx = -uy, ny = ux;
+      const cx = W / 2, cy = H / 2;
+      const D = Math.hypot(W, H) / 2 + reliefAmp + spacing;
+      const lines = [];
+      for (let o = -D; o <= D; o += spacing) {
+        const pts = [];
+        for (let t = -D; t <= D; t += 3) {
+          const bx = cx + nx * o + ux * t;
+          const by = cy + ny * o + uy * t;
+          const disp = reliefAmp ? reliefAmp * (relief(bx, by) - 0.5) : 0;
+          pts.push([bx - nx * disp, by - ny * disp]);
+        }
+        clipRuns(pts, W, H, lines);
+      }
+      return lines;
+    }
+
+    // Archimedean spiral from the center out past the corners
+    function spiralPath(W, H, spacing) {
+      const cx = W / 2, cy = H / 2;
+      const maxR = Math.hypot(W, H) / 2;
+      const pts = [];
+      let phi = 0;
+      while (true) {
+        const r = spacing * phi / (Math.PI * 2);
+        if (r > maxR) break;
+        pts.push([cx + r * Math.cos(phi), cy + r * Math.sin(phi)]);
+        phi += 3 / Math.max(r, 6);
+      }
+      const runs = [];
+      clipRuns(pts, W, H, runs);
+      return runs;
+    }
+
+    // Chamfer distance (in field px) from each inked pixel to the nearest paper
+    function distanceInside(dark, w, h) {
+      const INF = 1e9;
+      const d = new Float32Array(w * h);
+      for (let i = 0; i < d.length; i++) d[i] = dark[i] > 0.5 ? INF : 0;
+      const A = 1, B = Math.SQRT2;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (!d[i]) continue;
+        let v = d[i];
+        if (x > 0) v = Math.min(v, d[i - 1] + A);
+        if (y > 0) {
+          v = Math.min(v, d[i - w] + A);
+          if (x > 0) v = Math.min(v, d[i - w - 1] + B);
+          if (x < w - 1) v = Math.min(v, d[i - w + 1] + B);
+        }
+        if (x === 0 || y === 0 || x === w - 1) v = Math.min(v, 1);
+        d[i] = v;
+      }
+      for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) {
+        const i = y * w + x;
+        if (!d[i]) continue;
+        let v = d[i];
+        if (x < w - 1) v = Math.min(v, d[i + 1] + A);
+        if (y < h - 1) {
+          v = Math.min(v, d[i + w] + A);
+          if (x < w - 1) v = Math.min(v, d[i + w + 1] + B);
+          if (x > 0) v = Math.min(v, d[i + w - 1] + B);
+        }
+        d[i] = v;
+      }
+      return d;
+    }
+
+    // Isolines of a scalar field as polylines in output coordinates
+    function isolines(values, fw, fh, thresholds, scale, minLen) {
+      const gen = d3contours().size([fw, fh]).thresholds(thresholds);
+      const out = [];
+      for (const mp of gen(values)) {
+        for (const poly of mp.coordinates) {
+          for (const ring of poly) {
+            const pts = ring.map(([x, y]) => [x * scale, y * scale]);
+            // Wind every ring clockwise on screen so its top edge runs
+            // left-to-right and the letters along it stand upright
+            let area = 0;
+            for (let i = 1; i < pts.length; i++) area += pts[i - 1][0] * pts[i][1] - pts[i][0] * pts[i - 1][1];
+            if (area < 0) pts.reverse();
+            let len = 0;
+            for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+            if (len >= minLen) out.push({ pts, level: mp.value });
+          }
+        }
+      }
+      return out;
+    }
+
+    // ————— Path techniques: engraving, contour, spiral —————
+    async function drawPathArt(art, src, preset) {
+      const srcW = src.naturalWidth || src.width;
+      const srcH = src.naturalHeight || src.height;
       const density = parseInt(densitySlider.value);          // 2 (fine) – 12 (coarse)
-      const punch = parseInt(contrastSlider.value) / 115;     // ~0.5 – 1.75
+      const spacing = 7 + density * 1.5;                       // px between lines of text
 
-      // Grid: aim for a wide output; finer density = more cells
-      const aspect = currentImage.naturalHeight / currentImage.naturalWidth;
-      const cols = Math.max(40, Math.round(340 - density * 22));
-      const rows = Math.max(30, Math.round(cols * aspect));
+      let W = sourceMode === 'word' ? Math.min(3200, Math.max(1400, srcW * 2.2)) : 2000;
+      let H = W * srcH / srcW;
+      const maxPx = 7.5e6;
+      if (W * H > maxPx) { const f = Math.sqrt(maxPx / (W * H)); W *= f; H *= f; }
+      W = Math.round(W); H = Math.round(H);
 
-      let lum = sampleLuminance(cols, rows);
-      lum = autoContrast(lum);
+      const fw = Math.round(W / 3), fh = Math.max(2, Math.round(H / 3));
+      const k = fw / W;                                        // output px → field px
+      const field = buildField(src, fw, fh, preset);
+      const toneAt = (x, y) => bilinear(field.dark, fw, fh, x * k, y * k);
 
-      const cell = 13;                                        // output px per letter cell
-      const outW = cols * cell;
-      const artH = rows * cell;
-      const caption = captionInput.value.trim();
-      const capH = caption ? Math.max(56, Math.min(300, Math.round(outW * 0.09))) : 0;
-      const outH = artH + capH;
+      art.width = W;
+      art.height = H;
+      const ctx = art.getContext('2d');
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.direction = 'ltr';
 
-      const rCtx = resultCanvas.getContext('2d');
-      resultCanvas.width = outW;
-      resultCanvas.height = outH;
+      const ink = preset.ink;
+      const accent = preset.accent;
+      const colorMode = preset.mode === 'color';
+      const colorAt = (x, y, t, lineIdx) => {
+        const a = 0.35 + 0.65 * t;
+        if (colorMode) {
+          const fx = Math.min(fw - 1, Math.max(0, Math.round(x * k)));
+          const fy = Math.min(fh - 1, Math.max(0, Math.round(y * k)));
+          const i = (fy * fw + fx) * 4;
+          return rgba([field.rgb[i] * 0.85, field.rgb[i + 1] * 0.85, field.rgb[i + 2] * 0.85].map(Math.round), Math.min(1, a + 0.2));
+        }
+        if (accent && lineIdx % 5 === 2) return rgba(accent, a);
+        return rgba(ink, a);
+      };
 
-      const [ir, ig, ib] = preset.ink;
+      // Each layer: polylines + how tone maps to letter size there
+      const layers = [];
+      // A word mask is pure black/white, so full tone everywhere would pile
+      // letters into a blot — hold it at a readable mid-weight instead
+      const wordShape = sourceMode === 'word';
+      const tone = (cut) => (x, y) => {
+        const d = toneAt(x, y);
+        if (wordShape) return d > 0.5 ? 0.5 : 0;
+        return d < cut ? 0 : (d - cut) / (1 - cut);
+      };
 
-      if (!transparentBg.checked) {
-        rCtx.fillStyle = preset.paper;
-        rCtx.fillRect(0, 0, outW, outH);
-        // Faint mottling so the paper doesn't read as flat digital fill
-        rCtx.fillStyle = preset.invert ? 'rgba(255,240,200,0.02)' : 'rgba(80,55,20,0.025)';
-        for (let i = 0; i < 400; i++) {
-          rCtx.fillRect(Math.random() * outW, Math.random() * outH, 1 + Math.random() * 3, 1 + Math.random() * 3);
+      if (activeTechnique === 'engrave') {
+        const blurred = Float32Array.from(field.dark);
+        blur2({ data: blurred, width: fw, height: fh }, Math.max(2, spacing * k * 1.5));
+        const relief = (x, y) => bilinear(blurred, fw, fh, x * k, y * k);
+        const amp = wordShape ? spacing * 0.8 : spacing * 1.6;
+        layers.push({ lines: engravedLines(W, H, 0, spacing, relief, amp), tone: tone(0.06), minScale: 0.32, scaleRange: 0.95 });
+        if (crossHatch.checked) {
+          layers.push({ lines: engravedLines(W, H, -0.62, spacing * 1.15, relief, amp * 0.6), tone: tone(0.5), minScale: 0.4, scaleRange: 0.7 });
+          if (!wordShape) layers.push({ lines: engravedLines(W, H, 0.62, spacing * 1.3, relief, amp * 0.6), tone: tone(0.78), minScale: 0.45, scaleRange: 0.6 });
+        }
+      } else if (activeTechnique === 'spiral') {
+        layers.push({ lines: spiralPath(W, H, spacing), tone: tone(0.05), minScale: 0.28, scaleRange: 1.0 });
+      } else {
+        // Contour lines
+        if (sourceMode === 'word') {
+          // Concentric outlines inside the letters, like masora figurata bands
+          const dist = distanceInside(field.dark, fw, fh);
+          let maxD = 0;
+          for (const v of dist) if (v > maxD) maxD = v;
+          const step = spacing * k;
+          const th = [];
+          for (let t = step * 0.45; t < maxD; t += step) th.push(t);
+          const rings = isolines(dist, fw, fh, th, 1 / k, spacing * 3);
+          layers.push({ lines: rings.map(r => r.pts), tone: () => 0.62, minScale: 0.4, scaleRange: 0.55 });
+        } else {
+          const blurred = Float32Array.from(field.dark);
+          blur2({ data: blurred, width: fw, height: fh }, 1.5);
+          const levels = Math.round(44 - density * 2.8);
+          const th = [];
+          for (let i = 0; i < levels; i++) th.push(0.05 + (0.93 * i) / levels);
+          const rings = isolines(blurred, fw, fh, th, 1 / k, spacing * 3);
+          layers.push({
+            lines: rings.map(r => r.pts),
+            tone: (x, y) => Math.max(0.12, toneAt(x, y)),
+            minScale: 0.35, scaleRange: 0.6,
+          });
         }
       }
 
-      rCtx.textBaseline = 'top';
-      rCtx.textAlign = 'left';
-      rCtx.direction = 'ltr';
+      const rtl = isHebrewFill();
+      const cursor = makeCursor(currentText);
+      const totalLines = layers.reduce((n, l) => n + l.lines.length, 0) || 1;
+      let doneLines = 0;
+      let lastYield = performance.now();
+      for (const layer of layers) {
+        for (let li = 0; li < layer.lines.length; li++) {
+          textAlongPath(ctx, layer.lines[li], cursor, {
+            rtl,
+            base: spacing,
+            minScale: layer.minScale,
+            scaleRange: layer.scaleRange,
+            tone: layer.tone,
+            color: (x, y, t) => colorAt(x, y, t, li),
+          });
+          doneLines++;
+          if (performance.now() - lastYield > 30) {
+            setProgress(doneLines / totalLines);
+            await yieldFrame();
+            lastYield = performance.now();
+          }
+        }
+      }
+      setProgress(1);
+    }
+
+    // ————— Carpet-page frame: bands of text and corner rosettes —————
+    async function drawCarpetFrame(ctx, outW, outH, m, preset) {
+      const ink = inkFor(preset);
+      const accent = preset.accent || ink;
+      const rtl = isHebrewFill();
+      const cursor = makeCursor(currentText);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.direction = 'ltr';
+      const base = m * 0.17;
+      const rect = (inset) => {
+        const a = inset, b = outW - inset, c = outH - inset;
+        const pts = [];
+        const add = (x0, y0, x1, y1) => {
+          const steps = Math.max(2, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4));
+          for (let i = 0; i < steps; i++) pts.push([x0 + (x1 - x0) * i / steps, y0 + (y1 - y0) * i / steps]);
+        };
+        add(a, a, b, a); add(b, a, b, c); add(b, c, a, c); add(a, c, a, a);
+        pts.push([a, a]);
+        return pts;
+      };
+      const bands = [0.22, 0.5, 0.78];
+      bands.forEach((f, bi) => {
+        const color = bi === 1 ? rgba(accent, 0.95) : rgba(ink, 0.9);
+        textAlongPath(ctx, rect(m * f), cursor, {
+          rtl, base, minScale: 0.85, scaleRange: 0, tone: () => 1, color: () => color,
+        });
+      });
+      // Thin ruled lines between the bands
+      ctx.strokeStyle = rgba(ink, 0.45);
+      ctx.lineWidth = Math.max(1, m * 0.012);
+      [0.08, 0.92].forEach(f => ctx.strokeRect(m * f, m * f, outW - 2 * m * f, outH - 2 * m * f));
+      // Corner rosettes: concentric rings of text
+      const corners = [[m / 2, m / 2], [outW - m / 2, m / 2], [m / 2, outH - m / 2], [outW - m / 2, outH - m / 2]];
+      for (const [cx, cy] of corners) {
+        ctx.fillStyle = paperFor(preset);
+        if (!transparentBg.checked) {
+          ctx.beginPath(); ctx.arc(cx, cy, m * 0.44, 0, Math.PI * 2); ctx.fill();
+        }
+        [0.38, 0.26, 0.14].forEach((rf, ri) => {
+          const r = m * rf;
+          const pts = [];
+          const steps = Math.ceil(2 * Math.PI * r / 3);
+          for (let i = 0; i <= steps; i++) {
+            const a = -Math.PI / 2 + (i / steps) * Math.PI * 2;
+            pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+          }
+          const color = ri === 1 ? rgba(accent, 0.95) : rgba(ink, 0.9);
+          textAlongPath(ctx, pts, cursor, {
+            rtl, base: base * 0.7, minScale: 0.85, scaleRange: 0, tone: () => 1, color: () => color,
+          });
+        });
+      }
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+    }
+
+    // ————— Tonal rows: tone from the letters themselves —————
+    function gridSize(src) {
+      const density = parseInt(densitySlider.value);
+      const aspect = (src.naturalHeight || src.height) / (src.naturalWidth || src.width);
+      const cols = Math.max(40, Math.round(340 - density * 22));
+      const rows = Math.max(30, Math.round(cols * aspect));
+      return { cols, rows };
+    }
+
+    async function drawGridInk(art, src, preset) {
+      const { cols, rows } = gridSize(src);
+      const field = buildField(src, cols, rows, preset);
+
+      const cell = 13;                                        // output px per letter cell
+      art.width = cols * cell;
+      art.height = rows * cell;
+      const ctx = art.getContext('2d');
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'left';
+      ctx.direction = 'ltr';
 
       const hebrew = isHebrewFill();
       const cutoff = 0.12;
       let textIndex = 0;
       const total = rows * cols;
-      let done = 0;
       let lastFont = '';
 
-      await new Promise((resolve, reject) => {
-        function processChunk() {
-          try {
-            const end = Math.min(done + 1500, total);
-            for (let i = done; i < end; i++) {
-              const row = Math.floor(i / cols);
-              const col = hebrew ? (cols - 1 - (i % cols)) : (i % cols);
+      for (let done = 0; done < total; ) {
+        const end = Math.min(done + 2500, total);
+        for (let i = done; i < end; i++) {
+          const row = Math.floor(i / cols);
+          const col = hebrew ? (cols - 1 - (i % cols)) : (i % cols);
+          const d = field.dark[row * cols + col];
+          if (d < cutoff) continue;                            // paper breathes
 
-              const L = lum[row * cols + col] / 255;
-              // Darkness drives the ink; Night style inverts (light areas glow)
-              let d = preset.invert ? L : 1 - L;
-              d = Math.pow(d, 1 / punch);
-              d = d * d * (3 - 2 * d);                        // S-curve: clean highlights, deep shadows
-              if (d < cutoff) continue;                        // paper breathes
+          const ch = currentText[textIndex % currentText.length];
+          textIndex++;
+          if (ch === ' ') continue;
 
-              const ch = currentText[textIndex % currentText.length];
-              textIndex++;
-              if (ch === ' ') continue;
+          // The whole trick: size, weight, and opacity all follow the tone.
+          // Size quantized to half-pixels so the font string can be cached —
+          // setting ctx.font is the hottest operation in this loop.
+          const size = Math.round(cell * (0.55 + 1.1 * Math.pow(d, 1.35)) * 2) / 2;
+          const weight = d > 0.5 ? 700 : 400;
+          const alpha = 0.32 + 0.68 * d;
+          const font = `${weight} ${size}px ${HEBREW_FONT}`;
+          if (font !== lastFont) { ctx.font = font; lastFont = font; }
+          const inkRGB = preset.accent && row % 7 === 3 ? preset.accent : preset.ink;
+          ctx.fillStyle = rgba(inkRGB, alpha);
 
-              // The whole trick: size, weight, and opacity all follow the tone.
-              // Size quantized to half-pixels so the font string can be cached —
-              // setting ctx.font is the hottest operation in this loop.
-              const size = Math.round(cell * (0.55 + 1.1 * Math.pow(d, 1.35)) * 2) / 2;
-              const weight = d > 0.5 ? 700 : 400;
-              const alpha = 0.32 + 0.68 * d;
-              const font = `${weight} ${size}px ${HEBREW_FONT}`;
-              if (font !== lastFont) { rCtx.font = font; lastFont = font; }
-              rCtx.fillStyle = `rgba(${ir},${ig},${ib},${alpha.toFixed(3)})`;
-
-              const jx = (Math.random() - 0.5) * 1.2;
-              const jy = (Math.random() - 0.5) * 1.2;
-              const x = col * cell - (size - cell) / 2 + jx;
-              const y = row * cell - (size - cell) / 2 + jy;
-              rCtx.fillText(ch, x, y);
-              // Deep shadow: overstrike to build true ink mass
-              if (d > 0.78) rCtx.fillText(ch, x + 0.6, y + 0.4);
-            }
-            done = end;
-            const progress = Math.round((done / total) * 100);
-            progressFill.style.width = `${progress}%`;
-            progressText.textContent = `Drawing... ${progress}%`;
-            if (done < total) {
-              nextTick(processChunk);
-            } else {
-              drawCaption(rCtx, outW, artH, capH, preset.ink);
-              resolve();
-            }
-          } catch (err) { reject(err); }
+          const jx = (Math.random() - 0.5) * 1.2;
+          const jy = (Math.random() - 0.5) * 1.2;
+          const x = col * cell - (size - cell) / 2 + jx;
+          const y = row * cell - (size - cell) / 2 + jy;
+          ctx.fillText(ch, x, y);
+          // Deep shadow: overstrike to build true ink mass
+          if (d > 0.78) ctx.fillText(ch, x + 0.6, y + 0.4);
         }
-        processChunk();
-      });
+        done = end;
+        setProgress(done / total);
+        await yieldFrame();
+      }
     }
 
-    // ————— Color mosaic engine (per-letter image color) —————
-    async function processImageColor() {
-      const density = parseInt(densitySlider.value);
-      const aspect = currentImage.naturalHeight / currentImage.naturalWidth;
-      const cols = Math.max(40, Math.round(340 - density * 22));
-      const rows = Math.max(30, Math.round(cols * aspect));
-
-      const pCtx = processCanvas.getContext('2d', { willReadFrequently: true });
-      processCanvas.width = cols;
-      processCanvas.height = rows;
-      pCtx.drawImage(currentImage, 0, 0, cols, rows);
-      const px = pCtx.getImageData(0, 0, cols, rows).data;
+    // ————— Color mosaic (per-letter image color) —————
+    async function drawGridColor(art, src) {
+      const { cols, rows } = gridSize(src);
+      const { px } = sampleLuminance(src, cols, rows);
 
       const cell = 13;
-      const outW = cols * cell;
-      const artH = rows * cell;
-      const caption = captionInput.value.trim();
-      const capH = caption ? Math.max(56, Math.min(300, Math.round(outW * 0.09))) : 0;
-      const outH = artH + capH;
-
-      const rCtx = resultCanvas.getContext('2d');
-      resultCanvas.width = outW;
-      resultCanvas.height = outH;
-      if (!transparentBg.checked) {
-        rCtx.fillStyle = '#787878';
-        rCtx.fillRect(0, 0, outW, outH);
-      }
-
-      rCtx.font = `${cell + 1}px ${HEBREW_FONT}`;
-      rCtx.textBaseline = 'top';
-      rCtx.textAlign = 'left';
-      rCtx.direction = 'ltr';
+      art.width = cols * cell;
+      art.height = rows * cell;
+      const ctx = art.getContext('2d');
+      ctx.font = `${cell + 1}px ${HEBREW_FONT}`;
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'left';
+      ctx.direction = 'ltr';
 
       const hebrew = isHebrewFill();
       let textIndex = 0;
       const total = rows * cols;
-      let done = 0;
 
-      await new Promise((resolve, reject) => {
-        function processChunk() {
-          try {
-            const end = Math.min(done + 1500, total);
-            for (let i = done; i < end; i++) {
-              const row = Math.floor(i / cols);
-              const col = hebrew ? (cols - 1 - (i % cols)) : (i % cols);
-              const idx = (row * cols + col) * 4;
-              const r = px[idx], g = px[idx + 1], b = px[idx + 2];
-
-              let color = `rgb(${r},${g},${b})`;
-              if (r > 250 && g > 250 && b > 250) color = 'rgb(0,0,0)';
-              const ch = currentText[textIndex % currentText.length];
-              textIndex++;
-              if (ch === ' ') continue;
-              rCtx.fillStyle = color;
-              rCtx.fillText(ch, col * cell, row * cell);
-            }
-            done = end;
-            const progress = Math.round((done / total) * 100);
-            progressFill.style.width = `${progress}%`;
-            progressText.textContent = `Drawing... ${progress}%`;
-            if (done < total) {
-              nextTick(processChunk);
-            } else {
-              drawCaption(rCtx, outW, artH, capH, [17, 17, 17]);
-              resolve();
-            }
-          } catch (err) { reject(err); }
+      for (let done = 0; done < total; ) {
+        const end = Math.min(done + 2500, total);
+        for (let i = done; i < end; i++) {
+          const row = Math.floor(i / cols);
+          const col = hebrew ? (cols - 1 - (i % cols)) : (i % cols);
+          const idx = (row * cols + col) * 4;
+          const r = px[idx], g = px[idx + 1], b = px[idx + 2];
+          const ch = currentText[textIndex % currentText.length];
+          textIndex++;
+          if (ch === ' ') continue;
+          ctx.fillStyle = (r > 250 && g > 250 && b > 250) ? 'rgb(0,0,0)' : `rgb(${r},${g},${b})`;
+          ctx.fillText(ch, col * cell, row * cell);
         }
-        processChunk();
-      });
+        done = end;
+        setProgress(done / total);
+        await yieldFrame();
+      }
     }
 
+    // ————— Word shape in tonal rows: uniform scribal letters inside the word —————
+    async function drawWordGrid(art, mask, preset) {
+      const density = parseInt(densitySlider.value);
+      const scale = density <= 4 ? 8 : density <= 7 ? 10 : 12;
+      const maskW = mask.width, maskH = mask.height;
+      const mPx = mask.getContext('2d').getImageData(0, 0, maskW, maskH).data;
+      const ink = inkFor(preset);
+
+      const cols = Math.ceil(maskW / scale);
+      const rows = Math.ceil(maskH / scale);
+      art.width = cols * scale + 4;
+      art.height = rows * scale + 4;
+      const ctx = art.getContext('2d');
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'left';
+      ctx.direction = 'ltr';
+
+      const fillHebrew = isHebrewFill();
+      let textIndex = 0;
+      const total = rows * cols;
+      let lastFont = '';
+
+      for (let done = 0; done < total; ) {
+        const end = Math.min(done + 2500, total);
+        for (let i = done; i < end; i++) {
+          const row = Math.floor(i / cols);
+          const col = fillHebrew ? (cols - 1 - (i % cols)) : (i % cols);
+          const maskX = Math.min(col * scale + Math.floor(scale / 2), maskW - 1);
+          const maskY = Math.min(row * scale + Math.floor(scale / 2), maskH - 1);
+          const idx = (maskY * maskW + maskX) * 4;
+          if ((mPx[idx] + mPx[idx + 1] + mPx[idx + 2]) / 3 >= 128) continue;
+
+          const ch = currentText[textIndex % currentText.length];
+          textIndex++;
+          if (ch === ' ') continue;
+          // Organic scribal variation instead of uniform stamped letters
+          const size = Math.round((scale + 1.5 + (Math.random() * 2 - 1)) * 2) / 2;
+          const alpha = 0.78 + Math.random() * 0.22;
+          const font = `${size}px ${HEBREW_FONT}`;
+          if (font !== lastFont) { ctx.font = font; lastFont = font; }
+          const inkRGB = preset.accent && row % 7 === 3 ? preset.accent : ink;
+          ctx.fillStyle = rgba(inkRGB, alpha);
+          ctx.fillText(ch, col * scale + 1 + (Math.random() - 0.5), row * scale + 1 + (Math.random() - 0.5));
+        }
+        done = end;
+        setProgress(done / total);
+        await yieldFrame();
+      }
+    }
     // ————— Photo overlay: replace one color with text, keep the rest —————
     async function processColorReplace() {
       const sampleW = Math.min(currentImage.naturalWidth, 300);
@@ -1618,119 +2220,6 @@ import Layout from '../layouts/Layout.astro';
             progressText.textContent = `Drawing... ${progress}%`;
             if (done < total) nextTick(processChunk);
             else resolve();
-          } catch (err) { reject(err); }
-        }
-        processChunk();
-      });
-    }
-
-    // ————— Word shape engine —————
-    async function processShape() {
-      const preset = STYLE_PRESETS[activeStyle];
-      const word = shapeWord.value.trim();
-      const density = parseInt(densitySlider.value);
-      const fillFontSize = density <= 4 ? 8 : density <= 7 ? 10 : 12;
-      const shapePx = parseInt(shapeFontSize.value);
-      const padding = 40;
-
-      const monoStyle = preset.mode === 'mono';
-      const paperColor = monoStyle ? preset.paper : '#ffffff';
-      const [ir, ig, ib] = monoStyle ? preset.ink : [26, 26, 46];
-
-      const fillHebrew = isHebrewFill();
-      const shapeIsHebrew = /[א-ת]/.test(word);
-
-      // Step 1: render the shape word onto a mask canvas
-      const maskCanvas = document.createElement('canvas');
-      const mCtx = maskCanvas.getContext('2d');
-      const shapeFont = shapeIsHebrew
-        ? `bold ${shapePx}px ${HEBREW_FONT}`
-        : `bold ${shapePx}px "Frank Ruhl Libre", "Georgia", serif`;
-      mCtx.font = shapeFont;
-      const measured = mCtx.measureText(word);
-      const maskW = Math.ceil(measured.width) + padding * 2;
-      const maskH = shapePx + padding * 2;
-      maskCanvas.width = maskW;
-      maskCanvas.height = maskH;
-
-      mCtx.fillStyle = '#ffffff';
-      mCtx.fillRect(0, 0, maskW, maskH);
-      mCtx.font = shapeFont;
-      mCtx.fillStyle = '#000000';
-      mCtx.textBaseline = 'alphabetic';
-      mCtx.direction = shapeIsHebrew ? 'rtl' : 'ltr';
-      const textX = shapeIsHebrew ? maskW - padding : padding;
-      mCtx.fillText(word, textX, shapePx + padding * 0.6);
-
-      const maskData = mCtx.getImageData(0, 0, maskW, maskH);
-      const mPx = maskData.data;
-
-      // Step 2: result canvas
-      const scale = fillFontSize;
-      const cols = Math.ceil(maskW / scale);
-      const rows = Math.ceil(maskH / scale);
-      const outW = cols * scale + 4;
-      const artH = rows * scale + 4;
-      const caption = captionInput.value.trim();
-      const capH = caption ? Math.max(56, Math.min(300, Math.round(outW * 0.09))) : 0;
-      const outH = artH + capH;
-
-      const rCtx = resultCanvas.getContext('2d');
-      resultCanvas.width = outW;
-      resultCanvas.height = outH;
-      if (!transparentBg.checked) {
-        rCtx.fillStyle = paperColor;
-        rCtx.fillRect(0, 0, outW, outH);
-        rCtx.fillStyle = preset.invert ? 'rgba(255,240,200,0.02)' : 'rgba(80,55,20,0.025)';
-        for (let i = 0; i < 250; i++) {
-          rCtx.fillRect(Math.random() * outW, Math.random() * outH, 1 + Math.random() * 3, 1 + Math.random() * 3);
-        }
-      }
-
-      rCtx.textBaseline = 'top';
-      rCtx.textAlign = 'left';
-      rCtx.direction = 'ltr';
-
-      let textIndex = 0;
-      const total = rows * cols;
-      let done = 0;
-      let lastFont = '';
-
-      await new Promise((resolve, reject) => {
-        function processChunk() {
-          try {
-            const end = Math.min(done + 800, total);
-            for (let i = done; i < end; i++) {
-              const row = Math.floor(i / cols);
-              const col = fillHebrew ? (cols - 1 - (i % cols)) : (i % cols);
-
-              const maskX = Math.min(col * scale + Math.floor(scale / 2), maskW - 1);
-              const maskY = Math.min(row * scale + Math.floor(scale / 2), maskH - 1);
-              const idx = (maskY * maskW + maskX) * 4;
-              const brightness = (mPx[idx] + mPx[idx + 1] + mPx[idx + 2]) / 3;
-
-              if (brightness < 128) {
-                const ch = currentText[textIndex % currentText.length];
-                textIndex++;
-                if (ch === ' ') continue;
-                // Organic scribal variation instead of uniform stamped letters
-                const size = Math.round((scale + 1.5 + (Math.random() * 2 - 1)) * 2) / 2;
-                const alpha = 0.78 + Math.random() * 0.22;
-                const font = `${size}px ${HEBREW_FONT}`;
-                if (font !== lastFont) { rCtx.font = font; lastFont = font; }
-                rCtx.fillStyle = `rgba(${ir},${ig},${ib},${alpha.toFixed(3)})`;
-                rCtx.fillText(ch, col * scale + 1 + (Math.random() - 0.5), row * scale + 1 + (Math.random() - 0.5));
-              }
-            }
-            done = end;
-            progressFill.style.width = `${Math.round(done / total * 100)}%`;
-            progressText.textContent = `Drawing... ${Math.round(done / total * 100)}%`;
-            if (done < total) {
-              nextTick(processChunk);
-            } else {
-              drawCaption(rCtx, outW, artH, capH, monoStyle ? preset.ink : [26, 26, 46]);
-              resolve();
-            }
           } catch (err) { reject(err); }
         }
         processChunk();
