@@ -709,6 +709,29 @@ body:has(.mb-page) > footer { display:none!important; }
   line-height:1.65; margin:0 0 .6rem;
 }
 .verse-mynotes p:last-child { margin-bottom:0; }
+/* Books & Papers — scholarship on this verse, from literary_bible.books_papers
+   (one work per line). Same plain treatment as My Notes. */
+.verse-books {
+  margin-top:.5rem; padding:.6rem .8rem;
+  background:var(--surface); border:1px solid var(--border); direction:ltr;
+}
+.verse-books-hdr {
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:.4rem;
+}
+.verse-books ul { margin:0; padding-left:1.1rem; }
+.verse-books li {
+  font-family:var(--display); font-size:.85rem; color:var(--text);
+  line-height:1.6; margin:0 0 .35rem; overflow-wrap:anywhere;
+}
+.verse-books li:last-child { margin-bottom:0; }
+.verse-books a { color:var(--gold-dim); }
+.books-badge {
+  display:inline-block; margin-left:.4rem; padding:.05rem .4rem;
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--muted); border:1px solid var(--border); vertical-align:middle;
+}
+.mb-page.no-books .verse-books, .mb-page.no-books .books-badge { display:none; }
 .dev-browser-mycomment {
   color:var(--text); font-size:.78rem; margin-top:.3rem;
   padding-top:.3rem; border-top:1px solid var(--faint); line-height:1.55;
@@ -1013,6 +1036,10 @@ body:has(.mb-page) > footer { display:none!important; }
         <div class="sb-row">
           <input type="checkbox" id="layerModern" checked>
           <label for="layerModern" title="Biblical → Modern Hebrew usage notes traced through Ma’agarim (Historical Dictionary Project)">Modern Hebrew</label>
+        </div>
+        <div class="sb-row">
+          <input type="checkbox" id="layerBooks" checked>
+          <label for="layerBooks" title="Books and papers on a verse — the books_papers column of literary_bible">Books &amp; Papers</label>
         </div>
         <div class="sb-row">
           <input type="checkbox" id="layerHaftarah" checked>
@@ -1405,7 +1432,7 @@ async function loadAllDevices() {
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,notes,my_comments&order=book,chapter,verse`,
+      `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,notes,my_comments&device=not.is.null&order=book,chapter,verse`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     if (!r.ok) return;
@@ -1613,7 +1640,7 @@ haftParshasel.addEventListener('change', updateLoadBtn);
 const LAYER_PARAMS: Array<[string, string]> = [
   ['layerMorph', 'lmorph'], ['layerDevices', 'ldev'],
   ['layerHaftarah', 'lhaft'], ['layerGraetz', 'lgraetz'],
-  ['layerModern', 'lmodern'],
+  ['layerModern', 'lmodern'], ['layerBooks', 'lbooks'],
   ['posNoun', 'pnoun'], ['posVerb', 'pverb'],
   ['posProper', 'pproper'], ['posAdverb', 'padverb'],
 ];
@@ -1929,6 +1956,7 @@ const FOCUS_SECTIONS: Record<string, string> = {
   devices: 'sources',
   notes:   'my notes',
   modern:  'Modern Hebrew',
+  books:   'books & papers',
   nli:     'NLI evidence',
 };
 
@@ -2068,6 +2096,7 @@ setupLayerToggle('layerDevices',  'no-devices');
 setupLayerToggle('layerHaftarah', 'no-haftarah');
 setupLayerToggle('layerGraetz',   'no-graetz');
 setupLayerToggle('layerModern',   'no-modern');
+setupLayerToggle('layerBooks',    'no-books');
 setupLayerToggle('posNoun',   'no-pos-noun');
 setupLayerToggle('posVerb',   'no-pos-verb');
 setupLayerToggle('posProper', 'no-pos-proper');
@@ -2211,7 +2240,7 @@ async function handleAllDevicesLoad() {
   if (!rows.length) {
     try {
       const r = await fetch(
-        `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,notes,my_comments&order=book,chapter,verse`,
+        `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,notes,my_comments&device=not.is.null&order=book,chapter,verse`,
         { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
       );
       rows = await r.json();
@@ -2542,19 +2571,43 @@ async function loadSelectedTranslationsForBook(book: string) {
 }
 
 // ── Supabase devices ───────────────────────────────────────────────────────
+// Rows may carry only books_papers (device left empty) — those feed the
+// Books & Papers section but stay out of every device count, pill and badge,
+// so fetchDevices returns just the device rows and booksCache keeps the rest.
+const booksCache = new Map<string, any[]>();
+
 async function fetchDevices(book: string): Promise<any[]> {
   if (supabaseCache.has(book)) return supabaseCache.get(book)!;
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,sources,urls,notes,my_comments&book=eq.${encodeURIComponent(book)}`,
+      `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,sources,urls,notes,my_comments,books_papers&book=eq.${encodeURIComponent(book)}`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     if (!r.ok) return [];
-    const rows = await r.json();
-    supabaseCache.set(book, rows);
-    return rows;
+    const rows: any[] = await r.json();
+    const devices = rows.filter(d => (d.device || '').trim());
+    supabaseCache.set(book, devices);
+    booksCache.set(book, rows.filter(d => (d.books_papers || '').trim()));
+    return devices;
   } catch { return []; }
+}
+
+function booksFor(book: string, ch: number, v: number): string[] {
+  const rows = (booksCache.get(book) || [])
+    .filter(d => String(d.chapter) === String(ch) && String(d.verse) === String(v));
+  const lines = rows.flatMap(d => String(d.books_papers).split('\n').map(l => l.trim()).filter(Boolean));
+  return [...new Set(lines)];
+}
+
+// One books_papers line → HTML: escaped text with any bare URL turned into a link.
+function bookLineHtml(line: string): string {
+  return line.split(/(https?:\/\/[^\s<>"]+)/g).map((part, i) => {
+    if (i % 2 === 0) return escHtml(part);
+    const url = part.replace(/[).,;:]+$/, '');
+    const tail = part.slice(url.length);
+    return `<a href="${escHtml(url)}" target="_blank" rel="noopener">${escHtml(url.replace(/^https?:\/\/(www\.)?/, ''))}</a>${escHtml(tail)}`;
+  }).join('');
 }
 
 
@@ -3925,6 +3978,23 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
       `<div class="verse-mynotes-hdr">My Notes${focusShareHtml('notes', book, ch, v)}</div>`
       + myNotes.map(n => `<p>${n}</p>`).join('');
     block.appendChild(notesEl);
+  }
+
+  // Books & Papers — scholarship on this verse (literary_bible.books_papers).
+  const books = booksFor(book, ch, v);
+  if (books.length) {
+    const badge = document.createElement('span');
+    badge.className = 'books-badge';
+    badge.textContent = books.length === 1 ? 'Book/Paper' : `Books & Papers ×${books.length}`;
+    ref.appendChild(badge);
+
+    const booksEl = document.createElement('div');
+    booksEl.className = 'verse-books';
+    booksEl.dataset.focus = 'books';
+    booksEl.innerHTML =
+      `<div class="verse-books-hdr">Books &amp; Papers${focusShareHtml('books', book, ch, v)}</div>`
+      + `<ul>${books.map(l => `<li>${bookLineHtml(l)}</li>`).join('')}</ul>`;
+    block.appendChild(booksEl);
   }
 
   return block;
