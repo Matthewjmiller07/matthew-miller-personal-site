@@ -135,11 +135,11 @@ import Layout from '../layouts/Layout.astro';
 
     .grid-2 {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 2rem;
     }
     @media (min-width: 768px) {
-      .grid-2 { grid-template-columns: 1fr 1fr; }
+      .grid-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
     }
 
     .control-section { margin-bottom: 0; }
@@ -386,6 +386,14 @@ import Layout from '../layouts/Layout.astro';
     .btn-secondary:hover { border-color: var(--rubric); color: var(--ink); }
     .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    .compare-group { display: inline-flex; align-items: stretch; }
+    .compare-group .btn-secondary { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    .compare-select {
+      border: 1px solid var(--paper-edge); border-left: 0; background: var(--paper); color: var(--ink-soft);
+      font-family: var(--sans); font-size: 0.85rem; padding: 0 0.5rem; border-radius: 0 2px 2px 0;
+    }
+    #galleryContainer { margin-bottom: 2rem; }
+
     .actions-row {
       display: flex;
       gap: 0.75rem;
@@ -552,35 +560,6 @@ import Layout from '../layouts/Layout.astro';
     details.advanced summary:hover { color: var(--ink); }
     details.advanced[open] summary { margin-bottom: 0.9rem; }
 
-    .verse-option {
-      border: 1px solid var(--paper-edge);
-      padding: 0.6rem 0.8rem;
-      margin-bottom: 0.5rem;
-      cursor: pointer;
-      transition: border-color 0.15s;
-      background: var(--paper);
-      direction: rtl;
-      text-align: right;
-      font-size: 0.95rem;
-      line-height: 1.7;
-      font-family: var(--serif);
-      color: var(--ink-soft);
-    }
-    .verse-option:hover { border-color: var(--rubric); }
-    .verse-option.selected { border-color: var(--rubric); box-shadow: 0 0 0 3px var(--rubric-soft); }
-    .verse-list { max-height: 340px; overflow-y: auto; padding: 3px; }
-    .verse-chosen {
-      margin-top: 0.75rem;
-      padding: 0.7rem 0.9rem;
-      border-left: 3px solid var(--rubric);
-      background: var(--rubric-soft);
-      font-size: 0.85rem;
-      color: var(--ink-soft);
-      line-height: 1.55;
-    }
-    .verse-chosen strong { color: var(--ink); }
-    .verse-chosen .btn-secondary { margin-top: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.82rem; }
-
     /* Technique cards */
     .technique-grid {
       display: grid;
@@ -608,18 +587,147 @@ import Layout from '../layouts/Layout.astro';
     .technique-name { font-family: var(--serif); font-weight: 700; font-size: 0.98rem; color: var(--ink); }
     .technique-desc { font-size: 0.78rem; line-height: 1.5; color: var(--ink-faint); }
 
-    .verse-ref {
-      font-family: var(--mono);
-      font-size: 0.68rem;
-      color: var(--ink-faint);
-      direction: ltr;
-      text-align: left;
-      margin-bottom: 0.2rem;
-    }
-
     @media (prefers-reduced-motion: reduce) {
       .scriptorium * { transition: none !important; }
     }
+  </style>
+
+  <style is:global>
+    /* Name verse panel. Global because the results are injected at runtime,
+       where Astro's scoped attributes don't reach. */
+    #tab-nameverse .nv-intro {
+      font-size: 0.85rem; line-height: 1.6; color: var(--ink-faint); margin: 0 0 0.9rem;
+    }
+    #tab-nameverse .nv-intro em { font-family: var(--serif); font-style: normal; color: var(--ink-soft); }
+    #tab-nameverse .nv-segula {
+      font-family: var(--serif); font-weight: 700; color: var(--rubric); margin-left: 0.15rem;
+    }
+    #tab-nameverse .nv-search {
+      display: flex; border: 1px solid var(--paper-edge); background: var(--paper); border-radius: 2px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    #tab-nameverse .nv-search:focus-within { border-color: var(--rubric); box-shadow: 0 0 0 3px var(--rubric-soft); }
+    #tab-nameverse .nv-search input {
+      flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink);
+      font-family: var(--serif); font-size: 1.35rem; padding: 0.55rem 0.9rem; text-align: right;
+    }
+    #tab-nameverse .nv-search input:focus { outline: none; }
+    #tab-nameverse .nv-search input::placeholder { color: var(--ink-faint); opacity: 0.6; }
+    #tab-nameverse .nv-search button {
+      border: 0; background: var(--rubric); color: #f6efdd; font-family: var(--sans);
+      font-weight: 600; font-size: 0.88rem; padding: 0 1.1rem; cursor: pointer; white-space: nowrap;
+    }
+    #tab-nameverse .nv-search button:disabled { opacity: 0.6; cursor: progress; }
+    #tab-nameverse .nv-examples {
+      margin-top: 0.5rem; font-size: 0.78rem; color: var(--ink-faint);
+      display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;
+    }
+    #tab-nameverse .nv-examples button {
+      font-family: var(--serif); font-size: 0.92rem; color: var(--ink-soft); background: none;
+      border: 0; border-bottom: 1px dotted var(--ink-faint); padding: 0 0.1rem; cursor: pointer;
+    }
+    #tab-nameverse .nv-examples button:hover { color: var(--rubric); border-bottom-color: var(--rubric); }
+
+    #tab-nameverse .nv-status { margin-top: 1rem; font-family: var(--mono); font-size: 0.75rem; color: var(--ink-faint); }
+    #tab-nameverse .nv-error {
+      margin-top: 1rem; padding: 0.7rem 0.9rem; font-size: 0.86rem; line-height: 1.5;
+      color: var(--rubric); background: var(--rubric-soft); border-left: 3px solid var(--rubric);
+    }
+
+    #tab-nameverse .nv-key {
+      display: flex; align-items: center; gap: 0.6rem; margin: 1.1rem 0 0.7rem;
+      font-size: 0.78rem; color: var(--ink-faint);
+    }
+    #tab-nameverse .nv-key-letters {
+      display: inline-flex; align-items: center; gap: 0.45rem; direction: rtl;
+      font-family: var(--serif); font-weight: 700; font-size: 1.35rem; color: var(--rubric); line-height: 1;
+    }
+    #tab-nameverse .nv-key-letters i { font-style: normal; font-size: 0.8rem; color: var(--ink-faint); letter-spacing: 0.15em; }
+    #tab-nameverse .nv-key-count { margin-left: auto; font-family: var(--mono); font-size: 0.72rem; }
+
+    #tab-nameverse .nv-featured {
+      position: relative; background: var(--paper); border: 1px solid var(--paper-edge);
+      padding: 1.1rem 1.2rem 1rem;
+      box-shadow: 0 1px 0 var(--paper-edge), 0 10px 24px -18px rgba(30, 20, 5, 0.6);
+    }
+    #tab-nameverse .nv-featured::before {
+      content: ""; position: absolute; inset: 5px; border: 1px solid var(--rule); pointer-events: none;
+    }
+    #tab-nameverse .nv-featured-head {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin-bottom: 0.6rem;
+    }
+    #tab-nameverse .nv-label {
+      font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--rubric);
+    }
+    #tab-nameverse .nv-ref { font-family: var(--serif); font-size: 0.92rem; color: var(--ink-faint); direction: rtl; }
+    #tab-nameverse .nv-verse {
+      margin: 0; direction: rtl; text-align: right; font-family: var(--serif);
+      font-size: 1.28rem; line-height: 1.95; color: var(--ink);
+    }
+    #tab-nameverse .nv-hl { color: var(--rubric); font-weight: 700; font-size: 1.15em; }
+    #tab-nameverse .nv-actions {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+      margin-top: 0.9rem; padding-top: 0.8rem; border-top: 1px solid var(--rule);
+    }
+    #tab-nameverse .nv-ready { font-size: 0.8rem; color: var(--ink-soft); flex: 1; min-width: 12rem; }
+    #tab-nameverse .nv-ready strong { font-family: var(--serif); color: var(--ink); }
+    #tab-nameverse .nv-btn {
+      border: 1px solid var(--paper-edge); background: transparent; color: var(--ink-soft);
+      font-family: var(--sans); font-size: 0.8rem; font-weight: 600; padding: 0.42rem 0.75rem;
+      border-radius: 2px; cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease;
+    }
+    #tab-nameverse .nv-btn:hover { border-color: var(--rubric); color: var(--ink); }
+    #tab-nameverse .nv-btn.primary { background: var(--rubric); border-color: var(--rubric); color: #f6efdd; }
+    #tab-nameverse .nv-btn.primary:hover { filter: brightness(1.1); color: #f6efdd; }
+    #tab-nameverse .nv-btn span { font-family: var(--serif); }
+
+    #tab-nameverse .nv-browser { margin-top: 0.9rem; }
+    #tab-nameverse .nv-browser[hidden] { display: none; }
+    #tab-nameverse .nv-filter {
+      width: 100%; margin-bottom: 0.5rem; padding: 0.4rem 0.55rem; font-size: 0.85rem;
+      border: 1px solid var(--paper-edge); background: var(--paper); color: var(--ink); border-radius: 2px;
+    }
+    #tab-nameverse .nv-list {
+      list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto;
+      border: 1px solid var(--paper-edge); background: var(--paper);
+    }
+    #tab-nameverse .nv-item {
+      display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 0.75rem; align-items: baseline;
+      width: 100%; text-align: right; direction: rtl; background: none; border: 0;
+      border-bottom: 1px solid var(--rule); padding: 0.6rem 0.8rem; cursor: pointer; color: var(--ink-soft);
+      transition: background-color 0.12s ease;
+    }
+    #tab-nameverse li:last-child .nv-item { border-bottom: 0; }
+    #tab-nameverse .nv-item:hover, #tab-nameverse .nv-item:focus-visible { background: var(--rubric-soft); outline: none; }
+    #tab-nameverse .nv-item[aria-current="true"] { background: var(--rubric-soft); box-shadow: inset -3px 0 0 var(--rubric); }
+    #tab-nameverse .nv-item-text {
+      font-family: var(--serif); font-size: 0.98rem; line-height: 1.6; color: var(--ink);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    #tab-nameverse .nv-item-ref { font-family: var(--serif); font-size: 0.78rem; color: var(--ink-faint); white-space: nowrap; }
+    #tab-nameverse .nv-more { display: block; width: 100%; margin-top: 0.5rem; text-align: center; }
+    #tab-nameverse .nv-more[hidden] { display: none; }
+
+    /* Contact sheet cards (injected at runtime) */
+    #sheetGrid.sheet-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;
+    }
+    #sheetGrid .sheet-card {
+      display: flex; flex-direction: column; gap: 0.45rem; padding: 0.5rem; text-align: left;
+      background: var(--paper); border: 1px solid var(--paper-edge); cursor: pointer;
+      font-family: var(--sans); color: var(--ink-soft); transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    #sheetGrid .sheet-card:hover:not(:disabled) { border-color: var(--rubric); box-shadow: 0 0 0 3px var(--rubric-soft); }
+    #sheetGrid .sheet-card:disabled { cursor: progress; }
+    #sheetGrid .sheet-thumb {
+      display: flex; align-items: center; justify-content: center; aspect-ratio: 3 / 4;
+      background: var(--paper-deep); overflow: hidden;
+    }
+    #sheetGrid .sheet-thumb img { max-width: 100%; max-height: 100%; display: block; box-shadow: 0 2px 8px rgba(20, 12, 2, 0.25); }
+    #sheetGrid .sheet-wait { font-family: var(--mono); font-size: 0.7rem; color: var(--ink-faint); }
+    #sheetGrid .sheet-card.drawing .sheet-wait { color: var(--rubric); }
+    #sheetGrid .sheet-label { font-size: 0.8rem; font-weight: 600; line-height: 1.35; }
+    #sheetGrid .sheet-label small { display: block; font-weight: 400; color: var(--ink-faint); }
   </style>
 
   <div class="scriptorium">
@@ -708,15 +816,22 @@ import Layout from '../layouts/Layout.astro';
 
           <!-- Name Verse tab -->
           <div class="tab-panel" id="tab-nameverse">
-            <div class="step-hint" style="margin-bottom: 0.6rem;">
-              <strong>סגולה:</strong> Find a verse that begins with the first letter of your Hebrew name and ends with the last — said before <em>יהיו לרצון</em> in Shemoneh Esrei.
+            <p class="nv-intro">
+              <span class="nv-segula">סגולה</span>
+              Every name has a verse — one that begins with the name's first letter and ends with its last.
+              Many say it before <em>יהיו לרצון</em> at the close of the Amidah.
+            </p>
+            <form class="nv-search" id="nameVerseForm" autocomplete="off">
+              <input type="text" id="hebrewNameInput" placeholder="שמך בעברית" aria-label="Your Hebrew name" dir="rtl" lang="he" />
+              <button id="findVerseBtn" type="submit">Find verse</button>
+            </form>
+            <div class="nv-examples">
+              Try: <button type="button" data-name="מתתיהו">מתתיהו</button>
+              <button type="button" data-name="רחל">רחל</button>
+              <button type="button" data-name="דוד">דוד</button>
+              <button type="button" data-name="שרה">שרה</button>
             </div>
-            <input type="text" id="hebrewNameInput" class="text-input" placeholder="שמך בעברית, e.g. מתתיהו, רחל, דוד..." dir="rtl" style="font-size:1.2rem; text-align:right; font-family: var(--serif);" />
-            <button id="findVerseBtn" class="btn-secondary" style="margin-top:0.6rem; width:100%; justify-content:center;">
-              Find name verse
-            </button>
-            <div id="nameVerseChosen"></div>
-            <div id="nameVerseResults" style="margin-top:0.75rem;"></div>
+            <div id="nameVerseResults" aria-live="polite"></div>
           </div>
 
           <!-- Custom text tab -->
@@ -860,6 +975,17 @@ import Layout from '../layouts/Layout.astro';
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
           Draw it
         </button>
+        <span class="compare-group">
+          <button id="compareBtn" class="btn-secondary" type="button" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Compare
+          </button>
+          <select id="compareMode" class="compare-select" aria-label="What to compare">
+            <option value="techniques">every technique</option>
+            <option value="inks">every ink</option>
+            <option value="mix" selected>8 favorite pairings</option>
+          </select>
+        </span>
         <button id="fetchTextBtn" class="btn-secondary">Preview text</button>
         <button id="loadSampleBtn" class="btn-secondary">Load sample portrait</button>
       </div>
@@ -871,6 +997,14 @@ import Layout from '../layouts/Layout.astro';
         <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
         <div id="progressText" class="progress-text">Drawing...</div>
       </div>
+    </div>
+
+    <div id="galleryContainer" class="result-container">
+      <div class="result-header">
+        <div class="result-title">Contact sheet</div>
+        <div class="step-hint">Quick previews — tap one to draw it full size.</div>
+      </div>
+      <div id="sheetGrid" class="sheet-grid"></div>
     </div>
 
     <div id="resultContainer" class="result-container">
@@ -903,6 +1037,8 @@ import Layout from '../layouts/Layout.astro';
     let sourceMode = 'image';    // 'image' | 'word'
     let activeStyle = 'ink';     // key of STYLE_PRESETS
     let activeTechnique = 'grid'; // 'grid' | 'engrave' | 'contour' | 'spiral'
+    let renderScale = 1;          // < 1 for contact-sheet previews
+    let progressPrefix = '';
 
     // ————— Style presets —————
     // mono presets carry the whole Marx-poster look: one ink, tone from letters
@@ -960,10 +1096,13 @@ import Layout from '../layouts/Layout.astro';
     const toleranceSlider = $('toleranceSlider');
     const toleranceValue = $('toleranceValue');
     const colorReplacePreview = $('colorReplacePreview');
+    const compareBtn = $('compareBtn');
+    const compareMode = $('compareMode');
+    const galleryContainer = $('galleryContainer');
+    const sheetGrid = $('sheetGrid');
     const crossHatch = $('crossHatch');
     const crossHatchRow = $('crossHatchRow');
     const frameToggle = $('frameToggle');
-    const nameVerseChosen = $('nameVerseChosen');
 
     const HEBREW_FONT = '"Noto Serif Hebrew", "Frank Ruhl Libre", "FrankRuehl", "David", serif';
 
@@ -1091,12 +1230,13 @@ import Layout from '../layouts/Layout.astro';
 
     hebrewNameInput.addEventListener('input', () => {
       nameVerseResults.innerHTML = '';
-      nameVerseChosen.innerHTML = '';
       if (activeTab === 'nameverse') { currentText = ''; checkCanGenerate(); }
     });
 
-    findVerseBtn.addEventListener('click', () => findNameVerse());
-    hebrewNameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') findNameVerse(); });
+    $('nameVerseForm').addEventListener('submit', (e) => { e.preventDefault(); findNameVerse(); });
+    document.querySelectorAll('.nv-examples button').forEach(btn => {
+      btn.addEventListener('click', () => { hebrewNameInput.value = btn.dataset.name; findNameVerse(); });
+    });
 
     customTextInput.addEventListener('input', () => {
       const val = customTextInput.value;
@@ -1109,6 +1249,7 @@ import Layout from '../layouts/Layout.astro';
     densitySlider.addEventListener('input', (e) => { densityValue.textContent = e.target.value; });
     contrastSlider.addEventListener('input', (e) => { contrastValue.textContent = e.target.value; });
     generateBtn.addEventListener('click', generateMicrography);
+    compareBtn.addEventListener('click', compareStyles);
     fetchTextBtn.addEventListener('click', fetchAndPreviewText);
     loadSampleBtn.addEventListener('click', loadSampleImage);
     downloadBtn.addEventListener('click', downloadResult);
@@ -1253,21 +1394,41 @@ import Layout from '../layouts/Layout.astro';
       return nameVersesDB;
     }
 
+    // Wrap the verse's first and last letters (with their marks) so the
+    // name's letters stand out in rubric, the way the segula is taught
+    function highlightNameLetters(text) {
+      const body = text.replace(/[\s:׃]+$/, '');
+      const first = body.match(/[א-ת][֑-ׇ]*/);
+      const lastIdx = body.search(/[א-ת][֑-ׇ]*[^א-ת]*$/);
+      if (!first || lastIdx < 0) return body + '׃';
+      const fEnd = first.index + first[0].length;
+      const lastLen = body.slice(lastIdx).match(/^[א-ת][֑-ׇ]*/)[0].length;
+      if (lastIdx < fEnd) return body + '׃';
+      return body.slice(0, first.index)
+        + `<span class="nv-hl">${first[0]}</span>`
+        + body.slice(fEnd, lastIdx)
+        + `<span class="nv-hl">${body.slice(lastIdx, lastIdx + lastLen)}</span>`
+        + body.slice(lastIdx + lastLen) + '׃';
+    }
+
+    function verseRef(v) { return `${v.ref.book} ${v.ref.chapter}:${v.ref.verse}`; }
+
     async function findNameVerse() {
       const name = hebrewNameInput.value.trim().replace(/[<>&"]/g, '');
       if (!name) {
-        nameVerseResults.innerHTML = '<div class="error-message visible">Please enter your Hebrew name</div>';
+        nameVerseResults.innerHTML = '<div class="nv-error">Type your Hebrew name to find its verse.</div>';
+        hebrewNameInput.focus();
         return;
       }
       const hebrewOnly = name.replace(/[^א-ת]/g, '');
       if (hebrewOnly.length === 0) {
-        nameVerseResults.innerHTML = '<div class="error-message visible">Please enter your name in Hebrew letters</div>';
+        nameVerseResults.innerHTML = '<div class="nv-error">The segula works letter by letter in Hebrew — please type the name in Hebrew letters.</div>';
         return;
       }
       const firstLetter = normalizeHebrew(hebrewOnly[0]);
       const lastLetter = normalizeHebrew(hebrewOnly[hebrewOnly.length - 1]);
 
-      nameVerseResults.innerHTML = '<div class="fetch-status">Searching...</div>';
+      nameVerseResults.innerHTML = '<div class="nv-status">Searching Tanakh…</div>';
       findVerseBtn.disabled = true;
 
       try {
@@ -1276,67 +1437,136 @@ import Layout from '../layouts/Layout.astro';
           normalizeHebrew(v.startLetter) === firstLetter &&
           normalizeHebrew(v.endLetter) === lastLetter
         );
-
         if (matches.length === 0) {
           nameVerseResults.innerHTML = `
-            <div class="error-message visible">
-              No verses found starting with <strong>${firstLetter}</strong> and ending with <strong>${lastLetter}</strong>.
-              Try a different form of your name.
+            <div class="nv-error">
+              No verse in Tanakh begins with <strong>${firstLetter}</strong> and ends with <strong>${hebrewOnly[hebrewOnly.length - 1]}</strong>.
+              Try another spelling of the name (with or without a י or ו).
             </div>`;
-        } else {
-          let html = `<div class="step-hint" style="margin-bottom:0.5rem;">
-            Found <strong>${matches.length}</strong> verse${matches.length > 1 ? 's' : ''} for
-            <strong>${firstLetter}...${lastLetter}</strong> — tap one to use it:
-          </div><div class="verse-list">`;
-          matches.forEach((v, i) => {
-            html += `
-              <div class="verse-option" data-index="${i}" role="button" tabindex="0">
-                <div class="verse-ref">${v.ref.book} ${v.ref.chapter}:${v.ref.verse}</div>
-                <div>${v.text}</div>
-              </div>`;
-          });
-          html += '</div>';
-          nameVerseResults.innerHTML = html;
-
-          const choose = (el) => {
-            const v = matches[Number(el.dataset.index)];
-            nameVerseResults.querySelectorAll('.verse-option').forEach(e => e.classList.remove('selected'));
-            el.classList.add('selected');
-            currentText = v.textNoNikud
-              ? v.textNoNikud.replace(/[^א-ת\s]/g, '').replace(/\s+/g, ' ').trim()
-              : stripNikud(v.text);
-            const refStr = `${v.ref.book} ${v.ref.chapter}:${v.ref.verse}`;
-            fetchStatus.textContent = `✓ ${refStr} (${currentText.length} chars)`;
-
-            // Without a shape the Draw button can't enable — default to the
-            // name itself, which is what this verse belongs to anyway
-            const hasShape = sourceMode === 'word' ? shapeWord.value.trim() : currentImage;
-            if (!hasShape) useNameAsShape(name);
-
-            nameVerseChosen.innerHTML = `
-              <div class="verse-chosen">
-                ✓ Using <strong>${refStr}</strong> as the text
-                (${currentText.length} letters, repeated to fill the drawing).
-                ${sourceMode === 'word' && shapeWord.value.trim() === name
-                  ? `The shape is your name, <strong>${name}</strong>. Press <strong>Draw it</strong>.`
-                  : `<br><button type="button" class="btn-secondary" id="useNameShapeBtn">Draw it in the shape of ${name}</button>`}
-              </div>`;
-            const btn = document.getElementById('useNameShapeBtn');
-            if (btn) btn.addEventListener('click', () => { useNameAsShape(name); el.click(); });
-            checkCanGenerate();
-          };
-          nameVerseResults.querySelectorAll('.verse-option').forEach(el => {
-            el.addEventListener('click', () => choose(el));
-            el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(el); } });
-          });
-          // Pick the first verse right away so the flow never dead-ends
-          choose(nameVerseResults.querySelector('.verse-option'));
+          return;
         }
+        renderNameVerses(name, hebrewOnly, matches);
       } catch (err) {
-        nameVerseResults.innerHTML = `<div class="error-message visible"><strong>Error:</strong> ${err.message}</div>`;
+        nameVerseResults.innerHTML = `<div class="nv-error">Couldn't load the verse list: ${err.message}</div>`;
       } finally {
         findVerseBtn.disabled = false;
       }
+    }
+
+    function renderNameVerses(name, hebrewOnly, matches) {
+      const PAGE = 12;
+      let selected = 0;
+      let filterBook = '';
+      let shown = PAGE;
+
+      const books = [];
+      const bookCounts = new Map();
+      for (const v of matches) {
+        if (!bookCounts.has(v.ref.book)) books.push(v.ref.book);
+        bookCounts.set(v.ref.book, (bookCounts.get(v.ref.book) || 0) + 1);
+      }
+
+      nameVerseResults.innerHTML = `
+        <div class="nv-key">
+          <span class="nv-key-letters">${hebrewOnly[0]}<i>···</i>${hebrewOnly[hebrewOnly.length - 1]}</span>
+          <span>first and last letters of <strong style="font-family:var(--serif)">${name}</strong></span>
+          <span class="nv-key-count">${matches.length} verse${matches.length === 1 ? '' : 's'}</span>
+        </div>
+        <div class="nv-featured">
+          <div class="nv-featured-head">
+            <span class="nv-label">Your verse</span>
+            <span class="nv-ref"></span>
+          </div>
+          <p class="nv-verse"></p>
+          <div class="nv-actions"></div>
+        </div>
+        <div class="nv-browser" hidden>
+          ${books.length > 1 ? `<select class="nv-filter" aria-label="Filter by book">
+            <option value="">All books (${matches.length})</option>
+            ${books.map(b => `<option value="${b}">${b} (${bookCounts.get(b)})</option>`).join('')}
+          </select>` : ''}
+          <ul class="nv-list"></ul>
+          <button type="button" class="nv-btn nv-more"></button>
+        </div>`;
+
+      const refEl = nameVerseResults.querySelector('.nv-ref');
+      const verseEl = nameVerseResults.querySelector('.nv-verse');
+      const actionsEl = nameVerseResults.querySelector('.nv-actions');
+      const browser = nameVerseResults.querySelector('.nv-browser');
+      const list = nameVerseResults.querySelector('.nv-list');
+      const more = nameVerseResults.querySelector('.nv-more');
+      const filter = nameVerseResults.querySelector('.nv-filter');
+
+      function renderFeatured() {
+        const v = matches[selected];
+        refEl.textContent = verseRef(v);
+        verseEl.innerHTML = highlightNameLetters(v.text);
+        const shapeIsName = sourceMode === 'word' && shapeWord.value.trim() === name;
+        const canChoose = matches.length > 1;
+        actionsEl.innerHTML = `
+          <span class="nv-ready">${shapeIsName
+            ? `Ready — this verse will draw the shape of <strong>${name}</strong>.`
+            : `Ready — this verse will fill your ${sourceMode === 'word' ? 'word' : 'image'}.`}</span>
+          ${shapeIsName ? '' : `<button type="button" class="nv-btn" data-act="shape">Draw as <span>${name}</span></button>`}
+          ${canChoose ? `<button type="button" class="nv-btn" data-act="browse" aria-expanded="${!browser.hidden}">
+            ${browser.hidden ? `Choose another (${matches.length - 1})` : 'Hide list'}</button>` : ''}`;
+      }
+
+      function filtered() {
+        return matches.map((v, i) => [v, i]).filter(([v]) => !filterBook || v.ref.book === filterBook);
+      }
+
+      function renderList() {
+        const rows = filtered();
+        list.innerHTML = rows.slice(0, shown).map(([v, i]) => `
+          <li><button type="button" class="nv-item" data-i="${i}" aria-current="${i === selected}">
+            <span class="nv-item-text">${(v.textNoNikud || stripNikud(v.text)).replace(/[:׃]\s*$/, '')}</span>
+            <span class="nv-item-ref">${verseRef(v)}</span>
+          </button></li>`).join('');
+        const left = rows.length - shown;
+        more.hidden = left <= 0;
+        more.textContent = `Show ${Math.min(PAGE, left)} more`;
+      }
+
+      function choose(i) {
+        selected = i;
+        const v = matches[i];
+        currentText = v.textNoNikud
+          ? v.textNoNikud.replace(/[^א-ת\s]/g, '').replace(/\s+/g, ' ').trim()
+          : stripNikud(v.text);
+        fetchStatus.textContent = `✓ ${verseRef(v)} (${currentText.length} chars)`;
+        // Without a shape the Draw button can't enable — default to the
+        // name itself, which is what this verse belongs to anyway
+        const hasShape = sourceMode === 'word' ? shapeWord.value.trim() : currentImage;
+        if (!hasShape) useNameAsShape(name);
+        checkCanGenerate();
+      }
+
+      actionsEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        if (btn.dataset.act === 'shape') {
+          useNameAsShape(name);
+        } else {
+          browser.hidden = !browser.hidden;
+          if (!browser.hidden) renderList();
+        }
+        renderFeatured();
+      });
+      list.addEventListener('click', (e) => {
+        const item = e.target.closest('.nv-item');
+        if (!item) return;
+        choose(Number(item.dataset.i));
+        browser.hidden = true;
+        renderFeatured();
+        nameVerseResults.querySelector('.nv-featured').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+      more.addEventListener('click', () => { shown += PAGE; renderList(); });
+      if (filter) filter.addEventListener('change', () => { filterBook = filter.value; shown = PAGE; renderList(); });
+
+      // Pick the first verse right away so the flow never dead-ends
+      choose(0);
+      renderFeatured();
     }
 
     function useNameAsShape(name) {
@@ -1357,20 +1587,20 @@ import Layout from '../layouts/Layout.astro';
         hasFillText = textRef.value.trim().length > 0;
       }
       generateBtn.disabled = !(hasShape && hasFillText);
+      compareBtn.disabled = generateBtn.disabled;
     }
 
     // ————— Generation —————
-    async function generateMicrography() {
-      if (isProcessing) return;
-
+    // Validate the shape and make sure the fill text is loaded
+    async function ensureReady() {
       if (sourceMode === 'word' && !shapeWord.value.trim()) {
         showError('Please enter a word or name');
         shapeWord.focus();
-        return;
+        return false;
       }
       if (sourceMode === 'image' && !currentImage) {
         showError('Please upload an image first');
-        return;
+        return false;
       }
 
       if (activeTab === 'custom') {
@@ -1378,19 +1608,19 @@ import Layout from '../layouts/Layout.astro';
         if (!currentText) {
           showError('Please enter some text first');
           customTextInput.focus();
-          return;
+          return false;
         }
       } else if (activeTab === 'nameverse') {
         if (!currentText) {
           showError('Please find and select a name verse first');
-          return;
+          return false;
         }
       } else {
         const ref = textRef.value.trim();
         if (!ref) {
           showError('Please enter a text reference first');
           textRef.focus();
-          return;
+          return false;
         }
         if (!currentText) {
           try {
@@ -1402,12 +1632,19 @@ import Layout from '../layouts/Layout.astro';
           } catch (err) {
             fetchStatus.textContent = '';
             showError('Failed to fetch text: ' + err.message);
-            return;
+            return false;
           }
         }
       }
+      return true;
+    }
+
+    async function generateMicrography() {
+      if (isProcessing) return;
+      if (!(await ensureReady())) return;
 
       isProcessing = true;
+      compareBtn.disabled = true;
       generateBtn.disabled = true;
       generateBtn.textContent = 'Drawing...';
       progressContainer.classList.add('visible');
@@ -1430,6 +1667,7 @@ import Layout from '../layouts/Layout.astro';
       } finally {
         isProcessing = false;
         generateBtn.disabled = false;
+        compareBtn.disabled = false;
         generateBtn.innerHTML = `
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
           Draw it`;
@@ -1440,8 +1678,93 @@ import Layout from '../layouts/Layout.astro';
     function setProgress(frac) {
       const pct = Math.round(Math.min(1, frac) * 100);
       progressFill.style.width = `${pct}%`;
-      progressText.textContent = `Drawing... ${pct}%`;
+      progressText.textContent = `${progressPrefix}Drawing... ${pct}%`;
     }
+
+    // ————— Contact sheet: several technique × ink pairings side by side —————
+    const TECHNIQUE_NAMES = { grid: 'Tonal rows', engrave: 'Engraving', contour: 'Contour lines', spiral: 'Spiral' };
+    const INK_NAMES = Object.fromEntries([...document.querySelectorAll('.style-card')]
+      .map(c => [c.dataset.style, c.querySelector('.style-name').textContent]));
+    const COMPARE_SETS = {
+      techniques: () => Object.keys(TECHNIQUE_NAMES).map(t => [t, activeStyle]),
+      inks: () => Object.keys(STYLE_PRESETS).map(st => [activeTechnique, st]),
+      mix: () => [['grid', 'ink'], ['engrave', 'ink'], ['contour', 'sepia'], ['spiral', 'gold'],
+                  ['engrave', 'parchment'], ['grid', 'rubric'], ['contour', 'night'], ['spiral', 'color']],
+    };
+
+    function thumbnailOf(canvas, maxW = 560) {
+      const f = Math.min(1, maxW / canvas.width);
+      const t = document.createElement('canvas');
+      t.width = Math.round(canvas.width * f);
+      t.height = Math.round(canvas.height * f);
+      const ctx = t.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(canvas, 0, 0, t.width, t.height);
+      return transparentBg.checked ? t.toDataURL('image/png') : t.toDataURL('image/jpeg', 0.88);
+    }
+
+    function selectCard(selector) {
+      const card = document.querySelector(selector);
+      if (card && !card.classList.contains('active')) card.click();
+    }
+
+    async function compareStyles() {
+      if (isProcessing) return;
+      if (!(await ensureReady())) return;
+      const variants = COMPARE_SETS[compareMode.value]();
+
+      isProcessing = true;
+      generateBtn.disabled = true;
+      compareBtn.disabled = true;
+      progressContainer.classList.add('visible');
+      hideError();
+      sheetGrid.innerHTML = variants.map(([t, st], i) => `
+        <button type="button" class="sheet-card" data-i="${i}" disabled>
+          <span class="sheet-thumb"><span class="sheet-wait">waiting…</span></span>
+          <span class="sheet-label">${TECHNIQUE_NAMES[t]}<small>${INK_NAMES[st]}</small></span>
+        </button>`).join('');
+      galleryContainer.classList.add('visible');
+      galleryContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      const saved = [activeTechnique, activeStyle];
+      renderScale = 0.5;
+      try {
+        try { await document.fonts.load(`700 20px ${HEBREW_FONT}`); } catch {}
+        const cards = sheetGrid.querySelectorAll('.sheet-card');
+        for (let i = 0; i < variants.length; i++) {
+          [activeTechnique, activeStyle] = variants[i];
+          progressPrefix = `${i + 1} of ${variants.length} · `;
+          cards[i].classList.add('drawing');
+          cards[i].querySelector('.sheet-wait').textContent = 'drawing…';
+          const plate = document.createElement('canvas');
+          await renderPlate(plate);
+          cards[i].querySelector('.sheet-thumb').innerHTML =
+            `<img src="${thumbnailOf(plate)}" alt="${TECHNIQUE_NAMES[variants[i][0]]}, ${INK_NAMES[variants[i][1]]}" />`;
+          cards[i].classList.remove('drawing');
+          cards[i].disabled = false;
+          plate.width = plate.height = 0;   // free the full-size bitmap now
+        }
+      } catch (err) {
+        showError('Error drawing the contact sheet: ' + err.message);
+      } finally {
+        [activeTechnique, activeStyle] = saved;
+        renderScale = 1;
+        progressPrefix = '';
+        isProcessing = false;
+        progressContainer.classList.remove('visible');
+        checkCanGenerate();
+      }
+    }
+
+    sheetGrid.addEventListener('click', (e) => {
+      const card = e.target.closest('.sheet-card');
+      if (!card || card.disabled || isProcessing) return;
+      const [t, st] = COMPARE_SETS[compareMode.value]()[Number(card.dataset.i)] || [];
+      if (!t) return;
+      selectCard(`.technique-card[data-technique="${t}"]`);
+      selectCard(`.style-card[data-style="${st}"]`);
+      generateMicrography();
+    });
 
     // Yield to the browser every ~30ms so the progress bar paints
     function yieldFrame() { return new Promise(r => nextTick(r)); }
@@ -1464,10 +1787,18 @@ import Layout from '../layouts/Layout.astro';
     }
 
     // Percentile auto-contrast: map [p2..p98] → [0..255]
+    // (histogram, not a sort — a full sort of a large photo stalls the page)
     function autoContrast(lum) {
-      const sorted = Float32Array.from(lum).sort();
-      const lo = sorted[Math.floor(sorted.length * 0.02)];
-      const hi = sorted[Math.floor(sorted.length * 0.98)];
+      const hist = new Uint32Array(256);
+      for (let i = 0; i < lum.length; i++) hist[Math.min(255, lum[i] | 0)]++;
+      const pct = (q) => {
+        const target = lum.length * q;
+        let acc = 0;
+        for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= target) return v; }
+        return 255;
+      };
+      const lo = pct(0.02);
+      const hi = pct(0.98);
       const range = Math.max(hi - lo, 1);
       const out = new Float32Array(lum.length);
       for (let i = 0; i < lum.length; i++) {
@@ -1511,13 +1842,20 @@ import Layout from '../layouts/Layout.astro';
       const shapePx = parseInt(shapeFontSize.value);
       const padding = Math.round(shapePx * 0.14);
       const isHeb = /[א-ת]/.test(word);
-      const font = isHeb
+      let font = isHeb
         ? `700 ${shapePx}px ${HEBREW_FONT}`
         : `700 ${shapePx}px "Frank Ruhl Libre", "Georgia", serif`;
       const c = document.createElement('canvas');
       const ctx = c.getContext('2d');
       ctx.font = font;
-      const m = ctx.measureText(word);
+      let m = ctx.measureText(word);
+      // A long phrase at X-large would make an enormous mask; scale it down
+      if (m.width > 6000) {
+        const px = Math.floor(shapePx * 6000 / m.width);
+        font = font.replace(`${shapePx}px`, `${px}px`);
+        ctx.font = font;
+        m = ctx.measureText(word);
+      }
       const asc = m.actualBoundingBoxAscent || shapePx * 0.75;
       const desc = m.actualBoundingBoxDescent || shapePx * 0.2;
       c.width = Math.ceil(m.width) + padding * 2;
@@ -1534,7 +1872,7 @@ import Layout from '../layouts/Layout.astro';
     }
 
     // ————— Plate composition: paper, art, carpet frame, caption —————
-    async function renderPlate() {
+    async function renderPlate(target = resultCanvas) {
       const preset = STYLE_PRESETS[activeStyle];
       const art = document.createElement('canvas');
       const src = sourceMode === 'word' ? buildWordMask() : currentImage;
@@ -1546,7 +1884,7 @@ import Layout from '../layouts/Layout.astro';
       } else {
         await drawPathArt(art, src, preset);
       }
-      await composePlate(art, preset);
+      await composePlate(art, preset, target);
     }
 
     function paperFor(preset) {
@@ -1558,19 +1896,24 @@ import Layout from '../layouts/Layout.astro';
       return preset.mode === 'color' ? [26, 22, 18] : preset.ink;
     }
 
-    async function composePlate(art, preset) {
+    async function composePlate(art, preset, target) {
       const frame = frameToggle.checked;
-      const W = art.width, H = art.height;
-      const m = frame ? Math.round(Math.max(W, H) * 0.075) : 0;
-      const outW = W + 2 * m;
-      const plateH = H + 2 * m;
       const caption = captionInput.value.trim();
-      const capH = caption ? Math.max(56, Math.min(300, Math.round(outW * 0.09))) : 0;
-      const outH = plateH + capH;
+      const layout = (W, H) => {
+        const m = frame ? Math.round(Math.max(W, H) * 0.075) : 0;
+        const outW = W + 2 * m;
+        const plateH = H + 2 * m;
+        const capH = caption ? Math.max(56, Math.min(300, Math.round(outW * 0.09))) : 0;
+        return { W, H, m, outW, plateH, capH, outH: plateH + capH };
+      };
+      let L = layout(art.width, art.height);
+      const f = Math.min(1, Math.sqrt(MAX_PLATE_PX / (L.outW * L.outH)), MAX_DIM / L.outW, MAX_DIM / L.outH);
+      if (f < 1) L = layout(Math.floor(art.width * f), Math.floor(art.height * f));
+      const { W, H, m, outW, plateH, capH, outH } = L;
 
-      resultCanvas.width = outW;
-      resultCanvas.height = outH;
-      const ctx = resultCanvas.getContext('2d');
+      target.width = outW;
+      target.height = outH;
+      const ctx = target.getContext('2d');
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, outW, outH);
 
@@ -1602,7 +1945,7 @@ import Layout from '../layouts/Layout.astro';
         }
       }
 
-      ctx.drawImage(art, m, m);
+      ctx.drawImage(art, m, m, W, H);
       if (frame) await drawCarpetFrame(ctx, outW, plateH, m, preset);
       drawCaption(ctx, outW, plateH, capH, inkFor(preset));
     }
@@ -1801,10 +2144,13 @@ import Layout from '../layouts/Layout.astro';
     }
 
     // Isolines of a scalar field as polylines in output coordinates
-    function isolines(values, fw, fh, thresholds, scale, minLen) {
-      const gen = d3contours().size([fw, fh]).thresholds(thresholds);
+    // Isolines of a scalar field as polylines in output coordinates.
+    // One threshold per pass so a dense photo can't lock up the page.
+    async function isolines(values, fw, fh, thresholds, scale, minLen) {
       const out = [];
-      for (const mp of gen(values)) {
+      let lastYield = performance.now();
+      for (const th of thresholds) {
+        const mp = d3contours().size([fw, fh]).contour(values, th);
         for (const poly of mp.coordinates) {
           for (const ring of poly) {
             const pts = ring.map(([x, y]) => [x * scale, y * scale]);
@@ -1815,10 +2161,22 @@ import Layout from '../layouts/Layout.astro';
             if (area < 0) pts.reverse();
             let len = 0;
             for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-            if (len >= minLen) out.push({ pts, level: mp.value });
+            if (len >= minLen) out.push({ pts, level: th });
           }
         }
+        if (performance.now() - lastYield > 25) { await yieldFrame(); lastYield = performance.now(); }
       }
+      return out;
+    }
+
+    // Break long polylines (a spiral is one path across the whole picture)
+    // into consecutive pieces so drawing can yield between them
+    function splitLong(lines, maxPts = 400) {
+      const out = [];
+      lines.forEach((pts, line) => {
+        if (pts.length <= maxPts) { out.push({ pts, line }); return; }
+        for (let i = 0; i < pts.length - 1; i += maxPts - 1) out.push({ pts: pts.slice(i, i + maxPts), line });
+      });
       return out;
     }
 
@@ -1827,18 +2185,19 @@ import Layout from '../layouts/Layout.astro';
       const srcW = src.naturalWidth || src.width;
       const srcH = src.naturalHeight || src.height;
       const density = parseInt(densitySlider.value);          // 2 (fine) – 12 (coarse)
-      const spacing = 7 + density * 1.5;                       // px between lines of text
+      const spacing = (7 + density * 1.5) * renderScale;       // px between lines of text
 
       let W = sourceMode === 'word' ? Math.min(3200, Math.max(1400, srcW * 2.2)) : 2000;
       let H = W * srcH / srcW;
       const maxPx = 7.5e6;
       if (W * H > maxPx) { const f = Math.sqrt(maxPx / (W * H)); W *= f; H *= f; }
-      W = Math.round(W); H = Math.round(H);
+      W = Math.round(W * renderScale); H = Math.round(H * renderScale);
 
       const fw = Math.round(W / 3), fh = Math.max(2, Math.round(H / 3));
       const k = fw / W;                                        // output px → field px
       const field = buildField(src, fw, fh, preset);
       const toneAt = (x, y) => bilinear(field.dark, fw, fh, x * k, y * k);
+      await yieldFrame();
 
       art.width = W;
       art.height = H;
@@ -1878,9 +2237,12 @@ import Layout from '../layouts/Layout.astro';
         blur2({ data: blurred, width: fw, height: fh }, Math.max(2, spacing * k * 1.5));
         const relief = (x, y) => bilinear(blurred, fw, fh, x * k, y * k);
         const amp = wordShape ? spacing * 0.8 : spacing * 1.6;
+        await yieldFrame();
         layers.push({ lines: engravedLines(W, H, 0, spacing, relief, amp), tone: tone(0.06), minScale: 0.32, scaleRange: 0.95 });
         if (crossHatch.checked) {
+          await yieldFrame();
           layers.push({ lines: engravedLines(W, H, -0.62, spacing * 1.15, relief, amp * 0.6), tone: tone(0.5), minScale: 0.4, scaleRange: 0.7 });
+          await yieldFrame();
           if (!wordShape) layers.push({ lines: engravedLines(W, H, 0.62, spacing * 1.3, relief, amp * 0.6), tone: tone(0.78), minScale: 0.45, scaleRange: 0.6 });
         }
       } else if (activeTechnique === 'spiral') {
@@ -1895,7 +2257,7 @@ import Layout from '../layouts/Layout.astro';
           const step = spacing * k;
           const th = [];
           for (let t = step * 0.45; t < maxD; t += step) th.push(t);
-          const rings = isolines(dist, fw, fh, th, 1 / k, spacing * 3);
+          const rings = await isolines(dist, fw, fh, th, 1 / k, spacing * 3);
           layers.push({ lines: rings.map(r => r.pts), tone: () => 0.62, minScale: 0.4, scaleRange: 0.55 });
         } else {
           const blurred = Float32Array.from(field.dark);
@@ -1903,7 +2265,7 @@ import Layout from '../layouts/Layout.astro';
           const levels = Math.round(44 - density * 2.8);
           const th = [];
           for (let i = 0; i < levels; i++) th.push(0.05 + (0.93 * i) / levels);
-          const rings = isolines(blurred, fw, fh, th, 1 / k, spacing * 3);
+          const rings = await isolines(blurred, fw, fh, th, 1 / k, spacing * 3);
           layers.push({
             lines: rings.map(r => r.pts),
             tone: (x, y) => Math.max(0.12, toneAt(x, y)),
@@ -1914,18 +2276,20 @@ import Layout from '../layouts/Layout.astro';
 
       const rtl = isHebrewFill();
       const cursor = makeCursor(currentText);
+      for (const layer of layers) layer.lines = splitLong(layer.lines);
       const totalLines = layers.reduce((n, l) => n + l.lines.length, 0) || 1;
       let doneLines = 0;
       let lastYield = performance.now();
       for (const layer of layers) {
         for (let li = 0; li < layer.lines.length; li++) {
-          textAlongPath(ctx, layer.lines[li], cursor, {
+          const { pts, line } = layer.lines[li];
+          textAlongPath(ctx, pts, cursor, {
             rtl,
             base: spacing,
             minScale: layer.minScale,
             scaleRange: layer.scaleRange,
             tone: layer.tone,
-            color: (x, y, t) => colorAt(x, y, t, li),
+            color: (x, y, t) => colorAt(x, y, t, line),
           });
           doneLines++;
           if (performance.now() - lastYield > 30) {
@@ -1996,19 +2360,29 @@ import Layout from '../layouts/Layout.astro';
     }
 
     // ————— Tonal rows: tone from the letters themselves —————
+    // Phones (iOS especially) refuse canvases much past ~16 megapixels; past
+    // that they stall or silently draw nothing. Keep the art well under it,
+    // leaving room for the carpet frame and caption.
+    const MAX_ART_PX = 9e6;
+    const MAX_PLATE_PX = 14e6;
+    const MAX_DIM = 12000;
+
     function gridSize(src) {
       const density = parseInt(densitySlider.value);
       const aspect = (src.naturalHeight || src.height) / (src.naturalWidth || src.width);
-      const cols = Math.max(40, Math.round(340 - density * 22));
-      const rows = Math.max(30, Math.round(cols * aspect));
-      return { cols, rows };
+      let cols = Math.max(40, Math.round(340 - density * 22));
+      let rows = Math.max(30, Math.round(cols * aspect));
+      if (rows > 800) { cols = Math.max(20, Math.round(cols * 800 / rows)); rows = 800; }
+      // Shrink the letter cell (not the letter count) for very fine grids
+      const cell = Math.min(13, Math.floor(Math.sqrt(MAX_ART_PX / (cols * rows)) * 2) / 2) * renderScale;
+      return { cols, rows, cell };
     }
 
     async function drawGridInk(art, src, preset) {
-      const { cols, rows } = gridSize(src);
+      const { cols, rows, cell } = gridSize(src);
       const field = buildField(src, cols, rows, preset);
 
-      const cell = 13;                                        // output px per letter cell
+                                        // output px per letter cell
       art.width = cols * cell;
       art.height = rows * cell;
       const ctx = art.getContext('2d');
@@ -2022,8 +2396,9 @@ import Layout from '../layouts/Layout.astro';
       const total = rows * cols;
       let lastFont = '';
 
+      let lastYield = performance.now();
       for (let done = 0; done < total; ) {
-        const end = Math.min(done + 2500, total);
+        const end = Math.min(done + 400, total);
         for (let i = done; i < end; i++) {
           const row = Math.floor(i / cols);
           const col = hebrew ? (cols - 1 - (i % cols)) : (i % cols);
@@ -2054,17 +2429,20 @@ import Layout from '../layouts/Layout.astro';
           if (d > 0.78) ctx.fillText(ch, x + 0.6, y + 0.4);
         }
         done = end;
-        setProgress(done / total);
-        await yieldFrame();
+        if (performance.now() - lastYield > 25) {
+          setProgress(done / total);
+          await yieldFrame();
+          lastYield = performance.now();
+        }
       }
     }
 
     // ————— Color mosaic (per-letter image color) —————
     async function drawGridColor(art, src) {
-      const { cols, rows } = gridSize(src);
+      const { cols, rows, cell } = gridSize(src);
       const { px } = sampleLuminance(src, cols, rows);
 
-      const cell = 13;
+
       art.width = cols * cell;
       art.height = rows * cell;
       const ctx = art.getContext('2d');
@@ -2077,8 +2455,9 @@ import Layout from '../layouts/Layout.astro';
       let textIndex = 0;
       const total = rows * cols;
 
+      let lastYield = performance.now();
       for (let done = 0; done < total; ) {
-        const end = Math.min(done + 2500, total);
+        const end = Math.min(done + 400, total);
         for (let i = done; i < end; i++) {
           const row = Math.floor(i / cols);
           const col = hebrew ? (cols - 1 - (i % cols)) : (i % cols);
@@ -2091,8 +2470,11 @@ import Layout from '../layouts/Layout.astro';
           ctx.fillText(ch, col * cell, row * cell);
         }
         done = end;
-        setProgress(done / total);
-        await yieldFrame();
+        if (performance.now() - lastYield > 25) {
+          setProgress(done / total);
+          await yieldFrame();
+          lastYield = performance.now();
+        }
       }
     }
 
@@ -2118,8 +2500,9 @@ import Layout from '../layouts/Layout.astro';
       const total = rows * cols;
       let lastFont = '';
 
+      let lastYield = performance.now();
       for (let done = 0; done < total; ) {
-        const end = Math.min(done + 2500, total);
+        const end = Math.min(done + 400, total);
         for (let i = done; i < end; i++) {
           const row = Math.floor(i / cols);
           const col = fillHebrew ? (cols - 1 - (i % cols)) : (i % cols);
@@ -2141,8 +2524,11 @@ import Layout from '../layouts/Layout.astro';
           ctx.fillText(ch, col * scale + 1 + (Math.random() - 0.5), row * scale + 1 + (Math.random() - 0.5));
         }
         done = end;
-        setProgress(done / total);
-        await yieldFrame();
+        if (performance.now() - lastYield > 25) {
+          setProgress(done / total);
+          await yieldFrame();
+          lastYield = performance.now();
+        }
       }
     }
     // ————— Photo overlay: replace one color with text, keep the rest —————
