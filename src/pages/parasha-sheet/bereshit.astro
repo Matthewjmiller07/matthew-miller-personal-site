@@ -2,7 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import sheet from '../../data/parasha-sheets/bereshit.json';
 
-const { stats, topRoots, divine, hapax, days, entries } = sheet;
+const { stats, topRoots, divine, hapax, days, entries, notes } = sheet;
 
 const topMax = topRoots[0].count;
 const divMax = divine[0].n;
@@ -203,9 +203,29 @@ const tiles = [
         </div>
 
         <h2 class="mt">My notes</h2>
-        <div class="empty">
-          Nothing recorded yet — the notes field is empty for every verse of Genesis 1–6.
-        </div>
+        {notes && notes.length > 0 ? (
+          <div class="mynotes">
+            {notes.map((n) => (
+              <article class="mnote">
+                <div class="mnote-head">
+                  <span class="entry-ref">{n.refs}</span>
+                  <span class="he entry-term mnote-term">{n.term}</span>
+                  <span class="mnote-tag">{n.kind}</span>
+                </div>
+                <p class="entry-body">{n.comment}</p>
+                {n.source && (
+                  <div class="mnote-src">
+                    {n.url ? <a href={n.url} target="_blank" rel="noopener noreferrer">{n.source}</a> : n.source}
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div class="empty">
+            Nothing recorded yet — the notes field is empty for every verse of Genesis 1–6.
+          </div>
+        )}
 
         <div class="foot">
           <span>
@@ -373,6 +393,17 @@ const tiles = [
   }
   .ps-shell .sheet .ev-title { font-size: 9.5pt; margin: 1pt 0; display: inline-block; }
   .ps-shell .sheet .ev-gloss { font-size: 8.5pt; color: var(--muted); }
+
+  .ps-shell .sheet .mynotes { display: flex; flex-direction: column; gap: 7pt; }
+  .ps-shell .sheet .mnote { page-break-inside: avoid; }
+  .ps-shell .sheet .mnote-head { display: flex; align-items: baseline; gap: 7pt; flex-wrap: wrap; }
+  .ps-shell .sheet .mnote-term { font-size: 12pt; }
+  .ps-shell .sheet .mnote-tag {
+    font-size: 6.5pt; letter-spacing: .08em; text-transform: uppercase; color: var(--faint);
+    border: 1px solid var(--rule); border-radius: 2px; padding: 0 4pt; margin-left: auto;
+  }
+  .ps-shell .sheet .mnote-src { font-size: 7.5pt; color: var(--faint); font-style: italic; margin-top: 1pt; }
+  .ps-shell .sheet .mnote-src a { color: inherit; text-decoration: underline; }
 
   .ps-shell .sheet .secs { display: flex; gap: 5pt; align-items: flex-end; margin-bottom: 3pt; flex-wrap: wrap; }
   .ps-shell .sheet .sec { flex: 1; min-width: 34pt; text-align: center; }
