@@ -575,6 +575,54 @@ import Layout from '../layouts/Layout.astro';
     details.advanced summary:hover { color: var(--ink); }
     details.advanced[open] summary { margin-bottom: 0.9rem; }
 
+    /* Scene editor */
+    .scene { margin-top: 1rem; display: grid; gap: 0.7rem; }
+    .scene-stage-wrap { position: relative; background: var(--paper-deep); padding: 0.6rem; }
+    .scene-stage {
+      display: block; width: 100%; height: auto; background: #fff; touch-action: none; cursor: grab;
+      box-shadow: 0 1px 4px rgba(20, 12, 2, 0.25);
+    }
+    .scene-empty {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 1rem; font-size: 0.82rem; color: #7d6d4e; pointer-events: none;
+    }
+    .scene-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.6rem; }
+    .scene-label {
+      font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--ink-faint); min-width: 3.6rem;
+    }
+    .mini-btn {
+      border: 1px solid var(--paper-edge); background: var(--paper); color: var(--ink-soft);
+      font-family: var(--sans); font-size: 0.78rem; font-weight: 600; padding: 0.38rem 0.65rem;
+      border-radius: 2px; cursor: pointer;
+    }
+    .mini-btn:hover { border-color: var(--rubric); color: var(--ink); }
+    .mini-btn.accent { background: var(--rubric); border-color: var(--rubric); color: #f6efdd; }
+    .mini-btn.danger:hover { color: var(--rubric); }
+    .mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .seg { display: inline-flex; border: 1px solid var(--paper-edge); border-radius: 2px; overflow: hidden; }
+    .seg-btn {
+      border: 0; border-right: 1px solid var(--paper-edge); background: var(--paper); color: var(--ink-faint);
+      font-family: var(--sans); font-size: 0.76rem; font-weight: 600; padding: 0.38rem 0.6rem; cursor: pointer;
+    }
+    .seg-btn:last-child { border-right: 0; }
+    .seg-btn.active { background: var(--rubric-soft); color: var(--ink); box-shadow: inset 0 -2px 0 var(--rubric); }
+    .scene-slider { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; color: var(--ink-soft); }
+    .scene-slider input { width: 6.5rem; accent-color: var(--rubric); }
+    .shape-picks { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .shape-btn {
+      width: 2.1rem; height: 2.1rem; border: 1px solid var(--paper-edge); background: var(--paper);
+      color: var(--ink); font-size: 1.1rem; line-height: 1; cursor: pointer; border-radius: 2px;
+    }
+    .shape-btn:hover { border-color: var(--rubric); }
+    .word-add { display: flex; gap: 0.35rem; flex: 1 1 14rem; }
+    .word-add input {
+      flex: 1; min-width: 0; padding: 0.38rem 0.55rem; border: 1px solid var(--paper-edge); background: var(--paper);
+      color: var(--ink); font-family: var(--serif); font-size: 0.95rem; border-radius: 2px;
+    }
+    .layer-controls { padding: 0.55rem 0.6rem; background: var(--rubric-soft); border-left: 3px solid var(--rubric); }
+    .layer-controls[hidden] { display: none; }
+
     /* Technique cards */
     .technique-grid {
       display: grid;
@@ -782,7 +830,73 @@ import Layout from '../layouts/Layout.astro';
                 <span id="fileLabelText">Choose an image — portraits work best</span>
               </div>
             </div>
-            <div id="imagePreview" class="preview-container"></div>
+            <div id="imagePreview" class="preview-container" style="display:none;"></div>
+
+            <div class="scene" id="sceneEditor">
+              <div class="scene-stage-wrap">
+                <canvas id="sceneCanvas" class="scene-stage" aria-label="Scene editor: drag objects to arrange them"></canvas>
+                <div class="scene-empty" id="sceneEmpty">Upload a photo above — or start blank and add shapes below</div>
+              </div>
+
+              <div class="scene-row" id="photoTools">
+                <span class="scene-label">Photo</span>
+                <button type="button" class="mini-btn accent" id="bgRemoveBtn">✂ Remove background</button>
+                <div class="seg" role="group" aria-label="Photo tool">
+                  <button type="button" class="seg-btn active" data-tool="move" title="Select and drag objects">Move</button>
+                  <button type="button" class="seg-btn" data-tool="wand" title="Click a background area to erase everything of that color">Click-erase</button>
+                  <button type="button" class="seg-btn" data-tool="erase" title="Paint to erase">Erase</button>
+                  <button type="button" class="seg-btn" data-tool="restore" title="Paint to bring back">Restore</button>
+                </div>
+                <label class="scene-slider" id="brushRow">Brush <input type="range" id="brushSize" min="1" max="12" value="4" /></label>
+                <button type="button" class="mini-btn" id="bgResetBtn">Reset photo</button>
+              </div>
+
+              <div class="scene-row">
+                <span class="scene-label">Add</span>
+                <div class="shape-picks" id="shapePicks">
+                  <button type="button" class="shape-btn" data-shape="circle" title="Circle">●</button>
+                  <button type="button" class="shape-btn" data-shape="heart" title="Heart">♥</button>
+                  <button type="button" class="shape-btn" data-shape="star" title="Star">★</button>
+                  <button type="button" class="shape-btn" data-shape="magen" title="Star of David">✡</button>
+                  <button type="button" class="shape-btn" data-shape="hamsa" title="Hamsa">🪬</button>
+                  <button type="button" class="shape-btn" data-shape="menorah" title="Menorah">🕎</button>
+                  <button type="button" class="shape-btn" data-shape="candle" title="Candle">🕯</button>
+                  <button type="button" class="shape-btn" data-shape="tree" title="Tree">🌳</button>
+                  <button type="button" class="shape-btn" data-shape="crescent" title="Crescent">☾</button>
+                  <button type="button" class="shape-btn" data-shape="sun" title="Sun">☀</button>
+                  <button type="button" class="shape-btn" data-shape="arch" title="Arch / window">⌂</button>
+                  <button type="button" class="shape-btn" data-shape="waves" title="Waves">≋</button>
+                </div>
+                <div class="word-add">
+                  <input type="text" id="sceneWord" placeholder="…or a word: שלום" maxlength="40" />
+                  <button type="button" class="mini-btn" id="addWordBtn">Add word</button>
+                </div>
+              </div>
+
+              <div class="scene-row layer-controls" id="layerControls" hidden>
+                <span class="scene-label" id="layerName">Shape</span>
+                <label class="scene-slider" id="shadeRow" title="Darker = denser, heavier letters">Ink <input type="range" id="layerShade" min="5" max="100" value="85" /></label>
+                <label class="scene-slider">Size <input type="range" id="layerSize" min="3" max="200" value="35" /></label>
+                <label class="scene-slider">Turn <input type="range" id="layerRot" min="-180" max="180" value="0" /></label>
+                <label class="checkbox-row" id="outlineRow"><input type="checkbox" id="layerOutline" /> Outline</label>
+                <button type="button" class="mini-btn" data-stack="front">Front</button>
+                <button type="button" class="mini-btn" data-stack="back">Back</button>
+                <button type="button" class="mini-btn danger" id="layerDelete">Delete</button>
+              </div>
+
+              <div class="scene-row">
+                <span class="scene-label">Canvas</span>
+                <div class="seg" role="group" aria-label="Canvas shape">
+                  <button type="button" class="seg-btn active" data-aspect="auto">Fit photo</button>
+                  <button type="button" class="seg-btn" data-aspect="3:4">Portrait</button>
+                  <button type="button" class="seg-btn" data-aspect="1:1">Square</button>
+                  <button type="button" class="seg-btn" data-aspect="4:3">Landscape</button>
+                </div>
+                <button type="button" class="mini-btn danger" id="sceneClear">Clear all</button>
+              </div>
+              <div id="sceneStatus" class="fetch-status"></div>
+              <div class="step-hint">Drag to move · scroll or use Size to resize · darker objects get denser letters</div>
+            </div>
           </div>
 
           <!-- Word/Name shape panel -->
@@ -1085,7 +1199,7 @@ import Layout from '../layouts/Layout.astro';
   <script>
     import { contours as d3contours } from 'd3-contour';
     import { blur2 } from 'd3-array';
-    import { buildLaserSVG, buildLaserPNG } from '../scripts/micrography-laser.js';
+    import { createScene, SHAPES } from '../scripts/micrography-scene.js';
 
     // ————— State —————
     let currentImage = null;
@@ -1170,6 +1284,98 @@ import Layout from '../layouts/Layout.astro';
     const frameToggle = $('frameToggle');
 
     const HEBREW_FONT = '"Noto Serif Hebrew", "Frank Ruhl Libre", "FrankRuehl", "David", serif';
+
+    // ————— Scene editor: photo + background removal + shapes —————
+    const sceneEmpty = $('sceneEmpty');
+    const layerControls = $('layerControls');
+    const sceneStatus = $('sceneStatus');
+    const scene = createScene({
+      canvas: $('sceneCanvas'),
+      font: HEBREW_FONT,
+      onChange: () => {
+        sceneEmpty.style.display = scene.hasContent() ? 'none' : '';
+        $('bgRemoveBtn').disabled = !scene.hasPhoto();
+        checkCanGenerate();
+      },
+      onSelect: (L) => {
+        layerControls.hidden = !L;
+        if (!L) return;
+        $('layerName').textContent = L.type === 'photo' ? 'Photo' : L.type === 'text' ? 'Word' : (SHAPES[L.kind]?.label || 'Shape');
+        $('shadeRow').style.display = L.type === 'photo' ? 'none' : '';
+        $('outlineRow').style.display = L.type === 'photo' ? 'none' : '';
+        $('layerShade').value = Math.round((L.shade ?? 0.85) * 100);
+        $('layerSize').value = Math.round(L.size * 100);
+        $('layerRot').value = Math.round((L.rot * 180) / Math.PI);
+        $('layerOutline').checked = !!L.outline;
+      },
+    });
+    $('bgRemoveBtn').disabled = true;
+    scene.render();
+
+    $('bgRemoveBtn').addEventListener('click', async () => {
+      const btn = $('bgRemoveBtn');
+      btn.disabled = true;
+      try {
+        await scene.removeBackground((msg) => { sceneStatus.textContent = msg; });
+        sceneStatus.textContent = '✓ Background removed — touch up with Erase / Restore if needed';
+      } catch (err) {
+        sceneStatus.textContent = 'Background removal: ' + err.message;
+      } finally {
+        btn.disabled = !scene.hasPhoto();
+      }
+    });
+    $('bgResetBtn').addEventListener('click', () => { scene.resetMask(); sceneStatus.textContent = ''; });
+    function selectTool(t) {
+      document.querySelectorAll('#photoTools [data-tool]').forEach((x) => x.classList.toggle('active', x.dataset.tool === t));
+      scene.setTool(t);
+      $('sceneCanvas').style.cursor = t === 'move' ? 'grab' : 'crosshair';
+    }
+    document.querySelectorAll('#photoTools [data-tool]').forEach((b) => {
+      b.addEventListener('click', () => {
+        selectTool(b.dataset.tool);
+        sceneStatus.textContent = b.dataset.tool !== 'move' && !scene.hasPhoto()
+          ? 'These tools work on the photo — upload one first.'
+          : ({ wand: 'Click the background — every connected pixel of that color disappears.', erase: 'Paint over anything you want gone.', restore: 'Paint to bring parts of the photo back.' }[b.dataset.tool] || '');
+      });
+    });
+    $('brushSize').addEventListener('input', (e) => scene.setBrush(e.target.value / 100));
+    document.querySelectorAll('#shapePicks [data-shape]').forEach((b) => {
+      b.addEventListener('click', () => { selectTool('move'); scene.addShape(b.dataset.shape); });
+    });
+    $('addWordBtn').addEventListener('click', () => {
+      const w = $('sceneWord').value.trim();
+      if (!w) { $('sceneWord').focus(); return; }
+      selectTool('move');
+      scene.addText(w);
+      $('sceneWord').value = '';
+    });
+    $('sceneWord').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('addWordBtn').click(); });
+    $('layerShade').addEventListener('input', (e) => scene.update({ shade: e.target.value / 100 }));
+    $('layerSize').addEventListener('input', (e) => scene.update({ size: e.target.value / 100 }));
+    $('layerRot').addEventListener('input', (e) => scene.update({ rot: (e.target.value * Math.PI) / 180 }));
+    $('layerOutline').addEventListener('change', (e) => scene.update({ outline: e.target.checked }));
+    $('layerDelete').addEventListener('click', () => scene.remove());
+    document.querySelectorAll('#layerControls [data-stack]').forEach((b) => b.addEventListener('click', () => scene.restack(b.dataset.stack)));
+    document.querySelectorAll('[data-aspect]').forEach((b) => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('[data-aspect]').forEach((x) => x.classList.toggle('active', x === b));
+        scene.setAspect(b.dataset.aspect);
+      });
+    });
+    $('sceneClear').addEventListener('click', () => {
+      scene.clear();
+      currentImage = null;
+      fileLabelText.textContent = 'Choose an image — portraits work best';
+      fileWrapper.classList.remove('has-file');
+      imageInput.value = '';
+      sceneStatus.textContent = '';
+    });
+    document.addEventListener('keydown', (e) => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && scene.selected() && document.activeElement === document.body) {
+        e.preventDefault();
+        scene.remove();
+      }
+    });
 
     // setTimeout is heavily throttled in background tabs; MessageChannel is not
     const tickChannel = new MessageChannel();
@@ -1330,6 +1536,7 @@ import Layout from '../layouts/Layout.astro';
         currentImage = img;
         updateFileLabel('Sample portrait loaded');
         showImagePreview(img);
+        scene.setPhoto(img);
         checkCanGenerate();
         hideError();
       };
@@ -1351,6 +1558,7 @@ import Layout from '../layouts/Layout.astro';
           currentImage = img;
           updateFileLabel(file.name);
           showImagePreview(img);
+          scene.setPhoto(img);
           checkCanGenerate();
           hideError();
         };
@@ -1603,7 +1811,7 @@ import Layout from '../layouts/Layout.astro';
         fetchStatus.textContent = `✓ ${verseRef(v)} (${currentText.length} chars)`;
         // Without a shape the Draw button can't enable — default to the
         // name itself, which is what this verse belongs to anyway
-        const hasShape = sourceMode === 'word' ? shapeWord.value.trim() : currentImage;
+        const hasShape = sourceMode === 'word' ? shapeWord.value.trim() : scene.hasContent();
         if (!hasShape) useNameAsShape(name);
         checkCanGenerate();
       }
@@ -1643,7 +1851,7 @@ import Layout from '../layouts/Layout.astro';
     function checkCanGenerate() {
       const hasShape = sourceMode === 'word'
         ? shapeWord.value.trim().length > 0
-        : currentImage !== null;
+        : scene.hasContent();
       let hasFillText;
       if (activeTab === 'custom') {
         hasFillText = customTextInput.value.trim().length > 0;
@@ -1664,8 +1872,12 @@ import Layout from '../layouts/Layout.astro';
         shapeWord.focus();
         return false;
       }
-      if (sourceMode === 'image' && !currentImage) {
-        showError('Please upload an image first');
+      if (sourceMode === 'image' && !scene.hasContent()) {
+        showError('Upload a photo or add a shape first');
+        return false;
+      }
+      if (sourceMode === 'image' && enableColorReplace.checked && !currentImage) {
+        showError('Color replacement needs a photo — upload one first');
         return false;
       }
 
@@ -1944,7 +2156,7 @@ import Layout from '../layouts/Layout.astro';
       if (target === resultCanvas) lastLaser = null;
       const preset = STYLE_PRESETS[activeStyle];
       const art = document.createElement('canvas');
-      const src = sourceMode === 'word' ? buildWordMask() : currentImage;
+      const src = sourceMode === 'word' ? buildWordMask() : scene.exportCanvas();
 
       if (activeTechnique === 'grid') {
         if (sourceMode === 'word') await drawWordGrid(art, src, preset);
@@ -2725,6 +2937,8 @@ import Layout from '../layouts/Layout.astro';
       const widthIn = Math.max(0.5, parseFloat(laserWidth.value) || 8);
       const stamp = `${widthIn}in-${Date.now().toString(36)}`;
       try {
+        // loaded on demand: opentype.js is only needed by people heading to a laser
+        const { buildLaserSVG, buildLaserPNG } = await import('../scripts/micrography-laser.js');
         if (kind === 'svg') {
           status.textContent = 'Outlining letters…';
           const blob = await buildLaserSVG(lastLaser, {
@@ -2841,6 +3055,8 @@ import Layout from '../layouts/Layout.astro';
     // Color replace UI wiring
     enableColorReplace.addEventListener('change', () => {
       colorReplacePanel.style.display = enableColorReplace.checked ? '' : 'none';
+      // the thumbnail is only needed for click-to-sample in this mode
+      imagePreview.style.display = enableColorReplace.checked ? '' : 'none';
     });
 
     toleranceSlider.addEventListener('input', () => {
