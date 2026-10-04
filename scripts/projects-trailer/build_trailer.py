@@ -239,7 +239,7 @@ def render_segment(kind, beats, payload, t, idx, rng):
             centered(d, "New builds every week. Get them first.", DISPLAY(40), 420, AMBER + (int(255 * e2),))
         if t > BEAT * 4:
             e3 = min(1, (t - BEAT * 4) / 0.4)
-            centered(d, "matthewjamesmiller.com/projects", MONO(30), 510, PAPER + (int(200 * e3),))
+            centered(d, "theothermatthewmiller.com/projects", MONO(30), 510, PAPER + (int(200 * e3),))
         fade = max(0, (t - (seg - 0.8)) / 0.8)
         if fade:
             img = Image.blend(img, Image.new("RGB", (W, H), (0, 0, 0)), fade)
