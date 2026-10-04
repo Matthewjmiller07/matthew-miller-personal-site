@@ -419,6 +419,21 @@ import Layout from '../layouts/Layout.astro';
       gap: 1rem;
     }
 
+    .result-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+    details.laser {
+      margin-top: 1.5rem; padding: 1rem 1.1rem; border: 1px solid var(--paper-edge); background: var(--paper);
+    }
+    details.laser summary { cursor: pointer; font-family: var(--serif); font-weight: 700; font-size: 1rem; color: var(--ink); }
+    details.laser[open] summary { margin-bottom: 0.6rem; }
+    .laser-grid { display: flex; flex-wrap: wrap; gap: 1.25rem; margin: 0.8rem 0; align-items: flex-end; }
+    .laser-field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; color: var(--ink-faint); }
+    .laser-field span { font-size: 0.9rem; font-weight: 400; color: var(--ink-soft); }
+    .laser-field input {
+      width: 5.5rem; padding: 0.35rem 0.5rem; border: 1px solid var(--paper-edge); background: var(--panel);
+      color: var(--ink); font-family: var(--mono); font-size: 0.9rem; border-radius: 2px;
+    }
+
     .result-title {
       font-family: var(--serif);
       font-weight: 700;
@@ -1010,15 +1025,57 @@ import Layout from '../layouts/Layout.astro';
     <div id="resultContainer" class="result-container">
       <div class="result-header">
         <div class="result-title">The finished plate</div>
-        <button id="downloadBtn" class="btn-primary">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download PNG
-        </button>
+        <div class="result-actions">
+          <button id="shopBtn" class="btn-primary" type="button" title="Print it, frame it, or put it on a phone case — via DoppelGifter">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="7" y="7" width="10" height="10"/></svg>
+            Print, frame, or case it
+          </button>
+          <button id="downloadBtn" class="btn-secondary" type="button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PNG
+          </button>
+        </div>
       </div>
+      <div id="shopStatus" class="fetch-status" style="text-align:right; margin-top:-0.6rem; margin-bottom:0.6rem;"></div>
       <div class="canvas-container">
         <canvas id="resultCanvas"></canvas>
       </div>
       <div id="textUsed" class="plate-caption"></div>
+
+      <details class="laser" id="laserPanel">
+        <summary>For the laser cutter — Epilog, Glowforge, xTool…</summary>
+        <p class="step-hint">
+          Exports the plate as vector outlines at real size. CorelDRAW opens the SVG directly
+          (File → Import), and so do Illustrator, Inkscape and LightBurn. No fonts needed: every
+          letter is already a shape. Black areas engrave; the optional red hairline is the cut line.
+        </p>
+        <div class="laser-grid">
+          <label class="laser-field">Width
+            <span><input type="number" id="laserWidth" min="1" max="48" step="0.25" value="8" /> in</span>
+          </label>
+          <div class="laser-field">Height <span id="laserHeight" class="val">—</span></div>
+          <div class="laser-field">Raster <span id="laserDpi" class="val">—</span></div>
+        </div>
+        <label class="checkbox-row"><input type="checkbox" id="laserCut" checked /> Red hairline cut line around the edge</label>
+        <label class="checkbox-row"><input type="checkbox" id="laserMirror" /> Mirror (for engraving the back of clear acrylic)</label>
+        <label class="checkbox-row"><input type="checkbox" id="laserExpand" /> Plain paths, no symbols (bigger file — for older CorelDRAW)</label>
+        <div class="actions-row" style="margin-top:1rem;">
+          <button id="laserSvgBtn" class="btn-primary" type="button">Download SVG (vector)</button>
+          <button id="laserPngBtn" class="btn-secondary" type="button">Download PNG (raster engrave)</button>
+        </div>
+        <div id="laserStatus" class="fetch-status"></div>
+        <div id="laserInvertNote" class="step-hint" style="display:none; margin-top:0.5rem; color:var(--rubric);">
+          Heads up: this ink draws its letters in the <em>light</em> parts of the picture, so a laser (which
+          burns dark) will engrave a negative. For a positive engraving, redraw with Classic ink, Sepia,
+          Parchment or Ink &amp; rubric.
+        </div>
+        <p class="step-hint" style="margin-top:0.6rem;">
+          At the Epilog: print from CorelDRAW with <strong>Raster</strong> to burn the letters as a filled image
+          (best for fine tone), or <strong>Vector</strong> to score their outlines. Turn on
+          <strong>Combined</strong> to engrave and then cut along the red line. Tiny letters need a small
+          width and a fine lens — test on scrap first.
+        </p>
+      </details>
     </div>
   </div>
 
@@ -1028,6 +1085,7 @@ import Layout from '../layouts/Layout.astro';
   <script>
     import { contours as d3contours } from 'd3-contour';
     import { blur2 } from 'd3-array';
+    import { buildLaserSVG, buildLaserPNG } from '../scripts/micrography-laser.js';
 
     // ————— State —————
     let currentImage = null;
@@ -1038,6 +1096,9 @@ import Layout from '../layouts/Layout.astro';
     let activeStyle = 'ink';     // key of STYLE_PRESETS
     let activeTechnique = 'grid'; // 'grid' | 'engrave' | 'contour' | 'spiral'
     let renderScale = 1;          // < 1 for contact-sheet previews
+    let glyphLog = null;          // letter placements while drawing the main plate
+    let lastLaser = null;         // the finished plate's log, for the laser export
+    let nameVerseRef = '';
     let progressPrefix = '';
 
     // ————— Style presets —————
@@ -1096,6 +1157,10 @@ import Layout from '../layouts/Layout.astro';
     const toleranceSlider = $('toleranceSlider');
     const toleranceValue = $('toleranceValue');
     const colorReplacePreview = $('colorReplacePreview');
+    const shopBtn = $('shopBtn');
+    const shopStatus = $('shopStatus');
+    const laserPanel = $('laserPanel');
+    const laserWidth = $('laserWidth');
     const compareBtn = $('compareBtn');
     const compareMode = $('compareMode');
     const galleryContainer = $('galleryContainer');
@@ -1534,6 +1599,7 @@ import Layout from '../layouts/Layout.astro';
         currentText = v.textNoNikud
           ? v.textNoNikud.replace(/[^א-ת\s]/g, '').replace(/\s+/g, ' ').trim()
           : stripNikud(v.text);
+        nameVerseRef = verseRef(v);
         fetchStatus.textContent = `✓ ${verseRef(v)} (${currentText.length} chars)`;
         // Without a shape the Draw button can't enable — default to the
         // name itself, which is what this verse belongs to anyway
@@ -1659,6 +1725,7 @@ import Layout from '../layouts/Layout.astro';
           await renderPlate();
         }
         resultContainer.classList.add('visible');
+        updateLaserInfo();
         canvasContainer.classList.toggle('transparent-preview', transparentBg.checked);
         textUsed.textContent = `Text used (${currentText.length.toLocaleString()} characters): ${currentText.substring(0, 100)}${currentText.length > 100 ? '...' : ''}`;
         resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1873,6 +1940,8 @@ import Layout from '../layouts/Layout.astro';
 
     // ————— Plate composition: paper, art, carpet frame, caption —————
     async function renderPlate(target = resultCanvas) {
+      glyphLog = target === resultCanvas ? { art: [], plate: [] } : null;
+      if (target === resultCanvas) lastLaser = null;
       const preset = STYLE_PRESETS[activeStyle];
       const art = document.createElement('canvas');
       const src = sourceMode === 'word' ? buildWordMask() : currentImage;
@@ -1885,6 +1954,10 @@ import Layout from '../layouts/Layout.astro';
         await drawPathArt(art, src, preset);
       }
       await composePlate(art, preset, target);
+      if (glyphLog) {
+        lastLaser = { ...glyphLog, paper: transparentBg.checked ? '#ffffff' : paperFor(preset), invert: !!preset.invert && preset.mode !== 'color' };
+        glyphLog = null;
+      }
     }
 
     function paperFor(preset) {
@@ -1946,6 +2019,7 @@ import Layout from '../layouts/Layout.astro';
       }
 
       ctx.drawImage(art, m, m, W, H);
+      if (glyphLog) Object.assign(glyphLog, { m, f: W / art.width, outW, outH });
       if (frame) await drawCarpetFrame(ctx, outW, plateH, m, preset);
       drawCaption(ctx, outW, plateH, capH, inkFor(preset));
     }
@@ -1975,6 +2049,7 @@ import Layout from '../layouts/Layout.astro';
       ctx.textBaseline = 'middle';
       ctx.direction = /[א-ת]/.test(caption) ? 'rtl' : 'ltr';
       ctx.fillText(caption, outW / 2, artH + capH * 0.58);
+      if (glyphLog) glyphLog.plate.push([caption, outW / 2, artH + capH * 0.58, fs, 700, 0, 2]);
       // restore defaults used by the letter loops
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
@@ -2051,6 +2126,7 @@ import Layout from '../layouts/Layout.astro';
         const c = Math.cos(ang), sn = Math.sin(ang);
         ctx.setTransform(c, sn, -sn, c, px, py);
         ctx.fillText(ch, 0, 0);
+        if (o.log) o.log.push([ch, px, py, size, weight, ang, 1]);
         cursor.advance();
         s += w + size * 0.05;
       }
@@ -2290,6 +2366,7 @@ import Layout from '../layouts/Layout.astro';
             scaleRange: layer.scaleRange,
             tone: layer.tone,
             color: (x, y, t) => colorAt(x, y, t, line),
+            log: glyphLog && glyphLog.art,
           });
           doneLines++;
           if (performance.now() - lastYield > 30) {
@@ -2328,6 +2405,7 @@ import Layout from '../layouts/Layout.astro';
         const color = bi === 1 ? rgba(accent, 0.95) : rgba(ink, 0.9);
         textAlongPath(ctx, rect(m * f), cursor, {
           rtl, base, minScale: 0.85, scaleRange: 0, tone: () => 1, color: () => color,
+          log: glyphLog && glyphLog.plate,
         });
       });
       // Thin ruled lines between the bands
@@ -2352,6 +2430,7 @@ import Layout from '../layouts/Layout.astro';
           const color = ri === 1 ? rgba(accent, 0.95) : rgba(ink, 0.9);
           textAlongPath(ctx, pts, cursor, {
             rtl, base: base * 0.7, minScale: 0.85, scaleRange: 0, tone: () => 1, color: () => color,
+            log: glyphLog && glyphLog.plate,
           });
         });
       }
@@ -2425,6 +2504,7 @@ import Layout from '../layouts/Layout.astro';
           const x = col * cell - (size - cell) / 2 + jx;
           const y = row * cell - (size - cell) / 2 + jy;
           ctx.fillText(ch, x, y);
+          if (glyphLog) glyphLog.art.push([ch, x, y, size, weight, 0, 0]);
           // Deep shadow: overstrike to build true ink mass
           if (d > 0.78) ctx.fillText(ch, x + 0.6, y + 0.4);
         }
@@ -2468,6 +2548,7 @@ import Layout from '../layouts/Layout.astro';
           if (ch === ' ') continue;
           ctx.fillStyle = (r > 250 && g > 250 && b > 250) ? 'rgb(0,0,0)' : `rgb(${r},${g},${b})`;
           ctx.fillText(ch, col * cell, row * cell);
+          if (glyphLog) glyphLog.art.push([ch, col * cell, row * cell, cell + 1, 400, 0, 0]);
         }
         done = end;
         if (performance.now() - lastYield > 25) {
@@ -2521,7 +2602,10 @@ import Layout from '../layouts/Layout.astro';
           if (font !== lastFont) { ctx.font = font; lastFont = font; }
           const inkRGB = preset.accent && row % 7 === 3 ? preset.accent : ink;
           ctx.fillStyle = rgba(inkRGB, alpha);
-          ctx.fillText(ch, col * scale + 1 + (Math.random() - 0.5), row * scale + 1 + (Math.random() - 0.5));
+          const gx = col * scale + 1 + (Math.random() - 0.5);
+          const gy = row * scale + 1 + (Math.random() - 0.5);
+          ctx.fillText(ch, gx, gy);
+          if (glyphLog) glyphLog.art.push([ch, gx, gy, size, 400, 0, 0]);
         }
         done = end;
         if (performance.now() - lastYield > 25) {
@@ -2533,6 +2617,7 @@ import Layout from '../layouts/Layout.astro';
     }
     // ————— Photo overlay: replace one color with text, keep the rest —————
     async function processColorReplace() {
+      lastLaser = null;   // a photo overlay has no letter log to export
       const sampleW = Math.min(currentImage.naturalWidth, 300);
       const sampleH = Math.round(sampleW * currentImage.naturalHeight / currentImage.naturalWidth);
 
@@ -2611,6 +2696,127 @@ import Layout from '../layouts/Layout.astro';
         processChunk();
       });
     }
+
+    // ————— Laser cutter export —————
+    function updateLaserInfo() {
+      laserPanel.style.display = lastLaser ? '' : 'none';
+      if (!lastLaser) return;
+      const w = Math.max(0.5, parseFloat(laserWidth.value) || 8);
+      const h = w * resultCanvas.height / resultCanvas.width;
+      $('laserHeight').textContent = `${h.toFixed(2)} in`;
+      $('laserDpi').textContent = `${Math.round(resultCanvas.width / w)} dpi · ${(lastLaser.art.length + lastLaser.plate.length).toLocaleString()} letters`;
+      $('laserInvertNote').style.display = lastLaser.invert && sourceMode === 'image' ? '' : 'none';
+    }
+    laserWidth.addEventListener('input', updateLaserInfo);
+
+    function saveBlob(blob, name) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }
+
+    async function laserExport(kind) {
+      if (!lastLaser) return;
+      const status = $('laserStatus');
+      const btns = [$('laserSvgBtn'), $('laserPngBtn')];
+      btns.forEach(b => b.disabled = true);
+      const widthIn = Math.max(0.5, parseFloat(laserWidth.value) || 8);
+      const stamp = `${widthIn}in-${Date.now().toString(36)}`;
+      try {
+        if (kind === 'svg') {
+          status.textContent = 'Outlining letters…';
+          const blob = await buildLaserSVG(lastLaser, {
+            widthIn,
+            cutLine: $('laserCut').checked,
+            mirror: $('laserMirror').checked,
+            expand: $('laserExpand').checked,
+            onProgress: (f) => { status.textContent = `Outlining letters… ${Math.round(f * 100)}%`; },
+          });
+          saveBlob(blob, `micrography-laser-${stamp}.svg`);
+          status.textContent = `✓ SVG saved — ${(blob.size / 1e6).toFixed(1)} MB, ${widthIn}″ wide`;
+        } else {
+          status.textContent = 'Preparing the raster…';
+          const blob = await buildLaserPNG(resultCanvas, {
+            widthIn, paper: lastLaser.paper, invert: lastLaser.invert, mirror: $('laserMirror').checked,
+          });
+          saveBlob(blob, `micrography-raster-${stamp}.png`);
+          status.textContent = `✓ PNG saved at ${Math.round(resultCanvas.width / widthIn)} dpi — imports at ${widthIn}″ wide`;
+        }
+      } catch (err) {
+        status.textContent = 'Export failed: ' + err.message;
+      } finally {
+        btns.forEach(b => b.disabled = false);
+      }
+    }
+    $('laserSvgBtn').addEventListener('click', () => laserExport('svg'));
+    $('laserPngBtn').addEventListener('click', () => laserExport('png'));
+
+    // ————— Hand the finished plate to DoppelGifter (prints, frames, phone cases) —————
+    const DG = {
+      url: 'https://knbyyykfwwlgnizutqyb.supabase.co',
+      // public anon key (the same one doppelgifter.com ships); drafts only, no data access
+      anon: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtuYnl5eWtmd3dsZ25penV0cXliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MjI3MDMsImV4cCI6MjA5NjM5ODcwM30.xbArp2d_jbD28dqg5ZdjgmaqKJ6erbTtVzMv22TDsxg',
+      shop: 'https://doppelgifter.com/scripture.html',
+    };
+
+    function currentTextRef() {
+      if (activeTab === 'sefaria') return textRef.value.trim();
+      if (activeTab === 'nameverse') return nameVerseRef;
+      return '';
+    }
+
+    async function sendToShop() {
+      shopBtn.disabled = true;
+      shopStatus.textContent = 'Sending it to the scriptorium…';
+      try {
+        const preset = STYLE_PRESETS[activeStyle];
+        const res = await fetch(`${DG.url}/functions/v1/dg-mg-draft`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DG.anon}` },
+          body: JSON.stringify({
+            action: 'create',
+            meta: {
+              title: captionInput.value.trim() || currentTextRef() || 'Micrography',
+              text_ref: currentTextRef(),
+              text_sample: currentText.slice(0, 200),
+              technique: activeTechnique,
+              ink: activeStyle,
+              ink_name: INK_NAMES[activeStyle] || '',
+              paper: transparentBg.checked ? '#ffffff' : paperFor(preset),
+              width: resultCanvas.width,
+              height: resultCanvas.height,
+            },
+          }),
+        });
+        const draft = await res.json();
+        if (!res.ok || !draft.upload_url) throw new Error(draft.error || `HTTP ${res.status}`);
+
+        // JPEG has no alpha: flatten transparent plates onto white first
+        let src = resultCanvas;
+        if (transparentBg.checked) {
+          src = document.createElement('canvas');
+          src.width = resultCanvas.width; src.height = resultCanvas.height;
+          const c = src.getContext('2d');
+          c.fillStyle = '#ffffff'; c.fillRect(0, 0, src.width, src.height);
+          c.drawImage(resultCanvas, 0, 0);
+        }
+        const blob = await new Promise((r) => src.toBlob(r, 'image/jpeg', 0.92));
+        shopStatus.textContent = `Uploading ${(blob.size / 1e6).toFixed(1)} MB…`;
+        const fd = new FormData();
+        fd.append('cacheControl', '3600');
+        fd.append('', blob, 'plate.jpg');
+        const up = await fetch(draft.upload_url, { method: 'PUT', headers: { 'x-upsert': 'false' }, body: fd });
+        if (!up.ok) throw new Error(`upload failed (${up.status})`);
+        shopStatus.textContent = 'Opening the shop…';
+        location.href = `${DG.shop}?d=${draft.id}`;
+      } catch (err) {
+        shopStatus.textContent = 'Couldn\'t reach the shop: ' + err.message;
+        shopBtn.disabled = false;
+      }
+    }
+    shopBtn.addEventListener('click', sendToShop);
 
     function downloadResult() {
       const link = document.createElement('a');
