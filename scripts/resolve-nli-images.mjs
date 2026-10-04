@@ -76,7 +76,7 @@ const TABLE = 'tanakh_nli_poster_evidence';
 
 const USER_AGENT =
   process.env.NLI_CONTACT_AGENT ||
-  'matthewjamesmiller.com tanakh-nli-evidence (https://matthewjamesmiller.com)';
+  'theothermatthewmiller.com tanakh-nli-evidence (https://theothermatthewmiller.com)';
 
 const REQUEST_TIMEOUT_MS = 30_000;
 /** NLI is a public institution's API; don't hammer it. */

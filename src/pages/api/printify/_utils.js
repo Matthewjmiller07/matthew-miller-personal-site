@@ -13,7 +13,7 @@ export function getPrintifyHeaders() {
   return {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json',
-    'User-Agent': 'MatthewMillerSite/1.0 (+https://matthewjamesmiller.com)'
+    'User-Agent': 'MatthewMillerSite/1.0 (+https://theothermatthewmiller.com)'
   };
 }
 

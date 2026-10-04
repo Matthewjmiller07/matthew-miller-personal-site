@@ -148,7 +148,7 @@ export async function buildLaserSVG(log, opts) {
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${+widthIn.toFixed(3)}in" height="${+heightIn.toFixed(3)}in" viewBox="0 0 ${outW} ${outH}">`,
     `<title>Micrography — ${placements.length.toLocaleString('en-US')} letters, ${widthIn.toFixed(2)}×${heightIn.toFixed(2)} in</title>`,
-    `<desc>Letters are outlined (no font needed). Black = engrave. ${opts.cutLine ? 'Red hairline = vector cut.' : ''} Made at matthewjamesmiller.com/micrography</desc>`,
+    `<desc>Letters are outlined (no font needed). Black = engrave. ${opts.cutLine ? 'Red hairline = vector cut.' : ''} Made at theothermatthewmiller.com/micrography</desc>`,
     opts.expand ? '' : `<defs>\n${used.map((d) => `<path id="${d.id}" d="${d.d}"/>`).join('\n')}\n</defs>`,
     `<g id="engrave" fill="#000000" stroke="none"${mirror}>`,
     `<g id="artwork" transform="translate(${r2(log.m)} ${r2(log.m)}) scale(${+log.f.toFixed(6)})">`,

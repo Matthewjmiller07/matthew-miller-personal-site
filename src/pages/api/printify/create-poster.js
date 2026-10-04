@@ -59,7 +59,7 @@ export async function POST({ request }) {
 
     const productPayload = {
       title: title || (imageName ? imageName.replace(/\.[^.]+$/, '') : `Poster ${new Date().toISOString()}`),
-      description: description || 'Poster generated via matthewjamesmiller.com',
+      description: description || 'Poster generated via theothermatthewmiller.com',
       tags: Array.isArray(tags) ? tags : ['poster', 'art', 'Sukkah Posters'],
       blueprint_id,
       print_provider_id,

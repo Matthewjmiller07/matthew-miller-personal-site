@@ -8,7 +8,7 @@ import sitemap from '@astrojs/sitemap';
 // https://astro.build/config
 export default defineConfig({
   adapter: netlify({ mode: 'functions' }),
-  site: 'https://matthewjamesmiller.com',
+  site: 'https://theothermatthewmiller.com',
   integrations: [
     tailwind(),
     react(),

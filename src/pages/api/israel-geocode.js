@@ -16,7 +16,7 @@ export const prerender = false;
 import { timingSafeEqual } from 'node:crypto';
 
 const PASSCODE = import.meta.env.ISRAEL_TRACKER_PASSWORD || process.env.ISRAEL_TRACKER_PASSWORD;
-const USER_AGENT = 'matthewjamesmiller.com israel-tracker (https://matthewjamesmiller.com)';
+const USER_AGENT = 'theothermatthewmiller.com israel-tracker (https://theothermatthewmiller.com)';
 
 // Ra'anana's rough bounding box — biases (or, when bounded=1, restricts) results so
 // "Herzl 5" resolves to the Herzl in Ra'anana rather than a same-named street

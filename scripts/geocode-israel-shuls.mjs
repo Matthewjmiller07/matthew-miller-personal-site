@@ -25,14 +25,14 @@ import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const CONTACT = process.env.GEOCODER_CONTACT || 'https://matthewjamesmiller.com';
+const CONTACT = process.env.GEOCODER_CONTACT || 'https://theothermatthewmiller.com';
 
 const ALL = process.argv.includes('--all');
 const DRY_RUN = process.argv.includes('--dry-run');
 
 /** Nominatim asks for one request a second and an identifiable agent. */
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
-const USER_AGENT = `matthewjamesmiller.com israel-tracker (${CONTACT})`;
+const USER_AGENT = `theothermatthewmiller.com israel-tracker (${CONTACT})`;
 const RATE_LIMIT_MS = 1100;
 
 /** Ra'anana's bounding box, so "Herzl 5" doesn't land on a Herzl street in Haifa. */

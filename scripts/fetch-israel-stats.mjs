@@ -30,7 +30,7 @@ const log = (...args) => console.log('[israel-stats]', ...args);
 async function getText(url, { timeout = 120_000 } = {}) {
   const res = await fetch(url, {
     signal: AbortSignal.timeout(timeout),
-    headers: { 'User-Agent': 'matthewjamesmiller.com israel-stats builder' },
+    headers: { 'User-Agent': 'theothermatthewmiller.com israel-stats builder' },
   });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
   return res.text();

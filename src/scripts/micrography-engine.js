@@ -1,7 +1,7 @@
 // Standalone micrography engine — no DOM beyond canvases, no framework.
 // Bundled for doppelgifter.com (js/micrography.js) so "The Scribe" style can draw a
 // portrait out of text in the buyer's browser. The full studio at
-// matthewjamesmiller.com/micrography has more techniques; this is the engraving one,
+// theothermatthewmiller.com/micrography has more techniques; this is the engraving one,
 // tuned for square product art.
 import { blur2 } from 'd3-array';
 
