@@ -33,7 +33,7 @@ const projects = [
     { name: "uscities", description: "Interactive map of US and UK cities with shared names." },
     { name: "whenarethejewishholidays", description: "Jewish holiday calendar with workday-off planner and free REST API.", fullUrl: "https://whenarethejewishholidays.com" },
     { name: "xaastracker", description: "Tracking examples of XaaS (Everything as a Service)." },
-    { name: "Zmanim", description: "Zmanim lookup (possibly an earlier version or related)." }
+    { name: "Zmanim", description: "An earlier Zmanim lookup." }
 ].map(project => {
     if (project.fullUrl) {
         return { ...project, url: project.fullUrl };
@@ -207,193 +207,576 @@ const featuredProjectsInfo = [
 
 const allDisplayProjects = [...new Map([...featuredProjectsInfo, ...projects].map(item => [item.name, item])).values()];
 // This de-duplicates by name, giving preference to featuredProjectsInfo if names overlap.
+
+// ---- Presentation ----------------------------------------------------------
+// Everything below only arranges the lists above; no entry is dropped.
+
+// Interactive tools, grouped by category in a fixed reading order.
+const toolGroups = [
+    { key: "Jewish Studies", id: "jewish-studies", title: "Jewish Studies", blurb: "Tools for reading, memorizing, scheduling and seeing Torah — most of them built on Sefaria's open APIs." },
+    { key: "Data Viz", id: "data-viz", title: "Data Viz", blurb: "Maps, matrices and databases that make a pile of numbers legible." },
+    { key: "Design", id: "design", title: "Design & Making", blurb: "Things that end up printed, cut or 3D-printed." },
+    { key: "AI / Live Data", id: "live", title: "AI & Live Data", blurb: "Small dashboards wired to live public feeds — many of them paint a FLUX portrait of whatever is happening right now." },
+].map(g => ({ ...g, items: featuredProjectsInfo.filter(p => p.isSubdomain && p.category === g.key) }));
+
+// Repos already shown as a featured tool (often under a friendlier name) are
+// left out of the repo index so nothing appears twice.
+const norm = (s = "") => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const featuredKeys = new Set(featuredProjectsInfo.flatMap(p => [norm(p.repoName), norm(p.name), p.url]));
+const moreRepos = projects.filter(p => !featuredKeys.has(norm(p.name)) && !featuredKeys.has(p.url));
+
+const isExternal = (url = "") => /^https?:\/\//.test(url);
+const linkAttrs = (url) => isExternal(url) ? { target: "_blank", rel: "noopener noreferrer" } : {};
+
+const catSlug = {
+    "Jewish Studies": "jewish",
+    "Data Viz": "data",
+    "Design": "design",
+    "AI / Live Data": "live",
+};
+
+// Featured strip at the top: the newest and best-looking work.
+const featuredPicks = ["Kohelet Reader", "Source Sheet Creator", "When are the Jewish Holidays"]
+    .map(n => featuredProjectsInfo.find(p => p.name === n))
+    .filter(Boolean);
+const podcast = writingOutputs.find(p => p.name === "PhDs on the Parsha");
+
+const toolCount = featuredProjectsInfo.filter(p => p.isSubdomain).length;
+const totalCount = toolCount + writingOutputs.length + moreRepos.length;
+const stats = [
+    { n: toolCount, label: "interactive tools" },
+    { n: writingOutputs.length, label: "books, sheets & shows" },
+    { n: toolGroups.find(g => g.key === "AI / Live Data")?.items.length ?? 0, label: "live-data dashboards" },
+    { n: moreRepos.length, label: "more repos" },
+];
+
+const filters = [
+    { id: "all", label: "Everything", count: totalCount },
+    { id: "writing", label: "Writing", count: writingOutputs.length },
+    ...toolGroups.map(g => ({ id: catSlug[g.key], label: g.title, count: g.items.length })),
+    { id: "repo", label: "Repos", count: moreRepos.length },
+];
+
+const marquee = featuredProjectsInfo.map(p => p.name.replace(/\s*\(.*\)\s*/, ""));
+const initials = (name) => name.replace(/\(.*\)/, "").split(/[\s—-]+/).filter(w => /^[A-Z0-9]/.test(w)).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 ---
 
 <Layout
-    title="My Projects"
-    description="A showcase of Matthew Miller's diverse projects, ranging from tech innovations and data visualizations to in-depth Jewish studies tools."
+    title="Projects"
+    description="The Workshop: interactive Torah tools, data visualizations, live-data dashboards, books and study sheets built by Matthew Miller. Watch the teaser and get new builds first."
+    image="/images/projects/trailer-poster.jpg"
+    imageAlt="The Workshop — projects by Matthew Miller"
 >
-    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <header class="mb-12 text-center">
-            <h1 class="text-4xl font-extrabold tracking-tight text-primary-light dark:text-primary-dark sm:text-5xl">
-                Projects Showcase
-            </h1>
-            <p class="mt-4 text-lg text-secondary-light dark:text-secondary-dark max-w-2xl mx-auto">
-                Writing and study sheets, tools for Jewish studies, data visualizations, and various tech experiments.
-            </p>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
+    <main class="ws">
+        {/* ---------- Hero ---------- */}
+        <header class="hero">
+            <div class="hero-grid" aria-hidden="true"></div>
+            <div class="wrap">
+                <p class="eyebrow"><span class="dot"></span> Matthew Miller · The Workshop</p>
+                <h1>
+                    Things I've built for <em>learning Torah</em>, <em class="c">seeing data</em>, and having fun with <em class="g">AI</em>.
+                </h1>
+                <p class="lede">
+                    Writing and study sheets, tools for Jewish studies, data visualizations, and various tech experiments —
+                    {totalCount} of them, and a new one most weeks.
+                </p>
+                <div class="cta-row">
+                    <a href="#trailer" class="btn primary">
+                        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+                        Watch the teaser
+                    </a>
+                    <a href="#subscribe" class="btn ghost">Get new builds first →</a>
+                </div>
+                <dl class="stats">
+                    {stats.map(s => (
+                        <div><dt>{s.label}</dt><dd>{s.n}</dd></div>
+                    ))}
+                </dl>
+            </div>
+            <div class="marquee" aria-hidden="true">
+                <div class="marquee-track">
+                    {[...marquee, ...marquee].map(n => <span>{n}<i>✦</i></span>)}
+                </div>
+            </div>
         </header>
 
-        {/* Writing & Outputs — documents I've produced, rather than tools */}
-        <section class="mb-16">
-            <h2 class="text-3xl font-bold tracking-tight text-primary-light dark:text-primary-dark mb-2 text-center sm:text-left">
-                Writing &amp; Outputs
-            </h2>
-            <p class="mb-8 text-secondary-light dark:text-secondary-dark max-w-2xl text-center sm:text-left">
-                Things I've written or produced — books, study sheets and annotated texts — as
-                opposed to the interactive tools further down.
-            </p>
-            {parashaSheets.length > 0 && (
-                <div class="mb-10">
-                    <h3 class="text-lg font-bold tracking-tight text-primary-light dark:text-primary-dark mb-4 text-center sm:text-left">
-                        Parasha Sheets
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-                        {parashaSheets.map(project => (
-                            <WritingOutputCard project={project} />
-                        ))}
-                    </div>
+        {/* ---------- Trailer + signup ---------- */}
+        <section id="trailer" class="wrap trailer-sec">
+            <div class="trailer-card">
+                <div class="video-frame">
+                    <video
+                        src="/videos/projects-trailer.mp4"
+                        poster="/images/projects/trailer-poster.jpg"
+                        controls
+                        playsinline
+                        preload="metadata"
+                    ></video>
                 </div>
-            )}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-                {otherWritingOutputs.map(project => (
-                    <WritingOutputCard project={project} />
-                ))}
+                <p class="cap mono">Teaser · 34 sec · every shot is a real project</p>
             </div>
+            <aside id="subscribe" class="signup">
+                <p class="eyebrow small"><span class="dot"></span> The Workshop list</p>
+                <h2>Get new builds before anyone else.</h2>
+                <p>
+                    One short email when something new ships — a daf game, a parasha sheet, a tool. No spam, unsubscribe anytime.
+                </p>
+                <form class="sub-form" data-source="projects-trailer" novalidate>
+                    <label class="sr-only" for="sub-email-1">Email address</label>
+                    <input id="sub-email-1" type="email" name="email" placeholder="you@example.com" autocomplete="email" required />
+                    <input type="text" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true" />
+                    <button type="submit" class="btn primary">Notify me</button>
+                    <p class="sub-msg" role="status" aria-live="polite"></p>
+                </form>
+            </aside>
         </section>
 
-        {/* Section for projects that will become subdomains */}
-        <section class="mb-16">
-            <h2 class="text-3xl font-bold tracking-tight text-primary-light dark:text-primary-dark mb-8 text-center sm:text-left">
-                Interactive Tools &amp; Apps
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-                {featuredProjectsInfo.filter(p => p.isSubdomain).map(project => (
-                    <a href={project.url} target="_blank" rel="noopener noreferrer"
-                       class="block p-6 rounded-xl shadow-lg hover:shadow-2xl border border-border-light dark:border-border-dark transform hover:-translate-y-1 transition-all duration-200 group relative bg-accent text-white">
-                        {/* Category badge - moved to prevent overlap */}
-                        {project.category && (
-                            <div class="flex justify-end mb-2">
-                                <span class="text-xs bg-accent-light/80 text-white px-2 py-0.5 rounded-full font-medium">
-                                    {project.category}
-                                </span>
-                            </div>
-                        )}
-                        {/* Preview Image */}
-                        {project.previewImage && (
-                          <img
-                            src={project.previewImage}
-                            alt={`Preview of ${project.name}`}
-                            class="mb-4 rounded shadow max-h-48 w-full object-cover"
-                            loading="lazy"
-                          />
-                        )}
-                        <h3 class="text-xl font-semibold mb-2 text-white group-hover:underline leading-tight">
-                            {project.name}
-                        </h3>
-                        {project.description && (
-                            <p class="text-sm text-secondary-light dark:text-secondary-dark mb-3 leading-relaxed">
-                                {project.description}
-                            </p>
-                        )}
-                        <div class="flex items-center text-xs text-accent-light font-medium mt-auto group-hover:underline">
-                            View Project
-                            <LinkIcon class="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-0.5 transition-transform" />
+        {/* ---------- Featured ---------- */}
+        <section class="wrap" aria-labelledby="featured-h">
+            <div class="sec-head">
+                <p class="kicker mono">01 — Fresh off the bench</p>
+                <h2 id="featured-h">Featured</h2>
+            </div>
+            <div class="bento">
+                {featuredPicks.map((p, i) => (
+                    <a href={p.url} {...linkAttrs(p.url)} class={`bento-card ${i === 0 ? "big" : ""}`} data-cat={catSlug[p.category]}>
+                        {p.previewImage && <img src={p.previewImage} alt="" loading={i === 0 ? "eager" : "lazy"} />}
+                        <div class="bento-body">
+                            <span class="pill">{p.category}</span>
+                            <h3>{p.name}</h3>
+                            <p>{p.description}</p>
                         </div>
                     </a>
                 ))}
+                {podcast && (
+                    <a href={podcast.pageUrl} class="bento-card podcast" data-cat="writing">
+                        <div class="wave" aria-hidden="true">{Array.from({ length: 28 }).map((_, i) => <span style={`--i:${i}`}></span>)}</div>
+                        <div class="bento-body">
+                            <span class="pill">{podcast.kind}</span>
+                            <h3>{podcast.name}</h3>
+                            <p>{podcast.description}</p>
+                        </div>
+                    </a>
+                )}
             </div>
-            <p class="text-center mt-8 text-sm text-secondary-light dark:text-secondary-dark">
+        </section>
+
+        {/* ---------- Filter bar ---------- */}
+        <nav class="filterbar" aria-label="Filter projects">
+            <div class="wrap filter-inner">
+                <div class="chips" role="tablist">
+                    {filters.map((f, i) => (
+                        <button type="button" class="chip" data-filter={f.id} aria-pressed={i === 0 ? "true" : "false"}>
+                            {f.label} <span class="n">{f.count}</span>
+                        </button>
+                    ))}
+                </div>
+                <label class="search">
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="m21 21-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z"/></svg>
+                    <span class="sr-only">Search projects</span>
+                    <input type="search" id="proj-search" placeholder="Search projects…" autocomplete="off" />
+                </label>
+            </div>
+        </nav>
+
+        {/* ---------- Writing & Outputs ---------- */}
+        <section class="wrap group" data-group="writing" id="writing">
+            <div class="sec-head">
+                <p class="kicker mono">02 — Writing &amp; Outputs</p>
+                <h2>Writing &amp; Outputs</h2>
+                <p class="blurb">
+                    Things I've written or produced — books, study sheets and annotated texts — as
+                    opposed to the interactive tools further down.
+                </p>
+            </div>
+            {parashaSheets.length > 0 && (
+                <div class="subgroup">
+                    <h3 class="sub-h mono">Parasha Sheets</h3>
+                    <div class="grid g3">
+                        {parashaSheets.map(project => <WritingOutputCard project={project} />)}
+                    </div>
+                </div>
+            )}
+            <div class="grid g3">
+                {otherWritingOutputs.map(project => <WritingOutputCard project={project} />)}
+            </div>
+        </section>
+
+        {/* ---------- Interactive Tools & Apps, by category ---------- */}
+        {toolGroups.map((g, gi) => (
+            <section class="wrap group" data-group={catSlug[g.key]} id={g.id}>
+                <div class="sec-head">
+                    <p class="kicker mono">{String(gi + 3).padStart(2, "0")} — Interactive Tools &amp; Apps</p>
+                    <h2>{g.title} <span class="count">{g.items.length}</span></h2>
+                    <p class="blurb">{g.blurb}</p>
+                </div>
+                {g.key === "AI / Live Data" ? (
+                    <div class="grid g3 live-grid">
+                        {g.items.map(project => (
+                            <a href={project.url} {...linkAttrs(project.url)} class="card live" data-cat="live" data-text={`${project.name} ${project.description}`.toLowerCase()}>
+                                <div class="live-top">
+                                    <span class="pulse" aria-hidden="true"></span>
+                                    <span class="mono tiny">LIVE</span>
+                                    <span class="arrow" aria-hidden="true">↗</span>
+                                </div>
+                                <h3>{project.name}</h3>
+                                <p class="clamp3">{project.description}</p>
+                            </a>
+                        ))}
+                    </div>
+                ) : (
+                    <div class="grid g3">
+                        {g.items.map(project => (
+                            <a href={project.url} {...linkAttrs(project.url)} class="card tool" data-cat={catSlug[g.key]} data-text={`${project.name} ${project.description}`.toLowerCase()}>
+                                <div class="thumb">
+                                    {project.previewImage ? (
+                                        <img src={project.previewImage} alt={`Preview of ${project.name}`} loading="lazy" />
+                                    ) : (
+                                        <div class="mono-tile" aria-hidden="true"><span>{initials(project.name)}</span></div>
+                                    )}
+                                </div>
+                                <div class="card-body">
+                                    <span class="pill">{project.category}</span>
+                                    <h3>{project.name}</h3>
+                                    <p class="clamp3">{project.description}</p>
+                                    <span class="go">View Project <LinkIcon class="w-3.5 h-3.5" /></span>
+                                </div>
+                            </a>
+                        ))}
+                    </div>
+                )}
+            </section>
+        ))}
+
+        {/* ---------- More GitHub repositories ---------- */}
+        <section class="wrap group" data-group="repo" id="repos">
+            <div class="sec-head">
+                <p class="kicker mono">07 — The archive</p>
+                <h2>More GitHub Repositories <span class="count">{moreRepos.length}</span></h2>
+                <p class="blurb">Earlier experiments and side quests, mostly on GitHub Pages.</p>
+            </div>
+            <ul class="repo-list">
+                {moreRepos.map(project => (
+                    <li>
+                        <a href={project.url} {...linkAttrs(project.url)} class="repo" data-cat="repo" data-text={`${project.name} ${project.description}`.toLowerCase()}>
+                            <span class="repo-name mono">{project.name}</span>
+                            <span class="repo-desc">{project.description}</span>
+                            <span class="repo-where mono">{isExternal(project.url) ? (project.url.includes("github.io") ? "GitHub ↗" : "Live ↗") : "On this site →"}</span>
+                        </a>
+                    </li>
+                ))}
+            </ul>
+            <p class="footnote">
                 These applications are currently hosted on GitHub Pages and will be moved to subdomains of my custom domain soon.
             </p>
         </section>
 
-        {/* Section for other GitHub projects */}
-        <section>
-            <h2 class="text-3xl font-bold tracking-tight text-primary-light dark:text-primary-dark mb-8 text-center sm:text-left">
-                More GitHub Repositories
-            </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                {projects.filter(p => !featuredProjectsInfo.find(fp => fp.name === p.name && fp.isSubdomain)).map(project => (
-                    <a href={project.url} target="_blank" rel="noopener noreferrer"
-                       class="block p-4 bg-card-bg-light dark:bg-card-bg-dark rounded-lg shadow-md hover:shadow-xl border border-border-light dark:border-border-dark transform hover:-translate-y-0.5 transition-all duration-150 group">
-                        <h3 class="text-md font-semibold mb-1 text-primary-light dark:text-primary-dark group-hover:text-accent dark:group-hover:text-accent-dark leading-snug">
-                            {project.name}
-                        </h3>
-                        {project.description && project.description.length > 50 ? ( // Show shorter desc for these smaller cards
-                             <p class="text-xs text-secondary-light dark:text-secondary-dark mb-2 leading-snug truncate-2-lines">{project.description}</p>
-                        ) : project.description ? (
-                             <p class="text-xs text-secondary-light dark:text-secondary-dark mb-2 leading-snug">{project.description}</p>
-                        ): null}
-                        <div class="flex items-center text-xs text-accent dark:text-accent-dark font-medium">
-                            View on GitHub
-                            <LinkIcon class="w-3 h-3 ml-1 group-hover:translate-x-0.5 transition-transform" />
-                        </div>
-                    </a>
-                ))}
+        <p class="wrap empty" id="no-results" hidden>Nothing matches that — try another word.</p>
+
+        {/* ---------- Closing signup ---------- */}
+        <section class="wrap closer">
+            <div class="closer-card">
+                <div>
+                    <p class="kicker mono">What's next</p>
+                    <h2>There's always something on the bench.</h2>
+                    <p>Be the first to try the next one.</p>
+                </div>
+                <form class="sub-form" data-source="projects-footer" novalidate>
+                    <label class="sr-only" for="sub-email-2">Email address</label>
+                    <input id="sub-email-2" type="email" name="email" placeholder="you@example.com" autocomplete="email" required />
+                    <input type="text" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true" />
+                    <button type="submit" class="btn primary">Notify me</button>
+                    <p class="sub-msg" role="status" aria-live="polite"></p>
+                </form>
             </div>
         </section>
     </main>
 </Layout>
 
-<style>
-/* Helper for truncating text to a specific number of lines */
-.truncate-2-lines {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* number of lines to show */
-    -webkit-box-orient: vertical;
+<style is:global>
+.ws {
+    --ink: #0b0d12;
+    --panel: #12151d;
+    --panel-2: #171b25;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-2: rgba(255, 255, 255, 0.16);
+    --paper: #f0ece2;
+    --muted: #9aa3b2;
+    --amber: #ffb84c;
+    --cyan: #22d3ee;
+    --green: #4ade80;
+    --pink: #f472b6;
+    --violet: #a78bfa;
+    --display: "Space Grotesk", Inter, system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+    background: var(--ink);
+    color: var(--paper);
+    padding-bottom: 4rem;
+    overflow-x: clip;
 }
+.ws .wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 640px) { .ws .wrap { padding: 0 32px; } }
+.ws .mono { font-family: var(--mono); }
+.ws [data-cat="jewish"], .ws [data-group="jewish"] { --c: var(--amber); }
+.ws [data-cat="data"], .ws [data-group="data"] { --c: var(--cyan); }
+.ws [data-cat="design"], .ws [data-group="design"] { --c: var(--pink); }
+.ws [data-cat="live"], .ws [data-group="live"] { --c: var(--green); }
+.ws [data-cat="writing"], .ws [data-group="writing"] { --c: var(--violet); }
+.ws [data-cat="repo"], .ws [data-group="repo"] { --c: #94a3b8; }
 
-/* Expandable content transitions */
-.description-content {
-    transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
-    opacity: 0;
+/* hero */
+.ws .hero { position: relative; padding: 5rem 0 0; border-bottom: 1px solid var(--line); }
+.ws .hero-grid {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 70% 70% at 30% 20%, #000 20%, transparent 75%);
 }
+.ws .hero .wrap { position: relative; }
+.ws .eyebrow { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.5rem; }
+.ws .eyebrow.small { margin-bottom: 1rem; }
+.ws .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 4px rgba(255, 184, 76, 0.18); }
+.ws h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2.3rem, 6vw, 4.6rem); line-height: 1.02; letter-spacing: -0.035em; max-width: 16ch; }
+.ws h1 em { font-style: normal; color: var(--amber); }
+.ws h1 em.c { color: var(--cyan); }
+.ws h1 em.g { color: var(--green); }
+.ws .lede { margin-top: 1.5rem; font-size: 1.15rem; line-height: 1.6; color: var(--muted); max-width: 58ch; }
+.ws .cta-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
+.ws .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.8rem 1.25rem; border-radius: 999px; font-weight: 600; font-size: 0.95rem; transition: transform 0.15s, background 0.15s, border-color 0.15s; white-space: nowrap; }
+.ws .btn.primary { background: var(--amber); color: #1a1205; }
+.ws .btn.primary:hover { transform: translateY(-1px); background: #ffc56e; }
+.ws .btn.ghost { border: 1px solid var(--line-2); color: var(--paper); }
+.ws .btn.ghost:hover { border-color: var(--paper); }
+.ws .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin: 3rem 0 3.5rem; max-width: 760px; }
+@media (min-width: 720px) { .ws .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ws .stats > div { background: var(--ink); padding: 1.1rem 1.25rem; display: flex; flex-direction: column-reverse; justify-content: flex-end; }
+.ws .stats dd { font-family: var(--display); font-size: 2.2rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+.ws .stats dt { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); margin-top: 0.4rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.ws .marquee { border-top: 1px solid var(--line); overflow: hidden; padding: 0.9rem 0; }
+.ws .marquee-track { display: flex; width: max-content; animation: ws-marquee 80s linear infinite; }
+.ws .marquee-track span { font-family: var(--display); font-weight: 600; font-size: 1.05rem; color: var(--muted); white-space: nowrap; padding-right: 1.25rem; }
+.ws .marquee-track i { font-style: normal; color: var(--amber); padding-left: 1.25rem; }
+@keyframes ws-marquee { to { transform: translateX(-50%); } }
 
-.description-content.expanded {
-    opacity: 1;
-    max-height: 500px !important; /* Large enough to fit content */
-    margin-bottom: 1rem;
+/* trailer + signup */
+.ws .trailer-sec { display: grid; gap: 2rem; padding-top: 4rem; padding-bottom: 2rem; scroll-margin-top: 80px; }
+@media (min-width: 960px) { .ws .trailer-sec { grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); align-items: center; } }
+.ws .video-frame { border-radius: 18px; overflow: hidden; border: 1px solid var(--line-2); background: #000; box-shadow: 0 30px 80px -30px rgba(255, 184, 76, 0.25); }
+.ws .video-frame video { display: block; width: 100%; aspect-ratio: 16 / 9; }
+.ws .cap { margin-top: 0.75rem; font-size: 0.75rem; color: var(--muted); }
+.ws .signup { scroll-margin-top: 80px; }
+.ws .signup h2, .ws .closer h2 { font-family: var(--display); font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.1; letter-spacing: -0.025em; font-weight: 700; }
+.ws .signup > p:not(.eyebrow), .ws .closer p:not(.kicker):not(.sub-msg) { color: var(--muted); margin-top: 0.75rem; line-height: 1.6; }
+.ws .sub-form { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; }
+.ws .sub-form input[type="email"] { flex: 1 1 220px; min-width: 0; background: var(--panel); border: 1px solid var(--line-2); color: var(--paper); border-radius: 999px; padding: 0.8rem 1.1rem; font-size: 0.95rem; }
+.ws .sub-form input[type="email"]:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px rgba(255, 184, 76, 0.2); }
+.ws .sub-form .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.ws .sub-msg { flex-basis: 100%; font-size: 0.85rem; min-height: 1.2em; color: var(--muted); }
+.ws .sub-msg.ok { color: var(--green); }
+.ws .sub-msg.err { color: #fca5a5; }
+.ws .sub-form.done input, .ws .sub-form.done button { display: none; }
+
+/* section heads */
+.ws .sec-head { padding-top: 4.5rem; margin-bottom: 2rem; max-width: 760px; }
+.ws .kicker { font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--c, var(--amber)); }
+.ws .sec-head h2 { font-family: var(--display); font-size: clamp(1.9rem, 4vw, 2.8rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; margin-top: 0.4rem; display: flex; align-items: baseline; gap: 0.75rem; }
+.ws .sec-head .count { font-family: var(--mono); font-size: 0.9rem; font-weight: 500; color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 0.1rem 0.6rem; }
+.ws .blurb { color: var(--muted); margin-top: 0.75rem; line-height: 1.6; }
+.ws .sub-h { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 1rem; }
+.ws .subgroup { margin-bottom: 2rem; }
+
+/* bento */
+.ws .bento { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 800px) { .ws .bento { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 260px; } .ws .bento-card.big { grid-column: span 2; grid-row: span 2; } }
+.ws .bento-card { position: relative; overflow: hidden; border-radius: 20px; border: 1px solid var(--line); background: var(--panel); min-height: 260px; display: flex; align-items: flex-end; isolation: isolate; transition: border-color 0.2s, transform 0.2s; }
+.ws .bento-card:hover { border-color: var(--c); transform: translateY(-2px); }
+.ws .bento-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; transition: transform 0.6s ease; }
+.ws .bento-card:hover img { transform: scale(1.04); }
+.ws .bento-card::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(11, 13, 18, 0) 10%, rgba(11, 13, 18, 0.55) 45%, rgba(11, 13, 18, 0.96) 75%); }
+.ws .bento-body { padding: 1.4rem; }
+.ws .bento-card h3 { font-family: var(--display); font-weight: 700; font-size: 1.4rem; letter-spacing: -0.02em; margin-top: 0.5rem; }
+.ws .bento-card.big h3 { font-size: clamp(1.6rem, 3vw, 2.4rem); }
+.ws .bento-card p { color: #c9ced8; font-size: 0.9rem; line-height: 1.5; margin-top: 0.4rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ws .bento-card.big p { -webkit-line-clamp: 3; max-width: 60ch; }
+@media (min-width: 800px) { .ws .bento-card.podcast { grid-column: 1 / -1; grid-row: span 1; } .ws .podcast .wave { left: auto; width: 42%; top: 50%; transform: translateY(-50%); height: 120px; } .ws .podcast .bento-body { max-width: 52%; } .ws .podcast p { -webkit-line-clamp: 3; } }
+.ws .podcast { background: radial-gradient(120% 90% at 100% 0%, rgba(167, 139, 250, 0.25), transparent 60%), var(--panel); }
+.ws .podcast::after { display: none; }
+.ws .wave { position: absolute; top: 1.4rem; left: 1.4rem; right: 1.4rem; height: 70px; display: flex; align-items: center; gap: 4px; }
+.ws .wave span { flex: 1; background: var(--violet); border-radius: 2px; opacity: 0.75; height: 20%; animation: ws-wave 1.2s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -0.09s); }
+@keyframes ws-wave { from { height: 12%; } to { height: 100%; } }
+
+/* pills */
+.ws .pill { display: inline-block; align-self: flex-start; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c, var(--amber)); background: color-mix(in srgb, var(--c, var(--amber)) 14%, transparent); border: 1px solid color-mix(in srgb, var(--c, var(--amber)) 30%, transparent); padding: 0.18rem 0.55rem; border-radius: 999px; }
+
+/* filter bar */
+.ws .filterbar { position: sticky; top: 0; z-index: 30; margin-top: 4rem; background: rgba(11, 13, 18, 0.82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-block: 1px solid var(--line); }
+.ws .filter-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.ws .chips { display: flex; gap: 0.4rem; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; min-width: 0; }
+.ws .chips::-webkit-scrollbar { display: none; }
+.ws .chip { flex: none; font-size: 0.85rem; font-weight: 500; color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 0.4rem 0.85rem; transition: all 0.15s; }
+.ws .chip .n { font-family: var(--mono); font-size: 0.72rem; opacity: 0.7; margin-left: 0.2rem; }
+.ws .chip:hover { color: var(--paper); border-color: var(--paper); }
+.ws .chip[aria-pressed="true"] { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+.ws .search { display: flex; align-items: center; gap: 0.5rem; background: var(--panel); border: 1px solid var(--line-2); border-radius: 999px; padding: 0.4rem 0.9rem; color: var(--muted); flex: 1 1 200px; max-width: 280px; }
+.ws .search input { background: transparent; border: 0; outline: none; color: var(--paper); font-size: 0.9rem; width: 100%; }
+.ws .search:focus-within { border-color: var(--amber); }
+
+/* grids & cards */
+.ws .grid { display: grid; gap: 1.1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 680px) { .ws .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .ws .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.ws .card { display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; transition: border-color 0.2s, transform 0.2s, background 0.2s; }
+.ws .card:hover { border-color: color-mix(in srgb, var(--c) 60%, transparent); transform: translateY(-3px); background: var(--panel-2); }
+.ws .thumb { aspect-ratio: 16 / 10; overflow: hidden; background: #0e1118; border-bottom: 1px solid var(--line); }
+.ws .thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform 0.5s ease; }
+.ws .card:hover .thumb img { transform: scale(1.04); }
+.ws .mono-tile { width: 100%; height: 100%; display: grid; place-items: center; background: radial-gradient(80% 80% at 20% 10%, color-mix(in srgb, var(--c) 30%, transparent), transparent 70%), repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 12px); }
+.ws .mono-tile span { font-family: var(--display); font-size: 4rem; font-weight: 700; letter-spacing: -0.05em; color: var(--c); opacity: 0.9; }
+.ws .card-body { padding: 1.15rem 1.25rem 1.3rem; display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
+.ws .card h3 { font-family: var(--display); font-weight: 600; font-size: 1.2rem; letter-spacing: -0.015em; line-height: 1.2; }
+.ws .card p { color: var(--muted); font-size: 0.9rem; line-height: 1.55; }
+.ws .clamp3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ws .card:hover .clamp3 { -webkit-line-clamp: unset; }
+.ws .go { margin-top: auto; padding-top: 0.4rem; display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; font-weight: 600; color: var(--c); }
+
+/* live cards */
+.ws .card.live { padding: 1.15rem 1.25rem 1.3rem; gap: 0.55rem; }
+.ws .live-top { display: flex; align-items: center; gap: 0.5rem; color: var(--green); }
+.ws .tiny { font-size: 0.68rem; letter-spacing: 0.12em; }
+.ws .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6); animation: ws-pulse 2s infinite; }
+@keyframes ws-pulse { 70% { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); } 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); } }
+.ws .arrow { margin-left: auto; color: var(--muted); transition: transform 0.2s, color 0.2s; }
+.ws .card.live:hover .arrow { transform: translate(2px, -2px); color: var(--green); }
+
+/* writing cards (WritingOutputCard) */
+.ws .wcard .thumb img { object-position: center top; }
+.ws .wcard details { margin-top: 0.25rem; }
+.ws .wcard summary { cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--c); list-style: none; display: inline-flex; align-items: center; gap: 0.35rem; }
+.ws .wcard summary::-webkit-details-marker { display: none; }
+.ws .wcard summary::before { content: "+"; font-family: var(--mono); }
+.ws .wcard details[open] summary::before { content: "–"; }
+.ws .wcard .details p, .ws .wcard .details li { color: var(--muted); font-size: 0.85rem; line-height: 1.55; }
+.ws .wcard .details { margin-top: 0.6rem; display: grid; gap: 0.5rem; }
+.ws .wcard .details ul { list-style: disc; padding-left: 1.1rem; columns: 2; column-gap: 1rem; }
+.ws .wcard .details .lbl { font-size: 0.75rem; font-weight: 600; color: var(--paper); }
+.ws .wactions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: auto; padding-top: 0.6rem; }
+.ws .wbtn { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; font-weight: 600; padding: 0.45rem 0.85rem; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); color: var(--c); transition: background 0.15s, color 0.15s; }
+.ws .wbtn.solid { background: var(--c); color: var(--ink); border-color: var(--c); }
+.ws .wbtn:hover { background: color-mix(in srgb, var(--c) 18%, transparent); }
+.ws .wbtn.solid:hover { background: color-mix(in srgb, var(--c) 85%, white); }
+
+/* repos */
+.ws .repo-list { border-top: 1px solid var(--line); }
+.ws .repo { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.25rem 1.5rem; padding: 1rem 0.25rem; border-bottom: 1px solid var(--line); transition: background 0.15s, padding 0.2s; }
+@media (min-width: 760px) { .ws .repo { grid-template-columns: 240px minmax(0, 1fr) auto; align-items: baseline; } }
+.ws .repo:hover { background: rgba(255, 255, 255, 0.025); padding-left: 0.75rem; }
+.ws .repo-name { font-size: 0.92rem; color: var(--paper); }
+.ws .repo-desc { color: var(--muted); font-size: 0.9rem; grid-column: 1 / -1; }
+@media (min-width: 760px) { .ws .repo-desc { grid-column: auto; } }
+.ws .repo-where { font-size: 0.75rem; color: var(--muted); grid-row: 1; grid-column: 2; }
+@media (min-width: 760px) { .ws .repo-where { grid-row: auto; grid-column: auto; } }
+.ws .repo:hover .repo-where { color: var(--paper); }
+.ws .footnote { margin-top: 1.25rem; font-size: 0.8rem; color: var(--muted); }
+
+.ws .empty { padding-top: 4rem; text-align: center; color: var(--muted); }
+
+/* closer */
+.ws .closer { padding-top: 5rem; }
+.ws .closer-card { display: grid; gap: 1.5rem; align-items: center; padding: 2rem; border-radius: 24px; border: 1px solid var(--line-2); background: radial-gradient(100% 140% at 0% 0%, rgba(255, 184, 76, 0.16), transparent 55%), radial-gradient(90% 120% at 100% 100%, rgba(34, 211, 238, 0.12), transparent 55%), var(--panel); }
+@media (min-width: 860px) { .ws .closer-card { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: 3rem; } }
+.ws .closer .kicker { color: var(--amber); margin-bottom: 0.5rem; }
+
+.ws .is-hidden { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ws .marquee-track, .ws .wave span, .ws .pulse { animation: none; }
+    .ws .card, .ws .bento-card, .ws img { transition: none; }
 }
 </style>
 
 <script>
-  // Handle expand/collapse functionality
-  document.addEventListener('astro:page-load', () => {
-    const expandButtons = document.querySelectorAll('.expand-btn');
-    
-    expandButtons.forEach(button => {
-      button.addEventListener('click', (e) => {
+  function initWorkshop() {
+    const root = document.querySelector('.ws');
+    if (!root || root.dataset.ready) return;
+    root.dataset.ready = '1';
+
+    // ---- filters + search ----
+    const chips = [...root.querySelectorAll<HTMLButtonElement>('.chip')];
+    const groups = [...root.querySelectorAll<HTMLElement>('.group')];
+    const search = root.querySelector<HTMLInputElement>('#proj-search');
+    const empty = root.querySelector<HTMLElement>('#no-results');
+    let active = 'all';
+
+    const apply = () => {
+      const q = (search?.value || '').trim().toLowerCase();
+      let shown = 0;
+      for (const g of groups) {
+        const inFilter = active === 'all' || g.dataset.group === active;
+        const items = [...g.querySelectorAll<HTMLElement>('[data-text]')];
+        let visible = 0;
+        for (const el of items) {
+          const hit = inFilter && (!q || (el.dataset.text || '').includes(q));
+          (el.closest('li') || el).classList.toggle('is-hidden', !hit);
+          if (hit) visible++;
+        }
+        // hide parasha-sheet subrow etc. when none of their cards match
+        g.querySelectorAll<HTMLElement>('.subgroup').forEach(sg => {
+          sg.classList.toggle('is-hidden', !sg.querySelector('[data-text]:not(.is-hidden)'));
+        });
+        g.classList.toggle('is-hidden', visible === 0);
+        shown += visible;
+      }
+      if (empty) empty.hidden = shown > 0;
+    };
+
+    chips.forEach(chip => chip.addEventListener('click', () => {
+      active = chip.dataset.filter || 'all';
+      chips.forEach(c => c.setAttribute('aria-pressed', String(c === chip)));
+      apply();
+      const bar = root.querySelector('.filterbar') as HTMLElement | null;
+      if (bar && bar.getBoundingClientRect().top > 1) bar.scrollIntoView({ behavior: 'smooth' });
+    }));
+    search?.addEventListener('input', apply);
+
+    // ---- email signup ----
+    root.querySelectorAll<HTMLFormElement>('.sub-form').forEach(form => {
+      form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        
-        // Get the current state
-        const isExpanded = button.getAttribute('data-expanded') === 'true';
-        
-        // Find the content container (sibling of parent div) with null check
-        const contentContainer = button.closest('div')?.nextElementSibling;
-        
-        if (!contentContainer) {
-          console.warn('Content container not found');
+        const msg = form.querySelector<HTMLElement>('.sub-msg')!;
+        const btn = form.querySelector<HTMLButtonElement>('button')!;
+        const email = (form.elements.namedItem('email') as HTMLInputElement).value.trim();
+        const website = (form.elements.namedItem('website') as HTMLInputElement).value;
+        msg.className = 'sub-msg';
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+          msg.textContent = 'That email address doesn’t look right.';
+          msg.classList.add('err');
           return;
         }
-        
-        // Toggle the expanded state
-        if (isExpanded) {
-          // Collapse
-          contentContainer.classList.remove('expanded');
-          contentContainer.classList.add('hidden');
-          button.setAttribute('data-expanded', 'false');
-          
-          // Toggle button text with null checks
-          const showText = button.querySelector('.show-text');
-          const hideText = button.querySelector('.hide-text');
-          if (showText) showText.classList.remove('hidden');
-          if (hideText) hideText.classList.add('hidden');
-        } else {
-          // Expand
-          contentContainer.classList.add('expanded');
-          contentContainer.classList.remove('hidden');
-          button.setAttribute('data-expanded', 'true');
-          
-          // Toggle button text with null checks
-          const showText = button.querySelector('.show-text');
-          const hideText = button.querySelector('.hide-text');
-          if (showText) showText.classList.add('hidden');
-          if (hideText) hideText.classList.remove('hidden');
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+        try {
+          const res = await fetch('/api/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, website, source: form.dataset.source }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+          form.classList.add('done');
+          msg.textContent = '✓ You’re on the list. See you at the next build.';
+          msg.classList.add('ok');
+        } catch (err) {
+          msg.textContent = (err as Error).message;
+          msg.classList.add('err');
+          btn.disabled = false;
+          btn.textContent = 'Notify me';
         }
       });
     });
-  });
+  }
+
+  initWorkshop();
+  document.addEventListener('astro:page-load', initWorkshop);
 </script>
