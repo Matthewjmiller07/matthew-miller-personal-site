@@ -1,0 +1,1258 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Mega Siddur"
+  description="A working siddur — Ashkenaz, Sefard and Edot HaMizrach — with today's insertions, Sefaria's linked sources, and a personal layer of rich commentary."
+>
+
+<style is:global>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Cormorant+SC:wght@400;500;600&family=Frank+Ruhl+Libre:wght@400;500;700&display=swap');
+
+body:has(.ms-page) { background:#0c0b09!important; padding:0!important; overflow:hidden!important; }
+body:has(.ms-page) > footer { display:none!important; }
+
+.ms-page {
+  --bg:#0c0b09; --surface:#141210; --surface2:#1c1a15;
+  --border:rgba(201,162,87,.15); --border-hi:rgba(201,162,87,.4);
+  --text:#e8d4aa; --muted:#8a7a5a; --faint:#3a3020;
+  --gold:#c9a257; --gold-dim:rgba(201,162,87,.6);
+  --accent:#79b8a4; --warn:#e0a35c; --skip:#a87a7a;
+  --heb:'Frank Ruhl Libre','Noto Serif Hebrew',serif;
+  --display:'Cormorant Garamond',Georgia,serif;
+  --sc:'Cormorant SC',Georgia,serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --heb-size:1.55rem; --en-size:1.05rem;
+  --sidebar:260px; --panel:380px;
+  position:fixed; top:4rem; left:0; right:0; bottom:0; display:flex; flex-direction:column;
+  background:var(--bg); color:var(--text); overflow:hidden;
+}
+.ms-page[data-theme="parchment"] {
+  --bg:#f5efe0; --surface:#ece4d0; --surface2:#e4dac2;
+  --border:rgba(110,80,30,.18); --border-hi:rgba(110,80,30,.42);
+  --text:#2b2216; --muted:#7a6a4e; --faint:#cfc2a2;
+  --gold:#8a5a12; --gold-dim:rgba(138,90,18,.6);
+  --accent:#2f7a63; --warn:#a4600f; --skip:#8a4a4a;
+}
+body:has(.ms-page[data-theme="parchment"]) { background:#f5efe0!important; }
+
+/* ── TOP BAR ── */
+.ms-bar {
+  flex-shrink:0; display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+  background:var(--surface); border-bottom:1px solid var(--border-hi); padding:.4rem .8rem; min-height:2.8rem;
+}
+.ms-logo { font-family:var(--sc); font-size:.72rem; letter-spacing:.32em; color:var(--gold); white-space:nowrap; padding-right:.6rem; border-right:1px solid var(--border); }
+.ms-sel, .ms-btn {
+  background:var(--surface2); border:1px solid var(--border-hi); color:var(--text);
+  font-family:var(--display); font-size:.9rem; padding:.28rem .7rem; cursor:pointer; outline:none;
+}
+.ms-sel:focus, .ms-btn:focus-visible { border-color:var(--gold); }
+.ms-btn:hover { border-color:var(--gold); color:var(--gold); }
+.ms-btn.primary { background:var(--gold); color:var(--bg); border-color:var(--gold); font-family:var(--sc); letter-spacing:.16em; font-size:.66rem; font-weight:600; text-transform:uppercase; }
+.ms-btn.primary:hover { filter:brightness(1.1); color:var(--bg); }
+.ms-btn.on { color:var(--gold); border-color:var(--gold); background:rgba(201,162,87,.1); }
+.ms-seg { display:flex; }
+.ms-seg .ms-btn + .ms-btn { border-left:none; }
+.ms-spacer { flex:1; }
+.ms-icon-btn { min-width:2rem; text-align:center; padding:.28rem .5rem; }
+.ms-only-mobile { display:none; }
+
+/* ── TODAY STRIP ── */
+.ms-today {
+  flex-shrink:0; display:flex; align-items:center; gap:.45rem; flex-wrap:wrap;
+  padding:.35rem .9rem; border-bottom:1px solid var(--border); background:var(--bg);
+  font-family:var(--display); font-size:.86rem; color:var(--muted);
+}
+.ms-today-date { color:var(--text); }
+.ms-today-date .he { font-family:var(--heb); color:var(--gold); margin-left:.35rem; }
+.ms-chip {
+  font-family:var(--sc); font-size:.6rem; letter-spacing:.1em; text-transform:uppercase;
+  padding:.12rem .5rem; border:1px solid var(--border-hi); color:var(--text); white-space:nowrap;
+}
+.ms-chip.say { border-color:var(--accent); color:var(--accent); }
+.ms-chip.skip { border-color:var(--skip); color:var(--skip); }
+.ms-chip.note { border-color:var(--warn); color:var(--warn); }
+.ms-loc { margin-left:auto; display:flex; gap:.35rem; align-items:center; font-size:.78rem; }
+.ms-loc button { background:none; border:none; color:var(--gold-dim); cursor:pointer; font-family:var(--display); font-size:.8rem; text-decoration:underline dotted; padding:0; }
+
+/* ── BODY ── */
+.ms-body { display:flex; flex:1; min-height:0; overflow:hidden; }
+
+/* SIDEBAR / TOC */
+.ms-sidebar {
+  width:var(--sidebar); flex-shrink:0; background:var(--surface); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; min-height:0;
+}
+.ms-search { margin:.6rem; padding:.35rem .6rem; background:var(--surface2); border:1px solid var(--border-hi); color:var(--text); font-family:var(--display); font-size:.9rem; outline:none; }
+.ms-search:focus { border-color:var(--gold); }
+.ms-toc { overflow-y:auto; padding:0 .5rem 4rem; flex:1; scrollbar-width:thin; scrollbar-color:var(--faint) transparent; }
+.ms-toc details { margin-left:.15rem; }
+.ms-toc details > summary {
+  cursor:pointer; list-style:none; font-family:var(--sc); font-size:.62rem; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--muted); padding:.3rem .2rem; border-bottom:1px solid var(--border);
+}
+.ms-toc details > summary::before { content:'▸'; display:inline-block; width:.9rem; color:var(--gold-dim); transition:transform .12s; }
+.ms-toc details[open] > summary::before { transform:rotate(90deg); }
+.ms-toc details details > summary { font-size:.58rem; border-bottom:none; }
+.ms-toc .kids { padding-left:.55rem; border-left:1px solid var(--border); margin-left:.35rem; }
+.ms-leaf {
+  display:flex; align-items:baseline; gap:.35rem; width:100%; text-align:left; background:none; border:none;
+  color:var(--text); font-family:var(--display); font-size:.86rem; padding:.16rem .3rem; cursor:pointer; line-height:1.25;
+}
+.ms-leaf:hover { color:var(--gold); }
+.ms-leaf.current { color:var(--gold); background:rgba(201,162,87,.1); }
+.ms-leaf .he { font-family:var(--heb); font-size:.8rem; color:var(--muted); margin-left:auto; direction:rtl; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:45%; }
+.ms-dot { width:6px; height:6px; border-radius:50%; background:var(--gold); flex-shrink:0; align-self:center; }
+.ms-toc-empty { font-family:var(--display); color:var(--muted); padding:1rem .5rem; font-size:.9rem; }
+
+/* MAIN */
+.ms-main { flex:1; overflow-y:auto; min-width:0; scrollbar-width:thin; scrollbar-color:var(--faint) transparent; }
+.ms-main-inner { max-width:860px; margin:0 auto; padding:1.4rem 1.6rem 8rem; }
+.ms-crumbs { font-family:var(--sc); font-size:.62rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); }
+.ms-crumbs span + span::before { content:' · '; color:var(--faint); }
+.ms-title { display:flex; justify-content:space-between; align-items:baseline; gap:1rem; margin:.3rem 0 1rem; border-bottom:1px solid var(--border-hi); padding-bottom:.6rem; }
+.ms-title h1 { font-family:var(--display); font-weight:400; font-size:2rem; margin:0; color:var(--text); }
+.ms-title .he { font-family:var(--heb); font-size:1.9rem; color:var(--gold); direction:rtl; }
+.ms-banner { border-left:3px solid var(--warn); background:rgba(224,163,92,.07); padding:.5rem .8rem; margin:0 0 1rem; font-family:var(--display); font-size:.98rem; }
+.ms-banner.say { border-color:var(--accent); background:rgba(121,184,164,.07); }
+.ms-banner.skip { border-color:var(--skip); background:rgba(168,122,122,.08); }
+.ms-banner b { font-family:var(--sc); letter-spacing:.08em; font-weight:600; }
+
+.ms-para { position:relative; padding:.55rem .6rem .55rem 2.2rem; border-radius:2px; cursor:pointer; transition:background .12s; }
+.ms-para:hover { background:rgba(201,162,87,.04); }
+.ms-para.selected { background:rgba(201,162,87,.09); box-shadow:inset 2px 0 0 var(--gold); }
+.ms-pnum { position:absolute; left:.3rem; top:.75rem; font-family:var(--mono); font-size:.6rem; color:var(--faint); }
+.ms-marks { position:absolute; left:.25rem; top:1.6rem; display:flex; flex-direction:column; gap:.2rem; align-items:center; }
+.ms-mark { font-family:var(--mono); font-size:.55rem; line-height:1; padding:.1rem .2rem; border-radius:2px; }
+.ms-mark.mine { background:var(--gold); color:var(--bg); }
+.ms-mark.lib { border:1px solid var(--border-hi); color:var(--muted); }
+.ms-he { font-family:var(--heb); font-size:var(--heb-size); line-height:1.85; direction:rtl; text-align:right; color:var(--text); }
+.ms-he small, .ms-en small { font-size:.72em; color:var(--muted); }
+.ms-he b { font-weight:700; }
+.ms-en { font-family:var(--display); font-size:var(--en-size); line-height:1.55; color:var(--muted); margin-top:.3rem; }
+.ms-en i { color:var(--muted); }
+.ms-page[data-layout="side"] .ms-para { display:grid; grid-template-columns:1fr 1fr; gap:1.4rem; align-items:start; }
+.ms-page[data-layout="side"] .ms-en { order:-1; margin-top:.35rem; }
+.ms-page[data-lang="he"] .ms-en { display:none; }
+.ms-page[data-lang="en"] .ms-he { display:none; }
+.footnote-marker { color:var(--gold); cursor:pointer; font-size:.7em; padding:0 .1em; }
+.ms-en .footnote { display:none; font-style:normal; }
+.ms-en .footnote.open { display:block; margin:.3rem 0 .4rem 1rem; padding-left:.6rem; border-left:2px solid var(--border-hi); font-size:.92em; }
+.ms-loading, .ms-error { font-family:var(--display); color:var(--muted); padding:2rem 0; font-size:1.05rem; }
+.ms-error { color:var(--skip); }
+
+.ms-pager { display:flex; justify-content:space-between; gap:1rem; margin-top:2.2rem; border-top:1px solid var(--border); padding-top:1rem; }
+.ms-pager button { flex:1; background:var(--surface); border:1px solid var(--border-hi); color:var(--text); padding:.7rem .9rem; cursor:pointer; text-align:left; font-family:var(--display); font-size:1rem; }
+.ms-pager button:hover { border-color:var(--gold); }
+.ms-pager button.next { text-align:right; }
+.ms-pager small { display:block; font-family:var(--sc); font-size:.58rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); }
+.ms-pager button:disabled { opacity:.3; cursor:default; }
+
+/* WELCOME */
+.ms-welcome h1 { font-family:var(--display); font-weight:300; font-size:2.6rem; margin:.5rem 0; }
+.ms-welcome p { font-family:var(--display); font-size:1.1rem; color:var(--muted); line-height:1.6; max-width:40rem; }
+.ms-quick { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:.6rem; margin-top:1.4rem; }
+.ms-quick button { background:var(--surface); border:1px solid var(--border-hi); color:var(--text); padding:.8rem; cursor:pointer; text-align:left; font-family:var(--display); font-size:1.05rem; }
+.ms-quick button:hover { border-color:var(--gold); color:var(--gold); }
+.ms-quick .he { display:block; font-family:var(--heb); color:var(--gold); font-size:1.1rem; direction:rtl; text-align:right; }
+
+/* COMMENTARY PANEL */
+.ms-panel {
+  width:var(--panel); flex-shrink:0; background:var(--surface); border-left:1px solid var(--border);
+  display:flex; flex-direction:column; min-height:0;
+}
+.ms-page[data-daven="1"] .ms-panel, .ms-page[data-daven="1"] .ms-marks { display:none; }
+.ms-page[data-daven="1"] .ms-para { cursor:default; }
+.ms-panel-head { display:flex; align-items:center; gap:.4rem; padding:.55rem .8rem; border-bottom:1px solid var(--border); }
+.ms-panel-head h2 { font-family:var(--sc); font-size:.66rem; letter-spacing:.22em; text-transform:uppercase; color:var(--gold); margin:0; flex:1; font-weight:500; }
+.ms-panel-body { overflow-y:auto; padding:.7rem .9rem 5rem; flex:1; scrollbar-width:thin; scrollbar-color:var(--faint) transparent; }
+.ms-scope { font-family:var(--display); font-size:.9rem; color:var(--muted); margin-bottom:.6rem; }
+.ms-scope b { color:var(--text); font-weight:600; }
+.ms-h3 { font-family:var(--sc); font-size:.6rem; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); padding-bottom:.25rem; margin:1rem 0 .5rem; display:flex; justify-content:space-between; align-items:baseline; }
+.ms-note { border:1px solid var(--border); border-left:3px solid var(--gold); padding:.55rem .7rem; margin-bottom:.6rem; background:var(--bg); }
+.ms-note.draft { border-left-style:dashed; opacity:.85; }
+.ms-note-meta { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; font-family:var(--sc); font-size:.55rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+.ms-kind { padding:.05rem .35rem; border:1px solid var(--border-hi); color:var(--gold); }
+.ms-note h4 { font-family:var(--display); font-size:1.08rem; margin:.25rem 0; font-weight:600; color:var(--text); }
+.ms-anchor { font-family:var(--heb); direction:rtl; color:var(--gold); font-size:1rem; }
+.ms-note-body { font-family:var(--display); font-size:.98rem; line-height:1.5; color:var(--text); }
+.ms-note-body p { margin:.35rem 0; }
+.ms-note-body a, .ms-note-src a, .ms-lib a { color:var(--gold); }
+.ms-note-src { font-family:var(--display); font-size:.85rem; color:var(--muted); margin-top:.35rem; font-style:italic; }
+.ms-note-tags { display:flex; gap:.25rem; flex-wrap:wrap; margin-top:.35rem; }
+.ms-note-tags span { font-family:var(--mono); font-size:.58rem; color:var(--muted); border:1px solid var(--border); padding:0 .3rem; }
+.ms-note-actions { display:flex; gap:.6rem; margin-top:.4rem; }
+.ms-note-actions button { background:none; border:none; padding:0; font-family:var(--sc); font-size:.58rem; letter-spacing:.14em; text-transform:uppercase; color:var(--gold-dim); cursor:pointer; }
+.ms-note-actions button:hover { color:var(--gold); }
+.ms-empty { font-family:var(--display); color:var(--muted); font-size:.92rem; font-style:italic; }
+
+.ms-lib details { border-bottom:1px solid var(--border); }
+.ms-lib summary { cursor:pointer; padding:.35rem 0; font-family:var(--display); font-size:.98rem; color:var(--text); display:flex; gap:.4rem; align-items:baseline; }
+.ms-lib summary .cat { font-family:var(--sc); font-size:.52rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-left:auto; }
+.ms-lib summary .n { font-family:var(--mono); font-size:.6rem; color:var(--gold-dim); }
+.ms-lib-item { padding:.35rem 0 .6rem .5rem; border-left:1px solid var(--border-hi); margin:0 0 .4rem .2rem; }
+.ms-lib-ref { font-family:var(--sc); font-size:.6rem; letter-spacing:.1em; }
+.ms-lib-he { font-family:var(--heb); direction:rtl; font-size:1.02rem; line-height:1.7; color:var(--text); margin-top:.2rem; }
+.ms-lib-en { font-family:var(--display); font-size:.92rem; line-height:1.45; color:var(--muted); margin-top:.2rem; }
+.ms-lib-more { background:none; border:none; color:var(--gold-dim); cursor:pointer; font-family:var(--sc); font-size:.56rem; letter-spacing:.14em; text-transform:uppercase; padding:.2rem 0; }
+
+/* EDITOR */
+.ms-form { display:flex; flex-direction:column; gap:.45rem; border:1px solid var(--border-hi); padding:.7rem; background:var(--bg); margin-bottom:.8rem; }
+.ms-form label { font-family:var(--sc); font-size:.55rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); display:flex; flex-direction:column; gap:.2rem; }
+.ms-form input[type=text], .ms-form input[type=url], .ms-form input[type=number], .ms-form textarea, .ms-form select {
+  background:var(--surface2); border:1px solid var(--border-hi); color:var(--text); font-family:var(--display); font-size:.95rem; padding:.3rem .45rem; outline:none; text-transform:none; letter-spacing:normal;
+}
+.ms-form textarea { min-height:9rem; resize:vertical; line-height:1.45; }
+.ms-form input:focus, .ms-form textarea:focus, .ms-form select:focus { border-color:var(--gold); }
+.ms-form .row { display:flex; gap:.5rem; }
+.ms-form .row > * { flex:1; }
+.ms-form .radios { display:flex; flex-direction:column; gap:.2rem; font-family:var(--display); font-size:.9rem; color:var(--text); text-transform:none; letter-spacing:normal; }
+.ms-form .radios label, .ms-form .check { flex-direction:row; align-items:center; gap:.4rem; font-family:var(--display); font-size:.9rem; color:var(--text); text-transform:none; letter-spacing:normal; }
+.ms-form-actions { display:flex; gap:.5rem; align-items:center; }
+.ms-form-msg { font-family:var(--display); font-size:.85rem; color:var(--skip); }
+.ms-hint { font-family:var(--display); font-size:.8rem; color:var(--muted); font-style:italic; text-transform:none; letter-spacing:normal; }
+
+.ms-scrim { display:none; }
+
+/* ── MOBILE ── */
+@media (max-width: 1100px) {
+  .ms-page { --panel:340px; --sidebar:230px; }
+}
+@media (max-width: 900px) {
+  .ms-only-mobile { display:inline-block; }
+  .ms-sidebar, .ms-panel {
+    position:absolute; top:0; bottom:0; z-index:30; box-shadow:0 0 30px rgba(0,0,0,.45);
+    transition:transform .2s ease;
+  }
+  .ms-sidebar { left:0; width:min(84vw,320px); transform:translateX(-105%); }
+  .ms-panel { right:0; width:min(92vw,420px); transform:translateX(105%); }
+  .ms-page[data-sidebar="1"] .ms-sidebar { transform:none; }
+  .ms-page[data-panel="1"] .ms-panel { transform:none; }
+  .ms-page[data-sidebar="1"] .ms-scrim, .ms-page[data-panel="1"] .ms-scrim { display:block; position:absolute; inset:0; z-index:25; background:rgba(0,0,0,.35); }
+  .ms-body { position:relative; }
+  .ms-main-inner { padding:1rem 1rem 7rem; }
+  .ms-page[data-layout="side"] .ms-para { display:block; }
+  .ms-title h1 { font-size:1.5rem; }
+  .ms-title .he { font-size:1.5rem; }
+  .ms-para { padding-left:1.9rem; }
+  .ms-hide-mobile { display:none; }
+  .ms-loc { margin-left:0; }
+  .ms-logo { display:none; }
+  .ms-today { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+  .ms-today > * { flex-shrink:0; }
+}
+</style>
+
+<div class="ms-page" id="ms-page" data-theme="night" data-lang="both" data-layout="stack" data-daven="0">
+  <div class="ms-bar">
+    <button class="ms-btn ms-icon-btn ms-only-mobile" id="ms-toc-toggle" aria-label="Contents">☰</button>
+    <span class="ms-logo">MEGA SIDDUR</span>
+    <select class="ms-sel" id="ms-nusach" aria-label="Nusach">
+      <option value="Ashkenaz">Ashkenaz</option>
+      <option value="Sefard">Sefard</option>
+      <option value="Edot HaMizrach">Edot HaMizrach</option>
+    </select>
+    <button class="ms-btn primary" id="ms-now" title="Jump to the service for right now">Now</button>
+    <div class="ms-seg ms-hide-mobile" role="group" aria-label="Language">
+      <button class="ms-btn" data-lang="he">עב</button>
+      <button class="ms-btn on" data-lang="both">עב + En</button>
+      <button class="ms-btn" data-lang="en">En</button>
+    </div>
+    <button class="ms-btn ms-hide-mobile" id="ms-layout" title="Hebrew and English stacked or side by side">Stacked</button>
+    <div class="ms-seg" role="group" aria-label="Text size">
+      <button class="ms-btn ms-icon-btn" id="ms-smaller" aria-label="Smaller text">A−</button>
+      <button class="ms-btn ms-icon-btn" id="ms-bigger" aria-label="Larger text">A+</button>
+    </div>
+    <span class="ms-spacer"></span>
+    <button class="ms-btn" id="ms-daven" title="Hide commentary for davening">Davening mode</button>
+    <button class="ms-btn ms-icon-btn" id="ms-theme" title="Night / parchment">◐</button>
+    <button class="ms-btn ms-icon-btn" id="ms-lock" title="Unlock to add commentary">🔒</button>
+    <button class="ms-btn ms-icon-btn ms-only-mobile" id="ms-panel-toggle" aria-label="Commentary">✎</button>
+  </div>
+
+  <div class="ms-today" id="ms-today"></div>
+
+  <div class="ms-body">
+    <aside class="ms-sidebar" id="ms-sidebar">
+      <input class="ms-search" id="ms-search" type="search" placeholder="Find a prayer… / חיפוש" autocomplete="off" />
+      <nav class="ms-toc" id="ms-toc" aria-label="Contents"></nav>
+    </aside>
+
+    <main class="ms-main" id="ms-main">
+      <div class="ms-main-inner" id="ms-content"></div>
+    </main>
+
+    <aside class="ms-panel" id="ms-panel">
+      <div class="ms-panel-head">
+        <h2 id="ms-panel-title">Commentary</h2>
+        <button class="ms-btn ms-icon-btn ms-only-mobile" id="ms-panel-close" aria-label="Close">✕</button>
+      </div>
+      <div class="ms-panel-body" id="ms-panel-body"></div>
+    </aside>
+    <div class="ms-scrim" id="ms-scrim"></div>
+  </div>
+</div>
+
+<script>
+import tocData from '../data/mega-siddur/toc.json';
+
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+const TABLE = 'siddur_commentary';
+const API = '/api/mega-siddur-commentary';
+const SEFARIA = 'https://www.sefaria.org';
+
+const BOOKS: Record<string, string> = {
+  'Ashkenaz': 'Siddur Ashkenaz',
+  'Sefard': 'Siddur Sefard',
+  'Edot HaMizrach': 'Siddur Edot HaMizrach',
+};
+const KINDS = ['commentary', 'halacha', 'history', 'kavanah', 'source', 'language', 'personal', 'music'];
+
+// Where "Now" lands for each service, per nusach (first section whose path starts with a prefix).
+const SERVICE_PREFIXES: Record<string, Record<string, string[]>> = {
+  'Ashkenaz': {
+    shacharit: ['Weekday > Shacharit'], minchah: ['Weekday > Minchah'], maariv: ['Weekday > Maariv'],
+    kabbalat: ['Shabbat > Kabbalat Shabbat'], shabShacharit: ['Shabbat > Shacharit'], shabMinchah: ['Shabbat > Minchah'],
+    havdalah: ['Shabbat > Havdalah'],
+  },
+  'Sefard': {
+    shacharit: ['Upon Arising', 'Weekday Shacharit'], minchah: ['Weekday Mincha'], maariv: ['Weekday Maariv'],
+    kabbalat: ['Kabbalat Shabbat'], shabShacharit: ['Shabbat Morning Services'], shabMinchah: ['Shabbat Mincha'],
+    havdalah: ['Motzaei Shabbat'],
+  },
+  'Edot HaMizrach': {
+    shacharit: ['Preparatory Prayers', 'Weekday Shacharit'], minchah: ['Weekday Mincha'], maariv: ['Weekday Arvit'],
+    kabbalat: ['Kabbalat Shabbat'], shabShacharit: ['Shabbat Shacharit'], shabMinchah: ['Shabbat Mincha'],
+    havdalah: ['Havdalah'],
+  },
+};
+const SERVICE_LABEL: Record<string, [string, string]> = {
+  shacharit: ['Shacharit', 'שחרית'], minchah: ['Minchah', 'מנחה'], maariv: ['Maariv', 'ערבית'],
+  kabbalat: ['Kabbalat Shabbat', 'קבלת שבת'], shabShacharit: ['Shabbat Shacharit', 'שחרית לשבת'],
+  shabMinchah: ['Shabbat Minchah', 'מנחה לשבת'], havdalah: ['Havdalah', 'הבדלה'],
+};
+
+/* ───────────────────────── storage helpers ───────────────────────── */
+const store = {
+  get(k: string, d: any = null) { try { const v = localStorage.getItem('ms:' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k: string, v: any) { try { localStorage.setItem('ms:' + k, JSON.stringify(v)); } catch {} },
+  del(k: string) { try { localStorage.removeItem('ms:' + k); } catch {} },
+};
+
+/* ───────────────────────── state ───────────────────────── */
+type Section = { path: string; he: string; parts: string[]; ref: string; leaf: string };
+const state: any = {
+  nusach: store.get('nusach', 'Ashkenaz'),
+  sections: [] as Section[],
+  current: -1,
+  paras: [] as { he: string; en: string }[],
+  selected: null as number | null,
+  notes: [] as any[],
+  links: [] as any[],
+  noteIndex: { refs: new Set<string>(), names: new Set<string>() },
+  key: store.get('key', ''),
+  editing: null as any,
+  dbReady: true,
+};
+
+const $ = (id: string) => document.getElementById(id)!;
+const page = $('ms-page');
+const esc = (s: any) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+
+/* ───────────────────────── Hebrew calendar (via Intl) ───────────────────────── */
+const HEB_FMT = new Intl.DateTimeFormat('en-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const MONTH_ORDER: Record<string, number> = {
+  Tishri: 0, Heshvan: 1, Kislev: 2, Tevet: 3, Shevat: 4, 'Adar I': 5, Adar: 6, 'Adar II': 6,
+  Nisan: 7, Iyar: 8, Sivan: 9, Tamuz: 10, Av: 11, Elul: 12,
+};
+type HDate = { day: number; month: string; year: number; leap: boolean };
+const HE_MONTH: Record<string, string> = {
+  Tishri: 'תשרי', Heshvan: 'חשון', Kislev: 'כסלו', Tevet: 'טבת', Shevat: 'שבט', 'Adar I': 'אדר א׳', Adar: 'אדר',
+  'Adar II': 'אדר ב׳', Nisan: 'ניסן', Iyar: 'אייר', Sivan: 'סיון', Tamuz: 'תמוז', Av: 'אב', Elul: 'אלול',
+};
+/** 24 → כ״ד, 5787 → תשפ״ז */
+function gematria(n: number) {
+  const ones = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+  const tens = ['', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ'];
+  const hundreds = ['', 'ק', 'ר', 'ש'];
+  let s = '';
+  n %= 1000;
+  while (n >= 400) { s += 'ת'; n -= 400; }
+  if (n >= 100) { s += hundreds[Math.floor(n / 100)]; n %= 100; }
+  if (n === 15) s += 'טו'; else if (n === 16) s += 'טז'; else s += tens[Math.floor(n / 10)] + ones[n % 10];
+  return s.length > 1 ? `${s.slice(0, -1)}״${s.slice(-1)}` : `${s}׳`;
+}
+const hebDateHe = (h: HDate) => `${gematria(h.day)} ${HE_MONTH[h.month] || h.month} ${gematria(h.year)}`;
+
+/** Hebrew date of a civil calendar day (y, m, d in UTC to avoid TZ drift). */
+function hebOf(civil: Date): HDate {
+  const parts = HEB_FMT.formatToParts(civil);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  const month = get('month');
+  return { day: Number(get('day')), month, year: Number(get('year')), leap: false };
+}
+function isLeapYear(y: number) { return ((7 * y + 1) % 19) < 7; }
+const civilUTC = (d: Date) => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 864e5);
+
+/* ───────────────────────── sunrise / sunset ───────────────────────── */
+function sunEvent(date: Date, lat: number, lng: number, rise: boolean, zenith = 90.833): Date | null {
+  const rad = Math.PI / 180;
+  const y = date.getFullYear(), m = date.getMonth(), d = date.getDate();
+  const N = Math.round((Date.UTC(y, m, d) - Date.UTC(y, 0, 0)) / 864e5);
+  const lngHour = lng / 15;
+  const t = N + ((rise ? 6 : 18) - lngHour) / 24;
+  const M = 0.9856 * t - 3.289;
+  let L = M + 1.916 * Math.sin(M * rad) + 0.02 * Math.sin(2 * M * rad) + 282.634;
+  L = ((L % 360) + 360) % 360;
+  let RA = Math.atan(0.91764 * Math.tan(L * rad)) / rad;
+  RA = ((RA % 360) + 360) % 360;
+  RA = (RA + Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90) / 15;
+  const sinDec = 0.39782 * Math.sin(L * rad);
+  const cosDec = Math.cos(Math.asin(sinDec));
+  const cosH = (Math.cos(zenith * rad) - sinDec * Math.sin(lat * rad)) / (cosDec * Math.cos(lat * rad));
+  if (cosH > 1 || cosH < -1) return null;
+  const H = (rise ? 360 - Math.acos(cosH) / rad : Math.acos(cosH) / rad) / 15;
+  const T = H + RA - 0.06571 * t - 6.622;
+  const UT = (((T - lngHour) % 24) + 24) % 24;
+  let out = new Date(Date.UTC(y, m, d) + UT * 3600e3);
+  // Keep the event on the requested local day.
+  const noon = new Date(y, m, d, 12).getTime();
+  while (out.getTime() - noon > 12 * 3600e3) out = new Date(out.getTime() - 864e5);
+  while (noon - out.getTime() > 12 * 3600e3) out = new Date(out.getTime() + 864e5);
+  return out;
+}
+
+/* ───────────────────────── today's halachic picture ───────────────────────── */
+function getLoc() {
+  return store.get('loc', { name: "Ra'anana", lat: 32.184, lng: 34.871, israel: true });
+}
+
+function computeToday(now = new Date()) {
+  const loc = getLoc();
+  const israel = !!loc.israel;
+  const sunrise = sunEvent(now, loc.lat, loc.lng, true);
+  const sunset = sunEvent(now, loc.lat, loc.lng, false);
+  const afterSunset = !!sunset && now > sunset;
+  const civil = civilUTC(now);
+  const effCivil = afterSunset ? addDays(civil, 1) : civil;   // the civil day whose Hebrew date is in force
+  const h = hebOf(effCivil);
+  h.leap = isLeapYear(h.year);
+  const mo = MONTH_ORDER[h.month] ?? -1;
+  const dow = effCivil.getUTCDay();                             // 6 = Shabbat
+  const civilDow = now.getDay();
+
+  const hebAt = (offset: number) => hebOf(addDays(effCivil, offset));
+  const is = (m: string, d: number) => h.month === m && h.day === d;
+
+  const roshChodesh = h.day === 30 || (h.day === 1 && h.month !== 'Tishri');
+  let chanukahDay = 0;
+  for (let i = 0; i < 8; i++) { const x = hebAt(-i); if (x.month === 'Kislev' && x.day === 25) { chanukahDay = i + 1; break; } }
+  let omerDay = 0;
+  for (let i = 0; i < 49; i++) { const x = hebAt(-i); if (x.month === 'Nisan' && x.day === 16) { omerDay = i + 1; break; } }
+  const purimMonth = h.leap ? 'Adar II' : 'Adar';
+  const purim = h.month === purimMonth && h.day === 14;
+  const shushanPurim = h.month === purimMonth && h.day === 15;
+  const purimKatan = h.leap && h.month === 'Adar I' && (h.day === 14 || h.day === 15);
+  const aseret = h.month === 'Tishri' && h.day >= 1 && h.day <= 10;
+  const yomTovDays = israel
+    ? [['Tishri', 1], ['Tishri', 2], ['Tishri', 10], ['Tishri', 15], ['Tishri', 22], ['Nisan', 15], ['Nisan', 21], ['Sivan', 6]]
+    : [['Tishri', 1], ['Tishri', 2], ['Tishri', 10], ['Tishri', 15], ['Tishri', 16], ['Tishri', 22], ['Tishri', 23], ['Nisan', 15], ['Nisan', 16], ['Nisan', 21], ['Nisan', 22], ['Sivan', 6], ['Sivan', 7]];
+  const yomTov = yomTovDays.some(([m, d]) => is(m as string, d as number));
+  const cholHamoed = israel
+    ? (h.month === 'Tishri' && h.day >= 16 && h.day <= 21) || (h.month === 'Nisan' && h.day >= 16 && h.day <= 20)
+    : (h.month === 'Tishri' && h.day >= 17 && h.day <= 21) || (h.month === 'Nisan' && h.day >= 17 && h.day <= 20);
+
+  // Fasts, with Shabbat postponement (Esther moves back to Thursday).
+  const fastOn = (m: string, d: number, back = false) => {
+    if (is(m, d) && dow !== 6) return true;
+    if (!back && dow === 0) { const y = hebAt(-1); return y.month === m && y.day === d; }
+    if (back && dow === 4) { const x = hebAt(2); return x.month === m && x.day === d; }
+    return false;
+  };
+  let fast = '';
+  if (fastOn('Tishri', 3)) fast = 'Tzom Gedaliah';
+  else if (is('Tevet', 10)) fast = 'Asara BeTevet';
+  else if (fastOn(purimMonth, 13, true)) fast = "Ta'anit Esther";
+  else if (fastOn('Tamuz', 17)) fast = '17 Tammuz';
+  else if (fastOn('Av', 9)) fast = "Tisha B'Av";
+  else if (is('Tishri', 10)) fast = 'Yom Kippur';
+
+  // Rain & dew.
+  let gevurot = '';
+  if ((h.month === 'Tishri' && h.day > 22) || (mo >= 1 && mo <= 6) || (h.month === 'Nisan' && h.day < 15)) gevurot = 'mashiv';
+  else if (is('Tishri', 22) || is('Nisan', 15)) gevurot = 'switch';
+  else gevurot = 'tal';
+
+  let talUmatar = false;
+  const beforePesach = (mo >= 1 && mo <= 6) || (h.month === 'Nisan' && h.day < 15);
+  if (israel) {
+    talUmatar = beforePesach && !(h.month === 'Heshvan' && h.day < 7);
+  } else {
+    const y = effCivil.getUTCFullYear();
+    const nextLeap = ((y + 1) % 4 === 0 && (y + 1) % 100 !== 0) || (y + 1) % 400 === 0;
+    const startDay = nextLeap ? 6 : 5;     // Hebrew day in force from the evening of Dec 4 (Dec 5)
+    const m = effCivil.getUTCMonth(), d = effCivil.getUTCDate();
+    talUmatar = beforePesach && ((m === 11 && d >= startDay) || m <= 4);
+  }
+
+  // Hallel.
+  let hallel = '';
+  if (chanukahDay || (h.month === 'Tishri' && h.day >= 15 && h.day <= (israel ? 22 : 23))
+      || (h.month === 'Sivan' && (h.day === 6 || (!israel && h.day === 7)))
+      || (h.month === 'Nisan' && (h.day === 15 || (!israel && h.day === 16)))) hallel = 'full';
+  else if (roshChodesh || (h.month === 'Nisan' && h.day >= 16 && h.day <= 22)) hallel = 'half';
+
+  // Tachanun.
+  let noTachanun = '';
+  if (dow === 6) noTachanun = 'Shabbat';
+  else if (roshChodesh) noTachanun = 'Rosh Chodesh';
+  else if (yomTov || cholHamoed) noTachanun = 'Yom Tov';
+  else if (chanukahDay) noTachanun = 'Chanukah';
+  else if (h.month === 'Nisan') noTachanun = 'the month of Nisan';
+  else if (purim || shushanPurim || purimKatan) noTachanun = 'Purim';
+  else if (is('Shevat', 15)) noTachanun = "Tu BiShvat";
+  else if (is('Iyar', 14)) noTachanun = 'Pesach Sheni';
+  else if (is('Iyar', 18)) noTachanun = "Lag BaOmer";
+  else if (is('Iyar', 28)) noTachanun = 'Yom Yerushalayim (custom)';
+  else if (h.month === 'Sivan' && h.day <= 12) noTachanun = 'the days after Shavuot';
+  else if (is('Av', 9)) noTachanun = "Tisha B'Av";
+  else if (is('Av', 15)) noTachanun = "Tu B'Av";
+  else if (is('Elul', 29)) noTachanun = 'Erev Rosh Hashanah';
+  else if (h.month === 'Tishri' && h.day >= 9) noTachanun = 'the days from Erev Yom Kippur through Tishrei';
+
+  const items: { cls: string; text: string; key: string }[] = [];
+  const add = (key: string, cls: string, text: string) => items.push({ key, cls, text });
+  if (aseret) add('aseret', 'say', 'Aseret Yemei Teshuvah — HaMelech HaKadosh, Zochreinu');
+  if (gevurot === 'mashiv') add('gevurot', 'say', 'Mashiv HaRuach');
+  else if (gevurot === 'switch') add('gevurot', 'note', israel ? 'Gevurot changes at Musaf' : 'Gevurot changes at Musaf');
+  else add('gevurot', 'say', israel ? 'Morid HaTal' : 'Morid HaTal (Sefard) · nothing (Ashkenaz)');
+  add('barech', talUmatar ? 'say' : 'note', talUmatar ? 'VeTen Tal UMatar' : 'VeTen Beracha');
+  if (roshChodesh || cholHamoed) add('yaaleh', 'say', "Ya'aleh VeYavo");
+  if (chanukahDay) add('nisim', 'say', `Al HaNisim · Chanukah night/day ${chanukahDay}`);
+  if (purim || shushanPurim) add('nisim', 'say', shushanPurim ? 'Shushan Purim (Al HaNisim in Jerusalem)' : 'Al HaNisim · Purim');
+  if (hallel) add('hallel', 'say', hallel === 'full' ? 'Full Hallel' : 'Half Hallel');
+  if (roshChodesh) add('musaf', 'say', 'Musaf for Rosh Chodesh');
+  if (fast) add('fast', 'note', `${fast} — Aneinu, Avinu Malkeinu`);
+  if (omerDay) add('omer', 'say', `Omer: day ${omerDay}${afterSunset ? ' (tonight)' : ''}`);
+  if (noTachanun) add('tachanun', 'skip', `No Tachanun — ${noTachanun}`);
+  if (h.month === 'Elul' || (h.month === 'Tishri' && h.day <= (israel ? 22 : 21))) add('ledavid', 'say', "LeDavid Hashem Ori");
+  if ((dow === 1 || dow === 4) && !yomTov) add('torah', 'note', 'Torah reading (Mon/Thu)');
+
+  const service = pickService(now, sunrise, sunset, civilDow);
+  return { h, he: hebDateHe(h), dow, afterSunset, sunrise, sunset, items, israel, loc,
+           omerDay, chanukahDay, noTachanun, hallel, fast, aseret, roshChodesh, cholHamoed, talUmatar, gevurot, purim, yomTov, service };
+}
+
+function pickService(now: Date, sunrise: Date | null, sunset: Date | null, civilDow: number) {
+  const hr = now.getHours();
+  const rise = sunrise ?? new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6);
+  const set = sunset ?? new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18);
+  const midday = new Date((rise.getTime() + set.getTime()) / 2);
+  const night = now > set || hr < 3;
+  if (civilDow === 5 && now > new Date(set.getTime() - 25 * 60e3) && hr >= 12) return 'kabbalat';
+  if (civilDow === 6) {
+    if (night && hr >= 12) return 'maariv';
+    if (hr < 3) return 'kabbalat';
+    return now < new Date(midday.getTime() + 30 * 60e3) ? 'shabShacharit' : 'shabMinchah';
+  }
+  if (night) return 'maariv';
+  return now < new Date(midday.getTime() + 30 * 60e3) ? 'shacharit' : 'minchah';
+}
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Shabbat'];
+function renderToday() {
+  const t = computeToday();
+  state.today = t;
+  const time = (d: Date | null) => d ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—';
+  $('ms-today').innerHTML = `
+    <span class="ms-today-date">${t.afterSunset ? `Eve of ${DAYS[t.dow]}` : DAYS[t.dow]} · ${t.h.day} ${esc(t.h.month)} ${t.h.year}<span class="he">${esc(t.he)}</span></span>
+    ${t.items.map((i: any) => `<span class="ms-chip ${i.cls}">${esc(i.text)}</span>`).join('')}
+    <span class="ms-loc">☀ ${time(t.sunrise)} – ${time(t.sunset)} · ${esc(t.loc.name)}
+      <button id="ms-loc-israel">${t.israel ? 'Israel' : 'Diaspora'}</button>
+      <button id="ms-loc-here">use my location</button></span>`;
+  $('ms-loc-israel').onclick = () => { const l = getLoc(); l.israel = !l.israel; store.set('loc', l); renderToday(); if (state.current >= 0) renderSection(); };
+  $('ms-loc-here').onclick = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition((p) => {
+      const lat = +p.coords.latitude.toFixed(3), lng = +p.coords.longitude.toFixed(3);
+      const israel = lat > 29.4 && lat < 33.4 && lng > 34.2 && lng < 35.9;
+      store.set('loc', { name: 'here', lat, lng, israel });
+      renderToday();
+    });
+  };
+}
+
+/** Context-sensitive guidance shown above the section being read. */
+function bannersFor(sec: Section) {
+  const t = state.today; if (!t) return [];
+  const p = sec.path.toLowerCase();
+  const out: { cls: string; html: string }[] = [];
+  const leaf = sec.leaf.toLowerCase();
+  // Some nusachim keep the whole Amidah in one section; give it every Amidah reminder.
+  const wholeAmidah = /^amida[h]?$/.test(leaf);
+  if (/tachanun|nefilat apayim|tahanun|vidui|for monday (and|&) thursday|el erech appayim/.test(p)) {
+    out.push(t.noTachanun ? { cls: 'skip', html: `<b>Skip today.</b> Tachanun is not said — ${esc(t.noTachanun)}.` }
+                          : { cls: 'say', html: `<b>Said today.</b> Tachanun is recited.` });
+  }
+  if (/avinu malk/.test(p)) {
+    out.push(t.fast || t.aseret ? { cls: 'say', html: `<b>Said today</b> (${t.fast ? esc(t.fast) : 'Aseret Yemei Teshuvah'}).` }
+                                : { cls: 'skip', html: '<b>Not said today.</b> Avinu Malkeinu is for fast days and the Ten Days of Repentance.' });
+  }
+  if (/hallel/.test(p) && !/haggadah/.test(p)) {
+    out.push(t.hallel ? { cls: 'say', html: `<b>${t.hallel === 'full' ? 'Full' : 'Half'} Hallel today.</b>${t.hallel === 'half' ? ' Skip the two "Lo lanu" and "Ahavti" openings.' : ''}` }
+                      : { cls: 'skip', html: '<b>No Hallel today.</b>' });
+  }
+  if (/omer/.test(p)) {
+    out.push(t.omerDay ? { cls: 'say', html: `<b>Day ${t.omerDay} of the Omer</b>${t.afterSunset ? ' — tonight' : ' (count tonight with a beracha only if you counted every night)'}.` }
+                       : { cls: 'skip', html: '<b>Not in the Omer period.</b>' });
+  }
+  if (wholeAmidah || /divine might|gevurot/.test(leaf)) {
+    out.push({ cls: 'say', html: t.gevurot === 'mashiv' ? '<b>Mashiv haruach u-morid hageshem.</b>'
+      : t.gevurot === 'switch' ? '<b>Changes at Musaf today</b> — check before you begin.'
+      : `<b>${t.israel ? 'Morid hatal.' : 'Morid hatal (Sefard) / nothing (Ashkenaz).'}</b>` });
+  }
+  if (wholeAmidah || /prosperity|blessing of the years/.test(leaf)) {
+    out.push({ cls: t.talUmatar ? 'say' : 'note', html: t.talUmatar ? '<b>Say: VeTen tal u-matar livracha.</b>' : '<b>Say: VeTen beracha.</b>' });
+  }
+  if ((wholeAmidah || /temple service|avodah|retzeh/.test(leaf)) && (t.roshChodesh || t.cholHamoed)) {
+    out.push({ cls: 'say', html: "<b>Ya'aleh VeYavo today.</b>" });
+  }
+  if ((wholeAmidah || /^thanksgiving$|modim/.test(leaf)) && (t.chanukahDay || t.purim)) {
+    out.push({ cls: 'say', html: '<b>Al HaNisim today.</b>' });
+  }
+  if ((wholeAmidah || /response to prayer|shomea tefil/.test(leaf)) && t.fast) {
+    out.push({ cls: 'note', html: `<b>${esc(t.fast)}:</b> an individual who is fasting adds Aneinu here.` });
+  }
+  if (t.aseret && (wholeAmidah || /^(patriarchs|holiness of god|justice|thanksgiving|peace)$/.test(leaf))) {
+    out.push({ cls: 'say', html: '<b>Aseret Yemei Teshuvah</b> — add the insertion for the Ten Days.' });
+  }
+  return out;
+}
+
+/* ───────────────────────── table of contents ───────────────────────── */
+function setSections(raw: [string, string][], book: string) {
+  state.sections = raw.map(([path, he]) => {
+    const parts = path.split(' > ');
+    return { path, he, parts, leaf: parts[parts.length - 1], ref: `${book}, ${parts.join(', ')}` };
+  });
+}
+
+async function loadToc(nusach: string) {
+  const book = BOOKS[nusach];
+  const bundled = (tocData as any)[nusach];
+  if (bundled) { setSections(bundled.sections, book); return; }
+  const cached = store.get('toc:' + nusach);
+  if (cached) { setSections(cached, book); return; }
+  $('ms-toc').innerHTML = '<div class="ms-toc-empty">Loading contents from Sefaria…</div>';
+  try {
+    const r = await fetch(`${SEFARIA}/api/shape/${encodeURIComponent(book.replace(/ /g, '_'))}`);
+    const j = await r.json();
+    const shape = Array.isArray(j) ? j[0] : j;
+    const prefix = book + ', ';
+    const heBook = shape.heBook || '';
+    const secs: [string, string][] = (shape.chapters || []).map((c: any) => {
+      const en = String(c.title || '').startsWith(prefix) ? c.title.slice(prefix.length) : c.title;
+      const heFull = String(c.heTitle || '');
+      const he = heBook && heFull.startsWith(heBook + ', ') ? heFull.slice(heBook.length + 2) : heFull;
+      return [en.split(',').map((s: string) => s.trim()).join(' > '), he.split(',').map((s: string) => s.trim()).join(' > ')];
+    });
+    store.set('toc:' + nusach, secs);
+    setSections(secs, book);
+  } catch {
+    state.sections = [];
+    $('ms-toc').innerHTML = '<div class="ms-toc-empty">Could not load the contents from Sefaria.</div>';
+  }
+}
+
+function hasNotes(sec: Section) {
+  return state.noteIndex.refs.has(sec.ref) || state.noteIndex.names.has(sec.leaf.toLowerCase());
+}
+
+function renderToc(filter = '') {
+  const q = filter.trim().toLowerCase();
+  const root: any = { kids: new Map(), leaves: [] };
+  state.sections.forEach((s: Section, i: number) => {
+    if (q && !s.path.toLowerCase().includes(q) && !s.he.includes(filter.trim())) return;
+    let node = root;
+    for (const part of s.parts.slice(0, -1)) {
+      if (!node.kids.has(part)) node.kids.set(part, { kids: new Map(), leaves: [] });
+      node = node.kids.get(part);
+    }
+    node.leaves.push(i);
+  });
+  const cur = state.sections[state.current];
+  const build = (node: any, depth: number, trail: string[]): string => {
+    let html = node.leaves.map((i: number) => {
+      const s = state.sections[i];
+      const heLeaf = s.he.split(' > ').pop();
+      return `<button class="ms-leaf${i === state.current ? ' current' : ''}" data-i="${i}">${hasNotes(s) ? '<span class="ms-dot" title="Has commentary"></span>' : ''}<span>${esc(s.leaf)}</span><span class="he">${esc(heLeaf)}</span></button>`;
+    }).join('');
+    for (const [name, child] of node.kids) {
+      const path = [...trail, name];
+      const open = q || (cur && cur.parts.slice(0, path.length).join(' > ') === path.join(' > '));
+      html += `<details${open ? ' open' : ''}><summary>${esc(name)}</summary><div class="kids">${build(child, depth + 1, path)}</div></details>`;
+    }
+    return html;
+  };
+  const html = build(root, 0, []);
+  $('ms-toc').innerHTML = html || '<div class="ms-toc-empty">Nothing matches.</div>';
+  $('ms-toc').querySelector('.ms-leaf.current')?.scrollIntoView({ block: 'center' });
+}
+
+/* ───────────────────────── Sefaria text ───────────────────────── */
+const encodeRef = (ref: string) => encodeURIComponent(ref.replace(/ /g, '_'));
+const ALLOWED = new Set(['B', 'STRONG', 'I', 'EM', 'SMALL', 'BIG', 'BR', 'SUP', 'SPAN', 'U']);
+const DROP = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'TEMPLATE', 'NOSCRIPT', 'SVG', 'MATH']);
+
+/** Keeps Sefaria's light markup (bold, small rubrics, footnotes) and drops everything else. */
+function sanitize(html: string) {
+  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+  const walk = (node: Node): string => {
+    let out = '';
+    node.childNodes.forEach((c) => {
+      if (c.nodeType === 3) { out += esc(c.textContent); return; }
+      if (c.nodeType !== 1) return;
+      const el = c as Element;
+      if (DROP.has(el.tagName.toUpperCase())) return;
+      const inner = walk(el);
+      if (!ALLOWED.has(el.tagName)) { out += inner; return; }
+      const tag = el.tagName.toLowerCase();
+      if (tag === 'br') { out += '<br>'; return; }
+      const cls = el.getAttribute('class') || '';
+      const keep = /footnote-marker|footnote/.test(cls) ? ` class="${cls.includes('marker') ? 'footnote-marker' : 'footnote'}"` : '';
+      out += `<${tag}${keep}>${inner}</${tag}>`;
+    });
+    return out;
+  };
+  return walk(doc.body.firstChild!);
+}
+
+const flat = (x: any): string[] => Array.isArray(x) ? x.flatMap(flat) : (x == null ? [] : [String(x)]);
+const BAD_EN = /\[(hu|cs|es|de|fr|ru|pt|it)\]|Magyar|Širat|Hungarian/i;
+const textCache = new Map<string, any>();
+
+async function fetchSection(ref: string) {
+  if (textCache.has(ref)) return textCache.get(ref);
+  const cached = store.get('t:' + ref);
+  if (cached) { textCache.set(ref, cached); return cached; }
+  const r = await fetch(`${SEFARIA}/api/texts/${encodeRef(ref)}?context=0&commentary=0&pad=0`);
+  if (!r.ok) throw new Error(`Sefaria ${r.status}`);
+  const j = await r.json();
+  if (j.error) throw new Error(j.error);
+  const he = flat(j.he);
+  const en = BAD_EN.test(j.versionTitle || '') ? [] : flat(j.text);
+  const n = Math.max(he.length, en.length);
+  const paras = Array.from({ length: n }, (_, i) => ({ he: he[i] || '', en: en[i] || '' })).filter((p) => p.he || p.en);
+  const data = { paras, enVersion: en.length ? j.versionTitle : '', heVersion: j.heVersionTitle || '' };
+  textCache.set(ref, data);
+  // Offline-friendly: keep a copy so the siddur still opens without a connection.
+  try { localStorage.setItem('ms:t:' + ref, JSON.stringify(data)); } catch { /* quota — fine */ }
+  return data;
+}
+
+async function fetchLinks(ref: string) {
+  try {
+    const r = await fetch(`${SEFARIA}/api/links/${encodeRef(ref)}?with_text=1`);
+    if (!r.ok) return [];
+    const j = await r.json();
+    return Array.isArray(j) ? j : [];
+  } catch { return []; }
+}
+
+/** Paragraph number (1-based) a Sefaria link is anchored to, or 0 for the whole section. */
+function linkPara(link: any, sectionRef: string) {
+  const anchor = String(link.anchorRef || '');
+  if (!anchor.startsWith(sectionRef)) return 0;
+  const m = anchor.slice(sectionRef.length).trim().match(/^(\d+)/);
+  return m ? Number(m[1]) : 0;
+}
+
+/* ───────────────────────── Supabase commentary ───────────────────────── */
+async function sb(query: string) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?${query}`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!r.ok) { state.dbReady = false; return []; }
+  state.dbReady = true;
+  return r.json();
+}
+
+async function loadNoteIndex() {
+  if (!SUPABASE_URL || !SUPABASE_KEY) { state.dbReady = false; return; }
+  const rows = await sb('select=ref,prayer_names&limit=10000');
+  state.noteIndex.refs = new Set(rows.map((r: any) => r.ref).filter(Boolean));
+  state.noteIndex.names = new Set(rows.flatMap((r: any) => r.prayer_names || []));
+}
+
+async function loadNotes(sec: Section) {
+  const names = [...new Set([sec.leaf.toLowerCase(), sec.he.split(' > ').pop()!])];
+  if (state.key) {
+    const res = await api('list', { ref: sec.ref, prayer_names: names });
+    if (!res.error) return sortNotes(res.records);
+  }
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const arr = `{${names.map((n) => `"${n.replace(/["\\]/g, '\\$&')}"`).join(',')}}`;
+  const [a, b] = await Promise.all([
+    sb(`select=*&ref=eq.${encodeURIComponent(sec.ref)}`),
+    sb(`select=*&prayer_names=ov.${encodeURIComponent(arr)}`),
+  ]);
+  const byId = new Map();
+  for (const r of [...a, ...b]) byId.set(r.id, r);
+  return sortNotes([...byId.values()]);
+}
+
+const sortNotes = (rows: any[]) => rows.sort((x, y) =>
+  (x.segment ?? 0) - (y.segment ?? 0) || x.sort_order - y.sort_order || String(x.created_at).localeCompare(String(y.created_at)));
+
+async function api(action: string, payload: any = {}) {
+  try {
+    const r = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-mega-siddur-key': state.key },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    const j = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+    if (r.status === 401) { state.key = ''; store.del('key'); updateLock(); }
+    return r.ok ? j : { error: j.error || `HTTP ${r.status}` };
+  } catch (e: any) {
+    return { error: e?.message || 'Network error' };
+  }
+}
+
+/** Tiny markdown: paragraphs, **bold**, *italic*, [links](https://…). Input is escaped first. */
+function md(src: string) {
+  return esc(src).split(/\n{2,}/).map((block) => `<p dir="auto">${block
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/\*(.+?)\*/g, '<i>$1</i>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\n/g, '<br>')}</p>`).join('');
+}
+
+/* ───────────────────────── rendering ───────────────────────── */
+function renderWelcome() {
+  const t = state.today;
+  const svc = t?.service;
+  const last = store.get('last:' + state.nusach, null);
+  const resumeIdx = last ? state.sections.findIndex((s: Section) => s.path === last) : -1;
+  const quick = ['shacharit', 'minchah', 'maariv', 'kabbalat', 'shabShacharit', 'shabMinchah', 'havdalah']
+    .filter((k) => findService(k) >= 0);
+  $('ms-content').innerHTML = `
+    <div class="ms-welcome">
+      <div class="ms-crumbs"><span>Mega Siddur</span><span>${esc(state.nusach)}</span></div>
+      <h1>A siddur to daven from — and to study.</h1>
+      <p>The full ${esc(state.nusach)} text from Sefaria, with today's insertions flagged as you go. Tap any paragraph for its sources — Tanakh, Talmud, halacha, Olat Re'iyah and more — and a growing layer of personal commentary.</p>
+      ${resumeIdx >= 0 ? `<div class="ms-quick" style="margin-top:1rem"><button data-resume="${resumeIdx}">Resume: ${esc(state.sections[resumeIdx].leaf)}<span class="he">${esc(state.sections[resumeIdx].he.split(' > ').pop())}</span></button></div>` : ''}
+      <div class="ms-quick">${quick.map((k) => `<button data-svc="${k}">${k === svc ? '● ' : ''}${SERVICE_LABEL[k][0]}<span class="he">${SERVICE_LABEL[k][1]}</span></button>`).join('')}</div>
+    </div>`;
+  $('ms-content').querySelector('[data-resume]')?.addEventListener('click', () => openSection(resumeIdx));
+  $('ms-content').querySelectorAll('[data-svc]').forEach((b) => b.addEventListener('click', () => goService((b as HTMLElement).dataset.svc!)));
+  renderPanel();
+}
+
+function findService(key: string) {
+  const prefixes = SERVICE_PREFIXES[state.nusach]?.[key] || [];
+  for (const p of prefixes) {
+    const i = state.sections.findIndex((s: Section) => s.path === p || s.path.startsWith(p + ' > '));
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+function goService(key: string) { const i = findService(key); if (i >= 0) openSection(i); }
+
+async function openSection(i: number, para: number | null = null, push = true) {
+  if (i < 0 || i >= state.sections.length) return;
+  state.current = i;
+  state.selected = para;
+  state.notes = [];
+  state.links = [];
+  const sec: Section = state.sections[i];
+  if (push) syncUrl();
+  renderToc(($('ms-search') as HTMLInputElement).value);
+  page.dataset.sidebar = '0';
+  $('ms-content').innerHTML = `${headerHtml(sec)}<div class="ms-loading">Loading from Sefaria…</div>`;
+  $('ms-main').scrollTop = 0;
+  renderPanel();
+
+  let data;
+  try { data = await fetchSection(sec.ref); }
+  catch (e: any) {
+    if (state.current !== i) return;
+    $('ms-content').innerHTML = `${headerHtml(sec)}<div class="ms-error">Could not load this section (${esc(e.message)}). <a href="${SEFARIA}/${encodeRef(sec.ref)}" target="_blank" rel="noopener">Open on Sefaria ↗</a></div>${pagerHtml(i)}`;
+    bindPager();
+    return;
+  }
+  if (state.current !== i) return;
+  state.paras = data.paras;
+  state.versions = data;
+  renderSection();
+  if (para) document.querySelector(`.ms-para[data-p="${para}"]`)?.scrollIntoView({ block: 'center' });
+
+  // Commentary layers load behind the text.
+  const [notes, links] = await Promise.all([loadNotes(sec), fetchLinks(sec.ref)]);
+  if (state.current !== i) return;
+  state.notes = notes;
+  state.links = links.filter((l: any) => !String(l.ref || '').startsWith(BOOKS[state.nusach]));
+  renderMarks();
+  renderPanel();
+  // Warm the next section so "Next" is instant.
+  const nxt = state.sections[i + 1];
+  if (nxt) fetchSection(nxt.ref).catch(() => {});
+}
+
+function headerHtml(sec: Section) {
+  const heParts = sec.he.split(' > ');
+  return `<div class="ms-crumbs">${sec.parts.slice(0, -1).map((p) => `<span>${esc(p)}</span>`).join('')}</div>
+    <div class="ms-title"><h1>${esc(sec.leaf)}</h1><span class="he">${esc(heParts[heParts.length - 1])}</span></div>`;
+}
+
+function pagerHtml(i: number) {
+  const prev = state.sections[i - 1], next = state.sections[i + 1];
+  return `<div class="ms-pager">
+    <button class="prev" ${prev ? '' : 'disabled'}><small>← Previous</small>${prev ? esc(prev.leaf) : ''}</button>
+    <button class="next" ${next ? '' : 'disabled'}><small>Continue →</small>${next ? esc(next.leaf) : ''}</button>
+  </div>`;
+}
+function bindPager() {
+  $('ms-content').querySelector('.ms-pager .prev')?.addEventListener('click', () => openSection(state.current - 1));
+  $('ms-content').querySelector('.ms-pager .next')?.addEventListener('click', () => openSection(state.current + 1));
+}
+
+function renderSection() {
+  const sec: Section = state.sections[state.current];
+  const banners = bannersFor(sec).map((b) => `<div class="ms-banner ${b.cls}">${b.html}</div>`).join('');
+  const paras = state.paras.map((p: any, k: number) => `
+    <div class="ms-para${state.selected === k + 1 ? ' selected' : ''}" data-p="${k + 1}">
+      <span class="ms-pnum">${k + 1}</span><span class="ms-marks"></span>
+      ${p.he ? `<div class="ms-he" lang="he">${sanitize(p.he)}</div>` : ''}
+      ${p.en ? `<div class="ms-en" lang="en">${sanitize(p.en)}</div>` : ''}
+    </div>`).join('');
+  const v = state.versions || {};
+  const credit = [v.heVersion, v.enVersion].filter(Boolean).map(esc).join(' · ');
+  $('ms-content').innerHTML = `${headerHtml(sec)}${banners}${paras || '<div class="ms-empty">This section is empty on Sefaria.</div>'}
+    <div class="ms-hint" style="margin-top:1rem">Text: <a href="${SEFARIA}/${encodeRef(sec.ref)}" target="_blank" rel="noopener" style="color:inherit">Sefaria</a>${credit ? ' — ' + credit : ''}</div>
+    ${pagerHtml(state.current)}`;
+  bindPager();
+  renderMarks();
+}
+
+function renderMarks() {
+  const sec: Section = state.sections[state.current];
+  if (!sec) return;
+  document.querySelectorAll('.ms-para').forEach((el) => {
+    const p = Number((el as HTMLElement).dataset.p);
+    const mine = state.notes.filter((n: any) => n.ref === sec.ref && n.segment === p).length;
+    const lib = state.links.filter((l: any) => linkPara(l, sec.ref) === p).length;
+    el.querySelector('.ms-marks')!.innerHTML =
+      (mine ? `<span class="ms-mark mine" title="${mine} note(s)">${mine}</span>` : '') +
+      (lib ? `<span class="ms-mark lib" title="${lib} linked source(s)">${lib}</span>` : '');
+  });
+}
+
+/* ───────────────────────── commentary panel ───────────────────────── */
+const KIND_LABEL: Record<string, string> = {
+  commentary: 'Commentary', halacha: 'Halacha', history: 'History', kavanah: 'Kavanah',
+  source: 'Source', language: 'Language', personal: 'Personal', music: 'Nusach / Music',
+};
+
+function noteHtml(n: any) {
+  const src = [n.author, n.source, n.source_pages].filter(Boolean).map(esc).join(', ');
+  const scope = n.segment ? `¶${n.segment}` : n.ref ? 'section' : `every “${esc((n.prayer_names || [])[0])}”`;
+  return `<div class="ms-note${n.published === false ? ' draft' : ''}" data-id="${n.id}">
+    <div class="ms-note-meta"><span class="ms-kind">${esc(KIND_LABEL[n.kind] || n.kind)}</span><span>${scope}</span>${n.published === false ? '<span>draft</span>' : ''}</div>
+    ${n.title ? `<h4 dir="auto">${esc(n.title)}</h4>` : ''}
+    ${n.anchor_text ? `<div class="ms-anchor">${esc(n.anchor_text)}</div>` : ''}
+    <div class="ms-note-body">${md(n.body || '')}</div>
+    ${src || n.source_url ? `<div class="ms-note-src">${src}${n.source_url ? ` <a href="${esc(n.source_url)}" target="_blank" rel="noopener">↗</a>` : ''}</div>` : ''}
+    ${n.tags?.length ? `<div class="ms-note-tags">${n.tags.map((t: string) => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
+    ${state.key ? `<div class="ms-note-actions"><button data-edit="${n.id}">Edit</button><button data-del="${n.id}">Delete</button></div>` : ''}
+  </div>`;
+}
+
+function libHtml(links: any[]) {
+  if (!links.length) return '<div class="ms-empty">No linked sources on Sefaria for this passage.</div>';
+  const groups = new Map<string, any[]>();
+  for (const l of links) {
+    const name = l.collectiveTitle?.en || l.index_title || l.category || 'Other';
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name)!.push(l);
+  }
+  const order = ['Commentary', 'Jewish Thought', 'Halakhah', 'Talmud', 'Tanakh', 'Midrash', 'Mishnah'];
+  const sorted = [...groups.entries()].sort((a, b) => {
+    const ia = order.indexOf(a[1][0].category), ib = order.indexOf(b[1][0].category);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a[0].localeCompare(b[0]);
+  });
+  return `<div class="ms-lib">${sorted.map(([name, items], gi) => `
+    <details${gi < 2 ? ' open' : ''}><summary>${esc(name)} <span class="n">${items.length}</span><span class="cat">${esc(items[0].category || '')}</span></summary>
+      ${items.slice(0, 12).map((l) => {
+        const he = flat(l.he).join(' ');
+        const en = flat(l.text).join(' ');
+        return `<div class="ms-lib-item">
+          <a class="ms-lib-ref" href="${SEFARIA}/${encodeRef(l.ref)}" target="_blank" rel="noopener">${esc(l.ref)}</a>
+          ${he ? `<div class="ms-lib-he" lang="he">${sanitize(he.length > 900 ? he.slice(0, 900) + '…' : he)}</div>` : ''}
+          ${en ? `<div class="ms-lib-en">${sanitize(en.length > 700 ? en.slice(0, 700) + '…' : en)}</div>` : ''}
+        </div>`;
+      }).join('')}
+      ${items.length > 12 ? `<div class="ms-hint">+${items.length - 12} more on Sefaria</div>` : ''}
+    </details>`).join('')}</div>`;
+}
+
+function renderPanel() {
+  const body = $('ms-panel-body');
+  const sec: Section | undefined = state.sections[state.current];
+  if (!sec) {
+    $('ms-panel-title').textContent = 'Commentary';
+    body.innerHTML = `<div class="ms-empty">Open a prayer, then tap a paragraph to see its sources and commentary.</div>
+      ${state.dbReady ? '' : '<div class="ms-hint" style="margin-top:1rem">The commentary database isn’t reachable yet.</div>'}`;
+    return;
+  }
+  const p = state.selected;
+  $('ms-panel-title').textContent = p ? `¶${p} · ${sec.leaf}` : sec.leaf;
+
+  const forPara = (n: any) => n.ref === sec.ref && n.segment === p;
+  const sectionNotes = state.notes.filter((n: any) => !n.segment && (n.ref === sec.ref || !n.ref));
+  const paraNotes = p ? state.notes.filter(forPara) : [];
+  const otherParaNotes = !p ? state.notes.filter((n: any) => n.ref === sec.ref && n.segment) : [];
+  const lib = p ? state.links.filter((l: any) => linkPara(l, sec.ref) === p) : state.links.filter((l: any) => linkPara(l, sec.ref) === 0);
+  const libAll = state.links.length;
+
+  let html = `<div class="ms-scope">${p ? `Paragraph <b>${p}</b> — <a href="#" id="ms-clear-sel" style="color:var(--gold)">show whole section</a>` : 'Whole section — tap a paragraph to focus on it.'}</div>`;
+
+  if (state.key) {
+    html += state.editing ? formHtml(sec) : `<button class="ms-btn primary" id="ms-add-note" style="margin-bottom:.6rem">+ Add commentary</button>`;
+  }
+
+  html += `<div class="ms-h3"><span>Matthew’s commentary</span></div>`;
+  const mine = [...paraNotes, ...sectionNotes];
+  html += mine.length ? mine.map(noteHtml).join('') : `<div class="ms-empty">${state.dbReady ? 'Nothing here yet.' : 'Commentary database not connected.'}</div>`;
+  if (otherParaNotes.length) {
+    html += `<div class="ms-h3"><span>On individual paragraphs</span><span>${otherParaNotes.length}</span></div>` + otherParaNotes.map(noteHtml).join('');
+  }
+
+  html += `<div class="ms-h3"><span>From the library (Sefaria)</span><span>${p ? `${lib.length} of ${libAll}` : libAll}</span></div>`;
+  if (!p && libAll && !lib.length) html += '<div class="ms-empty">Sources here are attached to individual paragraphs — tap one, or look for the numbered markers.</div>';
+  else html += libHtml(lib);
+
+  body.innerHTML = html;
+  body.querySelector('#ms-clear-sel')?.addEventListener('click', (e) => { e.preventDefault(); selectPara(null); });
+  body.querySelector('#ms-add-note')?.addEventListener('click', () => { state.editing = { new: true }; renderPanel(); });
+  body.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => {
+    state.editing = state.notes.find((n: any) => String(n.id) === (b as HTMLElement).dataset.edit);
+    renderPanel();
+  }));
+  body.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Delete this commentary?')) return;
+    const id = Number((b as HTMLElement).dataset.del);
+    const res = await api('delete', { id });
+    if (res.error) { alert(res.error); return; }
+    state.notes = state.notes.filter((n: any) => n.id !== id);
+    await loadNoteIndex(); renderMarks(); renderPanel(); renderToc(($('ms-search') as HTMLInputElement).value);
+  }));
+  if (state.editing) bindForm(sec);
+}
+
+function formHtml(sec: Section) {
+  const e = state.editing || {};
+  const isNew = !!e.new;
+  const p = state.selected;
+  const scope = isNew ? (p ? 'para' : 'section') : (e.ref ? (e.segment ? 'para' : 'section') : 'prayer');
+  const names = isNew ? [sec.leaf.toLowerCase()] : (e.prayer_names || []);
+  const anchor = isNew ? (state.pendingAnchor || '') : (e.anchor_text || '');
+  return `<form class="ms-form" id="ms-form">
+    <div class="ms-h3" style="margin-top:0"><span>${isNew ? 'New commentary' : 'Edit commentary'}</span></div>
+    <div class="radios">
+      <label><input type="radio" name="scope" value="para" ${scope === 'para' ? 'checked' : ''} ${!p && scope !== 'para' ? 'disabled' : ''}> This paragraph ${p ? `(¶${p})` : e.segment ? `(¶${e.segment})` : '— tap one first'}</label>
+      <label><input type="radio" name="scope" value="section" ${scope === 'section' ? 'checked' : ''}> This section only</label>
+      <label><input type="radio" name="scope" value="prayer" ${scope === 'prayer' ? 'checked' : ''}> This prayer everywhere (every service & nusach)</label>
+    </div>
+    <label>Prayer names <span class="ms-hint">comma-separated; used for “everywhere”</span><input type="text" name="prayer_names" value="${esc(names.join(', '))}"></label>
+    <div class="row">
+      <label>Kind<select name="kind">${KINDS.map((k) => `<option value="${k}" ${(e.kind || 'commentary') === k ? 'selected' : ''}>${KIND_LABEL[k]}</option>`).join('')}</select></label>
+      <label>Order<input type="number" name="sort_order" value="${esc(e.sort_order ?? 0)}"></label>
+    </div>
+    <label>Title<input type="text" name="title" value="${esc(e.title || '')}" dir="auto"></label>
+    <label>Words commented on <span class="ms-hint">select text in the siddur to fill</span><input type="text" name="anchor_text" value="${esc(anchor)}" dir="rtl"></label>
+    <label>Commentary <span class="ms-hint">**bold**, *italic*, [link](https://…), blank line = new paragraph</span><textarea name="body" dir="auto" required>${esc(e.body || '')}</textarea></label>
+    <div class="row">
+      <label>Author<input type="text" name="author" value="${esc(e.author || '')}"></label>
+      <label>Pages<input type="text" name="source_pages" value="${esc(e.source_pages || '')}"></label>
+    </div>
+    <label>Source (book / paper / shiur)<input type="text" name="source" value="${esc(e.source || '')}"></label>
+    <label>Link<input type="url" name="source_url" value="${esc(e.source_url || '')}" placeholder="https://"></label>
+    <label>Tags<input type="text" name="tags" value="${esc((e.tags || []).join(', '))}"></label>
+    <label class="check"><input type="checkbox" name="published" ${e.published === false ? '' : 'checked'}> Published (uncheck to keep private)</label>
+    <div class="ms-form-actions">
+      <button class="ms-btn primary" type="submit">${isNew ? 'Save' : 'Update'}</button>
+      <button class="ms-btn" type="button" id="ms-cancel">Cancel</button>
+      <span class="ms-form-msg" id="ms-form-msg"></span>
+    </div>
+  </form>`;
+}
+
+function bindForm(sec: Section) {
+  const form = $('ms-form') as HTMLFormElement;
+  $('ms-cancel').onclick = () => { state.editing = null; state.pendingAnchor = ''; renderPanel(); };
+  form.onsubmit = async (ev) => {
+    ev.preventDefault();
+    const fd = new FormData(form);
+    const scope = fd.get('scope');
+    const e = state.editing;
+    const segment = scope === 'para' ? (state.selected || e.segment || null) : null;
+    const record = {
+      ref: scope === 'prayer' ? null : sec.ref,
+      segment,
+      // Only "everywhere" notes travel by prayer name; anchored notes stay put.
+      prayer_names: scope === 'prayer' ? String(fd.get('prayer_names') || '').split(',').map((s) => s.trim()).filter(Boolean) : [],
+      kind: fd.get('kind'),
+      sort_order: Number(fd.get('sort_order') || 0),
+      title: fd.get('title'),
+      anchor_text: fd.get('anchor_text'),
+      body: fd.get('body'),
+      author: fd.get('author'),
+      source: fd.get('source'),
+      source_pages: fd.get('source_pages'),
+      source_url: fd.get('source_url'),
+      tags: String(fd.get('tags') || '').split(',').map((s) => s.trim()).filter(Boolean),
+      published: fd.get('published') === 'on',
+    };
+    if (scope === 'prayer' && !record.prayer_names.length) { $('ms-form-msg').textContent = 'Add at least one prayer name.'; return; }
+    $('ms-form-msg').textContent = 'Saving…';
+    const res = e.new ? await api('add', { record }) : await api('update', { id: e.id, record });
+    if (res.error) { $('ms-form-msg').textContent = res.error; return; }
+    state.notes = sortNotes([...state.notes.filter((n: any) => n.id !== res.record.id), res.record]);
+    state.editing = null; state.pendingAnchor = '';
+    await loadNoteIndex();
+    renderMarks(); renderPanel(); renderToc(($('ms-search') as HTMLInputElement).value);
+  };
+}
+
+function selectPara(p: number | null) {
+  state.selected = p;
+  document.querySelectorAll('.ms-para').forEach((el) => el.classList.toggle('selected', Number((el as HTMLElement).dataset.p) === p));
+  syncUrl();
+  renderPanel();
+}
+
+/* ───────────────────────── lock / unlock ───────────────────────── */
+function updateLock() {
+  const b = $('ms-lock');
+  b.textContent = state.key ? '🔓' : '🔒';
+  b.title = state.key ? 'Unlocked — click to lock' : 'Unlock to add commentary';
+}
+$('ms-lock').addEventListener('click', async () => {
+  if (state.key) { state.key = ''; store.del('key'); state.editing = null; updateLock(); if (state.current >= 0) openSection(state.current, state.selected, false); return; }
+  const k = prompt('Passcode to edit commentary:');
+  if (!k) return;
+  state.key = k;
+  const res = await api('unlock');
+  if (res.error) { state.key = ''; alert(res.error); updateLock(); return; }
+  store.set('key', k);
+  updateLock();
+  if (state.current >= 0) openSection(state.current, state.selected, false); else renderPanel();
+});
+
+/* ───────────────────────── URL state ───────────────────────── */
+function syncUrl() {
+  const u = new URL(location.href);
+  u.searchParams.set('n', state.nusach);
+  const sec = state.sections[state.current];
+  if (sec) u.searchParams.set('s', sec.path); else u.searchParams.delete('s');
+  if (state.selected) u.searchParams.set('p', String(state.selected)); else u.searchParams.delete('p');
+  history.replaceState(null, '', u);
+  if (sec) store.set('last:' + state.nusach, sec.path);
+}
+
+/* ───────────────────────── preferences & controls ───────────────────────── */
+function applyPrefs() {
+  const prefs = store.get('prefs', {});
+  page.dataset.theme = prefs.theme || 'night';
+  page.dataset.lang = prefs.lang || 'both';
+  page.dataset.layout = prefs.layout || 'stack';
+  page.dataset.daven = prefs.daven ? '1' : '0';
+  page.style.setProperty('--heb-size', `${prefs.heb || 1.55}rem`);
+  page.style.setProperty('--en-size', `${(prefs.heb || 1.55) * 0.68}rem`);
+  document.querySelectorAll('[data-lang]').forEach((b) => { if (b !== page) b.classList.toggle('on', (b as HTMLElement).dataset.lang === page.dataset.lang); });
+  $('ms-layout').textContent = page.dataset.layout === 'side' ? 'Side by side' : 'Stacked';
+  $('ms-daven').classList.toggle('on', !!prefs.daven);
+}
+function setPref(k: string, v: any) { const p = store.get('prefs', {}); p[k] = v; store.set('prefs', p); applyPrefs(); }
+
+document.querySelectorAll('.ms-bar [data-lang]').forEach((b) => b.addEventListener('click', () => setPref('lang', (b as HTMLElement).dataset.lang)));
+$('ms-layout').addEventListener('click', () => setPref('layout', page.dataset.layout === 'side' ? 'stack' : 'side'));
+$('ms-theme').addEventListener('click', () => setPref('theme', page.dataset.theme === 'night' ? 'parchment' : 'night'));
+$('ms-daven').addEventListener('click', () => setPref('daven', page.dataset.daven !== '1'));
+$('ms-smaller').addEventListener('click', () => setPref('heb', Math.max(1.05, +(store.get('prefs', {}).heb || 1.55) - 0.15)));
+$('ms-bigger').addEventListener('click', () => setPref('heb', Math.min(3.2, +(store.get('prefs', {}).heb || 1.55) + 0.15)));
+$('ms-now').addEventListener('click', () => { renderToday(); goService(state.today.service); });
+$('ms-toc-toggle').addEventListener('click', () => { page.dataset.sidebar = page.dataset.sidebar === '1' ? '0' : '1'; page.dataset.panel = '0'; });
+$('ms-panel-toggle').addEventListener('click', () => { page.dataset.panel = page.dataset.panel === '1' ? '0' : '1'; page.dataset.sidebar = '0'; });
+$('ms-panel-close').addEventListener('click', () => { page.dataset.panel = '0'; });
+$('ms-scrim').addEventListener('click', () => { page.dataset.panel = '0'; page.dataset.sidebar = '0'; });
+$('ms-search').addEventListener('input', (e) => renderToc((e.target as HTMLInputElement).value));
+$('ms-toc').addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest('.ms-leaf') as HTMLElement | null;
+  if (b) openSection(Number(b.dataset.i));
+});
+$('ms-nusach').addEventListener('change', async (e) => {
+  state.nusach = (e.target as HTMLSelectElement).value;
+  store.set('nusach', state.nusach);
+  await startNusach(null, null);
+});
+
+// Paragraph selection, footnotes, and "select words → anchor text".
+$('ms-content').addEventListener('click', (e) => {
+  const t = e.target as HTMLElement;
+  if (t.classList.contains('footnote-marker')) {
+    const fn = t.nextElementSibling;
+    if (fn?.classList.contains('footnote')) fn.classList.toggle('open');
+    e.stopPropagation();
+    return;
+  }
+  if (page.dataset.daven === '1') return;
+  const para = t.closest('.ms-para') as HTMLElement | null;
+  if (!para) return;
+  const sel = window.getSelection()?.toString().trim();
+  if (sel) { state.pendingAnchor = sel.slice(0, 1000); const input = document.querySelector('#ms-form [name=anchor_text]') as HTMLInputElement | null; if (input) input.value = state.pendingAnchor; }
+  const p = Number(para.dataset.p);
+  if (state.editing) { state.selected = p; document.querySelectorAll('.ms-para').forEach((el) => el.classList.toggle('selected', el === para)); return; }
+  selectPara(state.selected === p && !sel ? null : p);
+  if (window.matchMedia('(max-width: 900px)').matches) page.dataset.panel = '1';
+});
+
+document.addEventListener('keydown', (e) => {
+  const tag = (e.target as HTMLElement).tagName;
+  if (/INPUT|TEXTAREA|SELECT/.test(tag)) return;
+  if (e.key === ']' ) openSection(state.current + 1);
+  if (e.key === '[') openSection(state.current - 1);
+});
+
+/* ───────────────────────── boot ───────────────────────── */
+async function startNusach(path: string | null, para: number | null) {
+  ($('ms-nusach') as HTMLSelectElement).value = state.nusach;
+  state.current = -1; state.selected = null; state.editing = null;
+  await loadToc(state.nusach);
+  renderToc();
+  const target = path ?? store.get('last:' + state.nusach, null);
+  const i = target ? state.sections.findIndex((s: Section) => s.path === target) : -1;
+  if (i >= 0 && path) openSection(i, para, true);
+  else { syncUrl(); renderWelcome(); }
+}
+
+(async function boot() {
+  applyPrefs();
+  updateLock();
+  renderToday();
+  setInterval(renderToday, 5 * 60e3);
+  const u = new URL(location.href);
+  const n = u.searchParams.get('n');
+  if (n && BOOKS[n]) state.nusach = n;
+  const noteIndex = loadNoteIndex();
+  await startNusach(u.searchParams.get('s'), Number(u.searchParams.get('p')) || null);
+  await noteIndex;
+  renderToc(($('ms-search') as HTMLInputElement).value);
+  if (state.current < 0) renderPanel();
+})();
+</script>
+</Layout>
