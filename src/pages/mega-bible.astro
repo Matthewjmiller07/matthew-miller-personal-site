@@ -234,6 +234,13 @@ body:has(.mb-page) > footer { display:none!important; }
   margin-bottom:1rem; text-transform:uppercase;
 }
 .mb-context span { color:var(--gold); }
+.mb-ctx-link {
+  font-family:var(--sc); font-size:.44rem; letter-spacing:.14em; text-transform:uppercase;
+  background:none; border:1px solid var(--border); color:var(--faint);
+  padding:.15rem .45rem; margin-left:.7rem; cursor:pointer; vertical-align:middle;
+  transition:color .12s, border-color .12s;
+}
+.mb-ctx-link:hover { color:var(--gold); border-color:var(--gold-dim); }
 
 /* ── 929 chapter audio ── */
 .mb-audio-bar {
@@ -250,6 +257,11 @@ body:has(.mb-page) > footer { display:none!important; }
   font-family:var(--display); font-style:italic; font-size:.78rem;
   color:var(--muted); white-space:nowrap;
 }
+.mb-audio-credit {
+  font-size:.62rem; color:var(--faint); white-space:nowrap;
+}
+.mb-audio-credit a { color:var(--gold-dim); text-decoration:underline; text-underline-offset:2px; }
+.mb-audio-credit a:hover { color:var(--gold); }
 .mb-audio-player {
   flex:1; min-width:200px; display:flex; align-items:center; gap:.7rem;
 }
@@ -1765,6 +1777,18 @@ async function load929Audio(): Promise<Record<string, string>> {
   return audio929Map!;
 }
 
+// Map of "<Book> <chapter>" → full dramatic chapter reading URL,
+// built from the open-source multi-voice TTS pipeline.
+let audioFullMap: Record<string, string> | null = null;
+async function loadFullAudio(): Promise<Record<string, string>> {
+  if (audioFullMap) return audioFullMap;
+  try {
+    const r = await fetch('/data/929-full-audio.json');
+    audioFullMap = await r.json();
+  } catch { audioFullMap = {}; }
+  return audioFullMap!;
+}
+
 function fmtAudioTime(s: number): string {
   if (!isFinite(s) || s < 0) return '0:00';
   const m = Math.floor(s / 60);
@@ -1812,6 +1836,56 @@ function build929AudioBar(book: string, ch: number): HTMLElement | null {
       audio.pause();
       playBtn.innerHTML = '▶';
       playBtn.setAttribute('aria-label', 'Play chapter audio');
+    }
+  });
+  seek.addEventListener('input', () => {
+    const d = audio.duration;
+    if (isFinite(d) && d > 0) audio.currentTime = (Number(seek.value) / 1000) * d;
+  });
+  return bar;
+}
+
+function buildFullAudioBar(book: string, ch: number): HTMLElement | null {
+  const src = audioFullMap?.[`${book} ${ch}`];
+  if (!src) return null;
+  const bar = document.createElement('div');
+  bar.className = 'mb-audio-bar';
+  bar.innerHTML =
+    `<span class="mb-audio-label">🎭 Full chapter</span>` +
+    `<span class="mb-audio-sub">The whole chapter, dramatized with a full voice cast</span>` +
+    `<span class="mb-audio-credit">Text: <a href="https://jps.org/books/the-jps-tanakh-gender-sensitive-edition/" target="_blank" rel="noopener">THE JPS TANAKH: Gender-Sensitive Edition</a>, CC-BY-NC</span>` +
+    `<div class="mb-audio-player">` +
+      `<button class="mb-audio-play" aria-label="Play full chapter audio" disabled>▶</button>` +
+      `<input type="range" class="mb-audio-seek" min="0" max="1000" value="0" step="1" aria-label="Seek" disabled>` +
+      `<span class="mb-audio-time">0:00 / 0:00</span>` +
+      `<audio preload="metadata" src="${src}"></audio>` +
+    `</div>`;
+  const audio = bar.querySelector('audio')!;
+  const playBtn = bar.querySelector('.mb-audio-play') as HTMLButtonElement;
+  const seek = bar.querySelector('.mb-audio-seek') as HTMLInputElement;
+  const timeEl = bar.querySelector('.mb-audio-time')!;
+
+  const paint = () => {
+    const d = audio.duration;
+    timeEl.textContent = `${fmtAudioTime(audio.currentTime)} / ${fmtAudioTime(d)}`;
+    if (isFinite(d) && d > 0) seek.value = String(Math.round(audio.currentTime / d * 1000));
+  };
+  audio.addEventListener('loadedmetadata', () => {
+    playBtn.disabled = false;
+    seek.disabled = false;
+    paint();
+  });
+  audio.addEventListener('timeupdate', paint);
+  audio.addEventListener('ended', () => { playBtn.innerHTML = '▶'; playBtn.setAttribute('aria-label', 'Play full chapter audio'); });
+  playBtn.addEventListener('click', () => {
+    if (audio.paused) {
+      audio.play();
+      playBtn.innerHTML = '❚❚';
+      playBtn.setAttribute('aria-label', 'Pause full chapter audio');
+    } else {
+      audio.pause();
+      playBtn.innerHTML = '▶';
+      playBtn.setAttribute('aria-label', 'Play full chapter audio');
     }
   });
   seek.addEventListener('input', () => {
@@ -3642,11 +3716,36 @@ async function renderRange(
     ctx.innerHTML = ctxText;
     main.appendChild(ctx);
 
+    // Chapter deep-link: one tap copies the canonical URL for this chapter.
+    if (sc === ec) {
+      const linkBtn = document.createElement('button');
+      linkBtn.type = 'button';
+      linkBtn.className = 'mb-ctx-link';
+      linkBtn.textContent = 'Copy link';
+      linkBtn.title = 'Copy a link to this chapter';
+      linkBtn.addEventListener('click', async () => {
+        const url = `${location.origin}${location.pathname}?book=${encodeURIComponent(book)}&chapter=${sc}`;
+        const orig = linkBtn.textContent;
+        try {
+          await navigator.clipboard.writeText(url);
+          linkBtn.textContent = 'Copied';
+        } catch {
+          window.prompt('Copy this link:', url);
+          return;
+        }
+        setTimeout(() => { linkBtn.textContent = orig; }, 1600);
+      });
+      ctx.appendChild(linkBtn);
+    }
+
     // 929 chapter audio — shown when a single chapter with a narration is loaded
     if (sc === ec) {
       await load929Audio();
       const audioBar = build929AudioBar(book, sc);
       if (audioBar) main.appendChild(audioBar);
+      await loadFullAudio();
+      const fullBar = buildFullAudioBar(book, sc);
+      if (fullBar) main.appendChild(fullBar);
     }
 
     const rangeSheets = sheetsFor(book, sc, sv, ec, ev);
