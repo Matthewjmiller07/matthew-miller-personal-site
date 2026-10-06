@@ -1,0 +1,99 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import NewsletterSignup from '../../components/NewsletterSignup.astro';
+import issues from '../../../writing/newsletter/issues.json';
+
+const sorted = [...issues].sort((a, b) => b.date.localeCompare(a.date));
+const latest = sorted[0];
+const fmt = (d: string) =>
+  new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+<Layout
+  title="The Workshop Newsletter"
+  description="A weekly email with everything new from Matthew Miller's workshop: Torah tools, daf games, AI experiments and the trailer to go with them. Sign up and get the latest issue right away."
+  image={latest.image}
+  imageAlt="The Workshop newsletter by Matthew Miller"
+>
+  <div class="nl-page">
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">● The Workshop · weekly</p>
+        <h1>Everything I build, in one email a week.</h1>
+        <p class="lede">
+          Torah tools, daf games, data dashboards and AI experiments, with an epic trailer and the story behind each build.
+          Sign up and this week’s issue lands in your inbox within the hour, so you never start from zero.
+        </p>
+        <NewsletterSignup source="newsletter-page" />
+        <p class="fine">One email a week. Reply “unsubscribe” anytime.</p>
+      </div>
+      <a class="hero-art" href={`/newsletter/${latest.slug}/`} aria-label={`Read the latest issue: ${latest.title}`}>
+        <img src={latest.image} alt="Illustration of Matthew in a workshop full of glowing projects" width="1536" height="1024" />
+        <span class="tag">Latest issue · {fmt(latest.date)}</span>
+      </a>
+    </header>
+
+    <section class="latest" aria-labelledby="latest-h">
+      <div class="sec-head">
+        <h2 id="latest-h">The latest issue</h2>
+        <a href={`/newsletter/${latest.slug}/`} class="open">Open full screen →</a>
+      </div>
+      <div class="frame">
+        <iframe src={`/newsletter/${latest.slug}/`} title={`The Workshop, ${fmt(latest.date)}`} loading="lazy"></iframe>
+      </div>
+    </section>
+
+    <section class="archive" aria-labelledby="archive-h">
+      <h2 id="archive-h">All issues</h2>
+      <ol>
+        {sorted.map((i) => (
+          <li>
+            <a href={`/newsletter/${i.slug}/`}>
+              <time datetime={i.date}>{fmt(i.date)}</time>
+              <span>{i.title}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section class="closer">
+      <h2>Don’t miss the next one.</h2>
+      <NewsletterSignup source="newsletter-page-footer" />
+    </section>
+  </div>
+</Layout>
+
+<style>
+  /* Paper-and-ink page that matches the email itself: cream ground, workshop green, brass. */
+  .nl-page {
+    --paper: #f3ede1; --card: #fffdf8; --ink: #1d1a15; --muted: #6b6152; --green: #1f6b4f; --brass: #a0782c; --line: #e6dcc8;
+    --display: Georgia, 'Times New Roman', serif;
+    background: var(--paper); color: var(--ink);
+    padding: 3rem 1rem 4rem;
+  }
+  .nl-page > * { max-width: 72rem; margin-inline: auto; }
+  .hero { display: grid; gap: 2.5rem; align-items: center; }
+  @media (min-width: 900px) { .hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); } }
+  .eyebrow { font: 700 0.75rem/1.4 system-ui, sans-serif; letter-spacing: 0.15em; text-transform: uppercase; color: var(--green); }
+  h1 { font-family: var(--display); font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.05; font-weight: 700; margin: 0.6rem 0 1rem; text-wrap: balance; color: var(--ink); }
+  .lede { font-size: 1.15rem; line-height: 1.6; color: var(--muted); max-width: 36rem; margin-bottom: 1.5rem; }
+  .fine { font-size: 0.85rem; color: var(--muted); margin-top: 0.75rem; }
+  .hero-art { position: relative; display: block; border-radius: 18px; overflow: hidden; box-shadow: 0 20px 50px -20px rgba(29, 26, 21, 0.45); }
+  .hero-art img { display: block; width: 100%; height: auto; transition: transform 0.6s ease; }
+  .hero-art:hover img { transform: scale(1.03); }
+  .tag { position: absolute; left: 1rem; bottom: 1rem; background: rgba(255, 253, 248, 0.92); color: var(--green); font: 700 0.8rem/1 system-ui, sans-serif; padding: 0.55rem 0.8rem; border-radius: 999px; }
+  section { margin-top: 4rem; }
+  h2 { font-family: var(--display); font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700; color: var(--ink); }
+  .sec-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin-bottom: 1rem; }
+  .open { color: var(--green); font-weight: 700; }
+  .frame { border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--card); }
+  .frame iframe { display: block; width: 100%; height: min(85vh, 1100px); border: 0; }
+  .archive ol { list-style: none; padding: 0; margin: 1rem 0 0; border-top: 1px solid var(--line); }
+  .archive a { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; padding: 1rem 0; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+  .nl-page .archive a:hover span { color: var(--green); }
+  .archive time { color: var(--brass); font: 700 0.85rem/1.6 system-ui, sans-serif; min-width: 9rem; font-variant-numeric: tabular-nums; }
+  .nl-page .archive a span { font-family: var(--display); font-size: 1.1rem; min-width: 0; color: var(--ink); }
+  .closer { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 2rem; display: grid; gap: 1rem; justify-items: start; }
+  @media (prefers-reduced-motion: reduce) { .hero-art img { transition: none; } }
+</style>

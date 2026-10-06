@@ -6,7 +6,7 @@ import path from 'node:path';
 const manifest = JSON.parse(fs.readFileSync(new URL('./fetch-manifest.json', import.meta.url), 'utf8'));
 let ok = 0, skipped = 0, failed = 0;
 for (const [dest, url] of Object.entries(manifest)) {
-  if (!dest.startsWith('public/parasha-books/')) { console.warn('refusing', dest); failed++; continue; }
+  if (!dest.startsWith('public/parasha-books/') && !dest.startsWith('public/newsletter/')) { console.warn('refusing', dest); failed++; continue; }
   if (fs.existsSync(dest)) { skipped++; continue; }
   try {
     const res = await fetch(url);
