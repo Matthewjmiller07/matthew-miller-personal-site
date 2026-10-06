@@ -1,0 +1,107 @@
+---
+// The newsletter desk: unlinked, unindexed working page for The Workshop.
+// Add material by dropping a .md file into writing/desk/ (see writing/desk/_TEMPLATE.md).
+import { loadDesk, DESK_PREAMBLE } from '../../lib/desk';
+
+export const prerender = true;
+
+const items = loadDesk();
+const statuses = [...new Set(items.map((i) => i.status))];
+const site = 'https://theothermatthewmiller.com';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <title>Newsletter Desk</title>
+    <link rel="alternate" type="text/markdown" href="/desk/all.md" title="Everything as Markdown" />
+    <link rel="alternate" type="application/json" href="/desk/index.json" title="Everything as JSON" />
+    <style>
+      :root {
+        --bg: #faf7f0; --card: #fff; --ink: #1d1b16; --muted: #6b6559; --line: #e6e0d2; --accent: #a0522d;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root { --bg: #16150f; --card: #1f1d17; --ink: #ece7da; --muted: #a39d8e; --line: #34312a; --accent: #e08a5a; }
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, sans-serif; }
+      main { max-width: 860px; margin: 0 auto; padding: 32px 16px 80px; }
+      h1 { margin: 0 0 4px; font-size: 1.8rem; }
+      .about { color: var(--muted); white-space: pre-line; margin: 0 0 20px; }
+      .llm { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 24px; }
+      .llm h2 { font-size: 1rem; margin: 0 0 8px; }
+      .llm ul { margin: 0; padding-left: 18px; }
+      .llm code { word-break: break-all; }
+      .bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
+      button { font: inherit; font-size: .9rem; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+      button[aria-pressed='true'], button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      details { background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; }
+      summary { cursor: pointer; padding: 12px 16px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+      summary .t { font-weight: 600; flex: 1 1 280px; }
+      .meta { color: var(--muted); font-size: .85rem; }
+      .pill { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; color: var(--accent); }
+      .item-body { border-top: 1px solid var(--line); padding: 12px 16px 16px; }
+      .item-body pre { white-space: pre-wrap; word-wrap: break-word; font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0 0 10px; }
+      a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Newsletter desk</h1>
+      <p class="about">{DESK_PREAMBLE}</p>
+
+      <section class="llm">
+        <h2>For ChatGPT, Claude, Gemini and friends</h2>
+        <ul>
+          <li>Everything in one file: <a href="/desk/all.md"><code>{site}/desk/all.md</code></a></li>
+          <li>Structured: <a href="/desk/index.json"><code>{site}/desk/index.json</code></a></li>
+          <li>One item: <code>{site}/desk/&lt;slug&gt;.md</code> (link under each item)</li>
+        </ul>
+      </section>
+
+      <div class="bar">
+        <button class="primary" id="copy-all" type="button">Copy everything</button>
+        <button type="button" data-filter="all" aria-pressed="true">All ({items.length})</button>
+        {statuses.map((s) => (
+          <button type="button" data-filter={s} aria-pressed="false">{s} ({items.filter((i) => i.status === s).length})</button>
+        ))}
+      </div>
+
+      {items.map((item) => (
+        <details data-status={item.status} id={item.slug}>
+          <summary>
+            <span class="t">{item.title}</span>
+            <span class="pill">{item.status}</span>
+            <span class="meta">{item.date}{item.tags.length ? ` · ${item.tags.join(', ')}` : ''}</span>
+          </summary>
+          <div class="item-body">
+            <pre>{item.body}</pre>
+            <span class="meta"><a href={`/desk/${item.slug}.md`}>/desk/{item.slug}.md</a> · {item.source}</span>
+          </div>
+        </details>
+      ))}
+    </main>
+
+    <script>
+      const buttons = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
+      buttons.forEach((b) =>
+        b.addEventListener('click', () => {
+          buttons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+          document.querySelectorAll<HTMLElement>('details[data-status]').forEach((d) => {
+            d.hidden = b.dataset.filter !== 'all' && d.dataset.status !== b.dataset.filter;
+          });
+        })
+      );
+      const copy = document.getElementById('copy-all') as HTMLButtonElement;
+      copy.addEventListener('click', async () => {
+        const text = await (await fetch('/desk/all.md')).text();
+        await navigator.clipboard.writeText(text);
+        copy.textContent = 'Copied';
+        setTimeout(() => (copy.textContent = 'Copy everything'), 1500);
+      });
+    </script>
+  </body>
+</html>

@@ -18,6 +18,7 @@ export default defineConfig({
         !page.includes('/family') &&
         !page.includes('/parasha-books') &&
         !page.includes('/dweck-sukkot-picks') &&
+        !page.includes('/desk') &&
         !page.includes('/everything'),
     })
   ],
