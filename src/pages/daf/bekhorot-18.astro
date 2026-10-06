@@ -1,0 +1,655 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Lambing Pen of Perhaps — Daf Yomi Game: Bekhorot 18"
+  description="Bekhorot 18: measure a corpse between two towns, sort lambs into every possible world to find what the kohen is guaranteed, split the fat from the lean with Rabbi Tarfon and Rabbi Akiva, and load the gift tray for Rabbi Meir and Rabbi Yosei."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700;900&display=swap"
+  />
+
+  <main class="frank min-h-screen bg-[#17150f] !text-[#efe9dc]">
+    <!-- ============ Hero ============ -->
+    <header class="px-4 pt-12 pb-8">
+      <div class="mx-auto max-w-2xl">
+        <p class="text-sm !text-[#a59c86]">
+          <a href="/daf" class="underline decoration-[#4d4532] hover:!text-[#d9b45a]">Daf Yomi Arcade</a>, Bekhorot 18, 6 October 2026
+        </p>
+        <h1 class="mt-3 text-5xl font-black leading-[1.05] sm:text-6xl">The Lambing Pen of Perhaps</h1>
+        <p class="mt-3 text-2xl !text-[#d9b45a]" dir="rtl" lang="he">שֶׁמָּא שְׁתֵּיהֶן יָלְדוּ נְקֵבוֹת תְּחִלָּה</p>
+        <p class="mt-4 max-w-xl text-lg leading-relaxed !text-[#d6ceb8]">
+          Two ewes give birth in the night and nobody sees which lamb came from which mother. A firstborn male
+          goes to the kohen, but only if we know it's a firstborn. Today's daf works out what the kohen is
+          <em>guaranteed</em> when every "perhaps" is still open, starting with a corpse lying exactly halfway
+          between two towns.
+        </p>
+        <svg viewBox="0 0 600 80" class="mt-6 w-full" aria-hidden="true">
+          <path d="M10 66 H590" stroke="#4d4532" stroke-width="2" />
+          <g stroke="#6b5d3a" stroke-width="3">
+            <path d="M30 66 V30 M570 66 V30 M30 38 H570 M30 54 H570" />
+          </g>
+          <g fill="#efe9dc">
+            <ellipse cx="170" cy="44" rx="34" ry="15" /><circle cx="206" cy="36" r="9" />
+            <ellipse cx="400" cy="44" rx="34" ry="15" /><circle cx="364" cy="36" r="9" />
+          </g>
+          <g fill="#d9b45a"><circle cx="262" cy="54" r="7" /><circle cx="286" cy="54" r="7" /><circle cx="310" cy="54" r="7" /></g>
+          <text x="286" y="30" text-anchor="middle" font-size="16" fill="#d9b45a">?</text>
+        </svg>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-2xl px-4 pb-20">
+      <!-- ============ Part I ============ -->
+      <section class="border-t border-[#3a3426] pt-8" aria-labelledby="p1">
+        <h2 id="p1" class="text-3xl font-bold">I. Exactly halfway</h2>
+        <p class="mt-2 leading-relaxed !text-[#d6ceb8]">
+          A slain person is found in a field. The Torah says "the town nearest (<span dir="rtl" lang="he">קְרוֹבָה</span>) to
+          the corpse" brings the <em>egla arufa</em>, the heifer whose neck is broken. Slide the body along the road
+          and try to put it exactly between the towns.
+        </p>
+        <div class="mt-5 rounded-lg border border-[#3a3426] bg-[#1e1b14] p-4">
+          <svg viewBox="0 0 400 70" class="w-full" aria-hidden="true">
+            <rect x="8" y="16" width="34" height="30" fill="#6b5d3a" /><path d="M8 16 L25 4 L42 16 Z" fill="#8a7a50" />
+            <rect x="358" y="16" width="34" height="30" fill="#6b5d3a" /><path d="M358 16 L375 4 L392 16 Z" fill="#8a7a50" />
+            <line x1="42" y1="40" x2="358" y2="40" stroke="#4d4532" stroke-width="3" stroke-dasharray="6 5" />
+            <line x1="200" y1="30" x2="200" y2="50" stroke="#d9b45a" stroke-width="1" />
+            <g id="body"><ellipse cx="0" cy="40" rx="11" ry="4" fill="#b4553a" /></g>
+            <text x="25" y="62" text-anchor="middle" font-size="10" fill="#a59c86">Town A</text>
+            <text x="375" y="62" text-anchor="middle" font-size="10" fill="#a59c86">Town B</text>
+          </svg>
+          <label for="road" class="sr-only">Position of the body along the road</label>
+          <input id="road" type="range" min="0" max="2000" step="1" value="700" class="mt-2 w-full accent-[#d9b45a]" />
+          <p id="roadOut" class="mt-2 font-mono text-sm !text-[#efe9dc]" aria-live="polite"></p>
+          <p id="roadNote" class="mt-1 text-sm !text-[#a59c86]"></p>
+        </div>
+
+        <p class="mt-6 leading-relaxed !text-[#d6ceb8]">
+          Two questions decide what happens when it's a tie. <strong>Can two human measurements ever come out
+          exactly equal?</strong> (<span dir="rtl" lang="he">אֶפְשָׁר לְצַמְצֵם</span>) And <strong>does the singular
+          "kerova" exclude two equally-near towns?</strong> For each combination, choose what follows.
+        </p>
+        <div id="grid" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2"></div>
+        <button id="gridCheck" class="act mt-4">Check the grid</button>
+        <div id="gridOut" class="mt-3 space-y-2 text-sm" aria-live="polite"></div>
+
+        <div id="sagesWrap" class="mt-6 hidden">
+          <p class="leading-relaxed !text-[#d6ceb8]">Now put each opinion in the box that produces its ruling.</p>
+          <div id="sages" class="mt-3 space-y-4"></div>
+          <div id="sagesOut" class="mt-3 space-y-2 text-sm" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- ============ Part II ============ -->
+      <section class="mt-12 border-t border-[#3a3426] pt-8" aria-labelledby="p2">
+        <h2 id="p2" class="text-3xl font-bold">II. The pen of perhaps</h2>
+        <p class="mt-2 leading-relaxed !text-[#d6ceb8]">
+          Each night, some ewes lamb and nobody watches. A <strong>first-timer</strong> ewe's first lamb, if male,
+          belongs to the kohen. A ewe that <strong>has lambed before</strong> owes nothing. Every ewe bore at least one
+          lamb. Build possible worlds: tap a newborn, then tap a mother to add it to her birth order (first in line =
+          born first). Tap a placed lamb to take it back. Find the <em>worst</em> world for the kohen, because he only
+          gets what every world gives him.
+        </p>
+        <div class="mt-5 rounded-lg border border-[#3a3426] bg-[#1e1b14] p-4">
+          <div class="flex items-baseline justify-between gap-2">
+            <p id="penTitle" class="font-bold !text-[#d9b45a]"></p>
+            <p id="penCount" class="text-sm !text-[#a59c86]"></p>
+          </div>
+          <p class="mt-3 text-xs uppercase tracking-wider !text-[#a59c86]">Newborns in the straw</p>
+          <div id="straw" class="mt-2 flex min-h-[52px] flex-wrap gap-2"></div>
+          <div id="mothers" class="mt-4 grid grid-cols-2 gap-3"></div>
+          <p id="worldOut" class="mt-3 text-sm !text-[#efe9dc]" aria-live="polite"></p>
+          <p id="worldLog" class="mt-1 text-sm !text-[#a59c86]"></p>
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <span class="text-sm !text-[#d6ceb8]">The kohen is guaranteed:</span>
+            <button class="act verdict" data-n="0">nothing</button>
+            <button class="act verdict" data-n="1">one male</button>
+            <button class="act verdict" data-n="2">two males</button>
+          </div>
+          <div id="penOut" class="mt-3 space-y-2 text-sm" aria-live="polite"></div>
+          <button id="penNext" class="act mt-3 hidden">Next night →</button>
+        </div>
+      </section>
+
+      <!-- ============ Part III ============ -->
+      <section class="mt-12 border-t border-[#3a3426] pt-8" aria-labelledby="p3">
+        <h2 id="p3" class="text-3xl font-bold">III. The fat one and the lean one</h2>
+        <p class="mt-2 leading-relaxed !text-[#d6ceb8]">
+          When the kohen gets "one of the two males" but nobody knows which, one lamb is plump and one is lean. Hand
+          each lamb out according to each sage.
+        </p>
+        <div id="split" class="mt-4 space-y-4"></div>
+        <div id="splitOut" class="mt-3 space-y-2 text-sm" aria-live="polite"></div>
+
+        <div id="deathWrap" class="mt-8 hidden">
+          <h3 class="text-xl font-bold">One of them died</h3>
+          <p class="mt-1 leading-relaxed !text-[#d6ceb8]">
+            Take Rabbi Tarfon's first rule seriously: the better lamb came out first, so the better one is the kohen's.
+            Who owns the survivor?
+          </p>
+          <div id="death" class="mt-3 space-y-3"></div>
+          <div id="deathOut" class="mt-3 space-y-2 text-sm" aria-live="polite"></div>
+        </div>
+
+        <div id="yardWrap" class="mt-8 hidden">
+          <h3 class="text-xl font-bold">Rabbi Ḥiyya's sheepfolds</h3>
+          <p class="mt-1 leading-relaxed !text-[#d6ceb8]">
+            One sheep has died and nobody knows whose. Rule on each fold. Then switch the courtyard owner's mind
+            on the last one.
+          </p>
+          <div id="yard" class="mt-3 space-y-4"></div>
+          <div id="yardOut" class="mt-3 space-y-2 text-sm" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- ============ Part IV ============ -->
+      <section class="mt-12 border-t border-[#3a3426] pt-8" aria-labelledby="p4">
+        <h2 id="p4" class="text-3xl font-bold">IV. The gift tray</h2>
+        <p class="mt-2 leading-relaxed !text-[#d6ceb8]">
+          The lamb the owner keeps grazes until it gets a blemish and is then slaughtered. Does the kohen get the
+          gifts from it: the <strong>foreleg</strong>, <strong>jaw</strong> and <strong>maw</strong>? Tap the tray to
+          load it (gifts owed) or leave it empty (exempt), for each sage.
+        </p>
+        <div id="gifts" class="mt-4 space-y-5"></div>
+        <button id="giftCheck" class="act mt-4">Serve the trays</button>
+        <div id="giftOut" class="mt-3 space-y-3 text-sm" aria-live="polite"></div>
+      </section>
+
+      <!-- ============ Score + learn ============ -->
+      <section class="mt-12 border-t border-[#3a3426] pt-8" aria-labelledby="sc">
+        <h2 id="sc" class="text-3xl font-bold">Your tally</h2>
+        <p id="tally" class="mt-2 text-lg !text-[#d6ceb8]" aria-live="polite">Play the four parts above.</p>
+      </section>
+
+      <section class="mt-12 border-t border-[#3a3426] pt-8" aria-labelledby="learn">
+        <h2 id="learn" class="text-3xl font-bold">Learn the real daf</h2>
+        <p class="mt-2 leading-relaxed !text-[#d6ceb8]">
+          Bekhorot 18 finishes the heifer-between-two-towns question from 17b, closes Rabbi Tarfon and Rabbi Akiva's
+          twin-lamb mishna, and opens a new mishna about two ewes lambing together. Rabbi Akiva's "they assess"
+          (<span dir="rtl" lang="he">מְשַׁמְּנִין</span>) turns out to mean "the fat (<span dir="rtl" lang="he">שׁוּמָּן</span>)
+          is what's in dispute."
+        </p>
+        <div class="mt-4 flex flex-wrap gap-2 text-sm">
+          <a href="https://www.sefaria.org/Bekhorot.18a" target="_blank" rel="noopener" class="rounded-full border border-[#d9b45a]/50 px-3 py-1.5 !text-[#d9b45a] hover:border-[#d9b45a]">Bekhorot 18 on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Rashi_on_Bekhorot.18a" target="_blank" rel="noopener" class="rounded-full border border-[#3a3426] px-3 py-1.5 !text-[#a59c86] hover:border-[#d9b45a]">Rashi ×49 ↗</a>
+          <a href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.18a" target="_blank" rel="noopener" class="rounded-full border border-[#3a3426] px-3 py-1.5 !text-[#a59c86] hover:border-[#d9b45a]">Rabbeinu Gershom ×38 ↗</a>
+          <a href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.18a" target="_blank" rel="noopener" class="rounded-full border border-[#3a3426] px-3 py-1.5 !text-[#a59c86] hover:border-[#d9b45a]">Steinsaltz ×34 ↗</a>
+          <a href="https://www.sefaria.org/Mishnah_Bekhorot.2.8" target="_blank" rel="noopener" class="rounded-full border border-[#3a3426] px-3 py-1.5 !text-[#a59c86] hover:border-[#d9b45a]">Mishna Bekhorot 2:8 ↗</a>
+          <a href="https://www.sefaria.org/Shulchan_Arukh,_Yoreh_De'ah.318.1" target="_blank" rel="noopener" class="rounded-full border border-[#3a3426] px-3 py-1.5 !text-[#a59c86] hover:border-[#d9b45a]">Shulchan Arukh YD 318 ↗</a>
+          <a href="https://www.sefaria.org/Mishneh_Torah,_Firstlings.5.1" target="_blank" rel="noopener" class="rounded-full border border-[#3a3426] px-3 py-1.5 !text-[#a59c86] hover:border-[#d9b45a]">Rambam, Firstlings 5 ↗</a>
+          <a href="https://www.sefaria.org/Tosafot_on_Bekhorot.18a.11.1" target="_blank" rel="noopener" class="rounded-full border border-[#3a3426] px-3 py-1.5 !text-[#a59c86] hover:border-[#d9b45a]">Tosafot ×5 ↗</a>
+        </div>
+        <p class="mt-6 text-sm !text-[#7d7562]">
+          Part of the <a href="/daf" class="underline decoration-[#4d4532] hover:!text-[#a59c86]">Daf Yomi Arcade</a>,
+          a new game from every daf. Texts and links via the Sefaria API.
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <style is:global>
+    .frank { font-family: 'Frank Ruhl Libre', Georgia, 'Times New Roman', serif; }
+    .act, .opt, .lamb, .mother, .tray {
+      border-radius: 0.4rem;
+      border: 1px solid #5a5240;
+      background: #17150f;
+      color: #efe9dc;
+      padding: 0.5rem 0.9rem;
+      font-size: 1rem;
+      transition: border-color 0.15s, background-color 0.15s, transform 0.15s;
+    }
+    .opt { text-align: left; }
+    .act:hover:not(:disabled), .opt:hover:not(:disabled), .lamb:hover:not(:disabled), .mother:hover, .tray:hover:not(:disabled) { border-color: #d9b45a; }
+    .act:focus-visible, .opt:focus-visible, .lamb:focus-visible, .mother:focus-visible, .tray:focus-visible { outline: 2px solid #d9b45a; outline-offset: 2px; }
+    .act:disabled, .opt:disabled, .tray:disabled { opacity: 0.55; cursor: default; }
+    .opt[aria-pressed='true'], .tray[aria-pressed='true'] { border-color: #d9b45a; background: #2e2816; }
+    .ok { border-color: #8fae7a !important; background: #1f2a1c !important; }
+    .bad { border-color: #b4553a !important; background: #2c1b15 !important; }
+    .lamb { padding: 0.35rem 0.7rem; font-weight: 700; }
+    .lamb.m { color: #9cc3e6; }
+    .lamb.f { color: #e6b3c4; }
+    .lamb[aria-pressed='true'] { border-color: #d9b45a; transform: translateY(-3px); background: #2e2816; }
+    .mother { display: block; width: 100%; text-align: left; min-height: 120px; }
+    .mother.exp { border-style: dashed; }
+    .queue { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .slot1 { box-shadow: 0 0 0 2px #d9b45a; }
+    .tray { display: flex; align-items: center; gap: 6px; min-height: 48px; }
+    @media (prefers-reduced-motion: reduce) {
+      .act, .opt, .lamb, .mother, .tray { transition: none !important; }
+      .lamb[aria-pressed='true'] { transform: none; }
+    }
+  </style>
+
+  <script>
+    const $ = (id: string) => document.getElementById(id)!;
+    const sef = (ref: string) => `https://www.sefaria.org/${ref.replace(/ (\d+[ab]?):/, '.$1.').replace(/ /g, '_')}`;
+    const link = (ref: string) =>
+      `<a href="${sef(ref)}" target="_blank" rel="noopener" class="!text-[#d9b45a] underline decoration-[#4d4532] hover:!text-[#f0d68a]">${ref} ↗</a>`;
+    const good = (s: string) => `<p class="!text-[#b9d6a6]">✓ ${s}</p>`;
+    const miss = (s: string) => `<p class="!text-[#f0c2b2]">✗ ${s}</p>`;
+    const note = (s: string) => `<p class="!text-[#d6ceb8]">${s}</p>`;
+    const score: Record<string, [number, number]> = { road: [0, 7], pen: [0, 7], split: [0, 11], gifts: [0, 8] };
+    const tally = () => {
+      const got = Object.values(score).reduce((a, [g]) => a + g, 0);
+      const max = Object.values(score).reduce((a, [, m]) => a + m, 0);
+      const rank = got >= max - 3 ? 'Rabbi Yoḥanan in Eretz Yisrael' : got >= max / 2 ? 'a careful shepherd' : 'still eating dates in Babylonia';
+      $('tally').innerHTML = `<span class="!text-[#d9b45a] font-bold">${got} / ${max}</span>. Ranked: ${rank}.`;
+    };
+
+    // =============== PART I: road ===============
+    const road = $('road') as HTMLInputElement;
+    const drawRoad = () => {
+      const v = +road.value; // cubits from A, road 2000 cubits long
+      // a human tape never reads exactly equal: hidden wobble in the last decimals
+      const wobble = ((v * 7919) % 9) + 1; // 1..9 ten-thousandths, never zero
+      const a = v + (v === 1000 ? wobble / 10000 : 0);
+      const b = 2000 - a;
+      $('body').setAttribute('transform', `translate(${42 + (v / 2000) * 316},0)`);
+      $('roadOut').textContent = `To Town A: ${a.toFixed(4)} cubits · To Town B: ${b.toFixed(4)} cubits`;
+      $('roadNote').textContent =
+        v === 1000
+          ? `As close as you can get, and the tape still won't call it a tie. That's the Rabbis' view: "it is impossible to be precise," even for things in human hands.`
+          : `Town ${a < b ? 'A' : 'B'} is nearer, so it brings the heifer.`;
+    };
+    road.addEventListener('input', drawRoad);
+    drawRoad();
+
+    const OUTS = ['No heifer at all', 'Each town brings its own heifer', 'One heifer in partnership, with a stipulation'];
+    const CELLS = [
+      { id: 'pe', prec: 'Precision is possible', ker: '"Kerova" excludes two towns', ans: 0 },
+      { id: 'pi', prec: 'Precision is possible', ker: '"Kerova" includes two towns', ans: 1 },
+      { id: 'ne', prec: 'Precision is impossible', ker: '"Kerova" excludes two towns', ans: 2 },
+      { id: 'ni', prec: 'Precision is impossible', ker: '"Kerova" includes two towns', ans: 2 },
+    ];
+    const cellPick: Record<string, number> = {};
+    $('grid').innerHTML = CELLS.map(
+      (c) => `<div class="rounded-lg border border-[#3a3426] bg-[#1e1b14] p-3" id="cell-${c.id}">
+        <p class="text-sm font-bold !text-[#d9b45a]">${c.prec}</p><p class="text-sm !text-[#a59c86]">${c.ker}</p>
+        <div class="mt-2 flex flex-col gap-1.5">${OUTS.map((o, i) => `<button class="opt text-sm" data-cell="${c.id}" data-i="${i}" aria-pressed="false">${o}</button>`).join('')}</div>
+      </div>`,
+    ).join('');
+    $('grid').addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest('button[data-cell]') as HTMLButtonElement | null;
+      if (!b || b.disabled) return;
+      cellPick[b.dataset.cell!] = +b.dataset.i!;
+      $('grid').querySelectorAll(`button[data-cell="${b.dataset.cell}"]`).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    });
+    $('gridCheck').addEventListener('click', () => {
+      if (Object.keys(cellPick).length < 4) {
+        $('gridOut').innerHTML = note('Choose an outcome in all four boxes.');
+        return;
+      }
+      let n = 0;
+      CELLS.forEach((c) => {
+        const right = cellPick[c.id] === c.ans;
+        if (right) n++;
+        $('grid').querySelectorAll(`button[data-cell="${c.id}"]`).forEach((x) => {
+          (x as HTMLButtonElement).disabled = true;
+          if (+(x as HTMLElement).dataset.i! === c.ans) x.classList.add('ok');
+          else if (x.getAttribute('aria-pressed') === 'true') x.classList.add('bad');
+        });
+      });
+      score.road[0] += n;
+      ($('gridCheck') as HTMLButtonElement).disabled = true;
+      $('gridOut').innerHTML =
+        (n === 4 ? good('All four right.') : miss(`${n} of 4.`)) +
+        note(`If a tie is impossible, one town really is nearer; we just don't know which. So the towns share one heifer and stipulate that it belongs to whichever town is actually nearer. That's how the Gemara knocks down its first guess: "if the first tanna holds precision is impossible, why bring no heifer? Let them bring one in partnership." ${link('Bekhorot 18a:3')}`);
+      $('sagesWrap').classList.remove('hidden');
+      tally();
+    });
+
+    const SAGES = [
+      { who: 'The first tanna of the baraita', rule: 'no heifer at all', ok: ['pe'], why: `Everyone in this baraita holds precision is possible. The first tanna reads "kerova" as one town, not two. ${link('Bekhorot 18a:4')}` },
+      { who: 'Rabbi Eliezer', rule: 'the two towns bring two heifers', ok: ['pi'], why: `"Kerova," even if there are two nearest towns. ${link('Bekhorot 18a:4')}` },
+      { who: "The Rabbis in Rav Amram's baraita", rule: 'one heifer in partnership, with a stipulation', ok: ['ne', 'ni'], why: `If they held a tie is possible, they'd bring two heifers or none. One shared heifer only makes sense if a tie is impossible, even for things in human hands. "Conclude from it that this is so." ${link('Bekhorot 18a:6')}` },
+    ];
+    let sagesDone = 0;
+    $('sages').innerHTML = SAGES.map(
+      (s, i) => `<div><p class="!text-[#efe9dc]"><strong>${s.who}</strong>: ${s.rule}.</p>
+        <div class="mt-1.5 flex flex-wrap gap-1.5">${CELLS.map((c) => `<button class="opt text-xs" data-s="${i}" data-c="${c.id}">${c.prec.replace('Precision is ', '')} / ${c.ker.replace('"Kerova" ', '')}</button>`).join('')}</div>
+        <div id="sage-${i}" class="mt-1 text-sm"></div></div>`,
+    ).join('');
+    $('sages').addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest('button[data-s]') as HTMLButtonElement | null;
+      if (!b || b.disabled) return;
+      const s = SAGES[+b.dataset.s!];
+      const right = s.ok.includes(b.dataset.c!);
+      $('sages').querySelectorAll(`button[data-s="${b.dataset.s}"]`).forEach((x) => {
+        (x as HTMLButtonElement).disabled = true;
+        if (s.ok.includes((x as HTMLElement).dataset.c!)) x.classList.add('ok');
+      });
+      if (!right) b.classList.add('bad');
+      else score.road[0]++;
+      $(`sage-${b.dataset.s}`).innerHTML = (right ? good(s.why) : miss(s.why));
+      if (++sagesDone === 3) $('sagesOut').innerHTML = note('So the first baraita\'s dispute is about the word "kerova." The second shows the Rabbis hold you can never measure a perfect tie.');
+      tally();
+    });
+
+    // =============== PART II: the pen ===============
+    type Night = { moms: ('first' | 'exp')[]; kids: ('M' | 'F')[]; ans: number; ref: string; text: string; tarfon?: boolean };
+    const NIGHTS: Night[] = [
+      { moms: ['first', 'first'], kids: ['M', 'M'], ans: 2, ref: 'Bekhorot 18b:13', text: 'Two first-timers bore two males: both go to the kohen. Each mother had exactly one lamb, and it was male.' },
+      { moms: ['first', 'first'], kids: ['M', 'F'], ans: 1, ref: 'Bekhorot 18b:13', text: 'A male and a female: the male is the kohen\'s. Whoever its mother was, it was her first.' },
+      { moms: ['first', 'first'], kids: ['M', 'M', 'F'], ans: 1, ref: 'Bekhorot 18b:13', text: 'Two males and a female: one male to the kohen, one stays with the owner. In the worst world one mother bore the female first, but the other mother bore only males, so one male is certain. Which male, though, nobody knows. That\'s where Rabbi Tarfon and Rabbi Akiva come in (Part III).', tarfon: true },
+      { moms: ['first', 'first'], kids: ['F', 'F', 'M'], ans: 0, ref: 'Bekhorot 18b:14', text: 'Two females and a male: "the kohen has nothing here, perhaps both bore females first."' },
+      { moms: ['first', 'first'], kids: ['M', 'M', 'F', 'F'], ans: 0, ref: 'Bekhorot 18b:14', text: 'Two males and two females: nothing, for the same reason. Each mother may have had her female first.' },
+      { moms: ['exp', 'first'], kids: ['M', 'M'], ans: 1, ref: 'Bekhorot 18b:15', text: 'One had lambed before, one hadn\'t, and they bore two males: one goes to the kohen, but which one is unknown. Tarfon and Akiva disagree again.', tarfon: true },
+      { moms: ['exp', 'first'], kids: ['M', 'F'], ans: 0, ref: 'Bekhorot 18b:16', text: 'A male and a female: "everyone agrees the kohen has nothing here; perhaps the one that had given birth bore the male."' },
+    ];
+    let night = 0;
+    let sel: number | null = null;
+    let queues: number[][] = [];
+    let tried: number[] = [];
+    let answered = false;
+    let seen = new Set<string>();
+
+    const kohenGets = (n: Night, q: number[][]) => q.reduce((s, qq, mi) => s + (n.moms[mi] === 'first' && qq.length && n.kids[qq[0]] === 'M' ? 1 : 0), 0);
+    // exhaustive worst case: every split of the lambs between the mothers, each mother at least one
+    const worst = (n: Night) => {
+      let best = Infinity;
+      let world: number[][] = [];
+      const k = n.kids.length;
+      for (let mask = 1; mask < (1 << k) - 1; mask++) {
+        const sets = [0, 1].map((m) => n.kids.map((_, i) => i).filter((i) => ((mask >> i) & 1) === m));
+        // worst ordering inside each mother: a female first if she has one
+        const q = sets.map((s) => [...s].sort((a, b) => (n.kids[a] === 'F' ? -1 : 0) - (n.kids[b] === 'F' ? -1 : 0)));
+        const g = kohenGets(n, q);
+        if (g < best) { best = g; world = q; }
+      }
+      return { best, world };
+    };
+    const lambLabel = (n: Night, i: number) => (n.kids[i] === 'M' ? '♂ ram' : '♀ ewe');
+
+    const drawPen = () => {
+      const n = NIGHTS[night];
+      $('penTitle').textContent = `Night ${night + 1}: ${n.moms.map((m) => (m === 'first' ? 'first-timer' : 'has lambed before')).join(' + ')}`;
+      $('penCount').textContent = `${night + 1} / ${NIGHTS.length}`;
+      const placed = new Set(queues.flat());
+      $('straw').innerHTML = n.kids
+        .map((k, i) => (placed.has(i) ? '' : `<button class="lamb ${k === 'M' ? 'm' : 'f'}" data-k="${i}" aria-pressed="${sel === i}">${lambLabel(n, i)}</button>`))
+        .join('') || '<span class="text-sm !text-[#7d7562]">All placed.</span>';
+      $('mothers').innerHTML = n.moms
+        .map(
+          (m, mi) => `<div role="button" tabindex="0" class="mother ${m}" data-m="${mi}" aria-label="Mother ${mi + 1}, ${m === 'first' ? 'first-timer' : 'has lambed before'}">
+          <span class="text-sm font-bold ${m === 'first' ? '!text-[#d9b45a]' : '!text-[#a59c86]'}">Ewe ${mi + 1} · ${m === 'first' ? 'first-timer' : 'lambed before'}</span>
+          <div class="queue">${queues[mi].map((k, pos) => `<button class="lamb ${n.kids[k] === 'M' ? 'm' : 'f'} ${pos === 0 ? 'slot1' : ''}" data-back="${mi}:${pos}" aria-label="${pos === 0 ? 'born first: ' : ''}${lambLabel(n, k)}, tap to take back">${pos === 0 ? '1st ' : ''}${lambLabel(n, k)}</button>`).join('')}</div>
+        </div>`,
+        )
+        .join('');
+      const complete = placed.size === n.kids.length && queues.every((q) => q.length);
+      if (complete) {
+        const g = kohenGets(n, queues);
+        const key = JSON.stringify(queues.map((q) => q.map((k) => n.kids[k])));
+        if (!seen.has(key)) { seen.add(key); tried.push(g); }
+        $('worldOut').innerHTML = `In this world the kohen gets <strong class="!text-[#d9b45a]">${g}</strong> firstborn male${g === 1 ? '' : 's'}.`;
+      } else {
+        $('worldOut').textContent = placed.size === n.kids.length ? 'Every ewe bore at least one lamb.' : '';
+      }
+      $('worldLog').textContent = tried.length ? `Worlds built: ${tried.length} · lowest so far: ${Math.min(...tried)}` : '';
+    };
+    const newNight = () => {
+      const n = NIGHTS[night];
+      queues = n.moms.map(() => []);
+      sel = null; tried = []; answered = false;
+      seen = new Set();
+      document.querySelectorAll('.verdict').forEach((b) => { (b as HTMLButtonElement).disabled = false; b.classList.remove('ok', 'bad'); });
+      $('penOut').innerHTML = '';
+      $('penNext').classList.add('hidden');
+      drawPen();
+    };
+    $('straw').addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest('button[data-k]') as HTMLElement | null;
+      if (!b) return;
+      sel = sel === +b.dataset.k! ? null : +b.dataset.k!;
+      drawPen();
+    });
+    const placeInto = (mi: number) => {
+      if (sel === null) return;
+      queues[mi].push(sel);
+      sel = null;
+      drawPen();
+    };
+    $('mothers').addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      const back = t.closest('button[data-back]') as HTMLElement | null;
+      if (back) {
+        const [mi, pos] = back.dataset.back!.split(':').map(Number);
+        queues[mi].splice(pos, 1);
+        drawPen();
+        return;
+      }
+      const m = t.closest('[data-m]') as HTMLElement | null;
+      if (m) placeInto(+m.dataset.m!);
+    });
+    $('mothers').addEventListener('keydown', (e) => {
+      const m = (e.target as HTMLElement).closest('[data-m]') as HTMLElement | null;
+      if (m && (e.key === 'Enter' || e.key === ' ') && e.target === m) { e.preventDefault(); placeInto(+m.dataset.m!); }
+    });
+    document.querySelectorAll('.verdict').forEach((b) =>
+      b.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        const n = NIGHTS[night];
+        const pick = +(b as HTMLElement).dataset.n!;
+        const right = pick === n.ans;
+        if (right) score.pen[0]++;
+        document.querySelectorAll('.verdict').forEach((x) => {
+          (x as HTMLButtonElement).disabled = true;
+          if (+(x as HTMLElement).dataset.n! === n.ans) x.classList.add('ok');
+        });
+        if (!right) b.classList.add('bad');
+        const w = worst(n);
+        const desc = w.world
+          .map((q, mi) => `ewe ${mi + 1} (${n.moms[mi] === 'first' ? 'first-timer' : 'lambed before'}): ${q.map((k) => (n.kids[k] === 'M' ? 'ram' : 'ewe-lamb')).join(' then ')}`)
+          .join('; ');
+        $('penOut').innerHTML =
+          (right ? good(n.text) : miss(n.text)) +
+          note(`Worst world: ${desc}, so the kohen is guaranteed ${w.best}. ${link(n.ref)}`);
+        $('penNext').classList.toggle('hidden', night === NIGHTS.length - 1);
+        if (night === NIGHTS.length - 1) $('penOut').innerHTML += note('The kohen never collects on a "perhaps." He collects only on what holds in every world.');
+        tally();
+      }),
+    );
+    $('penNext').addEventListener('click', () => { night++; newNight(); });
+    newNight();
+
+    // =============== PART III: split ===============
+    const SPLIT = [
+      { who: 'Rabbi Tarfon', fat: 'kohen', lean: 'owner', why: `"The kohen chooses the better one." The healthier lamb is presumed to have come out first. ${link('Bekhorot 18a:7')}` },
+      { who: 'Rabbi Akiva', fat: 'owner', lean: 'kohen', why: `Rabbi Yoḥanan: the kohen takes the lean one. "Meshammenin" means the fat (<span dir="rtl" lang="he">שׁוּמָּן</span>) is what's in dispute; the owner tells the kohen, "bring proof the better one is the firstborn and take it." When Rabbi Ḥiyya bar Abba objected, Rabbi Yoḥanan told him: "while you were eating dates in Babylonia, we explained it from the latter clause." ${link('Bekhorot 18a:9')}` },
+    ];
+    const splitPick: Record<string, string> = {};
+    $('split').innerHTML = SPLIT.map(
+      (s, i) => `<div class="rounded-lg border border-[#3a3426] bg-[#1e1b14] p-3"><p class="font-bold !text-[#d9b45a]">${s.who}</p>
+        ${['fat', 'lean'].map((l) => `<div class="mt-2 flex flex-wrap items-center gap-2"><span class="w-28 text-sm !text-[#efe9dc]">${l === 'fat' ? '🐑 the plump lamb' : '🐏 the lean lamb'}</span>
+          ${['kohen', 'owner'].map((to) => `<button class="opt text-sm" data-sp="${i}" data-l="${l}" data-to="${to}" aria-pressed="false">to the ${to}</button>`).join('')}</div>`).join('')}
+        <div id="sp-${i}" class="mt-2 text-sm"></div></div>`,
+    ).join('');
+    let splitDone = 0;
+    $('split').addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest('button[data-sp]') as HTMLButtonElement | null;
+      if (!b || b.disabled) return;
+      const i = b.dataset.sp!;
+      splitPick[`${i}${b.dataset.l}`] = b.dataset.to!;
+      $('split').querySelectorAll(`button[data-sp="${i}"][data-l="${b.dataset.l}"]`).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      if (splitPick[`${i}fat`] && splitPick[`${i}lean`]) {
+        const s = SPLIT[+i];
+        const right = splitPick[`${i}fat`] === s.fat && splitPick[`${i}lean`] === s.lean;
+        $('split').querySelectorAll(`button[data-sp="${i}"]`).forEach((x) => {
+          const el = x as HTMLButtonElement;
+          el.disabled = true;
+          if ((s as any)[el.dataset.l!] === el.dataset.to) el.classList.add('ok');
+          else if (el.getAttribute('aria-pressed') === 'true') el.classList.add('bad');
+        });
+        if (right) score.split[0] += 2;
+        $(`sp-${i}`).innerHTML = right ? good(s.why) : miss(s.why);
+        if (++splitDone === 2) { $('deathWrap').classList.remove('hidden'); tally(); }
+      }
+    });
+
+    const DEATH = [
+      { q: 'The plump lamb died. Under "the better one is the kohen\'s," the survivor belongs to…', opts: ['the kohen', 'the owner', 'both, split'], ans: 1 },
+      { q: 'The lean lamb died. The survivor belongs to…', opts: ['the kohen', 'the owner', 'both, split'], ans: 0 },
+      { q: 'But the mishna has Rabbi Tarfon say "they divide." Why?', opts: ['Rabbi Ami: Rabbi Tarfon retracted; he now holds they divide in every case, and the mishna was never updated', 'Rabbi Tarfon\'s presumption only applies while both lambs are alive', 'A dead lamb cancels the presumption that the healthier came out first'], ans: 0 },
+    ];
+    let deathDone = 0;
+    $('death').innerHTML = DEATH.map(
+      (d, i) => `<div><p class="!text-[#efe9dc]">${d.q}</p><div class="mt-1.5 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap">${d.opts.map((o, j) => `<button class="opt text-sm" data-d="${i}" data-j="${j}">${o}</button>`).join('')}</div></div>`,
+    ).join('');
+    $('death').addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest('button[data-d]') as HTMLButtonElement | null;
+      if (!b || b.disabled) return;
+      const d = DEATH[+b.dataset.d!];
+      const right = +b.dataset.j! === d.ans;
+      $('death').querySelectorAll(`button[data-d="${b.dataset.d}"]`).forEach((x) => {
+        (x as HTMLButtonElement).disabled = true;
+        if (+(x as HTMLElement).dataset.j! === d.ans) x.classList.add('ok');
+      });
+      if (right) score.split[0]++; else b.classList.add('bad');
+      if (++deathDone === 3) {
+        $('deathOut').innerHTML = note(`If the better one is the kohen's, a death should settle the question, not split it. Rabbi Ami: "In fact, Rabbi Tarfon retracted," and they divide in every case. ${link('Bekhorot 18b:7')}`);
+        $('yardWrap').classList.remove('hidden');
+      }
+      tally();
+    });
+
+    const FOLDS = [
+      { title: 'Two people each left a sheep with a shepherd', ans: 'split', why: `"The shepherd puts it between them and walks away." Everyone agrees. ${link('Bekhorot 18b:8')}` },
+      { title: 'One person left a sheep with a homeowner who has sheep of his own', ans: 'proof', why: `The survivor is in the homeowner's hands, so "the burden of proof is on the claimant." Everyone agrees. ${link('Bekhorot 18b:9')}` },
+    ];
+    const V = { split: 'Divide it', proof: 'Claimant must bring proof' };
+    $('yard').innerHTML =
+      FOLDS.map(
+        (f, i) => `<div><p class="!text-[#efe9dc]">${f.title}.</p><div class="mt-1.5 flex flex-wrap gap-1.5">${Object.entries(V).map(([k, v]) => `<button class="opt text-sm" data-f="${i}" data-v="${k}">${v}</button>`).join('')}</div><div id="fold-${i}" class="mt-1 text-sm"></div></div>`,
+      ).join('') +
+      `<div id="fold3" class="hidden rounded-lg border border-[#3a3426] bg-[#1e1b14] p-3">
+        <p class="!text-[#efe9dc]">The lambs were born in the <strong>Israelite's own courtyard</strong>, and the shepherd is a <strong>kohen</strong> who usually gets this owner's firstborns. Rava (or Rav Pappa) says only this case is in dispute. Pick each sage's view of the courtyard.</p>
+        <svg viewBox="0 0 300 90" class="mt-2 w-full max-w-sm" aria-hidden="true">
+          <rect x="10" y="10" width="280" height="70" fill="none" stroke="#6b5d3a" stroke-width="3" />
+          <rect id="corner" x="190" y="12" width="98" height="66" fill="#7fa3c4" opacity="0" style="transition:opacity .3s" />
+          <text x="100" y="50" text-anchor="middle" font-size="12" fill="#a59c86">owner's yard</text>
+          <text id="cornerTxt" x="239" y="50" text-anchor="middle" font-size="11" fill="#17150f" opacity="0">kohen's share</text>
+        </svg>
+        ${['Rabbi Tarfon', 'Rabbi Akiva'].map((s, i) => `<div class="mt-3"><p class="font-bold !text-[#d9b45a]">${s}</p><div class="mt-1 flex flex-col gap-1.5">
+          <button class="opt text-sm" data-y="${i}" data-r="give">He grants the kohen a share of his courtyard, glad for the mitzva to be done with his property, so it's like the shepherd: divide</button>
+          <button class="opt text-sm" data-y="${i}" data-r="keep">Where the doubt costs him, he grants nothing, so it's like the homeowner: the kohen must bring proof</button>
+        </div><div id="y-${i}" class="mt-1 text-sm"></div></div>`).join('')}
+      </div>`;
+    let foldsDone = 0;
+    let yDone = 0;
+    $('yard').addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      const f = t.closest('button[data-f]') as HTMLButtonElement | null;
+      if (f && !f.disabled) {
+        const fold = FOLDS[+f.dataset.f!];
+        const right = f.dataset.v === fold.ans;
+        $('yard').querySelectorAll(`button[data-f="${f.dataset.f}"]`).forEach((x) => {
+          (x as HTMLButtonElement).disabled = true;
+          if ((x as HTMLElement).dataset.v === fold.ans) x.classList.add('ok');
+        });
+        if (right) score.split[0]++; else f.classList.add('bad');
+        $(`fold-${f.dataset.f}`).innerHTML = right ? good(fold.why) : miss(fold.why);
+        if (++foldsDone === 2) $('fold3').classList.remove('hidden');
+        tally();
+        return;
+      }
+      const y = t.closest('button[data-y]') as HTMLButtonElement | null;
+      if (y && !y.disabled) {
+        const i = +y.dataset.y!;
+        const ans = i === 0 ? 'give' : 'keep';
+        const right = y.dataset.r === ans;
+        $('yard').querySelectorAll(`button[data-y="${i}"]`).forEach((x) => {
+          (x as HTMLButtonElement).disabled = true;
+          if ((x as HTMLElement).dataset.r === ans) x.classList.add('ok');
+        });
+        if (right) score.split[0]++; else y.classList.add('bad');
+        const show = ans === 'give' ? '1' : '0';
+        $('corner').setAttribute('opacity', show === '1' ? '0.85' : '0');
+        $('cornerTxt').setAttribute('opacity', show);
+        $(`y-${i}`).innerHTML = (right ? good : miss)(
+          i === 0
+            ? `Rabbi Tarfon: <span dir="rtl" lang="he">אַקְנוֹיֵי קָא מַקְנֵי לֵיהּ בַּחֲצֵירוֹ</span>, the owner wants the mitzva done with his money, so the kohen shares the yard. ${link('Bekhorot 18b:11')}`
+            : `Rabbi Akiva: since there's a loss to the owner, he transfers nothing. The yard is all his, so the kohen is the claimant. ${link('Bekhorot 18b:12')}`,
+        );
+        if (++yDone === 2) $('yardOut').innerHTML = note('Rabbi Ḥiyya\'s two parables were never in dispute. The argument is about which parable the courtyard looks like.');
+        tally();
+      }
+    });
+
+    // =============== PART IV: gifts ===============
+    const GIFTS = [
+      {
+        title: 'The uncertain firstborn the owner kept, when its twin went to the kohen',
+        meir: true, yosei: false,
+        why: `Rabbi Meir: obligated, because "the kohen comes at him from two sides": if it's the firstborn, all of it is mine; if not, give me the gifts (Rabbi Yoḥanan). Rabbi Yosei: exempt. Rava: the Sages treated it as if the kohen took it and sold it back blemished, so the owner can say "perhaps this is the firstborn." ${link('Bekhorot 18a:10')} ${link('Bekhorot 18a:11')}`,
+        need: null,
+      },
+      {
+        title: 'An uncertain firstborn where the kohen got nothing (say, a male and a female were born together)',
+        meir: true, yosei: true,
+        why: `Rabbi Elazar: everyone agrees the gifts are owed. Rabbi Yosei's exemption only works when the replacement is in the kohen's hands. ${link('Bekhorot 18a:12')}`,
+        need: { q: 'Why did Rabbi Elazar need to say this?', opts: ['You might have thought Rabbi Yosei exempts so the owner won\'t treat the animal as ordinary and shear it or work it', 'You might have thought Rabbi Meir exempts so the gifts aren\'t forgotten', 'You might have thought the kohen could claim the whole animal'], ans: 0, ref: 'Bekhorot 18b:2' },
+      },
+      {
+        title: 'An animal whose status as tithe (maaser) is uncertain',
+        meir: false, yosei: false,
+        why: `Rav Pappa: everyone agrees it's exempt. Rabbi Meir's "two sides" reasoning doesn't apply to tithe. ${link('Bekhorot 18b:3')}`,
+        need: { q: 'Why did Rav Pappa need to say this?', opts: ['You might have thought Rabbi Yosei obligates tithe animals', 'You might have thought Rabbi Meir obligates so the law of the gifts isn\'t forgotten, which would apply to tithe too', 'You might have thought tithe animals belong to the kohen'], ans: 1, ref: 'Bekhorot 18b:6' },
+      },
+    ];
+    const tray: Record<string, boolean> = {};
+    const TRAY_FULL = '🍖 foreleg · 🦴 jaw · 🫃 maw';
+    $('gifts').innerHTML = GIFTS.map(
+      (g, i) => `<div class="rounded-lg border border-[#3a3426] bg-[#1e1b14] p-3"><p class="!text-[#efe9dc]">${g.title}</p>
+        <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">${['meir', 'yosei'].map((s) => `<div><p class="text-sm font-bold !text-[#d9b45a]">${s === 'meir' ? 'Rabbi Meir' : 'Rabbi Yosei'}</p>
+          <button class="tray mt-1 w-full text-sm" data-g="${i}" data-s="${s}" aria-pressed="false"><span class="!text-[#7d7562]">empty tray: exempt</span></button></div>`).join('')}</div>
+        <div id="g-${i}" class="mt-2 text-sm"></div></div>`,
+    ).join('');
+    $('gifts').addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest('button.tray') as HTMLButtonElement | null;
+      if (!b || b.disabled) return;
+      const k = `${b.dataset.g}${b.dataset.s}`;
+      tray[k] = !tray[k];
+      b.setAttribute('aria-pressed', String(tray[k]));
+      b.innerHTML = tray[k] ? `<span class="!text-[#efe9dc]">${TRAY_FULL}</span>` : '<span class="!text-[#7d7562]">empty tray: exempt</span>';
+    });
+    $('giftCheck').addEventListener('click', () => {
+      ($('giftCheck') as HTMLButtonElement).disabled = true;
+      GIFTS.forEach((g, i) => {
+        let n = 0;
+        (['meir', 'yosei'] as const).forEach((s) => {
+          const b = $('gifts').querySelector(`button[data-g="${i}"][data-s="${s}"]`) as HTMLButtonElement;
+          b.disabled = true;
+          const right = !!tray[`${i}${s}`] === g[s];
+          if (right) n++;
+          b.classList.add(right ? 'ok' : 'bad');
+        });
+        score.gifts[0] += n;
+        let html = (n === 2 ? good : miss)(g.why);
+        if (g.need) {
+          html += `<div class="mt-2"><p class="!text-[#efe9dc]">${g.need.q}</p><div class="mt-1 flex flex-col gap-1.5">${g.need.opts.map((o, j) => `<button class="opt text-sm" data-n="${i}" data-j="${j}">${o}</button>`).join('')}</div><div id="need-${i}"></div></div>`;
+        }
+        $(`g-${i}`).innerHTML = html;
+      });
+      $('giftOut').innerHTML = note('Rabbi Yosei\'s rule in the mishna: "any animal whose replacement is in the kohen\'s hands is exempt from the gifts." ' + link('Bekhorot 18b:16'));
+      tally();
+    });
+    $('gifts').addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest('button[data-n]') as HTMLButtonElement | null;
+      if (!b || b.disabled) return;
+      const g = GIFTS[+b.dataset.n!];
+      const need = g.need!;
+      const right = +b.dataset.j! === need.ans;
+      $('gifts').querySelectorAll(`button[data-n="${b.dataset.n}"]`).forEach((x) => {
+        (x as HTMLButtonElement).disabled = true;
+        if (+(x as HTMLElement).dataset.j! === need.ans) x.classList.add('ok');
+      });
+      if (right) score.gifts[0]++; else b.classList.add('bad');
+      $(`need-${b.dataset.n}`).innerHTML = (right ? good : miss)(`That's the "lest you say" the Gemara answers. ${link(need.ref)}`);
+      tally();
+    });
+  </script>
+</Layout>
