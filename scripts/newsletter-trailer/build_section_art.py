@@ -81,6 +81,7 @@ CARDS = {
     "card-sources.jpg": (N("epic-sources.jpg"), "SOURCE SHEETS IN SECONDS"),
     "card-quill.jpg": (N("epic-quill.jpg"), "THE BRONZE QUILL"),
     "card-workshop.jpg": (N("trailer-poster.jpg"), ""),  # already titled
+    "card-workwithme.jpg": (N("epic-workwithme.jpg"), "WORK WITH ME"),
 }
 
 
