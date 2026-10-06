@@ -198,6 +198,29 @@ body:has(.mb-page) > footer { display:none!important; }
 }
 .mb-context span { color:var(--gold); }
 
+/* ── 929 chapter audio ── */
+.mb-audio-bar {
+  display:flex; align-items:center; gap:.8rem; flex-wrap:wrap;
+  background:var(--surface); border:1px solid var(--border);
+  border-left:2px solid var(--gold-dim);
+  padding:.55rem .9rem; margin-bottom:1.2rem;
+}
+.mb-audio-label {
+  font-family:var(--sc); font-size:.58rem; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--gold); white-space:nowrap;
+}
+.mb-audio-sub {
+  font-family:var(--display); font-style:italic; font-size:.78rem;
+  color:var(--muted); white-space:nowrap;
+}
+.mb-audio-bar audio {
+  flex:1; min-width:200px; height:32px; outline:none;
+  filter:sepia(.4) saturate(1.4);
+}
+@media (max-width:639px) {
+  .mb-audio-sub { display:none; }
+}
+
 /* ── Stats panel ── */
 .mb-stats {
   background:var(--surface); border:1px solid var(--border);
@@ -1578,6 +1601,31 @@ async function loadGraetz() {
       graetzIdx.get(key)!.push(e);
     }
   } catch {}
+}
+
+// ── 929 chapter audio ───────────────────────────────────────────────────────
+// Map of "<Book> <chapter>" (page book names, e.g. "2 Samuel 20") → audio URL,
+// built from the daily 929 reels' ElevenLabs narrations.
+let audio929Map: Record<string, string> | null = null;
+async function load929Audio(): Promise<Record<string, string>> {
+  if (audio929Map) return audio929Map;
+  try {
+    const r = await fetch('/data/929-audio.json');
+    audio929Map = await r.json();
+  } catch { audio929Map = {}; }
+  return audio929Map!;
+}
+
+function build929AudioBar(book: string, ch: number): HTMLElement | null {
+  const src = audio929Map?.[`${book} ${ch}`];
+  if (!src) return null;
+  const bar = document.createElement('div');
+  bar.className = 'mb-audio-bar';
+  bar.innerHTML =
+    `<span class="mb-audio-label">🎧 Listen</span>` +
+    `<span class="mb-audio-sub">This chapter, narrated for the 929 Daily reel</span>` +
+    `<audio controls preload="none" src="${src}"></audio>`;
+  return bar;
 }
 
 function buildHaftarahIdx() {
@@ -3399,6 +3447,13 @@ async function renderRange(
     ctxText += ` · Ch ${sc}${sc !== ec ? '–'+ec : ''}`;
     ctx.innerHTML = ctxText;
     main.appendChild(ctx);
+
+    // 929 chapter audio — shown when a single chapter with a narration is loaded
+    if (sc === ec) {
+      await load929Audio();
+      const audioBar = build929AudioBar(book, sc);
+      if (audioBar) main.appendChild(audioBar);
+    }
 
     if (!xmlDoc) {
       main.innerHTML += `<div class="mb-placeholder">Could not load text for <em>${book}</em>.</div>`;
