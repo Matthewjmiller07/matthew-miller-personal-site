@@ -1,0 +1,91 @@
+---
+/**
+ * One-time invitation to The Workshop newsletter. Opens once per browser, after the
+ * visitor has spent 30 seconds or scrolled halfway down a page, and never again once
+ * shown, dismissed or subscribed (any signup form sets nl-subscribed). If storage is
+ * unavailable it stays closed rather than risk nagging on every page.
+ */
+import NewsletterSignup from './NewsletterSignup.astro';
+---
+
+<dialog id="nl-popup-dialog" class="nl-popup" aria-labelledby="nl-popup-h" transition:persist>
+  <button class="nl-popup-x" type="button" aria-label="Close" data-close>×</button>
+  <img src="/newsletter/2026-10-05/workshop.jpg" alt="" width="1536" height="1024" loading="lazy" />
+  <div class="nl-popup-body">
+    <p class="nl-popup-eyebrow">● The Workshop · weekly</p>
+    <h2 id="nl-popup-h">Everything I build, in one email a week.</h2>
+    <p>Torah tools, daf games and AI experiments, with the story behind each one. Sign up and this week’s issue arrives within the hour.</p>
+    <NewsletterSignup source="popup" tone="dark" />
+    <button class="nl-popup-later" type="button" data-close>No thanks</button>
+  </div>
+</dialog>
+
+<style>
+  .nl-popup {
+    width: min(26rem, calc(100vw - 2rem)); padding: 0; border: 1px solid rgba(201, 168, 106, 0.35); border-radius: 16px;
+    background: #1a1510; color: #f4eee1; overflow: hidden; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  }
+  .nl-popup::backdrop { background: rgba(10, 8, 5, 0.55); }
+  .nl-popup[open] { animation: nl-in 0.25s ease-out; }
+  @keyframes nl-in { from { opacity: 0; transform: translateY(12px); } }
+  .nl-popup img { display: block; width: 100%; height: 9rem; object-fit: cover; }
+  .nl-popup-body { padding: 1.1rem 1.25rem 1rem; }
+  .nl-popup-eyebrow { margin: 0 0 0.35rem; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: #c9a86a; }
+  .nl-popup h2 { margin: 0 0 0.5rem; font-size: 1.3rem; line-height: 1.25; color: #f4eee1; }
+  .nl-popup-body > p:not(.nl-popup-eyebrow) { margin: 0 0 0.9rem; font-size: 0.95rem; line-height: 1.5; color: #cfc6b4; }
+  .nl-popup-x {
+    position: absolute; top: 0.5rem; right: 0.5rem; width: 2rem; height: 2rem; border: 0; border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 1.3rem; line-height: 1; cursor: pointer;
+  }
+  .nl-popup-later { border: 0; background: none; color: #a89f8c; font-size: 0.85rem; padding: 0.25rem 0; cursor: pointer; text-decoration: underline; }
+  @media (prefers-reduced-motion: reduce) { .nl-popup[open] { animation: none; } }
+</style>
+
+<script>
+  const SEEN = 'nl-popup-seen';
+  const SKIP = /^\/(newsletter|desk|everything)(\/|$)/;
+  let timer: number | undefined;
+  let onScroll: (() => void) | undefined;
+
+  function store(key: string, value?: string) {
+    try {
+      if (value === undefined) return localStorage.getItem(key);
+      localStorage.setItem(key, value);
+    } catch {
+      return 'unavailable';
+    }
+    return null;
+  }
+
+  function disarm() {
+    clearTimeout(timer);
+    if (onScroll) window.removeEventListener('scroll', onScroll);
+  }
+
+  function open() {
+    disarm();
+    const dlg = document.getElementById('nl-popup-dialog') as HTMLDialogElement | null;
+    if (!dlg || dlg.open || store(SEEN) || store('nl-subscribed')) return;
+    store(SEEN, new Date().toISOString());
+    dlg.showModal();
+  }
+
+  function arm() {
+    disarm();
+    const dlg = document.getElementById('nl-popup-dialog') as HTMLDialogElement | null;
+    if (!dlg || SKIP.test(location.pathname) || store(SEEN) || store('nl-subscribed')) return;
+    if (!dlg.dataset.ready) {
+      dlg.dataset.ready = '1';
+      dlg.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => dlg.close()));
+      dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+    }
+    timer = window.setTimeout(open, 30000);
+    onScroll = () => {
+      const h = document.documentElement;
+      if (h.scrollHeight > h.clientHeight * 1.5 && h.scrollTop + h.clientHeight >= h.scrollHeight * 0.5) open();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  document.addEventListener('astro:page-load', arm);
+</script>
