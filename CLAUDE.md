@@ -3,8 +3,10 @@
 ## Newsletter desk
 
 Matthew sends a weekly newsletter, The Workshop. Everything that might go into it lives on the
-newsletter desk: Markdown files in `writing/desk/`, published unlinked at `/desk/` and as
-`/desk/all.md` for LLMs (see `writing/desk/README.md`).
+newsletter desk, published unlinked at `/desk/` and as `/desk/all.md` for LLMs. It merges
+Markdown files in `writing/desk/`, the issues and kits in `writing/newsletter/`, the
+`/everything` feed (`public/data/everything.json`), and notes added live through `/api/desk`
+(Supabase `desk_items`). See `writing/desk/README.md`.
 
 Keep the desk current as part of normal work, without being asked:
 
@@ -13,6 +15,8 @@ Keep the desk current as part of normal work, without being asked:
   its URL path, and one line on why it's interesting.
 - When Matthew shares newsletter material (ideas, drafts, quotes, links, LLM drafts), save it
   as a new file in `writing/desk/`, copying the frontmatter from `writing/desk/_TEMPLATE.md`.
+- When drafting an issue, start from `/desk/all.md` (or `loadDesk()` in `src/lib/desk.ts`):
+  everything since the last `sent` issue is the raw material.
 - After an issue is sent, rename `next-issue.md` to the issue's date with `status: sent` and
   start a fresh `next-issue.md` for the following week.
 - The desk is public to anyone with the URL: never put private or personal details there.

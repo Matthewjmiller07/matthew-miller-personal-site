@@ -1,11 +1,12 @@
 ---
 // The newsletter desk: unlinked, unindexed working page for The Workshop.
-// Add material by dropping a .md file into writing/desk/ (see writing/desk/_TEMPLATE.md).
-import { loadDesk, DESK_PREAMBLE } from '../../lib/desk';
+// Add material by pasting it into the form below (saved to Supabase via /api/desk) or by
+// dropping a .md file into writing/desk/ (see writing/desk/_TEMPLATE.md).
+import { loadDesk, DESK_PREAMBLE, DESK_STATUSES } from '../../lib/desk';
 
-export const prerender = true;
+export const prerender = false;
 
-const items = loadDesk();
+const items = await loadDesk();
 const statuses = [...new Set(items.map((i) => i.status))];
 const site = 'https://theothermatthewmiller.com';
 ---
@@ -46,6 +47,14 @@ const site = 'https://theothermatthewmiller.com';
       .item-body { border-top: 1px solid var(--line); padding: 12px 16px 16px; }
       .item-body pre { white-space: pre-wrap; word-wrap: break-word; font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0 0 10px; }
       a { color: var(--accent); }
+      .add { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 24px; }
+      .add h2 { font-size: 1rem; margin: 0 0 10px; }
+      .add form { display: grid; gap: 8px; }
+      .add input, .add textarea, .add select { font: inherit; font-size: .95rem; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+      .add textarea { min-height: 9rem; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; }
+      .add .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      @media (max-width: 520px) { .add .row { grid-template-columns: 1fr; } }
+      .add .msg { margin: 0; font-size: .9rem; color: var(--muted); min-height: 1.3em; }
     </style>
   </head>
   <body>
@@ -59,7 +68,28 @@ const site = 'https://theothermatthewmiller.com';
           <li>Everything in one file: <a href="/desk/all.md"><code>{site}/desk/all.md</code></a></li>
           <li>Structured: <a href="/desk/index.json"><code>{site}/desk/index.json</code></a></li>
           <li>One item: <code>{site}/desk/&lt;slug&gt;.md</code> (link under each item)</li>
+          <li>Add a note: <code>POST {site}/api/desk</code> with <code>Authorization: Bearer &lt;passcode&gt;</code> and JSON <code>{'{'}"title", "body", "status", "tags", "source"{'}'}</code> (ChatGPT custom GPTs: import <a href="/desk/openapi.json">/desk/openapi.json</a> as an Action)</li>
         </ul>
+      </section>
+
+      <section class="add" aria-labelledby="add-h">
+        <h2 id="add-h">Add to the desk</h2>
+        <form id="add-form">
+          <textarea name="body" required placeholder="Paste anything: an LLM draft, notes, links, a quote…"></textarea>
+          <input name="title" placeholder="Title (optional, defaults to the first line)" maxlength="200" />
+          <div class="row">
+            <select name="status" aria-label="Status">
+              {DESK_STATUSES.map((s) => <option value={s}>{s}</option>)}
+            </select>
+            <input name="source" placeholder="Where it's from (chatgpt, gemini…)" maxlength="64" />
+          </div>
+          <div class="row">
+            <input name="tags" placeholder="Tags, comma separated" />
+            <input name="password" type="password" placeholder="Desk passcode" autocomplete="current-password" required />
+          </div>
+          <button class="primary" type="submit">Add to desk</button>
+          <p class="msg" role="status" aria-live="polite"></p>
+        </form>
       </section>
 
       <div class="bar">
@@ -95,6 +125,33 @@ const site = 'https://theothermatthewmiller.com';
           });
         })
       );
+      const form = document.getElementById('add-form') as HTMLFormElement;
+      const pw = form.elements.namedItem('password') as HTMLInputElement;
+      try { pw.value = localStorage.getItem('desk-passcode') || ''; } catch {}
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = form.querySelector('.msg') as HTMLElement;
+        const btn = form.querySelector('button') as HTMLButtonElement;
+        const data = Object.fromEntries(new FormData(form)) as Record<string, string>;
+        btn.disabled = true;
+        msg.textContent = 'Saving…';
+        try {
+          const res = await fetch('/api/desk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.password}` },
+            body: JSON.stringify({ ...data, password: undefined, source: data.source || 'web' }),
+          });
+          const out = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(out.error || 'Couldn’t save that.');
+          try { localStorage.setItem('desk-passcode', data.password); } catch {}
+          msg.textContent = 'Added. Reloading…';
+          location.reload();
+        } catch (err) {
+          msg.textContent = (err as Error).message;
+          btn.disabled = false;
+        }
+      });
+
       const copy = document.getElementById('copy-all') as HTMLButtonElement;
       copy.addEventListener('click', async () => {
         const text = await (await fetch('/desk/all.md')).text();
