@@ -213,9 +213,38 @@ body:has(.mb-page) > footer { display:none!important; }
   font-family:var(--display); font-style:italic; font-size:.78rem;
   color:var(--muted); white-space:nowrap;
 }
-.mb-audio-bar audio {
-  flex:1; min-width:200px; height:32px; outline:none;
-  filter:sepia(.4) saturate(1.4);
+.mb-audio-player {
+  flex:1; min-width:200px; display:flex; align-items:center; gap:.7rem;
+}
+.mb-audio-play {
+  flex-shrink:0; width:2rem; height:2rem; border-radius:50%;
+  background:var(--gold); border:none; color:#0c0b09;
+  font-size:.75rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:background .12s; padding:0 0 0 .1rem;
+}
+.mb-audio-play:hover { background:#dbb870; }
+.mb-audio-play:disabled { opacity:.35; cursor:default; }
+.mb-audio-seek {
+  flex:1; appearance:none; -webkit-appearance:none; background:transparent;
+  height:1.2rem; cursor:pointer; min-width:0;
+}
+.mb-audio-seek::-webkit-slider-runnable-track {
+  height:3px; background:var(--faint); border-radius:2px;
+}
+.mb-audio-seek::-webkit-slider-thumb {
+  -webkit-appearance:none; width:12px; height:12px; border-radius:50%;
+  background:var(--gold); margin-top:-4.5px; border:none;
+}
+.mb-audio-seek::-moz-range-track {
+  height:3px; background:var(--faint); border-radius:2px;
+}
+.mb-audio-seek::-moz-range-thumb {
+  width:12px; height:12px; border-radius:50%;
+  background:var(--gold); border:none;
+}
+.mb-audio-time {
+  font-family:var(--mono); font-size:.62rem; color:var(--muted);
+  white-space:nowrap; flex-shrink:0; min-width:5.2rem; text-align:right;
 }
 @media (max-width:639px) {
   .mb-audio-sub { display:none; }
@@ -1616,6 +1645,13 @@ async function load929Audio(): Promise<Record<string, string>> {
   return audio929Map!;
 }
 
+function fmtAudioTime(s: number): string {
+  if (!isFinite(s) || s < 0) return '0:00';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
 function build929AudioBar(book: string, ch: number): HTMLElement | null {
   const src = audio929Map?.[`${book} ${ch}`];
   if (!src) return null;
@@ -1624,7 +1660,44 @@ function build929AudioBar(book: string, ch: number): HTMLElement | null {
   bar.innerHTML =
     `<span class="mb-audio-label">🎧 Listen</span>` +
     `<span class="mb-audio-sub">This chapter, narrated for the 929 Daily reel</span>` +
-    `<audio controls preload="none" src="${src}"></audio>`;
+    `<div class="mb-audio-player">` +
+      `<button class="mb-audio-play" aria-label="Play chapter audio" disabled>▶</button>` +
+      `<input type="range" class="mb-audio-seek" min="0" max="1000" value="0" step="1" aria-label="Seek" disabled>` +
+      `<span class="mb-audio-time">0:00 / 0:00</span>` +
+      `<audio preload="metadata" src="${src}"></audio>` +
+    `</div>`;
+  const audio = bar.querySelector('audio')!;
+  const playBtn = bar.querySelector('.mb-audio-play') as HTMLButtonElement;
+  const seek = bar.querySelector('.mb-audio-seek') as HTMLInputElement;
+  const timeEl = bar.querySelector('.mb-audio-time')!;
+
+  const paint = () => {
+    const d = audio.duration;
+    timeEl.textContent = `${fmtAudioTime(audio.currentTime)} / ${fmtAudioTime(d)}`;
+    if (isFinite(d) && d > 0) seek.value = String(Math.round(audio.currentTime / d * 1000));
+  };
+  audio.addEventListener('loadedmetadata', () => {
+    playBtn.disabled = false;
+    seek.disabled = false;
+    paint();
+  });
+  audio.addEventListener('timeupdate', paint);
+  audio.addEventListener('ended', () => { playBtn.innerHTML = '▶'; playBtn.setAttribute('aria-label', 'Play chapter audio'); });
+  playBtn.addEventListener('click', () => {
+    if (audio.paused) {
+      audio.play();
+      playBtn.innerHTML = '❚❚';
+      playBtn.setAttribute('aria-label', 'Pause chapter audio');
+    } else {
+      audio.pause();
+      playBtn.innerHTML = '▶';
+      playBtn.setAttribute('aria-label', 'Play chapter audio');
+    }
+  });
+  seek.addEventListener('input', () => {
+    const d = audio.duration;
+    if (isFinite(d) && d > 0) audio.currentTime = (Number(seek.value) / 1000) * d;
+  });
   return bar;
 }
 
