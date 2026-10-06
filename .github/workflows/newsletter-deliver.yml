@@ -1,0 +1,37 @@
+# Sends the latest published newsletter issue to every subscriber who hasn't had it yet,
+# so late signups still get this week's issue. Runs hourly from main, and right away when
+# writing/newsletter/issues.json changes on main (e.g. an issue is marked published).
+name: Newsletter — deliver
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  push:
+    branches:
+      - main
+    paths:
+      - 'writing/newsletter/issues.json'
+  workflow_dispatch:
+
+concurrency:
+  group: newsletter-deliver
+  cancel-in-progress: false
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            writing/newsletter
+            scripts/newsletter
+      - name: Deliver
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          NEWSLETTER_TOKEN: ${{ secrets.NEWSLETTER_TOKEN }}
+          # Public anon key (it already ships in the site's browser bundle); the RPCs also need NEWSLETTER_TOKEN.
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1a3ppb2p5bXdsdm1yemFwZ3lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwNjMxNzAsImV4cCI6MjA2OTYzOTE3MH0.I7oR9fcypn-BKb9AS4d2UlXrgvMbpTQtWySqxgAWGzo
+        run: python3 scripts/newsletter/deliver.py
