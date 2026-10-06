@@ -314,6 +314,22 @@ body:has(.mm-page[data-theme="parchment"]) { background:#f5efe0!important; }
 .mm-badge[data-open-tab]:hover { border-color:var(--gold); color:var(--gold); }
 .mm-badge.bavli { border-color:var(--border-hi); color:var(--gold); }
 .mm-badge.comm b { color:var(--text); font-weight:600; }
+.mm-share {
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.14em; text-transform:uppercase;
+  background:none; border:1px solid var(--border); color:var(--muted); padding:.05rem .35rem; cursor:pointer;
+}
+.mm-share:hover, .mm-share:focus-visible { color:var(--gold); border-color:var(--gold-dim); outline:none; }
+.mm-share.copied { color:var(--accent); border-color:var(--accent); }
+.mm-num .mm-share { margin-top:.35rem; font-size:.45rem; padding:.05rem .25rem; opacity:.45; }
+.mm-para:hover .mm-num .mm-share, .mm-num .mm-share:focus-visible { opacity:1; }
+@media (hover: none) { .mm-num .mm-share { opacity:.8; } }
+.mm-lib-ref-row { display:flex; align-items:baseline; gap:.4rem; justify-content:space-between; }
+@keyframes mmSpot {
+  0%, 70% { box-shadow:0 0 0 2px var(--gold), 0 0 18px rgba(201,162,87,.5); background:rgba(201,162,87,.16); }
+  100% { box-shadow:0 0 0 2px transparent; background:transparent; }
+}
+.mm-spot { animation:mmSpot 3.2s ease-out forwards; scroll-margin:4rem; }
+@media (prefers-reduced-motion: reduce) { .mm-spot { animation:none; box-shadow:0 0 0 2px var(--gold); } }
 .mm-perek-actions { display:flex; gap:.5rem; flex-wrap:wrap; margin:1.6rem 0 0; }
 
 /* Panel */
@@ -432,6 +448,8 @@ const state: any = {
   panelLinks: null as any[] | null,
   panelTab: 'Commentary',
   solo: '',
+  // One-shot target from a shared link: { m, src } — spotlighted once the mishnah's sources load.
+  spotlight: null as null | { m: number; src: string },
   today: null as null | { tr: Tractate; ch: number; from: number; to: number; ref: string },
   // learned: { "Berakhot.1": [1,2,3] }
   learned: store.get('learned', {}) as Record<string, number[]>,
@@ -809,7 +827,7 @@ function renderChapter() {
     const isToday = td && td.tr === t && td.ch === state.ch && m >= td.from && m <= td.to;
     const cls = ['mm-para', isLearned(t, state.ch, m) ? 'learned' : '', state.selected === m ? 'selected' : '', isToday ? 'today' : ''].join(' ');
     return `<div class="${cls}" data-p="${m}" id="m${m}">
-      <div class="mm-num"><span class="he">${gem(m, false)}</span><span class="ar">${m}</span><button class="mm-check" data-check="${m}" title="Mark learned (x)" aria-label="Mark mishnah ${m} learned">✓</button></div>
+      <div class="mm-num"><span class="he">${gem(m, false)}</span><span class="ar">${m}</span><button class="mm-check" data-check="${m}" title="Mark learned (x)" aria-label="Mark mishnah ${m} learned">✓</button>${shareBtn({ m }, 'this mishnah')}</div>
       ${isToday ? '<div class="mm-today-tag">Today’s Mishnah Yomit</div>' : ''}
       <div class="mm-he" lang="he" dir="rtl">${he}</div>
       ${p.en ? `<div class="mm-en">${sanitize(p.en)}</div>` : ''}
@@ -870,12 +888,12 @@ function panelGroupsHtml(links: any[]) {
   const rank = (name: string) => { const i = COMM_ORDER.findIndex((c) => name.startsWith(c)); return i < 0 ? 99 : i; };
   const sorted = [...groups.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]));
   return `<div class="mm-lib">${sorted.map(([name, items], gi) => `
-    <details${gi < 2 ? ' open' : ''}><summary>${esc(name)} <span class="n">${items.length}</span><span class="cat">${esc(items[0].collectiveTitle?.he || '')}</span></summary>
-      ${items.slice(0, 20).map((l) => {
+    <details${gi < 2 || items.some((l) => l.ref === state.focusSrc) ? ' open' : ''}><summary>${esc(name)} <span class="n">${items.length}</span><span class="cat">${esc(items[0].collectiveTitle?.he || '')}</span></summary>
+      ${items.filter((l, i) => i < 20 || l.ref === state.focusSrc).map((l) => {
         const he = flat(l.he).join(' ');
         const en = flat(l.text).join(' ');
-        return `<div class="mm-lib-item">
-          <a class="mm-lib-ref" href="${SEFARIA}/${encodeRef(l.ref)}" target="_blank" rel="noopener">${esc(l.ref)}</a>
+        return `<div class="mm-lib-item" data-ref="${esc(l.ref)}">
+          <div class="mm-lib-ref-row"><a class="mm-lib-ref" href="${SEFARIA}/${encodeRef(l.ref)}" target="_blank" rel="noopener">${esc(l.ref)}</a>${shareBtn({ m: state.selected, src: l.ref }, 'this source')}</div>
           ${he ? `<div class="mm-lib-he" lang="he" dir="rtl">${sanitize(he.length > 1400 ? he.slice(0, 1400) + '…' : he)}</div>` : ''}
           ${en ? `<div class="mm-lib-en">${sanitize(en.length > 1000 ? en.slice(0, 1000) + '…' : en)}</div>` : ''}
         </div>`;
@@ -910,6 +928,57 @@ function renderPanel() {
     ${links.length ? panelGroupsHtml(links) : '<div class="mm-empty">No linked sources on Sefaria for this mishnah.</div>'}`;
 }
 
+/* ───────────────────────── links & spotlight ───────────────────────── */
+// ?t=berakhot&p=1&m=2              a mishnah
+// ?t=…&p=…&m=…&src=<Sefaria ref>   one commentary or source on it, spotlighted in the panel
+// ?t=…&p=…&v=<sage>                the perek with one sage's Voice picked out
+function shareUrl(o: { m?: number | null; src?: string }) {
+  const q = new URLSearchParams({ t: slug(state.tr.name), p: String(state.ch) });
+  if (o.m) q.set('m', String(o.m));
+  if (o.src) q.set('src', o.src);
+  return `${location.origin}${location.pathname}?${q}`;
+}
+function shareBtn(o: { m?: number | null; src?: string }, what: string) {
+  return `<button class="mm-share" type="button" data-share="${esc(shareUrl(o))}" title="Copy a link to ${what}">Link</button>`;
+}
+document.addEventListener('click', async (e) => {
+  const btn = (e.target as HTMLElement).closest('.mm-share') as HTMLElement | null;
+  if (!btn) return;
+  e.preventDefault(); e.stopPropagation();
+  const url = btn.dataset.share || '';
+  try { await navigator.clipboard.writeText(url); }
+  catch { window.prompt('Copy this link:', url); return; }
+  btn.textContent = 'Copied'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Link'; btn.classList.remove('copied'); }, 1600);
+}, true);
+
+function spot(el: Element | null) {
+  if (!el) return;
+  el.classList.remove('mm-spot'); void (el as HTMLElement).offsetWidth; el.classList.add('mm-spot');
+}
+
+/** Land on what a shared link names, once the mishnah's sources are in. */
+function applySpotlight() {
+  const f = state.spotlight;
+  if (!f || f.m !== state.selected || !state.panelLinks) return;
+  state.spotlight = null;
+  const block = document.getElementById('m' + f.m);
+  block?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  spot(block);
+  if (f.src) {
+    const l = (state.panelLinks as any[]).find((x) => x.ref === f.src);
+    if (l) {
+      state.panelTab = tabOf(l);
+      state.focusSrc = l.ref;
+      renderPanel();
+      if (window.matchMedia('(max-width: 900px)').matches) page.dataset.panel = '1';
+      const el = $('mm-panel-body').querySelector(`.mm-lib-item[data-ref="${CSS.escape(l.ref)}"]`);
+      requestAnimationFrame(() => { el?.scrollIntoView({ block: 'center', behavior: 'smooth' }); spot(el); });
+    }
+  }
+  syncUrl();
+}
+
 async function selectMishnah(m: number | null, scroll = false) {
   state.selected = m;
   document.querySelectorAll('.mm-para').forEach((el) => el.classList.toggle('selected', Number((el as HTMLElement).dataset.p) === m));
@@ -924,10 +993,11 @@ async function selectMishnah(m: number | null, scroll = false) {
   if (state.tr !== t || state.ch !== ch || state.selected !== m) return;
   state.panelLinks = links;
   renderPanel();
+  applySpotlight();
 }
 
 async function openChapter(t: Tractate, ch: number, m: number | null = null) {
-  state.tr = t; state.ch = ch; state.selected = m; state.panelLinks = null; state.linkSummary = new Map();
+  state.tr = t; state.ch = ch; state.selected = m; state.panelLinks = null; state.linkSummary = new Map(); state.focusSrc = '';
   store.set('last', { t: t.name, ch });
   fillSelects();
   renderToc(($('mm-search') as HTMLInputElement).value);
@@ -940,6 +1010,7 @@ async function openChapter(t: Tractate, ch: number, m: number | null = null) {
     if (state.tr !== t || state.ch !== ch) return;
     state.paras = data.paras; state.enVersion = data.enVersion; state.heVersion = data.heVersion;
     renderChapter();
+    if (state.pendingVoice) { soloVoice(state.pendingVoice); state.pendingVoice = ''; }
     renderPanel();
     loadLinkSummary(t, ch);
     if (m) selectMishnah(m, true);
@@ -952,6 +1023,8 @@ function syncUrl() {
   const u = new URL(location.href);
   if (state.tr) { u.searchParams.set('t', slug(state.tr.name)); u.searchParams.set('p', String(state.ch)); } else { u.searchParams.delete('t'); u.searchParams.delete('p'); }
   if (state.selected) u.searchParams.set('m', String(state.selected)); else u.searchParams.delete('m');
+  if (!state.spotlight?.src) u.searchParams.delete('src');
+  if (state.solo) u.searchParams.set('v', state.solo); else u.searchParams.delete('v');
   history.replaceState(null, '', u);
 }
 
@@ -1063,6 +1136,7 @@ function soloVoice(key: string) {
   inner.querySelectorAll<HTMLElement>('.mm-sage').forEach((s) => s.classList.toggle('solo', s.dataset.sage === key));
   inner.querySelectorAll<HTMLElement>('.mm-voice').forEach((b) => b.classList.toggle('on', b.dataset.voice === key));
   inner.querySelectorAll<HTMLElement>('.mm-para').forEach((p) => p.classList.toggle('has-solo', !!key && !!p.querySelector(`.mm-sage.solo`)));
+  syncUrl();
 }
 
 document.addEventListener('keydown', (e) => {
@@ -1089,7 +1163,10 @@ document.addEventListener('keydown', (e) => {
   const t = bySlug(u.searchParams.get('t') || '');
   if (t) {
     const ch = Math.min(Math.max(1, Number(u.searchParams.get('p')) || 1), t.chapters.length);
-    openChapter(t, ch, Number(u.searchParams.get('m')) || null);
+    const m = Number(u.searchParams.get('m')) || null;
+    if (m) state.spotlight = { m, src: u.searchParams.get('src') || '' };
+    state.pendingVoice = u.searchParams.get('v') || '';
+    openChapter(t, ch, m);
   } else {
     renderWelcome();
   }
