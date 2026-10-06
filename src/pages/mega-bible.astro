@@ -262,6 +262,14 @@ body:has(.mb-page) > footer { display:none!important; }
 }
 .mb-audio-credit a { color:var(--gold-dim); text-decoration:underline; text-underline-offset:2px; }
 .mb-audio-credit a:hover { color:var(--gold); }
+.mb-audio-bar.mb-flash { animation:mbFlash 1.6s ease; }
+.mb-audio-link {
+  font-family:var(--sc); font-size:.44rem; letter-spacing:.14em; text-transform:uppercase;
+  background:none; border:1px solid var(--border); color:var(--faint);
+  padding:.15rem .45rem; cursor:pointer; white-space:nowrap;
+  transition:color .12s, border-color .12s;
+}
+.mb-audio-link:hover { color:var(--gold); border-color:var(--gold-dim); }
 .mb-audio-player {
   flex:1; min-width:200px; display:flex; align-items:center; gap:.7rem;
 }
@@ -1780,6 +1788,8 @@ async function load929Audio(): Promise<Record<string, string>> {
 // Map of "<Book> <chapter>" → full dramatic chapter reading URL,
 // built from the open-source multi-voice TTS pipeline.
 let audioFullMap: Record<string, string> | null = null;
+// One-shot deep link: ?audio=full|summary lands on the named audio bar.
+let pendingAudio: string | null = null;
 async function loadFullAudio(): Promise<Record<string, string>> {
   if (audioFullMap) return audioFullMap;
   try {
@@ -1854,6 +1864,7 @@ function buildFullAudioBar(book: string, ch: number): HTMLElement | null {
     `<span class="mb-audio-label">🎭 Full chapter</span>` +
     `<span class="mb-audio-sub">The whole chapter, dramatized with a full voice cast</span>` +
     `<span class="mb-audio-credit">Text: <a href="https://jps.org/books/the-jps-tanakh-gender-sensitive-edition/" target="_blank" rel="noopener">THE JPS TANAKH: Gender-Sensitive Edition</a>, CC-BY-NC</span>` +
+    `<button class="mb-audio-link" type="button" title="Copy a link to this audio">Copy link</button>` +
     `<div class="mb-audio-player">` +
       `<button class="mb-audio-play" aria-label="Play full chapter audio" disabled>▶</button>` +
       `<input type="range" class="mb-audio-seek" min="0" max="1000" value="0" step="1" aria-label="Seek" disabled>` +
@@ -1864,6 +1875,19 @@ function buildFullAudioBar(book: string, ch: number): HTMLElement | null {
   const playBtn = bar.querySelector('.mb-audio-play') as HTMLButtonElement;
   const seek = bar.querySelector('.mb-audio-seek') as HTMLInputElement;
   const timeEl = bar.querySelector('.mb-audio-time')!;
+  const linkBtn = bar.querySelector('.mb-audio-link') as HTMLButtonElement;
+  linkBtn.addEventListener('click', async () => {
+    const url = `${location.origin}${location.pathname}?book=${encodeURIComponent(book)}&chapter=${ch}&audio=full`;
+    const orig = linkBtn.textContent;
+    try {
+      await navigator.clipboard.writeText(url);
+      linkBtn.textContent = 'Copied';
+    } catch {
+      window.prompt('Copy this link:', url);
+      return;
+    }
+    setTimeout(() => { linkBtn.textContent = orig; }, 1600);
+  });
 
   const paint = () => {
     const d = audio.duration;
@@ -2101,6 +2125,7 @@ function restoreFromURL() {
   const p = new URLSearchParams(location.search);
   if (!p.toString()) return;
 
+  pendingAudio = p.get('audio');
   const mode = p.get('mode') || 'chapter';
   navMode = mode;
   document.querySelectorAll('.mb-mode-btn').forEach(b => {
@@ -3746,6 +3771,17 @@ async function renderRange(
       await loadFullAudio();
       const fullBar = buildFullAudioBar(book, sc);
       if (fullBar) main.appendChild(fullBar);
+      // ?audio=full|summary deep link: land on the named audio bar and flash it.
+      if (pendingAudio) {
+        const target = pendingAudio === 'full' ? fullBar
+          : pendingAudio === 'summary' ? audioBar : null;
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.add('mb-flash');
+          setTimeout(() => target.classList.remove('mb-flash'), 1700);
+        }
+        pendingAudio = null;
+      }
     }
 
     const rangeSheets = sheetsFor(book, sc, sv, ec, ev);
