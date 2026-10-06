@@ -169,6 +169,43 @@ body:has(.mb-page) > footer { display:none!important; }
   border-radius:1px;
 }
 
+/* Parasha sheet card + hapax marks */
+.mb-sheet {
+  display:grid; grid-template-columns:auto 1fr auto; gap:.4rem 1.2rem; align-items:center;
+  border:1px solid var(--border-hi); background:linear-gradient(90deg, rgba(201,162,87,.08), transparent 70%);
+  padding:.8rem 1rem; margin:0 0 1.2rem;
+}
+.mb-sheet-he { font-family:var(--heb); font-size:2rem; color:var(--gold); line-height:1; direction:rtl; }
+.mb-sheet-kicker { font-family:var(--sc); font-size:.55rem; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); }
+.mb-sheet-title { font-family:var(--display); font-size:1.25rem; color:var(--text); }
+.mb-sheet-sub { font-family:var(--display); font-size:.88rem; color:var(--muted); font-style:italic; }
+.mb-sheet-acts { display:flex; gap:.4rem; flex-wrap:wrap; justify-content:flex-end; }
+.mb-sheet-acts a {
+  font-family:var(--sc); font-size:.58rem; letter-spacing:.18em; text-transform:uppercase; text-decoration:none;
+  border:1px solid var(--gold); color:var(--gold); padding:.35rem .8rem; white-space:nowrap;
+}
+.mb-sheet-acts a.primary { background:var(--gold); color:#0c0b09; font-weight:600; }
+.mb-sheet-stats { grid-column:1 / -1; display:flex; gap:1.4rem; flex-wrap:wrap; border-top:1px solid var(--border); padding-top:.5rem; }
+.mb-sheet-stats b { font-family:var(--display); font-weight:400; font-size:1.2rem; color:var(--gold); margin-right:.3rem; }
+.mb-sheet-stats span { font-family:var(--sc); font-size:.55rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.mb-sheet-haps { grid-column:1 / -1; display:flex; gap:.3rem; flex-wrap:wrap; align-items:center; }
+.mb-sheet-haps .lbl { font-family:var(--sc); font-size:.55rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-right:.2rem; }
+.mb-sheet-hap {
+  background:none; border:1px dashed var(--border-hi); color:var(--text); cursor:pointer; padding:.1rem .45rem;
+  font-family:var(--heb); font-size:.95rem; direction:rtl;
+}
+.mb-sheet-hap small { font-family:var(--mono); font-size:.55rem; color:var(--gold-dim); margin-right:.3rem; direction:ltr; display:inline-block; }
+.mb-sheet-hap:hover { border-color:var(--gold); color:var(--gold); }
+.w.w-hapax { outline:1px dashed var(--gold); outline-offset:2px; border-radius:2px; }
+.mb-page.no-sheets .mb-sheet { display:none; }
+.mb-page.no-sheets .w.w-hapax { outline:none; }
+.verse-block.mb-flash { animation:mbFlash 1.6s ease; }
+@keyframes mbFlash { 0%,40% { background:rgba(201,162,87,.18); } 100% { background:transparent; } }
+@media (max-width: 760px) {
+  .mb-sheet { grid-template-columns:1fr; }
+  .mb-sheet-acts { justify-content:flex-start; }
+}
+
 /* Recently Added */
 .sb-recent-item {
   font-family:var(--display); font-size:.72rem; color:var(--muted);
@@ -1143,6 +1180,10 @@ body:has(.mb-page) > footer { display:none!important; }
           <label for="layerBooks" title="Books and papers on a verse, with page(s) and notes">Books &amp; Papers</label>
         </div>
         <div class="sb-row">
+          <input type="checkbox" id="layerSheets" checked>
+          <label for="layerSheets" title="The parasha sheet for this passage, and its words that occur nowhere else in Tanakh">Parasha Sheets</label>
+        </div>
+        <div class="sb-row">
           <input type="checkbox" id="layerHaftarah" checked>
           <label for="layerHaftarah">Haftarah</label>
         </div>
@@ -1198,6 +1239,10 @@ body:has(.mb-page) > footer { display:none!important; }
 
       <div class="sb-section">
         <div class="sb-title">Recently Added</div>
+        <div class="sb-recent-item">
+          <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Oct 6</span></div>
+          <span class="sb-recent-text">New "Parasha Sheets" layer: open a chapter or parasha that has a sheet (Bereshit, Noach, Lech Lecha, Ha'azinu, V'Zot HaBerachah) to get its numbers, links to the sheet and PDF, and its once-in-Tanakh words ringed in the text</span>
+        </div>
         <div class="sb-recent-item">
           <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Oct 3</span></div>
           <span class="sb-recent-text">New "Books &amp; Papers" layer: pin a book or paper — with page(s) and notes — to any verse via the "+ Book/Paper" button</span>
@@ -1321,6 +1366,81 @@ body:has(.mb-page) > footer { display:none!important; }
 </div>
 
 <script>
+// ── Parasha sheets ─────────────────────────────────────────────────────────
+// Every src/data/parasha-sheets/<slug>.json is a sheet; a new one shows up
+// here automatically. Its "ref" ("Genesis 12:1–17:27") says which verses it covers.
+const SHEET_FILES = import.meta.glob('../data/parasha-sheets/*.json', { eager: true, import: 'default' }) as Record<string, any>;
+type SheetRange = { book: string; sc: number; sv: number; ec: number; ev: number };
+const SHEETS = Object.values(SHEET_FILES).map((sh: any) => {
+  const m = String(sh.ref || '').match(/^(.+?) (\d+):(\d+)[–-](?:(\d+):)?(\d+)$/);
+  if (!m) return null;
+  const range: SheetRange = { book: m[1], sc: +m[2], sv: +m[3], ec: m[4] ? +m[4] : +m[2], ev: +m[5] };
+  return { ...sh, range };
+}).filter(Boolean) as any[];
+const cv = (c: number, v: number) => c * 1000 + v;
+
+/** The sheets whose verses overlap the passage being rendered. */
+function sheetsFor(book: string, sc: number, sv: number, ec: number, ev: number) {
+  const a = cv(sc, sv), b = cv(ec, Math.min(ev, 999));
+  return SHEETS.filter((sh) => sh.range.book === book && cv(sh.range.sc, sh.range.sv) <= b && cv(sh.range.ec, sh.range.ev) >= a);
+}
+
+function buildSheetCard(sh: any): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'mb-sheet';
+  const ch0 = sh.range.sc;
+  const haps = (sh.hapax || []).map((h: any) => {
+    const ref = `${h.ch ?? ch0}:${h.v}`;
+    return `<button class="mb-sheet-hap" type="button" data-ref="${escHtml(`${sh.range.book} ${ref}`)}" title="${escHtml(h.gloss || '')}"><small>${ref}</small>${escHtml(h.he)}</button>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="mb-sheet-he">${escHtml(sh.he)}</div>
+    <div>
+      <div class="mb-sheet-kicker">Parasha sheet · ${escHtml(sh.ref)}</div>
+      <div class="mb-sheet-title">${escHtml(sh.en)}</div>
+      <div class="mb-sheet-sub">${escHtml(String(sh.subtitle || '').replace(/^[^—]*—\s*/, ''))}</div>
+    </div>
+    <div class="mb-sheet-acts">
+      <a class="primary" href="/parasha-sheet/${escHtml(sh.slug)}">Read the sheet</a>
+      ${sh.pdf ? `<a href="${escHtml(sh.pdf)}" download>PDF</a>` : ''}
+    </div>
+    <div class="mb-sheet-stats">
+      <div><b>${sh.stats.verses}</b><span>verses</span></div>
+      <div><b>${sh.stats.words}</b><span>words</span></div>
+      <div><b>${sh.stats.unique_lemmas}</b><span>distinct roots</span></div>
+      <div><b>${(sh.hapax || []).length}</b><span>words found nowhere else in Tanakh</span></div>
+      ${(sh.entries || []).length ? `<div><b>${sh.entries.length}</b><span>Biblical → Modern Hebrew notes</span></div>` : ''}
+    </div>
+    ${haps ? `<div class="mb-sheet-haps"><span class="lbl">Once in Tanakh</span>${haps}</div>` : ''}`;
+  el.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest('.mb-sheet-hap') as HTMLElement | null;
+    if (!b) return;
+    const block = main.querySelector(`.verse-block[data-verse-ref="${CSS.escape(b.dataset.ref || '')}"]`) as HTMLElement | null;
+    if (!block) return;
+    block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    block.classList.remove('mb-flash'); void block.offsetWidth; block.classList.add('mb-flash');
+  });
+  return el;
+}
+
+/** Ring each of a sheet's once-in-Tanakh words where it stands in the verse. */
+function markSheetHapax(sheets: any[]) {
+  for (const sh of sheets) {
+    for (const h of sh.hapax || []) {
+      const block = main.querySelector(`.verse-block[data-verse-ref="${CSS.escape(`${sh.range.book} ${h.ch ?? sh.range.sc}:${h.v}`)}"]`);
+      if (!block) continue;
+      const strong = String(h.strong || '').replace(/\D/g, '');
+      const target = normalizeConsonants(h.he).split(' ');
+      block.querySelectorAll<HTMLElement>('.w').forEach((w) => {
+        const hit = strong ? w.dataset.lemma === strong : target.includes(normalizeConsonants(w.dataset.word || ''));
+        if (!hit) return;
+        w.classList.add('w-hapax');
+        w.title = `Occurs nowhere else in Tanakh${h.gloss ? ` — ${h.gloss}` : ''} (${sh.en} parasha sheet)`;
+      });
+    }
+  }
+}
+
 // ── Constants ──────────────────────────────────────────────────────────────
 const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -2298,6 +2418,7 @@ setupLayerToggle('layerHaftarah', 'no-haftarah');
 setupLayerToggle('layerGraetz',   'no-graetz');
 setupLayerToggle('layerModern',   'no-modern');
 setupLayerToggle('layerBooks',    'no-books');
+setupLayerToggle('layerSheets',   'no-sheets');
 setupLayerToggle('posNoun',   'no-pos-noun');
 setupLayerToggle('posVerb',   'no-pos-verb');
 setupLayerToggle('posProper', 'no-pos-proper');
@@ -3528,6 +3649,9 @@ async function renderRange(
       if (audioBar) main.appendChild(audioBar);
     }
 
+    const rangeSheets = sheetsFor(book, sc, sv, ec, ev);
+    if (!appendMode) rangeSheets.forEach((sh) => main.appendChild(buildSheetCard(sh)));
+
     if (!xmlDoc) {
       main.innerHTML += `<div class="mb-placeholder">Could not load text for <em>${book}</em>.</div>`;
       return;
@@ -3616,6 +3740,7 @@ async function renderRange(
     // Build stats panel then append verses (stats only in non-append mode)
     if (!appendMode) main.appendChild(buildStatsPanel(stats, devices.length));
     verseBlocks.forEach(b => main.appendChild(b));
+    markSheetHapax(rangeSheets);
 
     // If a word is actively highlighted (e.g. an appendMode continuation of
     // the same read), the newly appended verses may add fresh matches —
