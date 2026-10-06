@@ -17,7 +17,8 @@ export default defineConfig({
         !page.includes('/aaron-33-film') &&
         !page.includes('/family') &&
         !page.includes('/parasha-books') &&
-        !page.includes('/dweck-sukkot-picks'),
+        !page.includes('/dweck-sukkot-picks') &&
+        !page.includes('/desk'),
     })
   ],
   vite: {
