@@ -2,11 +2,11 @@
 import type { APIRoute } from 'astro';
 import { loadDesk, DESK_PREAMBLE } from '../../lib/desk';
 
-export const prerender = true;
+export const prerender = false;
 
-export const GET: APIRoute = () => {
-  const items = loadDesk().map((i) => ({ ...i, url: `/desk/${i.slug}.md` }));
+export const GET: APIRoute = async () => {
+  const items = (await loadDesk()).map((i) => ({ ...i, url: `/desk/${i.slug}.md` }));
   return new Response(JSON.stringify({ about: DESK_PREAMBLE, count: items.length, items }, null, 2), {
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'X-Robots-Tag': 'noindex' },
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'X-Robots-Tag': 'noindex', 'Cache-Control': 'public, max-age=60', 'Access-Control-Allow-Origin': '*' },
   });
 };

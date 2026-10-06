@@ -1,0 +1,50 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Workshop newsletter desk",
+    "version": "1.0.0",
+    "description": "Read and add to Matthew Miller's newsletter desk for The Workshop. Read everything before drafting an issue; add notes, drafts and ideas when asked to save something to the desk."
+  },
+  "servers": [{ "url": "https://theothermatthewmiller.com" }],
+  "paths": {
+    "/desk/all.md": {
+      "get": {
+        "operationId": "readDesk",
+        "summary": "Everything on the desk as one Markdown document, newest first",
+        "responses": { "200": { "description": "Markdown", "content": { "text/markdown": { "schema": { "type": "string" } } } } }
+      }
+    },
+    "/api/desk": {
+      "post": {
+        "operationId": "addToDesk",
+        "summary": "Add a note, draft or idea to the desk",
+        "security": [{ "deskPasscode": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["body"],
+                "properties": {
+                  "title": { "type": "string", "description": "Short name for the note" },
+                  "body": { "type": "string", "description": "The content, in Markdown" },
+                  "status": { "type": "string", "enum": ["idea", "draft", "ready", "kit", "sent"], "default": "idea" },
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "source": { "type": "string", "description": "Which assistant or tool added it, e.g. chatgpt" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Saved", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" }, "slug": { "type": "string" }, "url": { "type": "string" } } } } } },
+          "401": { "description": "Wrong passcode" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "deskPasscode": { "type": "http", "scheme": "bearer" } }
+  }
+}
