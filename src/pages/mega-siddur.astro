@@ -215,6 +215,22 @@ body:has(.ms-page[data-theme="parchment"]) { background:#f5efe0!important; }
 
 .ms-scrim { display:none; }
 
+/* Share-this-commentary link, and the spotlight a shared link lands on (same as the Mega Bible's). */
+.ms-share {
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.14em; text-transform:uppercase;
+  background:none; border:1px solid var(--border); color:var(--muted); padding:.05rem .35rem; cursor:pointer;
+  margin-left:auto;
+}
+.ms-share:hover, .ms-share:focus-visible { color:var(--gold); border-color:var(--gold-dim); outline:none; }
+.ms-share.copied { color:var(--accent); border-color:var(--accent); }
+.ms-lib-ref-row { display:flex; align-items:baseline; gap:.4rem; }
+@keyframes msSpot {
+  0%, 70% { box-shadow:0 0 0 2px var(--gold), 0 0 18px rgba(201,162,87,.5); background:rgba(201,162,87,.16); }
+  100% { box-shadow:0 0 0 2px transparent; background:transparent; }
+}
+.ms-spot { animation:msSpot 3.2s ease-out forwards; scroll-margin:4rem; }
+@media (prefers-reduced-motion: reduce) { .ms-spot { animation:none; box-shadow:0 0 0 2px var(--gold); } }
+
 /* ── MOBILE ── */
 @media (max-width: 1100px) {
   .ms-page { --panel:340px; --sidebar:230px; }
@@ -897,6 +913,7 @@ async function openSection(i: number, para: number | null = null, push = true) {
   state.links = links.filter((l: any) => !String(l.ref || '').startsWith(BOOKS[state.nusach]));
   renderMarks();
   renderPanel();
+  applySpotlight();
   // Warm the next section so "Next" is instant.
   const nxt = state.sections[i + 1];
   if (nxt) fetchSection(nxt.ref).catch(() => {});
@@ -951,6 +968,87 @@ function renderMarks() {
   });
 }
 
+/* ───────────────────────── links & spotlight ───────────────────────── */
+// Every note and library source can be linked to. The link reopens this prayer at
+// the paragraph and spotlights that one item in the panel:
+//   ?n=Ashkenaz&s=<section>&p=<para>&note=<id>   (a note)
+//   ?n=…&s=…&p=…&src=<Sefaria ref>               (a library source)
+// /mega-siddur?note=<id> on its own also works: it finds the note's prayer.
+function shareUrl(o: { p?: number | null; note?: number; src?: string }) {
+  const sec = state.sections[state.current];
+  const q = new URLSearchParams({ n: state.nusach });
+  if (sec) q.set('s', sec.path);
+  if (o.p) q.set('p', String(o.p));
+  if (o.note) q.set('note', String(o.note));
+  if (o.src) q.set('src', o.src);
+  return `${location.origin}${location.pathname}?${q}`;
+}
+function shareBtn(o: { p?: number | null; note?: number; src?: string }, what: string) {
+  return `<button class="ms-share" type="button" data-share="${esc(shareUrl(o))}" title="Copy a link to ${what}">Link</button>`;
+}
+document.addEventListener('click', async (e) => {
+  const btn = (e.target as HTMLElement).closest('.ms-share') as HTMLElement | null;
+  if (!btn) return;
+  e.preventDefault(); e.stopPropagation();
+  const url = btn.dataset.share || '';
+  try { await navigator.clipboard.writeText(url); }
+  catch { window.prompt('Copy this link:', url); return; }
+  btn.textContent = 'Copied'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Link'; btn.classList.remove('copied'); }, 1600);
+});
+
+/** Land on what a shared link names, once, after the section's notes and sources have loaded. */
+function applySpotlight() {
+  const f = state.spotlight;
+  if (!f) return;
+  state.spotlight = null;
+  const sec: Section = state.sections[state.current];
+  let para: number | null = state.selected;
+  let sel = '';
+  if (f.note) {
+    const n = state.notes.find((x: any) => x.id === f.note);
+    if (!n) { syncUrl(); return; }
+    if (n.ref === sec.ref && n.segment) para = n.segment;
+    sel = `.ms-note[data-id="${n.id}"]`;
+  } else if (f.src) {
+    const l = state.links.find((x: any) => x.ref === f.src);
+    if (!l) { syncUrl(); return; }
+    para = linkPara(l, sec.ref) || null;
+    sel = `.ms-lib-item[data-ref="${CSS.escape(l.ref)}"]`;
+  }
+  if (para !== state.selected) selectPara(para); else syncUrl();
+  if (window.matchMedia('(max-width: 900px)').matches) page.dataset.panel = '1';
+  const el = $('ms-panel-body').querySelector(sel) as HTMLElement | null;
+  if (!el) return;
+  for (let d = el.closest('details'); d; d = d.parentElement?.closest('details') || null) (d as HTMLDetailsElement).open = true;
+  // A note kept for a prayer wherever it appears has no paragraph of its own;
+  // light up the one that contains its anchor words instead.
+  let paraEl = document.querySelector(`.ms-para[data-p="${para}"]`) as HTMLElement | null;
+  const note = f.note ? state.notes.find((x: any) => x.id === f.note) : null;
+  if (!para && note?.anchor_text) {
+    const bare = (t: string) => t.replace(/[\u0591-\u05C7]/g, '').replace(/\s+/g, ' ').trim();
+    const want = bare(note.anchor_text);
+    paraEl = [...document.querySelectorAll<HTMLElement>('.ms-para')].find((x) => bare(x.querySelector('.ms-he')?.textContent || '').includes(want)) || null;
+  }
+  requestAnimationFrame(() => {
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    paraEl?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    [el, paraEl].forEach((x) => { if (!x) return; x.classList.remove('ms-spot'); void x.offsetWidth; x.classList.add('ms-spot'); });
+  });
+}
+
+/** A bare ?note=<id>: find the nusach and prayer it belongs to. */
+async function resolveNoteLink(id: number): Promise<{ nusach: string; ref?: string; names?: string[]; segment?: number } | null> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  const [n] = await sb(`select=id,ref,segment,prayer_names&id=eq.${id}`).catch(() => []);
+  if (!n) return null;
+  if (n.ref) {
+    const nusach = Object.keys(BOOKS).find((k) => String(n.ref).startsWith(BOOKS[k] + ', '));
+    return nusach ? { nusach, ref: n.ref, segment: n.segment || undefined } : null;
+  }
+  return { nusach: state.nusach, names: (n.prayer_names || []).map((x: string) => x.toLowerCase()) };
+}
+
 /* ───────────────────────── commentary panel ───────────────────────── */
 const KIND_LABEL: Record<string, string> = {
   commentary: 'Commentary', halacha: 'Halacha', history: 'History', kavanah: 'Kavanah',
@@ -961,7 +1059,7 @@ function noteHtml(n: any) {
   const src = [n.author, n.source, n.source_pages].filter(Boolean).map(esc).join(', ');
   const scope = n.segment ? `¶${n.segment}` : n.ref ? 'section' : `every “${esc((n.prayer_names || [])[0])}”`;
   return `<div class="ms-note${n.published === false ? ' draft' : ''}" data-id="${n.id}">
-    <div class="ms-note-meta"><span class="ms-kind">${esc(KIND_LABEL[n.kind] || n.kind)}</span><span>${scope}</span>${n.published === false ? '<span>draft</span>' : ''}</div>
+    <div class="ms-note-meta"><span class="ms-kind">${esc(KIND_LABEL[n.kind] || n.kind)}</span><span>${scope}</span>${n.published === false ? '<span>draft</span>' : ''}${shareBtn({ p: n.ref === state.sections[state.current]?.ref ? n.segment : state.selected, note: n.id }, 'this commentary')}</div>
     ${n.title ? `<h4 dir="auto">${esc(n.title)}</h4>` : ''}
     ${n.anchor_text ? `<div class="ms-anchor">${esc(n.anchor_text)}</div>` : ''}
     <div class="ms-note-body">${md(n.body || '')}</div>
@@ -989,8 +1087,8 @@ function libHtml(links: any[]) {
       ${items.slice(0, 12).map((l) => {
         const he = flat(l.he).join(' ');
         const en = flat(l.text).join(' ');
-        return `<div class="ms-lib-item">
-          <a class="ms-lib-ref" href="${SEFARIA}/${encodeRef(l.ref)}" target="_blank" rel="noopener">${esc(l.ref)}</a>
+        return `<div class="ms-lib-item" data-ref="${esc(l.ref)}">
+          <div class="ms-lib-ref-row"><a class="ms-lib-ref" href="${SEFARIA}/${encodeRef(l.ref)}" target="_blank" rel="noopener">${esc(l.ref)}</a>${shareBtn({ p: linkPara(l, state.sections[state.current]?.ref || '') || null, src: l.ref }, 'this source')}</div>
           ${he ? `<div class="ms-lib-he" lang="he">${sanitize(he.length > 900 ? he.slice(0, 900) + '…' : he)}</div>` : ''}
           ${en ? `<div class="ms-lib-en">${sanitize(en.length > 700 ? en.slice(0, 700) + '…' : en)}</div>` : ''}
         </div>`;
@@ -1160,6 +1258,7 @@ function syncUrl() {
   const sec = state.sections[state.current];
   if (sec) u.searchParams.set('s', sec.path); else u.searchParams.delete('s');
   if (state.selected) u.searchParams.set('p', String(state.selected)); else u.searchParams.delete('p');
+  if (!state.spotlight) { u.searchParams.delete('note'); u.searchParams.delete('src'); }
   history.replaceState(null, '', u);
   if (sec) store.set('last:' + state.nusach, sec.path);
 }
@@ -1249,7 +1348,25 @@ async function startNusach(path: string | null, para: number | null) {
   const n = u.searchParams.get('n');
   if (n && BOOKS[n]) state.nusach = n;
   const noteIndex = loadNoteIndex();
-  await startNusach(u.searchParams.get('s'), Number(u.searchParams.get('p')) || null);
+  const note = Number(u.searchParams.get('note')) || 0;
+  const src = u.searchParams.get('src') || '';
+  if (note || src) state.spotlight = { note, src };
+  let s = u.searchParams.get('s');
+  let p = Number(u.searchParams.get('p')) || null;
+  if (note && !s) {
+    // Short form: /mega-siddur?note=<id> — find where the note lives.
+    const where = await resolveNoteLink(note);
+    if (where) {
+      state.nusach = where.nusach;
+      await loadToc(state.nusach);
+      const hit = where.ref
+        ? state.sections.find((x: Section) => x.ref === where.ref)
+        : state.sections.find((x: Section) => where.names!.includes(x.leaf.toLowerCase()) || where.names!.includes(x.he.split(' > ').pop()!));
+      if (hit) { s = hit.path; p = where.segment || null; }
+    }
+  }
+  await startNusach(s, p);
+  if (state.current < 0) state.spotlight = null;
   await noteIndex;
   renderToc(($('ms-search') as HTMLInputElement).value);
   if (state.current < 0) renderPanel();
