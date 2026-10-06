@@ -1,0 +1,187 @@
+---
+// /everything — the unlinked dump. Every artifact the workshop produces lands
+// here, newest first: readers, reels, audio, quote cards, transcripts,
+// newsletter issues. No nav links, noindex, excluded from the sitemap.
+// The machine-readable feed lives at /data/everything.json.
+import Layout from '../layouts/Layout.astro';
+import feed from '../../public/data/everything.json';
+
+const types = feed.types as Record<string, string>;
+const entries = feed.entries as any[];
+
+const badge: Record<string, string> = {
+  'daily-reader': '📖',
+  'daf-insight': '📜',
+  'friday-roundup': '📰',
+  'reel': '🎬',
+  'full-audio': '🎧',
+  'quote-cards': '💬',
+  'transcripts': '🗂️',
+  'newsletter': '✉️',
+  'note': '📌',
+};
+
+const fmt = (d: string) =>
+  new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+const he = (s: string) => s && /[\u0590-\u05FF]/.test(s);
+
+function rows(e: any): Array<[string, string]> {
+  const d = e.details || {};
+  const out: Array<[string, string]> = [];
+  const push = (k: string, v: any) => { if (v && !(Array.isArray(v) && !v.length)) out.push([k, Array.isArray(v) ? v.join(' · ') : String(v)]); };
+  push('Daf', d.daf); push('Parsha', d.parsha); push('Aliyah', d.aliyah);
+  push('929', d.t929 || (d.ref && d['929_chapter'] ? `${d.ref} (ch. ${d['929_chapter']})` : d.ref));
+  push('Mishnah', d.mishnah); push('Rambam', d.rambam);
+  push('Word studies', Array.isArray(d.words) ? d.words : undefined); push('gov.il', d.gov); push('NLI', d.nli);
+  push('Minutes', d.minutes);
+  if (typeof d.words === 'number') push('Words', d.words);
+  push('Engine', d.engine); push('Account', d.account); push('Sections', d.sections);
+  if (d.note) push('Note', d.note);
+  return out;
+}
+---
+
+<Layout title="Everything" description="The unlinked dump: every artifact produced in Matthew Miller's workshop, newest first. Machine-readable feed at /data/everything.json.">
+  <meta name="robots" content="noindex, nofollow" slot="head" />
+  <main class="ev-page">
+    <header class="hero">
+      <p class="eyebrow">The dump · unlinked · noindex</p>
+      <h1>Everything, in one place.</h1>
+      <p class="lede">
+        Every artifact the workshop produces lands here, newest first — readers, reels,
+        full-chapter audio, quote cards, transcripts, newsletter issues.
+        Nothing on the site links here. If you're a machine writing the newsletter:
+        start with the JSON feed below.
+      </p>
+    </header>
+
+    <section class="machines" aria-label="Machine-readable feed">
+      <div class="mach-head">
+        <h2>For the machines</h2>
+        <span class="live">updated {feed.updated?.slice(0, 10)}</span>
+      </div>
+      <p>
+        One URL, the whole workshop, newest first. Each entry carries a date, type,
+        title, a newsletter-ready summary, a public URL where one exists, and a
+        <code>details</code> object with the structured facts (daf, chapters, quotes, word lists).
+      </p>
+      <div class="feedline">
+        <code id="feed-url">https://theothermatthewmiller.com/data/everything.json</code>
+        <button id="copy-feed" type="button">Copy</button>
+      </div>
+    </section>
+
+    <nav class="filters" aria-label="Filter by type">
+      <button class="chip on" data-f="all" type="button">All</button>
+      {Object.entries(types).map(([k, label]) => (
+        <button class="chip" data-f={k} type="button">{badge[k] ?? '•'} {label.split(' ')[0] === 'Two-page' ? 'Daf Insight' : label.split(' (')[0].split(' —')[0]}</button>
+      ))}
+    </nav>
+
+    <section class="stream">
+      {entries.map((e) => (
+        <article class="entry" data-type={e.type}>
+          <div class="meta">
+            <time datetime={e.date}>{fmt(e.date)}</time>
+            <span class="tag">{badge[e.type] ?? '•'} {types[e.type] ?? e.type}</span>
+          </div>
+          <h3>{e.title}</h3>
+          <p class="sum">{e.summary}</p>
+          {e.type === 'quote-cards' && e.details?.added && (
+            <div class="quotes">
+              {e.details.added.map((q: any) => (
+                <blockquote>
+                  <p dir="rtl" lang="he">{q.quote_he}</p>
+                  <cite dir="rtl" lang="he">{q.lecture} · {q.ts}</cite>
+                </blockquote>
+              ))}
+            </div>
+          )}
+          {rows(e).length > 0 && (
+            <dl class="facts">
+              {rows(e).map(([k, v]) => (
+                <div class="fact">
+                  <dt>{k}</dt>
+                  <dd dir={he(v) ? 'rtl' : undefined} lang={he(v) ? 'he' : undefined}>{v}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {e.url && (
+            <p class="go"><a href={e.url} target="_blank" rel="noopener">Open ↗</a></p>
+          )}
+        </article>
+      ))}
+    </section>
+
+    <footer class="foot">
+      <p>Nothing links here. If you found it, you were meant to.</p>
+    </footer>
+  </main>
+
+  <script>
+    document.querySelectorAll('.chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.chip').forEach((c) => c.classList.remove('on'));
+        chip.classList.add('on');
+        const f = chip.getAttribute('data-f');
+        document.querySelectorAll('.entry').forEach((el) => {
+          el.style.display = f === 'all' || el.getAttribute('data-type') === f ? '' : 'none';
+        });
+      });
+    });
+    const btn = document.getElementById('copy-feed');
+    btn?.addEventListener('click', async () => {
+      const url = document.getElementById('feed-url')?.textContent ?? '';
+      try { await navigator.clipboard.writeText(url); btn.textContent = 'Copied ✓'; }
+      catch { btn.textContent = url; }
+      setTimeout(() => (btn.textContent = 'Copy'), 2000);
+    });
+  </script>
+
+  <style>
+    .ev-page {
+      --bg: #141210; --card: #1e1a14; --ink: #f0e9d8; --muted: #a89c83;
+      --brass: #c9a227; --line: #332c20;
+      background: var(--bg); color: var(--ink);
+      padding: 3rem 1rem 4rem; min-height: 100vh;
+    }
+    .ev-page > * { max-width: 64rem; margin-inline: auto; }
+    .ev-page h1, .ev-page h2, .ev-page h3 { color: var(--ink) !important; }
+    .eyebrow { font: 700 0.75rem/1.4 system-ui, sans-serif; letter-spacing: 0.18em; text-transform: uppercase; color: var(--brass) !important; }
+    h1 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(2rem, 5vw, 3.2rem); margin: 0.6rem 0 1rem; }
+    .lede { color: var(--muted); font-size: 1.1rem; line-height: 1.65; max-width: 42rem; }
+    .machines { margin-top: 2.5rem; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem 1.75rem; }
+    .mach-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+    .mach-head h2 { font-size: 1.3rem; margin: 0; }
+    .live { color: var(--brass); font: 700 0.8rem/1 system-ui, sans-serif; }
+    .machines p { color: var(--muted); line-height: 1.6; }
+    .machines code { color: var(--brass); font-size: 0.92em; }
+    .feedline { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-top: 0.75rem; }
+    .feedline code { background: #0f0d0a; border: 1px solid var(--line); border-radius: 8px; padding: 0.6rem 0.9rem; overflow-x: auto; }
+    .feedline button, .chip { background: var(--brass); color: #141210; border: none; border-radius: 999px; padding: 0.55rem 1.1rem; font-weight: 700; cursor: pointer; font-size: 0.9rem; }
+    .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 2.5rem; }
+    .chip { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+    .chip.on { background: var(--brass); color: #141210; border-color: var(--brass); }
+    .stream { margin-top: 1.5rem; display: grid; gap: 1.25rem; }
+    .entry { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.4rem 1.6rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; margin-bottom: 0.5rem; }
+    .meta time { color: var(--brass); font: 700 0.82rem/1.5 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+    .tag { font: 700 0.78rem/1.5 system-ui, sans-serif; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0.25rem 0.7rem; }
+    .entry h3 { margin: 0 0 0.4rem; font-size: 1.25rem; font-family: Georgia, serif; }
+    .sum { color: var(--muted); line-height: 1.65; margin: 0 0 0.75rem; }
+    .facts { display: grid; gap: 0.35rem; margin: 0 0 0.75rem; }
+    .fact { display: grid; grid-template-columns: 8.5rem 1fr; gap: 0.75rem; font-size: 0.92rem; }
+    .fact dt { color: var(--brass); font-weight: 700; }
+    .fact dd { margin: 0; color: var(--ink); line-height: 1.55; }
+    .quotes { display: grid; gap: 0.75rem; margin: 0 0 0.75rem; }
+    .quotes blockquote { margin: 0; border-inline-end: 3px solid var(--brass); padding-inline-end: 1rem; }
+    .quotes p { margin: 0 0 0.3rem; line-height: 1.7; }
+    .quotes cite { color: var(--muted); font-size: 0.85rem; font-style: normal; }
+    .go { margin: 0; }
+    .go a { color: var(--brass); font-weight: 700; text-decoration: none; }
+    .go a:hover { text-decoration: underline; }
+    .foot { margin-top: 3rem; text-align: center; color: var(--muted); font-size: 0.9rem; }
+  </style>
+</Layout>
