@@ -1,0 +1,96 @@
+---
+/**
+ * Signup form for The Workshop newsletter. Posts to /api/subscribe (Supabase
+ * project_subscribers); the hourly deliver workflow then sends the latest issue,
+ * so new subscribers don't miss the one that already went out.
+ */
+interface Props {
+  source: string;
+  tone?: 'dark' | 'paper';
+  button?: string;
+}
+const { source, tone = 'paper', button = 'Get the newsletter' } = Astro.props;
+const id = `nl-${source.replace(/[^a-z0-9]+/gi, '-')}`;
+---
+
+<form class:list={['nl-form', `nl-${tone}`]} data-source={source} data-label={button} novalidate>
+  <label class="nl-sr" for={id}>Email address</label>
+  <input id={id} type="email" name="email" placeholder="you@example.com" autocomplete="email" required />
+  <input type="text" name="website" tabindex="-1" autocomplete="off" class="nl-hp" aria-hidden="true" />
+  <button type="submit">{button}</button>
+  <p class="nl-msg" role="status" aria-live="polite"></p>
+</form>
+
+<style>
+  .nl-form { display: flex; flex-wrap: wrap; gap: 0.5rem; width: 100%; max-width: 30rem; }
+  .nl-form input[type='email'] {
+    flex: 1 1 14rem; min-width: 0; border-radius: 999px; padding: 0.8rem 1.1rem; font-size: 1rem;
+    border: 1px solid var(--nl-line); background: var(--nl-field); color: var(--nl-text);
+  }
+  .nl-form input[type='email']::placeholder { color: var(--nl-muted); }
+  .nl-form input[type='email']:focus { outline: none; border-color: var(--nl-accent); box-shadow: 0 0 0 3px var(--nl-ring); }
+  .nl-form button {
+    border: 0; border-radius: 999px; padding: 0.8rem 1.4rem; font-weight: 700; font-size: 0.95rem; cursor: pointer;
+    background: var(--nl-accent); color: var(--nl-on-accent); transition: transform 0.15s ease, filter 0.15s ease;
+  }
+  .nl-form button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .nl-form button:focus-visible { outline: 2px solid var(--nl-accent); outline-offset: 3px; }
+  .nl-form button:disabled { opacity: 0.7; cursor: default; transform: none; }
+  .nl-msg { flex-basis: 100%; min-height: 1.3em; font-size: 0.9rem; color: var(--nl-muted); margin: 0; }
+  .nl-msg.ok { color: var(--nl-ok); }
+  .nl-msg.err { color: var(--nl-err); }
+  .nl-form.done input, .nl-form.done button { display: none; }
+  .nl-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  .nl-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .nl-paper {
+    --nl-line: #d9c48f; --nl-field: #fffdf8; --nl-text: #1d1a15; --nl-muted: #7a6f5e;
+    --nl-accent: #1f6b4f; --nl-on-accent: #fffdf8; --nl-ring: rgba(31, 107, 79, 0.2); --nl-ok: #1f6b4f; --nl-err: #a33a2a;
+  }
+  .nl-dark {
+    --nl-line: rgba(201, 168, 106, 0.35); --nl-field: rgba(255, 255, 255, 0.06); --nl-text: #f4eee1; --nl-muted: #a89f8c;
+    --nl-accent: #c9a86a; --nl-on-accent: #1a1510; --nl-ring: rgba(201, 168, 106, 0.25); --nl-ok: #d9c48f; --nl-err: #f0a08f;
+  }
+</style>
+
+<script>
+  function initNewsletterForms() {
+    document.querySelectorAll<HTMLFormElement>('.nl-form:not([data-ready])').forEach((form) => {
+      form.dataset.ready = '1';
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = form.querySelector<HTMLElement>('.nl-msg')!;
+        const btn = form.querySelector<HTMLButtonElement>('button')!;
+        const email = (form.elements.namedItem('email') as HTMLInputElement).value.trim();
+        const website = (form.elements.namedItem('website') as HTMLInputElement).value;
+        msg.className = 'nl-msg';
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+          msg.textContent = 'That email address doesn’t look right.';
+          msg.classList.add('err');
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+        try {
+          const res = await fetch('/api/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, website, source: form.dataset.source }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || 'Couldn’t save that just now. Please try again.');
+          form.classList.add('done');
+          msg.textContent = '✓ You’re in. The latest issue will land in your inbox within the hour.';
+          msg.classList.add('ok');
+        } catch (err) {
+          msg.textContent = (err as Error).message;
+          msg.classList.add('err');
+          btn.disabled = false;
+          btn.textContent = form.dataset.label || 'Get the newsletter';
+        }
+      });
+    });
+  }
+  initNewsletterForms();
+  document.addEventListener('astro:page-load', initNewsletterForms);
+</script>

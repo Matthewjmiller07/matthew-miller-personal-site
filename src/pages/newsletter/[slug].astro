@@ -1,0 +1,17 @@
+---
+// Web version of each newsletter issue: the email HTML exactly as subscribers receive it.
+import fs from 'node:fs';
+import issues from '../../../writing/newsletter/issues.json';
+
+export function getStaticPaths() {
+  return issues.map((issue) => ({ params: { slug: issue.slug }, props: { issue } }));
+}
+
+const { issue } = Astro.props;
+// On the site, serve the images from /public instead of the commit-pinned GitHub URLs the email uses.
+const html = fs
+  .readFileSync(issue.html, 'utf-8')
+  .replace(/https:\/\/raw\.githubusercontent\.com\/[^"]*?\/public\/newsletter\//g, '/newsletter/');
+---
+
+<Fragment set:html={html} />

@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><style>@font-face{font-family:"Noto Serif Hebrew";src:url(heb.ttf);font-weight:100 900}</style></head><body>
+<img id="p1" src="me1-cut.jpg"><img id="p2" src="me2-cut.jpg">
+<script type="module">
+import { renderPortrait } from './engine.js';
+window.run = async (id, ink, text, size) => {
+  await document.fonts.load('700 40px "Noto Serif Hebrew"');
+  const img = document.getElementById(id);
+  await img.decode();
+  // capture the output canvas as it is drawn
+  const orig = document.createElement.bind(document);
+  let target = null;
+  document.createElement = (t) => { const el = orig(t); if (t === 'canvas') setTimeout(() => { if (el.width === size && el.height === size) target = el; }); return el; };
+  const frames = []; let lastP = -1;
+  const out = await renderPortrait(img, { text, size, ink, focusY: 0.25, onProgress: (p) => {
+    if (target && p - lastP >= 0.04) { lastP = p; frames.push(target.toDataURL('image/jpeg', 0.85)); }
+  }});
+  document.createElement = orig;
+  frames.push(out.toDataURL('image/jpeg', 0.92));
+  return frames;
+};
+window.ready = true;
+</script></body></html>
