@@ -624,6 +624,30 @@ body:has(.mb-page) > footer { display:none!important; }
   color:var(--modern); text-transform:uppercase;
 }
 
+/* Cross references — OpenBible.info static dataset, collapsible per verse. */
+.verse-xrefs {
+  margin-top:.5rem; padding:.6rem .8rem;
+  background:var(--surface); border:1px solid var(--border);
+  border-left:2px solid var(--gold-dim); direction:ltr;
+}
+.verse-xrefs > summary {
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--gold); cursor:pointer; list-style:none; transition:color .12s;
+}
+.verse-xrefs > summary::-webkit-details-marker { display:none; }
+.verse-xrefs > summary::before { content:'\25B8\00a0'; }
+.verse-xrefs[open] > summary::before { content:'\25BE\00a0'; }
+.verse-xrefs > summary:hover { color:var(--text); }
+.verse-xrefs[open] > summary { margin-bottom:.5rem; }
+.xref-list { display:flex; flex-wrap:wrap; gap:.25rem .6rem; margin:0; padding:0; list-style:none; }
+.xref-list a { color:var(--gold-dim); font-size:.82rem; text-decoration:none; }
+.xref-list a:hover { color:var(--gold); text-decoration:underline; }
+.xref-list a.xref-nt { color:var(--muted); }
+.xref-attr {
+  margin-top:.5rem; padding-top:.4rem; border-top:1px solid var(--border);
+  font-size:.68rem; color:var(--faint);
+}
+
 /* NLI poster evidence — a dated artefact showing the word in modern use. Framed
    as evidence, not illustration: the matched form and what it means there are
    part of the caption, and the image is never shown without its record link. */
@@ -3100,6 +3124,104 @@ function renderVerseBooks(block: HTMLElement, book: string, ch: number, v: numbe
   block.appendChild(booksEl);
 }
 
+// ── Cross references (OpenBible.info static dataset) ──────────────────────
+// Loaded once, lazily, the first time any verse needs it — most sessions
+// never touch it. Dataset: public/data/crossrefs.json, "Gen.1.1" → targets.
+// CC-BY — attribution rendered in the layer footer.
+let xrefsData: Record<string,string[]> | null = null;
+let xrefsLoading: Promise<Record<string,string[]> | null> | null = null;
+async function loadXrefs(): Promise<Record<string,string[]> | null> {
+  if (xrefsData) return xrefsData;
+  if (!xrefsLoading) {
+    xrefsLoading = (async () => {
+      try {
+        const r = await fetch('/data/crossrefs.json');
+        if (!r.ok) return null;
+        const d = await r.json();
+        xrefsData = (d && typeof d === 'object') ? d : null;
+      } catch { xrefsData = null; }
+      return xrefsData;
+    })();
+  }
+  return xrefsLoading;
+}
+// Page book name → dataset abbreviation.
+const XREF_ABBR: Record<string,string> = {
+  'Genesis':'Gen','Exodus':'Exod','Leviticus':'Lev','Numbers':'Num','Deuteronomy':'Deut',
+  'Joshua':'Josh','Judges':'Judg','Ruth':'Ruth','1 Samuel':'1Sam','2 Samuel':'2Sam',
+  '1 Kings':'1Kgs','2 Kings':'2Kgs','1 Chronicles':'1Chr','2 Chronicles':'2Chr',
+  'Ezra':'Ezra','Nehemiah':'Neh','Esther':'Esth','Job':'Job','Psalms':'Ps',
+  'Proverbs':'Prov','Ecclesiastes':'Eccl','Song of Songs':'Song','Isaiah':'Isa',
+  'Jeremiah':'Jer','Lamentations':'Lam','Ezekiel':'Ezek','Daniel':'Dan','Hosea':'Hos',
+  'Joel':'Joel','Amos':'Amos','Obadiah':'Obad','Jonah':'Jonah','Micah':'Mic',
+  'Nahum':'Nah','Habakkuk':'Hab','Zephaniah':'Zeph','Haggai':'Hag','Zechariah':'Zech',
+  'Malachi':'Mal',
+};
+// Dataset abbreviation → display book name (Tanakh maps back to page names;
+// New Testament books have no Mega Bible page, so they link out).
+const XREF_NAME: Record<string,string> = {
+  'Gen':'Genesis','Exod':'Exodus','Lev':'Leviticus','Num':'Numbers','Deut':'Deuteronomy',
+  'Josh':'Joshua','Judg':'Judges','Ruth':'Ruth','1Sam':'1 Samuel','2Sam':'2 Samuel',
+  '1Kgs':'1 Kings','2Kgs':'2 Kings','1Chr':'1 Chronicles','2Chr':'2 Chronicles',
+  'Ezra':'Ezra','Neh':'Nehemiah','Esth':'Esther','Job':'Job','Ps':'Psalms',
+  'Prov':'Proverbs','Eccl':'Ecclesiastes','Song':'Song of Songs','Isa':'Isaiah',
+  'Jer':'Jeremiah','Lam':'Lamentations','Ezek':'Ezekiel','Dan':'Daniel','Hos':'Hosea',
+  'Joel':'Joel','Amos':'Amos','Obad':'Obadiah','Jonah':'Jonah','Mic':'Micah',
+  'Nah':'Nahum','Hab':'Habakkuk','Zeph':'Zephaniah','Hag':'Haggai','Zech':'Zechariah',
+  'Mal':'Malachi',
+  'Matt':'Matthew','Mark':'Mark','Luke':'Luke','John':'John','Acts':'Acts',
+  'Rom':'Romans','1Cor':'1 Corinthians','2Cor':'2 Corinthians','Gal':'Galatians',
+  'Eph':'Ephesians','Phil':'Philippians','Col':'Colossians','1Thess':'1 Thessalonians',
+  '2Thess':'2 Thessalonians','1Tim':'1 Timothy','2Tim':'2 Timothy','Titus':'Titus',
+  'Phlm':'Philemon','Heb':'Hebrews','Jas':'James','1Pet':'1 Peter','2Pet':'2 Peter',
+  '1John':'1 John','2John':'2 John','3John':'3 John','Jude':'Jude','Rev':'Revelation',
+};
+const XREF_TANAKH = new Set(Object.keys(XREF_NAME).filter(k => {
+  const n = XREF_NAME[k];
+  return BOOK_CHAPTERS[n] !== undefined;
+}));
+function xrefTargetHtml(t: string): string {
+  // "John.1.1-John.1.3" or "Heb.11.3" → pretty label + link.
+  const start = t.split('-')[0];
+  const m = /^([A-Za-z0-9]+)\.(\d+)\.(\d+)$/.exec(start);
+  if (!m) return `<li>${escHtml(t)}</li>`;
+  const [, abbr, ch, v] = m;
+  const name = XREF_NAME[abbr] || abbr;
+  let label: string;
+  const range = t.includes('-') ? t.split('-')[1] : null;
+  if (range) {
+    const rm = /^([A-Za-z0-9]+)\.(\d+)\.(\d+)$/.exec(range);
+    label = rm && rm[1] === abbr && rm[2] === ch
+      ? `${name} ${ch}:${v}–${rm[3]}`
+      : `${name} ${ch}:${v} – ${XREF_NAME[rm?.[1] || ''] || rm?.[1] || ''} ${rm?.[2] || ''}:${rm?.[3] || ''}`;
+  } else {
+    label = `${name} ${ch}:${v}`;
+  }
+  const href = XREF_TANAKH.has(abbr)
+    ? `?book=${encodeURIComponent(name)}&chapter=${ch}`
+    : `https://www.biblegateway.com/passage/?search=${encodeURIComponent(`${name} ${ch}:${v}`)}&version=KJV`;
+  const ext = XREF_TANAKH.has(abbr) ? '' : ' target="_blank" rel="noopener" class="xref-nt"';
+  return `<li><a href="${href}"${ext}>${escHtml(label)}</a></li>`;
+}
+// Async post-render: appends the collapsible cross-refs layer once the
+// dataset loads. Fire-and-forget from buildVerseBlock.
+async function renderVerseXrefs(block: HTMLElement, book: string, ch: number, v: number): Promise<void> {
+  const abbr = XREF_ABBR[book];
+  if (!abbr) return;
+  const data = await loadXrefs();
+  const refs = data?.[`${abbr}.${ch}.${v}`];
+  if (!refs?.length || !block.isConnected) return;
+  if (block.querySelector('.verse-xrefs')) return;
+  const el = document.createElement('details');
+  el.className = 'verse-xrefs';
+  el.dataset.focus = 'xrefs';
+  el.innerHTML =
+    `<summary>Cross references · ${refs.length}</summary>`
+    + `<ul class="xref-list">${refs.map(xrefTargetHtml).join('')}</ul>`
+    + `<div class="xref-attr">Cross-references © <a href="https://www.openbible.info/" target="_blank" rel="noopener">OpenBible.info</a> (CC-BY)</div>`;
+  block.appendChild(el);
+}
+
 // ── Adding / removing books & papers ──────────────────────────────────────
 // Writes go through /api/mega-bible-books (service-role key, passcode-gated).
 // The passcode is remembered in this browser once it has worked.
@@ -4640,6 +4762,9 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
 
   // Books & Papers — scholarship on this verse (literary_bible.book_paper rows).
   renderVerseBooks(block, book, ch, v);
+
+  // Cross references — OpenBible.info static dataset (lazy async).
+  renderVerseXrefs(block, book, ch, v);
 
   return block;
 }
