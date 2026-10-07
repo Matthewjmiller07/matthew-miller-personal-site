@@ -263,6 +263,18 @@ body:has(.mb-page) > footer { display:none!important; }
 .mb-audio-credit a { color:var(--gold-dim); text-decoration:underline; text-underline-offset:2px; }
 .mb-audio-credit a:hover { color:var(--gold); }
 .mb-audio-bar.mb-flash { animation:mbFlash 1.6s ease; }
+
+/* ── 929 lip-sync video ── */
+.mb-video-bar {
+  background:var(--surface); border:1px solid var(--border);
+  border-left:2px solid var(--gold-dim);
+  padding:.55rem .9rem; margin-bottom:1.2rem;
+}
+.mb-video-head { display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; margin-bottom:.5rem; }
+.mb-video-bar video {
+  display:block; width:100%; max-width:560px; aspect-ratio:1/1;
+  background:#000; border:1px solid var(--border);
+}
 .mb-audio-link {
   font-family:var(--sc); font-size:.44rem; letter-spacing:.14em; text-transform:uppercase;
   background:none; border:1px solid var(--border); color:var(--faint);
@@ -1799,6 +1811,18 @@ async function loadFullAudio(): Promise<Record<string, string>> {
   return audioFullMap!;
 }
 
+// Map of "<Book> <chapter>" → lip-synced chapter video URL,
+// built from the local CPU Wav2Lip pipeline.
+let videoLipsyncMap: Record<string, string> | null = null;
+async function loadLipsyncVideo(): Promise<Record<string, string>> {
+  if (videoLipsyncMap) return videoLipsyncMap;
+  try {
+    const r = await fetch('/data/929-lipsync-video.json');
+    videoLipsyncMap = await r.json();
+  } catch { videoLipsyncMap = {}; }
+  return videoLipsyncMap!;
+}
+
 function fmtAudioTime(s: number): string {
   if (!isFinite(s) || s < 0) return '0:00';
   const m = Math.floor(s / 60);
@@ -1916,6 +1940,20 @@ function buildFullAudioBar(book: string, ch: number): HTMLElement | null {
     const d = audio.duration;
     if (isFinite(d) && d > 0) audio.currentTime = (Number(seek.value) / 1000) * d;
   });
+  return bar;
+}
+
+function buildLipsyncVideoBar(book: string, ch: number): HTMLElement | null {
+  const src = videoLipsyncMap?.[`${book} ${ch}`];
+  if (!src) return null;
+  const bar = document.createElement('div');
+  bar.className = 'mb-video-bar';
+  bar.innerHTML =
+    `<div class="mb-video-head">` +
+      `<span class="mb-audio-label">🎬 Watch</span>` +
+      `<span class="mb-audio-sub">Every character speaks their own lines — lip-synced</span>` +
+    `</div>` +
+    `<video controls preload="metadata" playsinline src="${src}"></video>`;
   return bar;
 }
 
@@ -3771,6 +3809,9 @@ async function renderRange(
       await loadFullAudio();
       const fullBar = buildFullAudioBar(book, sc);
       if (fullBar) main.appendChild(fullBar);
+      await loadLipsyncVideo();
+      const videoBar = buildLipsyncVideoBar(book, sc);
+      if (videoBar) main.appendChild(videoBar);
       // ?audio=full|summary deep link: land on the named audio bar and flash it.
       if (pendingAudio) {
         const target = pendingAudio === 'full' ? fullBar
