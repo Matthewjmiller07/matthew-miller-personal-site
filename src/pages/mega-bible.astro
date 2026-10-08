@@ -639,14 +639,42 @@ body:has(.mb-page) > footer { display:none!important; }
 .verse-xrefs[open] > summary::before { content:'\25BE\00a0'; }
 .verse-xrefs > summary:hover { color:var(--text); }
 .verse-xrefs[open] > summary { margin-bottom:.5rem; }
-.xref-list { display:flex; flex-wrap:wrap; gap:.25rem .6rem; margin:0; padding:0; list-style:none; }
-.xref-list a { color:var(--gold-dim); font-size:.82rem; text-decoration:none; }
+.xref-list {
+  display:flex; flex-wrap:wrap; gap:.2rem .7rem; margin:0; padding:0; list-style:none;
+  font-family:var(--display); font-size:.85rem; line-height:1.6;
+}
+.xref-list a { color:var(--gold-dim); text-decoration:none; }
 .xref-list a:hover { color:var(--gold); text-decoration:underline; }
 .xref-list a.xref-nt { color:var(--muted); }
+.xref-list a.xref-active { color:var(--gold); text-decoration:underline; }
 .xref-attr {
   margin-top:.5rem; padding-top:.4rem; border-top:1px solid var(--border);
-  font-size:.68rem; color:var(--faint);
+  font-family:var(--display); font-size:.72rem; font-style:italic; color:var(--muted);
 }
+.xref-attr a { color:var(--gold-dim); }
+/* A cross reference opened in the bottom detail panel, so reading it never
+   moves you away from the verse you were on. */
+.mb-detail-word.is-ref {
+  font-family:var(--sc); font-size:.62rem; letter-spacing:.2em; text-transform:uppercase;
+  direction:ltr; color:var(--gold);
+}
+.mb-detail-xref { grid-column:1/-1; }
+.xref-pv { padding:.3rem 0; border-top:1px solid var(--border); }
+.xref-pv:first-child { border-top:none; padding-top:0; }
+.xref-pv-he {
+  font-family:var(--heb); font-size:1.15rem; direction:rtl; text-align:right;
+  color:var(--text); line-height:1.75;
+}
+.xref-pv-en { font-family:var(--display); font-size:.82rem; color:var(--text); line-height:1.6; }
+.xref-pv-n {
+  font-family:var(--sc); font-size:.5rem; letter-spacing:.12em; color:var(--gold-dim);
+  margin-right:.35rem;
+}
+.xref-pv-he .xref-pv-n { margin:0 0 0 .35rem; }
+.xref-pv-foot {
+  margin-top:.4rem; font-family:var(--display); font-size:.72rem; font-style:italic; color:var(--muted);
+}
+.xref-pv-foot a { color:var(--gold-dim); }
 
 /* NLI poster evidence — a dated artefact showing the word in modern use. Framed
    as evidence, not illustration: the matched form and what it means there are
@@ -2439,6 +2467,7 @@ const FOCUS_SECTIONS: Record<string, string> = {
   notes:   'my notes',
   modern:  'Modern Hebrew',
   books:   'books & papers',
+  xrefs:   'cross references',
   nli:     'NLI evidence',
 };
 
@@ -3197,11 +3226,13 @@ function xrefTargetHtml(t: string): string {
   } else {
     label = `${name} ${ch}:${v}`;
   }
+  // Clicking opens the passage in the detail panel (see openXrefPanel); the
+  // href is kept for middle-click / open-in-new-tab.
   const href = XREF_TANAKH.has(abbr)
-    ? `?book=${encodeURIComponent(name)}&chapter=${ch}`
-    : `https://www.biblegateway.com/passage/?search=${encodeURIComponent(`${name} ${ch}:${v}`)}&version=KJV`;
-  const ext = XREF_TANAKH.has(abbr) ? '' : ' target="_blank" rel="noopener" class="xref-nt"';
-  return `<li><a href="${href}"${ext}>${escHtml(label)}</a></li>`;
+    ? `?book=${encodeURIComponent(name)}&chapter=${ch}&verse=${v}`
+    : `https://www.biblegateway.com/passage/?search=${encodeURIComponent(label)}&version=KJV`;
+  const cls = XREF_TANAKH.has(abbr) ? 'xref-link' : 'xref-link xref-nt';
+  return `<li><a href="${href}" class="${cls}" data-xref="${escHtml(t)}" data-xref-label="${escHtml(label)}">${escHtml(label)}</a></li>`;
 }
 // Async post-render: appends the collapsible cross-refs layer once the
 // dataset loads. Fire-and-forget from buildVerseBlock.
@@ -3216,11 +3247,113 @@ async function renderVerseXrefs(block: HTMLElement, book: string, ch: number, v:
   el.className = 'verse-xrefs';
   el.dataset.focus = 'xrefs';
   el.innerHTML =
-    `<summary>Cross references · ${refs.length}</summary>`
+    `<summary>Cross references · ${refs.length}${focusShareHtml('xrefs', book, ch, v)}</summary>`
     + `<ul class="xref-list">${refs.map(xrefTargetHtml).join('')}</ul>`
     + `<div class="xref-attr">Cross-references © <a href="https://www.openbible.info/" target="_blank" rel="noopener">OpenBible.info</a> (CC-BY)</div>`;
   block.appendChild(el);
 }
+
+// "Gen.1.1-Gen.1.3" → { abbr, ch, v, endCh, endV } (end = start when no range).
+function parseXref(t: string) {
+  const [a, b] = t.split('-');
+  const m = /^([A-Za-z0-9]+)\.(\d+)\.(\d+)$/.exec(a);
+  if (!m) return null;
+  const e = b ? /^([A-Za-z0-9]+)\.(\d+)\.(\d+)$/.exec(b) : null;
+  const same = e && e[1] === m[1];
+  return {
+    abbr: m[1], ch: +m[2], v: +m[3],
+    endCh: same ? +e![2] : +m[2], endV: same ? +e![3] : +m[3],
+  };
+}
+
+type XrefVerse = { ch: number; v: number; he?: string; en?: string };
+
+// Tanakh passages: Hebrew + default English from Sefaria, verse by verse.
+async function fetchTanakhPassage(name: string, r: NonNullable<ReturnType<typeof parseXref>>): Promise<XrefVerse[]> {
+  const sb = (SEFARIA_BOOK_MAP[name] || name).replace(/ /g, '_');
+  const range = r.endCh === r.ch
+    ? (r.endV === r.v ? `${r.ch}.${r.v}` : `${r.ch}.${r.v}-${r.endV}`)
+    : `${r.ch}.${r.v}-${r.endCh}.${r.endV}`;
+  const res = await fetch(`https://www.sefaria.org/api/texts/${encodeURIComponent(`${sb}.${range}`)}?context=0&pad=0&commentary=0`);
+  if (!res.ok) throw new Error('sefaria');
+  const d = await res.json();
+  // Single verse → string; one chapter → string[]; spanning chapters → string[][].
+  const shape = (x: any): string[][] =>
+    typeof x === 'string' ? [[x]]
+      : Array.isArray(x) && x.length && Array.isArray(x[0]) ? x
+      : [Array.isArray(x) ? x : []];
+  const en = shape(d.text), he = shape(d.he);
+  const out: XrefVerse[] = [];
+  const rows = Math.max(en.length, he.length);
+  for (let i = 0; i < rows; i++) {
+    const n = Math.max(en[i]?.length || 0, he[i]?.length || 0);
+    for (let j = 0; j < n; j++) {
+      out.push({
+        ch: r.ch + i, v: (i === 0 ? r.v : 1) + j,
+        he: stripSefariaHtml(String(he[i]?.[j] || '')),
+        en: stripSefariaHtml(String(en[i]?.[j] || '')),
+      });
+    }
+  }
+  return out;
+}
+
+// New Testament passages (KJV) — Sefaria doesn't carry them.
+async function fetchNtPassage(label: string): Promise<XrefVerse[]> {
+  const res = await fetch(`https://bible-api.com/${encodeURIComponent(label.replace(/\s*–\s*/g, '-'))}?translation=kjv`);
+  if (!res.ok) throw new Error('bible-api');
+  const d = await res.json();
+  return (d.verses || []).map((x: any) => ({ ch: x.chapter, v: x.verse, en: String(x.text || '').trim() }));
+}
+
+let xrefReq = 0;
+async function openXrefPanel(a: HTMLAnchorElement) {
+  const t = a.dataset.xref || '';
+  const label = a.dataset.xrefLabel || t;
+  const r = parseXref(t);
+  if (!r) return;
+  const name = XREF_NAME[r.abbr] || r.abbr;
+  const tanakh = XREF_TANAKH.has(r.abbr);
+
+  document.querySelectorAll('.xref-link.xref-active').forEach(x => x.classList.remove('xref-active'));
+  a.classList.add('xref-active');
+
+  const req = ++xrefReq;
+  detailWord.textContent = label;
+  detailWord.classList.add('is-ref');
+  const goto = tanakh
+    ? `<a href="?book=${encodeURIComponent(name)}&chapter=${r.ch}&verse=${r.v}">Go to ${escHtml(name)} ${r.ch}</a>`
+    : `<a href="${escHtml(a.href)}" target="_blank" rel="noopener">Open on Bible Gateway</a>`;
+  detailBody.innerHTML = `<div class="mb-detail-xref"><div class="xref-pv-foot">Loading…</div></div>`;
+  detailPanel.classList.add('open');
+
+  let verses: XrefVerse[] = [];
+  try {
+    verses = tanakh ? await fetchTanakhPassage(name, r) : await fetchNtPassage(label);
+  } catch { verses = []; }
+  if (req !== xrefReq) return;   // a newer reference was clicked meanwhile
+
+  const multiCh = r.endCh !== r.ch;
+  const num = (x: XrefVerse) => `<span class="xref-pv-n">${multiCh ? `${x.ch}:${x.v}` : x.v}</span>`;
+  const body = verses.length
+    ? verses.map(x => `<div class="xref-pv">`
+        + (x.he ? `<div class="xref-pv-he">${num(x)}${escHtml(x.he)}</div>` : '')
+        + (x.en ? `<div class="xref-pv-en">${x.he ? '' : num(x)}${escHtml(x.en)}</div>` : '')
+        + `</div>`).join('')
+    : `<div class="xref-pv-en">Couldn’t load this passage.</div>`;
+  detailBody.innerHTML = `<div class="mb-detail-xref">${body}<div class="xref-pv-foot">${goto}${tanakh ? '' : ' · KJV'}</div></div>`;
+}
+
+// One delegated handler — verse blocks are rebuilt on every render. A plain
+// click previews in the panel; modified clicks still open the link normally.
+document.addEventListener('click', (e) => {
+  const a = (e.target as HTMLElement)?.closest?.('a.xref-link') as HTMLAnchorElement | null;
+  if (!a) return;
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  e.stopPropagation();
+  openXrefPanel(a);
+});
 
 // ── Adding / removing books & papers ──────────────────────────────────────
 // Writes go through /api/mega-bible-books (service-role key, passcode-gated).
@@ -4863,6 +4996,7 @@ function graetzEntryHtml(e: any): string {
 }
 
 function showGraetzDetail(verseKey: string, entries: any[]) {
+  detailWord.classList.remove('is-ref');
   detailWord.textContent = `Emendations — ${verseKey.replace('Psalms', 'Ps')}`;
   detailBody.innerHTML = entries.map(graetzEntryHtml).join('');
   detailPanel.classList.add('open');
@@ -4870,6 +5004,7 @@ function showGraetzDetail(verseKey: string, entries: any[]) {
 
 function showDetail(text: string, lemma: string, morph: string, devices: any[], graetzEntries: any[] = [], modernEntries: any[] = []) {
   detailWord.textContent = text;
+  detailWord.classList.remove('is-ref');
 
   const lemmaId = `H${lemma.replace(/\D/g, '')}`;
   const bdb = lemmaMap[lemmaId];
@@ -4908,6 +5043,7 @@ function showDetail(text: string, lemma: string, morph: string, devices: any[], 
 
 function closeDetail() {
   detailPanel.classList.remove('open');
+  document.querySelectorAll('.xref-link.xref-active').forEach(x => x.classList.remove('xref-active'));
 }
 
 document.getElementById('detailClose')!.addEventListener('click', (e) => {
