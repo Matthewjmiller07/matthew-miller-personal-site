@@ -1,5 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { listSheets } from '../lib/sourcesheets';
+
+// Rendered on request so sheets added in Supabase show up immediately.
+export const prerender = false;
+const dbSheets = await listSheets();
 
 // Coffee in Halacha series — print-ready sheets generated from the live coffee DB
 const coffeeSheets = [
@@ -37,6 +42,19 @@ const csPdf = (sh: (typeof coffeeSheets)[number], student = false) =>
           Type any topic or question and the Source Sheet Creator builds a printable Hebrew–English sheet from Sefaria, with sources ranked by AI relevance.
         </p>
       </a>
+
+      {dbSheets.length > 0 && (
+        <div class="grid md:grid-cols-2 gap-8 mb-8">
+          {dbSheets.map((sh) => (
+            <a href={`/sourcesheets/${sh.slug}`} class="block bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 p-6">
+              <p class="text-xs font-semibold uppercase tracking-widest text-cyan-600 dark:text-cyan-400 mb-1">Living sheet · {sh.count} {sh.count === 1 ? 'source' : 'sources'}</p>
+              <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-1">{sh.title}</h2>
+              {sh.title_he && <p class="text-sm text-gray-400 dark:text-gray-500 mb-3 font-hebrew" dir="rtl" lang="he">{sh.title_he}</p>}
+              <p class="text-gray-600 dark:text-gray-300">{sh.subtitle ?? sh.intro}</p>
+            </a>
+          ))}
+        </div>
+      )}
 
       <div class="grid md:grid-cols-2 gap-8">
         <!-- Memory Source Sheet -->
