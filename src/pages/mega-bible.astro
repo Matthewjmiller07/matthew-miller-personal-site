@@ -1322,7 +1322,12 @@ body:has(.mb-page) > footer { display:none!important; }
       </div>
 
       <div class="sb-section">
-        <div class="sb-title">Recently Added</div>
+        <div class="sb-title">Latest Additions</div>
+        <div id="sbLatest"></div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-title">New Features</div>
         <div class="sb-recent-item">
           <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Oct 6</span></div>
           <span class="sb-recent-text">New "Parasha Sheets" layer: open a chapter or parasha that has a sheet (Bereshit, Noach, Lech Lecha, Ha'azinu, V'Zot HaBerachah) to get its numbers, links to the sheet and PDF, and its once-in-Tanakh words ringed in the text</span>
@@ -1450,6 +1455,7 @@ body:has(.mb-page) > footer { display:none!important; }
 </div>
 
 <script>
+import { mountLatest } from '../lib/mega-latest';
 // ── Parasha sheets ─────────────────────────────────────────────────────────
 // Every src/data/parasha-sheets/<slug>.json is a sheet; a new one shows up
 // here automatically. Its "ref" ("Genesis 12:1–17:27") says which verses it covers.
@@ -1726,6 +1732,29 @@ function closeSb() { sidebar.classList.remove('mob-open'); sbOverlay.classList.r
 sbToggleEl.addEventListener('click', openSb);
 sbCloseEl.addEventListener('click',  closeSb);
 sbOverlay.addEventListener('click',  closeSb);
+
+// ── Latest additions (sidebar) ─────────────────────────────────────────────
+// Newest devices / notes / books / Modern Hebrew / NLI rows across the whole
+// Tanakh. Opening one loads its verse right here, keeping the reader's layers
+// and translations, and lands on that section of the verse.
+mountLatest(document.getElementById('sbLatest')!, {
+  kinds: ['device', 'note', 'book', 'modern', 'nli'],
+  show: 8,
+  compact: true,
+  onOpen: (it) => {
+    if (it.app !== 'bible' || !it.book) return false;
+    const p = new URLSearchParams(location.search);
+    ['mode', 'sect', 'parsha', 'aliya', 'rites', 'device', 'audio'].forEach(k => p.delete(k));
+    p.set('book', it.book);
+    p.set('chapter', String(it.chapter));
+    p.set('verse', String(it.verse));
+    if (it.focus) p.set('focus', it.focus);
+    history.pushState(null, '', `${location.pathname}?${p}`);
+    closeSb();
+    restoreFromURL();
+    return true;
+  },
+});
 
 // ── Init ───────────────────────────────────────────────────────────────────
 populateBookSelect();

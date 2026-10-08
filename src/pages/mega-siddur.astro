@@ -281,6 +281,7 @@ body:has(.ms-page[data-theme="parchment"]) { background:#f5efe0!important; }
       <button class="ms-btn ms-icon-btn" id="ms-bigger" aria-label="Larger text">A+</button>
     </div>
     <span class="ms-spacer"></span>
+    <button class="ms-btn" id="ms-latest" title="The newest commentary, across every prayer">Latest</button>
     <button class="ms-btn" id="ms-daven" title="Hide commentary for davening">Davening mode</button>
     <button class="ms-btn ms-icon-btn" id="ms-theme" title="Night / parchment">◐</button>
     <button class="ms-btn ms-icon-btn" id="ms-lock" title="Unlock to add commentary">🔒</button>
@@ -311,6 +312,7 @@ body:has(.ms-page[data-theme="parchment"]) { background:#f5efe0!important; }
 </div>
 
 <script>
+import { mountLatest } from '../lib/mega-latest';
 import tocData from '../data/mega-siddur/toc.json';
 
 const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
@@ -868,6 +870,42 @@ function renderWelcome() {
   renderPanel();
 }
 
+/* ───────────────────────── latest commentary ───────────────────────── */
+// The newest notes across every prayer: in the empty panel, and on demand from
+// the Latest button. Opening one jumps to its prayer and paragraph in place.
+function mountSiddurLatest(el: HTMLElement) {
+  mountLatest(el, {
+    kinds: ['siddur'],
+    show: 12,
+    compact: true,
+    onOpen: (it) => { if (it.noteId) { goToNote(it.noteId); return true; } return false; },
+  });
+}
+
+function showLatest() {
+  $('ms-panel-title').textContent = 'Latest commentary';
+  $('ms-panel-body').innerHTML = '<div id="ms-latest-list"></div>';
+  mountSiddurLatest($('ms-latest-list'));
+  page.dataset.panel = '1';
+  page.dataset.sidebar = '0';
+}
+
+async function goToNote(id: number) {
+  const where = await resolveNoteLink(id);
+  if (!where) { location.href = `${location.pathname}?note=${id}`; return; }
+  if (where.nusach !== state.nusach) {
+    state.nusach = where.nusach;
+    ($('ms-nusach') as HTMLSelectElement).value = state.nusach;
+    await loadToc(state.nusach);
+  }
+  const i = where.ref
+    ? state.sections.findIndex((x: Section) => x.ref === where.ref)
+    : state.sections.findIndex((x: Section) => where.names!.includes(x.leaf.toLowerCase()) || where.names!.includes(x.he.split(' > ').pop()!));
+  if (i < 0) return;
+  state.spotlight = { note: id, src: '' };
+  openSection(i, where.segment || null);
+}
+
 function findService(key: string) {
   const prefixes = SERVICE_PREFIXES[state.nusach]?.[key] || [];
   for (const p of prefixes) {
@@ -1103,7 +1141,9 @@ function renderPanel() {
   if (!sec) {
     $('ms-panel-title').textContent = 'Commentary';
     body.innerHTML = `<div class="ms-empty">Open a prayer, then tap a paragraph to see its sources and commentary.</div>
-      ${state.dbReady ? '' : '<div class="ms-hint" style="margin-top:1rem">The commentary database isn’t reachable yet.</div>'}`;
+      ${state.dbReady ? '' : '<div class="ms-hint" style="margin-top:1rem">The commentary database isn’t reachable yet.</div>'}
+      <div class="ms-h3"><span>Latest commentary</span></div><div id="ms-latest-list"></div>`;
+    mountSiddurLatest($('ms-latest-list'));
     return;
   }
   const p = state.selected;
@@ -1287,6 +1327,7 @@ $('ms-bigger').addEventListener('click', () => setPref('heb', Math.min(3.2, +(st
 $('ms-now').addEventListener('click', () => { renderToday(); goService(state.today.service); });
 $('ms-toc-toggle').addEventListener('click', () => { page.dataset.sidebar = page.dataset.sidebar === '1' ? '0' : '1'; page.dataset.panel = '0'; });
 $('ms-panel-toggle').addEventListener('click', () => { page.dataset.panel = page.dataset.panel === '1' ? '0' : '1'; page.dataset.sidebar = '0'; });
+$('ms-latest').addEventListener('click', showLatest);
 $('ms-panel-close').addEventListener('click', () => { page.dataset.panel = '0'; });
 $('ms-scrim').addEventListener('click', () => { page.dataset.panel = '0'; page.dataset.sidebar = '0'; });
 $('ms-search').addEventListener('input', (e) => renderToc((e.target as HTMLInputElement).value));
