@@ -1,0 +1,435 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Lost in Translation"
+  description="A Hebrew mistranslation game: a bad translator turned 'cola' into 'her voice'. Work back from the bad English to the word it came from."
+>
+  <main class="lit min-h-screen px-4 py-10">
+    <div class="max-w-2xl mx-auto">
+      <header class="text-center mb-8">
+        <p class="lit-kicker">A game of bad translations</p>
+        <h1 class="lit-title">Lost in Translation</h1>
+        <p class="lit-sub">
+          Someone ran Hebrew through a terrible translator. It read <span dir="rtl" lang="he">קולה</span>
+          as <em>kol-ah</em>, "her voice," when the label meant <strong>cola</strong>.
+          Each card shows what the translator came up with. Name what it should have said.
+        </p>
+      </header>
+
+      <div class="lit-bar">
+        <span>Card <b id="lit-num">1</b> / <span id="lit-total">10</span></span>
+        <span>Score <b id="lit-score">0</b></span>
+        <span>Streak <b id="lit-streak">0</b></span>
+      </div>
+
+      <section id="lit-card" class="lit-card">
+        <div class="lit-cat" id="lit-cat">Food</div>
+        <p class="lit-label">The translation says:</p>
+        <p class="lit-bad" id="lit-bad">"her voice"</p>
+
+        <div id="lit-hints" class="lit-hints"></div>
+
+        <form id="lit-form" class="lit-form" autocomplete="off">
+          <input id="lit-input" type="text" placeholder="What does it really mean?" aria-label="Your guess" />
+          <button type="submit" class="lit-btn lit-btn-main">Guess</button>
+        </form>
+        <p id="lit-feedback" class="lit-feedback" aria-live="polite"></p>
+
+        <div class="lit-actions" id="lit-actions">
+          <button type="button" id="lit-hint" class="lit-btn">Hint</button>
+          <button type="button" id="lit-give" class="lit-btn">Give up</button>
+        </div>
+
+        <div id="lit-reveal" class="lit-reveal hidden">
+          <div class="lit-he" dir="rtl" lang="he" id="lit-he"></div>
+          <div class="lit-ans" id="lit-ans"></div>
+          <p class="lit-why" id="lit-why"></p>
+          <button type="button" id="lit-next" class="lit-btn lit-btn-main">Next card →</button>
+        </div>
+      </section>
+
+      <section id="lit-end" class="lit-card hidden text-center">
+        <p class="lit-label">Round over</p>
+        <p class="lit-final" id="lit-final"></p>
+        <p class="lit-why" id="lit-verdict"></p>
+        <ol id="lit-log" class="lit-log"></ol>
+        <div class="lit-actions justify-center">
+          <button type="button" id="lit-share" class="lit-btn">Copy result</button>
+          <button type="button" id="lit-again" class="lit-btn lit-btn-main">Another round</button>
+        </div>
+      </section>
+
+      <p class="lit-foot">
+        3 points with no hints, 2 after one hint, 1 after two. Spelling slips are forgiven, and Hebrew answers count too.
+      </p>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .lit {
+    --paper: #f7f1e3;
+    --ink: #2b2118;
+    --muted: #6f6152;
+    --accent: #b4441c;
+    --card: #fffaf0;
+    --line: #e2d5bb;
+    --good: #2f7a3d;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  @media (prefers-color-scheme: dark) {
+    .lit {
+      --paper: #1b1712;
+      --ink: #f1e8d6;
+      --muted: #b3a48d;
+      --accent: #f08a5d;
+      --card: #251f18;
+      --line: #3c3226;
+      --good: #7fd18e;
+    }
+  }
+  :global(.dark) .lit {
+    --paper: #1b1712;
+    --ink: #f1e8d6;
+    --muted: #b3a48d;
+    --accent: #f08a5d;
+    --card: #251f18;
+    --line: #3c3226;
+    --good: #7fd18e;
+  }
+  .lit-kicker { text-transform: uppercase; letter-spacing: .15em; font-size: .75rem; color: var(--accent); font-weight: 700; }
+  .lit-title { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(2.2rem, 7vw, 3.4rem); font-weight: 700; line-height: 1.1; margin: .3rem 0 .8rem; }
+  .lit-sub { color: var(--muted); max-width: 34rem; margin: 0 auto; line-height: 1.6; }
+  .lit-sub strong, .lit-sub em { color: var(--ink); }
+  .lit-bar { display: flex; justify-content: space-between; font-size: .9rem; color: var(--muted); margin-bottom: .6rem; padding: 0 .25rem; }
+  .lit-bar b { color: var(--ink); }
+  .lit-card { background: var(--card); border: 1px solid var(--line); border-radius: 1rem; padding: 1.5rem; box-shadow: 0 6px 24px rgba(60, 40, 10, .08); }
+  .lit-cat { display: inline-block; font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; border: 1px solid var(--line); border-radius: 999px; padding: .15rem .6rem; color: var(--muted); }
+  .lit-label { margin-top: 1rem; font-size: .85rem; color: var(--muted); }
+  .lit-bad { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: clamp(1.8rem, 6vw, 2.6rem); line-height: 1.2; margin: .2rem 0 1rem; }
+  .lit-hints { display: flex; flex-direction: column; gap: .35rem; margin-bottom: 1rem; }
+  .lit-hint-row { font-size: .95rem; background: var(--paper); border-left: 3px solid var(--accent); padding: .4rem .7rem; border-radius: .25rem; }
+  .lit-form { display: flex; gap: .5rem; }
+  .lit-form input { flex: 1; min-width: 0; padding: .65rem .8rem; border-radius: .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 1rem; }
+  .lit-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .lit-btn { padding: .6rem 1rem; border-radius: .6rem; border: 1px solid var(--line); background: transparent; color: var(--ink); font-weight: 600; cursor: pointer; }
+  .lit-btn:hover { border-color: var(--accent); }
+  .lit-btn:disabled { opacity: .4; cursor: default; }
+  .lit-btn-main { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .lit-actions { display: flex; gap: .5rem; margin-top: .8rem; flex-wrap: wrap; }
+  .lit-feedback { min-height: 1.4rem; margin-top: .5rem; font-size: .95rem; color: var(--muted); }
+  .lit-feedback.good { color: var(--good); font-weight: 700; }
+  .lit-reveal { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--line); }
+  .lit-he { font-size: 2.4rem; font-weight: 700; }
+  .lit-ans { font-size: 1.3rem; font-weight: 700; color: var(--accent); margin-bottom: .4rem; }
+  .lit-why { color: var(--muted); line-height: 1.6; margin-bottom: 1rem; }
+  .lit-final { font-family: Georgia, serif; font-size: 3rem; font-weight: 700; }
+  .lit-log { text-align: left; margin: 1rem auto; max-width: 28rem; padding-left: 1.2rem; list-style: decimal; line-height: 1.8; }
+  .lit-log .miss { color: var(--muted); }
+  .lit-foot { text-align: center; font-size: .8rem; color: var(--muted); margin-top: 1.2rem; }
+  .hidden { display: none; }
+</style>
+
+<script>
+  type Card = {
+    bad: string;      // the bad translation
+    he: string;       // the Hebrew word
+    answer: string[]; // accepted answers, first is canonical
+    cat: string;
+    why: string;
+  };
+
+  const CARDS: Card[] = [
+    // Food and drink
+    { bad: 'her voice', he: 'קולה', answer: ['cola', 'coke', 'coca cola'], cat: 'Drinks', why: 'קול (kol) is "voice"; add the suffix ־ה and you get kol-ah, "her voice." It\'s the cola.' },
+    { bad: 'her secret', he: 'סודה', answer: ['soda', 'soda water', 'seltzer'], cat: 'Drinks', why: 'סוד (sod) is "secret," so sod-ah is "her secret." On a menu it\'s soda.' },
+    { bad: 'his market', he: 'שוקו', answer: ['chocolate milk', 'shoko', 'chocolate', 'hot chocolate', 'cocoa'], cat: 'Drinks', why: 'שוק (shuk) is "market," and the ־ו suffix makes it "his market." Every Israeli kid knows שוקו as chocolate milk.' },
+    { bad: 'the father of plaster', he: 'אבטיח', answer: ['watermelon'], cat: 'Food', why: 'Split אב־טיח: av, "father," and tiach, "plaster." Read whole, avatiach is a watermelon.' },
+    { bad: 'in the shadow', he: 'בצל', answer: ['onion', 'onions'], cat: 'Food', why: 'ב־צל is b\'tzel, "in the shade," as in Psalm 91, "in the shadow of the Almighty." Read as one word it\'s batzal, onion.' },
+    { bad: 'her barrel', he: 'חביתה', answer: ['omelette', 'omelet'], cat: 'Food', why: 'חבית (chavit) is a barrel, so chavit-ah is "her barrel." It\'s the חביתה, the omelette on every Israeli breakfast plate.' },
+    { bad: 'her quarrel', he: 'ריבה', answer: ['jam', 'jelly', 'preserves'], cat: 'Food', why: 'ריב (riv) is a quarrel, so riv-ah is "her quarrel." Spread it on toast: it\'s jam.' },
+    { bad: 'he seduced', he: 'פיתה', answer: ['pita', 'pita bread', 'pitta'], cat: 'Food', why: 'פיתה (pitah) is "he enticed," as in Exodus 22:15, "if a man seduces a virgin." The bread is spelled the same.' },
+    { bad: 'he fell ill', he: 'חלה', answer: ['challah', 'challa', 'hallah'], cat: 'Food', why: 'חלה (chalah) means "he fell ill," as in 2 Kings 20:1, "Hezekiah fell deathly ill." The Shabbat loaf is spelled with the same three letters.' },
+    { bad: 'he waged war', he: 'לחם', answer: ['bread'], cat: 'Food', why: 'Psalm 35:1, "fight against those who fight me," uses לחם for "fight." Everywhere else it\'s bread.' },
+    { bad: 'a sailor', he: 'מלח', answer: ['salt'], cat: 'Food', why: 'מלח (malach) is a sailor, as in Jonah 1:5. Melach, spelled identically, is salt.' },
+    { bad: 'a swamp', he: 'ביצה', answer: ['egg', 'eggs'], cat: 'Food', why: 'ביצה means both "swamp" and "egg." Context usually saves you, but not always.' },
+    { bad: 'nothing', he: 'שום', answer: ['garlic'], cat: 'Food', why: 'שום דבר is "nothing at all." On its own, shum is garlic.' },
+    { bad: 'he decreed', he: 'גזר', answer: ['carrot', 'carrots'], cat: 'Food', why: 'גזר (gazar) is "he decreed," as in gezeirah, a decree. Gezer is a carrot.' },
+    { bad: 'she took refuge', he: 'חסה', answer: ['lettuce'], cat: 'Food', why: 'חסה (chasah) is "she sheltered," the root of Psalm 2:12, "happy are all who take refuge in Him." Chasah is also lettuce.' },
+    { bad: 'a little cherub', he: 'כרובית', answer: ['cauliflower'], cat: 'Food', why: 'כרוב is a cherub (keruv) or a cabbage (kruv), and the ־ית ending makes it small. A little cabbage is a cauliflower.' },
+    { bad: 'serving as', he: 'משמש', answer: ['apricot', 'apricots'], cat: 'Food', why: 'משמש (meshamesh) is "serves" or "functions as." Mishmesh is an apricot.' },
+    { bad: 'nuclei', he: 'גרעינים', answer: ['seeds', 'sunflower seeds', 'garinim', 'pits'], cat: 'Food', why: 'גרעין (gar\'in) is a nucleus, as in a nuclear reactor. The bag of shells at a football match: garinim, seeds.' },
+    { bad: 'a hand grenade', he: 'רימון', answer: ['pomegranate'], cat: 'Food', why: 'The grenade was named after the fruit (French grenade comes from pomegranate too). In Hebrew both are rimon.' },
+    { bad: 'a hotel', he: 'מלון', answer: ['melon', 'cantaloupe'], cat: 'Food', why: 'Malon is a hotel; melon is a melon. The spelling doesn\'t tell you which.' },
+    { bad: 'the tonsils', he: 'שקדים', answer: ['almonds', 'almond'], cat: 'Food', why: 'Your tonsils are shkedim in Hebrew because they look like almonds.' },
+    { bad: 'chubby', he: 'שמן', answer: ['oil', 'olive oil'], cat: 'Food', why: 'שמן is shamen, "fat," and shemen, "oil." Isaiah 6:10, "make the heart of this people fat," uses the first.' },
+    { bad: 'the capital city', he: 'בירה', answer: ['beer'], cat: 'Drinks', why: 'Birah is a capital, as in Yerushalayim habirah. Birah is also beer.' },
+    { bad: 'a packer', he: 'אורז', answer: ['rice'], cat: 'Food', why: 'אורז (orez) is someone who packs boxes. Orez is also rice.' },
+    { bad: 'scoured', he: 'מרק', answer: ['soup', 'broth'], cat: 'Food', why: 'Leviticus 6:21: a copper pot used for a sin offering must be "scoured and rinsed," umorak. Marak is soup.' },
+    { bad: 'the fat forbidden on the altar', he: 'חלב', answer: ['milk'], cat: 'Drinks', why: 'Chelev is the fat that goes on the altar; chalav is milk. Same letters, and in a kosher kitchen a very different outcome.' },
+    { bad: 'the lustful one', he: 'עגבנייה', answer: ['tomato', 'tomatoes'], cat: 'Food', why: 'The root עגב means to lust, as in Ezekiel 23. The tomato was once the European "love apple," and Hebrew kept the idea: agvaniyah.' },
+    { bad: 'a golden apple', he: 'תפוז', answer: ['orange', 'oranges'], cat: 'Food', why: 'Tapuz is short for tapuach zahav, "golden apple." For once the bad translation is the etymology.' },
+    { bad: 'apple of the earth', he: 'תפוח אדמה', answer: ['potato', 'potatoes'], cat: 'Food', why: 'Tapuach adamah, a calque of French pomme de terre. In Israel it\'s usually shortened to tapud.' },
+    { bad: 'you grew fat', he: 'שמנת', answer: ['cream', 'sour cream'], cat: 'Food', why: 'שמנת can be read as shamant, "you (feminine) got fat." It\'s shamenet, cream, which doesn\'t help.' },
+    { bad: 'to the son', he: 'לבן', answer: ['leben', 'laban', 'yogurt', 'yoghurt', 'white'], cat: 'Food', why: 'ל־בן is la-ben, "to the son." Read whole it\'s lavan, "white," and leben, the sour drinking yogurt.' },
+
+    // Around the house
+    { bad: 'his dog', he: 'כלבו', answer: ['department store', 'general store', 'kolbo'], cat: 'Out and about', why: 'כלב־ו is kalbo, "his dog." Read as כל־בו, kol bo, "everything in it," it\'s a department store.' },
+    { bad: 'like a heart', he: 'כלב', answer: ['dog'], cat: 'Animals', why: 'כ־לב is k\'lev, "like a heart." Read as one word it\'s kelev, a dog. Some say the dog is "all heart."' },
+    { bad: 'to her harbor', he: 'נמלה', answer: ['ant', 'ants'], cat: 'Animals', why: 'נמל (namal) is a port, so namal-ah is "to the port." Nemalah is an ant, as in Proverbs 6:6, "go to the ant, you sluggard."' },
+    { bad: 'guess!', he: 'נחש', answer: ['snake', 'serpent'], cat: 'Animals', why: 'נחש (nachesh) is "guess" or "divine." Nachash is the snake from Eden.' },
+    { bad: 'he conquered', he: 'כבש', answer: ['sheep', 'lamb'], cat: 'Animals', why: 'כבש (kavash) is "he conquered." Keves is a lamb.' },
+    { bad: 'strict', he: 'חמור', answer: ['donkey', 'ass', 'mule'], cat: 'Animals', why: 'Chamur is "severe," as in kal vachomer. Chamor is a donkey.' },
+    { bad: 'he repaid', he: 'גמל', answer: ['camel'], cat: 'Animals', why: 'גמל (gamal) is "he repaid," as in gemilut chasadim. Gamal is a camel.' },
+    { bad: 'fierce', he: 'עז', answer: ['goat'], cat: 'Animals', why: 'Az is "strong" or "fierce." Ez is a goat.' },
+    { bad: 'it fell out', he: 'נשר', answer: ['eagle', 'vulture'], cat: 'Animals', why: 'נשר (nashar) is "shed" or "dropped out," like hair or a student. Nesher is the eagle (or vulture).' },
+    { bad: 'it flew away', he: 'פרח', answer: ['flower', 'flowers', 'blossom'], cat: 'Nature', why: 'פרח (parach) is "it flew off." Perach is a flower.' },
+    { bad: 'bald', he: 'קרח', answer: ['ice'], cat: 'Nature', why: 'Kere\'ach is "bald," and Korach was the rebel. Kerach is ice.' },
+    { bad: 'the beadle', he: 'שמש', answer: ['sun'], cat: 'Nature', why: 'The shamash runs the synagogue and lights the other Chanukah candles. Shemesh is the sun.' },
+
+    { bad: 'moving voice', he: 'קולנוע', answer: ['cinema', 'movies', 'movie theater', 'movie theatre', 'the movies'], cat: 'Out and about', why: 'קול־נוע: kol, "voice," and noa, "moving." Coined for the talkies, it means cinema.' },
+    { bad: 'a hint of light', he: 'רמזור', answer: ['traffic light', 'traffic lights', 'stoplight', 'stop light'], cat: 'Out and about', why: 'רמז־אור: remez, "hint," and or, "light." The traffic light.' },
+    { bad: 'from a reason', he: 'מסיבה', answer: ['party'], cat: 'Out and about', why: 'מ־סיבה is mi-sibah, "from a cause." Mesibah is a party, which is never for a reason.' },
+    { bad: 'you rode', he: 'רכבת', answer: ['train'], cat: 'Out and about', why: 'רכבת can be read as rachavt, "you (feminine) rode." Rakevet is a train.' },
+    { bad: 'hot pursuit', he: 'דלק', answer: ['fuel', 'gas', 'petrol', 'gasoline'], cat: 'Out and about', why: 'Genesis 31:36, "that you have hotly pursued me," is dalakta. Delek is fuel.' },
+    { bad: 'glowing amber', he: 'חשמל', answer: ['electricity'], cat: 'Around the house', why: 'Ezekiel 1:4 sees a fire with the gleam of chashmal. Eliezer Ben-Yehuda borrowed it for electricity.' },
+    { bad: 'from the slaughter', he: 'מטבח', answer: ['kitchen'], cat: 'Around the house', why: 'מ־טבח is mi-tevach, "from the slaughter." Mitbach is the kitchen, and once it was where the butchering happened.' },
+    { bad: 'you succeeded', he: 'צלחת', answer: ['plate', 'dish', 'bowl'], cat: 'Around the house', why: 'צלחת (tzalachta) is "you succeeded." Tzalachat is a plate.' },
+    { bad: 'rise! rise!', he: 'קומקום', answer: ['kettle'], cat: 'Around the house', why: 'Kum kum: "get up, get up!" Kumkum is the kettle, which is at least what wakes you up.' },
+    { bad: 'leaning', he: 'שעון', answer: ['clock', 'watch'], cat: 'Around the house', why: 'שעון (sha\'un) is "leaning on." Sha\'on is a clock or a watch.' },
+    { bad: 'a barber', he: 'ספר', answer: ['book'], cat: 'Around the house', why: 'Sapar is a barber; sefer is a book. Same letters, very different appointments.' },
+    { bad: 'he locked', he: 'נעל', answer: ['shoe', 'shoes', 'boot'], cat: 'Clothes', why: 'נעל (na\'al) is "he locked." Na\'al is a shoe, as at the burning bush.' },
+    { bad: 'scabies', he: 'גרב', answer: ['sock', 'socks', 'stocking'], cat: 'Clothes', why: 'Garav is scabies, from Leviticus 21:20. Gerev is a sock.' },
+    { bad: 'betrayals', he: 'בגדים', answer: ['clothes', 'clothing', 'garments'], cat: 'Clothes', why: 'בגד is "betray," as in the Yom Kippur confession, bagadnu. Begadim are clothes.' },
+    { bad: 'the lower ones', he: 'תחתונים', answer: ['underwear', 'underpants', 'boxers', 'briefs'], cat: 'Clothes', why: 'Tachtonim means "the lower ones." Hebrew puts it plainly: underwear.' },
+    { bad: 'he swooped', he: 'עט', answer: ['pen'], cat: 'Around the house', why: 'עט (at) is how a bird of prey swoops, as in 1 Samuel 15:19, "you swooped on the spoil". Et is a pen.' },
+
+    // Body
+    { bad: 'here', he: 'פה', answer: ['mouth'], cat: 'Body', why: 'Po means "here." Peh is the mouth.' },
+    { bad: 'also', he: 'אף', answer: ['nose'], cat: 'Body', why: 'Af means "also" (and "anger"). Af is also the nose.' },
+    { bad: 'blessed', he: 'ברך', answer: ['knee'], cat: 'Body', why: 'Barach is "he blessed." Berech is the knee, which you bend in Aleinu.' },
+    { bad: 'language', he: 'שפה', answer: ['lip', 'lips'], cat: 'Body', why: 'Safah is both: language and lip. Genesis 11 has the whole earth with one safah.' },
+    { bad: 'a spring of water', he: 'עין', answer: ['eye', 'eyes'], cat: 'Body', why: 'Ein is a spring, as in Ein Gedi. It\'s also the eye.' },
+
+    // People
+    { bad: 'total annihilation', he: 'כלה', answer: ['bride'], cat: 'People', why: 'כלה (kalah) is "destruction," as in Jeremiah 30:11. Kallah is the bride. Mazal tov.' },
+    { bad: 'a razor', he: 'מורה', answer: ['teacher'], cat: 'People', why: 'In 1 Samuel 1:11, "no razor shall touch his head" uses morah. A moreh is a teacher.' },
+  ];
+
+  const ROUND = 10;
+  const $ = (id: string) => document.getElementById(id)!;
+
+  const els = {
+    num: $('lit-num'), total: $('lit-total'), score: $('lit-score'), streak: $('lit-streak'),
+    card: $('lit-card'), cat: $('lit-cat'), bad: $('lit-bad'), hints: $('lit-hints'),
+    form: $('lit-form') as HTMLFormElement, input: $('lit-input') as HTMLInputElement,
+    feedback: $('lit-feedback'), actions: $('lit-actions'),
+    hint: $('lit-hint') as HTMLButtonElement, give: $('lit-give') as HTMLButtonElement,
+    reveal: $('lit-reveal'), he: $('lit-he'), ans: $('lit-ans'), why: $('lit-why'),
+    next: $('lit-next') as HTMLButtonElement,
+    end: $('lit-end'), final: $('lit-final'), verdict: $('lit-verdict'), log: $('lit-log'),
+    share: $('lit-share') as HTMLButtonElement, again: $('lit-again') as HTMLButtonElement,
+  };
+
+  let deck: Card[] = [];
+  let idx = 0;
+  let score = 0;
+  let streak = 0;
+  let hintsUsed = 0;
+  let done = false;
+  let results: { card: Card; pts: number }[] = [];
+
+  function shuffle<T>(arr: T[]): T[] {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // Prefer cards not seen in recent rounds.
+  function buildDeck(): Card[] {
+    let seen: string[] = [];
+    try { seen = JSON.parse(localStorage.getItem('lit-seen') || '[]'); } catch {}
+    const fresh = shuffle(CARDS.filter(c => !seen.includes(c.he)));
+    const old = shuffle(CARDS.filter(c => seen.includes(c.he)));
+    const picked = fresh.concat(old).slice(0, ROUND);
+    try {
+      const nextSeen = seen.concat(picked.map(c => c.he));
+      // Forget the oldest once most of the deck has been seen.
+      localStorage.setItem('lit-seen', JSON.stringify(nextSeen.slice(-(CARDS.length - ROUND))));
+    } catch {}
+    return picked;
+  }
+
+  function norm(s: string): string {
+    return s
+      .toLowerCase()
+      .replace(/[֑-ׇ]/g, '') // Hebrew vowel points
+      .replace(/[^a-zא-ת ]/g, '')
+      .replace(/\b(a|an|the|some)\b/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function lev(a: string, b: string): number {
+    const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+    for (let j = 1; j <= b.length; j++) dp[0][j] = j;
+    for (let i = 1; i <= a.length; i++)
+      for (let j = 1; j <= b.length; j++)
+        dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return dp[a.length][b.length];
+  }
+
+  function isRight(guess: string, card: Card): boolean {
+    const g = norm(guess);
+    if (!g) return false;
+    if (norm(card.he).replace(/ /g, '') === g.replace(/ /g, '')) return true;
+    return card.answer.some(a => {
+      const t = norm(a);
+      if (t === g || t.replace(/ /g, '') === g.replace(/ /g, '')) return true;
+      const slack = t.length >= 9 ? 2 : t.length >= 5 ? 1 : 0;
+      return slack > 0 && lev(t, g) <= slack;
+    });
+  }
+
+  function hintText(n: number, card: Card): string {
+    const main = card.answer[0];
+    if (n === 1) {
+      const shape = main.split(' ').map(w => w.length).join(' + ');
+      return `It's ${shape} letters, in English.`;
+    }
+    return `The Hebrew word is <span dir="rtl" lang="he" style="font-weight:700;font-size:1.2em">${card.he}</span>, and the answer starts with "${main[0].toUpperCase()}".`;
+  }
+
+  function show() {
+    const card = deck[idx];
+    hintsUsed = 0;
+    done = false;
+    els.num.textContent = String(idx + 1);
+    els.total.textContent = String(deck.length);
+    els.cat.textContent = card.cat;
+    els.bad.textContent = `"${card.bad}"`;
+    els.hints.innerHTML = '';
+    els.feedback.textContent = '';
+    els.feedback.className = 'lit-feedback';
+    els.input.value = '';
+    els.input.disabled = false;
+    els.form.classList.remove('hidden');
+    els.actions.classList.remove('hidden');
+    els.hint.disabled = false;
+    els.reveal.classList.add('hidden');
+    els.input.focus();
+  }
+
+  function finish(pts: number) {
+    const card = deck[idx];
+    done = true;
+    results.push({ card, pts });
+    score += pts;
+    streak = pts > 0 ? streak + 1 : 0;
+    els.score.textContent = String(score);
+    els.streak.textContent = String(streak);
+    els.input.disabled = true;
+    els.form.classList.add('hidden');
+    els.actions.classList.add('hidden');
+    els.he.textContent = card.he;
+    els.ans.textContent = card.answer[0];
+    els.why.textContent = card.why;
+    els.next.textContent = idx + 1 < deck.length ? 'Next card →' : 'See your score →';
+    els.reveal.classList.remove('hidden');
+    els.next.focus();
+  }
+
+  els.form.addEventListener('submit', e => {
+    e.preventDefault();
+    if (done) return;
+    const card = deck[idx];
+    const guess = els.input.value;
+    if (!norm(guess)) return;
+    if (isRight(guess, card)) {
+      const pts = 3 - hintsUsed;
+      els.feedback.textContent = `Yes! +${pts}`;
+      els.feedback.className = 'lit-feedback good';
+      finish(pts);
+    } else {
+      els.feedback.textContent = `Not "${guess.trim()}". Try again, or take a hint.`;
+      els.input.select();
+    }
+  });
+
+  els.hint.addEventListener('click', () => {
+    if (done || hintsUsed >= 2) return;
+    hintsUsed++;
+    const row = document.createElement('div');
+    row.className = 'lit-hint-row';
+    row.innerHTML = hintText(hintsUsed, deck[idx]);
+    els.hints.appendChild(row);
+    if (hintsUsed >= 2) els.hint.disabled = true;
+    els.input.focus();
+  });
+
+  els.give.addEventListener('click', () => {
+    if (done) return;
+    els.feedback.textContent = 'Lost in translation.';
+    finish(0);
+  });
+
+  els.next.addEventListener('click', () => {
+    idx++;
+    if (idx < deck.length) show();
+    else end();
+  });
+
+  function end() {
+    els.card.classList.add('hidden');
+    els.end.classList.remove('hidden');
+    const max = deck.length * 3;
+    els.final.textContent = `${score} / ${max}`;
+    const pct = score / max;
+    els.verdict.textContent =
+      pct >= 0.85 ? 'Fluent. You could run the translation desk.' :
+      pct >= 0.6 ? 'Solid. A few got lost, but you found most of them.' :
+      pct >= 0.3 ? 'Somewhere between Google Translate and a tourist menu.' :
+      'Her voice is a cola now. Another round?';
+    els.log.innerHTML = '';
+    for (const r of results) {
+      const li = document.createElement('li');
+      li.className = r.pts ? '' : 'miss';
+      li.innerHTML = `"${r.card.bad}" → <b>${r.card.answer[0]}</b> <span dir="rtl" lang="he">${r.card.he}</span> ${'●'.repeat(r.pts)}${'○'.repeat(3 - r.pts)}`;
+      els.log.appendChild(li);
+    }
+  }
+
+  els.share.addEventListener('click', async () => {
+    const dots = results.map(r => ['⬜', '🟨', '🟧', '🟩'][r.pts]).join('');
+    const text = `Lost in Translation: ${score}/${deck.length * 3}\n${dots}\n${location.origin}/lost-in-translation`;
+    try {
+      await navigator.clipboard.writeText(text);
+      els.share.textContent = 'Copied!';
+    } catch {
+      els.share.textContent = 'Copy failed';
+    }
+    setTimeout(() => (els.share.textContent = 'Copy result'), 1800);
+  });
+
+  function start() {
+    deck = buildDeck();
+    idx = 0;
+    score = 0;
+    streak = 0;
+    results = [];
+    els.score.textContent = '0';
+    els.streak.textContent = '0';
+    els.end.classList.add('hidden');
+    els.card.classList.remove('hidden');
+    show();
+  }
+
+  els.again.addEventListener('click', start);
+  start();
+</script>
