@@ -1,0 +1,99 @@
+---
+// A source sheet rendered live from Supabase (source_sheets + source_sheet_sources).
+// Add or reorder sources in the database and the page updates on the next request.
+import Layout from '../../layouts/Layout.astro';
+import { getSheet, sefariaUrl, type SheetSource } from '../../lib/sourcesheets';
+
+export const prerender = false;
+
+const sheet = await getSheet(Astro.params.slug ?? '');
+if (!sheet) return Astro.redirect('/sourcesheets', 302);
+
+// Group consecutive sources under their section heading.
+const sections: { title: string | null; sources: SheetSource[] }[] = [];
+for (const src of sheet.sources ?? []) {
+  const last = sections[sections.length - 1];
+  if (last && last.title === src.section) last.sources.push(src);
+  else sections.push({ title: src.section, sources: [src] });
+}
+let n = 0;
+---
+
+<Layout title={sheet.title} description={sheet.subtitle ?? sheet.intro ?? `A source sheet: ${sheet.title}`}>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap"
+    rel="stylesheet"
+  />
+
+  <main class="ss">
+    <a class="ss-back" href="/sourcesheets">← All source sheets</a>
+    <header class="ss-head">
+      {sheet.title_he && <p class="ss-title-he" dir="rtl" lang="he">{sheet.title_he}</p>}
+      <h1>{sheet.title}</h1>
+      {sheet.subtitle && <p class="ss-sub">{sheet.subtitle}</p>}
+      {sheet.intro && <p class="ss-intro">{sheet.intro}</p>}
+      <button class="ss-print" type="button" onclick="window.print()">Print sheet</button>
+    </header>
+
+    {sections.map((sec) => (
+      <section>
+        {sec.title && <h2 class="ss-section">{sec.title}</h2>}
+        {sec.sources.map((src) => (
+          <article class="ss-source">
+            <p class="ss-ref">
+              <span class="ss-num">{++n}</span>
+              <a href={sefariaUrl(src.ref)} target="_blank" rel="noopener">{src.ref}</a>
+              {src.author && src.author !== src.ref && <span class="ss-author">{src.author}</span>}
+            </p>
+            <div class="ss-texts">
+              {src.he_text && <p class="ss-he" dir="rtl" lang="he">{src.he_text}</p>}
+              {src.en_text && <p class="ss-en">{src.en_text}</p>}
+            </div>
+            {src.note && <p class="ss-note">{src.note}</p>}
+          </article>
+        ))}
+      </section>
+    ))}
+
+    {!sheet.sources?.length && <p class="ss-intro">Sources are on their way.</p>}
+  </main>
+</Layout>
+
+<style>
+  .ss {
+    --ink: #1f2933; --muted: #5f6b76; --line: #e3ddd0; --paper: #fffdf8; --accent: #0e7490;
+    max-width: 880px; margin: 0 auto; padding: 40px 16px 80px; color: var(--ink);
+    font-family: 'Crimson Pro', Georgia, serif; font-size: 1.15rem; line-height: 1.6;
+  }
+  :global(.dark) .ss { --ink: #ece7da; --muted: #a8a294; --line: #3a372f; --paper: #1d1b16; --accent: #22d3ee; }
+  .ss-back { color: var(--accent); font-size: .95rem; text-decoration: none; }
+  .ss-head { text-align: center; margin: 24px 0 40px; }
+  .ss-title-he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.6rem; color: var(--muted); margin: 0; }
+  .ss h1 { font-size: 2.6rem; font-weight: 600; margin: 4px 0 8px; color: var(--accent); }
+  .ss-sub { font-style: italic; font-size: 1.25rem; margin: 0 0 12px; }
+  .ss-intro { color: var(--muted); max-width: 640px; margin: 0 auto 16px; }
+  .ss-print { font: inherit; font-size: .95rem; border: 1px solid var(--accent); color: var(--accent); background: none; border-radius: 6px; padding: 4px 14px; cursor: pointer; }
+  .ss-section { font-size: 1.1rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 6px; margin: 32px 0 16px; }
+  .ss-source { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 16px 20px; margin-bottom: 18px; break-inside: avoid; }
+  .ss-ref { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 0 0 10px; font-weight: 600; }
+  .ss-ref a { color: var(--accent); text-decoration: none; }
+  .ss-ref a:hover { text-decoration: underline; }
+  .ss-num { display: inline-grid; place-items: center; min-width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--accent); color: #fff; font-size: .85rem; }
+  .ss-author { color: var(--muted); font-weight: 400; font-size: .95rem; }
+  .ss-texts { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .ss-texts > :only-child { grid-column: 1 / -1; }
+  .ss-he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.3rem; line-height: 1.75; margin: 0; }
+  .ss-en { margin: 0; }
+  .ss-note { margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed var(--line); color: var(--muted); font-style: italic; }
+  @media (max-width: 640px) {
+    .ss-texts { grid-template-columns: 1fr; gap: 12px; }
+    .ss h1 { font-size: 2rem; }
+  }
+  @media print {
+    .ss-back, .ss-print { display: none; }
+    .ss { padding: 0; }
+    .ss-source { border-color: #ccc; }
+  }
+</style>

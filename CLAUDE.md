@@ -20,3 +20,12 @@ Keep the desk current as part of normal work, without being asked:
 - After an issue is sent, rename `next-issue.md` to the issue's date with `status: sent` and
   start a fresh `next-issue.md` for the following week.
 - The desk is public to anyone with the URL: never put private or personal details there.
+
+## Source sheets
+
+New source sheets live in Supabase (main project), not in hand-built pages: one row in
+`source_sheets` (slug, title, title_he, subtitle, intro, status) and one row per source in
+`source_sheet_sources` (position, section, ref, author, he_text, en_text, note, tags). They render
+live at `/sourcesheets/<slug>` and are listed on `/sourcesheets`. Only `status = 'published'`
+sheets are readable with the anon key. Schema and the Wisdom seed: `source-sheets-supabase-setup.sql`.
+When Matthew shares a source for a sheet, pull the Hebrew from Sefaria and insert it as a new row.
