@@ -119,6 +119,16 @@ body:has(.mb-page) > footer { display:none!important; }
   box-shadow:0 12px 32px rgba(0,0,0,.5);
 }
 .mb-search-results.hidden { display:none; }
+.mb-search-toggle { display:none; background:none; border:1px solid var(--border-hi); color:var(--text);
+  font-size:1rem; padding:.3rem .55rem; cursor:pointer; line-height:1; }
+@media (max-width: 760px) {
+  .mb-search-wrap { display:none; margin-left:0; padding:.5rem 1rem; width:100%; }
+  .mb-search-wrap.open { display:flex; }
+  .mb-search { width:100%; }
+  .mb-search:focus { width:100%; }
+  .mb-search-toggle { display:block; margin-left:auto; }
+  .mb-search-results { right:1rem; left:1rem; width:auto; }
+}
 .msr-count {
   font-family:var(--sc); font-size:.6rem; letter-spacing:.15em; color:var(--muted);
   padding:.5rem .8rem; border-bottom:1px solid var(--border); text-transform:uppercase;
@@ -1193,7 +1203,8 @@ body:has(.mb-page) > footer { display:none!important; }
         <button class="mb-mode-btn" id="modeHaftarah" data-mode="haftarah">Haftarah</button>
         <button class="mb-mode-btn" id="modeAllDevices" data-mode="alldevices">Explore Literary Devices</button>
       </div>
-      <div class="mb-search-wrap">
+      <button class="mb-search-toggle" id="mbSearchToggle" aria-label="Search">&#128269;</button>
+      <div class="mb-search-wrap" id="mbSearchWrap">
         <input class="mb-search" id="mbSearch" type="text" autocomplete="off" spellcheck="false"
           placeholder="Search Tanakh… ( / )" aria-label="Search Tanakh">
         <div class="mb-search-results hidden" id="mbSearchResults" role="listbox"></div>
@@ -3523,6 +3534,15 @@ function highlight(text: string, terms: string[], isHebrew: boolean): string {
 }
 
 const mbSearch = document.getElementById('mbSearch') as HTMLInputElement;
+const mbSearchWrap = document.getElementById('mbSearchWrap') as HTMLElement;
+const mbSearchToggle = document.getElementById('mbSearchToggle') as HTMLButtonElement;
+if (mbSearchToggle) {
+  mbSearchToggle.addEventListener('click', () => {
+    const open = mbSearchWrap.classList.toggle('open');
+    if (open) mbSearch.focus();
+    else { mbSearch.value = ''; mbSearchResults.classList.add('hidden'); mbSearchResults.innerHTML = ''; }
+  });
+}
 const mbSearchResults = document.getElementById('mbSearchResults') as HTMLElement;
 let searchDebounce: number | null = null;
 
@@ -3620,6 +3640,7 @@ document.addEventListener('keydown', (e) => {
   const tag = (e.target as HTMLElement)?.tagName;
   if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA' && !(e.target as HTMLElement)?.isContentEditable) {
     e.preventDefault();
+    mbSearchWrap?.classList.add('open');
     mbSearch?.focus();
   }
 });
