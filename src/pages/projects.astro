@@ -3,6 +3,11 @@ import Layout from '../layouts/Layout.astro';
 import LinkIcon from '../components/icons/LinkIcon.astro'; // Assuming you have this from media-appearances
 import WritingOutputCard from '../components/WritingOutputCard.astro';
 import phdsSeason from '../data/phds-on-the-parsha/season-5787.json';
+import dafGames from '../data/daf-yomi/games.json';
+
+// Pages that may land on main after this file does (each is built on its own
+// branch); entries marked `pendingPage` only render once the page exists, so nothing links to a 404.
+const sitePages = new Set(Object.keys(import.meta.glob('./*.astro')).map(f => f.replace(/^\.\/(.*)\.astro$/, '/$1')));
 
 // Define your projects
 // You can add a brief description for each later if you like
@@ -172,6 +177,12 @@ const featuredProjectsInfo = [
     { name: "Literary Bible (Color-Coded Bible)", repoName: "LiteraryBible", description: "Explore the Hebrew Bible with highlighted literary devices.", category: "Jewish Studies", isSubdomain: true, previewImage: "/images/previews/colorcodedbible.gif", localUrl: "/literary-bible" },
     { name: "Israeli Imported Foods Database", repoName: "imported-foods", description: "Search and explore Israeli government data on imported food products and kashrut certifications.", category: "Data Viz", isSubdomain: true, previewImage: "/images/tel-aviv-kosher.png" },
     { name: "Trader Joe's Spice Matrix", repoName: "tjs", description: "Interactive crossover visualizer mapping ingredient frequencies and sharing ratios across 25 popular Trader Joe's seasonings.", category: "Data Viz", isSubdomain: true, previewImage: "/images/tjs-spice-hero.png", localUrl: "/tjs" },
+    // Games
+    { name: "Klein Fist 2 — Skybreak Arena", repoName: "klein-fist", description: "A 3D platform fighter with an All-Stars roster of 36 fighters, each with its own power: arcing shots, pulls, shield breakers, heals. Double jumps, charged smashes, ring-outs and three stocks against a CPU that reads range and timing. The Classic edition turns your photo into an arcade fighter with FLUX.2 [klein] and has online rooms.", category: "Games", isSubdomain: true, previewImage: "/images/previews/klein-fist-2.jpg", externalUrl: "https://klein-fist.netlify.app" },
+    { name: "Daf Yomi Arcade", repoName: "daf", description: `A new tiny game every day, built from that day's daf: real cases, real sources, playable in minutes. ${dafGames.length} games so far, from Chullin to Bekhorot.`, category: "Games", isSubdomain: true, localUrl: "/daf" },
+    { name: "Lost in Translation", repoName: "lost-in-translation", description: "A bad translator read קולה as \"her voice\" instead of cola. You get the bad English and work back to the real Hebrew word. Sixty-odd classic cards, plus live decks built from Tanakh, Pirkei Avot and real menu items by an open translation model on Hugging Face.", category: "Games", isSubdomain: true, localUrl: "/lost-in-translation", pendingPage: true },
+    { name: "Hebrew Text Memory Game", repoName: "sefaria-memory", description: "Pick a passage from Tanakh or Mishnah and fill in the blanks until you know it by heart, with your progress tracked.", category: "Games", isSubdomain: true, localUrl: "/sefaria-memory" },
+    { name: "3D Model Catapult", repoName: "catapult", description: "Launch 3D models at floating text targets.", category: "Games", isSubdomain: true, localUrl: "/catapult" },
     // Data Projects
     // Micrography is already listed above
     { name: "Pinmap (Travel Tracker)", repoName: "pinmap", description: "Track and share cities, states, and countries visited.", category: "Data Viz", isSubdomain: true, previewImage: "/images/previews/pinmap.gif" },
@@ -199,8 +210,8 @@ const featuredProjectsInfo = [
     { name: "Kosher Scanner", repoName: "kosher-scanner", description: "Search Open Food Facts' 3M+ product database for kosher-certified foods. Displays certification agencies (OU, OK, Kof-K, cRc, Star-K), nutrition facts, and generates a FLUX portrait of Matthew enjoying the dish — Shabbat-table setting for kosher items.", category: "AI / Live Data", isSubdomain: true, localUrl: "/kosher-scanner" },
     { name: "Chicago Pulse", repoName: "chicago-pulse", description: "Recent crime incidents from Chicago's open data portal (Socrata API) — type breakdown with proportional bars, hourly time-of-day chart, 25-district heatmap grid, and community area leaderboard. Filter by crime type or district. Refreshes every 5 minutes.", category: "AI / Live Data", isSubdomain: true, localUrl: "/chicago-pulse" },
     { name: "Live Sports", repoName: "live-sports", description: "Real-time MLB, NBA, NFL, and NHL scores via the ESPN public API, refreshing every 30 seconds. Live game status, score cards with team logos and colors, venue info, and Chicago team highlighting.", category: "AI / Live Data", isSubdomain: true, localUrl: "/live-sports" },
-    { name: "Chess Puzzle of the Day", repoName: "chess-puzzle", description: "Lichess daily puzzle via their free API — embedded Lichess board, puzzle themes (mateIn2, fork, pin, endgame, etc.), player info from the source game, hidden solution reveal, and a FLUX portrait of Matthew deep in thought at a chess board.", category: "AI / Live Data", isSubdomain: true, localUrl: "/chess-puzzle" },
-].map(p => ({
+    { name: "Chess Puzzle of the Day", repoName: "chess-puzzle", description: "Lichess daily puzzle via their free API — embedded Lichess board, puzzle themes (mateIn2, fork, pin, endgame, etc.), player info from the source game, hidden solution reveal, and a FLUX portrait of Matthew deep in thought at a chess board.", category: "Games", isSubdomain: true, localUrl: "/chess-puzzle" },
+].filter(p => !p.pendingPage || sitePages.has(p.localUrl)).map(p => ({
     ...p,
     // For certain projects, use local URLs since they are first-class pages on this site
     url:
@@ -227,6 +238,7 @@ const allDisplayProjects = [...new Map([...featuredProjectsInfo, ...projects].ma
 
 // Interactive tools, grouped by category in a fixed reading order.
 const toolGroups = [
+    { key: "Games", id: "games", title: "Games", blurb: "Things to play: a 3D fighter, a daily Talmud arcade, Hebrew word puzzles and the odd catapult." },
     { key: "Jewish Studies", id: "jewish-studies", title: "Jewish Studies", blurb: "Tools for reading, memorizing, scheduling and seeing Torah — most of them built on Sefaria's open APIs." },
     { key: "Data Viz", id: "data-viz", title: "Data Viz", blurb: "Maps, matrices and databases that make a pile of numbers legible." },
     { key: "Design", id: "design", title: "Design & Making", blurb: "Things that end up printed, cut or 3D-printed." },
@@ -247,6 +259,7 @@ const catSlug = {
     "Data Viz": "data",
     "Design": "design",
     "AI / Live Data": "live",
+    "Games": "games",
 };
 
 // Featured strip at the top: the newest and best-looking work.
@@ -261,13 +274,17 @@ const stats = [
     { n: toolCount, label: "interactive tools" },
     { n: writingOutputs.length, label: "books, sheets & shows" },
     { n: toolGroups.find(g => g.key === "AI / Live Data")?.items.length ?? 0, label: "live-data dashboards" },
-    { n: moreRepos.length, label: "more repos" },
+    // The arcade card stands in for every daf game, so count those individually.
+    { n: (toolGroups.find(g => g.key === "Games")?.items.length ?? 1) - 1 + dafGames.length, label: "games to play" },
 ];
+
+// Newest daf games, shown as a strip inside the Games section.
+const latestDaf = [...dafGames].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
 
 const filters = [
     { id: "all", label: "Everything", count: totalCount },
     { id: "writing", label: "Writing", count: writingOutputs.length },
-    ...toolGroups.map(g => ({ id: catSlug[g.key], label: g.title, count: g.items.length })),
+    ...toolGroups.map(g => ({ id: catSlug[g.key], label: g.title, count: g.items.length + (g.key === "Games" ? latestDaf.length : 0) })),
     { id: "repo", label: "Repos", count: moreRepos.length },
 ];
 
@@ -294,7 +311,7 @@ const initials = (name) => name.replace(/\(.*\)/, "").split(/[\s—-]+/).filter(
                     Things I've built for <em>learning Torah</em>, <em class="c">seeing data</em>, and having fun with <em class="g">AI</em>.
                 </h1>
                 <p class="lede">
-                    Writing and study sheets, tools for Jewish studies, data visualizations, and various tech experiments —
+                    Writing and study sheets, tools for Jewish studies, data visualizations, games, and various tech experiments —
                     {totalCount} of them, and a new one most weeks.
                 </p>
                 <div class="cta-row">
@@ -461,13 +478,27 @@ const initials = (name) => name.replace(/\(.*\)/, "").split(/[\s—-]+/).filter(
                         ))}
                     </div>
                 )}
+                {g.key === "Games" && latestDaf.length > 0 && (
+                    <div class="subgroup daf-strip">
+                        <h3 class="sub-h mono">Latest from the Daf Yomi Arcade · <a href="/daf">all {dafGames.length} →</a></h3>
+                        <div class="grid g3">
+                            {latestDaf.map(d => (
+                                <a href={`/daf/${d.slug}`} class="card daf" data-cat="games" data-text={`daf yomi game ${d.ref} ${d.title} ${d.tagline}`.toLowerCase()}>
+                                    <div class="daf-top mono tiny"><span>{d.ref}</span><span dir="rtl" lang="he">{d.heRef}</span></div>
+                                    <h3><span aria-hidden="true">{d.emoji}</span> {d.title}</h3>
+                                    <p class="clamp3">{d.tagline}</p>
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </section>
         ))}
 
         {/* ---------- More GitHub repositories ---------- */}
         <section class="wrap group" data-group="repo" id="repos">
             <div class="sec-head">
-                <p class="kicker mono">07 — The archive</p>
+                <p class="kicker mono">{String(toolGroups.length + 3).padStart(2, "0")} — The archive</p>
                 <h2>More GitHub Repositories <span class="count">{moreRepos.length}</span></h2>
                 <p class="blurb">Earlier experiments and side quests, mostly on GitHub Pages.</p>
             </div>
@@ -539,6 +570,7 @@ const initials = (name) => name.replace(/\(.*\)/, "").split(/[\s—-]+/).filter(
 .ws [data-cat="live"], .ws [data-group="live"] { --c: var(--green); }
 .ws [data-cat="writing"], .ws [data-group="writing"] { --c: var(--violet); }
 .ws [data-cat="repo"], .ws [data-group="repo"] { --c: #94a3b8; }
+.ws [data-cat="games"], .ws [data-group="games"] { --c: #ff6b4a; }
 
 /* hero */
 .ws .hero { position: relative; padding: 5rem 0 0; border-bottom: 1px solid var(--line); }
@@ -656,6 +688,10 @@ const initials = (name) => name.replace(/\(.*\)/, "").split(/[\s—-]+/).filter(
 .ws .go { margin-top: auto; padding-top: 0.4rem; display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; font-weight: 600; color: var(--c); }
 
 /* live cards */
+.ws .daf-strip { margin-top: 1.75rem; }
+.ws .daf-strip .sub-h a { color: var(--c); }
+.ws .card.daf { padding: 1.15rem 1.25rem 1.3rem; gap: 0.5rem; }
+.ws .daf-top { display: flex; justify-content: space-between; gap: 0.5rem; color: var(--c); }
 .ws .card.live { padding: 1.15rem 1.25rem 1.3rem; gap: 0.55rem; }
 .ws .live-top { display: flex; align-items: center; gap: 0.5rem; color: var(--green); }
 .ws .tiny { font-size: 0.68rem; letter-spacing: 0.12em; }
