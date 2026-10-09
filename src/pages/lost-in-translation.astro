@@ -18,11 +18,24 @@ import Layout from '../layouts/Layout.astro';
         </p>
       </header>
 
+      <div class="lit-modes" role="tablist" aria-label="Card source">
+        <button type="button" class="lit-mode" data-mode="classic" role="tab">Classic deck</button>
+        <button type="button" class="lit-mode" data-mode="tanakh" role="tab">Live: Tanakh</button>
+        <button type="button" class="lit-mode" data-mode="avot" role="tab">Live: Pirkei Avot</button>
+      </div>
+      <p class="lit-mode-note" id="lit-mode-note"></p>
+
       <div class="lit-bar">
         <span>Card <b id="lit-num">1</b> / <span id="lit-total">10</span></span>
         <span>Score <b id="lit-score">0</b></span>
         <span>Streak <b id="lit-streak">0</b></span>
       </div>
+
+      <section id="lit-loading" class="lit-card hidden text-center">
+        <p class="lit-label">Hunting for a mistranslation…</p>
+        <p class="lit-bad lit-pulse">…</p>
+        <p class="lit-why" id="lit-loading-log"></p>
+      </section>
 
       <section id="lit-card" class="lit-card">
         <div class="lit-cat" id="lit-cat">Food</div>
@@ -40,12 +53,19 @@ import Layout from '../layouts/Layout.astro';
         <div class="lit-actions" id="lit-actions">
           <button type="button" id="lit-hint" class="lit-btn">Hint</button>
           <button type="button" id="lit-give" class="lit-btn">Give up</button>
+          <button type="button" id="lit-skip" class="lit-btn hidden" title="Throw this card out without scoring it">Bad card, skip</button>
         </div>
 
         <div id="lit-reveal" class="lit-reveal hidden">
           <div class="lit-he" dir="rtl" lang="he" id="lit-he"></div>
           <div class="lit-ans" id="lit-ans"></div>
           <p class="lit-why" id="lit-why"></p>
+          <div id="lit-source" class="lit-source hidden">
+            <a id="lit-ref" target="_blank" rel="noopener"></a>
+            <p dir="rtl" lang="he" id="lit-verse-he"></p>
+            <p id="lit-verse-en"></p>
+            <p class="lit-models" id="lit-models"></p>
+          </div>
           <button type="button" id="lit-next" class="lit-btn lit-btn-main">Next card →</button>
         </div>
       </section>
@@ -63,6 +83,8 @@ import Layout from '../layouts/Layout.astro';
 
       <p class="lit-foot">
         3 points with no hints, 2 after one hint, 1 after two. Spelling slips are forgiven, and Hebrew answers count too.
+        Live cards come from a real verse on <a href="https://www.sefaria.org" target="_blank" rel="noopener">Sefaria</a>:
+        a small open translation model reads its words one at a time with no context, and a second model keeps only the genuine misreadings.
       </p>
     </div>
   </main>
@@ -130,6 +152,19 @@ import Layout from '../layouts/Layout.astro';
   .lit-log { text-align: left; margin: 1rem auto; max-width: 28rem; padding-left: 1.2rem; list-style: decimal; line-height: 1.8; }
   .lit-log .miss { color: var(--muted); }
   .lit-foot { text-align: center; font-size: .8rem; color: var(--muted); margin-top: 1.2rem; }
+  .lit-modes { display: flex; gap: .4rem; justify-content: center; flex-wrap: wrap; margin-bottom: .4rem; }
+  .lit-mode { padding: .4rem .8rem; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: .85rem; font-weight: 600; cursor: pointer; }
+  .lit-mode[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .lit-mode-note { text-align: center; font-size: .8rem; color: var(--muted); min-height: 1.2rem; margin-bottom: 1rem; }
+  .lit-pulse { animation: lit-pulse 1.2s ease-in-out infinite; }
+  @keyframes lit-pulse { 50% { opacity: .3; } }
+  .lit-source { background: var(--paper); border-radius: .6rem; padding: .8rem 1rem; margin-bottom: 1rem; font-size: .95rem; line-height: 1.6; }
+  .lit-source a { color: var(--accent); font-weight: 700; text-decoration: underline; }
+  .lit-source p { margin-top: .4rem; }
+  .lit-source [lang="he"] { font-size: 1.15rem; }
+  .lit-source mark { background: color-mix(in srgb, var(--accent) 25%, transparent); color: inherit; border-radius: .2rem; padding: 0 .15rem; }
+  .lit-models { font-size: .75rem; color: var(--muted); }
+  .lit-foot a { text-decoration: underline; }
   .hidden { display: none; }
 </style>
 
@@ -140,6 +175,15 @@ import Layout from '../layouts/Layout.astro';
     answer: string[]; // accepted answers, first is canonical
     cat: string;
     why: string;
+    // Live cards only
+    live?: boolean;
+    ref?: string;
+    span?: string;
+    verseHe?: string;
+    verseEn?: string;
+    blanked?: string;
+    sefaria?: string;
+    models?: { translator: string; judge: string };
   };
 
   const CARDS: Card[] = [
@@ -220,6 +264,9 @@ import Layout from '../layouts/Layout.astro';
   ];
 
   const ROUND = 10;
+  const LIVE_ROUND = 5;
+  const PREFETCH = 2;
+  const MAX_TRIES = 8;
   const $ = (id: string) => document.getElementById(id)!;
 
   const els = {
@@ -228,19 +275,39 @@ import Layout from '../layouts/Layout.astro';
     form: $('lit-form') as HTMLFormElement, input: $('lit-input') as HTMLInputElement,
     feedback: $('lit-feedback'), actions: $('lit-actions'),
     hint: $('lit-hint') as HTMLButtonElement, give: $('lit-give') as HTMLButtonElement,
+    skip: $('lit-skip') as HTMLButtonElement,
     reveal: $('lit-reveal'), he: $('lit-he'), ans: $('lit-ans'), why: $('lit-why'),
+    source: $('lit-source'), ref: $('lit-ref') as HTMLAnchorElement, verseHe: $('lit-verse-he'),
+    verseEn: $('lit-verse-en'), models: $('lit-models'),
     next: $('lit-next') as HTMLButtonElement,
+    loading: $('lit-loading'), loadingLog: $('lit-loading-log'), modeNote: $('lit-mode-note'),
     end: $('lit-end'), final: $('lit-final'), verdict: $('lit-verdict'), log: $('lit-log'),
     share: $('lit-share') as HTMLButtonElement, again: $('lit-again') as HTMLButtonElement,
   };
 
+  type Mode = 'classic' | 'tanakh' | 'avot';
+  const MODE_NOTES: Record<Mode, string> = {
+    classic: 'Hand-picked Hebrew words, modern and biblical.',
+    tanakh: 'Generated on the spot from a random verse in Tanakh. Takes a few seconds a card.',
+    avot: 'Generated on the spot from a random mishnah in Pirkei Avot. Takes a few seconds a card.',
+  };
+
+  let mode: Mode = 'classic';
+  let roundSize = ROUND;
   let deck: Card[] = [];
   let idx = 0;
   let score = 0;
   let streak = 0;
   let hintsUsed = 0;
   let done = false;
+  let grading = false;
   let results: { card: Card; pts: number }[] = [];
+  // Live generation state. `gen` invalidates fetches from an earlier round.
+  let gen = 0;
+  let inflight = 0;
+  let waiting = false;
+  let exhausted = false;
+  const failures: string[] = [];
 
   function shuffle<T>(arr: T[]): T[] {
     const a = arr.slice();
@@ -250,6 +317,9 @@ import Layout from '../layouts/Layout.astro';
     }
     return a;
   }
+
+  const esc = (s: string) =>
+    s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
   // Prefer cards not seen in recent rounds.
   function buildDeck(): Card[] {
@@ -264,6 +334,39 @@ import Layout from '../layouts/Layout.astro';
       localStorage.setItem('lit-seen', JSON.stringify(nextSeen.slice(-(CARDS.length - ROUND))));
     } catch {}
     return picked;
+  }
+
+  // One live card: the server makes one attempt per call, so keep asking
+  // until a verse yields a good misreading.
+  async function fetchLiveCard(myGen: number): Promise<Card | null> {
+    for (let t = 0; t < MAX_TRIES && myGen === gen; t++) {
+      try {
+        const res = await fetch(`/api/lost-in-translation?source=${mode}`);
+        const data = await res.json();
+        if (data.card) return data.card as Card;
+        if (data.error) { failures.push(data.error); return null; }
+        failures.push(data.reason || 'no card');
+      } catch (err) {
+        failures.push('network error');
+      }
+      if (waiting) els.loadingLog.textContent = `Checked ${failures.length} verse${failures.length === 1 ? '' : 's'}. Last: ${failures.at(-1)}.`;
+    }
+    return null;
+  }
+
+  function topUp() {
+    if (mode === 'classic' || exhausted) return;
+    const myGen = gen;
+    while (deck.length + inflight < Math.min(roundSize, idx + 1 + PREFETCH)) {
+      inflight++;
+      fetchLiveCard(myGen).then(card => {
+        if (myGen !== gen) return;
+        inflight--;
+        if (card) deck.push(card);
+        else exhausted = true;
+        if (waiting) show();
+      });
+    }
   }
 
   function norm(s: string): string {
@@ -297,21 +400,60 @@ import Layout from '../layouts/Layout.astro';
     });
   }
 
+  // Close calls on live cards go to the judge model.
+  async function judgeGuess(guess: string, card: Card): Promise<boolean> {
+    try {
+      const res = await fetch('/api/lost-in-translation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'grade', guess, card }),
+      });
+      return (await res.json()).correct === true;
+    } catch {
+      return false;
+    }
+  }
+
   function hintText(n: number, card: Card): string {
     const main = card.answer[0];
+    const heWord = `<span dir="rtl" lang="he" style="font-weight:700;font-size:1.2em">${esc(card.he)}</span>`;
+    if (card.live) {
+      if (n === 1) return `In context (${esc(card.ref || '')}): “${esc(card.blanked || '')}”`;
+      return `The Hebrew word is ${heWord}, and the answer starts with "${esc(main[0].toUpperCase())}".`;
+    }
     if (n === 1) {
       const shape = main.split(' ').map(w => w.length).join(' + ');
       return `It's ${shape} letters, in English.`;
     }
-    return `The Hebrew word is <span dir="rtl" lang="he" style="font-weight:700;font-size:1.2em">${card.he}</span>, and the answer starts with "${main[0].toUpperCase()}".`;
+    return `The Hebrew word is ${heWord}, and the answer starts with "${esc(main[0].toUpperCase())}".`;
   }
 
   function show() {
+    els.total.textContent = String(roundSize);
+    if (idx >= roundSize) return end();
     const card = deck[idx];
+    if (!card) {
+      // Live card still being generated.
+      waiting = true;
+      els.card.classList.add('hidden');
+      els.loading.classList.remove('hidden');
+      if (exhausted && !inflight) {
+        // Out of attempts: end the round early if anything was played.
+        if (results.length) { roundSize = idx; return end(); }
+        els.loadingLog.textContent = failures.at(-1) === 'HF_TOKEN not configured'
+          ? 'Live cards are not set up on this server yet. The classic deck still works.'
+          : 'Could not find a good misreading this time. Pick a mode above to try again.';
+        return;
+      }
+      topUp();
+      return;
+    }
+    waiting = false;
+    els.loading.classList.add('hidden');
+    els.card.classList.remove('hidden');
     hintsUsed = 0;
     done = false;
     els.num.textContent = String(idx + 1);
-    els.total.textContent = String(deck.length);
     els.cat.textContent = card.cat;
     els.bad.textContent = `"${card.bad}"`;
     els.hints.innerHTML = '';
@@ -321,9 +463,11 @@ import Layout from '../layouts/Layout.astro';
     els.input.disabled = false;
     els.form.classList.remove('hidden');
     els.actions.classList.remove('hidden');
+    els.skip.classList.toggle('hidden', !card.live);
     els.hint.disabled = false;
     els.reveal.classList.add('hidden');
     els.input.focus();
+    topUp();
   }
 
   function finish(pts: number) {
@@ -340,18 +484,42 @@ import Layout from '../layouts/Layout.astro';
     els.he.textContent = card.he;
     els.ans.textContent = card.answer[0];
     els.why.textContent = card.why;
-    els.next.textContent = idx + 1 < deck.length ? 'Next card →' : 'See your score →';
+    els.source.classList.toggle('hidden', !card.live);
+    if (card.live) {
+      els.ref.textContent = `${card.ref} on Sefaria ↗`;
+      els.ref.href = card.sefaria || 'https://www.sefaria.org';
+      els.verseHe.innerHTML = esc(card.verseHe || '').replace(
+        new RegExp(`(^|\\s)(${card.he})(?=\\s|$)`, 'g'),
+        '$1<mark>$2</mark>'
+      );
+      const en = card.verseEn || '';
+      const at = card.span ? en.toLowerCase().indexOf(card.span.toLowerCase()) : -1;
+      els.verseEn.innerHTML = at < 0 ? esc(en)
+        : esc(en.slice(0, at)) + '<mark>' + esc(en.slice(at, at + card.span!.length)) + '</mark>' + esc(en.slice(at + card.span!.length));
+      els.models.textContent = card.models
+        ? `Mistranslated by ${card.models.translator}; judged by ${card.models.judge.replace(/:.*$/, '')}.`
+        : '';
+    }
+    els.next.textContent = idx + 1 < roundSize ? 'Next card →' : 'See your score →';
     els.reveal.classList.remove('hidden');
     els.next.focus();
   }
 
-  els.form.addEventListener('submit', e => {
+  els.form.addEventListener('submit', async e => {
     e.preventDefault();
-    if (done) return;
+    if (done || grading) return;
     const card = deck[idx];
     const guess = els.input.value;
     if (!norm(guess)) return;
-    if (isRight(guess, card)) {
+    let right = isRight(guess, card);
+    if (!right && card.live) {
+      grading = true;
+      els.feedback.textContent = 'Checking with the judge…';
+      right = await judgeGuess(guess.trim(), card);
+      grading = false;
+      if (card !== deck[idx] || done) return;
+    }
+    if (right) {
       const pts = 3 - hintsUsed;
       els.feedback.textContent = `Yes! +${pts}`;
       els.feedback.className = 'lit-feedback good';
@@ -379,18 +547,26 @@ import Layout from '../layouts/Layout.astro';
     finish(0);
   });
 
+  // Throw out a weak live card without scoring it.
+  els.skip.addEventListener('click', () => {
+    if (done || !deck[idx]?.live) return;
+    deck.splice(idx, 1);
+    show();
+  });
+
   els.next.addEventListener('click', () => {
     idx++;
-    if (idx < deck.length) show();
-    else end();
+    show();
   });
 
   function end() {
+    waiting = false;
+    els.loading.classList.add('hidden');
     els.card.classList.add('hidden');
     els.end.classList.remove('hidden');
-    const max = deck.length * 3;
+    const max = results.length * 3;
     els.final.textContent = `${score} / ${max}`;
-    const pct = score / max;
+    const pct = max ? score / max : 0;
     els.verdict.textContent =
       pct >= 0.85 ? 'Fluent. You could run the translation desk.' :
       pct >= 0.6 ? 'Solid. A few got lost, but you found most of them.' :
@@ -400,14 +576,16 @@ import Layout from '../layouts/Layout.astro';
     for (const r of results) {
       const li = document.createElement('li');
       li.className = r.pts ? '' : 'miss';
-      li.innerHTML = `"${r.card.bad}" → <b>${r.card.answer[0]}</b> <span dir="rtl" lang="he">${r.card.he}</span> ${'●'.repeat(r.pts)}${'○'.repeat(3 - r.pts)}`;
+      const where = r.card.ref ? ` <small>(${esc(r.card.ref)})</small>` : '';
+      li.innerHTML = `"${esc(r.card.bad)}" → <b>${esc(r.card.answer[0])}</b> <span dir="rtl" lang="he">${esc(r.card.he)}</span>${where} ${'●'.repeat(r.pts)}${'○'.repeat(3 - r.pts)}`;
       els.log.appendChild(li);
     }
   }
 
   els.share.addEventListener('click', async () => {
     const dots = results.map(r => ['⬜', '🟨', '🟧', '🟩'][r.pts]).join('');
-    const text = `Lost in Translation: ${score}/${deck.length * 3}\n${dots}\n${location.origin}/lost-in-translation`;
+    const label = mode === 'classic' ? '' : ` (live, ${mode === 'tanakh' ? 'Tanakh' : 'Pirkei Avot'})`;
+    const text = `Lost in Translation${label}: ${score}/${results.length * 3}\n${dots}\n${location.origin}/lost-in-translation`;
     try {
       await navigator.clipboard.writeText(text);
       els.share.textContent = 'Copied!';
@@ -418,7 +596,13 @@ import Layout from '../layouts/Layout.astro';
   });
 
   function start() {
-    deck = buildDeck();
+    gen++;
+    inflight = 0;
+    exhausted = false;
+    failures.length = 0;
+    els.loadingLog.textContent = '';
+    roundSize = mode === 'classic' ? ROUND : LIVE_ROUND;
+    deck = mode === 'classic' ? buildDeck() : [];
     idx = 0;
     score = 0;
     streak = 0;
@@ -426,10 +610,25 @@ import Layout from '../layouts/Layout.astro';
     els.score.textContent = '0';
     els.streak.textContent = '0';
     els.end.classList.add('hidden');
-    els.card.classList.remove('hidden');
     show();
   }
 
+  function setMode(m: Mode) {
+    mode = m;
+    try { localStorage.setItem('lit-mode', m); } catch {}
+    document.querySelectorAll<HTMLButtonElement>('.lit-mode').forEach(b =>
+      b.setAttribute('aria-selected', String(b.dataset.mode === m))
+    );
+    els.modeNote.textContent = MODE_NOTES[m];
+    start();
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.lit-mode').forEach(b =>
+    b.addEventListener('click', () => setMode(b.dataset.mode as Mode))
+  );
   els.again.addEventListener('click', start);
-  start();
+
+  let saved: string | null = null;
+  try { saved = localStorage.getItem('lit-mode'); } catch {}
+  setMode(saved === 'tanakh' || saved === 'avot' ? saved : 'classic');
 </script>
