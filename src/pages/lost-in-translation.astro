@@ -22,6 +22,7 @@ import Layout from '../layouts/Layout.astro';
         <button type="button" class="lit-mode" data-mode="classic" role="tab">Classic deck</button>
         <button type="button" class="lit-mode" data-mode="tanakh" role="tab">Live: Tanakh</button>
         <button type="button" class="lit-mode" data-mode="avot" role="tab">Live: Pirkei Avot</button>
+        <button type="button" class="lit-mode" data-mode="menu" role="tab">Live: Menu</button>
       </div>
       <p class="lit-mode-note" id="lit-mode-note"></p>
 
@@ -83,8 +84,9 @@ import Layout from '../layouts/Layout.astro';
 
       <p class="lit-foot">
         3 points with no hints, 2 after one hint, 1 after two. Spelling slips are forgiven, and Hebrew answers count too.
-        Live cards come from a real verse on <a href="https://www.sefaria.org" target="_blank" rel="noopener">Sefaria</a>:
-        a small open translation model reads its words one at a time with no context, and a second model keeps only the genuine misreadings.
+        Live cards come from a real verse on <a href="https://www.sefaria.org" target="_blank" rel="noopener">Sefaria</a>
+        or a real food or drink name on <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a>:
+        a small open translation model reads the Hebrew with no context, and a second model keeps only the genuine misreadings.
       </p>
     </div>
   </main>
@@ -182,7 +184,8 @@ import Layout from '../layouts/Layout.astro';
     verseHe?: string;
     verseEn?: string;
     blanked?: string;
-    sefaria?: string;
+    link?: string;
+    linkLabel?: string;
     models?: { translator: string; judge: string };
   };
 
@@ -285,11 +288,12 @@ import Layout from '../layouts/Layout.astro';
     share: $('lit-share') as HTMLButtonElement, again: $('lit-again') as HTMLButtonElement,
   };
 
-  type Mode = 'classic' | 'tanakh' | 'avot';
+  type Mode = 'classic' | 'tanakh' | 'avot' | 'menu';
   const MODE_NOTES: Record<Mode, string> = {
     classic: 'Hand-picked Hebrew words, modern and biblical.',
     tanakh: 'Generated on the spot from a random verse in Tanakh. Takes a few seconds a card.',
     avot: 'Generated on the spot from a random mishnah in Pirkei Avot. Takes a few seconds a card.',
+    menu: 'Real Hebrew food and drink names, translated like a bad menu. Generated on the spot.',
   };
 
   let mode: Mode = 'classic';
@@ -418,6 +422,12 @@ import Layout from '../layouts/Layout.astro';
     const main = card.answer[0];
     const heWord = `<span dir="rtl" lang="he" style="font-weight:700;font-size:1.2em">${esc(card.he)}</span>`;
     if (card.live) {
+      if (n === 1 && card.cat === 'Menu') {
+        const shape = main.split(' ').map(w => w.length).join(' + ');
+        return card.blanked
+          ? `It's ${shape} letters. The menu would describe it as: “${esc(card.blanked)}”`
+          : `It's ${shape} letters, in English.`;
+      }
       if (n === 1) return `In context (${esc(card.ref || '')}): “${esc(card.blanked || '')}”`;
       return `The Hebrew word is ${heWord}, and the answer starts with "${esc(main[0].toUpperCase())}".`;
     }
@@ -486,8 +496,8 @@ import Layout from '../layouts/Layout.astro';
     els.why.textContent = card.why;
     els.source.classList.toggle('hidden', !card.live);
     if (card.live) {
-      els.ref.textContent = `${card.ref} on Sefaria ↗`;
-      els.ref.href = card.sefaria || 'https://www.sefaria.org';
+      els.ref.textContent = card.linkLabel || 'Source ↗';
+      els.ref.href = card.link || '#';
       els.verseHe.innerHTML = esc(card.verseHe || '').replace(
         new RegExp(`(^|\\s)(${card.he})(?=\\s|$)`, 'g'),
         '$1<mark>$2</mark>'
@@ -576,7 +586,7 @@ import Layout from '../layouts/Layout.astro';
     for (const r of results) {
       const li = document.createElement('li');
       li.className = r.pts ? '' : 'miss';
-      const where = r.card.ref ? ` <small>(${esc(r.card.ref)})</small>` : '';
+      const where = r.card.ref && r.card.cat !== 'Menu' ? ` <small>(${esc(r.card.ref)})</small>` : '';
       li.innerHTML = `"${esc(r.card.bad)}" → <b>${esc(r.card.answer[0])}</b> <span dir="rtl" lang="he">${esc(r.card.he)}</span>${where} ${'●'.repeat(r.pts)}${'○'.repeat(3 - r.pts)}`;
       els.log.appendChild(li);
     }
@@ -584,7 +594,7 @@ import Layout from '../layouts/Layout.astro';
 
   els.share.addEventListener('click', async () => {
     const dots = results.map(r => ['⬜', '🟨', '🟧', '🟩'][r.pts]).join('');
-    const label = mode === 'classic' ? '' : ` (live, ${mode === 'tanakh' ? 'Tanakh' : 'Pirkei Avot'})`;
+    const label = mode === 'classic' ? '' : ` (live, ${{ tanakh: 'Tanakh', avot: 'Pirkei Avot', menu: 'Menu' }[mode]})`;
     const text = `Lost in Translation${label}: ${score}/${results.length * 3}\n${dots}\n${location.origin}/lost-in-translation`;
     try {
       await navigator.clipboard.writeText(text);
@@ -630,5 +640,5 @@ import Layout from '../layouts/Layout.astro';
 
   let saved: string | null = null;
   try { saved = localStorage.getItem('lit-mode'); } catch {}
-  setMode(saved === 'tanakh' || saved === 'avot' ? saved : 'classic');
+  setMode(saved === 'tanakh' || saved === 'avot' || saved === 'menu' ? saved : 'classic');
 </script>

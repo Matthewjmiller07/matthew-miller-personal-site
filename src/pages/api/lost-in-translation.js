@@ -1,5 +1,8 @@
 // Live cards for /lost-in-translation.
 //
+// GET ?source=menu builds a card from a real food or drink name instead
+// (Hebrew and English labels from Wikidata); see makeMenuCard.
+//
 // GET  → one attempt at a card, built from a real verse:
 //   1. Pick a random Tanakh chapter (or Pirkei Avot) and verse from Sefaria.
 //   2. Translate single words with no context through Helsinki-NLP's
@@ -232,7 +235,132 @@ Return ONLY this JSON:
       verseHe: verse.he,
       verseEn: verse.en,
       blanked: verse.en.slice(0, at) + '_____' + verse.en.slice(at + span.length),
-      sefaria: `https://www.sefaria.org/${verse.ref.replace(/ (\d+):(\d+)$/, '.$1.$2').replace(/ /g, '_')}`,
+      link: `https://www.sefaria.org/${verse.ref.replace(/ (\d+):(\d+)$/, '.$1.$2').replace(/ /g, '_')}`,
+      linkLabel: `${verse.ref} on Sefaria ↗`,
+      score: j.score,
+      models: { translator: 'Helsinki-NLP/opus-mt-tc-big-he-en', judge: judged.model },
+    },
+  };
+}
+
+// ── Menus ─────────────────────────────────────────────────────────────────
+// Real dish, food and drink names with both Hebrew and English labels, from
+// Wikidata. The English label is the right answer; the machine translates the
+// Hebrew name on its own, the way a menu translator would.
+
+const MENU_SPARQL = `SELECT ?item ?he ?en ?desc WHERE {
+  VALUES ?class { wd:Q746549 wd:Q2095 wd:Q40050 wd:Q11004 wd:Q3314483 wd:Q1364 }
+  ?item wdt:P31|wdt:P279 ?class .
+  ?item rdfs:label ?he . FILTER(LANG(?he) = "he")
+  ?item rdfs:label ?en . FILTER(LANG(?en) = "en")
+  OPTIONAL { ?item schema:description ?desc . FILTER(LANG(?desc) = "en") }
+} LIMIT 5000`;
+
+let menuCache = null; // survives between calls on a warm function
+
+async function loadMenu() {
+  if (menuCache) return menuCache;
+  const res = await fetch(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(MENU_SPARQL)}`, {
+    headers: { Accept: 'application/sparql-results+json', 'User-Agent': 'matthew-miller-site/1.0 (lost-in-translation game)' },
+    signal: AbortSignal.timeout(6000),
+  });
+  if (!res.ok) throw new Error(`Wikidata ${res.status}`);
+  const rows = (await res.json()).results.bindings;
+  const seen = new Set();
+  menuCache = rows
+    .map(r => ({
+      id: r.item.value.split('/').pop(),
+      he: r.he.value.trim(),
+      en: r.en.value.trim(),
+      desc: r.desc?.value || '',
+    }))
+    // Short, all-Hebrew names, the kind that fit on a menu line.
+    .filter(m => /^[א-ת'"״׳ -]+$/.test(m.he) && m.he.split(' ').length <= 3 && m.he.length <= 20 && m.en.length <= 40)
+    .filter(m => !seen.has(m.he) && seen.add(m.he));
+  return menuCache;
+}
+
+// Transliterations ("Shakshuka" for "Shakshouka") are spelled right, not misread.
+function nearSpelling(a, b) {
+  const sk = s => s.toLowerCase().replace(/[^a-z]/g, '').replace(/[aeiouy]/g, '').replace(/(.)\1+/g, '$1');
+  const x = sk(a), y = sk(b);
+  if (!x || !y) return false;
+  if (x === y || (Math.min(x.length, y.length) >= 3 && (x.includes(y) || y.includes(x)))) return true;
+  const dp = Array.from({ length: x.length + 1 }, (_, i) => [i, ...Array(y.length).fill(0)]);
+  for (let j = 1; j <= y.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= x.length; i++)
+    for (let j = 1; j <= y.length; j++)
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (x[i - 1] === y[j - 1] ? 0 : 1));
+  return dp[x.length][y.length] <= Math.max(1, Math.floor(Math.min(x.length, y.length) / 4));
+}
+
+async function makeMenuCard(token) {
+  const menu = await loadMenu();
+  if (!menu.length) throw new Error('empty menu');
+  const items = shuffle(menu.slice()).slice(0, 8);
+  const translated = await Promise.all(items.map(m => translateWord(m.he, token)));
+
+  // Keep names the machine got wrong.
+  const candidates = items
+    .map((m, i) => ({ ...m, mt: translated[i] }))
+    .filter(c => {
+      if (!c.mt || c.mt.length > 40 || /[א-ת]/.test(c.mt) || nearSpelling(c.mt, c.en)) return false;
+      const right = new Set(contentWords(`${c.en} ${c.desc}`).map(stem));
+      const cw = contentWords(c.mt).filter(w => !EN_GLUE.has(w));
+      return cw.length > 0 && cw.some(w => !right.has(stem(w)));
+    });
+  if (!candidates.length) return { retry: true, reason: 'the machine read every dish correctly' };
+
+  const list = candidates
+    .map((c, i) => `${i}. ${c.he} (really: ${c.en}${c.desc ? `, ${c.desc}` : ''}) → machine: "${c.mt}"`)
+    .join('\n');
+  const judged = await chat(
+    [
+      { role: 'system', content: 'You are a careful Hebrew linguist and a puzzle editor. You answer with JSON only.' },
+      {
+        role: 'user',
+        content: `A machine translator was given Hebrew food and drink names, as on an Israeli menu or label, with no context. Find its best genuine mistranslation for a guessing game: players see the machine's English and must work back to the real dish. The classic example: קולה (cola) read as kol-ah, "her voice."
+
+Candidates (index. Hebrew name (real English name) → machine output):
+${list}
+
+Choose a candidate only if the machine output is a REAL alternative reading of the same Hebrew letters: a different word spelled the same, a different vocalization, or a wrong split into prefix, suffix or two words. Its meaning must clearly differ from the food. Reject near-misses (another fruit for a fruit), transliterations, literal calques of the real name, and outputs with no basis in Hebrew. If none qualify, use index -1.
+
+Return ONLY this JSON:
+{"index": <number or -1>, "score": <0-10, how surprising and fair a puzzle it is>, "alternates": ["<other acceptable English names for the food>"], "why": "<One or two sentences: how the letters can be read as the machine's output, and what they mean on a menu. Transliterate the Hebrew.>"}`,
+      },
+    ],
+    token,
+    700
+  );
+  if (!judged) return { retry: true, reason: 'judge unavailable' };
+
+  const j = judged.out;
+  const c = candidates[j.index];
+  if (!c || !(j.score >= 6)) return { retry: true, reason: 'judge passed on this batch of dishes' };
+
+  const answer = /^[A-Z][a-z]/.test(c.en) && !/ [A-Z]/.test(c.en) ? c.en.toLowerCase() : c.en;
+  const answers = [answer, ...(Array.isArray(j.alternates) ? j.alternates : [])]
+    .map(a => String(a).trim())
+    .filter((a, i, all) => a && a.length <= 40 && all.findIndex(b => b.toLowerCase() === a.toLowerCase()) === i);
+  // Hint: the description with the answer's words blanked out.
+  const blank = new RegExp(`\\b(${answers.flatMap(a => a.split(/\s+/)).filter(w => w.length > 2).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') || '$^'})\\w*`, 'gi');
+
+  return {
+    card: {
+      live: true,
+      bad: c.mt.toLowerCase(),
+      he: c.he,
+      answer: answers,
+      cat: 'Menu',
+      why: String(j.why || ''),
+      ref: 'an Israeli menu',
+      span: c.en,
+      verseHe: c.he,
+      verseEn: c.desc ? `${c.en}: ${c.desc}` : c.en,
+      blanked: c.desc ? c.desc.replace(blank, '_____') : '',
+      link: `https://www.wikidata.org/wiki/${c.id}`,
+      linkLabel: `${c.en} on Wikidata ↗`,
       score: j.score,
       models: { translator: 'Helsinki-NLP/opus-mt-tc-big-he-en', judge: judged.model },
     },
@@ -243,7 +371,8 @@ export async function GET({ url }) {
   const token = env('HF_TOKEN');
   if (!token) return json({ error: 'HF_TOKEN not configured' }, 500);
   try {
-    return json(await makeCard(url.searchParams.get('source') || 'tanakh', token));
+    const source = url.searchParams.get('source') || 'tanakh';
+    return json(await (source === 'menu' ? makeMenuCard(token) : makeCard(source, token)));
   } catch (err) {
     return json({ retry: true, reason: err.message });
   }
@@ -269,8 +398,8 @@ export async function POST({ request }) {
       { role: 'system', content: 'You grade answers in a translation game. You answer with JSON only.' },
       {
         role: 'user',
-        content: `In ${field(card.ref, 60)}, the Hebrew word ${field(card.he, 30)} means "${field(card.answer?.[0], 40)}" (the English translation renders it "${field(card.span, 60)}").
-Verse: ${field(card.verseEn, 600)}
+        content: `Context: ${field(card.ref, 60)}. The Hebrew ${field(card.he, 30)} means "${field(card.answer?.[0], 40)}" here (the English source renders it "${field(card.span, 60)}").
+English source: ${field(card.verseEn, 600)}
 A player guessed: "${g}"
 Is the guess the same meaning here: a synonym, a close paraphrase, or the same word in another form? Be fair but not lax.
 Return ONLY {"correct": true} or {"correct": false}.`,
