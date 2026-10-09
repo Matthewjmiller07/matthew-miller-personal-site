@@ -103,6 +103,47 @@ body:has(.mb-page) > footer { display:none!important; }
 .mb-load-btn:disabled { opacity:.35; cursor:not-allowed; background:var(--faint); color:var(--muted); }
 .mb-status { font-family:var(--sc); font-size:.55rem; letter-spacing:.15em; color:var(--muted); }
 
+/* SEARCH */
+.mb-search-wrap { position:relative; margin-left:auto; padding:0 1rem; display:flex; align-items:center; }
+.mb-search {
+  background:var(--surface2); border:1px solid var(--border-hi); color:var(--text);
+  font-family:var(--display); font-size:.85rem; padding:.35rem .7rem; width:220px;
+  outline:none; transition:border-color .15s, width .2s;
+}
+.mb-search:focus { border-color:var(--gold); width:280px; }
+.mb-search::placeholder { color:var(--muted); }
+.mb-search-results {
+  position:absolute; top:calc(100% + .4rem); right:.5rem; width:480px; max-width:90vw;
+  max-height:60vh; overflow-y:auto; z-index:100;
+  background:var(--surface2); border:1px solid var(--border-hi);
+  box-shadow:0 12px 32px rgba(0,0,0,.5);
+}
+.mb-search-results.hidden { display:none; }
+.msr-count {
+  font-family:var(--sc); font-size:.6rem; letter-spacing:.15em; color:var(--muted);
+  padding:.5rem .8rem; border-bottom:1px solid var(--border); text-transform:uppercase;
+  position:sticky; top:0; background:var(--surface2);
+}
+.msr-hit {
+  padding:.55rem .8rem; border-bottom:1px solid var(--border); cursor:pointer;
+  display:block; text-decoration:none; color:inherit;
+}
+.msr-hit:hover { background:var(--faint); }
+.msr-ref {
+  font-family:var(--sc); font-size:.62rem; letter-spacing:.12em; color:var(--gold);
+  text-transform:uppercase; margin-bottom:.2rem;
+}
+.msr-he {
+  font-family:var(--heb); font-size:.92rem; direction:rtl; text-align:right;
+  line-height:1.7; margin-bottom:.15rem; color:var(--text);
+}
+.msr-en { font-family:var(--display); font-size:.82rem; line-height:1.5; color:var(--muted); }
+.msr-hit mark { background:rgba(201,162,87,.3); color:var(--text); border-radius:2px; padding:0 1px; }
+.msr-loading, .msr-empty {
+  font-family:var(--display); font-size:.85rem; color:var(--muted);
+  padding:1rem; text-align:center;
+}
+
 /* BODY */
 .mb-body { display:flex; flex:1; overflow:hidden; min-height:0; }
 
@@ -1151,6 +1192,11 @@ body:has(.mb-page) > footer { display:none!important; }
         <button class="mb-mode-btn" id="modeParsha" data-mode="parsha">By Parsha</button>
         <button class="mb-mode-btn" id="modeHaftarah" data-mode="haftarah">Haftarah</button>
         <button class="mb-mode-btn" id="modeAllDevices" data-mode="alldevices">Explore Literary Devices</button>
+      </div>
+      <div class="mb-search-wrap">
+        <input class="mb-search" id="mbSearch" type="text" autocomplete="off" spellcheck="false"
+          placeholder="Search Tanakh… ( / )" aria-label="Search Tanakh">
+        <div class="mb-search-results hidden" id="mbSearchResults" role="listbox"></div>
       </div>
     </div>
     <!-- Row 2: selects + load -->
@@ -3353,6 +3399,241 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   e.stopPropagation();
   openXrefPanel(a);
+});
+
+// ── Full-text search (static inverted index) ──────────────────────────────
+// Datasets: public/data/tanakh-search-idx.json (token → b36 delta posting lists)
+// + tanakh-verses-{torah,neviim,ketuvim}.json (verse texts, loaded on demand).
+// All lazy: nothing fetched until the user first searches.
+interface SearchIdx {
+  books: string[];
+  he: Record<string, string>;
+  en: Record<string, string>;
+  ranges: Record<string, number[][]>; // sect -> [globalStart, localStart, count]
+}
+let searchIdx: SearchIdx | null = null;
+let searchIdxLoading: Promise<SearchIdx | null> | null = null;
+const searchVerses: Record<string, string[][]> = {}; // sect -> verses
+const searchVersesLoading: Record<string, Promise<string[][] | null>> = {};
+
+async function loadSearchIdx(): Promise<SearchIdx | null> {
+  if (searchIdx) return searchIdx;
+  if (!searchIdxLoading) {
+    searchIdxLoading = (async () => {
+      try {
+        const r = await fetch('/data/tanakh-search-idx.json');
+        if (!r.ok) return null;
+        searchIdx = await r.json() as SearchIdx;
+      } catch { searchIdx = null; }
+      return searchIdx;
+    })();
+  }
+  return searchIdxLoading;
+}
+async function loadSearchVerses(sect: string): Promise<string[][] | null> {
+  if (searchVerses[sect]) return searchVerses[sect];
+  if (!searchVersesLoading[sect]) {
+    searchVersesLoading[sect] = (async () => {
+      try {
+        const r = await fetch(`/data/tanakh-verses-${sect}.json`);
+        if (!r.ok) return null;
+        const d = await r.json();
+        searchVerses[sect] = d.verses as string[][];
+      } catch { return null; }
+      return searchVerses[sect] || null;
+    })();
+  }
+  return searchVersesLoading[sect];
+}
+const B36 = '0123456789abcdefghijklmnopqrstuvwxyz';
+function b36decode(s: string): number[] {
+  const out: number[] = [];
+  let prev = 0;
+  for (const part of s.split(',')) {
+    let n = 0;
+    for (const c of part) n = n * 36 + B36.indexOf(c);
+    prev += n;
+    out.push(prev);
+  }
+  return out;
+}
+// Mirror of the Python indexer's Hebrew normalization.
+function normHebrewQuery(text: string): string[] {
+  const stripped = text.replace(/[\u0591-\u05C7\u05EB-\u05EF]/g, '').replace(/\u05BE/g, ' ');
+  const toks = stripped.match(/[\u0590-\u05FF]+/g) || [];
+  const out: string[] = [];
+  const prefixes = 'והבכלמש';
+  for (const tok of toks) {
+    if (tok.length < 2) continue;
+    out.push(tok);
+    let s = tok;
+    while (s.length > 2 && prefixes.includes(s[0])) s = s.slice(1);
+    if (s !== tok && s.length >= 2) out.push(s);
+  }
+  return [...new Set(out)];
+}
+function normEnglishQuery(text: string): string[] {
+  return [...new Set((text.toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g) || []))];
+}
+function intersectSorted(a: number[], b: number[]): number[] {
+  const out: number[] = [];
+  let i = 0, j = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { out.push(a[i]); i++; j++; }
+    else if (a[i] < b[j]) i++;
+    else j++;
+  }
+  return out;
+}
+function verseToSect(idx: SearchIdx, vi: number): { sect: string; local: number } | null {
+  for (const sect of Object.keys(idx.ranges)) {
+    for (const [gs, ls, count] of idx.ranges[sect]) {
+      if (vi >= gs && vi < gs + count) return { sect, local: ls + (vi - gs) };
+    }
+  }
+  return null;
+}
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlight(text: string, terms: string[], isHebrew: boolean): string {
+  let out = escapeHtml(text);
+  // match on normalized forms: strip nikkud for Hebrew comparison
+  const norm = isHebrew
+    ? (s: string) => s.replace(/[\u0591-\u05C7\u05EB-\u05EF]/g, '')
+    : (s: string) => s.toLowerCase();
+  // Build a regex from terms (longest first), matching against normalized text
+  // Simpler: highlight by scanning words in the original and comparing normalized
+  const termSet = new Set(terms.map(norm));
+  const wordRe = isHebrew ? /[\u0590-\u05FF\u0591-\u05C7\u05EB-\u05EF]+/g : /[A-Za-z]+(?:'[A-Za-z]+)?/g;
+  return out.replace(wordRe, (w) => {
+    // w here is escaped; unescape for comparison then re-escape
+    const raw = w.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    let n = norm(raw);
+    if (termSet.has(n)) return `<mark>${w}</mark>`;
+    // also try prefix-stripped Hebrew
+    if (isHebrew) {
+      let s = n;
+      const prefixes = 'והבכלמש';
+      while (s.length > 2 && prefixes.includes(s[0])) s = s.slice(1);
+      if (termSet.has(s)) return `<mark>${w}</mark>`;
+    }
+    return w;
+  });
+}
+
+const mbSearch = document.getElementById('mbSearch') as HTMLInputElement;
+const mbSearchResults = document.getElementById('mbSearchResults') as HTMLElement;
+let searchDebounce: number | null = null;
+
+async function runSearch(q: string) {
+  q = q.trim();
+  if (q.length < 2) {
+    mbSearchResults.classList.add('hidden');
+    mbSearchResults.innerHTML = '';
+    return;
+  }
+  mbSearchResults.classList.remove('hidden');
+  mbSearchResults.innerHTML = '<div class="msr-loading">Searching…</div>';
+  const idx = await loadSearchIdx();
+  if (!idx) {
+    mbSearchResults.innerHTML = '<div class="msr-empty">Search index unavailable.</div>';
+    return;
+  }
+  const isHebrew = /[\u0590-\u05FF]/.test(q);
+  const terms = isHebrew ? normHebrewQuery(q) : normEnglishQuery(q);
+  if (!terms.length) {
+    mbSearchResults.innerHTML = '<div class="msr-empty">No searchable terms.</div>';
+    return;
+  }
+  const table = isHebrew ? idx.he : idx.en;
+  let hits: number[] | null = null;
+  const matchedTerms: string[] = [];
+  for (const t of terms) {
+    const enc = table[t];
+    if (!enc) continue;
+    matchedTerms.push(t);
+    const post = b36decode(enc);
+    hits = hits === null ? post : intersectSorted(hits, post);
+    if (hits.length === 0) break;
+  }
+  if (!hits || hits.length === 0) {
+    mbSearchResults.innerHTML = '<div class="msr-empty">No verses found.</div>';
+    return;
+  }
+  // Rank: verses matching more distinct terms first (all match here by intersection),
+  // then by book order. Cap at 100.
+  const total = hits.length;
+  const shown = hits.slice(0, 100);
+  // Group by section to minimize verse-file fetches
+  const needSects = new Set<string>();
+  const locs: ({ sect: string; local: number } | null)[] = shown.map(vi => {
+    const loc = verseToSect(idx, vi);
+    if (loc) needSects.add(loc.sect);
+    return loc;
+  });
+  await Promise.all([...needSects].map(s => loadSearchVerses(s)));
+  const html: string[] = [
+    `<div class="msr-count">${total} verse${total === 1 ? '' : 's'}${total > 100 ? ' · showing first 100' : ''}</div>`
+  ];
+  for (let i = 0; i < shown.length; i++) {
+    const loc = locs[i];
+    if (!loc) continue;
+    const verses = searchVerses[loc.sect];
+    if (!verses) continue;
+    const v = verses[loc.local]; // [bookIdx, ch, v, he, en]
+    const book = idx.books[+v[0]];
+    const ref = `${book} ${v[1]}:${v[2]}`;
+    const url = `?book=${encodeURIComponent(book)}&chapter=${v[1]}&verse=${v[2]}`;
+    html.push(
+      `<a class="msr-hit" role="option" href="${url}" data-url="${url}">` +
+      `<div class="msr-ref">${escapeHtml(ref)}</div>` +
+      `<div class="msr-he">${highlight(String(v[3]), matchedTerms, true)}</div>` +
+      `<div class="msr-en">${highlight(String(v[4]), matchedTerms, false)}</div>` +
+      `</a>`
+    );
+  }
+  mbSearchResults.innerHTML = html.join('');
+}
+
+if (mbSearch) {
+  mbSearch.addEventListener('input', () => {
+    if (searchDebounce) clearTimeout(searchDebounce);
+    searchDebounce = window.setTimeout(() => runSearch(mbSearch.value), 250);
+  });
+  mbSearch.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      mbSearch.value = '';
+      mbSearchResults.classList.add('hidden');
+      mbSearchResults.innerHTML = '';
+      mbSearch.blur();
+    }
+  });
+  // Hebrew RTL input
+  mbSearch.addEventListener('input', () => {
+    const he = /[\u0590-\u05FF]/.test(mbSearch.value);
+    mbSearch.style.direction = he ? 'rtl' : 'ltr';
+    mbSearch.style.textAlign = he ? 'right' : 'left';
+  });
+}
+document.addEventListener('keydown', (e) => {
+  const tag = (e.target as HTMLElement)?.tagName;
+  if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA' && !(e.target as HTMLElement)?.isContentEditable) {
+    e.preventDefault();
+    mbSearch?.focus();
+  }
+});
+// Close results on outside click; navigate on result click
+document.addEventListener('click', (e) => {
+  const hit = (e.target as HTMLElement)?.closest?.('a.msr-hit') as HTMLAnchorElement | null;
+  if (hit) {
+    // Let the link navigate normally (full page load with ?book=&chapter=&verse=)
+    mbSearchResults.classList.add('hidden');
+    return;
+  }
+  if (!(e.target as HTMLElement)?.closest?.('.mb-search-wrap')) {
+    mbSearchResults.classList.add('hidden');
+  }
 });
 
 // ── Adding / removing books & papers ──────────────────────────────────────
