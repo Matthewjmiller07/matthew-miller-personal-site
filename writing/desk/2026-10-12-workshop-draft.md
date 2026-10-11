@@ -69,7 +69,7 @@ Got a source on wisdom I should add? Reply and send it.
 - **Rav Asher Weiss quote cards:** 11 new this week, 16 in all. Two to start with: the blessings at a wedding aren't the bride and groom's, they belong to the public; and the women's section has kedushah too. Tap any card and the shiur plays from that second.
 - **Rav Asher Weiss transcript archive:** his TorahAnytime shiurim, transcribed with Whisper, searchable in English, Hebrew and Yiddish, with a link to any moment.
 - **929 reels:** every chapter of Kings so far is a short cinematic reel on Instagram at @sidrasecond.
-- **Daily Reader:** each morning's daf, aliyah, 929 chapter, Mishnah and Rambam arrive as a PDF and a Kindle book, with a question on top. Wednesday's: what "first" means in the womb, in the garden, and at the first grave.
+- **My Daily Reader, made by Muse AI:** every morning Muse puts together a reader just for me: the day's daf, aliyah, 929 chapter, Mishnah and Rambam, with a question on top, as a PDF and a Kindle book. Wednesday's question: what does "first" mean in the womb, in the garden, and at the first grave?
 
 ## 🤝 Work with me
 
@@ -91,7 +91,6 @@ Matthew
 ### Notes for Matthew (not for the email)
 
 - Covers everything since the 5 October issue went out: commits from 6–10 October, live desk notes, and the /everything feed.
-- Before sending, check: the Daily Reader is described as a Kindle/PDF delivery. Is it public, or just for you? If it's just for you, cut that bullet.
 - A short clip from the 1 Kings 3 lip-sync film would make a good GIF for the headliner (the two mothers before Solomon).
 - I left out the signup popup and the /desk itself (behind the scenes), and the "Mobile search toggle" fix, which is folded into search.
 - Once you're happy with the copy, I can build the HTML email in the same style as the 5 October one and send you a test.
