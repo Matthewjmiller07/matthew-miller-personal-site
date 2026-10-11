@@ -13,6 +13,25 @@ from email.message import EmailMessage
 SUPABASE = "https://qukziojymwlvmrzapgyo.supabase.co"
 ANON = os.environ.get("SUPABASE_ANON_KEY", "")
 MAX_PER_RUN = 80  # stays well under Gmail's daily sending limit
+SITE = "https://theothermatthewmiller.com"
+
+
+def unpublished_media(html, slug):
+    """Links in the email to this issue's own files on the site (the trailer, say) that aren't live yet.
+
+    The merge that publishes an issue also triggers this job, minutes before Netlify finishes
+    deploying, so without this check the trailer link would 404 for the first readers.
+    """
+    missing = []
+    for url in sorted(set(re.findall(rf'(?:href|src)="({re.escape(SITE)}/newsletter/{re.escape(slug)}/[^"]+)"', html))):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, method="HEAD"), timeout=30) as r:
+                ok = r.status == 200
+        except Exception:
+            ok = False
+        if not ok:
+            missing.append(url)
+    return missing
 
 
 def rpc(name, **args):
@@ -42,6 +61,11 @@ def main():
         return
 
     html = open(issue["html"], encoding="utf-8").read()
+    missing = unpublished_media(html, issue["slug"])
+    if missing:
+        print("Not live on the site yet, waiting for the deploy (next hourly run retries):")
+        print("\n".join(f"  {u}" for u in missing))
+        return
     text = re.sub(r"(?is)<(head|style)\b.*?</\1>", "", html)
     text = re.sub(r"[ \t]+", " ", re.sub(r"\n\s*\n+", "\n\n", re.sub(r"<[^>]+>", " ", text))).strip()
 

@@ -1,6 +1,9 @@
 [build]
-  command = "node -e \"const fs = require('fs'); if(process.env.GOOGLE_CREDENTIALS) fs.writeFileSync('google-credentials.json', process.env.GOOGLE_CREDENTIALS);\" && npm install --legacy-peer-deps && npm run sync:scp && node scripts/extract-pdf-links.mjs && node scripts/build-search-index.mjs && node scripts/fetch-israel-stats.mjs && astro build"
+  command = "node -e \"const fs = require('fs'); if(process.env.GOOGLE_CREDENTIALS) fs.writeFileSync('google-credentials.json', process.env.GOOGLE_CREDENTIALS); fs.writeFileSync('public/build-info.json', JSON.stringify({commit: process.env.COMMIT_REF || '', context: process.env.CONTEXT || '', built: new Date().toISOString()}));\" && npm install --legacy-peer-deps && npm run sync:scp && node scripts/extract-pdf-links.mjs && node scripts/build-search-index.mjs && node scripts/fetch-israel-stats.mjs && astro build"
   publish = "dist"
+  # Saves credits: pushes to main don't deploy; .github/workflows/nightly-deploy.yml deploys at
+  # midnight Israel time if main changed. A commit saying [deploy] deploys at once. See the script.
+  ignore = "bash scripts/netlify/ignore-build.sh"
 
 [[headers]]
   for = "/zmanim-widget.js"
