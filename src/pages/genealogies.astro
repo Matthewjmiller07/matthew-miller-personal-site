@@ -64,7 +64,7 @@ const maxGen = Math.max(...people.map((p) => p.gen));
   .gn .tile span { font-size: .85rem; color: var(--muted); }
 
   /* filters */
-  .gn .filters { position: sticky; top: 0; z-index: 20; background: rgba(7,7,10,.94); backdrop-filter: blur(8px); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .gn .filters { position: sticky; top: var(--navh, 0px); z-index: 20; background: rgba(7,7,10,.94); backdrop-filter: blur(8px); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
   .gn .filters .wrap { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding-top: 10px; padding-bottom: 10px; }
   .gn .fgroup { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .gn .fgroup > label.k { font-family: var(--display); text-transform: uppercase; letter-spacing: .12em; font-size: .7rem; color: var(--faint); margin-right: 2px; }
@@ -129,7 +129,9 @@ const maxGen = Math.max(...people.map((p) => p.gen));
   .gn .note { font-size: .85rem; color: var(--faint); line-height: 1.5; margin-top: 10px; }
 
   /* detail */
-  .gn .detail { position: sticky; top: 64px; max-height: calc(100vh - 80px); overflow: auto; padding: 22px; }
+  .gn .detail { position: sticky; top: calc(var(--navh, 0px) + var(--fh, 0px) + 12px); max-height: calc(100vh - var(--navh, 0px) - var(--fh, 0px) - 24px); overflow: auto; padding: 22px; }
+  .gn .detail.arrive { animation: gnArrive 2.2s ease; }
+  @keyframes gnArrive { 0%, 35% { box-shadow: 0 0 0 2px var(--gold), 0 0 40px rgba(244,196,106,.35); } 100% { box-shadow: 0 0 0 0 transparent; } }
   .gn .detail .hname { font-family: var(--heb); font-size: 3.4rem; line-height: 1.1; color: var(--gold); direction: rtl; font-weight: 700; }
   .gn .detail h3 { font-size: 1.8rem; margin-top: 4px; }
   .gn .detail .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
@@ -325,8 +327,9 @@ const maxGen = Math.max(...people.map((p) => p.gen));
     sectors: new Set(SECTORS.map((s) => s.id)), sex: 'all', y0: Y0, y1: Y1 });
   let S = DEFAULT();
   let NAMES = null;
-  let selected = (location.hash || '').slice(1) || 'noah';
-  if (!byId[selected]) selected = 'noah';
+  // a link like /genealogies#abel (from the Mega Bible) opens straight on that person
+  const linked = byId[(location.hash || '').slice(1)] ? (location.hash || '').slice(1) : null;
+  let selected = linked || 'noah';
 
   // ---------- data helpers
   const groupOk = (key) => { const [sec, sex] = key.split('|'); return S.sectors.has(sec) && (S.sex === 'all' || S.sex === sex); };
@@ -802,12 +805,39 @@ const maxGen = Math.max(...people.map((p) => p.gen));
   addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rzT); rzT = setTimeout(() => { drawLife(); drawBoard(); }, 150); });
   syncRange();
   renderAll();
+  // the site navbar is sticky, and on wide screens so is the filter bar: keep the panel clear of both
+  const gn = document.querySelector('.gn'), filtersEl = document.querySelector('.gn .filters');
+  function measureBars() {
+    const nav = document.querySelector('body > header, header.sticky');
+    const navh = nav && /sticky|fixed/.test(getComputedStyle(nav).position) ? nav.offsetHeight : 0;
+    const fh = getComputedStyle(filtersEl).position === 'sticky' ? filtersEl.offsetHeight : 0;
+    gn.style.setProperty('--navh', navh + 'px'); gn.style.setProperty('--fh', fh + 'px');
+    return navh + fh;
+  }
+  measureBars();
+  addEventListener('resize', measureBars);
+  function arrive(flash = true) {
+    // jump past the hero to the person: their panel (and their dot in the tree beside it)
+    const target = innerWidth <= 980 ? detail : detail.closest('.main');
+    const y = target.getBoundingClientRect().top + scrollY - measureBars() - 12;
+    scrollTo({ top: Math.max(0, y), behavior: 'auto' });
+    if (flash) { detail.classList.remove('arrive'); void detail.offsetWidth; detail.classList.add('arrive'); }
+  }
+  // the charts above the panel grow when the names data loads; re-aim then, unless the reader has moved
+  let reaim = !!linked;
+  for (const ev of ['wheel', 'touchmove', 'keydown', 'mousedown']) addEventListener(ev, () => { reaim = false; }, { once: true, passive: true });
+  if (linked) requestAnimationFrame(() => arrive());
+  addEventListener('hashchange', () => {
+    const id = (location.hash || '').slice(1);
+    if (byId[id] && id !== selected) { select(id); arrive(); }
+  });
   fetch('/data/genealogies/names.json').then((r) => r.json()).then((d) => {
     NAMES = d;
     const spell = uniq(PEOPLE.filter((p) => !p.homograph).flatMap((p) => p.names));
     const all = spell.reduce((t, s) => t + Object.values(d.names[s]?.totals || {}).reduce((a, b) => a + b, 0), 0);
     document.getElementById('t-babies').textContent = fmt(all);
     renderAll();
+    if (reaim) requestAnimationFrame(() => arrive(false));
   });
 </script>
 </Layout>
