@@ -15,6 +15,9 @@ export interface Props {
     icsWebcal: string;
     icsHttpsHe?: string;
     icsWebcalHe?: string;
+    icsHttpsKids?: string;
+    icsWebcalKids?: string;
+    kidsEventCount?: number;
   };
   linkTitle?: boolean;
   lang?: 'en' | 'he';
@@ -31,6 +34,10 @@ const googleCalHref = t(googleCalHrefEn, googleCalHrefHe);
 
 const icsWebcal = t(cal.icsWebcal, cal.icsWebcalHe);
 const icsHttps = t(cal.icsHttps, cal.icsHttpsHe);
+
+const googleCalHrefKids = cal.icsWebcalKids
+  ? `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(cal.icsWebcalKids)}`
+  : null;
 
 const eventCountEn = `📅 ${cal.eventCount} events`;
 const eventCountHe = `📅 ${cal.eventCount} אירועים`;
@@ -143,6 +150,19 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
     </div>
   </div>
 
+  {cal.icsHttpsKids && (
+    <div class="mt-4 pt-4 border-t border-border-light dark:border-border-dark">
+      <p class="text-sm font-medium text-primary-light dark:text-primary-dark mb-1" data-en={`⭐ Just the picks for an 8-year-old (${cal.kidsEventCount ?? 0})`} data-he={`⭐ רק מה שמתאים לבן/בת 8 (${cal.kidsEventCount ?? 0})`}>
+        {t(`⭐ Just the picks for an 8-year-old (${cal.kidsEventCount ?? 0})`, `⭐ רק מה שמתאים לבן/בת 8 (${cal.kidsEventCount ?? 0})`)}
+      </p>
+      <div class="flex flex-wrap gap-3 text-xs">
+        <a href={googleCalHrefKids} target="_blank" rel="noopener noreferrer" class="text-accent dark:text-accent-dark hover:underline" data-en="Add to Google Calendar ↗" data-he="הוספה ליומן Google ↗">{t('Add to Google Calendar ↗', 'הוספה ליומן Google ↗')}</a>
+        <a href={cal.icsWebcalKids} class="text-accent dark:text-accent-dark hover:underline">Apple / Outlook (webcal)</a>
+        <a href={cal.icsHttpsKids} download class="text-accent dark:text-accent-dark hover:underline" data-en="Download .ics" data-he="הורדת קובץ .ics">{t('Download .ics', 'הורדת קובץ .ics')}</a>
+      </div>
+    </div>
+  )}
+
   <!-- Inline event viewer (no calendar app needed) -->
   <div class="mt-4 pt-4 border-t border-border-light dark:border-border-dark">
     <button
@@ -167,6 +187,12 @@ const eventCountHe = `📅 ${cal.eventCount} אירועים`;
           data-placeholder-he="סינון אירועים…"
           class="events-search flex-1 text-sm px-3 py-1.5 rounded border border-border-light dark:border-border-dark bg-transparent text-primary-light dark:text-primary-dark placeholder:text-secondary-light/60 dark:placeholder:text-secondary-dark/60"
         />
+        {cal.icsHttpsKids && (
+          <label class="flex items-center gap-1.5 text-xs text-secondary-light dark:text-secondary-dark whitespace-nowrap cursor-pointer">
+            <input type="checkbox" class="events-kids-only" />
+            <span data-en="⭐ only" data-he="⭐ בלבד">{t('⭐ only', '⭐ בלבד')}</span>
+          </label>
+        )}
         <span class="events-count text-xs text-secondary-light dark:text-secondary-dark whitespace-nowrap"></span>
       </div>
       <ul class="events-list max-h-96 overflow-y-auto pr-1"></ul>

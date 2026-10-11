@@ -15,9 +15,11 @@
     const lines = unfoldIcs(text).split(/\r\n|\n/);
     const events = [];
     let cur = null;
+    let tz = 'America/Chicago';
     for (const line of lines) {
+      if (!cur && line.startsWith('X-WR-TIMEZONE:')) { tz = line.slice(14).trim() || tz; continue; }
       if (line === 'BEGIN:VEVENT') { cur = {}; continue; }
-      if (line === 'END:VEVENT') { if (cur) events.push(cur); cur = null; continue; }
+      if (line === 'END:VEVENT') { if (cur) { cur.tz = tz; events.push(cur); } cur = null; continue; }
       if (!cur) continue;
       const idx = line.indexOf(':');
       if (idx === -1) continue;
@@ -51,7 +53,7 @@
     const date = parseIcsDate(ev.dtstart, ev.allDay);
     const opts = ev.allDay
       ? { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }
-      : { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' };
+      : { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: ev.tz || 'America/Chicago' };
     return date.toLocaleString('en-US', opts);
   }
 
@@ -144,12 +146,17 @@
         await loadEventsForButton(btn);
       });
 
-      searchInput.addEventListener('input', () => {
+      const kidsOnly = panel.querySelector('.events-kids-only');
+      const applyFilter = () => {
         const q = searchInput.value.trim().toLowerCase();
+        const starOnly = kidsOnly?.checked;
         listEl.querySelectorAll('.event-item').forEach(li => {
-          li.classList.toggle('hidden', q.length > 0 && !li.dataset.search.includes(q));
+          const hide = (q.length > 0 && !li.dataset.search.includes(q)) || (starOnly && !li.dataset.search.includes('⭐'));
+          li.classList.toggle('hidden', hide);
         });
-      });
+      };
+      searchInput.addEventListener('input', applyFilter);
+      kidsOnly?.addEventListener('change', applyFilter);
     });
 
     // Page-level English/Hebrew toggle — swaps every [data-en]/[data-he] text

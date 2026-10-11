@@ -1,5 +1,6 @@
 import likuteiPeshatimEvents from '../data/likutei-peshatim/events.json';
 import raananaGaniYolaEvents from '../data/raanana-gani-yola/events.json';
+import raananaEvents from '../data/raanana-events/events.json';
 
 export const siteBase = 'https://theothermatthewmiller.com';
 
@@ -55,6 +56,23 @@ const rawCalendars = [
     note: 'Static for the 5787 school year — re-transcribed each year from the municipality\'s calendar, not auto-updated. Hanukkah and Purim party dates are set by the kindergarten staff closer to the time and aren\'t included. Per Ministry of Education/Yol"a policy, during vacation weeks there is no kindergarten activity on Fridays (this doesn\'t apply to regular in-session Fridays).',
     noteHe: 'לוח סטטי לשנת הלימודים תשפ"ז — מועתק מחדש מדי שנה מלוח העירייה, אינו מתעדכן אוטומטית. מועדי מסיבות חנוכה ופורים נקבעים ע"י צוות הגן בסמוך למועד ואינם כלולים כאן. על פי מדיניות משרד החינוך/יול"א, בשבועות החופשה אין פעילות יול"א בימי שישי (אינו חל על ימי שישי רגילים בזמן לימודים).',
   },
+  {
+    slug: 'RaananaEvents',
+    id: 'raanana_events',
+    name: 'Raanana — Events & Shows',
+    nameHe: 'רעננה — אירועים והופעות',
+    description: 'Shows, concerts, kids\' theater and community events from the Raanana municipality ticket site, translated into English. Events an 8-year-old might like are marked ⭐ and also have their own feed.',
+    descriptionHe: 'הופעות, קונצרטים, הצגות ילדים ואירועי קהילה מאתר הכרטיסים של עיריית רעננה. אירועים שמתאימים לבן/בת 8 מסומנים ב-⭐ ויש להם גם יומן נפרד.',
+    file: '/calendar/raanana_events.ics',
+    fileHe: '/calendar/raanana_events_he.ics',
+    kidsFile: '/calendar/raanana_events_kids.ics',
+    source: 'https://tickets.raanana.muni.il/',
+    tags: ['Raanana', 'Events', 'Kids'],
+    eventCount: raananaEvents.length,
+    kidsEventCount: raananaEvents.filter(ev => ev.forEight).length,
+    note: 'Times are Israel time. Translations and the ⭐ picks are mine, so check the ticket site for prices, availability and last-minute changes before booking.',
+    noteHe: 'השעות לפי שעון ישראל. התרגומים וסימוני ה-⭐ שלי, לכן כדאי לבדוק באתר הכרטיסים מחירים, זמינות ושינויים לפני הזמנה.',
+  },
 ];
 
 export function getCalendars() {
@@ -65,6 +83,10 @@ export function getCalendars() {
       const icsHttpsHe = cal.external ? cal.fileHe : `${siteBase}${cal.fileHe}`;
       result.icsHttpsHe = icsHttpsHe;
       result.icsWebcalHe = icsHttpsHe.replace(/^https:/, 'webcal:');
+    }
+    if (cal.kidsFile) {
+      result.icsHttpsKids = `${siteBase}${cal.kidsFile}`;
+      result.icsWebcalKids = result.icsHttpsKids.replace(/^https:/, 'webcal:');
     }
     return result;
   });
