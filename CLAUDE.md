@@ -25,6 +25,15 @@ Keep the desk current as part of normal work, without being asked:
   `/newsletter/<slug>/trailer.mp4`) is only live once Netlify deploys main, so don't call the issue
   sent until that deploy is live. `scripts/newsletter/deliver.py` enforces this: it holds the send
   while any `/newsletter/<slug>/` link in the email isn't live, and the hourly run retries.
+  Put `[deploy]` in the publish commit (or PR title) so Netlify deploys it right away (see below).
+
+## Netlify credits
+
+Each successful production deploy costs 15 Netlify credits, and the site ran out once. So
+`scripts/netlify/ignore-build.sh` (the `ignore` command in `netlify.toml`) skips production builds
+unless the last deploy is 20+ hours old or the commit message contains `[deploy]`. Skipped commits
+go live with the next deploy. Only use `[deploy]` when something has to be live now (a newsletter
+issue, a fix to a broken page); never in the daily pipelines. Deploy Previews are free.
 
 ## Source sheets
 
