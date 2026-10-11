@@ -1,7 +1,7 @@
 ---
-title: "Draft: The Workshop, week of 12 October 2026"
+title: "The Workshop, week of 12 October 2026 (sent)"
 date: 2026-10-11
-status: draft
+status: sent
 tags: next-issue, draft
 ---
 
@@ -66,7 +66,7 @@ Got a source on wisdom I should add? Reply and send it.
 
 ## ⚡ Quick hits
 
-- **Rav Asher Weiss quote cards:** 11 new this week, 16 in all. Two to start with: the blessings at a wedding aren't the bride and groom's, they belong to the public; and the women's section has kedushah too. Tap any card and the shiur plays from that second.
+- **Rav Asher Weiss quote cards:** 14 new this week, 19 in all. Two to start with: the blessings at a wedding aren't the bride and groom's, they belong to the public; and the women's section has kedushah too. Tap any card and the shiur plays from that second.
 - **Rav Asher Weiss transcript archive:** his TorahAnytime shiurim, transcribed with Whisper, searchable in English, Hebrew and Yiddish, with a link to any moment.
 - **929 reels:** every chapter of Kings so far is a short cinematic reel on Instagram at @sidrasecond.
 - **My Daily Reader, made by Muse AI:** every morning Muse puts together a reader just for me: the day's daf, aliyah, 929 chapter, Mishnah and Rambam, with a question on top, as a PDF and a Kindle book. Wednesday's question: what does "first" mean in the womb, in the garden, and at the first grave?
