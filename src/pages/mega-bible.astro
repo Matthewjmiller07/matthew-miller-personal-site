@@ -248,7 +248,16 @@ body:has(.mb-page) > footer { display:none!important; }
 .mb-sheet-hap small { font-family:var(--mono); font-size:.55rem; color:var(--gold-dim); margin-right:.3rem; direction:ltr; display:inline-block; }
 .mb-sheet-hap:hover { border-color:var(--gold); color:var(--gold); }
 .w.w-hapax { outline:1px dashed var(--gold); outline-offset:2px; border-radius:2px; }
-.mb-page.no-sheets .mb-sheet { display:none; }
+.mb-page.no-sheets .mb-sheet:not(.mb-gen) { display:none; }
+/* Genealogies card + name marks (Genesis 4-5, 10-11 → /genealogies) */
+.mb-gen-names { grid-column:1 / -1; display:flex; gap:.3rem; flex-wrap:wrap; align-items:center; }
+.mb-gen-names .lbl { font-family:var(--sc); font-size:.55rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-right:.2rem; }
+.mb-gen-name { border:1px solid var(--border-hi); color:var(--text); text-decoration:none; padding:.1rem .45rem; font-family:var(--heb); font-size:.95rem; direction:rtl; }
+.mb-gen-name small { font-family:var(--mono); font-size:.55rem; color:var(--gold-dim); margin-right:.35rem; direction:ltr; display:inline-block; }
+.mb-gen-name:hover { border-color:var(--gold); color:var(--gold); }
+.w.w-gen { text-decoration:underline dotted var(--gold); text-underline-offset:5px; }
+.mb-page.no-gen .mb-gen { display:none; }
+.mb-page.no-gen .w.w-gen { text-decoration:none; }
 .mb-page.no-sheets .w.w-hapax { outline:none; }
 .verse-block.mb-flash { animation:mbFlash 1.6s ease; }
 @keyframes mbFlash { 0%,40% { background:rgba(201,162,87,.18); } 100% { background:transparent; } }
@@ -1325,6 +1334,10 @@ body:has(.mb-page) > footer { display:none!important; }
           <label for="layerSheets" title="The parasha sheet for this passage, and its words that occur nowhere else in Tanakh">Parasha Sheets</label>
         </div>
         <div class="sb-row">
+          <input type="checkbox" id="layerGen" checked>
+          <label for="layerGen" title="Names in the genealogies of Genesis 4–5 and 10–11, with how many Israeli babies carry each one">Genealogies</label>
+        </div>
+        <div class="sb-row">
           <input type="checkbox" id="layerHaftarah" checked>
           <label for="layerHaftarah">Haftarah</label>
         </div>
@@ -1577,6 +1590,75 @@ function markSheetHapax(sheets: any[]) {
         if (!hit) return;
         w.classList.add('w-hapax');
         w.title = `Occurs nowhere else in Tanakh${h.gloss ? ` — ${h.gloss}` : ''} (${sh.en} parasha sheet)`;
+      });
+    }
+  }
+}
+
+// ── Genealogies ────────────────────────────────────────────────────────────
+// Every person and people in Genesis 4–5 and 10–11, from /genealogies (The Book of
+// Generations). A passage that names any of them gets a card linking to the explorer, and
+// the names are underlined in the verses with their Israeli baby-name counts.
+import GEN_PEOPLE from '../data/genealogies/people.json';
+type GenFig = { id: string; en: string; he: string; israel: number; homograph?: boolean; lived?: number;
+  book: string; ch: number; v0: number; v1: number; tok: string };
+const GEN: GenFig[] = (GEN_PEOPLE as any[]).map((p) => {
+  const m = String(p.ref).match(/^(.+?) (\d+):(\d+)(?:-(\d+))?$/);
+  if (!m) return null;
+  return { ...p, book: m[1], ch: +m[2], v0: +m[3], v1: m[4] ? +m[4] : +m[3], tok: '' };
+}).filter(Boolean) as GenFig[];
+
+/** Figures whose verses overlap the passage being rendered. */
+function genFor(book: string, sc: number, sv: number, ec: number, ev: number) {
+  const a = cv(sc, sv), b = cv(ec, Math.min(ev, 999));
+  return GEN.filter((g) => g.book === book && cv(g.ch, g.v0) <= b && cv(g.ch, g.v1) >= a);
+}
+
+function buildGenCard(figs: GenFig[], book: string, sc: number, ec: number): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'mb-sheet mb-gen';
+  const named = figs.filter((g) => g.israel && !g.homograph);
+  // two figures can share a spelling (the two Shebas, Tubal and Tubal-cain): count it once
+  const babies = [...new Map(named.map((g: any) => [(g.names || []).join('+'), g.israel])).values()].reduce((t, n) => t + n, 0);
+  const seen = new Set<string>();
+  const chips = figs.filter((g) => !seen.has(g.id) && seen.add(g.id)).map((g) =>
+    `<a class="mb-gen-name" href="/genealogies#${escHtml(g.id)}" title="${escHtml(g.en)}${g.lived ? ` · lived ${g.lived} years` : ''}${g.israel && !g.homograph ? ` · ${g.israel.toLocaleString('en-US')} Israeli babies` : ''}">${g.israel && !g.homograph ? `<small>${g.israel.toLocaleString('en-US')}</small>` : ''}${escHtml(g.he)}</a>`).join('');
+  el.innerHTML = `
+    <div class="mb-sheet-he">תּוֹלְדֹת</div>
+    <div>
+      <div class="mb-sheet-kicker">Genealogies · ${escHtml(book)} ${sc === ec ? sc : `${sc}–${ec}`}</div>
+      <div class="mb-sheet-title">The Book of Generations</div>
+      <div class="mb-sheet-sub">Every name here in a family tree and a lifespan timeline, with 75 years of Israeli baby names</div>
+    </div>
+    <div class="mb-sheet-acts">
+      <a class="primary" href="/genealogies">Open the explorer</a>
+      <a href="/videos/genealogies-trailer.mp4" target="_blank" rel="noopener">Trailer</a>
+    </div>
+    <div class="mb-sheet-stats">
+      <div><b>${seen.size}</b><span>names in this passage</span></div>
+      <div><b>${named.length}</b><span>still given in Israel</span></div>
+      <div><b>${babies.toLocaleString('en-US')}</b><span>Israeli babies, 1949–2024</span></div>
+    </div>
+    <div class="mb-gen-names"><span class="lbl">Names</span>${chips}</div>`;
+  return el;
+}
+
+/** Underline each figure's name in the verses that name it (prefixes ו ה ל ב מ כ ש allowed). */
+function markGenNames(figs: GenFig[]) {
+  for (const g of figs) {
+    const name = normalizeConsonants(g.he).split(' ')[0];
+    if (!name) continue;
+    for (let v = g.v0; v <= g.v1; v++) {
+      const block = main.querySelector(`.verse-block[data-verse-ref="${CSS.escape(`${g.book} ${g.ch}:${v}`)}"]`);
+      if (!block) continue;
+      block.querySelectorAll<HTMLElement>('.w').forEach((w) => {
+        const hit = normalizeConsonants(w.dataset.word || '').split(' ').some((t) =>
+          t === name || (t.length === name.length + 1 && 'והלבמכש'.includes(t[0]) && t.slice(1) === name)
+            || (t.length === name.length + 2 && /^(וה|ול|וב|ומ|מה|וכ)/.test(t) && t.slice(2) === name));
+        if (!hit || w.classList.contains('w-gen')) return;
+        w.classList.add('w-gen');
+        const n = g.israel && !g.homograph ? ` · ${g.israel.toLocaleString('en-US')} Israeli babies named ${g.he}` : '';
+        w.title = `${g.en}${g.lived ? ` (lived ${g.lived} years)` : ''}${n} · /genealogies`;
       });
     }
   }
@@ -2666,6 +2748,7 @@ setupLayerToggle('layerGraetz',   'no-graetz');
 setupLayerToggle('layerModern',   'no-modern');
 setupLayerToggle('layerBooks',    'no-books');
 setupLayerToggle('layerSheets',   'no-sheets');
+setupLayerToggle('layerGen',      'no-gen');
 setupLayerToggle('posNoun',   'no-pos-noun');
 setupLayerToggle('posVerb',   'no-pos-verb');
 setupLayerToggle('posProper', 'no-pos-proper');
@@ -4384,6 +4467,8 @@ async function renderRange(
 
     const rangeSheets = sheetsFor(book, sc, sv, ec, ev);
     if (!appendMode) rangeSheets.forEach((sh) => main.appendChild(buildSheetCard(sh)));
+    const rangeGen = genFor(book, sc, sv, ec, ev);
+    if (!appendMode && rangeGen.length) main.appendChild(buildGenCard(rangeGen, book, sc, ec));
 
     if (!xmlDoc) {
       main.innerHTML += `<div class="mb-placeholder">Could not load text for <em>${book}</em>.</div>`;
@@ -4474,6 +4559,7 @@ async function renderRange(
     if (!appendMode) main.appendChild(buildStatsPanel(stats, devices.length));
     verseBlocks.forEach(b => main.appendChild(b));
     markSheetHapax(rangeSheets);
+    markGenNames(rangeGen);
 
     // If a word is actively highlighted (e.g. an appendMode continuation of
     // the same read), the newly appended verses may add fresh matches —
