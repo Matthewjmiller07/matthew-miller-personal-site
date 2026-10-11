@@ -1,0 +1,60 @@
+# Undo "stale tree" commits on main: a push made from an out-of-date checkout that adds its
+# one new file but sets everything else it touched back to an old version (like the daily 929
+# audio push on 11 October 2026, which deleted the Book of Generations, that week's newsletter
+# and the nightly-deploy setup). See scripts/guard/stale_tree_guard.py for the rule.
+#
+# It restores the reverted files in a new commit on top (keeping the push's genuinely new
+# content) and fails the run, so GitHub emails you. Put "[allow-revert]" in a commit message
+# for an intentional mass rollback.
+name: Stale tree guard
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stale-tree-guard
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          filter: blob:none
+
+      - name: Look for stale-tree commits
+        id: check
+        run: |
+          python3 scripts/guard/stale_tree_guard.py "${{ github.event.before }}" "${{ github.event.after }}" --apply | tee guard.log
+          if git diff --cached --quiet; then echo "restored=false" >> "$GITHUB_OUTPUT"; else echo "restored=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Commit the restore
+        if: steps.check.outputs.restored == 'true'
+        run: |
+          git config user.name "stale-tree-guard"
+          git config user.email "stale-tree-guard@users.noreply.github.com"
+          {
+            echo "Restore files reverted by a stale-tree push"
+            echo
+            sed -n '1,60p' guard.log
+          } > msg.txt
+          git commit -q -F msg.txt
+          git push origin HEAD:main
+          {
+            echo "### Stale-tree push undone"
+            echo '```'
+            cat guard.log
+            echo '```'
+            echo "The pipeline that pushed it is committing from an out-of-date checkout: make it pull main first."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::A push to main reverted files from an out-of-date checkout. They were restored in $(git rev-parse --short HEAD); fix the pipeline that pushed it."
+          exit 1
