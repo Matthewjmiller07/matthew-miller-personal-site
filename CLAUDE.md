@@ -20,23 +20,6 @@ Keep the desk current as part of normal work, without being asked:
 - After an issue is sent, rename `next-issue.md` to the issue's date with `status: sent` and
   start a fresh `next-issue.md` for the following week.
 - The desk is public to anyone with the URL: never put private or personal details there.
-- Sending an issue: send a test first, then merge to main with the issue marked `published` in
-  `writing/newsletter/issues.json`. Media the email links on the site (e.g. the trailer at
-  `/newsletter/<slug>/trailer.mp4`) is only live once Netlify deploys main, so don't call the issue
-  sent until that deploy is live. `scripts/newsletter/deliver.py` enforces this: it holds the send
-  while any `/newsletter/<slug>/` link in the email isn't live, and the hourly run retries.
-  Put `[deploy]` in the publish commit (or PR title) so Netlify deploys it right away instead of at midnight (see below).
-
-## Netlify credits
-
-Each successful production deploy costs 15 Netlify credits, and the site ran out once. So pushes to
-main never deploy on their own: `scripts/netlify/ignore-build.sh` (the `ignore` command in
-`netlify.toml`) skips them. `.github/workflows/nightly-deploy.yml` calls a Netlify build hook at
-midnight Israel time, and only if main has moved since the live deploy (the build writes
-`/build-info.json` with its commit), so everything merged that day goes live in one deploy.
-To see work before then, open a PR: Deploy Previews are free. Only use `[deploy]` in a commit
-message when something has to be live now (a newsletter issue, a fix to a broken page); never in the
-daily pipelines.
 
 ## Source sheets
 
