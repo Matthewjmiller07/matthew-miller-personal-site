@@ -93,4 +93,4 @@ Matthew
 - Covers everything since the 5 October issue went out: commits from 6–10 October, live desk notes, and the /everything feed.
 - A short clip from the 1 Kings 3 lip-sync film would make a good GIF for the headliner (the two mothers before Solomon).
 - I left out the signup popup and the /desk itself (behind the scenes), and the "Mobile search toggle" fix, which is folded into search.
-- Once you're happy with the copy, I can build the HTML email in the same style as the 5 October one and send you a test.
+- HTML email: writing/newsletter/2026-10-12-workshop.html (test sent 11 October). Art, GIFs and trailer in public/newsletter/2026-10-12/, built by scripts/newsletter-trailer/build_week_2026_10_12.py.
