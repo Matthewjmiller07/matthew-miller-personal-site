@@ -15,9 +15,13 @@
 //   Returns { card } or { retry: true, reason } when this verse had nothing good.
 //
 // POST { action: 'grade', guess, card } → { correct } for guesses the
-//   client's fuzzy match couldn't settle.
+//   client's fuzzy match couldn't settle; { action: 'result', id, outcome }
+//   records a play of a saved card.
 //
-// Env: HF_TOKEN. Optional LIT_JUDGE_MODEL (default openai/gpt-oss-120b:fastest).
+// Cards are saved to Supabase lit_cards and replayed (see the card bank below).
+//
+// Env: HF_TOKEN, PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY. Optional LIT_JUDGE_MODEL
+// (default openai/gpt-oss-120b:fastest) and LIT_DAILY_CAP (new cards a day, default 100).
 
 export const prerender = false;
 
@@ -367,26 +371,128 @@ Return ONLY this JSON:
   };
 }
 
+// ── Card bank (Supabase lit_cards) ──────────────────────────────────────────
+// Good live cards are saved and replayed so most plays cost nothing. New cards
+// are generated often while a mode's bank is small and rarely once it is big,
+// never past LIT_DAILY_CAP a day. Without the table or keys the game still
+// works, generating every card. Schema: lost-in-translation-supabase-setup.sql.
+
+const BANK_TARGET = 150; // per mode; past this, new cards are ~10% of plays
+const NEW_MIN = 0.1;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+function bank() {
+  const url = env('PUBLIC_SUPABASE_URL');
+  const key = env('SUPABASE_SERVICE_ROLE_KEY');
+  if (!url || !key) return null;
+  return async (path, opts = {}) => {
+    try {
+      const res = await fetch(`${url}/rest/v1/${path}`, {
+        ...opts,
+        headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', ...opts.headers },
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!res.ok) {
+        console.error('[lost-in-translation] bank', res.status, (await res.text()).slice(0, 200));
+        return null;
+      }
+      return res.status === 204 ? true : await res.json();
+    } catch (err) {
+      console.error('[lost-in-translation] bank', err.message);
+      return null;
+    }
+  };
+}
+
+async function bankIds(db, mode) {
+  const rows = await db(`lit_cards?select=id&mode=eq.${mode}&hidden=is.false&limit=2000`);
+  return Array.isArray(rows) ? rows.map(r => r.id) : null;
+}
+
+async function bankCreatedToday(db) {
+  const since = new Date(Date.now() - 864e5).toISOString();
+  const rows = await db(`lit_cards?select=id&created_at=gte.${encodeURIComponent(since)}&limit=1000`);
+  return Array.isArray(rows) ? rows.length : 0;
+}
+
+async function bankCard(db, id) {
+  const rows = await db(`lit_cards?select=id,card&id=eq.${id}`);
+  return rows?.[0] ? { ...rows[0].card, id: rows[0].id } : null;
+}
+
+async function bankSave(db, mode, card) {
+  const row = { mode, he: card.he, bad: card.bad, card };
+  const saved = await db('lit_cards?on_conflict=mode,he,bad', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation,resolution=ignore-duplicates' },
+    body: JSON.stringify(row),
+  });
+  if (saved?.[0]?.id) return saved[0].id;
+  // Already in the bank: find its id.
+  const found = await db(`lit_cards?select=id&mode=eq.${mode}&he=eq.${encodeURIComponent(card.he)}&bad=eq.${encodeURIComponent(card.bad)}`);
+  return found?.[0]?.id || null;
+}
+
+async function liveCard(source, seen, token) {
+  const db = bank();
+  const ids = db ? await bankIds(db, source) : null;
+  const unseen = ids ? ids.filter(id => !seen.has(id)) : [];
+  const fromBank = async () => {
+    const id = unseen[Math.floor(Math.random() * unseen.length)];
+    const card = await bankCard(db, id);
+    return card ? { card: { ...card, fresh: false } } : { retry: true, reason: 'bank read failed' };
+  };
+
+  const pNew = ids ? Math.max(NEW_MIN, 1 - ids.length / BANK_TARGET) : 1;
+  let wantNew = token && (!unseen.length || Math.random() < pNew);
+  if (wantNew && ids && (await bankCreatedToday(db)) >= (Number(env('LIT_DAILY_CAP')) || 100)) wantNew = false;
+
+  if (!wantNew) {
+    if (unseen.length) return fromBank();
+    if (!token) return { error: 'HF_TOKEN not configured' };
+    return { exhausted: true, reason: "you've played every saved card, and today's new cards are used up. More tomorrow" };
+  }
+
+  const made = await (source === 'menu' ? makeMenuCard(token) : makeCard(source, token));
+  if (made.card) {
+    const id = ids ? await bankSave(db, source, made.card) : null;
+    return { card: { ...made.card, ...(id ? { id } : {}), fresh: true } };
+  }
+  // This attempt found nothing; a saved card beats making the player wait.
+  return unseen.length ? fromBank() : made;
+}
+
 export async function GET({ url }) {
-  const token = env('HF_TOKEN');
-  if (!token) return json({ error: 'HF_TOKEN not configured' }, 500);
+  const source = url.searchParams.get('source') || 'tanakh';
+  if (!['tanakh', 'avot', 'menu'].includes(source)) return json({ error: 'unknown source' }, 400);
+  // Saved cards this player has already had, so the bank doesn't repeat itself.
+  const seen = new Set((url.searchParams.get('seen') || '').split(',').filter(id => UUID.test(id)).slice(0, 300));
   try {
-    const source = url.searchParams.get('source') || 'tanakh';
-    return json(await (source === 'menu' ? makeMenuCard(token) : makeCard(source, token)));
+    return json(await liveCard(source, seen, env('HF_TOKEN')));
   } catch (err) {
     return json({ retry: true, reason: err.message });
   }
 }
 
 export async function POST({ request }) {
-  const token = env('HF_TOKEN');
-  if (!token) return json({ error: 'HF_TOKEN not configured' }, 500);
   let body;
   try {
     body = await request.json();
   } catch {
     return json({ error: 'bad json' }, 400);
   }
+
+  // { action: 'result', id, outcome: 'win' | 'loss' | 'skip' } feeds the bank's play counts.
+  if (body?.action === 'result') {
+    const db = bank();
+    if (db && UUID.test(String(body.id)) && ['win', 'loss', 'skip'].includes(body.outcome)) {
+      await db('rpc/lit_card_result', { method: 'POST', body: JSON.stringify({ card_id: body.id, outcome: body.outcome }) });
+    }
+    return json({ ok: true });
+  }
+
+  const token = env('HF_TOKEN');
+  if (!token) return json({ correct: false });
   const { guess, card } = body || {};
   if (body?.action !== 'grade' || typeof guess !== 'string' || !card) return json({ error: 'bad request' }, 400);
   const g = guess.trim().slice(0, 60);

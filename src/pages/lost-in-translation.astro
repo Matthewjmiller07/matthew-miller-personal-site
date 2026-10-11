@@ -187,6 +187,8 @@ import Layout from '../layouts/Layout.astro';
     link?: string;
     linkLabel?: string;
     models?: { translator: string; judge: string };
+    id?: string;      // saved in the card bank
+    fresh?: boolean;  // generated for this request rather than replayed
   };
 
   const CARDS: Card[] = [
@@ -342,13 +344,39 @@ import Layout from '../layouts/Layout.astro';
 
   // One live card: the server makes one attempt per call, so keep asking
   // until a verse yields a good misreading.
+  // Saved cards this browser has already played, per mode.
+  const seenKey = () => `lit-live-seen-${mode}`;
+  function seenIds(): string[] {
+    try { return JSON.parse(localStorage.getItem(seenKey()) || '[]'); } catch { return []; }
+  }
+  function markSeen(id: string) {
+    try { localStorage.setItem(seenKey(), JSON.stringify(seenIds().concat(id).slice(-150))); } catch {}
+  }
+
+  // Tell the bank how a saved card went, so bad ones drop out.
+  function report(card: Card, outcome: 'win' | 'loss' | 'skip') {
+    if (!card.id) return;
+    fetch('/api/lost-in-translation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'result', id: card.id, outcome }),
+    }).catch(() => {});
+  }
+
   async function fetchLiveCard(myGen: number): Promise<Card | null> {
     for (let t = 0; t < MAX_TRIES && myGen === gen; t++) {
       try {
-        const res = await fetch(`/api/lost-in-translation?source=${mode}`);
+        const seen = [...new Set(seenIds().concat(deck.map(c => c.id || '')).filter(Boolean))];
+        const res = await fetch(`/api/lost-in-translation?source=${mode}&seen=${seen.join(',')}`);
         const data = await res.json();
-        if (data.card) return data.card as Card;
-        if (data.error) { failures.push(data.error); return null; }
+        if (data.card) {
+          const card = data.card as Card;
+          // Two prefetches can land on the same saved card; ask again.
+          if (card.id && deck.some(c => c.id === card.id)) continue;
+          if (card.id) markSeen(card.id);
+          return card;
+        }
+        if (data.error || data.exhausted) { failures.push(data.error || data.reason); return null; }
         failures.push(data.reason || 'no card');
       } catch (err) {
         failures.push('network error');
@@ -450,9 +478,12 @@ import Layout from '../layouts/Layout.astro';
       if (exhausted && !inflight) {
         // Out of attempts: end the round early if anything was played.
         if (results.length) { roundSize = idx; return end(); }
-        els.loadingLog.textContent = failures.at(-1) === 'HF_TOKEN not configured'
+        const last = failures.at(-1) || '';
+        els.loadingLog.textContent = last === 'HF_TOKEN not configured'
           ? 'Live cards are not set up on this server yet. The classic deck still works.'
-          : 'Could not find a good misreading this time. Pick a mode above to try again.';
+          : last.startsWith('you')
+            ? `Nice going: ${last}.`
+            : 'Could not find a good misreading this time. Pick a mode above to try again.';
         return;
       }
       topUp();
@@ -464,7 +495,7 @@ import Layout from '../layouts/Layout.astro';
     hintsUsed = 0;
     done = false;
     els.num.textContent = String(idx + 1);
-    els.cat.textContent = card.cat;
+    els.cat.textContent = card.live && card.fresh ? `${card.cat} · just made` : card.cat;
     els.bad.textContent = `"${card.bad}"`;
     els.hints.innerHTML = '';
     els.feedback.textContent = '';
@@ -484,6 +515,7 @@ import Layout from '../layouts/Layout.astro';
     const card = deck[idx];
     done = true;
     results.push({ card, pts });
+    if (card.live) report(card, pts > 0 ? 'win' : 'loss');
     score += pts;
     streak = pts > 0 ? streak + 1 : 0;
     els.score.textContent = String(score);
@@ -560,6 +592,7 @@ import Layout from '../layouts/Layout.astro';
   // Throw out a weak live card without scoring it.
   els.skip.addEventListener('click', () => {
     if (done || !deck[idx]?.live) return;
+    report(deck[idx], 'skip');
     deck.splice(idx, 1);
     show();
   });
