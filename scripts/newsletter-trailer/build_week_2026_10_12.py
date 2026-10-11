@@ -11,6 +11,7 @@ lip-sync films in public/video/929-lipsync/, and writes into public/newsletter/2
   card-*.jpg          static stills for the other sections
   trailer.mp4         1280x720, ~38s, the lip-sync clips keep their own voices
   trailer-poster.jpg  title-card still
+  whatsapp-status.jpg / .mp4, linkedin.jpg   social kit (run with --social)
 Needs only numpy, Pillow and ffmpeg.
 """
 import math, os, subprocess
@@ -254,7 +255,111 @@ def trailer():
     poster.save(f"{OUT}/trailer-poster.jpg", quality=88)
 
 
+# ---------- social kit ----------
+
+SANS = lambda s: ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", s)
+LINK = "theothermatthewmiller.com/newsletter"
+
+
+def centred(d, y, text, font, fill, w, shadow=True, spacing=0):
+    if spacing:
+        text = (" " * spacing).join(text)
+    x = (w - d.textlength(text, font=font)) / 2
+    if shadow:
+        d.text((x + 3, y + 3), text, font=font, fill=(0, 0, 0))
+    d.text((x, y), text, font=font, fill=fill)
+
+
+def pill(d, y, text, font, w, pad=34):
+    tw = d.textlength(text, font=font)
+    h = font.size + 44
+    x0 = (w - tw) / 2 - pad
+    d.rounded_rectangle((x0, y, x0 + tw + 2 * pad, y + h), radius=h // 2, fill=(222, 184, 110))
+    d.text(((w - tw) / 2, y + 20), text, font=font, fill=(29, 26, 21))
+
+
+def status_card(w=1080, h=1920):
+    """Vertical WhatsApp Status still: Solomon's court, this week's three headlines, the signup link."""
+    im = shade(cover(still("epic-solomon.jpg"), w, h, 1.0, (0.92, 0.5)), top=0.5, bottom=0.85)
+    d = ImageDraw.Draw(im)
+    centred(d, 90, "● THE WORKSHOP · THIS WEEK", SANS(34), GOLD, w)
+    centred(d, 1060, "Solomon", TITLE(150), WHITE, w)
+    centred(d, 1225, "learns to talk", TITLE(96), WHITE, w)
+    for i, line in enumerate(["Lip-synced Bible films", "The Mega Mishnah", "Four new daf games"]):
+        centred(d, 1400 + i * 70, line, TITLE(54), GOLD, w)
+    pill(d, 1650, LINK, SANS(40), w)
+    centred(d, 1790, "Sign up → this week's issue lands within the hour", SANS(32), WHITE, w)
+    im.save(f"{OUT}/whatsapp-status.jpg", quality=88)
+
+
+def linkedin_card(w=1200, h=627):
+    im = shade(cover(still("epic-solomon.jpg"), w, h, 1.0, (0.5, 0.3)), top=0.0, bottom=0.9)
+    d = ImageDraw.Draw(im)
+    centred(d, 395, "Solomon learns to talk", TITLE(76), WHITE, w)
+    centred(d, 495, "THE WORKSHOP · WEEK OF 12 OCTOBER 2026", TITLE(28), GOLD, w)
+    centred(d, 550, LINK, TITLE(32), WHITE, w)
+    im.save(f"{OUT}/linkedin.jpg", quality=88)
+
+
+def status_video(w=1080, h=1920):
+    """~20s vertical: square film clips framed by a title above and the signup link below."""
+    side = 1080
+    top = (h - side) // 2
+
+    def frame(sq, kicker, title):
+        im = Image.new("RGB", (w, h), (12, 10, 8))
+        im.paste(sq, (0, top))
+        d = ImageDraw.Draw(im)
+        centred(d, 150, "● THE WORKSHOP · THIS WEEK", SANS(34), GOLD, w, False)
+        centred(d, 250, kicker, TITLE(40), GOLD, w, False)
+        centred(d, 310, title, TITLE(76), WHITE, w, False)
+        pill(d, top + side + 120, LINK, SANS(42), w)
+        centred(d, top + side + 250, "Sign up · this week's issue lands within the hour", SANS(30), WHITE, w, False)
+        return im
+
+    shots = [(K3, 52, 5.0, 0.42, "1 KINGS 3 · LIP-SYNCED", "Solomon speaks"),
+             (K3, 150, 3.5, 0.42, "1 KINGS 3", "Two mothers, one child"),
+             (K1, 125, 3.5, 0.3, "1 KINGS 1 · 11 CHARACTERS", "Every line, lip-synced")]
+    frames, voices = [], []
+    for path, start, dur, cy, kicker, title in shots:
+        voices.append((len(frames) / FPS, clip_audio(path, start, dur)))
+        frames += fade([frame(f, kicker, title) for f in clip_frames(path, start, dur, side, side, FPS, cy)])
+    for src, kicker, title in [("epic-mishnah.jpg", "ALSO NEW", "The Mega Mishnah"),
+                               ("epic-goats.jpg", "DAF YOMI", "Four new games")]:
+        im = still(src)
+        n = round(2.5 * FPS)
+        frames += fade([frame(cover(im, side, side, 1.04 + 0.08 * i / n), kicker, title) for i in range(n)])
+    end = shade(cover(still("epic-studio.jpg"), side, side, 1.1), bottom=0.3)
+    frames += fade([frame(end, "EVERYTHING I BUILD, ONE EMAIL A WEEK", "The Workshop")] * round(3 * FPS), k_out=1)
+
+    n = int(len(frames) / FPS * SR) + SR
+    mix = pad_score(n)
+    for t0, au in voices:
+        au = au * (0.13 / max(1e-4, float(np.sqrt((au ** 2).mean()))))
+        i = int(t0 * SR)
+        mix[i:i + len(au)] *= 0.4
+        env = np.minimum(1, np.minimum(np.arange(len(au)) / (0.15 * SR), (len(au) - np.arange(len(au))) / (0.15 * SR)))
+        mix[i:i + len(au)] += au * env * 1.1
+    mix = np.tanh(mix * np.minimum(1, (n - np.arange(n)) / (1.5 * SR)))
+    raw = f"{TMP}/status_mix.raw"
+    (mix * 32767).astype(np.int16).tofile(raw)
+    enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y",
+                            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}", "-r", str(FPS), "-i", "-",
+                            "-f", "s16le", "-ar", str(SR), "-ac", "1", "-i", raw,
+                            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "24", "-preset", "medium",
+                            "-c:a", "aac", "-b:a", "128k", "-shortest", "-movflags", "+faststart",
+                            f"{OUT}/whatsapp-status.mp4"], stdin=subprocess.PIPE)
+    for f in frames:
+        enc.stdin.write(f.tobytes())
+    enc.stdin.close(); enc.wait()
+    print(f"{OUT}/whatsapp-status.mp4: {len(frames) / FPS:.1f}s, {os.path.getsize(f'{OUT}/whatsapp-status.mp4') // 1024} KB")
+
+
 if __name__ == "__main__":
+    import sys
+    if "--social" in sys.argv:
+        status_card(); linkedin_card(); status_video()
+        sys.exit()
     cards()
     court_gif()
     voices_gif()
