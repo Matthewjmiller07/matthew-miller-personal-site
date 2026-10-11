@@ -38,6 +38,15 @@ To see work before then, open a PR: Deploy Previews are free. Only use `[deploy]
 message when something has to be live now (a newsletter issue, a fix to a broken page); never in the
 daily pipelines.
 
+## Stale-tree guard
+
+`.github/workflows/stale-tree-guard.yml` runs on every push to main. If a commit sets 3+ files
+back to versions they already had (or deletes files added in the last 3 weeks), it was made from
+an out-of-date checkout: the guard restores those files in a follow-up commit, keeps the push's new
+content, and fails so Matthew gets an email. Pipelines that push to main must pull main first and
+commit only the files they changed. Put `[allow-revert]` in a commit message for an intentional
+mass rollback.
+
 ## Source sheets
 
 New source sheets live in Supabase (main project), not in hand-built pages: one row in
