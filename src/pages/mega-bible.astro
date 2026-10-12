@@ -258,9 +258,10 @@ body:has(.mb-page) > footer { display:none!important; }
 .w.w-gen { text-decoration:underline dotted var(--gold); text-underline-offset:5px; }
 .mb-page.no-gen .mb-gen { display:none; }
 .mb-page.no-gen .w.w-gen { text-decoration:none; }
+/* plain inline (not inline-block) so the line can't break between a name and its arrow */
 a.w-gen-link {
   font-family:var(--mono); font-size:.62em; color:var(--gold); text-decoration:none; vertical-align:super;
-  padding:0 .15em; margin-inline-start:.05em; border-radius:2px; direction:ltr; display:inline-block;
+  padding:0 .15em; border-radius:2px; display:inline; white-space:nowrap;
 }
 a.w-gen-link:hover { background:var(--gold); color:#0c0b09; }
 .mb-page.no-gen a.w-gen-link { display:none; }
@@ -1401,7 +1402,7 @@ a.w-gen-link:hover { background:var(--gold); color:#0c0b09; }
         <div class="sb-title">Recently Added</div>
         <div class="sb-recent-item">
           <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Oct 11</span></div>
-          <span class="sb-recent-text">New "Genealogies" layer: in Genesis 4–5 and 10–11 every name is underlined with its lifespan and how many Israeli babies carry it, and its ↗ opens that person in <a href="/genealogies" style="color:var(--gold)">The Book of Generations</a> — family tree, lifespans and 75 years of Israeli baby names</span>
+          <span class="sb-recent-text">New "Genealogies" layer: in Genesis 4–5 and 10–11 every name is underlined with its lifespan and how many Israeli babies carry it, and its ↗ opens that person in <a data-astro-reload href="/genealogies" style="color:var(--gold)">The Book of Generations</a> — family tree, lifespans and 75 years of Israeli baby names</span>
         </div>
         <div class="sb-recent-item">
           <div class="sb-recent-meta"><span class="sb-recent-tag feature">Feature</span><span class="sb-recent-date">Oct 6</span></div>
@@ -1632,7 +1633,7 @@ function buildGenCard(figs: GenFig[], book: string, sc: number, ec: number): HTM
   const babies = [...new Map(named.map((g: any) => [(g.names || []).join('+'), g.israel])).values()].reduce((t, n) => t + n, 0);
   const seen = new Set<string>();
   const chips = figs.filter((g) => !seen.has(g.id) && seen.add(g.id)).map((g) =>
-    `<a class="mb-gen-name" href="/genealogies#${escHtml(g.id)}" title="${escHtml(g.en)}${g.lived ? ` · lived ${g.lived} years` : ''}${g.israel && !g.homograph ? ` · ${g.israel.toLocaleString('en-US')} Israeli babies` : ''}">${g.israel && !g.homograph ? `<small>${g.israel.toLocaleString('en-US')}</small>` : ''}${escHtml(g.he)}</a>`).join('');
+    `<a class="mb-gen-name" data-astro-reload href="/genealogies#${escHtml(g.id)}" title="${escHtml(g.en)}${g.lived ? ` · lived ${g.lived} years` : ''}${g.israel && !g.homograph ? ` · ${g.israel.toLocaleString('en-US')} Israeli babies` : ''}">${g.israel && !g.homograph ? `<small>${g.israel.toLocaleString('en-US')}</small>` : ''}${escHtml(g.he)}</a>`).join('');
   el.innerHTML = `
     <div class="mb-sheet-he">תּוֹלְדֹת</div>
     <div>
@@ -1641,7 +1642,7 @@ function buildGenCard(figs: GenFig[], book: string, sc: number, ec: number): HTM
       <div class="mb-sheet-sub">Every name here in a family tree and a lifespan timeline, with 75 years of Israeli baby names</div>
     </div>
     <div class="mb-sheet-acts">
-      <a class="primary" href="/genealogies">Open the explorer</a>
+      <a class="primary" data-astro-reload href="/genealogies">Open the explorer</a>
       <a href="/videos/genealogies-trailer.mp4" target="_blank" rel="noopener">Trailer</a>
     </div>
     <div class="mb-sheet-stats">
@@ -1672,6 +1673,7 @@ function markGenNames(figs: GenFig[]) {
         // name-level link to this person in the explorer; the word itself keeps its word-study click
         const a = document.createElement('a');
         a.className = 'w-gen-link';
+        a.setAttribute('data-astro-reload', '');
         a.href = `/genealogies#${g.id}`;
         a.textContent = '↗';
         a.title = `${g.en} in The Book of Generations`;
