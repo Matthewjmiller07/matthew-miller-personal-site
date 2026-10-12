@@ -1,0 +1,206 @@
+---
+// /parasha — the hub for everything on the site that follows the weekly Torah reading.
+// Data: src/data/parasha-hub.ts (joins the 5787 calendar to sheets, readers, books and tools).
+import Layout from '../layouts/Layout.astro';
+import { weeks, BOOKS, series, tools } from '../data/parasha-hub';
+
+const fmt = (iso: string) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+// Build-time guess at "this week"; the script below re-picks it from the reader's own clock.
+const today = new Date().toISOString().slice(0, 10);
+const nextDate = weeks.find((w) => w.date >= today)?.date ?? weeks[0].date;
+const thisWeek = weeks.filter((w) => w.date === nextDate);
+
+const byBook = BOOKS.map((b) => ({ ...b, weeks: weeks.filter((w) => w.book === b.en) }));
+const isExternal = (href: string) => href.startsWith('http');
+---
+
+<Layout
+  title="Parasha Hub"
+  description="Everything on the site for the weekly Torah reading in one place: this week's parasha, the Uriel Simon Reader, parasha sheets, picture books, PhDs on the Parsha, and tools for every parasha."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Frank+Ruhl+Libre:wght@400;700&display=swap"
+  />
+
+  <main class="ph">
+    <header class="ph-head">
+      <div class="ph-kicker">The weekly Torah reading</div>
+      <h1>Parasha Hub</h1>
+      <p class="ph-lede">
+        Every reader, sheet, book, episode and tool on this site that follows the parasha, in one place.
+        Start with this week, or find any parasha in the year below.
+      </p>
+    </header>
+
+    <section class="ph-now" aria-labelledby="ph-now-h">
+      <h2 id="ph-now-h" class="ph-h2">This week</h2>
+      <div id="ph-now">
+        {thisWeek.map((w) => (
+          <article class="ph-week ph-week-big" data-date={w.date}>
+            <div class="ph-week-top">
+              <span class="he ph-he">{w.hebrew}</span>
+              <span class="ph-name">{w.parsha}</span>
+              <span class="ph-meta">{w.ref} · Shabbat {fmt(w.date)}</span>
+            </div>
+            <ul class="ph-links">
+              {w.links.map((l) => (
+                <li>
+                  <a class={`ph-chip ph-k-${l.kind}`} href={l.href} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                    {l.label}
+                  </a>
+                  {l.note && <span class="ph-note">{l.note}</span>}
+                </li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
+      <p class="ph-small">Dates follow the Israel reading schedule for 5787.</p>
+    </section>
+
+    <section aria-labelledby="ph-series-h">
+      <h2 id="ph-series-h" class="ph-h2">Readers and series</h2>
+      <div class="ph-grid">
+        {series.map((s) => (
+          <a class="ph-card" href={s.href}>
+            <div class="ph-card-kind">{s.kind}</div>
+            <div class="ph-card-name">{s.name}</div>
+            <p>{s.text}</p>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section aria-labelledby="ph-tools-h">
+      <h2 id="ph-tools-h" class="ph-h2">Tools for any parasha</h2>
+      <div class="ph-grid ph-grid-tools">
+        {tools.map((t) => (
+          <a class="ph-card ph-card-tool" href={t.href}>
+            <div class="ph-card-name">{t.name}</div>
+            <p>{t.text}</p>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section aria-labelledby="ph-year-h">
+      <h2 id="ph-year-h" class="ph-h2">Every parasha, 5787</h2>
+      {byBook.map((b) => (
+        <div class="ph-book">
+          <h3><span class="he">{b.he}</span> {b.name} <span class="ph-book-en">{b.en}</span></h3>
+          {b.weeks.map((w) => (
+            <article class="ph-week" id={`p-${w.n}`} data-date={w.date}>
+              <div class="ph-week-top">
+                <span class="he ph-he">{w.hebrew}</span>
+                <span class="ph-name">{w.parsha}</span>
+                <span class="ph-meta">{w.ref} · {fmt(w.date)}</span>
+              </div>
+              <ul class="ph-links">
+                {w.links.map((l) => (
+                  <li>
+                    <a class={`ph-chip ph-k-${l.kind}`} href={l.href} title={l.note} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                      {l.label}
+                    </a>
+                    {l.note && <span class="ph-note">{l.note}</span>}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      ))}
+    </section>
+  </main>
+</Layout>
+
+<script>
+  // Re-pick "this week" from the reader's clock (the page is built once a night at most):
+  // the first Shabbat on or after today, which may cover two parshiyot read together.
+  const today = new Date();
+  const iso = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const rows = Array.from(document.querySelectorAll<HTMLElement>('.ph-book .ph-week'));
+  const next = rows.find((r) => (r.dataset.date ?? '') >= iso)?.dataset.date;
+  const now = document.getElementById('ph-now');
+  const shown = now?.querySelector<HTMLElement>('.ph-week')?.dataset.date;
+  if (now && next && next !== shown) {
+    now.replaceChildren(
+      ...rows.filter((r) => r.dataset.date === next).map((r) => {
+        const c = r.cloneNode(true) as HTMLElement;
+        c.removeAttribute('id');
+        c.classList.add('ph-week-big');
+        return c;
+      }),
+    );
+  }
+  rows.filter((r) => r.dataset.date === next).forEach((r) => r.classList.add('ph-current'));
+</script>
+
+<style>
+  .ph {
+    max-width: 62rem; margin: 0 auto; padding: 3rem 1rem 4rem;
+    font-family: 'EB Garamond', Georgia, serif; color: #e7e3da;
+  }
+  :global(.dark) .ph :global(*) { color: inherit; }
+  .ph :global(.he) { font-family: 'Frank Ruhl Libre', serif; direction: rtl; unicode-bidi: isolate; }
+
+  .ph-kicker { font-size: .75rem; letter-spacing: .18em; text-transform: uppercase; color: #d8b06a !important; }
+  h1 { font-size: 2.8rem; font-weight: 600; line-height: 1.1; margin: .35rem 0 .75rem; }
+  .ph-lede { font-size: 1.2rem; line-height: 1.55; max-width: 44rem; color: #d4cfc5 !important; }
+  .ph-h2 {
+    font-size: .8rem; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+    color: #d8b06a !important; margin: 2.75rem 0 1rem; padding-bottom: .4rem; border-bottom: 1px solid #3a3f45;
+  }
+  .ph-small { font-size: .85rem; color: #8f949b !important; margin-top: .5rem; }
+
+  .ph-week { padding: .8rem 0; border-bottom: 1px solid #2c3036; scroll-margin-top: 5rem; }
+  .ph-week-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .8rem; }
+  .ph-he { font-size: 1.35rem; font-weight: 700; }
+  .ph-name { font-size: 1.1rem; font-weight: 600; }
+  .ph-meta { font-size: .85rem; color: #9aa0a7 !important; }
+  .ph-current { background: linear-gradient(90deg, rgba(216, 176, 106, .09), transparent 70%); }
+  .ph-current .ph-name::after { content: ' · this week'; font-size: .75rem; color: #d8b06a !important; font-weight: 400; }
+
+  #ph-now .ph-week { padding: 1.1rem 1.25rem; border: 1px solid #4a4130; border-radius: 6px; background: #1d1b17; margin-bottom: .75rem; }
+  #ph-now .ph-he { font-size: 2rem; }
+  #ph-now .ph-name { font-size: 1.5rem; }
+  #ph-now .ph-current .ph-name::after, #ph-now .ph-name::after { content: none; }
+
+  .ph-links { list-style: none; padding: 0; margin: .55rem 0 0; display: flex; flex-wrap: wrap; gap: .4rem .5rem; }
+  #ph-now .ph-links { flex-direction: column; gap: .5rem; }
+  #ph-now .ph-links li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .6rem; }
+  .ph-book .ph-note { display: none; }
+  .ph-note { font-size: .95rem; font-style: italic; color: #b9b4aa !important; }
+  .ph-chip {
+    display: inline-block; padding: .18rem .6rem; border-radius: 999px; font-size: .82rem;
+    text-decoration: none; border: 1px solid #3d434a; color: #cfd4da !important; background: #1b1f23;
+    white-space: nowrap;
+  }
+  .ph-chip:hover { border-color: #8a9099; }
+  .ph-k-simon { border-color: #36546a; background: #17242d; color: #a9cde4 !important; }
+  .ph-k-sheet { border-color: #5a4a28; background: #241f14; color: #e8d4aa !important; }
+  .ph-k-book { border-color: #4f3d5c; background: #221a28; color: #dcc4ec !important; }
+  .ph-k-phd { border-color: #3f5a3c; background: #1a2419; color: #c3e0bd !important; }
+
+  .ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .9rem; }
+  .ph-card {
+    display: block; padding: 1rem 1.1rem; border: 1px solid #3a3f45; border-radius: 6px;
+    background: #1a1d21; text-decoration: none; transition: border-color .15s;
+  }
+  .ph-card:hover { border-color: #d8b06a; }
+  .ph-card-kind { font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: #d8b06a !important; }
+  .ph-card-name { font-size: 1.25rem; font-weight: 600; margin: .15rem 0 .3rem; }
+  .ph-card p { font-size: .95rem; line-height: 1.45; color: #b9b4aa !important; margin: 0; }
+  .ph-card-tool .ph-card-name { font-size: 1.1rem; }
+
+  .ph-book h3 { font-size: 1.35rem; font-weight: 600; margin: 1.75rem 0 .25rem; }
+  .ph-book-en { font-size: .9rem; color: #8f949b !important; font-weight: 400; }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 2.2rem; }
+    .ph-chip { font-size: .78rem; }
+  }
+</style>
