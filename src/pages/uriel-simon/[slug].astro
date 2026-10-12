@@ -1,0 +1,284 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { sheets, source } from '../../data/uriel-simon-reader';
+
+export function getStaticPaths() {
+  return sheets.map((sheet) => ({ params: { slug: sheet.slug }, props: { sheet } }));
+}
+
+const { sheet } = Astro.props;
+const idx = sheets.findIndex((s) => s.slug === sheet.slug);
+const prev = sheets[idx - 1];
+const next = sheets[idx + 1];
+const pdf = `/uriel-simon/${sheet.slug}.pdf`;
+const shabbat = new Date(`${sheet.shabbat}T12:00:00Z`).toLocaleDateString('en-GB', {
+  day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+});
+---
+
+<Layout
+  title={`${sheet.parsha}: ${sheet.title} — The Uriel Simon Reader`}
+  description={`${sheet.dek} A two-page text and teaching for Parashat ${sheet.parsha}, in memory of Prof. Uriel Simon z"l.`}
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Frank+Ruhl+Libre:wght@400;700&display=swap"
+  />
+
+  <main class="us-shell">
+    <div class="us-bar">
+      <div>
+        <a href="/uriel-simon">The Uriel Simon Reader</a> <span class="us-sep">·</span> {sheet.parsha}
+      </div>
+      <div class="us-actions">
+        <a class="us-btn" href={pdf} download>Download PDF</a>
+        <button class="us-btn us-btn-ghost" type="button" id="us-print">Print</button>
+      </div>
+    </div>
+
+    <article class="sheet">
+      <!-- ───────────── page 1: a text ───────────── -->
+      <section class="page">
+        <div class="mast">
+          <div>
+            <div class="mast-he he">{sheet.parshaHe}</div>
+            <div class="mast-en">Parashat {sheet.parsha}</div>
+            <div class="mast-sub">{sheet.range} · Shabbat {shabbat} · {sheet.hebDate}</div>
+          </div>
+          <div class="mast-right">
+            <div class="mast-name">The Uriel Simon Reader</div>
+            <div class="he mast-zl">לזכר פרופ׳ אוריאל סימון ז״ל</div>
+            <div>1929–2026</div>
+          </div>
+        </div>
+
+        <h1 class="title">{sheet.title}</h1>
+        <p class="dek">{sheet.dek}</p>
+
+        <h2>The text</h2>
+        {sheet.verses.map((v) => (
+          <div class="verse">
+            <div class="verse-ref">{v.ref}</div>
+            <p class="he verse-he" lang="he">{v.he}</p>
+            <p class="verse-en">{v.en}</p>
+          </div>
+        ))}
+
+        <h2 class="mt">In his words</h2>
+        {sheet.quotes.map((q) => (
+          <blockquote class="quote">
+            <p class="he quote-he" lang="he">{q.he}</p>
+            <p class="quote-en">{q.en}{q.where && <span class="quote-where"> ({q.where})</span>}</p>
+          </blockquote>
+        ))}
+
+        <div class="foot">
+          <span>
+            Uriel Simon, <span class="he">{source.title}</span>, in <em>Bakesh Shalom Verodfehu</em> (2002),
+            {' '}<a href={source.href} target="_blank" rel="noopener noreferrer">as published on Daat</a>.
+            English renderings of Simon's Hebrew are ours.
+          </span>
+          <span>1 / 2</span>
+        </div>
+      </section>
+
+      <!-- ───────────── page 2: a teaching ───────────── -->
+      <section class="page">
+        <h2>The teaching</h2>
+        <div class="teaching">
+          {sheet.teaching.map((para) => <p set:html={para} />)}
+        </div>
+
+        <h2 class="mt">For the table</h2>
+        <ol class="questions">
+          {sheet.questions.map((q) => <li set:html={q} />)}
+        </ol>
+
+        <div class="memorial">
+          <div class="memorial-he he">פרופ׳ אוריאל סימון ז״ל</div>
+          <p>
+            Uriel Simon (Jerusalem, 1929 – 30 September 2026) taught Bible at Bar-Ilan University for
+            decades. He read the Bible through its medieval interpreters, above all Abraham ibn Ezra, and
+            wrote <em>Four Approaches to the Book of Psalms</em>, <em>Reading Prophetic Narratives</em>
+            and the JPS commentary on Jonah. He won the Bialik Prize, and he was one of the founders of
+            Oz VeShalom, the religious-Zionist peace movement. This reader takes one text and one of his
+            teachings each week.
+          </p>
+        </div>
+
+        <h2 class="mt">Read Simon himself</h2>
+        <ul class="further">
+          <li>
+            <a href={source.href} target="_blank" rel="noopener noreferrer"><span class="he">{source.title}</span></a>
+            {' '}({source.titleEn}), from <em>{source.bookEn}</em>, the essay quoted on this sheet.
+          </li>
+          <li>"The Religious Significance of the Peshat," <em>Tradition</em> 23:2 (1988), trans. Edward L. Greenstein.</li>
+          <li>"The Biblical Destinies: Conditional Promises," <em>Tradition</em> 17:2 (1978).</li>
+        </ul>
+
+        <div class="foot">
+          <span>
+            Hebrew Bible text from Sefaria (Miqra according to the Masorah); English from the JPS 1917
+            translation · theothermatthewmiller.com/uriel-simon
+          </span>
+          <span>2 / 2</span>
+        </div>
+      </section>
+    </article>
+
+    <nav class="us-nav">
+      {prev ? <a href={`/uriel-simon/${prev.slug}`}>← {prev.parsha}</a> : <span />}
+      <a href="/uriel-simon">All weeks</a>
+      {next ? <a href={`/uriel-simon/${next.slug}`}>{next.parsha} →</a> : <span />}
+    </nav>
+  </main>
+</Layout>
+
+<script>
+  document.getElementById('us-print')?.addEventListener('click', () => window.print());
+</script>
+
+<style is:global>
+  /* A paper document on a dark site: opt out of the global theme locally,
+     the same way /parasha-sheet does. */
+  body:has(.us-shell) { background: #15171a !important; }
+  body:has(.us-shell) > footer { display: none !important; }
+
+  .us-shell {
+    --ink: #24272b;
+    --muted: #646a72;
+    --faint: #9aa0a7;
+    --rule: #d9dde2;
+    --surface: #fbfaf7;
+    --accent: #2f5d7c;
+    --pad: 13mm 15mm;
+    min-height: 100vh;
+    padding: 1.25rem 1rem 3rem;
+    background: #15171a;
+    font-family: 'EB Garamond', Georgia, serif;
+  }
+  .dark .us-shell, .dark .us-shell * { color: inherit; }
+  .us-shell .he { font-family: 'Frank Ruhl Libre', serif; direction: rtl; unicode-bidi: isolate; }
+
+  /* ── screen chrome ── */
+  .us-bar, .us-nav {
+    max-width: 210mm; margin: 0 auto 1rem; display: flex; flex-wrap: wrap; gap: .75rem;
+    align-items: center; justify-content: space-between;
+    font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: #9aa0a7;
+  }
+  .us-nav { margin: 1.25rem auto 0; }
+  .us-shell .us-bar a, .us-shell .us-nav a { color: #9cc3dd; text-decoration: none; }
+  .us-shell .us-bar a:hover, .us-shell .us-nav a:hover { text-decoration: underline; }
+  .us-shell .us-sep { opacity: .5; padding: 0 .25rem; }
+  .us-actions { display: flex; gap: .5rem; }
+  .us-btn {
+    display: inline-block; padding: .4rem .85rem; border: 1px solid #36546a;
+    background: #1b2730; color: #d6e6f1 !important; border-radius: 3px;
+    font: inherit; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+    text-decoration: none; cursor: pointer;
+  }
+  .us-btn:hover { background: #22323d; border-color: #5a84a3; text-decoration: none; }
+  .us-btn-ghost { background: transparent; }
+
+  /* ── the sheet ── */
+  .us-shell .sheet { max-width: 210mm; margin: 0 auto; }
+  .us-shell .sheet .page {
+    background: var(--surface); color: var(--ink);
+    padding: var(--pad); margin-bottom: 1.25rem;
+    font-size: 10.5pt; line-height: 1.5;
+    box-shadow: 0 2px 24px rgba(0, 0, 0, .55);
+  }
+  .us-shell .sheet .page:last-child { margin-bottom: 0; }
+  .us-shell .sheet p { margin: 0 0 5pt; }
+  .us-shell .sheet a { color: var(--accent); }
+
+  .us-shell .sheet .mast {
+    border-bottom: 2px solid var(--ink); padding-bottom: 5pt; margin-bottom: 10pt;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 12pt;
+  }
+  .us-shell .sheet .mast-he { font-size: 28pt; font-weight: 700; line-height: 1.05; text-align: left; }
+  .us-shell .sheet .mast-en { font-size: 14pt; font-weight: 600; letter-spacing: .02em; }
+  .us-shell .sheet .mast-sub { font-size: 8.5pt; color: var(--muted); font-style: italic; }
+  .us-shell .sheet .mast-right { text-align: right; font-size: 8.5pt; color: var(--muted); line-height: 1.35; }
+  .us-shell .sheet .mast-name {
+    font-size: 8pt; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 600;
+  }
+  .us-shell .sheet .mast-zl { font-size: 11pt; color: var(--ink); }
+
+  .us-shell .sheet .title { font-size: 20pt; font-weight: 600; line-height: 1.15; margin: 0 0 3pt; }
+  .us-shell .sheet .dek { font-size: 11pt; font-style: italic; color: var(--muted); margin-bottom: 10pt; }
+
+  .us-shell .sheet h2 {
+    font-size: 8pt; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 6pt; padding-bottom: 3pt; border-bottom: 1px solid var(--rule);
+  }
+  .us-shell .sheet h2.mt { margin-top: 11pt; }
+
+  .us-shell .sheet .verse { margin-bottom: 8pt; }
+  .us-shell .sheet .verse-ref {
+    font-size: 7.5pt; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-bottom: 1pt;
+  }
+  .us-shell .sheet .verse-he { font-size: 14pt; line-height: 1.75; text-align: right; margin-bottom: 3pt; }
+  .us-shell .sheet .verse-en { font-size: 10pt; color: var(--ink); }
+
+  .us-shell .sheet .quote {
+    margin: 0 0 7pt; padding: 5pt 10pt; background: #fff; border-left: 2px solid var(--accent);
+  }
+  .us-shell .sheet .quote-he { font-size: 11.5pt; line-height: 1.6; text-align: right; margin-bottom: 2pt; }
+  .us-shell .sheet .quote-en { font-size: 9.5pt; font-style: italic; color: var(--muted); margin: 0; }
+  .us-shell .sheet .quote-where { font-style: normal; color: var(--faint); font-size: 8.5pt; }
+
+  .us-shell .sheet .teaching p { font-size: 10.5pt; text-align: justify; hyphens: auto; margin-bottom: 7pt; }
+  .us-shell .sheet .teaching .he { font-size: 11.5pt; }
+  .us-shell .sheet .teaching q { font-style: italic; quotes: '“' '”'; }
+
+  .us-shell .sheet .questions { margin: 0; padding-left: 16pt; }
+  .us-shell .sheet .questions li { margin-bottom: 4pt; font-size: 10.5pt; }
+
+  .us-shell .sheet .memorial {
+    margin-top: 12pt; padding: 8pt 11pt; border: 1px solid var(--rule); background: #fff;
+    font-size: 9.5pt; color: var(--muted);
+  }
+  .us-shell .sheet .memorial p { margin: 0; }
+  .us-shell .sheet .memorial-he { font-size: 12pt; font-weight: 700; color: var(--ink); margin-bottom: 3pt; text-align: left; }
+
+  .us-shell .sheet .further { margin: 0; padding-left: 14pt; font-size: 9.5pt; }
+  .us-shell .sheet .further li { margin-bottom: 2pt; }
+
+  .us-shell .sheet .foot {
+    margin-top: 10pt; padding-top: 5pt; border-top: 1px solid var(--rule);
+    font-size: 7pt; color: var(--faint); display: flex; justify-content: space-between; gap: 10pt;
+  }
+  .us-shell .sheet .foot a { color: inherit; text-decoration: underline; }
+
+  @media (max-width: 720px) {
+    .us-shell { --pad: 7mm 5mm; padding: 1rem .5rem 2rem; }
+    .us-shell .sheet .mast { flex-direction: column; align-items: flex-start; }
+    .us-shell .sheet .mast-right { text-align: left; }
+    .us-shell .sheet .teaching p { text-align: left; }
+  }
+
+  @page { size: A4; margin: 12mm 14mm; }
+  @media print {
+    body:has(.us-shell) { background: #fff !important; }
+    body:has(.us-shell) > nav, body:has(.us-shell) header { display: none !important; }
+    .us-shell { padding: 0; background: #fff; min-height: 0; }
+    .us-bar, .us-nav { display: none; }
+    .us-shell .sheet { max-width: none; }
+    .us-shell .sheet .page {
+      padding: 0; margin: 0; box-shadow: none; background: #fff; page-break-after: always;
+    }
+    .us-shell .sheet .page:last-child { page-break-after: auto; }
+    .us-shell .sheet .quote, .us-shell .sheet .verse { page-break-inside: avoid; }
+    .us-shell .sheet .page { font-size: 10pt; }
+    .us-shell .sheet .title { font-size: 18pt; }
+    .us-shell .sheet .dek { margin-bottom: 7pt; }
+    .us-shell .sheet .verse { margin-bottom: 5pt; }
+    .us-shell .sheet .verse-he { font-size: 12.5pt; line-height: 1.6; }
+    .us-shell .sheet .verse-en { font-size: 9.5pt; }
+    .us-shell .sheet .quote { margin-bottom: 5pt; padding: 4pt 9pt; }
+    .us-shell .sheet .quote-he { font-size: 10.5pt; line-height: 1.5; }
+    .us-shell .sheet .quote-en { font-size: 9pt; }
+  }
+</style>
