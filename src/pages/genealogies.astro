@@ -297,7 +297,7 @@ const maxGen = Math.max(...people.map((p) => p.gen));
       <div class="sources">
         <p>Text: Genesis 4–5 and 10–11 from <a href="https://www.sefaria.org/Genesis.5">Sefaria</a> (Miqra according to the Masorah; English from the JPS Tanakh, gender-sensitive edition). Dates from Creation are the plain sum of the begetting ages in the Masoretic text, the reckoning of Seder Olam: the Flood in 1656, Abram born 1948. The Septuagint and Samaritan texts give different ages.</p>
         <p>Israeli names: <a href="https://www.cbs.gov.il/he/mediarelease/DocLib/2025/391/11_25_391t1.xlsx">Central Bureau of Statistics, release 391/2025</a>, names of babies born in Israel 1949–2024 by population group and sex, via the CC0 <a href="https://github.com/aviezerl/babynamesIL">babynamesIL</a> package by Aviezer Lifshitz. Yearly counts only include a name in years when five or more babies got it; all-time totals include every registration. Names are matched by Hebrew spelling, so homographs are flagged where the data is clearly a different name (Saba for Seba, Maddie for Madai).</p>
-        <p>Wikipedia summaries, and the notable Israelis who carry each name, are fetched live from <a href="https://en.wikipedia.org">Wikipedia</a>, <a href="https://he.wikipedia.org">Hebrew Wikipedia</a> and <a href="https://www.wikidata.org">Wikidata</a> when you open a name. Data and build script: <code>scripts/genealogies/build-data.py</code>.</p>
+        <p>Wikipedia summaries, and the people on Hebrew Wikipedia who carry each name, are fetched live from <a href="https://en.wikipedia.org">Wikipedia</a>, <a href="https://he.wikipedia.org">Hebrew Wikipedia</a> and <a href="https://www.wikidata.org">Wikidata</a> when you open a name. Data and build script: <code>scripts/genealogies/build-data.py</code>.</p>
       </div>
     </section>
   </div>
@@ -681,7 +681,7 @@ const maxGen = Math.max(...people.map((p) => p.gen));
           ${p.renamed && NAMES ? `<div class="note">Renamed later: <span class="he">${p.renamed}</span> was given to ${fmt(Object.values(NAMES.names[p.renamed]?.totals || {}).reduce((a, b) => a + b, 0))} Israeli babies.</div>` : ''}
         ` : '<div class="empty">The text names this group as a people (“the Jebusite”), not a person, so there is no given name to count.</div>'}
         <h4>Wikipedia</h4><div id="d-wiki"><div class="empty">Loading from Wikipedia…</div></div>
-        ${p.names.length ? `<h4>Israelis named <span class="he">${esc(uniq(p.names)[0])}</span></h4><div id="d-ppl"><div class="empty">Asking Wikidata…</div></div>` : ''}
+        ${p.names.length ? `<h4>People named <span class="he">${esc(uniq(p.names)[0])}</span></h4><div id="d-ppl"><div class="empty">Asking Hebrew Wikipedia…</div></div>` : ''}
       `;
       detail.querySelectorAll('[data-go]').forEach((a) => a.addEventListener('click', () => select(a.dataset.go)));
       drawSpark(p);
@@ -728,31 +728,46 @@ const maxGen = Math.max(...people.map((p) => p.gen));
       }
     }
 
+    // Namesakes: Hebrew Wikipedia articles titled "<name> <surname>" that Wikidata says are people.
+    // (Wikidata's given-name property is too sparse for Israelis to rely on: it missed most of them.)
     async function loadNamesakes(p) {
       const id = p.id;
       const box = () => document.getElementById('d-ppl');
-      const values = uniq(p.names).map((s) => `"${s}"@he`).join(' ');
-      const q = `SELECT ?p ?pLabel ?pDescription ?img ?sl WHERE {
-        VALUES ?lbl { ${values} }
-        ?gn rdfs:label ?lbl ; wdt:P31/wdt:P279* wd:Q202444 .
-        ?p wdt:P735 ?gn ; wdt:P31 wd:Q5 ; wdt:P27 wd:Q801 ; wikibase:sitelinks ?sl .
-        OPTIONAL { ?p wdt:P18 ?img }
-        SERVICE wikibase:label { bd:serviceParam wikibase:language "en,he". }
-      } ORDER BY DESC(?sl) LIMIT 8`;
+      const spell = uniq(p.names);
       try {
-        const d = await getJSON(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(q)}`);
+        const lists = await Promise.all(spell.map((s) => getJSON(`https://he.wikipedia.org/w/api.php?action=query&list=allpages&apprefix=${encodeURIComponent(s + ' ')}&apnamespace=0&apfilterredir=nonredirects&aplimit=500&format=json&origin=*`)));
         if (selected !== id) return;
-        const seen = new Set();
-        const rows = d.results.bindings.filter((b) => !seen.has(b.p.value) && seen.add(b.p.value));
+        const titles = uniq(lists.flatMap((d) => (d.query?.allpages || []).map((a) => a.title)));
+        let rows = [];
+        if (titles.length) {
+          const q = `SELECT ?p ?pLabel ?pDescription ?img ?sl ?il ?art WHERE {
+            VALUES ?t { ${titles.map((t) => `"${t.replace(/["\\]/g, (c) => '\\' + c)}"@he`).join(' ')} }
+            ?art schema:about ?p ; schema:isPartOf <https://he.wikipedia.org/> ; schema:name ?t .
+            ?p wdt:P31 wd:Q5 ; wikibase:sitelinks ?sl .
+            OPTIONAL { ?p wdt:P18 ?img }
+            OPTIONAL { ?p wdt:P27 wd:Q801 . BIND(1 AS ?il) }
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "en,he". }
+          } ORDER BY DESC(BOUND(?il)) DESC(?sl) LIMIT 30`;
+          const key = `sparql:${q}`;
+          if (!cache.has(key)) cache.set(key, fetch('https://query.wikidata.org/sparql', {
+            method: 'POST',
+            headers: { Accept: 'application/sparql-results+json', 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ query: q }),
+          }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }));
+          const d = await cache.get(key);
+          if (selected !== id) return;
+          const seen = new Set();
+          rows = d.results.bindings.filter((b) => !seen.has(b.p.value) && seen.add(b.p.value)).slice(0, 8);
+        }
+        const more = `https://he.wikipedia.org/w/index.php?title=${encodeURIComponent('מיוחד:כל_הדפים')}&from=${encodeURIComponent(spell[0] + ' ')}`;
         box().innerHTML = rows.length
           ? `<ul class="ppl">${rows.map((b) => {
-              const qid = b.p.value.split('/').pop();
               const img = b.img ? `${b.img.value.replace('http://', 'https://')}?width=80` : '';
-              return `<li>${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<span class="ph"></span>'}<a href="https://www.wikidata.org/wiki/${qid}" target="_blank" rel="noopener">${esc(b.pLabel?.value)}<small>${esc(b.pDescription?.value || '')}</small></a></li>`;
-            }).join('')}</ul><div class="note">Israeli citizens on Wikidata with this given name, most-linked first.</div>`
-          : `<div class="empty">No Israelis with this given name on Wikidata yet.</div>`;
+              return `<li>${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<span class="ph"></span>'}<a href="${esc(b.art.value)}" target="_blank" rel="noopener">${esc(b.pLabel?.value)}<small>${esc(b.pDescription?.value || '')}</small></a></li>`;
+            }).join('')}</ul><div class="note">People with a Hebrew Wikipedia article whose name starts <span class="he">${esc(spell.join(' / '))}</span>, Israelis first, then most-linked. <a href="${more}" target="_blank" rel="noopener" style="color:var(--gold)">All titles</a></div>`
+          : `<div class="empty">No one on Hebrew Wikipedia has this first name yet.</div>`;
       } catch {
-        if (selected === id) box().innerHTML = `<a href="https://he.wikipedia.org/w/index.php?search=${encodeURIComponent(uniq(p.names)[0])}" target="_blank" rel="noopener" style="color:var(--gold)">Search Hebrew Wikipedia</a>`;
+        if (selected === id) box().innerHTML = `<a href="https://he.wikipedia.org/w/index.php?search=${encodeURIComponent(spell[0])}" target="_blank" rel="noopener" style="color:var(--gold)">Search Hebrew Wikipedia</a>`;
       }
     }
 
