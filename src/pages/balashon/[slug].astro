@@ -1,0 +1,319 @@
+---
+// /balashon/<parasha> — a printable two-pager of the Balashon posts filed under that week's parasha.
+// Rendered on request from Balashon's Blogger feed (src/lib/balashon.ts) and cached at the CDN for a day.
+export const prerender = false;
+
+import Layout from '../../layouts/Layout.astro';
+import { weeks } from '../../data/parasha-hub';
+import { balashonFor, trimWords } from '../../lib/balashon';
+
+const idx = weeks.findIndex((w) => w.slug === Astro.params.slug);
+if (idx < 0) return Astro.redirect('/balashon');
+const week = weeks[idx];
+const prev = weeks[idx - 1];
+const next = weeks[idx + 1];
+
+const data = await balashonFor(week.parsha);
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600');
+Astro.response.headers.set(
+  'Netlify-CDN-Cache-Control',
+  data.error ? 'public, s-maxage=120' : 'public, durable, s-maxage=86400, stale-while-revalidate=604800',
+);
+
+// Fit two A4 pages: about 650 words of excerpt in all, shared out across the posts, and anything
+// past twelve posts goes in a title-only index at the end.
+const WITH_EXCERPT = 12;
+const shown = data.posts.slice(0, WITH_EXCERPT);
+const indexOnly = data.posts.slice(WITH_EXCERPT);
+const per = Math.max(25, Math.min(110, Math.floor(650 / Math.max(shown.length, 1))));
+const cards = shown.map((p) => ({ ...p, excerpt: trimWords(p.excerpt, per) }));
+const split = Math.ceil(cards.length * 0.45); // page one also carries the masthead
+const page1 = cards.slice(0, split);
+const page2 = cards.slice(split);
+
+const shabbat = new Date(`${week.date}T12:00:00Z`).toLocaleDateString('en-GB', {
+  day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+});
+const year = (iso: string) => iso.slice(0, 4);
+const host = (url: string) => url.replace(/^https?:\/\/(www\.)?/, '');
+---
+
+<Layout
+  title={`${week.parsha} — Balashon 2-pager`}
+  description={`The Hebrew words of Parashat ${week.parsha} (${week.ref}), traced by Balashon, David Curwin's Hebrew Language Detective: every post he has filed under the parasha, on two printable pages.`}
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Frank+Ruhl+Libre:wght@400;700&display=swap"
+  />
+
+  <main class="bl-shell">
+    <div class="bl-bar">
+      <div>
+        <a href="/parasha">Parasha Hub</a> <span class="bl-sep">·</span> Balashon 2-pager
+      </div>
+      <div class="bl-actions">
+        <a class="bl-btn bl-btn-ghost" href={data.labelUrl} target="_blank" rel="noopener noreferrer">On balashon.com</a>
+        <button class="bl-btn" type="button" id="bl-print">Print</button>
+      </div>
+    </div>
+
+    <article class="sheet">
+      <!-- ───────────── page 1 ───────────── -->
+      <section class="page">
+        <div class="mast">
+          <div>
+            <div class="mast-he he">{week.hebrew}</div>
+            <div class="mast-en">Parashat {week.parsha}</div>
+            <div class="mast-sub">{week.ref} · Shabbat {shabbat}</div>
+          </div>
+          <div class="mast-right">
+            <div class="mast-name">Balashon on the parasha</div>
+            <div class="he mast-tag">בלשון — בלש + לשון</div>
+            <div>the Hebrew Language Detective</div>
+          </div>
+        </div>
+
+        {data.posts.length > 0 ? (
+          <p class="dek">
+            {data.posts.length === 1 ? 'One post' : `${data.posts.length} posts`} on the Hebrew of this week's reading, as
+            David Curwin has traced them on Balashon: where each comes from, what it's related to, and what it
+            became. A taste of each below; the full post is a link away.
+          </p>
+        ) : (
+          <div class="empty">
+            {data.error ? (
+              <p>
+                Balashon couldn't be reached just now ({data.error}). Try again in a few minutes, or read the posts
+                {' '}<a href={data.labelUrl} target="_blank" rel="noopener noreferrer">on balashon.com</a>.
+              </p>
+            ) : (
+              <p>
+                Balashon hasn't filed any posts under Parashat {week.parsha} yet.
+                {' '}<a href={data.labelUrl} target="_blank" rel="noopener noreferrer">Search the blog for {week.parsha}</a>,
+                or try another week below.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div class="posts">
+          {page1.map((p) => (
+            <article class="post">
+              <div class="post-head">
+                <a class="post-title" href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a>
+                {p.he && <span class="he post-he">{p.he}</span>}
+              </div>
+              <p class="post-body">{p.excerpt}</p>
+              <div class="post-meta">
+                {year(p.published)}{p.otherParshiot.length > 0 && ` · also ${p.otherParshiot.join(', ')}`}
+                <span class="post-url"> · {host(p.url)}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div class="foot">
+          <span>
+            Excerpts from <a href="https://www.balashon.com" target="_blank" rel="noopener noreferrer">Balashon</a>
+            {' '}by David Curwin, {data.label ? `filed under “${data.label}”` : 'searched by parasha'}; each post in full on balashon.com
+          </span>
+          <span>1 / 2</span>
+        </div>
+      </section>
+
+      <!-- ───────────── page 2 ───────────── -->
+      <section class="page">
+        {page2.length > 0 && (
+          <div class="posts">
+            {page2.map((p) => (
+              <article class="post">
+                <div class="post-head">
+                  <a class="post-title" href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a>
+                  {p.he && <span class="he post-he">{p.he}</span>}
+                </div>
+                <p class="post-body">{p.excerpt}</p>
+                <div class="post-meta">
+                  {year(p.published)}{p.otherParshiot.length > 0 && ` · also ${p.otherParshiot.join(', ')}`}
+                  <span class="post-url"> · {host(p.url)}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+
+        {indexOnly.length > 0 && (
+          <>
+            <h2 class="mt">More from Balashon on {week.parsha}</h2>
+            <ul class="more">
+              {indexOnly.map((p) => (
+                <li>
+                  <a href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a>
+                  {p.he && <span class="he"> {p.he}</span>} <span class="more-y">{year(p.published)}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        <h2 class="mt">For the table</h2>
+        <ol class="questions">
+          <li>Which of these words would you have guessed was related to which? Which connection surprised you?</li>
+          <li>Find each word in this week's reading. Does knowing where it comes from change how you read the verse?</li>
+          <li>Which of them do you still use in Modern Hebrew, and has the meaning moved since the Torah used it?</li>
+        </ol>
+
+        <div class="about">
+          <div class="about-name">About Balashon</div>
+          <p>
+            <em>Balashon</em> (<span class="he">בלשון</span>) is David Curwin's blog on the origins of Hebrew words,
+            running since 2006. The name joins <span class="he">בַּלָּשׁ</span>, detective, and{' '}
+            <span class="he">לָשׁוֹן</span>, language. He files each post under the parshiyot whose words it
+            discusses; this sheet gathers that week's shelf. Read, comment and subscribe at{' '}
+            <a href="https://www.balashon.com" target="_blank" rel="noopener noreferrer">balashon.com</a>.
+          </p>
+        </div>
+
+        <div class="foot">
+          <span>theothermatthewmiller.com/balashon/{week.slug} · more for this week at /parasha</span>
+          <span>2 / 2</span>
+        </div>
+      </section>
+    </article>
+
+    <nav class="bl-nav">
+      {prev ? <a href={`/balashon/${prev.slug}`}>← {prev.parsha}</a> : <span />}
+      <a href="/parasha">Parasha Hub</a>
+      {next ? <a href={`/balashon/${next.slug}`}>{next.parsha} →</a> : <span />}
+    </nav>
+  </main>
+</Layout>
+
+<script>
+  document.getElementById('bl-print')?.addEventListener('click', () => window.print());
+</script>
+
+<style is:global>
+  /* A paper document on a dark site: opt out of the global theme locally, as /uriel-simon does. */
+  body:has(.bl-shell) { background: #181514 !important; }
+  body:has(.bl-shell) > footer { display: none !important; }
+
+  .bl-shell {
+    --ink: #2a2422;
+    --muted: #6d625d;
+    --faint: #a3958f;
+    --rule: #e0d5cf;
+    --surface: #fbf8f5;
+    --accent: #8f3b2b;
+    --pad: 13mm 15mm;
+    min-height: 100vh;
+    padding: 1.25rem 1rem 3rem;
+    background: #181514;
+    font-family: 'EB Garamond', Georgia, serif;
+  }
+  .dark .bl-shell, .dark .bl-shell * { color: inherit; }
+  .bl-shell .he { font-family: 'Frank Ruhl Libre', serif; direction: rtl; unicode-bidi: isolate; }
+
+  /* ── screen chrome ── */
+  .bl-bar, .bl-nav {
+    max-width: 210mm; margin: 0 auto 1rem; display: flex; flex-wrap: wrap; gap: .75rem;
+    align-items: center; justify-content: space-between;
+    font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: #a3958f;
+  }
+  .bl-nav { margin: 1.25rem auto 0; }
+  .bl-shell .bl-bar a, .bl-shell .bl-nav a { color: #e6ab9c; text-decoration: none; }
+  .bl-shell .bl-bar a:hover, .bl-shell .bl-nav a:hover { text-decoration: underline; }
+  .bl-shell .bl-sep { opacity: .5; padding: 0 .25rem; }
+  .bl-actions { display: flex; gap: .5rem; }
+  .bl-shell .bl-btn {
+    display: inline-block; padding: .4rem .85rem; border: 1px solid #6a3a32;
+    background: #2a1815; color: #f3d6ce !important; border-radius: 3px;
+    font: inherit; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+    text-decoration: none; cursor: pointer;
+  }
+  .bl-shell .bl-btn:hover { background: #3a211c; border-color: #9a5547; text-decoration: none; }
+  .bl-shell .bl-btn-ghost { background: transparent; }
+
+  /* ── the sheet ── */
+  .bl-shell .sheet { max-width: 210mm; margin: 0 auto; }
+  .bl-shell .sheet .page {
+    background: var(--surface); color: var(--ink);
+    padding: var(--pad); margin-bottom: 1.25rem;
+    font-size: 10.5pt; line-height: 1.45;
+    box-shadow: 0 2px 24px rgba(0, 0, 0, .55);
+  }
+  .bl-shell .sheet .page:last-child { margin-bottom: 0; }
+  .bl-shell .sheet p { margin: 0 0 5pt; }
+  .bl-shell .sheet a { color: var(--accent); }
+  .bl-shell .sheet .mast {
+    border-bottom: 2px solid var(--ink); padding-bottom: 5pt; margin-bottom: 9pt;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 12pt;
+  }
+  .bl-shell .sheet .mast-he { font-size: 28pt; font-weight: 700; line-height: 1.05; text-align: left; }
+  .bl-shell .sheet .mast-en { font-size: 14pt; font-weight: 600; letter-spacing: .02em; }
+  .bl-shell .sheet .mast-sub { font-size: 8.5pt; color: var(--muted); font-style: italic; }
+  .bl-shell .sheet .mast-right { text-align: right; font-size: 8.5pt; color: var(--muted); line-height: 1.35; }
+  .bl-shell .sheet .mast-name {
+    font-size: 8pt; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 600;
+  }
+  .bl-shell .sheet .mast-tag { font-size: 11pt; color: var(--ink); }
+  .bl-shell .sheet .dek { font-size: 11pt; font-style: italic; color: var(--muted); margin-bottom: 9pt; }
+  .bl-shell .sheet .empty { padding: 10pt 12pt; border: 1px dashed var(--rule); color: var(--muted); font-style: italic; }
+  .bl-shell .sheet h2 {
+    font-size: 8pt; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 6pt; padding-bottom: 3pt; border-bottom: 1px solid var(--rule);
+  }
+  .bl-shell .sheet h2.mt { margin-top: 11pt; }
+
+  .bl-shell .sheet .posts { columns: 2; column-gap: 14pt; }
+  .bl-shell .sheet .post {
+    break-inside: avoid; margin: 0 0 9pt; padding-top: 5pt; border-top: 1px solid var(--rule);
+  }
+  .bl-shell .sheet .post-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8pt; }
+  .bl-shell .sheet .post-title { font-size: 13pt; font-weight: 600; color: var(--ink); text-decoration: none; line-height: 1.2; }
+  .bl-shell .sheet .post-title:hover { text-decoration: underline; }
+  .bl-shell .sheet .post-he { font-size: 14pt; color: var(--accent); white-space: nowrap; }
+  .bl-shell .sheet .post-body { font-size: 9.8pt; text-align: justify; hyphens: auto; margin: 2pt 0 2pt; }
+  .bl-shell .sheet .post-meta { font-size: 7.5pt; color: var(--faint); letter-spacing: .03em; }
+
+  .bl-shell .sheet .more { columns: 2; column-gap: 14pt; margin: 0; padding-left: 12pt; font-size: 9.5pt; }
+  .bl-shell .sheet .more li { margin-bottom: 1.5pt; break-inside: avoid; }
+  .bl-shell .sheet .more-y { color: var(--faint); font-size: 8pt; }
+  .bl-shell .sheet .questions { margin: 0; padding-left: 16pt; }
+  .bl-shell .sheet .questions li { margin-bottom: 3pt; font-size: 10pt; }
+  .bl-shell .sheet .about {
+    margin-top: 11pt; padding: 7pt 10pt; border: 1px solid var(--rule); background: #fff;
+    font-size: 9.3pt; color: var(--muted);
+  }
+  .bl-shell .sheet .about p { margin: 0; }
+  .bl-shell .sheet .about-name {
+    font-size: 7.5pt; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin-bottom: 2pt;
+  }
+  .bl-shell .sheet .foot {
+    margin-top: 10pt; padding-top: 5pt; border-top: 1px solid var(--rule);
+    font-size: 7pt; color: var(--faint); display: flex; justify-content: space-between; gap: 10pt;
+  }
+  .bl-shell .sheet .foot a { color: inherit; text-decoration: underline; }
+
+  @media (max-width: 720px) {
+    .bl-shell { --pad: 7mm 5mm; padding: 1rem .5rem 2rem; }
+    .bl-shell .sheet .mast { flex-direction: column; align-items: flex-start; }
+    .bl-shell .sheet .mast-right { text-align: left; }
+    .bl-shell .sheet .posts, .bl-shell .sheet .more { columns: 1; }
+    .bl-shell .sheet .post-body { text-align: left; }
+  }
+
+  @page { size: A4; margin: 12mm 14mm; }
+  @media print {
+    body:has(.bl-shell) { background: #fff !important; }
+    body:has(.bl-shell) > nav, body:has(.bl-shell) header { display: none !important; }
+    .bl-shell { padding: 0; background: #fff; min-height: 0; }
+    .bl-bar, .bl-nav { display: none; }
+    .bl-shell .sheet { max-width: none; }
+    .bl-shell .sheet .page { padding: 0; margin: 0; box-shadow: none; background: #fff; page-break-after: always; font-size: 10pt; }
+    .bl-shell .sheet .page:last-child { page-break-after: auto; }
+    .bl-shell .sheet .post-url { display: inline; }
+  }
+  @media screen { .bl-shell .sheet .post-url { display: none; } }
+</style>
