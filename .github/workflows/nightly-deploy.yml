@@ -15,7 +15,9 @@ name: Nightly deploy
 on:
   schedule:
     # GitHub cron is UTC. Midnight in Israel is 21:00 UTC in summer (IDT) and 22:00 UTC in
-    # winter (IST); both run and the first step keeps only the one that lands at 00:xx in Israel.
+    # winter (IST). GitHub often starts scheduled runs late (3 hours late on 11 October 2026), so
+    # any run landing between 00:00 and 05:59 Israel time deploys; the "has main changed" step
+    # makes the second run of the night a no-op.
     - cron: '0 21 * * *'
     - cron: '0 22 * * *'
   workflow_dispatch:
@@ -29,15 +31,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Is it midnight in Israel?
+      - name: Is it the small hours in Israel?
         id: when
         run: |
           hour=$(TZ=Asia/Jerusalem date +%H)
           echo "Israel time: $(TZ=Asia/Jerusalem date '+%Y-%m-%d %H:%M')"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$hour" = "00" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$((10#$hour))" -lt 6 ]; then
             echo "go=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Not midnight in Israel (the other cron covers the other half of the year): skipping."
+            echo "Not between 00:00 and 05:59 in Israel (the other cron covers the other half of the year): skipping."
             echo "go=false" >> "$GITHUB_OUTPUT"
           fi
 
