@@ -1,4 +1,4 @@
-# One production deploy a night, at midnight Israel time, and only when main has changed.
+# One production deploy a night, from midnight Israel time, and only when main has changed.
 #
 # Pushes to main don't deploy on their own (scripts/netlify/ignore-build.sh skips them to save
 # Netlify credits: 15 per production deploy). This workflow calls a Netlify build hook, which the
@@ -15,7 +15,9 @@ name: Nightly deploy
 on:
   schedule:
     # GitHub cron is UTC. Midnight in Israel is 21:00 UTC in summer (IDT) and 22:00 UTC in
-    # winter (IST); both run and the first step keeps only the one that lands at 00:xx in Israel.
+    # winter (IST), so both run. GitHub often starts scheduled runs hours late, so the first step
+    # accepts anything from 00:00 to 05:59 Israel time; if both crons land in that window, the
+    # second sees the live site already on main and skips.
     - cron: '0 21 * * *'
     - cron: '0 22 * * *'
   workflow_dispatch:
@@ -34,10 +36,10 @@ jobs:
         run: |
           hour=$(TZ=Asia/Jerusalem date +%H)
           echo "Israel time: $(TZ=Asia/Jerusalem date '+%Y-%m-%d %H:%M')"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$hour" = "00" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$hour" -lt 6 ]; then
             echo "go=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Not midnight in Israel (the other cron covers the other half of the year): skipping."
+            echo "Not between midnight and 6am in Israel (the other cron covers the other half of the year): skipping."
             echo "go=false" >> "$GITHUB_OUTPUT"
           fi
 
