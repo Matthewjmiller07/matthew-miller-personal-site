@@ -13,7 +13,7 @@ interface Feature {
   title: string; url: string; published: string; he: string | null; verse: Verse | null;
   paragraphs: string[]; complete: boolean; otherParshiot: string[];
 }
-interface Post { title: string; url: string; published: string; he: string | null; teaser: string; verse: string | null }
+interface Post { title: string; url: string; published: string; he: string | null; gloss?: string | null; teaser: string; verse: string | null }
 const store = balashon as unknown as {
   fetched: string | null;
   parshiot: Record<string, { labels: string[]; featured?: Feature[]; posts: Post[] }>;
@@ -66,8 +66,8 @@ const features = featured.map((f, i) => {
 const page1 = features.length === 3 ? features.slice(0, 2) : features.slice(0, features.length === 2 ? 2 : 1);
 const page2 = features.slice(page1.length);
 
-// The shelf: short teasers for the first few, titles only after that.
-const SHELF_TEASERS = page2.length ? 4 : 8;
+// The shelf: each post with its one-line gloss (what the word means, where it comes from), or the
+// opening of the post if it has no gloss yet.
 const trimTo = (t: string, n: number) => (words(t) <= n ? t : `${t.split(/\s+/).slice(0, n).join(' ').replace(/[,;:.\-–—]+$/, '')}…`);
 
 // Mark the word in its verse (first occurrence).
@@ -219,14 +219,14 @@ const host = (url: string) => url.replace(/^https?:\/\/(www\.)?/, '');
           <section class="shelf">
             <h3 class="sec-h">More from Balashon on {week.parsha}</h3>
             <ul class="shelf-list">
-              {shelf.map((p, i) => (
+              {shelf.map((p) => (
                 <li>
                   <div class="shelf-top">
                     <a href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a>
                     {p.he && <span class="he shelf-he">{p.he}</span>}
                     <span class="shelf-y">{year(p.published)}{p.verse && ` · ${p.verse.replace(/^.* (?=\d+:\d+$)/, '')}`}</span>
                   </div>
-                  {i < SHELF_TEASERS && p.teaser && <p class="shelf-teaser">{trimTo(p.teaser, 22)}</p>}
+                  {(p.gloss || p.teaser) && <p class="shelf-teaser">{p.gloss ?? trimTo(p.teaser, 18)}</p>}
                 </li>
               ))}
             </ul>

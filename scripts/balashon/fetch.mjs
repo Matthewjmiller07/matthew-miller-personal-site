@@ -4,10 +4,13 @@
 // come from the public Blogger JSON feeds. Run by .github/workflows/balashon-fetch.yml.
 // Each week features the posts whose word appears in that parasha, with the verse from Sefaria
 // and the opening of the post; the rest get a short teaser. Every item links to the full post.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 const BASE = 'https://www.balashon.com';
 const OUT = new URL('../../src/data/balashon/posts.json', import.meta.url);
+const GLOSSES = new URL('../../src/data/balashon/glosses.json', import.meta.url);
+// Posts still needing a one-line gloss go here for scripts/balashon/glosses.mjs.
+const QUEUE = process.env.BALASHON_GLOSS_QUEUE;
 const SEASON = new URL('../../src/data/phds-on-the-parsha/season-5787.json', import.meta.url);
 const PARSHA_LABEL = /^(parash?at|parshat)\s+/i;
 
@@ -287,6 +290,8 @@ async function main() {
   if (!labels.length) throw new Error(`no parasha labels among ${allLabels.length} labels`);
   console.log(`${labels.length} parasha labels: ${labels.join(' | ')}`);
 
+  const glosses = existsSync(GLOSSES) ? JSON.parse(readFileSync(GLOSSES, 'utf8')) : {};
+  const queue = new Map();
   const byLabel = {};
   const parshiot = {};
   for (const w of season.weeks) {
@@ -318,16 +323,21 @@ async function main() {
         return { title: p.title, url: p.url, published: p.published, he: p.verse?.word ?? p.he, hebrew: p.hebrew, verse: p.verse, paragraphs: ex.paragraphs, complete: ex.complete, words: p.words, otherParshiot: p.otherParshiot };
       }),
       posts: rest.map((p) => ({
-        title: p.title, url: p.url, published: p.published, he: p.he,
+        title: p.title, url: p.url, published: p.published, he: p.he, gloss: glosses[p.url] ?? null,
         teaser: excerpt(p.paragraphs, TEASER).paragraphs.join(' '),
         verse: p.verse ? p.verse.ref : null, otherParshiot: p.otherParshiot,
       })),
     };
+    for (const p of posts) {
+      if (!glosses[p.url]) queue.set(p.url, { url: p.url, title: p.title, he: p.he, text: p.paragraphs.join('\n').split(/\s+/).slice(0, 450).join(' ') });
+    }
     console.log(`${w.parsha.padEnd(18)} ${String(posts.length).padStart(3)} posts, ${posts.filter((p) => p.verse).length} in the text · featuring ${featured.map((p) => `${p.title}${p.verse ? ` (${p.verse.ref})` : ''}`).join('; ')}`);
   }
   const unused = labels.filter((l) => !Object.values(parshiot).some((p) => p.labels.includes(l)));
   if (unused.length) console.log(`labels not matched to any parasha: ${unused.join(' | ')}`);
 
+  if (QUEUE) writeFileSync(QUEUE, JSON.stringify([...queue.values()]));
+  console.log(`${queue.size} posts without a gloss`);
   writeFileSync(OUT, `${JSON.stringify({ source: BASE, fetched: new Date().toISOString().slice(0, 10), unmatchedLabels: unused, parshiot }, null, 1)}\n`);
 }
 

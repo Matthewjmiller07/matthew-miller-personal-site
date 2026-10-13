@@ -24,22 +24,33 @@ concurrency:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
       - name: Fetch posts
+        env:
+          BALASHON_GLOSS_QUEUE: /tmp/balashon-gloss-queue.json
         run: node scripts/balashon/fetch.mjs
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Write one-line glosses for new posts
+        # Optional: the sheets fall back to a teaser if this fails.
+        continue-on-error: true
+        env:
+          BALASHON_GLOSS_QUEUE: /tmp/balashon-gloss-queue.json
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: node scripts/balashon/glosses.mjs
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
-          git add src/data/balashon/posts.json
+          git add src/data/balashon/posts.json src/data/balashon/glosses.json
           if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
           git commit -m "Balashon: refresh parasha posts"
-          # Only posts.json is committed; rebase onto the latest branch so we never push a stale tree.
+          # Only the Balashon data files are committed; rebase onto the latest branch so we never push a stale tree.
           for i in 1 2 3; do git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break; sleep 5; done
