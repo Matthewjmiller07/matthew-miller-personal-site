@@ -66,7 +66,7 @@ export const weeks: Week[] = season.weeks.map((w: any) => {
   const sheetSlug = sheetSlugByKey[k];
   if (sheetSlug) links.push({ kind: 'sheet', label: 'Parasha sheet', href: `/parasha-sheet/${sheetSlug}` });
 
-  links.push({ kind: 'balashon', label: 'Balashon 2-pager', href: `/balashon/${slugOf(w.parsha)}`, note: 'Hebrew word histories from Balashon' });
+  links.push({ kind: 'balashon', label: 'Balashon reader', href: `/balashon/${slugOf(w.parsha)}`, note: 'The parasha’s Hebrew words, traced by Balashon' });
 
   const pb = bookByKey[k];
   if (pb) links.push({ kind: 'book', label: 'Picture book', href: `/parasha-books/${pb.slug}`, note: pb.title });
@@ -109,10 +109,10 @@ export const series = [
     text: 'Two-page sheets built from the Mega Bible: word and root counts, the words found nowhere else in Tanakh, what the parasha calls God, and Biblical → Modern Hebrew with National Library evidence.',
   },
   {
-    name: 'Balashon 2-pagers',
+    name: 'The Balashon Shabbat Reader',
     href: '/balashon',
-    kind: 'Study sheet',
-    text: "Every week, the posts David Curwin's Balashon (Hebrew Language Detective) has filed under that parasha: the word, where it comes from, and a link to read the rest, on two printable pages.",
+    kind: 'Reader',
+    text: "Two printable pages for the Shabbat table from David Curwin's Balashon, the Hebrew Language Detective: the parasha's words, each with its verse and his account of where it comes from.",
   },
   {
     name: 'Parasha Books',
