@@ -325,7 +325,7 @@ async function main() {
       }),
       posts: rest.map((p) => ({
         // The headword: the post's own spelling of the title word, else as in this week's verse.
-        title: p.title, url: p.url, published: p.published, he: p.hebrew[0] ?? p.verse?.word ?? p.he, gloss: glosses[p.url] ?? null,
+        title: p.title, url: p.url, published: p.published, he: [...p.hebrew].sort((a, b) => b.length - a.length)[0] ?? p.verse?.word ?? p.he, gloss: glosses[p.url] ?? null,
         teaser: excerpt(p.paragraphs, TEASER).paragraphs.join(' '),
         verse: p.verse ? p.verse.ref : null, otherParshiot: p.otherParshiot,
       })),
