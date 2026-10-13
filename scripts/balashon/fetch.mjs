@@ -14,17 +14,19 @@ const PARSHA_LABEL = /^(parash?at|parshat)\s+/i;
 export const slugOf = (s) => s.toLowerCase().replace(/['’]/g, '').replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
 
 // A spelling-insensitive skeleton for transliterations: Bereishit/Breishit/Bereshit,
-// Behaalotcha/Beha'alotecha, Chukat/Chukkat, Vayetzei/Vayetze and Pinchas/Pinhas all collapse.
+// Behaalotcha/Beha'alotecha, Chukat/Chukkat, Vayetzei/Vayetze, Terumah/Teruma and Pinchas/Pinhas
+// all collapse. Y stays a consonant, so Vayera and Va'era stay apart.
 export function skeleton(name) {
   return name
     .toLowerCase()
     .replace(PARSHA_LABEL, '')
+    .replace(/([aeiou])h\b/g, '$1')
     .replace(/[^a-z]/g, '')
     .replace(/[ck]h/g, 'h')
     .replace(/t[sz]/g, 'z')
     .replace(/ck/g, 'k')
     .replace(/w/g, 'v')
-    .replace(/[aeiouy]/g, '')
+    .replace(/[aeiou]/g, '')
     .replace(/(.)\1+/g, '$1');
 }
 
