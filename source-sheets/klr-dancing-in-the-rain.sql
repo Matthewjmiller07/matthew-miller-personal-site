@@ -1,4 +1,4 @@
--- KLR Women's Shiur, Rosh Chodesh Cheshvan: "Dancing in the Rain".
+-- Rebbetzin Goldvicht, KLR Women's Shiur, Rosh Chodesh Cheshvan: "Dancing in the Rain".
 -- Digitised from the printed handout. Texts on Sefaria come from Sefaria (with its English);
 -- sources tagged not-on-sefaria were transcribed from the handout and translated by us.
 -- Re-runnable: a source is only inserted if its position is still empty.
@@ -8,8 +8,8 @@ values (
   'klr-dancing-in-the-rain',
   'Dancing in the Rain',
   'ראש חודש חשון',
-  'Discovering Hashem''s hidden miracles in every drop',
-  'KLR Women''s Shiur (Kehilat Lev Ra''anana), Rosh Chodesh Cheshvan. When we start asking for rain, why it sits in the blessing of the resurrection of the dead, and why rain waits for prayer: from the Mishnah and the Siddur through the Gemara to the Maharal, Rav Elya Lopian and Rebbe Bunim of Peshischa.',
+  'Discovering Hashem''s hidden miracles in every drop · Rebbetzin Goldvicht, KLR Women''s Shiur',
+  'A source sheet by Rebbetzin Goldvicht for the KLR Women''s Shiur (Kehilat Lev Ra''anana), Rosh Chodesh Cheshvan. When we start asking for rain, why it sits in the blessing of the resurrection of the dead, and why rain waits for prayer: from the Mishnah and the Siddur through the Gemara to the Maharal, Rav Elya Lopian and Rebbe Bunim of Peshischa.',
   'published'
 )
 on conflict (slug) do update set
