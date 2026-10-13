@@ -209,23 +209,24 @@ function titleWords(title, text) {
   return [...new Set(parts.map((p) => bestHebrew(p, text)).filter((b) => b && b.score >= 0.75).map((b) => b.he))];
 }
 
-// Does the post itself talk about this parasha: its name, "this week's parasha", or a verse in its range?
+// How much the post itself is about this parasha: 2 if it cites a verse in the parasha's range or
+// says "this week's parasha", 1 if it only names the parasha, 0 if neither.
 const BOOKS = {
   Genesis: 'genesis|bereishit|bereshit|breishit|gen\\.?', Exodus: 'exodus|shemot|shmot|ex\\.?|exod\\.?',
   Leviticus: 'leviticus|vayikra|lev\\.?', Numbers: 'numbers|bamidbar|num\\.?', Deuteronomy: 'deuteronomy|devarim|deut\\.?',
 };
 export function mentionsParasha(text, parsha, labels, range) {
   const t = text.toLowerCase();
-  const names = [parsha, ...labels.map((l) => l.replace(PARSHA_LABEL, ''))].map((n) => n.toLowerCase().replace(/['’]/g, "'?"));
-  if (names.some((n) => new RegExp(`\\b${n.replace(/ /g, '[ -]')}\\b`).test(t))) return true;
+  if (/this week'?s (?:parasha|parsha|parashah|torah reading|portion)/.test(t)) return 2;
   const [book, span] = [range.slice(0, range.lastIndexOf(' ')), range.slice(range.lastIndexOf(' ') + 1)];
   const [from, to] = span.split(/[–-]/).map((r) => r.split(':').map(Number));
   const at = (c, v) => c * 1000 + v;
   for (const m of t.matchAll(new RegExp(`\\b(?:${BOOKS[book] ?? book.toLowerCase()})\\s*(\\d+):(\\d+)`, 'g'))) {
     const x = at(+m[1], +m[2]);
-    if (x >= at(...from) && x <= at(...to)) return true;
+    if (x >= at(...from) && x <= at(...to)) return 2;
   }
-  return false;
+  const names = [parsha, ...labels.map((l) => l.replace(PARSHA_LABEL, ''))].map((n) => n.toLowerCase().replace(/['’]/g, "'?"));
+  return names.some((n) => new RegExp(`\\b${n.replace(/ /g, '[ -]')}\\b`).test(t)) ? 1 : 0;
 }
 
 export function findVerse(words, verses) {
@@ -291,7 +292,7 @@ async function main() {
     const posts = [...byUrl.values()].map((p) => ({ ...p, verse: findVerse(p.hebrew, verses), aboutThis: mentionsParasha(p.text, w.parsha, matched, w.ref), otherParshiot: p.labels.filter((l) => !matched.includes(l)).map((l) => l.replace(PARSHA_LABEL, '')) }));
     // Feature posts whose word is in this week's text, first those that themselves discuss this
     // parasha; then the ones filed under the fewest other parshiyot, then the fuller write-ups.
-    const rank = (p) => (p.verse ? 0 : 1000) + (p.aboutThis ? 0 : 100) + p.otherParshiot.length * 10 - Math.min(p.words, 900) / 100;
+    const rank = (p) => (p.verse ? 0 : 1000) - p.aboutThis * 100 + p.otherParshiot.length * 10 - Math.min(p.words, 900) / 100;
     const featured = [...posts].sort((a, b) => rank(a) - rank(b)).slice(0, FEATURES);
     const order = (p) => (p.verse ? verses.findIndex((v) => v.ref === p.verse.ref) : 1e6);
     featured.sort((a, b) => order(a) - order(b));
