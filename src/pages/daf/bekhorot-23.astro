@@ -1,0 +1,409 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Last Eater — Daf Yomi Game: Bekhorot 23"
+  description="Bekhorot 23: slide a rotting carcass down a line of eaters to see when it stops being food, rule how nullified impurity does or doesn't wake, find the brine suspicion threshold, and sort which mishna Rav's rule was really about."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700;900&display=swap"
+  />
+
+  <main class="frank min-h-screen bg-[#11131b] !text-[#ece6d8]">
+    <!-- ============ Hero ============ -->
+    <header class="px-4 pt-12 pb-8">
+      <div class="mx-auto max-w-2xl">
+        <p class="text-sm !text-[#9a98a8]">
+          <a href="/daf" class="underline decoration-[#363a4d] hover:!text-[#e0a84a]">Daf Yomi Arcade</a>, Bekhorot 23, 13 October 2026
+        </p>
+        <h1 class="mt-3 text-5xl font-black leading-[1.05] sm:text-6xl">The Last Eater</h1>
+        <p class="mt-3 text-2xl !text-[#e0a84a]" dir="rtl" lang="he">עַד שֶׁלֹּא יֹאכְלֶנָּה</p>
+        <p class="mt-4 max-w-xl text-lg leading-relaxed !text-[#cfcabd]">
+          A carcass is impure for as long as someone would still eat it. But who counts as someone? A ger toshav, a dog, or
+          nobody at all? Bar Padda and Rabbi Yoḥanan disagree, and the answer depends on which creature is at the end of the line.
+          Then the daf asks whether impurity that was swallowed by a majority can wake up, and whether a rule Rav gave about
+          the anonymous Mishna has any exceptions.
+        </p>
+        <svg viewBox="0 0 600 110" class="mt-6 w-full" aria-hidden="true">
+          <path d="M10 92 H590" stroke="#363a4d" stroke-width="2" />
+          <g fill="#7d8a4e"><ellipse cx="90" cy="70" rx="46" ry="18" /><ellipse cx="150" cy="74" rx="30" ry="12" opacity="0.6" /></g>
+          <path d="M240 70 L290 52 L330 70 L290 88 Z" fill="none" stroke="#d9d2bf" stroke-width="2" />
+          <path d="M380 72 L430 58 L470 72 L430 86 Z" fill="none" stroke="#e0a84a" stroke-width="2" />
+          <circle cx="520" cy="70" r="14" fill="none" stroke="#c4553f" stroke-width="2.5" />
+          <text x="90" y="30" text-anchor="middle" font-size="13" fill="#9a98a8">carcass</text>
+          <text x="290" y="34" text-anchor="middle" font-size="13" fill="#d9d2bf">dog</text>
+          <text x="430" y="34" text-anchor="middle" font-size="13" fill="#e0a84a">ger toshav</text>
+          <text x="520" y="34" text-anchor="middle" font-size="13" fill="#c4553f">none</text>
+        </svg>
+        <p class="mt-4 text-sm !text-[#9a98a8]" aria-live="polite">Rulings right: <span id="tally">0</span></p>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-2xl px-4 pb-20">
+      <!-- ============ Part I: the line of eaters ============ -->
+      <section class="border-t border-[#262a3a] pt-8" aria-labelledby="p1">
+        <h2 id="p1" class="text-3xl font-bold">I. The line of eaters</h2>
+        <p class="mt-2 leading-relaxed !text-[#cfcabd]">
+          Bar Padda reads Deuteronomy 14:21 ("give it to the ger who is within your gates") to mean that a carcass is only a
+          carcass while a ger toshav could eat it. For severe impurity, the carcass stays impure that long. For light impurity,
+          it stays impure until a dog would no longer eat it. Rabbi Yoḥanan says that both kinds stay impure until a dog would no
+          longer eat it. Move the carcass down the line and rule for each sage.
+        </p>
+
+        <div class="mt-5 card">
+          <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p class="text-sm !text-[#9a98a8]">Severity of the impurity</p>
+              <div class="mt-2 flex gap-2" role="group" aria-label="Severity">
+                <button type="button" data-sev="severe" class="btn" aria-pressed="true">severe (a nonviable newborn)</button>
+                <button type="button" data-sev="light" class="btn" aria-pressed="false">light (contact only)</button>
+              </div>
+            </div>
+          </div>
+
+          <label for="rot" class="mt-5 block text-sm !text-[#9a98a8]">How far the carcass has rotted</label>
+          <input id="rot" type="range" min="0" max="2" step="1" value="0" class="mt-2 w-full accent-[#e0a84a]" />
+          <p id="stage" class="mt-2 text-lg !text-[#ece6d8]"></p>
+
+          <div class="mt-5 grid grid-cols-2 gap-3">
+            <div class="eater" id="eatDog"><p class="!text-[#d9d2bf] font-bold">A dog</p><p class="eatState"></p></div>
+            <div class="eater" id="eatGer"><p class="!text-[#d9d2bf] font-bold">A ger toshav</p><p class="eatState"></p></div>
+          </div>
+        </div>
+
+        <div class="mt-5 card">
+          <p class="!text-[#cfcabd]">Your ruling at this stage: is the carcass still an impurity-bearing carcass?</p>
+          <div id="sages" class="mt-4 space-y-3"></div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button type="button" id="check" class="btn">Check my rulings</button>
+          </div>
+          <p id="partIFeedback" class="mt-3 min-h-[1.5em] !text-[#e0a84a]" aria-live="polite"></p>
+        </div>
+
+        <div class="mt-5 card">
+          <p class="!text-[#cfcabd]">
+            Bar Padda's reasoning is about what a ger toshav would eat. Rabbi Yoḥanan's reasoning is about the dog. The Gemara
+            notes that a carcass decayed from the outset (dust) is not a carcass at all, and bar Padda needs no verse for that.
+            Rabbi Yoḥanan needs the verse to exclude it, which is why the two sages read it differently.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ Part II: the clot and the ash ============ -->
+      <section class="mt-12 border-t border-[#262a3a] pt-8" aria-labelledby="p2">
+        <h2 id="p2" class="text-3xl font-bold">II. Does the swallowed one wake?</h2>
+        <p class="mt-2 leading-relaxed !text-[#cfcabd]">
+          Rav Dimi and Rabbi Yirmeya hold that when impurity is swallowed by a majority, it can still revive if it meets its own
+          kind. Abaye raises four objections. Three of them say the same thing: if the swallowed impurity counts as present, the
+          mixture should still impart impurity through carrying. The fourth is different. Sort each objection.
+        </p>
+
+        <div id="objections" class="mt-5 space-y-3"></div>
+        <p id="partIIFeedback" class="mt-3 min-h-[1.5em] !text-[#e0a84a]" aria-live="polite"></p>
+
+        <div class="mt-6 card">
+          <p class="!text-[#cfcabd]">
+            Rav Dimi's answer to the red-heifer ash objection (Para 9:7) comes from Rabbi Yosei son of Rabbi Ḥanina. Which
+            ruling is it?
+          </p>
+          <div id="rdQuiz" class="mt-4 space-y-2"></div>
+          <p id="rdFeedback" class="mt-3 min-h-[1.5em] !text-[#e0a84a]" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <!-- ============ Part III: the brine ============ -->
+      <section class="mt-12 border-t border-[#262a3a] pt-8" aria-labelledby="p3">
+        <h2 id="p3" class="text-3xl font-bold">III. How much water is suspicious</h2>
+        <p class="mt-2 leading-relaxed !text-[#cfcabd]">
+          Makhshirin 6:3: brine that was pure, taken from an am ha'aretz, becomes impure when any amount of water falls into it.
+          Rav Naḥman says the reason is that an am ha'aretz is suspected of mixing in half a portion of water. The Gemara asks why
+          half, since less would also make the mixture impure. Its answer is a specific threshold.
+        </p>
+
+        <div class="mt-5 card">
+          <p class="!text-[#cfcabd]">Which threshold does the Gemara's answer use for the am ha'aretz's suspected water?</p>
+          <div id="brineQuiz" class="mt-4 space-y-2"></div>
+          <p id="brineFeedback" class="mt-3 min-h-[1.5em] !text-[#e0a84a]" aria-live="polite"></p>
+        </div>
+
+        <div class="mt-5 card">
+          <p class="!text-[#cfcabd]">
+            The Gemara also offers a second route: the impurity of foods belonging to an am ha'aretz applies by rabbinic law, and
+            so does the impurity of liquids. Then the brine's impurity is two rabbinic decrees stacked on each other, and the decree
+            on water-majority brine is not the same decree as the one on half-and-half.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ Part IV: which mishna is Rav's rule about? ============ -->
+      <section class="mt-12 border-t border-[#262a3a] pt-8" aria-labelledby="p4">
+        <h2 id="p4" class="text-3xl font-bold">IV. Which mishna is Rav's rule about?</h2>
+        <p class="mt-2 leading-relaxed !text-[#cfcabd]">
+          Rav Naḥman in Rav's name: the halakha follows the anonymous tanna throughout the chapter, except where a dispute is
+          recorded. Rav Sheshet says Rav was dozing. Which mishna could the ruling be about? Sort the candidates.
+        </p>
+        <div id="ravCandidates" class="mt-5 space-y-3"></div>
+        <p id="ravFeedback" class="mt-3 min-h-[1.5em] !text-[#e0a84a]" aria-live="polite"></p>
+      </section>
+
+      <!-- ============ Closing ============ -->
+      <section class="mt-12 border-t border-[#262a3a] pt-8">
+        <h2 class="text-2xl font-bold">The question continues on 24a</h2>
+        <p class="mt-2 leading-relaxed !text-[#cfcabd]">
+          Today's page ends mid-argument: if Rav's rule is about Rabban Shimon ben Gamliel, what do we do with the baraita
+          on 24a that disagrees with him? The daf is still open.
+        </p>
+        <div class="mt-5 flex flex-wrap gap-3 text-sm">
+          <a href="https://www.sefaria.org/Bekhorot.23a" class="link">Bekhorot 23a on Sefaria</a>
+          <a href="https://www.sefaria.org/Bekhorot.23b" class="link">Bekhorot 23b on Sefaria</a>
+          <a href="https://www.sefaria.org/Rashi_on_Bekhorot.23a" class="link">Rashi on 23a</a>
+          <a href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.23a" class="link">Rabbeinu Gershom on 23a</a>
+        </div>
+        <p class="mt-6 text-sm !text-[#9a98a8]">
+          Read the Gemara and commentaries on <a class="link" href="https://www.sefaria.org/Bekhorot.23a">Sefaria</a>. The game is a
+          door into the daf, not a replacement for it.
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <style>
+    .frank { font-family: 'Frank Ruhl Libre', 'David', serif; }
+    .card { border: 1px solid #262a3a; border-radius: 6px; padding: 1.25rem; background: #171a24; }
+    .btn {
+      border: 1px solid #363a4d; border-radius: 4px; padding: 0.4rem 0.8rem; font-size: 0.95rem;
+      background: #1d2130; color: #ece6d8;
+    }
+    .btn:hover { border-color: #e0a84a; }
+    .btn[aria-pressed="true"] { border-color: #e0a84a; background: #2a2418; }
+    .btn:focus-visible, .link:focus-visible, input:focus-visible { outline: 2px solid #e0a84a; outline-offset: 2px; }
+    .choice { width: 100%; text-align: start; }
+    .eater { border: 1px solid #363a4d; border-radius: 6px; padding: 0.75rem; }
+    .eatState { margin-top: 0.25rem; font-size: 0.95rem; }
+    .link { text-decoration: underline; text-decoration-color: #363a4d; }
+    .link:hover { color: #e0a84a; }
+    .ok { color: #7d8a4e !important; }
+    .bad { color: #c4553f !important; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+
+  <script>
+    let score = 0;
+    const tally = document.getElementById('tally')!;
+    const addScore = (n: number) => { score += n; tally!.textContent = String(score); };
+
+    // ---------- Part I ----------
+    const stages = [
+      { name: 'Fresh. A ger toshav would eat it, and so would a dog.', fitGer: true, fitDog: true },
+      { name: 'Spoiled. Only a dog would eat it.', fitGer: false, fitDog: true },
+      { name: 'Rotted. No one would eat it, not even a dog.', fitGer: false, fitDog: false },
+    ];
+    let sev: 'severe' | 'light' = 'severe';
+    let answered = false;
+    const rot = document.getElementById('rot') as HTMLInputElement;
+    const stageEl = document.getElementById('stage')!;
+    const sagesEl = document.getElementById('sages')!;
+    const partIFeedback = document.getElementById('partIFeedback')!;
+
+    const sageRows = [
+      { id: 'barPadda', name: 'Bar Padda' },
+      { id: 'rabbiYohanan', name: 'Rabbi Yoḥanan' },
+    ];
+    // Each sage's rule: impure? for the given stage and severity
+    const sageVerdict = (who: string, s: typeof stages[number]) => {
+      if (who === 'barPadda') return sev === 'severe' ? s.fitGer : s.fitDog;
+      return s.fitDog;
+    };
+
+    const renderSages = () => {
+      sagesEl.innerHTML = '';
+      for (const r of sageRows) {
+        const row = document.createElement('div');
+        row.className = 'flex flex-wrap items-center justify-between gap-3';
+        row.innerHTML = `<span class="!text-[#ece6d8]">${r.name}: impure?</span>`;
+        const group = document.createElement('div');
+        group.className = 'flex gap-2';
+        for (const v of ['yes', 'no']) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'btn';
+          b.dataset.sage = r.id;
+          b.dataset.val = v;
+          b.textContent = v;
+          b.setAttribute('aria-pressed', 'false');
+          b.addEventListener('click', () => {
+            group.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', 'false'));
+            b.setAttribute('aria-pressed', 'true');
+            b.dataset.picked = '1';
+          });
+          group.appendChild(b);
+        }
+        row.appendChild(group);
+        sagesEl.appendChild(row);
+      }
+    };
+
+    const showStage = () => {
+      const s = stages[Number(rot.value)];
+      stageEl.textContent = s.name;
+      (document.getElementById('eatDog')!.querySelector('.eatState') as HTMLElement).textContent =
+        s.fitDog ? 'would eat it' : 'would not eat it';
+      (document.getElementById('eatGer')!.querySelector('.eatState') as HTMLElement).textContent =
+        s.fitGer ? 'would eat it' : 'would not eat it';
+      answered = false;
+      partIFeedback.textContent = '';
+      renderSages();
+    };
+
+    document.querySelectorAll<HTMLButtonElement>('[data-sev]').forEach((b) => {
+      b.addEventListener('click', () => {
+        sev = b.dataset.sev as 'severe' | 'light';
+        document.querySelectorAll('[data-sev]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        showStage();
+      });
+    });
+    rot.addEventListener('input', showStage);
+
+    document.getElementById('check')!.addEventListener('click', () => {
+      if (answered) return;
+      const s = stages[Number(rot.value)];
+      let right = 0;
+      const lines: string[] = [];
+      for (const r of sageRows) {
+        const picked = sagesEl.querySelector<HTMLButtonElement>(`[data-sage="${r.id}"][data-picked="1"]`);
+        if (!picked) { lines.push(`${r.name}: no ruling picked.`); continue; }
+        const says = picked.dataset.val === 'yes';
+        const truth = sageVerdict(r.id, s);
+        if (says === truth) right++;
+        lines.push(`${r.name}: ${truth ? 'impure' : 'pure'}.`);
+      }
+      if (right === 2) addScore(2);
+      answered = true;
+      partIFeedback.className = 'mt-3 min-h-[1.5em] ' + (right === 2 ? '!text-[#7d8a4e]' : '!text-[#c4553f]');
+      partIFeedback.textContent = `${right} of 2 right. ${lines.join(' ')}`;
+    });
+    showStage();
+
+    // ---------- Part II ----------
+    const objections = [
+      { id: 'o1', text: 'Fish brine, where the water in the pot is pure: if purity can revive impurity, why not this?', kind: 'purity' },
+      { id: 'o2', text: 'Red-heifer ash mixed into regular ash (Para 9:7): if nullified impurity still exists, the mixture imparts impurity by carrying.', kind: 'carry' },
+      { id: 'o3', text: "Rav Ḥisda: carcass meat mixed into slaughtered meat: if nullified impurity still exists, the mixture imparts impurity by carrying.", kind: 'carry' },
+      { id: 'o4', text: 'The congealed clot of Rabbi Eliezer ben Ya\'akov: if it is nullified and still present, it imparts impurity by carrying.', kind: 'carry' },
+    ];
+    const objEl = document.getElementById('objections')!;
+    const partIIFeedback = document.getElementById('partIIFeedback')!;
+    let partIIRight = 0;
+    let partIIDone = 0;
+    for (const o of objections) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<p class="!text-[#ece6d8]">${o.text}</p><div class="mt-3 flex flex-wrap gap-2"></div>`;
+      const box = card.querySelector('div')!;
+      const labels: [string, string][] = [['carry', 'the carrying objection'], ['purity', 'the purity-revives objection']];
+      for (const [val, label] of labels) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'btn';
+        b.textContent = label;
+        b.addEventListener('click', () => {
+          if (card.dataset.done) return;
+          card.dataset.done = '1';
+          partIIDone++;
+          const ok = val === o.kind;
+          if (ok) { partIIRight++; addScore(1); }
+          b.classList.add(ok ? 'ok' : 'bad');
+          partIIFeedback.textContent = `${partIIRight} of ${objections.length} sorted right.`;
+          if (partIIDone === objections.length) {
+            partIIFeedback.textContent += ' Three are about carrying; the fourth is Abaye\'s purity-revives objection.';
+          }
+        });
+        box.appendChild(b);
+      }
+      objEl.appendChild(card);
+    }
+
+    const rdOptions = [
+      { text: 'Pure for contact, impure for carrying', correct: true },
+      { text: 'Impure for contact, pure for carrying', correct: false },
+      { text: 'Impure for both contact and carrying', correct: false },
+    ];
+    const rdEl = document.getElementById('rdQuiz')!;
+    const rdFeedback = document.getElementById('rdFeedback')!;
+    let rdDone = false;
+    rdOptions.forEach((o) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn choice';
+      b.textContent = o.text;
+      b.addEventListener('click', () => {
+        if (rdDone) return;
+        rdDone = true;
+        b.classList.add(o.correct ? 'ok' : 'bad');
+        if (o.correct) addScore(2);
+        rdFeedback.textContent = o.correct
+          ? 'Right. Rabbi Yosei son of Rabbi Ḥanina: pure for contact, impure for carrying.'
+          : 'Not quite. Rabbi Yosei son of Rabbi Ḥanina says it is pure for contact but impure for carrying.';
+      });
+      rdEl.appendChild(b);
+    });
+
+    // ---------- Part III ----------
+    const brineOptions = [
+      { text: 'Suspected of mixing water up to exactly half', correct: false },
+      { text: 'Suspected of mixing water up to slightly less than half', correct: true },
+      { text: 'Suspected of mixing any amount of water at all', correct: false },
+    ];
+    const brineEl = document.getElementById('brineQuiz')!;
+    const brineFeedback = document.getElementById('brineFeedback')!;
+    let brineDone = false;
+    brineOptions.forEach((o) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn choice';
+      b.textContent = o.text;
+      b.addEventListener('click', () => {
+        if (brineDone) return;
+        brineDone = true;
+        b.classList.add(o.correct ? 'ok' : 'bad');
+        if (o.correct) addScore(2);
+        brineFeedback.textContent = o.correct
+          ? 'Right. Slightly less than half: a half-and-half mixture is not nullified, so the brine must be suspect below that line.'
+          : 'Not quite. The Gemara answers that the am ha\'aretz is suspected of mixing water up to slightly less than half.';
+      });
+      brineEl.appendChild(b);
+    });
+
+    // ---------- Part IV ----------
+    const candidates = [
+      { text: 'The first mishna of the chapter (19b)', correct: false,
+        why: 'Rabbi Yishmael and Rabbi Akiva disagree in that mishna, so a dispute is recorded there and Rav\'s rule does not apply.' },
+      { text: "Rabbi Eliezer ben Ya'akov's ruling", correct: false,
+        why: 'His teaching is already known to be accurate, so Rav would not need to restate it as a rule.' },
+      { text: "Rabbi Yosei ben HaMeshullam (24b)", correct: false,
+        why: 'Rav has already said this one, so Rav Sheshet\'s question cannot be about it.' },
+      { text: 'Rabban Shimon ben Gamliel in this mishna', correct: true,
+        why: 'Rav is teaching that a mishna contradicted by a dissenting baraita is not a dispute, and the halakha follows Rabban Shimon ben Gamliel. The baraita on 24a dissents.' },
+    ];
+    const ravEl = document.getElementById('ravCandidates')!;
+    const ravFeedback = document.getElementById('ravFeedback')!;
+    let ravDone = false;
+    candidates.forEach((c) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn choice';
+      b.textContent = c.text;
+      b.addEventListener('click', () => {
+        if (ravDone) return;
+        ravDone = true;
+        b.classList.add(c.correct ? 'ok' : 'bad');
+        if (c.correct) addScore(3);
+        ravFeedback.textContent = c.why;
+      });
+      ravEl.appendChild(b);
+    });
+  </script>
+</Layout>
