@@ -592,6 +592,21 @@ a.w-gen-link:hover { background:var(--gold); color:#0c0b09; }
   color:#e08a8a; padding:.1rem .4rem; white-space:nowrap; cursor:pointer;
 }
 .graetz-badge:hover { background:rgba(224,92,92,.25); }
+
+/* Emotion pills — Jev analysis of Psalms verses' emotional state */
+.emotion-pills { display:flex; flex-wrap:wrap; gap:.28rem; margin-top:.35rem; }
+.emotion-pill {
+  font-family:var(--sc); font-size:.44rem; letter-spacing:.12em; text-transform:uppercase;
+  padding:.12rem .45rem; border:1px solid var(--border); white-space:nowrap; cursor:default;
+}
+.emo-joy, .emo-praise, .emo-gratitude { color:#e8c76a; border-color:rgba(201,162,87,.55); background:rgba(201,162,87,.1); }
+.emo-trust, .emo-hope { color:#9fd6a4; border-color:rgba(120,190,130,.5); background:rgba(120,190,130,.08); }
+.emo-longing { color:#e0b48a; border-color:rgba(220,160,110,.5); background:rgba(220,160,110,.08); }
+.emo-awe { color:#a0d8d0; border-color:rgba(110,190,180,.5); background:rgba(110,190,180,.08); }
+.emo-repentance { color:#b0a8e0; border-color:rgba(140,130,200,.5); background:rgba(140,130,200,.08); }
+.emo-sorrow, .emo-despair { color:#8fb3e0; border-color:rgba(120,150,200,.5); background:rgba(120,150,200,.08); }
+.emo-fear { color:#c9a0e0; border-color:rgba(160,120,200,.5); background:rgba(160,120,200,.08); }
+.emo-anger { color:#e08a8a; border-color:rgba(224,92,92,.5); background:rgba(224,92,92,.08); }
 .graetz-entry { grid-column:1/-1; border-top:1px solid var(--border); padding-top:.5rem; }
 .graetz-entry .g-heb { font-family:var(--heb); font-size:1.05rem; direction:rtl; text-align:right; margin-bottom:.2rem; }
 .graetz-entry .g-kind { font-family:var(--sc); font-size:.55rem; letter-spacing:.15em; color:#e08a8a; text-transform:uppercase; margin-right:.5rem; }
@@ -1830,6 +1845,7 @@ let lemmaMap: Record<string,{word:string, definition:string}> = {};
 let haftarahData: any = null;
 let haftarahIdx = new Map<string, Array<{parsha:string, rite:string}>>();
 let graetzIdx = new Map<string, any[]>();
+let emotionIdx = new Map<string, {tags: string[], scores: Record<string, number | undefined>}>();
 let activeDevice = '';
 let navMode = 'chapter';
 let currentParsha = '';
@@ -1918,7 +1934,18 @@ if (!hasURLParams) (async () => {
 })();
 
 // Load shared data in parallel (non-blocking)
-Promise.all([loadMorphData(), loadLemmaData(), loadHaftarah(), loadGraetz(), loadAllDevices()]).then(() => {
+// Psalm verse emotion tags — Jev (TypeSafe System One) 12-emotion analysis
+// of every Psalms verse; public/data/psalm-emotions.json.
+async function loadPsalmEmotions() {
+  try {
+    const r = await fetch('/data/psalm-emotions.json');
+    const data = await r.json();
+    emotionIdx.clear();
+    for (const [k, v] of Object.entries(data.verses || {})) emotionIdx.set(k, v as any);
+  } catch {}
+}
+
+Promise.all([loadMorphData(), loadLemmaData(), loadHaftarah(), loadGraetz(), loadPsalmEmotions(), loadAllDevices()]).then(() => {
   setStatus('');
   if (hasURLParams) restoreFromURL();
 }).catch(() => {});
@@ -5122,6 +5149,23 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     badge.title = 'Graetz, Kritischer Commentar zu den Psalmen (1882-83) — click for his emendation(s)';
     badge.addEventListener('click', () => showGraetzDetail(verseKey, gEntries));
     ref.appendChild(badge);
+  }
+
+  // Emotion pills — Jev analysis of this verse's emotional state (Psalms)
+  const emoEntry = emotionIdx.get(verseKey);
+  if (emoEntry && emoEntry.tags && emoEntry.tags.length) {
+    const emoDiv = document.createElement('div');
+    emoDiv.className = 'emotion-pills';
+    emoEntry.tags.forEach(t => {
+      const pill = document.createElement('span');
+      pill.className = 'emotion-pill emo-' + t;
+      pill.textContent = t;
+      const sc = emoEntry.scores ? emoEntry.scores[t] : undefined;
+      pill.title = `Emotional state (Jev analysis of the JPS translation)` +
+        (typeof sc === 'number' ? ` — ${t}: ${sc}` : '');
+      emoDiv.appendChild(pill);
+    });
+    ref.appendChild(emoDiv);
   }
 
   block.appendChild(ref);
