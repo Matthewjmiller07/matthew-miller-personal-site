@@ -4,13 +4,14 @@
 // come from the public Blogger JSON feeds. Run by .github/workflows/balashon-fetch.yml.
 // Each week features the posts whose word appears in that parasha, with the verse from Sefaria
 // and the opening of the post; the rest get a short teaser. Every item links to the full post.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 
 const BASE = 'https://www.balashon.com';
 const OUT = new URL('../../src/data/balashon/posts.json', import.meta.url);
 const GLOSSES = new URL('../../src/data/balashon/glosses.json', import.meta.url);
-// Posts still needing a one-line gloss go here for scripts/balashon/glosses.mjs.
-const QUEUE = process.env.BALASHON_GLOSS_QUEUE;
+// Posts still needing a one-line gloss: written by scripts/balashon/glosses.mjs in the Action, or
+// by hand in a Claude session, then dropped from the queue. The queue keeps only each post's opening.
+const QUEUE = new URL('../../src/data/balashon/gloss-queue.json', import.meta.url);
 const SEASON = new URL('../../src/data/phds-on-the-parsha/season-5787.json', import.meta.url);
 const PARSHA_LABEL = /^(parash?at|parshat)\s+/i;
 
@@ -329,14 +330,15 @@ async function main() {
       })),
     };
     for (const p of posts) {
-      if (!glosses[p.url]) queue.set(p.url, { url: p.url, title: p.title, he: p.he, text: p.paragraphs.join('\n').split(/\s+/).slice(0, 450).join(' ') });
+      if (!glosses[p.url]) queue.set(p.url, { url: p.url, title: p.title, he: p.he, text: p.paragraphs.join('\n').split(/\s+/).slice(0, 220).join(' ') });
     }
     console.log(`${w.parsha.padEnd(18)} ${String(posts.length).padStart(3)} posts, ${posts.filter((p) => p.verse).length} in the text · featuring ${featured.map((p) => `${p.title}${p.verse ? ` (${p.verse.ref})` : ''}`).join('; ')}`);
   }
   const unused = labels.filter((l) => !Object.values(parshiot).some((p) => p.labels.includes(l)));
   if (unused.length) console.log(`labels not matched to any parasha: ${unused.join(' | ')}`);
 
-  if (QUEUE) writeFileSync(QUEUE, JSON.stringify([...queue.values()]));
+  if (queue.size) writeFileSync(QUEUE, `${JSON.stringify([...queue.values()], null, 1)}\n`);
+  else if (existsSync(QUEUE)) unlinkSync(QUEUE);
   console.log(`${queue.size} posts without a gloss`);
   writeFileSync(OUT, `${JSON.stringify({ source: BASE, fetched: new Date().toISOString().slice(0, 10), unmatchedLabels: unused, parshiot }, null, 1)}\n`);
 }

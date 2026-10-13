@@ -1,13 +1,16 @@
 // One-line glosses for Balashon posts: what the word means and where Balashon says it comes from,
 // for the "More from Balashon" shelf of the Shabbat reader. Reads the queue fetch.mjs wrote
-// (BALASHON_GLOSS_QUEUE), asks Claude Code (CLAUDE_CODE_OAUTH_TOKEN) in batches, saves each gloss
-// to src/data/balashon/glosses.json by post URL, and fills them into posts.json.
+// (src/data/balashon/gloss-queue.json), asks Claude Code (CLAUDE_CODE_OAUTH_TOKEN) in batches, saves
+// each gloss to glosses.json by post URL, fills them into posts.json and shrinks the queue.
+// With no token it does nothing, and the queue waits for the next run or a Claude session.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 
 const GLOSSES = new URL('../../src/data/balashon/glosses.json', import.meta.url);
 const POSTS = new URL('../../src/data/balashon/posts.json', import.meta.url);
-const queue = JSON.parse(readFileSync(process.env.BALASHON_GLOSS_QUEUE, 'utf8'));
+const QUEUE = new URL('../../src/data/balashon/gloss-queue.json', import.meta.url);
+if (!existsSync(QUEUE)) { console.log('no posts waiting for a gloss'); process.exit(0); }
+const queue = JSON.parse(readFileSync(QUEUE, 'utf8'));
 const glosses = existsSync(GLOSSES) ? JSON.parse(readFileSync(GLOSSES, 'utf8')) : {};
 const BATCH = 15;
 
@@ -23,7 +26,8 @@ Answer with ONLY a JSON array of {"url": ..., "gloss": ...} objects, one per pos
 POSTS:
 `;
 
-for (let i = 0; i < queue.length; i += BATCH) {
+if (!process.env.CLAUDE_CODE_OAUTH_TOKEN) console.log(`no CLAUDE_CODE_OAUTH_TOKEN; ${queue.length} posts stay queued`);
+for (let i = 0; process.env.CLAUDE_CODE_OAUTH_TOKEN && i < queue.length; i += BATCH) {
   const batch = queue.slice(i, i + BATCH);
   const input = batch.map((p) => `--- url: ${p.url}\ntitle: ${p.title}${p.he ? ` (${p.he})` : ''}\n${p.text}`).join('\n\n');
   let out;
@@ -44,6 +48,10 @@ for (let i = 0; i < queue.length; i += BATCH) {
   console.log(`batch ${i / BATCH + 1}: ${rows.length}/${batch.length} glosses`);
   writeFileSync(GLOSSES, `${JSON.stringify(glosses, null, 1)}\n`);
 }
+
+const left = queue.filter((p) => !glosses[p.url]);
+if (left.length) writeFileSync(QUEUE, `${JSON.stringify(left, null, 1)}\n`);
+else unlinkSync(QUEUE);
 
 const posts = JSON.parse(readFileSync(POSTS, 'utf8'));
 for (const week of Object.values(posts.parshiot)) {
