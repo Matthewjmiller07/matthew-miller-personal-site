@@ -30,7 +30,8 @@ for (let i = 0; i < queue.length; i += BATCH) {
   try {
     out = execFileSync('claude', ['-p', '--output-format', 'text'], { input: PROMPT + input, encoding: 'utf8', maxBuffer: 1 << 24, timeout: 300_000 });
   } catch (err) {
-    console.error(`batch ${i / BATCH + 1}: claude failed: ${err.message}`);
+    console.error(`batch ${i / BATCH + 1}: claude failed (exit ${err.status}): ${String(err.stdout ?? '').slice(0, 800)} ${String(err.stderr ?? '').slice(0, 800)}`);
+    if (i === 0) process.exit(1); // the first batch failing means auth or setup, not the content
     continue;
   }
   const json = out.slice(out.indexOf('['), out.lastIndexOf(']') + 1);
