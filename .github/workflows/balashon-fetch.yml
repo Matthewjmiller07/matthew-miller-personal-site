@@ -1,0 +1,45 @@
+# Pulls Balashon's parasha posts (balashon.com) into src/data/balashon/posts.json for the
+# /balashon 2-pagers. Weekly on main, so new posts reach the sheets with the nightly deploy,
+# and on feature branches whenever the fetcher changes.
+name: Balashon — fetch parasha posts
+
+on:
+  schedule:
+    - cron: '17 3 * * 0' # Sundays, 06:17 Israel time
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - 'scripts/balashon/**'
+      - '.github/workflows/balashon-fetch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: balashon-fetch-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Fetch posts
+        run: node scripts/balashon/fetch.mjs
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git add src/data/balashon/posts.json
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git commit -m "Balashon: refresh parasha posts"
+          # Only posts.json is committed; rebase onto the latest branch so we never push a stale tree.
+          for i in 1 2 3; do git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break; sleep 5; done

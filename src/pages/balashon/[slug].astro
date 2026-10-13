@@ -1,24 +1,36 @@
 ---
 // /balashon/<parasha> — a printable two-pager of the Balashon posts filed under that week's parasha.
-// Rendered on request from Balashon's Blogger feed (src/lib/balashon.ts) and cached at the CDN for a day.
-export const prerender = false;
-
+// Data: src/data/balashon/posts.json, pulled from Balashon's Blogger feeds by scripts/balashon/fetch.mjs
+// (.github/workflows/balashon-fetch.yml, weekly).
 import Layout from '../../layouts/Layout.astro';
 import { weeks } from '../../data/parasha-hub';
-import { balashonFor, trimWords } from '../../lib/balashon';
+import balashon from '../../data/balashon/posts.json';
+
+interface Post { title: string; url: string; published: string; he: string | null; teaser: string; otherParshiot: string[] }
+const store = balashon as { fetched: string | null; parshiot: Record<string, { labels: string[]; posts: Post[] }> };
+
+export function getStaticPaths() {
+  return weeks.map((w) => ({ params: { slug: w.slug } }));
+}
 
 const idx = weeks.findIndex((w) => w.slug === Astro.params.slug);
-if (idx < 0) return Astro.redirect('/balashon');
 const week = weeks[idx];
 const prev = weeks[idx - 1];
 const next = weeks[idx + 1];
 
-const data = await balashonFor(week.parsha);
-Astro.response.headers.set('Cache-Control', 'public, max-age=3600');
-Astro.response.headers.set(
-  'Netlify-CDN-Cache-Control',
-  data.error ? 'public, s-maxage=120' : 'public, durable, s-maxage=86400, stale-while-revalidate=604800',
-);
+const entry = store.parshiot[week.slug];
+const label = entry?.labels[0] ?? null;
+const data = {
+  posts: entry?.posts ?? [],
+  label: entry?.labels.join(' and ') || null,
+  labelUrl: label
+    ? `https://www.balashon.com/search/label/${encodeURIComponent(label)}`
+    : `https://www.balashon.com/search?q=${encodeURIComponent(week.parsha)}`,
+};
+const trimWords = (text: string, n: number) => {
+  const words = text.replace(/…$/, '').split(/\s+/);
+  return words.length <= n ? text : `${words.slice(0, n).join(' ').replace(/[,;:.\-–—]+$/, '')}…`;
+};
 
 // Fit two A4 pages: about 650 words of excerpt in all, shared out across the posts, and anything
 // past twelve posts goes in a title-only index at the end.
@@ -26,7 +38,7 @@ const WITH_EXCERPT = 12;
 const shown = data.posts.slice(0, WITH_EXCERPT);
 const indexOnly = data.posts.slice(WITH_EXCERPT);
 const per = Math.max(25, Math.min(110, Math.floor(650 / Math.max(shown.length, 1))));
-const cards = shown.map((p) => ({ ...p, excerpt: trimWords(p.excerpt, per) }));
+const cards = shown.map((p) => ({ ...p, excerpt: trimWords(p.teaser, per) }));
 const split = Math.ceil(cards.length * 0.45); // page one also carries the masthead
 const page1 = cards.slice(0, split);
 const page2 = cards.slice(split);
@@ -83,9 +95,9 @@ const host = (url: string) => url.replace(/^https?:\/\/(www\.)?/, '');
           </p>
         ) : (
           <div class="empty">
-            {data.error ? (
+            {!store.fetched ? (
               <p>
-                Balashon couldn't be reached just now ({data.error}). Try again in a few minutes, or read the posts
+                Balashon's posts haven't been pulled in yet. Read them
                 {' '}<a href={data.labelUrl} target="_blank" rel="noopener noreferrer">on balashon.com</a>.
               </p>
             ) : (
