@@ -52,6 +52,46 @@ export function toText(html) {
     .trim();
 }
 
+// Post titles are transliterations ("tzohar", "stav and horef"); find the Hebrew word in the post
+// that spells the first one. Both sides become rough consonant classes and the best-matching
+// Hebrew word wins if it shares enough of them; otherwise no headword (better none than wrong).
+const HE_CLASS = { ב: 'B', ג: 'G', ד: 'D', ו: 'V', ז: 'Z', ח: 'K', ט: 'T', כ: 'K', ך: 'K', ל: 'L', מ: 'M', ם: 'M', נ: 'N', ן: 'N', ס: 'S', פ: 'P', ף: 'P', צ: 'S', ץ: 'S', ק: 'K', ר: 'R', ש: 'S', ת: 'T' };
+const heClasses = (w) => [...w.replace(/[\u0591-\u05C7]/g, '')].map((c) => HE_CLASS[c] ?? '').join('');
+const latinClasses = (w) => w.toLowerCase()
+  .replace(/[ck]h/g, 'K').replace(/t[sz]|sh/g, 'S').replace(/th/g, 'T').replace(/ph/g, 'P')
+  .replace(/h/g, '').replace(/[aeiouyw'’\s-]/g, '')
+  .replace(/[bv]/g, 'B').replace(/[fp]/g, 'P').replace(/[kqcx]/g, 'K').replace(/[sz]/g, 'S')
+  .toUpperCase().replace(/V/g, 'B');
+function lcs(a, b) {
+  const row = Array(b.length + 1).fill(0);
+  for (const x of a) {
+    let prev = 0;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = row[j];
+      row[j] = x === b[j - 1] ? prev + 1 : Math.max(row[j], row[j - 1]);
+      prev = tmp;
+    }
+  }
+  return row[b.length];
+}
+export function headword(title, text) {
+  const want = latinClasses(title.split(/\s+and\s+|,|\//)[0]);
+  if (!want) return null;
+  let best = null, bestScore = 0;
+  for (const he of text.match(/[\u05D0-\u05EA][\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u05D0-\u05EA]*/g) ?? []) {
+    const got = heClasses(he).replace(/V/g, 'B');
+    if (!got) continue;
+    // Vav is often a vowel, so an unmatched B in the Hebrew costs only half.
+    const common = lcs(want, got);
+    const extra = got.length - common;
+    const extraB = [...got].filter((c) => c === 'B').length - [...want].filter((c) => c === 'B').length;
+    const penalty = Math.max(0, extra - Math.max(0, extraB)) + Math.max(0, Math.min(extra, extraB)) / 2;
+    const score = common / (want.length + penalty);
+    if (score > bestScore) { best = he; bestScore = score; }
+  }
+  return bestScore >= 0.6 ? best : null;
+}
+
 async function getJson(url) {
   for (let i = 0; ; i++) {
     try {
@@ -78,7 +118,7 @@ async function labelPosts(label) {
         title: toText(e.title?.$t ?? ''),
         url: (e.link ?? []).find((l) => l.rel === 'alternate')?.href ?? '',
         published: (e.published?.$t ?? '').slice(0, 10),
-        he: text.match(/[א-ת][֑-ׇא-ת]*/)?.[0] ?? null,
+        he: headword(toText(e.title?.$t ?? ''), text),
         teaser: words.length > TEASER_WORDS ? `${words.slice(0, TEASER_WORDS).join(' ')}…` : text,
         words: words.length,
         labels: (e.category ?? []).map((c) => c.term).filter((t) => PARSHA_LABEL.test(t)),
