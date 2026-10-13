@@ -28,6 +28,8 @@ const SHNAYIM_ALIAS: Record<string, string> = {
   breishit: 'bereshit', vayetzei: 'vayetze', naso: 'nasso', behaalotcha: 'behaalotecha',
   shelach: 'shlach', vayeilech: 'vayelech',
 };
+// "Lech Lecha" → "lech-lecha", "Beha'alotcha" → "behaalotcha".
+const slugOf = (s: string) => s.toLowerCase().replace(/['’]/g, '').replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
 const shnayimByKey = Object.fromEntries(SHNAYIM_NAMES.map((n) => [key(n), n]));
 
 const sheetSlugByKey = Object.fromEntries(Object.values(SHEET_FILES).map((s) => [key(s.slug), s.slug]));
@@ -35,7 +37,7 @@ const bookByKey = Object.fromEntries(books.map((b: { slug: string }) => [key(b.s
 const simonByKey = Object.fromEntries(simonSheets.map((s) => [key(s.slug), s]));
 
 export interface Link {
-  kind: 'simon' | 'sheet' | 'book' | 'phd' | 'mega' | 'shnayim' | 'sefaria';
+  kind: 'simon' | 'sheet' | 'balashon' | 'book' | 'phd' | 'mega' | 'shnayim' | 'sefaria';
   label: string;
   href: string;
   note?: string;
@@ -43,6 +45,7 @@ export interface Link {
 
 export interface Week {
   n: number;
+  slug: string; // URL slug for per-week pages that cover every parasha (/balashon/<slug>)
   parsha: string;
   hebrew: string;
   ref: string;
@@ -63,6 +66,8 @@ export const weeks: Week[] = season.weeks.map((w: any) => {
   const sheetSlug = sheetSlugByKey[k];
   if (sheetSlug) links.push({ kind: 'sheet', label: 'Parasha sheet', href: `/parasha-sheet/${sheetSlug}` });
 
+  links.push({ kind: 'balashon', label: 'Balashon 2-pager', href: `/balashon/${slugOf(w.parsha)}`, note: 'Hebrew word histories from Balashon' });
+
   const pb = bookByKey[k];
   if (pb) links.push({ kind: 'book', label: 'Picture book', href: `/parasha-books/${pb.slug}`, note: pb.title });
 
@@ -78,7 +83,7 @@ export const weeks: Week[] = season.weeks.map((w: any) => {
   const sefariaRef = w.ref.replace(/–/g, '-').replace(/ /g, '_');
   links.push({ kind: 'sefaria', label: 'Sefaria', href: `https://www.sefaria.org/${sefariaRef}` });
 
-  return { n: w.n, parsha: w.parsha, hebrew: w.hebrew, ref: w.ref, date: w.date, book, links };
+  return { n: w.n, slug: slugOf(w.parsha), parsha: w.parsha, hebrew: w.hebrew, ref: w.ref, date: w.date, book, links };
 });
 
 export const BOOKS = [
@@ -102,6 +107,12 @@ export const series = [
     href: '/parasha-sheet/noach',
     kind: 'Study sheet',
     text: 'Two-page sheets built from the Mega Bible: word and root counts, the words found nowhere else in Tanakh, what the parasha calls God, and Biblical → Modern Hebrew with National Library evidence.',
+  },
+  {
+    name: 'Balashon 2-pagers',
+    href: '/balashon',
+    kind: 'Study sheet',
+    text: "Every week, the posts David Curwin's Balashon (Hebrew Language Detective) has filed under that parasha: the word, where it comes from, and a link to read the rest, on two printable pages.",
   },
   {
     name: 'Parasha Books',
