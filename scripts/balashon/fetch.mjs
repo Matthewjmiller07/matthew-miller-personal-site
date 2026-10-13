@@ -75,6 +75,9 @@ function lcs(a, b) {
   return row[b.length];
 }
 export function headword(title, text) {
+  return bestHebrew(title, text)?.he ?? null;
+}
+function bestHebrew(title, text) {
   const want = latinClasses(title.split(/\s+and\s+|,|\//)[0]);
   if (!want) return null;
   let best = null, bestScore = 0;
@@ -89,7 +92,7 @@ export function headword(title, text) {
     const score = common / (want.length + penalty);
     if (score > bestScore) { best = he; bestScore = score; }
   }
-  return bestScore >= 0.6 ? best : null;
+  return bestScore >= 0.6 ? { he: best, score: bestScore } : null;
 }
 
 async function getJson(url) {
@@ -140,7 +143,7 @@ export function excerpt(paragraphs, budget) {
 // ── Hebrew matching against the parasha text ──
 const FINALS = { ך: 'כ', ם: 'מ', ן: 'נ', ף: 'פ', ץ: 'צ' };
 const bare = (w) => w.replace(/[֑-ׇ]/g, '').replace(/[ךםןףץ]/g, (c) => FINALS[c]).replace(/[^א-ת]/g, '');
-const noMatres = (w) => w.replace(/[וי]/g, '');
+const noMatres = (w) => w[0] + w.slice(1).replace(/[וי]/g, ''); // a leading yod/vav is a consonant
 // Every way to read a word: up to two prefix letters off the front, and a feminine/plural ending off
 // the back, noting what was stripped so short stems only match near-exact.
 function readings(word, prefixes = 'והבלמכש') {
@@ -149,18 +152,19 @@ function readings(word, prefixes = 'והבלמכש') {
   for (let p = 0; p <= 2 && p < w.length - 1; p++) {
     if (p && !prefixes.includes(w[p - 1])) break;
     const stem = w.slice(p);
-    out.push({ s: noMatres(stem), p, e: '' });
+    out.push({ s: noMatres(stem), p, pre: w.slice(0, p), e: '' });
     for (const e of ['ה', 'ת', 'ים', 'ות']) {
-      if (stem.endsWith(e) && stem.length - e.length >= 2) out.push({ s: noMatres(stem.slice(0, -e.length)), p, e });
+      if (stem.endsWith(e) && stem.length - e.length >= 2) out.push({ s: noMatres(stem.slice(0, -e.length)), p, pre: w.slice(0, p), e });
     }
   }
   return out.filter((r) => r.s.length >= 2);
 }
 export function sameWord(a, b) {
   for (const x of readings(a, 'ה')) for (const y of readings(b)) {
-    // Two-letter stems (לט, תב) only match with at most one prefix and the same kind of ending.
+    // Two-letter stems (לט, תב) only match nearly as written: at most a ה or ו in front of the
+    // verse's word and the same kind of ending, so חום doesn't find לחם.
     const sameEnd = x.e === y.e || (/^[הת]$/.test(x.e) && /^[הת]$/.test(y.e));
-    if (x.s === y.s && (x.s.length >= 3 || (x.p + y.p <= 1 && sameEnd))) return true;
+    if (x.s === y.s && (x.s.length >= 3 || (x.p === 0 && /^[הו]?$/.test(y.pre) && sameEnd))) return true;
   }
   return false;
 }
@@ -199,9 +203,29 @@ async function parashaVerses(range) {
 }
 
 // Hebrew words in the post that spell any part of its title ("stav and horef" → סתיו, חורף).
+// Only confident matches, so a loose one ("alchemy" → חם) can't tie a post to a verse.
 function titleWords(title, text) {
   const parts = title.split(/\s+and\s+|,|\/|\s+-\s+|\?/).map((t) => t.trim()).filter(Boolean);
-  return [...new Set(parts.map((p) => headword(p, text)).filter(Boolean))];
+  return [...new Set(parts.map((p) => bestHebrew(p, text)).filter((b) => b && b.score >= 0.75).map((b) => b.he))];
+}
+
+// Does the post itself talk about this parasha: its name, "this week's parasha", or a verse in its range?
+const BOOKS = {
+  Genesis: 'genesis|bereishit|bereshit|breishit|gen\\.?', Exodus: 'exodus|shemot|shmot|ex\\.?|exod\\.?',
+  Leviticus: 'leviticus|vayikra|lev\\.?', Numbers: 'numbers|bamidbar|num\\.?', Deuteronomy: 'deuteronomy|devarim|deut\\.?',
+};
+export function mentionsParasha(text, parsha, labels, range) {
+  const t = text.toLowerCase();
+  const names = [parsha, ...labels.map((l) => l.replace(PARSHA_LABEL, ''))].map((n) => n.toLowerCase().replace(/['’]/g, "'?"));
+  if (names.some((n) => new RegExp(`\\b${n.replace(/ /g, '[ -]')}\\b`).test(t))) return true;
+  const [book, span] = [range.slice(0, range.lastIndexOf(' ')), range.slice(range.lastIndexOf(' ') + 1)];
+  const [from, to] = span.split(/[–-]/).map((r) => r.split(':').map(Number));
+  const at = (c, v) => c * 1000 + v;
+  for (const m of t.matchAll(new RegExp(`\\b(?:${BOOKS[book] ?? book.toLowerCase()})\\s*(\\d+):(\\d+)`, 'g'))) {
+    const x = at(+m[1], +m[2]);
+    if (x >= at(...from) && x <= at(...to)) return true;
+  }
+  return false;
 }
 
 export function findVerse(words, verses) {
@@ -229,6 +253,7 @@ async function labelPosts(label) {
         published: (e.published?.$t ?? '').slice(0, 10),
         he: headword(title, text),
         hebrew: titleWords(title, text),
+        text,
         paragraphs: toParagraphs(html),
         words: text.split(/\s+/).length,
         labels: (e.category ?? []).map((c) => c.term).filter((t) => PARSHA_LABEL.test(t)),
@@ -263,10 +288,10 @@ async function main() {
     let verses = [];
     try { verses = await parashaVerses(w.ref); } catch (err) { console.warn(`${w.parsha}: no Sefaria text (${err.message})`); }
 
-    const posts = [...byUrl.values()].map((p) => ({ ...p, verse: findVerse(p.hebrew, verses), otherParshiot: p.labels.filter((l) => !matched.includes(l)).map((l) => l.replace(PARSHA_LABEL, '')) }));
-    // Feature the posts whose word is in this week's text; among those, the ones filed under the
-    // fewest other parshiyot (most about this one), then the longer write-ups.
-    const rank = (p) => (p.verse ? 0 : 1000) + p.otherParshiot.length * 10 - Math.min(p.words, 900) / 100;
+    const posts = [...byUrl.values()].map((p) => ({ ...p, verse: findVerse(p.hebrew, verses), aboutThis: mentionsParasha(p.text, w.parsha, matched, w.ref), otherParshiot: p.labels.filter((l) => !matched.includes(l)).map((l) => l.replace(PARSHA_LABEL, '')) }));
+    // Feature posts whose word is in this week's text, first those that themselves discuss this
+    // parasha; then the ones filed under the fewest other parshiyot, then the fuller write-ups.
+    const rank = (p) => (p.verse ? 0 : 1000) + (p.aboutThis ? 0 : 100) + p.otherParshiot.length * 10 - Math.min(p.words, 900) / 100;
     const featured = [...posts].sort((a, b) => rank(a) - rank(b)).slice(0, FEATURES);
     const order = (p) => (p.verse ? verses.findIndex((v) => v.ref === p.verse.ref) : 1e6);
     featured.sort((a, b) => order(a) - order(b));
