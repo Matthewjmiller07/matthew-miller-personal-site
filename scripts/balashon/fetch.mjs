@@ -43,6 +43,8 @@ export function toText(html) {
   return html
     .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<br\s*\/?>|<\/(p|div|li|h\d|blockquote)>/gi, '\n')
+    // Inline tags vanish without a gap ("<i>coper</i>," → "coper,"); anything else is a word break.
+    .replace(/<\/?(?:i|b|em|strong|span|a|u|font|sup|sub|small|big)\b[^>]*>/gi, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&(#x?[0-9a-f]+|\w+);/gi, (m, e) => {
       if (e[0] === '#') return String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10));
