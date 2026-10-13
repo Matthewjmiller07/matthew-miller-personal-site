@@ -249,7 +249,7 @@ for id, en, he, nm, w, nt, cv in [
     ('jerah', 'Jerah', 'יֶרַח', ['ירח'], 'Jerah', 'Means “moon”.', None),
     ('hadoram', 'Hadoram', 'הֲדוֹרָם', ['הדורם'], 'Hadoram', 'A son of Joktan.', None),
     ('uzal', 'Uzal', 'אוּזָל', ['אוזל'], 'Uzal', 'Sana’a, by tradition.', None),
-    ('diklah', 'Diklah', 'דִּקְלָה', ['דקלה'], 'Diklah', '“Palm tree.” A son in Genesis, a daughter in Israel: about 2,000 girls.', None),
+    ('diklah', 'Diklah', 'דִּקְלָה', ['דקלה', 'דיקלה'], 'Diklah', '“Palm tree.” A son in Genesis, a daughter in Israel: nearly 4,000 girls.', None),
     ('obal', 'Obal', 'עוֹבָל', ['עובל'], 'Obal', 'Ebal in Chronicles.', None),
     ('abimael', 'Abimael', 'אֲבִימָאֵל', ['אבימאל'], 'Abimael', '“My father is God.”', None),
     ('sheba-j', 'Sheba (son of Joktan)', 'שְׁבָא', ['שבא'], 'Sheba', 'A second Sheba, in Shem’s line.', 'Counts for שבא are shared with Raamah’s son Sheba.'),
@@ -281,7 +281,7 @@ add('lot', 'Lot', 'לוֹט', N, 'Genesis 11:27-31', 'shem', 'haran', names=['ל
 add('sarai', 'Sarai', 'שָׂרָי', N, 'Genesis 11:29-31', 'shem', None, 'F', names=['שרי'], wiki='Sarah',
     note='“Sarai was infertile.” Becomes Sarah (שרה, 65,000+ Israeli girls).', spouse='abram',
     caveat='שרי is also read Sheri: not every one of these babies is a Sarai.')
-add('milcah', 'Milcah', 'מִלְכָּה', N, 'Genesis 11:29', 'shem', 'haran', 'F', names=['מלכה'], wiki='Milcah',
+add('milcah', 'Milcah', 'מִלְכָּה', N, 'Genesis 11:29', 'shem', 'haran', 'F', names=['מלכה', 'מילכה'], wiki='Milcah',
     note='Daughter of Haran, wife of Nahor. Malka: almost 20,000 Israeli girls.', spouse='nahor-2')
 add('iscah', 'Iscah', 'יִסְכָּה', N, 'Genesis 11:29', 'shem', 'haran', 'F', names=['יסכה'], wiki='Iscah',
     note='Mentioned once. Rashi identifies her with Sarai. Yiska: 3,500 Israeli girls.')
@@ -382,7 +382,7 @@ for id, en, he, nm, nt in [
 CUR = 'ishmael'
 for i, (id, en, he, nm, w, nt, cv) in enumerate([
     ('nebaioth', 'Nebaioth', 'נְבָיֹת', ['נביות'], 'Nebaioth', 'Ishmael’s firstborn; Esau marries his sister.', None),
-    ('kedar', 'Kedar', 'קֵדָר', ['קדר'], 'Kedar', 'The black tents of Kedar (Song 1:5).',
+    ('kedar', 'Kedar', 'קֵדָר', ['קדר', 'קידר'], 'Kedar', 'The black tents of Kedar (Song 1:5).',
      'Almost all the babies spelled קדר are Muslim girls: a different Arabic name.'),
     ('adbeel', 'Adbeel', 'אַדְבְּאֵל', ['אדבאל'], None, 'A son of Ishmael.', None),
     ('mibsam', 'Mibsam', 'מִבְשָׂם', ['מבשם'], None, 'From בשם, “perfume”.', None),
@@ -402,16 +402,16 @@ for i, (id, en, he, nm, w, nt, cv) in enumerate([
 CUR = 'jacob'
 add('leah', 'Leah', 'לֵאָה', N, 'Genesis 29:16', K, 'laban', 'F', names=['לאה'], wiki='Leah',
     note='Laban’s elder daughter. Mother of six tribes. 28,000 Israeli girls.', spouse='jacob', also=['abraham'])
-add('rachel', 'Rachel', 'רָחֵל', N, 'Genesis 29:16', K, 'laban', 'F', names=['רחל'], wiki='Rachel',
+add('rachel', 'Rachel', 'רָחֵל', N, 'Genesis 29:16', K, 'laban', 'F', names=['רחל', 'רוחל'], wiki='Rachel',
     note='Jacob’s beloved. Dies giving birth to Benjamin on the road to Bethlehem. 59,000 Israeli girls.',
     spouse='jacob', also=['abraham'])
-add('bilhah', 'Bilhah', 'בִּלְהָה', N, 'Genesis 29:29', I, None, 'F', names=['בלהה'], wiki='Bilhah',
-    note='Rachel’s maid, mother of Dan and Naphtali. Nearly 1,000 Israeli girls.', spouse='jacob')
-add('zilpah', 'Zilpah', 'זִלְפָּה', N, 'Genesis 29:24', I, None, 'F', names=['זלפה'], wiki='Zilpah',
+add('bilhah', 'Bilhah', 'בִּלְהָה', N, 'Genesis 29:29', I, None, 'F', names=['בלהה', 'בילהה'], wiki='Bilhah',
+    note='Rachel’s maid, mother of Dan and Naphtali. About 1,000 Israeli girls.', spouse='jacob')
+add('zilpah', 'Zilpah', 'זִלְפָּה', N, 'Genesis 29:24', I, None, 'F', names=['זלפה', 'זילפה'], wiki='Zilpah',
     note='Leah’s maid, mother of Gad and Asher.', spouse='jacob')
 for id, en, he, nm, w, mom, ref, nt in [
     ('reuben', 'Reuben', 'רְאוּבֵן', ['ראובן'], 'Reuben (son of Jacob)', 'leah', 'Genesis 29:32', '“See, a son.” The firstborn.'),
-    ('simeon', 'Simeon', 'שִׁמְעוֹן', ['שמעון'], 'Simeon (son of Jacob)', 'leah', 'Genesis 29:33', '“God has heard.” 36,000 Israeli boys.'),
+    ('simeon', 'Simeon', 'שִׁמְעוֹן', ['שמעון', 'שימעון'], 'Simeon (son of Jacob)', 'leah', 'Genesis 29:33', '“God has heard.” 36,000 Israeli boys.'),
     ('levi', 'Levi', 'לֵוִי', ['לוי'], 'Levi', 'leah', 'Genesis 29:34', 'Ancestor of the priests and Levites. Lived 137 years (Exodus 6:16).'),
     ('judah', 'Judah', 'יְהוּדָה', ['יהודה'], 'Judah (son of Jacob)', 'leah', 'Genesis 29:35', '“This time I will praise.” The Jews are named after him.'),
     ('dan', 'Dan', 'דָּן', ['דן'], 'Dan (son of Jacob)', 'bilhah', 'Genesis 30:6', '“God has judged me.” Among the top Israeli boys’ names for decades.'),
@@ -422,7 +422,7 @@ for id, en, he, nm, w, mom, ref, nt in [
     ('zebulun', 'Zebulun', 'זְבֻלוּן', ['זבולון'], 'Zebulun', 'leah', 'Genesis 30:20', 'The seafaring tribe.'),
     ('dinah', 'Dinah', 'דִּינָה', ['דינה'], 'Dinah', 'leah', 'Genesis 30:21', 'Jacob’s only named daughter. 11,000 Israeli girls.'),
     ('joseph', 'Joseph', 'יוֹסֵף', ['יוסף', 'יוסוף'], 'Joseph (Genesis)', 'rachel', 'Genesis 30:24', '“May God add.” Lived 110 years. Yusuf in Arabic: one of the few names given in every group.'),
-    ('benjamin', 'Benjamin', 'בִּנְיָמִן', ['בנימין'], 'Benjamin', 'rachel', 'Genesis 35:18', 'Rachel named him Ben-oni, “son of my sorrow”; Jacob renamed him.'),
+    ('benjamin', 'Benjamin', 'בִּנְיָמִן', ['בנימין', 'בנימן'], 'Benjamin', 'rachel', 'Genesis 35:18', 'Rachel named him Ben-oni, “son of my sorrow”; Jacob renamed him.'),
 ]:
     sx = 'F' if id == 'dinah' else 'M'
     extra = dict(born=2195, lived=137) if id == 'levi' else dict(born=2199, lived=110) if id == 'joseph' else {}
@@ -435,12 +435,12 @@ add('adah-e', 'Adah (wife of Esau)', 'עָדָה', N, 'Genesis 36:2', K, None, '
     caveat='Counts for עדה are shared with Lamech’s wife Adah.')
 add('oholibamah', 'Oholibamah', 'אׇהֳלִיבָמָה', N, 'Genesis 36:2', K, None, 'F', names=['אהליבמה'],
     note='Daughter of Anah, granddaughter of Zibeon the Hivite.', spouse='esau')
-add('basemath', 'Basemath', 'בָּשְׂמַת', N, 'Genesis 36:3', K, 'ishmael', 'F', names=['בשמת', 'בוסמת'],
+add('basemath', 'Basemath', 'בָּשְׂמַת', N, 'Genesis 36:3', K, 'ishmael', 'F', names=['בשמת', 'בוסמת', 'בושמת'],
     note='Ishmael’s daughter: the two rejected brothers’ lines marry. As Bosmat, about 400 Israeli girls.', spouse='esau')
 for id, en, he, nm, w, mom, nt in [
     ('eliphaz', 'Eliphaz', 'אֱלִיפַז', ['אליפז'], None, 'adah-e', 'Esau’s firstborn. Job’s friend Eliphaz the Temanite carries the name of his son.'),
     ('reuel', 'Reuel', 'רְעוּאֵל', ['רעואל'], None, 'basemath', 'Also the name of Moses’ father-in-law (Exodus 2:18).'),
-    ('jeush', 'Jeush', 'יְעוּשׁ', ['יעוש'], None, 'oholibamah', 'Written יעיש, read יעוש.'),
+    ('jeush', 'Jeush', 'יְעוּשׁ', ['יעוש'], None, 'oholibamah', 'Written יעיש, read יעוש. The written form is also the Yemenite Jewish name Ya’ish (319 Israeli boys), a separate name.'),
     ('jalam', 'Jalam', 'יַעְלָם', ['יעלם'], None, 'oholibamah', 'A son of Esau and Oholibamah.'),
     ('korah-e', 'Korah (son of Esau)', 'קֹרַח', ['קורח'], None, 'oholibamah', 'Not the Levite rebel: an Edomite chief.'),
 ]:
@@ -517,7 +517,7 @@ sons('issachar', 'Genesis 46:13', [
     ('tola', 'Tola', 'תּוֹלָע', ['תולע'], '“Worm” or “scarlet”. A judge of Israel carries the name (Judges 10:1).'),
     ('puvah', 'Puvah', 'פֻוָה', ['פוה', 'פואה'], 'Puah in Chronicles.'),
     ('iob', 'Iob', 'יוֹב', ['יוב'], 'Jashub in Numbers 26.'),
-    ('shimron', 'Shimron', 'שִׁמְרֹן', ['שמרון'], 'A son of Issachar.'),
+    ('shimron', 'Shimron', 'שִׁמְרֹן', ['שמרון', 'שימרון'], 'A son of Issachar.'),
 ])
 sons('zebulun', 'Genesis 46:14', [
     ('sered', 'Sered', 'סֶרֶד', ['סרד'], 'A son of Zebulun.'),
@@ -546,11 +546,11 @@ sons('beriah', 'Genesis 46:17', [
     ('heber', 'Heber', 'חֶבֶר', ['חבר'], '“Companion.” A great-grandson of Jacob.'),
     ('malchiel', 'Malchiel', 'מַלְכִּיאֵל', ['מלכיאל'], '“God is my king.”'),
 ])
-add('asenath', 'Asenath', 'אָסְנַת', N, 'Genesis 46:20', I, None, 'F', names=['אסנת'], wiki='Asenath',
-    note='Daughter of Poti-phera, priest of On. Osnat: over 5,000 Israeli girls.', spouse='joseph')
+add('asenath', 'Asenath', 'אָסְנַת', N, 'Genesis 46:20', I, None, 'F', names=['אסנת', 'אוסנת'], wiki='Asenath',
+    note='Daughter of Poti-phera, priest of On. Osnat, in both spellings: over 8,000 Israeli girls.', spouse='joseph')
 sons('joseph', 'Genesis 46:20', [
     ('manasseh', 'Manasseh', 'מְנַשֶּׁה', ['מנשה'], '“God has made me forget my hardship.”'),
-    ('ephraim', 'Ephraim', 'אֶפְרָיִם', ['אפרים'], '“God has made me fertile.” Jacob blesses him before his elder brother.'),
+    ('ephraim', 'Ephraim', 'אֶפְרָיִם', ['אפרים', 'אפרם'], '“God has made me fertile.” Jacob blesses him before his elder brother.'),
 ])
 by0 = {p['id']: p for p in P}
 for x in ('manasseh', 'ephraim'):
@@ -584,7 +584,7 @@ sons('kohath', 'Exodus 6:18', [
     ('amram', 'Amram', 'עַמְרָם', ['עמרם'], 'Father of Aaron, Moses and Miriam. Lived 137 years. Imran, in Arabic.'),
     ('izhar', 'Izhar', 'יִצְהָר', ['יצהר'], '“Fresh oil.” Father of Korah.'),
     ('hebron', 'Hebron', 'חֶבְרוֹן', ['חברון'], 'Shares a name with the city.'),
-    ('uzziel', 'Uzziel', 'עֻזִּיאֵל', ['עוזיאל'], '“God is my strength.”'),
+    ('uzziel', 'Uzziel', 'עֻזִּיאֵל', ['עוזיאל', 'עזיאל'], '“God is my strength.”'),
 ])
 sons('merari', 'Exodus 6:19', [('mahli', 'Mahli', 'מַחְלִי', ['מחלי'], 'A grandson of Levi.'),
                                ('mushi', 'Mushi', 'מוּשִׁי', ['מושי'], 'A grandson of Levi.')])
@@ -596,7 +596,7 @@ add('jochebed', 'Jochebed', 'יוֹכֶבֶד', N, 'Exodus 6:20', I, 'levi', 'F'
 add('aaron', 'Aaron', 'אַהֲרֹן', N, 'Exodus 6:20', I, 'amram', names=['אהרון', 'אהרן', 'הארון'], wiki='Aaron',
     note='The first High Priest. 83 at the Exodus, lived 123 years. Harun, in Arabic.', mother='jochebed',
     born=2365, lived=123, spouse='elisheba')
-add('moses', 'Moses', 'מֹשֶׁה', N, 'Exodus 6:20', I, 'amram', names=['משה', 'מושה', 'מוסא'], wiki='Moses',
+add('moses', 'Moses', 'מֹשֶׁה', N, 'Exodus 6:20', I, 'amram', names=['משה', 'מושה', 'מוישה', 'מוסא'], wiki='Moses',
     note='80 at the Exodus, lived 120 years. With Musa, the Arabic form, one of the most-given names in Israel.',
     mother='jochebed', born=2368, lived=120)
 sons('izhar', 'Exodus 6:21', [
@@ -605,8 +605,8 @@ sons('izhar', 'Exodus 6:21', [
     ('zichri', 'Zichri', 'זִכְרִי', ['זכרי'], '“My remembrance.”'),
 ])
 sons('uzziel', 'Exodus 6:22', [
-    ('mishael', 'Mishael', 'מִישָׁאֵל', ['מישאל'], 'Carries out Nadab and Abihu’s bodies. Also one of Daniel’s companions.'),
-    ('elzaphan', 'Elzaphan', 'אֶלְצָפָן', ['אלצפן'], 'Helps carry out Nadab and Abihu.'),
+    ('mishael', 'Mishael', 'מִישָׁאֵל', ['מישאל', 'משאל'], 'Carries out Nadab and Abihu’s bodies. Also one of Daniel’s companions.'),
+    ('elzaphan', 'Elzaphan', 'אֶלְצָפָן', ['אלצפן', 'אליצפן'], 'Helps carry out Nadab and Abihu. Elizaphan (אליצפן) in Numbers 3:30.'),
     ('sithri', 'Sithri', 'סִתְרִי', ['סתרי'], '“My hiding place.”'),
 ])
 by0 = {p['id']: p for p in P}
@@ -615,9 +615,9 @@ add('elisheba', 'Elisheba', 'אֱלִישֶׁבַע', N, 'Exodus 6:23', I, 'ammi
     note='Daughter of Amminadab, sister of Nahshon: Judah marries Levi. Elisheva: 10,000 Israeli girls.', spouse='aaron')
 sons('aaron', 'Exodus 6:23', [
     ('nadab', 'Nadab', 'נָדָב', ['נדב'], 'Killed with Abihu for offering “alien fire”. Nadav: 16,700 Israeli boys.'),
-    ('abihu', 'Abihu', 'אֲבִיהוּא', ['אביהוא'], 'Killed with Nadab. Nobody names a baby Abihu.'),
+    ('abihu', 'Abihu', 'אֲבִיהוּא', ['אביהוא', 'אביהו'], 'Killed with Nadab, yet his name lives on: as Avihu (אביהו), about 1,200 Israeli boys.'),
     ('eleazar', 'Eleazar', 'אֶלְעָזָר', ['אלעזר'], 'High Priest after Aaron.'),
-    ('ithamar', 'Ithamar', 'אִיתָמָר', ['איתמר'], 'Itamar: over 21,000 Israeli boys.'),
+    ('ithamar', 'Ithamar', 'אִיתָמָר', ['איתמר', 'אתמר'], 'Itamar: over 21,000 Israeli boys.'),
 ])
 by0 = {p['id']: p for p in P}
 for x in ('nadab', 'abihu', 'eleazar', 'ithamar'):
@@ -648,7 +648,7 @@ add('ruth', 'Ruth', 'רוּת', N, 'Ruth 4:13', I, None, 'F', names=['רות'], 
 for id, en, he, nm, w, parent, ref, nt in [
     ('obed', 'Obed', 'עוֹבֵד', ['עובד'], 'Obed (biblical figure)', 'boaz', 'Ruth 4:21', 'Named by the neighbours: “a son is born to Naomi”.'),
     ('jesse', 'Jesse', 'יִשַׁי', ['ישי'], 'Jesse', 'obed', 'Ruth 4:22', 'Yishai: 12,800 Israeli babies.'),
-    ('david', 'David', 'דָּוִד', ['דוד', 'דאוד', 'דאווד'], 'David', 'jesse', 'Ruth 4:22', 'The last word of the book. Counting Da’ud, given in every one of Israel’s groups.'),
+    ('david', 'David', 'דָּוִד', ['דוד', 'דאוד', 'דאווד', 'דיויד', 'דוויד'], 'David', 'jesse', 'Ruth 4:22', 'The last word of the book. Counting Da’ud, given in every one of Israel’s groups.'),
 ]:
     add(id, en, he, N, ref, I, parent, names=nm, wiki=w, note=nt, mother='ruth' if id == 'obed' else None)
 CUR = None
