@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import people from '../data/genealogies/people.json';
+import SECTIONS from '../data/genealogies/sections.json';
 
 const LINES = [
   { id: 'adam', en: 'Adam & Eve', he: 'אדם וחוה' },
@@ -9,6 +10,8 @@ const LINES = [
   { id: 'japheth', en: 'Sons of Japheth', he: 'בני יפת' },
   { id: 'ham', en: 'Sons of Ham', he: 'בני חם' },
   { id: 'shem', en: 'Sons of Shem', he: 'בני שם' },
+  { id: 'kin', en: 'Abraham’s kin', he: 'קרובי אברהם' },
+  { id: 'israel', en: 'House of Israel', he: 'בית ישראל' },
 ];
 const SECTORS = [
   { id: 'Jewish', en: 'Jewish' },
@@ -19,11 +22,13 @@ const SECTORS = [
 const nPeople = people.filter((p) => p.kind === 'person').length;
 const nPeoples = people.filter((p) => p.kind === 'people').length;
 const maxGen = Math.max(...people.map((p) => p.gen));
+const last = people.find((p) => p.gen === maxGen);
+const nNone = people.filter((p) => p.names.length && !p.israel).length;
 ---
 
 <Layout
   title="The Book of Generations"
-  description="Every name in the genealogies of Bereshit and Noach, from Adam to Abram: lifespans, the family tree and the Table of Nations, cross-referenced with 75 years of Israeli baby names and pulled live from Wikipedia."
+  description="Every name in the genealogies of Genesis, Exodus 6 and Ruth, from Adam to David: the family tree, the lifespans and the Table of Nations, cross-referenced with 75 years of Israeli baby names and pulled live from Wikipedia."
   image="/images/genealogies/poster.jpg"
   imageAlt="Hebrew names from Genesis glowing over a dark field of stars"
 >
@@ -35,7 +40,7 @@ const maxGen = Math.max(...people.map((p) => p.gen));
     --bg: #07070a; --panel: #111116; --panel2: #18181f; --line: rgba(255,255,255,.09);
     --ink: #f0efec; --muted: #c3c2b7; --faint: #8b8a83; --gold: #f4c46a; --gold-d: rgba(244,196,106,.14);
     /* categorical slots (dark steps), fixed order: lines 1-6, sectors 1-4 */
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9b7be0; --s8: #1fb3c8;
     --display: 'Oswald', 'Arial Narrow', sans-serif; --serif: 'Source Serif 4', Georgia, serif; --heb: 'Frank Ruhl Libre', 'Times New Roman', serif;
     background: var(--bg); color: var(--ink); font-family: var(--serif); min-height: 100vh; overflow-x: clip;
   }
@@ -79,6 +84,7 @@ const maxGen = Math.max(...people.map((p) => p.gen));
   .gn .range2 .track { position: absolute; left: 9px; right: 9px; top: 15px; height: 2px; background: var(--line); }
   .gn .range2 .fill { position: absolute; top: 15px; height: 2px; background: var(--gold); }
   .gn .yrs { font: 500 .85rem var(--display); letter-spacing: .05em; color: var(--ink); min-width: 82px; }
+  .gn .sel { background: var(--panel); border: 1px solid var(--line); color: var(--ink); padding: 6px 8px; font: 500 .85rem var(--display); letter-spacing: .04em; min-height: 32px; max-width: 100%; }
   .gn .reset { background: none; border: none; color: var(--gold); font: 500 .75rem var(--display); text-transform: uppercase; letter-spacing: .12em; cursor: pointer; }
 
   /* layout */
@@ -127,6 +133,15 @@ const maxGen = Math.max(...people.map((p) => p.gen));
   .gn #board .bar { cursor: pointer; }
   .gn #board .bar:hover rect.hit { fill: rgba(255,255,255,.04); }
   .gn .note { font-size: .85rem; color: var(--faint); line-height: 1.5; margin-top: 10px; }
+  .gn .none { margin-top: 22px; }
+  .gn .none h3 { font-size: 1.1rem; letter-spacing: .06em; }
+  .gn .none p { color: var(--muted); font-size: .9rem; line-height: 1.5; margin: 6px 0 10px; }
+  .gn .none .list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .gn .none .list a { cursor: pointer; text-decoration: none; border: 1px dashed rgba(255,255,255,.22); padding: 4px 8px; font-size: .85rem; color: var(--muted); }
+  .gn .none .list a:hover { color: var(--gold); border-color: var(--gold); }
+  .gn .none .list .he { color: var(--ink); margin-left: 6px; }
+  .gn .bignum.off { color: var(--faint); font-size: 1.6rem; }
+  .gn .secs a { cursor: pointer; color: var(--gold); }
 
   /* detail */
   .gn .detail { position: sticky; top: calc(var(--navh, 0px) + var(--fh, 0px) + 12px); max-height: calc(100vh - var(--navh, 0px) - var(--fh, 0px) - 24px); overflow: auto; padding: 22px; }
@@ -166,7 +181,9 @@ const maxGen = Math.max(...people.map((p) => p.gen));
 
   /* table */
   .gn details.tbl summary { cursor: pointer; font: 500 .8rem var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
-  .gn .tblwrap { overflow-x: auto; margin-top: 12px; }
+  .gn .tblwrap { overflow: auto; margin-top: 12px; max-height: 70vh; }
+  .gn thead th { position: sticky; top: 0; background: var(--bg); }
+  .gn td.off { color: var(--faint); font-style: italic; }
   .gn table { border-collapse: collapse; width: 100%; font-size: .88rem; }
   .gn th, .gn td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   .gn th { font: 500 .72rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--faint); cursor: pointer; }
@@ -194,9 +211,9 @@ const maxGen = Math.max(...people.map((p) => p.gen));
     <div class="wrap">
       <div class="grid">
         <div>
-          <div class="eyebrow">Bereshit · Noach · Genesis 4–11</div>
+          <div class="eyebrow">Genesis · Exodus · Ruth</div>
           <h1>The Book of Generations<span class="he">זֶה סֵפֶר תּוֹלְדֹת אָדָם</span></h1>
-          <p>Every name in the genealogies of the first two parashot, from Adam to Abram: who begot whom, how long they lived, and the seventy nations of Noah’s sons. Then the same names in Israel, where some were given to tens of thousands of babies and some to five.</p>
+          <p>Every name in the Bible’s genealogies, from Adam to David: who begot whom, how long they lived, the seventy nations of Noah’s sons and the seventy souls who went down to Egypt. Then the same names in Israel, where some were given to tens of thousands of babies and some to none at all. See all twelve lists at once, or pick one.</p>
         </div>
         <div>
           <video src="/videos/genealogies-trailer.mp4" poster="/images/genealogies/poster.jpg" controls playsinline preload="metadata"></video>
@@ -206,7 +223,7 @@ const maxGen = Math.max(...people.map((p) => p.gen));
       <div class="tiles">
         <div class="tile"><b>{nPeople}</b><span>people named</span></div>
         <div class="tile"><b>{nPeoples}</b><span>peoples and clans</span></div>
-        <div class="tile"><b>{maxGen}</b><span>generations, Adam to Lot</span></div>
+        <div class="tile"><b>{maxGen}</b><span>generations, Adam to {last.en}</span></div>
         <div class="tile"><b id="t-babies">–</b><span>Israeli babies with these names, 1949–2024</span></div>
       </div>
     </div>
@@ -215,10 +232,11 @@ const maxGen = Math.max(...people.map((p) => p.gen));
   <div class="filters" role="region" aria-label="Filters">
     <div class="wrap">
       <div class="fgroup"><input type="search" id="f-q" placeholder="Search a name, נח, Ofir…" aria-label="Search names" /></div>
-      <div class="fgroup" id="f-parasha"><label class="k">Parasha</label>
-        <button class="chip" data-v="all" aria-pressed="true">Both</button>
-        <button class="chip" data-v="bereshit" aria-pressed="false">Bereshit</button>
-        <button class="chip" data-v="noach" aria-pressed="false">Noach</button>
+      <div class="fgroup"><label class="k" for="f-sec">Genealogy</label>
+        <select id="f-sec" class="sel">
+          <option value="all">All {SECTIONS.length} genealogies</option>
+          {SECTIONS.map((x) => <option value={x.id}>{x.en} · {x.ref}</option>)}
+        </select>
       </div>
       <div class="fgroup" id="f-line"><label class="k">Line</label>
         {LINES.map((l, i) => <button class="chip" data-v={l.id} aria-pressed="true"><span class="sw" style={`background:var(--s${i + 1})`}></span>{l.en.replace('Line of ', '').replace('Sons of ', '')}</button>)}
@@ -226,7 +244,11 @@ const maxGen = Math.max(...people.map((p) => p.gen));
       <div class="fgroup" id="f-kind"><label class="k">Show</label>
         <button class="chip" data-v="person" aria-pressed="true">People</button>
         <button class="chip" data-v="people" aria-pressed="true">Nations</button>
-        <button class="chip" data-v="israel" aria-pressed="false">Named in Israel only</button>
+      </div>
+      <div class="fgroup" id="f-census"><label class="k">Israeli records</label>
+        <button class="chip" data-v="any" aria-pressed="true">Any</button>
+        <button class="chip" data-v="yes" aria-pressed="false">Given</button>
+        <button class="chip" data-v="no" aria-pressed="false">Not on record</button>
       </div>
       <div class="fgroup" id="f-sector"><label class="k">Israel</label>
         {SECTORS.map((s, i) => <button class="chip" data-v={s.id} aria-pressed="true"><span class="sw" style={`background:var(--s${i + 1})`}></span>{s.en}</button>)}
@@ -252,10 +274,10 @@ const maxGen = Math.max(...people.map((p) => p.gen));
       <div>
         <section style="border-top:0;padding-top:0">
           <div class="sec-head">
-            <div><div class="eyebrow">I · The family tree</div><h2>From one name, seventy nations</h2></div>
-            <p>Adam at the centre; each ring is a generation. Dot size is how many Israeli babies got the name in the years and groups you’ve filtered. Dashed lines are marriages. Tap a name.</p>
+            <div><div class="eyebrow">I · The family tree</div><h2 id="tree-title">From one name, seventy nations</h2></div>
+            <p><span id="tree-sub">Adam at the centre; each ring is a generation.</span> Dot size is how many Israeli babies got the name in the years and groups you’ve filtered; a hollow dot is a name with no Israeli birth record at all. Dashed lines are marriages. Tap a name.</p>
           </div>
-          <div class="card treebox" style="padding:8px"><svg id="tree" role="img" aria-label="Radial family tree of Genesis 4 to 11"></svg></div>
+          <div class="card treebox" style="padding:8px"><svg id="tree" role="img" aria-label="Radial family tree of the biblical genealogies"></svg></div>
           <div class="legend" id="tree-legend">
             {LINES.map((l, i) => <span><i style={`background:var(--s${i + 1})`}></i>{l.en}</span>)}
           </div>
@@ -264,11 +286,11 @@ const maxGen = Math.max(...people.map((p) => p.gen));
         <section>
           <div class="sec-head">
             <div><div class="eyebrow">II · The long lives</div><h2>Who was alive when</h2></div>
-            <p>The twenty generations with ages in the text, dated from Creation (Anno Mundi) by adding up the begetting ages. Drag the year, or press play and watch the lifespans shrink after the Flood.</p>
+            <p>Everyone whose lifespan the text gives, dated from Creation (Anno Mundi) by adding up the begetting ages. Drag the year, or press play and watch the lifespans shrink after the Flood.</p>
           </div>
           <div class="amctl">
             <button class="btn" id="am-play">Play</button>
-            <input type="range" id="am" min="0" max="2200" value="1656" aria-label="Year from Creation" />
+            <input type="range" id="am" min="0" max="2600" value="1656" aria-label="Year from Creation" />
             <span class="amv" id="am-v">Year 1656</span>
           </div>
           <div class="card" style="padding:8px"><svg id="life" role="img" aria-label="Lifespans from Adam to Abram"></svg></div>
@@ -278,12 +300,19 @@ const maxGen = Math.max(...people.map((p) => p.gen));
         <section>
           <div class="sec-head">
             <div><div class="eyebrow">III · The names came back</div><h2>Genesis in Israel’s birth records</h2></div>
-            <p>Babies born in Israel 1949–2024 with each figure’s name, by the filters above. Source: the Central Bureau of Statistics. Names given to fewer than five babies in a year are not counted that year.</p>
+            <p>Babies born in Israel 1949–2024 with each figure’s name, by the filters above. Source: the Central Bureau of Statistics. Names given to fewer than five babies in a year are not counted that year, and a name given to fewer than five babies in all is not in the records.</p>
           </div>
           <div class="card" style="padding:8px"><svg id="board" role="img" aria-label="Israeli babies per biblical name"></svg></div>
           <div class="note" id="board-note"></div>
-          <details class="tbl" style="margin-top:18px">
+          <div class="none" id="none-list"></div>
+          <details class="tbl" style="margin-top:18px" open>
             <summary>Table of every name</summary>
+            <div class="fgroup" id="f-order" style="margin-top:12px"><label class="k">Order</label>
+              <button class="chip" data-v="order" aria-pressed="true">Bible</button>
+              <button class="chip" data-v="en" aria-pressed="false">A–Z</button>
+              <button class="chip" data-v="he" aria-pressed="false">א–ת</button>
+              <button class="chip" data-v="israel" aria-pressed="false">Most babies</button>
+            </div>
             <div class="tblwrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
           </details>
         </section>
@@ -295,8 +324,8 @@ const maxGen = Math.max(...people.map((p) => p.gen));
     <section>
       <div class="sec-head"><div><div class="eyebrow">Sources</div><h2>Where this comes from</h2></div></div>
       <div class="sources">
-        <p>Text: Genesis 4–5 and 10–11 from <a href="https://www.sefaria.org/Genesis.5">Sefaria</a> (Miqra according to the Masorah; English from the JPS Tanakh, gender-sensitive edition). Dates from Creation are the plain sum of the begetting ages in the Masoretic text, the reckoning of Seder Olam: the Flood in 1656, Abram born 1948. The Septuagint and Samaritan texts give different ages.</p>
-        <p>Israeli names: <a href="https://www.cbs.gov.il/he/mediarelease/DocLib/2025/391/11_25_391t1.xlsx">Central Bureau of Statistics, release 391/2025</a>, names of babies born in Israel 1949–2024 by population group and sex, via the CC0 <a href="https://github.com/aviezerl/babynamesIL">babynamesIL</a> package by Aviezer Lifshitz. Yearly counts only include a name in years when five or more babies got it; all-time totals include every registration. Names are matched by Hebrew spelling, so homographs are flagged where the data is clearly a different name (Saba for Seba, Maddie for Madai).</p>
+        <p>Text: the genealogies of Genesis 4–5, 10, 11, 22, 25, 29–30, 35, 36 and 46, Exodus 6 and Ruth 4, from <a href="https://www.sefaria.org/Genesis.5">Sefaria</a> (Miqra according to the Masorah; English from the JPS Tanakh, gender-sensitive edition). Dates from Creation are the plain sum of the begetting ages in the Masoretic text, the reckoning of Seder Olam: the Flood in 1656, Abram born 1948, Isaac 2048, Jacob 2108, Joseph 2199 (39 when Jacob, at 130, came to Egypt in 2238). Levi’s birth (2195) and the Exodus (2448), which dates Moses and Aaron, follow Seder Olam. The Septuagint and Samaritan texts give different ages.</p>
+        <p>Israeli names: <a href="https://www.cbs.gov.il/he/mediarelease/DocLib/2025/391/11_25_391t1.xlsx">Central Bureau of Statistics, release 391/2025</a>, names of babies born in Israel 1949–2024 by population group and sex, via the CC0 <a href="https://github.com/aviezerl/babynamesIL">babynamesIL</a> package by Aviezer Lifshitz. Yearly counts only include a name in years when five or more babies got it; all-time totals include every registration, but only for names given to at least five babies of one sex in a population group over the whole period. A name “not on record” fell below that line: a handful of babies, or none. Names are matched by Hebrew spelling, including the Arabic forms of the same figure (Ibrahim, Musa, Yusuf, Da’ud, Hajar), so homographs are flagged where the data is clearly a different name (Saba for Seba, Alon for Elon, Bakr for Becher).</p>
         <p>Wikipedia summaries, and the people on Hebrew Wikipedia who carry each name, are fetched live from <a href="https://en.wikipedia.org">Wikipedia</a>, <a href="https://he.wikipedia.org">Hebrew Wikipedia</a> and <a href="https://www.wikidata.org">Wikidata</a> when you open a name. Data and build script: <code>scripts/genealogies/build-data.py</code>.</p>
       </div>
     </section>
@@ -305,7 +334,7 @@ const maxGen = Math.max(...people.map((p) => p.gen));
 </div>
 
 <script type="application/json" id="gn-people" set:html={JSON.stringify(people)}></script>
-<script type="application/json" id="gn-meta" set:html={JSON.stringify({ LINES, SECTORS })}></script>
+<script type="application/json" id="gn-meta" set:html={JSON.stringify({ LINES, SECTORS, SECTIONS })}></script>
 
 <script>
   // The site uses Astro's client router: this module runs once per full page load, but the page
@@ -318,7 +347,9 @@ const maxGen = Math.max(...people.map((p) => p.gen));
     teardown = new AbortController();
     const { signal } = teardown;
     const PEOPLE = JSON.parse(document.getElementById('gn-people').textContent);
-    const { LINES, SECTORS } = JSON.parse(document.getElementById('gn-meta').textContent);
+    const { LINES, SECTORS, SECTIONS } = JSON.parse(document.getElementById('gn-meta').textContent);
+    const SEC_BY = Object.fromEntries(SECTIONS.map((x) => [x.id, x]));
+    const ORDER = Object.fromEntries(PEOPLE.map((p, i) => [p.id, i]));
     const byId = Object.fromEntries(PEOPLE.map((p) => [p.id, p]));
     const LINE_IDX = Object.fromEntries(LINES.map((l, i) => [l.id, i + 1]));
     const SEC_IDX = Object.fromEntries(SECTORS.map((s, i) => [s.id, i + 1]));
@@ -332,7 +363,7 @@ const maxGen = Math.max(...people.map((p) => p.gen));
     const kids = {};
     PEOPLE.forEach((p) => { if (p.parent) (kids[p.parent] ||= []).push(p.id); });
 
-    const DEFAULT = () => ({ q: '', parasha: 'all', lines: new Set(LINES.map((l) => l.id)), kinds: new Set(['person', 'people']), israelOnly: false,
+    const DEFAULT = () => ({ q: '', sec: 'all', lines: new Set(LINES.map((l) => l.id)), kinds: new Set(['person', 'people']), census: 'any',
       sectors: new Set(SECTORS.map((s) => s.id)), sex: 'all', y0: Y0, y1: Y1 });
     let S = DEFAULT();
     let NAMES = null;
@@ -349,12 +380,16 @@ const maxGen = Math.max(...people.map((p) => p.gen));
       return t;
     }
     const uniq = (a) => [...new Set(a)];
+    // a name the CBS lists don't have at all: under five babies of one sex in a group, 1949-2024
+    const noRecord = (p) => p.names.length > 0 && !p.israel;
+    const short = (p) => p.en.replace(/ \(.*\)/, '');
     const countPerson = (p, force) => (p.homograph && !force ? 0 : uniq(p.names).reduce((t, s) => t + countSpelling(s), 0));
     function matches(p) {
-      if (S.parasha !== 'all' && p.parasha !== S.parasha) return false;
+      if (S.sec !== 'all' && !p.secs.includes(S.sec)) return false;
       if (!S.lines.has(p.line)) return false;
       if (!S.kinds.has(p.kind)) return false;
-      if (S.israelOnly && !(NAMES && countPerson(p) > 0)) return false;
+      if (S.census === 'yes' && !(NAMES && countPerson(p) > 0)) return false;
+      if (S.census === 'no' && !noRecord(p)) return false;
       if (S.q) {
         const q = S.q.toLowerCase();
         const hay = [p.en, strip(p.he), ...p.names, p.renamed || ''].join(' ').toLowerCase();
@@ -384,73 +419,131 @@ const maxGen = Math.max(...people.map((p) => p.gen));
     }
 
     // ---------- I. radial tree
+    // One genealogy, or all of them: the list's members, plus the ancestors that join its
+    // separate branches (drawn faint). A wife whose father isn't in view sits beside her husband.
     const tree = document.getElementById('tree');
-    const TW = 1560, TC = TW / 2, RING = 32;
-    let treeNodes = {};
+    let TW = 1560, TC = TW / 2, RING = 32;
+    let T = null;   // the laid-out tree for the current genealogy
+    const ringR = (d) => (d === 0 ? 0 : d * RING + 40);
+    function treeSet(sec) {
+      const set = new Set(PEOPLE.filter((p) => sec === 'all' || p.secs.includes(sec)).map((p) => p.id));
+      const inParent = (p) => p.parent && set.has(p.parent);
+      const attachedTo = (p) => {
+        if (inParent(p) || !p.spouse || !set.has(p.spouse)) return null;
+        const sp = byId[p.spouse];
+        return !inParent(sp) && ORDER[sp.id] > ORDER[p.id] ? null : sp.id;
+      };
+      let roots = [...set].filter((id) => !inParent(byId[id]) && !attachedTo(byId[id]));
+      if (roots.length > 1) {
+        const up = (id) => { const out = []; for (let x = id; x; x = byId[x].parent || (byId[x].spouse && !byId[x].parent ? byId[byId[x].spouse].parent : null)) out.push(x); return out; };
+        const chains = roots.map(up);
+        const lca = chains[0].find((x) => chains.every((c) => c.includes(x)));
+        if (lca) for (const c of chains) for (const x of c.slice(0, c.indexOf(lca) + 1)) set.add(x);
+        roots = [...set].filter((id) => !inParent(byId[id]) && !attachedTo(byId[id]));
+      }
+      const kids = {}, attached = {};
+      for (const id of set) {
+        const p = byId[id];
+        if (inParent(p)) (kids[p.parent] ||= []).push(id);
+        else { const sp = attachedTo(p); if (sp) (attached[sp] ||= []).push(id); }
+      }
+      for (const k in kids) kids[k].sort((a, b) => ORDER[a] - ORDER[b]);
+      roots.sort((a, b) => ORDER[a] - ORDER[b]);
+      return { ids: set, kids, attached, roots };
+    }
     function layoutTree() {
-      // leaf order by DFS from Adam; spouses without parents sit beside their spouse
-      const order = [];
-      const spouseOf = {};
-      PEOPLE.forEach((p) => { if (!p.parent && p.spouse && p.id !== 'adam') (spouseOf[p.spouse] ||= []).push(p.id); });
-      const pos = {};
+      const { ids, kids, attached, roots } = treeSet(S.sec);
+      const pos = {}, depth = {};
       let leaf = 0;
-      function walk(id) {
-        const ch = kids[id] || [];
-        const sp = (spouseOf[id] || []).filter((x) => x !== 'eve');
-        if (!ch.length) { pos[id] = { a: leaf++ }; sp.forEach((s) => (pos[s] = { a: leaf++ })); return; }
-        // spouses first, then children
-        sp.forEach((s) => (pos[s] = { a: leaf++ }));
-        ch.forEach(walk);
+      const wives = [];
+      const virtual = roots.length > 1;   // no common ancestor in view: an empty centre
+      function walk(id, d) {
+        depth[id] = d;
+        const ch = kids[id] || [], sp = attached[id] || [];
+        sp.forEach((s) => (depth[s] = d));
+        if (d === 0) sp.forEach((s) => (pos[s] = { a: 0 }));
+        if (!ch.length) { pos[id] = { a: leaf++ }; if (d) sp.forEach((s) => (pos[s] = { a: leaf++ })); return; }
+        ch.forEach((c) => walk(c, d + 1));
         const as = ch.map((c) => pos[c].a);
         pos[id] = { a: (Math.min(...as) + Math.max(...as)) / 2 };
+        if (d) sp.forEach((s, i) => wives.push([id, s, i, d]));
       }
-      walk('adam');
-      pos.eve = { a: pos.adam.a };
-      const N = leaf;
-      for (const p of PEOPLE) {
-        const o = pos[p.id];
-        const ang = (o.a / N) * Math.PI * 2 - Math.PI / 2;
-        let r = (p.gen - 1) * RING + (p.gen > 1 ? 40 : 0);
-        if (p.id === 'eve') r = 22;
-        if (p.id === 'adam') r = 0;
-        treeNodes[p.id] = { x: TC + r * Math.cos(ang), y: TC + r * Math.sin(ang), ang, r };
+      roots.forEach((r) => walk(r, virtual ? 1 : 0));
+      const N = Math.max(leaf, 1), D = Math.max(1, ...Object.values(depth));
+      // room for every leaf on the outer ring, and for every generation between
+      RING = Math.max(22, Math.min(64, (Math.max(2.9 * N, 260) - 40) / D));
+      TW = Math.round(2 * (40 + D * RING + 190)); TC = TW / 2;
+      // a wife sits just beside her husband on his ring, about 34 units away, alternating sides
+      for (const [h, w, i, d] of wives) {
+        const step = Math.min(0.9, (34 / ringR(d)) / ((2 * Math.PI) / N));
+        pos[w] = { a: pos[h].a + (i % 2 ? -1 : 1) * step * (1 + Math.floor(i / 2)) };
       }
-      treeNodes.eve.x = TC + 24; treeNodes.eve.y = TC + 18; treeNodes.adam.x = TC - 10; treeNodes.adam.y = TC - 6;
+      const nodes = {};
+      // a near-single line of fathers and sons (Perez to David) would stack on one spoke: curl it
+      const spiral = N <= 3 && D >= 5 ? (1.5 * Math.PI) / D : 0;
+      for (const id of ids) {
+        const d = depth[id];
+        const ang = (pos[id].a / N) * Math.PI * 2 - Math.PI / 2 + d * spiral;
+        const r = ringR(d);
+        nodes[id] = { x: TC + r * Math.cos(ang), y: TC + r * Math.sin(ang), ang, r };
+      }
+      if (!virtual) {
+        const root = roots[0];
+        nodes[root] = { ...nodes[root], x: TC - 10, y: TC - 6, r: 0 };
+        (attached[root] || []).forEach((s, i) => (nodes[s] = { ...nodes[s], x: TC + 24, y: TC + 18 + i * 22, r: 22 }));
+      }
+      const rootGen = Math.min(...[...ids].map((id) => byId[id].gen)) - (virtual ? 1 : 0);
+      T = { ids, kids, attached, depth, nodes, roots, virtual, D, rootGen, sec: S.sec };
+      const sec = SEC_BY[S.sec];
+      document.getElementById('tree-title').textContent = sec ? sec.en : 'From one name, seventy nations';
+      document.getElementById('tree-sub').textContent = sec
+        ? `${sec.ref}: ${ids.size} names${ids.size > PEOPLE.filter((p) => p.secs.includes(S.sec)).length ? ', with the ancestors that join them in faint' : ''}. ${virtual ? 'Each branch starts from the centre' : `${byId[roots[0]].en.replace(/ \(.*\)/, '')} at the centre`}; each ring is a generation.`
+        : `All ${SECTIONS.length} genealogies, ${ids.size} names. Adam at the centre; each ring is a generation. Pick one genealogy above to zoom in.`;
     }
     function drawTree() {
+      if (!T || T.sec !== S.sec) layoutTree();
+      const { ids, nodes, attached, kids } = T;
       tree.innerHTML = '';
       tree.setAttribute('viewBox', `0 0 ${TW} ${TW}`);
-      const maxGen = Math.max(...PEOPLE.map((p) => p.gen));
-      for (let g = 2; g <= maxGen; g++) {
-        const r = (g - 1) * RING + 40;
+      for (let d = 1; d <= T.D; d++) {
+        const r = ringR(d), g = T.rootGen + d;
         el('circle', { class: 'ring', cx: TC, cy: TC, r }, tree);
         if (g % 5 === 0) { const t = el('text', { class: 'ringlbl', x: TC + 4, y: TC - r - 4 }, tree); t.textContent = `GEN ${g}`; }
       }
-      const links = el('g', {}, tree), nodes = el('g', {}, tree);
-      const counts = Object.fromEntries(PEOPLE.map((p) => [p.id, NAMES ? countPerson(p) : 0]));
+      const links = el('g', {}, tree), nodesG = el('g', {}, tree);
+      const vis = PEOPLE.filter((p) => ids.has(p.id));
+      const counts = Object.fromEntries(vis.map((p) => [p.id, NAMES ? countPerson(p) : 0]));
       const maxC = Math.max(1, ...Object.values(counts));
-      for (const p of PEOPLE) {
-        const n = treeNodes[p.id];
-        if (p.parent) {
-          const a = treeNodes[p.parent];
-          // curve: out along the parent's radius, then across
-          const rm = (a.r + n.r) / 2;
-          const mx = TC + rm * Math.cos(n.ang), my = TC + rm * Math.sin(n.ang);
-          el('path', { class: 'lk', d: `M${a.x},${a.y} Q${TC + rm * Math.cos(a.ang)},${TC + rm * Math.sin(a.ang)} ${mx},${my} L${n.x},${n.y}`, stroke: lineColor(p.line), opacity: matches(p) ? .55 : .08 }, links);
-        }
-        if (p.spouse && !p.parent && byId[p.spouse]) {
-          const a = treeNodes[p.spouse];
-          el('path', { class: 'lk sp', d: `M${a.x},${a.y} L${n.x},${n.y}`, stroke: lineColor(p.line) }, links);
+      for (const p of vis) {
+        const n = nodes[p.id];
+        if (p.parent && ids.has(p.parent)) {
+          const a = nodes[p.parent];
+          // out along the parent's radius, round the ring between them, then out to the child
+          const rm = a.r ? (a.r + n.r) / 2 : n.r / 2;
+          const x1 = TC + rm * Math.cos(a.ang), y1 = TC + rm * Math.sin(a.ang);
+          const x2 = TC + rm * Math.cos(n.ang), y2 = TC + rm * Math.sin(n.ang);
+          let da = n.ang - a.ang;
+          while (da > Math.PI) da -= 2 * Math.PI;
+          while (da < -Math.PI) da += 2 * Math.PI;
+          const d = a.r ? `M${a.x},${a.y} L${x1},${y1} A${rm},${rm} 0 0 ${da > 0 ? 1 : 0} ${x2},${y2} L${n.x},${n.y}` : `M${a.x},${a.y} L${x2},${y2} L${n.x},${n.y}`;
+          el('path', { class: 'lk', d, stroke: lineColor(p.line), opacity: matches(p) ? .55 : .08 }, links);
         }
       }
-      for (const p of PEOPLE) {
-        const n = treeNodes[p.id];
+      for (const [sp, list] of Object.entries(attached)) for (const id of list) {
+        const a = nodes[sp], n = nodes[id];
+        el('path', { class: 'lk sp', d: `M${a.x},${a.y} L${n.x},${n.y}`, stroke: lineColor(byId[id].line) }, links);
+      }
+      const big = ids.size > 120;
+      for (const p of vis) {
+        const n = nodes[p.id];
         const on = matches(p);
-        const g = el('g', { class: `nd${on ? '' : ' dim'}${p.id === selected ? ' sel' : ''}`, tabindex: 0, role: 'button', 'aria-label': p.en, 'data-id': p.id }, nodes);
+        const g = el('g', { class: `nd${on ? '' : ' dim'}${p.id === selected ? ' sel' : ''}`, tabindex: 0, role: 'button', 'aria-label': p.en, 'data-id': p.id }, nodesG);
         const rad = 5 + 26 * Math.sqrt(counts[p.id] / maxC);
-        el('circle', { cx: n.x, cy: n.y, r: rad, fill: lineColor(p.line), opacity: p.kind === 'people' ? .75 : 1 }, g);
-        if (p.id === 'adam' || p.id === 'eve') {
-          const t = el('text', { class: 'h', x: n.x, y: n.y + (p.id === 'adam' ? -rad - 6 : rad + 16), 'text-anchor': 'middle' }, g);
+        if (noRecord(p)) el('circle', { cx: n.x, cy: n.y, r: 5, fill: 'var(--bg)', stroke: lineColor(p.line), 'stroke-width': 2 }, g);
+        else el('circle', { cx: n.x, cy: n.y, r: rad, fill: lineColor(p.line), opacity: p.kind === 'people' ? .75 : 1 }, g);
+        if (n.r < 30) {
+          const isRoot = T.roots.includes(p.id);
+          const t = el('text', { class: 'h', x: n.x, y: n.y + (isRoot ? -rad - 6 : rad + 16), 'text-anchor': 'middle' }, g);
           t.textContent = strip(p.he);
         } else {
           // label along the radius, flipped on the left half so it reads upright
@@ -461,10 +554,10 @@ const maxGen = Math.max(...people.map((p) => p.gen));
           const t = el('text', { class: 'h', x: lx, y: ly, 'dominant-baseline': 'middle', 'text-anchor': left ? 'end' : 'start',
             transform: `rotate(${left ? deg + 180 : deg} ${lx} ${ly})` }, g);
           t.textContent = strip(p.he).replace(/^ה(?=[א-ת]{3,}י$)/, '');
-          if (!kids[p.id]) {
+          if (!kids[p.id] && !big) {
             const t2 = el('tspan', { class: 'en', dx: 6 }, t);
             t2.setAttribute('style', 'font-family:var(--serif);font-size:15px;fill:var(--faint)');
-            t2.textContent = p.en.replace(/ \(.*\)/, '');
+            t2.textContent = short(p);
           }
         }
         g.addEventListener('click', () => select(p.id));
@@ -478,24 +571,29 @@ const maxGen = Math.max(...people.map((p) => p.gen));
     const life = document.getElementById('life');
     const LIFERS = PEOPLE.filter((p) => p.born != null && p.died != null).sort((a, b) => a.born - b.born);
     let LW = 1000, LML = 120;
-    const LMR = 34, ROWH = 24, LMT = 30;
-    const AMMAX = 2200;
+    const LMR = 34, ROWH = 24, LMT = 46;
+    const AMMAX = Math.ceil((Math.max(...LIFERS.map((p) => p.died)) + 40) / 100) * 100;
+    const EVENTS = [[1656, 'The Flood'], [1996, 'Babel'], [2238, 'Down to Egypt'], [2448, 'The Exodus']];
     const ax = (y) => LML + (y / AMMAX) * (LW - LML - LMR);
     let amYear = 1656;
     function drawLife() {
       life.innerHTML = '';
       LW = Math.max(320, life.parentElement.clientWidth - 16); LML = LW < 600 ? 84 : 120;
-      const H = LMT + LIFERS.length * ROWH + 26;
+      // one genealogy: just its dated figures
+      const rows = S.sec === 'all' ? LIFERS : LIFERS.filter((p) => p.secs.includes(S.sec));
+      const H = LMT + Math.max(1, rows.length) * ROWH + 26;
       life.setAttribute('viewBox', `0 0 ${LW} ${H}`);
       for (let y = 0; y <= AMMAX; y += 200) {
         el('line', { x1: ax(y), x2: ax(y), y1: LMT - 6, y2: H - 22, stroke: 'rgba(255,255,255,.06)' }, life);
         const t = el('text', { x: ax(y), y: H - 6, 'text-anchor': 'middle' }, life); t.textContent = y;
       }
-      for (const [y, label] of [[1656, 'The Flood'], [1996, 'Babel']]) {
-        el('line', { x1: ax(y), x2: ax(y), y1: LMT - 14, y2: H - 22, stroke: '#9ec5f4', 'stroke-dasharray': '4 4', opacity: .6 }, life);
-        const t = el('text', { x: ax(y) + (y === 1656 ? -4 : 4), y: LMT - 16, 'text-anchor': y === 1656 ? 'end' : 'start' }, life); t.textContent = label; t.setAttribute('style', 'fill:#9ec5f4');
-      }
-      LIFERS.forEach((p, i) => {
+      EVENTS.forEach(([y, label], i) => {
+        const ty = i % 2 ? LMT - 30 : LMT - 14;
+        el('line', { x1: ax(y), x2: ax(y), y1: ty + 2, y2: H - 22, stroke: '#9ec5f4', 'stroke-dasharray': '4 4', opacity: .6 }, life);
+        const t = el('text', { x: ax(y) + (i % 2 ? 4 : -4), y: ty, 'text-anchor': i % 2 ? 'start' : 'end' }, life); t.textContent = label; t.setAttribute('style', 'fill:#9ec5f4');
+      });
+      if (!rows.length) { const t = el('text', { x: LML, y: LMT + 16 }, life); t.textContent = 'This list gives no ages.'; }
+      rows.forEach((p, i) => {
         const y = LMT + i * ROWH;
         const on = matches(p);
         const alive = amYear >= p.born && amYear <= p.died;
@@ -513,14 +611,15 @@ const maxGen = Math.max(...people.map((p) => p.gen));
         g.addEventListener('mouseleave', hideTip);
       });
       el('line', { x1: ax(amYear), x2: ax(amYear), y1: LMT - 4, y2: H - 22, stroke: 'var(--gold)', 'stroke-width': 2 }, life);
-      const alive = LIFERS.filter((p) => amYear >= p.born && amYear <= p.died);
-      const label = amYear === 1656 ? ' — the year of the Flood' : amYear === 1948 ? ' — Abram is born' : '';
+      const alive = rows.filter((p) => amYear >= p.born && amYear <= p.died);
+      const label = { 1656: ' — the year of the Flood', 1948: ' — Abram is born', 2238: ' — Jacob’s family goes down to Egypt', 2448: ' — the Exodus' }[amYear] || '';
       document.getElementById('am-v').textContent = `Year ${amYear}`;
       document.getElementById('alive').innerHTML = alive.length
-        ? `<b>${alive.length} alive in year ${amYear}${label}:</b> ${alive.map((p) => `${esc(p.en.replace(/ \(.*\)/, ''))} (${amYear - p.born})`).join(', ')}.`
-        : `<b>Year ${amYear}${label}:</b> none of the dated generations is alive.`;
+        ? `<b>${alive.length} alive in year ${amYear}${label}:</b> ${alive.map((p) => `${esc(short(p))} (${amYear - p.born})`).join(', ')}.`
+        : `<b>Year ${amYear}${label}:</b> none of the dated figures is alive.`;
     }
     const am = document.getElementById('am');
+    am.max = AMMAX;
     am.addEventListener('input', () => { amYear = +am.value; drawLife(); });
     let playing = null;
     document.getElementById('am-play').addEventListener('click', (e) => {
@@ -575,23 +674,50 @@ const maxGen = Math.max(...people.map((p) => p.gen));
       });
       const total = rows.reduce((t, r) => t + r.c, 0);
       document.getElementById('board-note').textContent = rows.length
-        ? `${rows.length} names, ${fmt(total)} babies in ${S.y0}–${S.y1}. Bars are coloured by the figure’s line in Genesis. Shared spellings (the two Enochs, Tubal and Tubal-cain, the two Shebas) are counted once.`
+        ? `Top ${rows.length} names, ${fmt(total)} babies in ${S.y0}–${S.y1}. Bars are coloured by the figure’s line. Figures who share a spelling (the Enochs, the Shebas, Tubal and Tubal-cain) are counted once.`
         : '';
+      drawNone();
       drawTable();
     }
 
+    // names with no Israeli birth record, in the order the Bible gives them
+    function drawNone() {
+      const box = document.getElementById('none-list');
+      const list = PEOPLE.filter((p) => noRecord(p) && matches(p));
+      const named = PEOPLE.filter((p) => p.names.length && matches(p)).length;
+      box.innerHTML = list.length
+        ? `<h3>Not in Israel’s birth records: ${list.length} of ${named} names</h3>
+           <p>No baby born in Israel 1949–2024 appears in the Central Bureau of Statistics lists under these names. The lists include any name given to at least five babies of one sex in a population group, so a handful at most have carried them, possibly none. In the order they appear in the Bible:</p>
+           <div class="list">${list.map((p) => `<a data-go="${p.id}">${esc(short(p))}<span class="he">${esc(strip(p.he))}</span></a>`).join('')}</div>`
+        : named ? `<p>Every name in view appears in Israel’s birth records.</p>` : '';
+      box.querySelectorAll('[data-go]').forEach((a) => a.addEventListener('click', () => select(a.dataset.go)));
+    }
+
     // ---------- table view
-    let sortKey = 'israel', sortDir = -1;
+    let sortKey = 'order', sortDir = 1;
+    const heKey = (p) => strip(p.he).replace(/^ה(?=[א-ת]{3,}י$)/, '');
     function drawTable() {
       const t = document.getElementById('tbl');
-      const cols = [['en', 'Name'], ['he', 'Hebrew'], ['ref', 'Verse'], ['line', 'Line'], ['gen', 'Gen.'], ['lived', 'Lived'], ['israel', `Israel ${S.y0}–${S.y1}`]];
+      const cols = [['order', '#'], ['en', 'Name'], ['he', 'Hebrew'], ['ref', 'Verse'], ['sec', 'Genealogy'], ['line', 'Line'], ['gen', 'Gen.'], ['lived', 'Lived'], ['israel', `Israel ${S.y0}–${S.y1}`], ['all', 'All-time']];
       t.tHead.innerHTML = '<tr>' + cols.map(([k, l]) => `<th data-k="${k}">${l}${sortKey === k ? (sortDir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('') + '</tr>';
-      const rows = PEOPLE.filter(matches).map((p) => ({ ...p, israel: NAMES ? countPerson(p) : 0 }));
-      rows.sort((a, b) => { const x = a[sortKey] ?? -1, y = b[sortKey] ?? -1; return (x > y ? 1 : x < y ? -1 : 0) * sortDir; });
-      t.tBodies[0].innerHTML = rows.map((p) => `<tr data-id="${p.id}"><td>${esc(p.en)}</td><td class="he">${esc(p.he)}</td><td>${esc(p.ref)}</td><td>${esc(LINES[LINE_IDX[p.line] - 1].en)}</td><td class="num">${p.gen}</td><td class="num">${p.lived ?? ''}</td><td class="num">${fmt(p.israel)}</td></tr>`).join('');
-      t.tHead.querySelectorAll('th').forEach((th) => th.addEventListener('click', () => { const k = th.dataset.k; sortDir = sortKey === k ? -sortDir : -1; sortKey = k; drawTable(); }));
+      const rows = PEOPLE.filter(matches).map((p) => ({ ...p, order: ORDER[p.id] + 1, sec: SEC_BY[p.secs[0]].en, israel: NAMES ? countPerson(p) : 0, all: p.names.length ? p.israel : -1 }));
+      const val = (r) => (sortKey === 'he' ? heKey(r) : sortKey === 'sec' ? SECTIONS.indexOf(SEC_BY[r.secs[0]]) * 1e4 + r.order : r[sortKey] ?? -1);
+      rows.sort((a, b) => {
+        const x = val(a), y = val(b);
+        const c = typeof x === 'string' ? x.localeCompare(y, sortKey === 'he' ? 'he' : 'en') : x - y;
+        return (c || a.order - b.order) * sortDir;
+      });
+      const cell = (p) => (!p.names.length ? '<td class="num off">no given name</td><td class="num off">—</td>'
+        : noRecord(p) ? '<td class="num off" colspan="2">not on record</td>'
+        : `<td class="num">${fmt(p.israel)}</td><td class="num">${p.homograph ? '<span title="Mostly a different name">*</span>' : ''}${fmt(p.all)}</td>`);
+      t.tBodies[0].innerHTML = rows.map((p) => `<tr data-id="${p.id}"><td class="num">${p.order}</td><td>${esc(p.en)}</td><td class="he">${esc(p.he)}</td><td>${esc(p.ref)}</td><td>${esc(p.sec)}</td><td>${esc(LINES[LINE_IDX[p.line] - 1].en)}</td><td class="num">${p.gen}</td><td class="num">${p.lived ?? ''}</td>${cell(p)}</tr>`).join('');
+      t.tHead.querySelectorAll('th').forEach((th) => th.addEventListener('click', () => { const k = th.dataset.k; sortDir = sortKey === k ? -sortDir : ['israel', 'all', 'lived'].includes(k) ? -1 : 1; sortKey = k; syncOrder(); drawTable(); }));
       t.tBodies[0].querySelectorAll('tr').forEach((tr) => tr.addEventListener('click', () => select(tr.dataset.id)));
     }
+    const syncOrder = () => document.querySelectorAll('#f-order .chip').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === sortKey));
+    document.querySelectorAll('#f-order .chip').forEach((b) => b.addEventListener('click', () => {
+      sortKey = b.dataset.v; sortDir = sortKey === 'israel' ? -1 : 1; syncOrder(); drawTable();
+    }, { signal }));
 
     // ---------- detail
     const detail = document.getElementById('detail');
@@ -662,10 +788,11 @@ const maxGen = Math.max(...people.map((p) => p.gen));
       detail.innerHTML = `
         <div class="hname">${esc(p.he)}</div>
         <h3>${esc(p.en)}</h3>
-        <div class="meta"><span class="tag" style="border-color:${lineColor(p.line)}">${esc(LINES[LINE_IDX[p.line] - 1].en)}</span><span class="tag">Parashat ${p.parasha === 'noach' ? 'Noach' : 'Bereshit'}</span><span class="tag">Generation ${p.gen}</span>${p.kind === 'people' ? '<span class="tag">Nation / clan</span>' : ''}</div>
+        <div class="meta"><span class="tag" style="border-color:${lineColor(p.line)}">${esc(LINES[LINE_IDX[p.line] - 1].en)}</span>${p.parasha ? `<span class="tag">${p.parasha.startsWith('Megillat') ? '' : 'Parashat '}${esc(p.parasha)}</span>` : ''}<span class="tag">Generation ${p.gen}</span>${p.kind === 'people' ? '<span class="tag">Nation / clan</span>' : ''}</div>
         <p class="nt">${esc(p.note)}</p>
         <dl class="rel">
           <dt>Verse</dt><dd><a href="${sefaria}" target="_blank" rel="noopener">${esc(p.ref)}</a></dd>
+          <dt>Listed in</dt><dd class="secs">${p.secs.map((x) => `<a data-sec="${x}" title="Show only this genealogy">${esc(SEC_BY[x].en)}</a>`).join(', ')}</dd>
           ${parent ? `<dt>Father</dt><dd>${link(parent.id)}</dd>` : ''}
           ${mother ? `<dt>Mother</dt><dd>${mother}</dd>` : ''}
           ${spouse ? `<dt>Married</dt><dd>${spouse}</dd>` : ''}
@@ -675,7 +802,11 @@ const maxGen = Math.max(...people.map((p) => p.gen));
         </dl>
         <div class="verse" id="d-verse"></div><div class="verse-en" id="d-verse-en"></div>
         <h4>In Israel</h4>
-        ${p.names.length ? `
+        ${noRecord(p) ? `
+          <div class="bignum off">Not on record</div>
+          <div class="muted" style="font-size:.9rem">No baby born in Israel 1949–2024 appears under <span class="he">${uniq(p.names).join(' / ')}</span> in the Central Bureau of Statistics lists. They include any name given to at least five babies of one sex in a population group, so a handful at most have carried it, possibly none.</div>
+          ${p.renamed && NAMES ? `<div class="note">Renamed later: <span class="he">${p.renamed}</span> was given to ${fmt(Object.values(NAMES.names[p.renamed]?.totals || {}).reduce((a, b) => a + b, 0))} Israeli babies.</div>` : ''}
+        ` : p.names.length ? `
           <div class="bignum">${total != null ? fmt(total) : '…'}</div>
           <div class="muted" style="font-size:.9rem">babies named <span class="he">${uniq(p.names).join(' / ')}</span>, ${S.y0}–${S.y1}, by your filters${allTime != null ? `. All-time total, every group: ${fmt(allTime)}` : ''}${best ? `. Best rank: #${best[0]} (${best[1].split('|')[0]} ${best[1].split('|')[1] === 'M' ? 'boys' : 'girls'}, ${best[1].split('|')[2]})` : ''}.</div>
           ${unplaced > 0 ? `<div class="note">${yearly === 0 ? `All ${fmt(allTime)}` : `${fmt(unplaced)} of the ${fmt(allTime)}`} came in years with fewer than 5 babies given the name. The CBS doesn't say which years those were, so the filters above can't count them.</div>` : ''}
@@ -688,6 +819,7 @@ const maxGen = Math.max(...people.map((p) => p.gen));
         ${p.names.length ? `<h4>People named <span class="he">${esc(uniq(p.names)[0])}</span></h4><div id="d-ppl"><div class="empty">Asking Hebrew Wikipedia…</div></div>` : ''}
       `;
       detail.querySelectorAll('[data-go]').forEach((a) => a.addEventListener('click', () => select(a.dataset.go)));
+      detail.querySelectorAll('[data-sec]').forEach((a) => a.addEventListener('click', () => { S.sec = a.dataset.sec; syncChips(); renderAll(); }));
       drawSpark(p);
       loadVerse(p);
       loadWiki(p);
@@ -709,7 +841,7 @@ const maxGen = Math.max(...people.map((p) => p.gen));
     async function loadWiki(p) {
       const box = () => document.getElementById('d-wiki');
       const id = p.id;
-      if (!p.wiki) { box().innerHTML = ''; return; }
+      if (!p.wiki) { box().innerHTML = `<a href="https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(short(p) + ' Bible')}" target="_blank" rel="noopener" style="color:var(--gold)">Search Wikipedia</a>`; return; }
       try {
         const en = await getJSON(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(p.wiki.replace(/ /g, '_'))}`);
         if (selected !== id) return;
@@ -787,6 +919,7 @@ const maxGen = Math.max(...people.map((p) => p.gen));
     }
     let centred = false;
     function renderAll() {
+      if (T && T.sec !== S.sec) centred = false;
       drawTree(); drawLife(); drawBoard(); renderDetail();
       const box = tree.parentElement;
       if (!centred && box.scrollWidth > box.clientWidth) { box.scrollLeft = (box.scrollWidth - box.clientWidth) / 2; centred = true; }
@@ -796,18 +929,20 @@ const maxGen = Math.max(...people.map((p) => p.gen));
       document.querySelectorAll(`#${groupId} .chip`).forEach((b) => b.addEventListener('click', () => { onClick(b); syncChips(); renderAll(); }));
     }
     function syncChips() {
-      document.querySelectorAll('#f-parasha .chip').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === S.parasha));
+      document.getElementById('f-sec').value = S.sec;
+      document.querySelectorAll('#f-census .chip').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === S.census));
       document.querySelectorAll('#f-line .chip').forEach((b) => b.setAttribute('aria-pressed', S.lines.has(b.dataset.v)));
-      document.querySelectorAll('#f-kind .chip').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === 'israel' ? S.israelOnly : S.kinds.has(b.dataset.v)));
+      document.querySelectorAll('#f-kind .chip').forEach((b) => b.setAttribute('aria-pressed', S.kinds.has(b.dataset.v)));
       document.querySelectorAll('#f-sector .chip').forEach((b) => b.setAttribute('aria-pressed', S.sectors.has(b.dataset.v)));
       document.querySelectorAll('#f-sex .chip').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === S.sex));
       y0i.value = S.y0; y1i.value = S.y1; syncRange();
       document.getElementById('f-q').value = S.q;
     }
     const toggle = (set, v) => { if (set.has(v)) { if (set.size > 1) set.delete(v); } else set.add(v); };
-    chips('f-parasha', (b) => (S.parasha = b.dataset.v));
+    document.getElementById('f-sec').addEventListener('change', (e) => { S.sec = e.target.value; renderAll(); });
+    chips('f-census', (b) => (S.census = b.dataset.v));
     chips('f-line', (b) => toggle(S.lines, b.dataset.v));
-    chips('f-kind', (b) => (b.dataset.v === 'israel' ? (S.israelOnly = !S.israelOnly) : toggle(S.kinds, b.dataset.v)));
+    chips('f-kind', (b) => toggle(S.kinds, b.dataset.v));
     chips('f-sector', (b) => toggle(S.sectors, b.dataset.v));
     chips('f-sex', (b) => (S.sex = b.dataset.v));
     const y0i = document.getElementById('f-y0'), y1i = document.getElementById('f-y1');
@@ -828,7 +963,6 @@ const maxGen = Math.max(...people.map((p) => p.gen));
     document.getElementById('f-q').addEventListener('input', (e) => { S.q = e.target.value.trim(); clearTimeout(qT); qT = setTimeout(renderAll, 120); });
     document.getElementById('f-reset').addEventListener('click', () => { S = DEFAULT(); syncChips(); renderAll(); });
 
-    layoutTree();
     let rzT, lastW = innerWidth;
     addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rzT); rzT = setTimeout(() => { drawLife(); drawBoard(); }, 150); }, { signal });
     syncRange();
