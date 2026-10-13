@@ -324,7 +324,8 @@ async function main() {
         return { title: p.title, url: p.url, published: p.published, he: p.verse?.word ?? p.he, hebrew: p.hebrew, verse: p.verse, paragraphs: ex.paragraphs, complete: ex.complete, words: p.words, otherParshiot: p.otherParshiot };
       }),
       posts: rest.map((p) => ({
-        title: p.title, url: p.url, published: p.published, he: p.he, gloss: glosses[p.url] ?? null,
+        // The headword: as written in this week's verse, else a confident match for the title.
+        title: p.title, url: p.url, published: p.published, he: p.verse?.word ?? p.hebrew[0] ?? null, gloss: glosses[p.url] ?? null,
         teaser: excerpt(p.paragraphs, TEASER).paragraphs.join(' '),
         verse: p.verse ? p.verse.ref : null, otherParshiot: p.otherParshiot,
       })),
