@@ -12,7 +12,7 @@ where a name was given to 5+ babies, totals include every registration).
 Writes src/data/genealogies/people.json and sections.json (small, imported by the page) and
 public/data/genealogies/names.json (yearly series, fetched by the page).
 """
-import csv, json, os, sys
+import csv, json, os, re, sys
 from collections import defaultdict
 
 SRC = sys.argv[1] if len(sys.argv) > 1 else 'babynamesIL/data-raw'
@@ -703,6 +703,72 @@ with open(os.path.join(SRC, 'babynamesIL_totals.csv'), encoding='utf-8') as f:
     for r in csv.DictReader(f):
         if r['name'] in spellings:
             totals[r['name']][f"{r['sector']}|{r['sex']}"] = int(r['total'])
+
+# ---- Spelling audit. Names are matched by exact Hebrew spelling, so a figure whose modern
+# spelling differs from the Bible's (Avihu אביהו for אביהוא, Osnat אוסנת for אסנת) silently
+# counts as zero. Every CBS name within two vav/yod/final-aleph edits of a figure's Hebrew must be
+# either one of its spellings above or listed here as reviewed and different. The build stops on
+# anything unreviewed, so a new figure can't be called "not on record" without this check.
+NOT_SAME = {
+    'adam': 'אדים אודם אדום', 'eve': 'חיה', 'cain': 'קווין קוין קן קיין', 'irad': 'ערד',
+    'adah': 'עדיה עודה עידה עיידה עוודה עדויה עדייה', 'adah-e': 'עדיה עודה עידה עיידה עוודה עדויה עדייה', 'zillah': 'ציליה צליה',
+    'jabal': 'יובל', 'tubal-cain': 'תבל', 'tubal': 'תבל', 'naamah': 'נעימה ניעמה נעומה', 'enosh': 'אניש',
+    'kenan': 'קנן', 'ham': 'חיים חים', 'japheth': 'יפית', 'gomer': 'גמר', 'madai': 'מודי מוד', 'javan': 'ין',
+    'riphath': 'רופת', 'elishah': 'איליושה אליושה', 'seba': 'סיבא סבי סוב',
+    'havilah-c': 'חולה חוולה חילוה חוליה חיילה חילה', 'havilah-j': 'חולה חוולה חילוה חוליה חיילה חילה',
+    'sheba-r': 'שבי שבו שיבא', 'sheba-j': 'שבי שבו שיבא', 'sheba-k': 'שבי שבו שיבא', 'nimrod': 'נמרד',
+    'heth': 'חיית חיות', 'elam': 'עלם', 'asshur': 'אשר אושר אשיר', 'lud': 'לויד',
+    'aram': 'אורם ארים אירם אורים', 'hul': 'חיל', 'eber': 'עביר עבור עבייר', 'peleg': 'פולג',
+    'uzal': 'אזל איזל', 'obal': 'עיבל', 'reu': 'רעי רע', 'serug': 'שריג שורוג', 'abram': 'אבירם אברום',
+    'haran': 'הרון', 'sarai': 'שיר שירי שריי שר שיריי שורי', 'milcah': 'מליכה מלכיה', 'hagar': 'היגר הייגר',
+    'reumah': 'ראמה ראמיה', 'buz': 'בז', 'hazo': 'חזי', 'bethuel': 'בתאל', 'laban': 'לבון',
+    'medan': 'מידן מדיין מדין מידין', 'midian': 'מידן מדיין מידין מדן', 'ephah': 'עופה עפיה', 'epher': 'עופר',
+    'nebaioth': 'נבות', 'dumah': 'דימה דומיה', 'massa': 'משי', 'tema': 'תומא', 'leah': 'ליאה לאיה לואה',
+    'rachel': 'רחיל', 'zilpah': 'זולפה זולפיה', 'levi': 'לי ליו לו ליי ליוי', 'dan': 'דין דון דיין',
+    'gad': 'גוד גווד', 'asher': 'אושר אשיר אושיר', 'dinah': 'דנה דונה דניה דיינה דוינה', 'joseph': 'יוסיף יסף',
+    'jeush': 'יעיש', 'omar': 'אמיר אמור אמר אימר', 'zepho': 'צפי', 'kenaz': 'קונוז', 'shammah': 'שומה שימה',
+    'mizzah': 'מזיה מוזה', 'pallu': 'פלא', 'jamin': 'ימן', 'ohad': 'אהוד', 'zohar': 'צחור',
+    'shaul-s': 'שיאל שואל', 'shelah-j': 'שילה שולה שלוה שלווה שיילה שליה', 'puvah': 'פיה', 'shimron': 'שומרון',
+    'elon': 'אילן אלין אילון אלן איילון אלוין אלווין', 'haggi': 'חוגי', 'shuni': 'שני', 'eri': 'עורי עירי', 'arodi': 'ארד אורוד',
+    'areli': 'אריאל אוראל אראל אוראלי אריאלי', 'imnah': 'ימינה', 'ishvah': 'ישה', 'ishvi': 'ישי יישי יושי',
+    'heber': 'חבייר', 'becher': 'בכור בוכור בכיר', 'gera': 'גור גיורא גרי', 'ard': 'אורוד', 'guni': 'גני גיני',
+    'shillem': 'שלום שלם שולם שולום שולים', 'shimei': 'שמוע', 'amram': 'עמירם', 'uzziel': 'עזאל', 'mahli': 'מחול',
+    'mushi': 'משי מישי מוישי', 'moses': 'מישה', 'zichri': 'זכר', 'nadab': 'נדיב', 'abihu': 'אביה',
+    'eleazar': 'אליעזר', 'assir': 'איסר אסר', 'ram': 'רום רים', 'ruth': 'רוית רווית',
+    'obed': 'עבד עבוד עוביד עביד עובייד', 'jesse': 'יישי יושי', 'david': 'דווד', 'asenath': 'אסינת',
+    'basemath': '', 'kedar': '', 'hezron-r': '', 'hezron-p': '',
+}
+def near(w):
+    out = {w}
+    for _ in range(2):
+        new = set()
+        for x in out:
+            if x.endswith('א'):
+                new.add(x[:-1])
+            for i in range(1, len(x)):
+                if x[i] in 'וי':
+                    new.add(x[:i] + x[i + 1:])
+                new.add(x[:i] + 'ו' + x[i:]); new.add(x[:i] + 'י' + x[i:])
+        out |= new
+    return out
+def audit(totals_by_name):
+    bad = []
+    for p in P:
+        if not p['names']:
+            continue
+        base = re.sub(r'[\u0591-\u05C7]', '', p['he']).replace('־', ' ').split(' ')[0]
+        ok = set(p['names']) | set(NOT_SAME.get(p['id'], '').split())
+        for v in near(base):
+            n = sum(totals_by_name.get(v, {}).values())
+            if n >= 10 and v not in ok:
+                bad.append(f"  {p['id']:12} {p['he']}: {v} ({n} babies) is unreviewed")
+    if bad:
+        sys.exit('Spelling audit: add each to the figure\'s names (same name) or to NOT_SAME (a different name):\n' + '\n'.join(bad))
+all_totals = defaultdict(dict)   # every name in the CBS lists, not just ours
+with open(os.path.join(SRC, 'babynamesIL_totals.csv'), encoding='utf-8') as f:
+    for r in csv.DictReader(f):
+        all_totals[r['name']][f"{r['sector']}|{r['sex']}"] = int(r['total'])
+audit(all_totals)
 
 # Spellings that in Israel are overwhelmingly a different name: shown with a caveat, left out of
 # the rankings and totals.
