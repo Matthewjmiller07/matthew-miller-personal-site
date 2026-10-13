@@ -215,22 +215,30 @@ const BOOKS = {
   Genesis: 'genesis|bereishit|bereshit|breishit|gen\\.?', Exodus: 'exodus|shemot|shmot|ex\\.?|exod\\.?',
   Leviticus: 'leviticus|vayikra|lev\\.?', Numbers: 'numbers|bamidbar|num\\.?', Deuteronomy: 'deuteronomy|devarim|deut\\.?',
 };
+// Verses in the parasha's range the post cites ("Bereshit 6:16", "Genesis 11:9"), as "6:16".
+function citedVerses(text, range) {
+  const book = range.slice(0, range.lastIndexOf(' '));
+  const [from, to] = range.slice(range.lastIndexOf(' ') + 1).split(/[–-]/).map((r) => r.split(':').map(Number));
+  const at = (c, v) => c * 1000 + v;
+  const out = new Set();
+  for (const m of text.toLowerCase().matchAll(new RegExp(`\\b(?:${BOOKS[book] ?? book.toLowerCase()})\\s*(\\d+):(\\d+)`, 'g'))) {
+    const x = at(+m[1], +m[2]);
+    if (x >= at(...from) && x <= at(...to)) out.add(`${+m[1]}:${+m[2]}`);
+  }
+  return out;
+}
+
 export function mentionsParasha(text, parsha, labels, range) {
   const t = text.toLowerCase();
-  if (/this week'?s (?:parasha|parsha|parashah|torah reading|portion)/.test(t)) return 2;
-  const [book, span] = [range.slice(0, range.lastIndexOf(' ')), range.slice(range.lastIndexOf(' ') + 1)];
-  const [from, to] = span.split(/[–-]/).map((r) => r.split(':').map(Number));
-  const at = (c, v) => c * 1000 + v;
-  for (const m of t.matchAll(new RegExp(`\\b(?:${BOOKS[book] ?? book.toLowerCase()})\\s*(\\d+):(\\d+)`, 'g'))) {
-    const x = at(+m[1], +m[2]);
-    if (x >= at(...from) && x <= at(...to)) return 2;
-  }
+  if (citedVerses(text, range).size || /this week'?s (?:parasha|parsha|parashah|torah reading|portion)/.test(t)) return 2;
   const names = [parsha, ...labels.map((l) => l.replace(PARSHA_LABEL, ''))].map((n) => n.toLowerCase().replace(/['’]/g, "'?"));
   return names.some((n) => new RegExp(`\\b${n.replace(/ /g, '[ -]')}\\b`).test(t)) ? 1 : 0;
 }
 
-export function findVerse(words, verses) {
-  for (const v of verses) {
+// The verse where the word appears, preferring the verses the post itself cites.
+export function findVerse(words, verses, cited = new Set()) {
+  const own = verses.filter((v) => cited.has(v.ref.slice(v.ref.lastIndexOf(' ') + 1)));
+  for (const v of [...own, ...verses]) {
     for (const token of v.he.split(/[\s־]+/)) {
       if (words.some((w) => sameWord(w, token))) return { ref: v.ref, he: v.he, en: v.en, word: token.replace(/[׀׃׆:,.;]+$/g, '') };
     }
@@ -289,10 +297,12 @@ async function main() {
     let verses = [];
     try { verses = await parashaVerses(w.ref); } catch (err) { console.warn(`${w.parsha}: no Sefaria text (${err.message})`); }
 
-    const posts = [...byUrl.values()].map((p) => ({ ...p, verse: findVerse(p.hebrew, verses), aboutThis: mentionsParasha(p.text, w.parsha, matched, w.ref), otherParshiot: p.labels.filter((l) => !matched.includes(l)).map((l) => l.replace(PARSHA_LABEL, '')) }));
-    // Feature posts whose word is in this week's text, first those that themselves discuss this
-    // parasha; then the ones filed under the fewest other parshiyot, then the fuller write-ups.
-    const rank = (p) => (p.verse ? 0 : 1000) - p.aboutThis * 100 + p.otherParshiot.length * 10 - Math.min(p.words, 900) / 100;
+    const posts = [...byUrl.values()].map((p) => ({ ...p, verse: findVerse(p.hebrew, verses, citedVerses(p.text, w.ref)), cited: citedVerses(p.text, w.ref), aboutThis: mentionsParasha(p.text, w.parsha, matched, w.ref), otherParshiot: p.labels.filter((l) => !matched.includes(l)).map((l) => l.replace(PARSHA_LABEL, '')) }));
+    // Feature posts whose word is in this week's text: first those that quote the very verse their
+    // word is in, then those that otherwise discuss this parasha; then the ones filed under the fewest
+    // other parshiyot, then the fuller write-ups.
+    const ownVerse = (p) => p.verse && p.cited.has(p.verse.ref.slice(p.verse.ref.lastIndexOf(' ') + 1));
+    const rank = (p) => (p.verse ? 0 : 1000) - (ownVerse(p) ? 200 : 0) - p.aboutThis * 100 + p.otherParshiot.length * 10 - Math.min(p.words, 600) / 100;
     const featured = [...posts].sort((a, b) => rank(a) - rank(b)).slice(0, FEATURES);
     const order = (p) => (p.verse ? verses.findIndex((v) => v.ref === p.verse.ref) : 1e6);
     featured.sort((a, b) => order(a) - order(b));
