@@ -1,0 +1,201 @@
+---
+import Layout from '../layouts/Layout.astro';
+import emoData from '../../public/data/psalm-emotions.json';
+
+const pageTitle = 'The Emotional Arc of Tehillim';
+const pageDescription = 'Every verse of Psalms tagged by emotional state — a Jev-analyzed map of the feelings inside Tehillim, from lament to praise.';
+
+const EMOTIONS = [
+  { id: 'joy',        color: '#e8c76a', blurb: 'gladness, rejoicing' },
+  { id: 'praise',     color: '#d9a441', blurb: 'exaltation of God' },
+  { id: 'gratitude',  color: '#f0d98c', blurb: 'thanksgiving' },
+  { id: 'trust',      color: '#9fd6a4', blurb: 'confidence in God' },
+  { id: 'hope',       color: '#6fbf8f', blurb: 'forward-looking expectation' },
+  { id: 'longing',    color: '#e0b48a', blurb: 'yearning, deep desire' },
+  { id: 'awe',        color: '#a0d8d0', blurb: 'reverence, trembling' },
+  { id: 'repentance', color: '#b0a8e0', blurb: 'contrition, confession' },
+  { id: 'sorrow',     color: '#8fb3e0', blurb: 'grief, sadness' },
+  { id: 'fear',       color: '#c9a0e0', blurb: 'dread, anxiety' },
+  { id: 'anger',      color: '#e08a8a', blurb: 'indignation, wrath' },
+  { id: 'despair',    color: '#5f7fb0', blurb: 'hopelessness' },
+];
+const emoById = Object.fromEntries(EMOTIONS.map(e => [e.id, e]));
+
+// Aggregate: per-emotion verse counts, per-psalm per-emotion counts, top verses.
+const emoCounts = Object.fromEntries(EMOTIONS.map(e => [e.id, 0]));
+const psalmEmo = {};   // psalm -> emo -> count
+const topVerses = {};  // emo -> [{ref, psalm, verse, score}]
+for (const e of EMOTIONS) topVerses[e.id] = [];
+
+for (const [ref, v] of Object.entries(emoData.verses)) {
+  const m = ref.match(/^Psalms (\d+):(\d+)$/);
+  if (!m) continue;
+  const psalm = +m[1], verse = +m[2];
+  for (const t of (v.tags || [])) {
+    if (!emoById[t]) continue;
+    emoCounts[t]++;
+    psalmEmo[psalm] = psalmEmo[psalm] || {};
+    psalmEmo[psalm][t] = (psalmEmo[psalm][t] || 0) + 1;
+    topVerses[t].push({ ref, psalm, verse, score: v.scores[t] });
+  }
+}
+for (const e of EMOTIONS) {
+  topVerses[e.id].sort((a, b) => b.score - a.score);
+  topVerses[e.id] = topVerses[e.id].slice(0, 30);
+}
+const sortedEmos = [...EMOTIONS].sort((a, b) => emoCounts[b.id] - emoCounts[a.id]);
+const maxCount = Math.max(...Object.values(emoCounts));
+const totalTagged = Object.values(emoCounts).reduce((a, b) => a + b, 0);
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+  <main class="pe-wrap">
+    <header class="pe-hero">
+      <p class="pe-kicker">Mega Bible · Psalms</p>
+      <h1>The Emotional Arc of Tehillim</h1>
+      <p class="pe-lede">
+        Every verse of Psalms — 2,527 of them — read for its emotional state by
+        Jev (TypeSafe System One) across twelve emotions, against the JPS
+        translation. {totalTagged.toLocaleString()} emotion tags, one per verse
+        at confidence ≥ 0.6. Click any emotion to see its verses; click a psalm
+        to open it in the Mega Bible.
+      </p>
+    </header>
+
+    <section aria-label="Emotions">
+      <h2>The twelve emotions</h2>
+      <div class="pe-bars" id="pe-bars">
+        {sortedEmos.map(e => (
+          <button class="pe-bar-row" data-emo={e.id} aria-pressed="false">
+            <span class="pe-bar-name" style={`color:${e.color}`}>{e.id}</span>
+            <span class="pe-bar-track"><span class="pe-bar-fill" style={`width:${(100 * emoCounts[e.id] / maxCount).toFixed(1)}%;background:${e.color}`}></span></span>
+            <span class="pe-bar-count">{emoCounts[e.id].toLocaleString()}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+
+    <section aria-label="Verses">
+      <h2 id="pe-verses-h">Verses</h2>
+      <p class="pe-hint" id="pe-verses-sub">Select an emotion above.</p>
+      <ol class="pe-verses" id="pe-verses"></ol>
+    </section>
+
+    <section aria-label="Psalm by psalm">
+      <h2>Psalm by psalm</h2>
+      <p class="pe-hint">Each row is a psalm; color depth is how many verses carry that emotion. Click a psalm number to open it in the Mega Bible.</p>
+      <div class="pe-heat">
+        <div class="pe-heat-head">
+          <span class="pe-heat-corner">Ps.</span>
+          {EMOTIONS.map(e => (
+            <button class="pe-heat-col" data-emo={e.id} title={`${e.id} — ${e.blurb}`} style={`color:${e.color}`}>{e.id.slice(0, 4)}</button>
+          ))}
+        </div>
+        {Array.from({ length: 150 }, (_, i) => i + 1).map(psalm => (
+          <div class="pe-heat-row">
+            <a class="pe-heat-psalm" href={`/mega-bible/?book=Psalms&chapter=${psalm}`}>{psalm}</a>
+            {EMOTIONS.map(e => {
+              const c = (psalmEmo[psalm] && psalmEmo[psalm][e.id]) || 0;
+              const a = c ? Math.min(1, 0.25 + 0.75 * Math.min(1, c / 6)) : 0;
+              return <span class="pe-cell" title={`Psalm ${psalm} — ${e.id}: ${c} verse${c === 1 ? '' : 's'}`}
+                style={c ? `background:${e.color};opacity:${a.toFixed(2)}` : ''}></span>;
+            })}
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <footer class="pe-foot">
+      <p>Method: one Jev call per psalm (150 calls), each verse judged against all twelve
+      emotions with the whole psalm as context; tags kept at confidence ≥ 0.6. Full scores
+      in <a href="/data/psalm-emotions.json">psalm-emotions.json</a>. The pills on every
+      Psalms verse in the <a href="/mega-bible/?book=Psalms&chapter=23">Mega Bible</a> link here.</p>
+    </footer>
+  </main>
+
+  <script define:vars={{ topVerses, emoById }}>
+    const barsEl = document.getElementById('pe-bars');
+    const versesEl = document.getElementById('pe-verses');
+    const versesH = document.getElementById('pe-verses-h');
+    const versesSub = document.getElementById('pe-verses-sub');
+    let active = new URLSearchParams(location.search).get('emotion');
+    if (active && !topVerses[active]) active = null;
+
+    function renderVerses(emo) {
+      const e = emoById[emo];
+      versesH.textContent = emo.charAt(0).toUpperCase() + emo.slice(1);
+      versesSub.textContent = `${e.blurb} — top verses by confidence`;
+      versesEl.innerHTML = '';
+      for (const v of topVerses[emo]) {
+        const li = document.createElement('li');
+        li.innerHTML =
+          `<a href="/mega-bible/?book=Psalms&chapter=${v.psalm}"><strong>Psalm ${v.psalm}:${v.verse}</strong></a>` +
+          `<span class="pe-score" style="color:${e.color}">${v.score.toFixed(2)}</span>`;
+        versesEl.appendChild(li);
+      }
+      document.querySelectorAll('.pe-bar-row').forEach(b =>
+        b.setAttribute('aria-pressed', b.dataset.emo === emo ? 'true' : 'false'));
+      document.querySelectorAll('.pe-heat-col').forEach(b =>
+        b.classList.toggle('pe-col-active', b.dataset.emo === emo));
+    }
+
+    barsEl.addEventListener('click', ev => {
+      const b = ev.target.closest('.pe-bar-row');
+      if (!b) return;
+      active = b.dataset.emo;
+      history.replaceState(null, '', `?emotion=${active}`);
+      renderVerses(active);
+      versesH.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    document.querySelectorAll('.pe-heat-col').forEach(b =>
+      b.addEventListener('click', () => {
+        active = b.dataset.emo;
+        history.replaceState(null, '', `?emotion=${active}`);
+        renderVerses(active);
+        versesH.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }));
+
+    if (active) renderVerses(active);
+  </script>
+
+  <style>
+    .pe-wrap { max-width: 72rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; color: #e8e2d4; }
+    .pe-kicker { font-size: .7rem; letter-spacing: .28em; text-transform: uppercase; color: #c9a257; margin: 0 0 .6rem; }
+    .pe-wrap h1 { font-size: 2.2rem; line-height: 1.15; margin: 0 0 1rem; color: #f2ecdd; font-weight: 700; }
+    .pe-lede { font-size: 1.02rem; line-height: 1.65; opacity: .82; max-width: 46rem; margin: 0 0 2.5rem; }
+    .pe-wrap h2 { font-size: 1.25rem; color: #f2ecdd; margin: 2.5rem 0 1rem; font-weight: 600; }
+    .pe-hint { font-size: .85rem; opacity: .6; margin: 0 0 1rem; }
+    .pe-bars { display: grid; gap: .35rem; }
+    .pe-bar-row { display: grid; grid-template-columns: 7.5rem 1fr 4rem; align-items: center; gap: .8rem;
+      background: none; border: none; padding: .3rem .4rem; cursor: pointer; text-align: left; border-radius: .3rem; }
+    .pe-bar-row:hover { background: rgba(201,162,87,.07); }
+    .pe-bar-row[aria-pressed="true"] { background: rgba(201,162,87,.13); outline: 1px solid rgba(201,162,87,.4); }
+    .pe-bar-name { text-transform: uppercase; letter-spacing: .12em; font-size: .72rem; font-weight: 600; }
+    .pe-bar-track { height: .55rem; background: rgba(255,255,255,.06); border-radius: 99px; overflow: hidden; }
+    .pe-bar-fill { display: block; height: 100%; border-radius: 99px; }
+    .pe-bar-count { font-size: .8rem; opacity: .65; text-align: right; font-variant-numeric: tabular-nums; }
+    .pe-verses { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+    .pe-verses:empty { display: none; }
+    .pe-verses li { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+      padding: .45rem .7rem; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: .35rem; }
+    .pe-verses a { color: #e8e2d4; text-decoration: none; }
+    .pe-verses a:hover { color: #c9a257; }
+    .pe-verses a strong { font-weight: 600; }
+    .pe-score { font-size: .8rem; font-variant-numeric: tabular-nums; }
+    .pe-heat { overflow-x: auto; border: 1px solid rgba(255,255,255,.08); border-radius: .4rem; }
+    .pe-heat-head, .pe-heat-row { display: grid; grid-template-columns: 3rem repeat(12, 1fr); min-width: 46rem; }
+    .pe-heat-head { position: sticky; top: 0; background: #14110b; z-index: 1; }
+    .pe-heat-corner, .pe-heat-col { padding: .4rem .2rem; font-size: .62rem; text-transform: uppercase;
+      letter-spacing: .06em; text-align: center; background: none; border: none; }
+    .pe-heat-col { cursor: pointer; font-weight: 600; }
+    .pe-heat-col:hover, .pe-col-active { background: rgba(201,162,87,.12); }
+    .pe-heat-row:nth-child(odd) { background: rgba(255,255,255,.015); }
+    .pe-heat-psalm { padding: .18rem .2rem; font-size: .72rem; text-align: center; color: #c9a257;
+      text-decoration: none; font-variant-numeric: tabular-nums; }
+    .pe-heat-psalm:hover { text-decoration: underline; }
+    .pe-cell { height: 1.05rem; margin: 1px; border-radius: 2px; background: rgba(255,255,255,.04); }
+    .pe-foot { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,.1);
+      font-size: .82rem; opacity: .6; line-height: 1.6; }
+    .pe-foot a { color: #c9a257; }
+  </style>
+</Layout>
