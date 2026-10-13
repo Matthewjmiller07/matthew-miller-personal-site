@@ -1,13 +1,23 @@
 ---
-// /balashon/<parasha> — a printable two-pager of the Balashon posts filed under that week's parasha.
-// Data: src/data/balashon/posts.json, pulled from Balashon's Blogger feeds by scripts/balashon/fetch.mjs
+// /balashon/<parasha> — a two-page Shabbat reader from Balashon, David Curwin's Hebrew Language
+// Detective: the week's words that appear in the parasha, each with its verse and the opening of his
+// post, then the rest of what he has filed under the parasha.
+// Data: src/data/balashon/posts.json, built by scripts/balashon/fetch.mjs
 // (.github/workflows/balashon-fetch.yml, weekly).
 import Layout from '../../layouts/Layout.astro';
 import { weeks } from '../../data/parasha-hub';
 import balashon from '../../data/balashon/posts.json';
 
-interface Post { title: string; url: string; published: string; he: string | null; teaser: string; otherParshiot: string[] }
-const store = balashon as { fetched: string | null; parshiot: Record<string, { labels: string[]; posts: Post[] }> };
+interface Verse { ref: string; he: string; en: string; word: string }
+interface Feature {
+  title: string; url: string; published: string; he: string | null; verse: Verse | null;
+  paragraphs: string[]; complete: boolean; otherParshiot: string[];
+}
+interface Post { title: string; url: string; published: string; he: string | null; gloss?: string | null; teaser: string; verse: string | null }
+const store = balashon as unknown as {
+  fetched: string | null;
+  parshiot: Record<string, { labels: string[]; featured?: Feature[]; posts: Post[] }>;
+};
 
 export function getStaticPaths() {
   return weeks.map((w) => ({ params: { slug: w.slug } }));
@@ -20,28 +30,62 @@ const next = weeks[idx + 1];
 
 const entry = store.parshiot[week.slug];
 const label = entry?.labels[0] ?? null;
-const data = {
-  posts: entry?.posts ?? [],
-  label: entry?.labels.join(' and ') || null,
-  labelUrl: label
-    ? `https://www.balashon.com/search/label/${encodeURIComponent(label)}`
-    : `https://www.balashon.com/search?q=${encodeURIComponent(week.parsha)}`,
-};
-const trimWords = (text: string, n: number) => {
-  const words = text.replace(/…$/, '').split(/\s+/);
-  return words.length <= n ? text : `${words.slice(0, n).join(' ').replace(/[,;:.\-–—]+$/, '')}…`;
-};
+const labelUrl = label
+  ? `https://www.balashon.com/search/label/${encodeURIComponent(label)}`
+  : `https://www.balashon.com/search?q=${encodeURIComponent(week.parsha)}`;
+const featured = entry?.featured ?? [];
+const shelf = entry?.posts ?? [];
+const total = featured.length + shelf.length;
 
-// Fit two A4 pages: about 650 words of excerpt in all, shared out across the posts, and anything
-// past twelve posts goes in a title-only index at the end.
-const WITH_EXCERPT = 12;
-const shown = data.posts.slice(0, WITH_EXCERPT);
-const indexOnly = data.posts.slice(WITH_EXCERPT);
-const per = Math.max(25, Math.min(110, Math.floor(650 / Math.max(shown.length, 1))));
-const cards = shown.map((p) => ({ ...p, excerpt: trimWords(p.teaser, per) }));
-const split = Math.ceil(cards.length * 0.45); // page one also carries the masthead
-const page1 = cards.slice(0, split);
-const page2 = cards.slice(split);
+// Two A4 pages: a generous word budget per feature; the script at the bottom then trims each
+// page's longest feature, a sentence at a time, until the page fits.
+const BUDGETS = featured.length === 1 ? [560] : featured.length === 2 ? [340, 320] : [300, 260, 300];
+const words = (t: string) => t.split(/\s+/).filter(Boolean).length;
+function fit(paragraphs: string[], budget: number) {
+  const out: string[] = [];
+  let used = 0;
+  for (const para of paragraphs) {
+    const n = words(para);
+    if (used + n <= budget) { out.push(para); used += n; continue; }
+    if (budget - used >= 30 || !out.length) {
+      let part = '';
+      for (const s of para.match(/[^.!?]+[.!?]+["”’)]*\s*|[^.!?]+$/g) ?? [para]) {
+        if (words(part + s) + used > budget) break;
+        part += s;
+      }
+      if (part.trim()) out.push(part.trim());
+    }
+    return { paragraphs: out, cut: true };
+  }
+  return { paragraphs: out, cut: false };
+}
+const features = featured.map((f, i) => {
+  const { paragraphs, cut } = fit(f.paragraphs, BUDGETS[i] ?? 200);
+  return { ...f, paragraphs, more: cut || !f.complete };
+});
+const page1 = features.length === 3 ? features.slice(0, 2) : features.slice(0, features.length === 2 ? 2 : 1);
+const page2 = features.slice(page1.length);
+
+// The shelf: each post with its one-line gloss (what the word means, where it comes from), or the
+// opening of the post if it has no gloss yet.
+const trimTo = (t: string, n: number) => (words(t) <= n ? t : `${t.split(/\s+/).slice(0, n).join(' ').replace(/[,;:.\-–—]+$/, '')}…`);
+
+// Mark the word in its verse (first occurrence).
+function markVerse(he: string, word: string) {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const at = word ? he.indexOf(word) : -1;
+  if (at < 0) return esc(he);
+  return `${esc(he.slice(0, at))}<mark>${esc(word)}</mark>${esc(he.slice(at + word.length))}`;
+}
+
+const he = (w: string) => `<span class="he">${w}</span>`;
+const PROMPTS = [
+  (f: Feature) => `Read ${f.verse!.ref} aloud. Now that you know where ${he(f.verse!.word)} comes from, what do you hear in the verse that you didn't before?`,
+  (f: Feature) => `Why might the Torah say ${he(f.verse!.word)} in ${f.verse!.ref}? What would be lost with a more ordinary word?`,
+  (f: Feature) => `Balashon's account of “${f.title}” runs through other languages. Which explanation persuades you, and which doesn't?`,
+];
+const atTheTable = features.filter((f) => f.verse).slice(0, 2).map((f, i) => PROMPTS[i % PROMPTS.length](f));
+atTheTable.push('Which of this week’s words do you use in Modern Hebrew? Has the meaning moved since the Torah used it?');
 
 const shabbat = new Date(`${week.date}T12:00:00Z`).toLocaleDateString('en-GB', {
   day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
@@ -51,22 +95,22 @@ const host = (url: string) => url.replace(/^https?:\/\/(www\.)?/, '');
 ---
 
 <Layout
-  title={`${week.parsha} — Balashon 2-pager`}
-  description={`The Hebrew words of Parashat ${week.parsha} (${week.ref}), traced by Balashon, David Curwin's Hebrew Language Detective: every post he has filed under the parasha, on two printable pages.`}
+  title={`${week.parsha} — Balashon Shabbat Reader`}
+  description={`A two-page Shabbat reader for Parashat ${week.parsha} (${week.ref}) from Balashon, David Curwin's Hebrew Language Detective: the parasha's words, their verses, and where they come from.`}
 >
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
     rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Frank+Ruhl+Libre:wght@400;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Frank+Ruhl+Libre:wght@400;500;700;900&display=swap"
   />
 
   <main class="bl-shell">
     <div class="bl-bar">
       <div>
-        <a href="/parasha">Parasha Hub</a> <span class="bl-sep">·</span> Balashon 2-pager
+        <a href="/parasha">Parasha Hub</a> <span class="bl-sep">·</span> Balashon Shabbat Reader
       </div>
       <div class="bl-actions">
-        <a class="bl-btn bl-btn-ghost" href={data.labelUrl} target="_blank" rel="noopener noreferrer">On balashon.com</a>
+        <a class="bl-btn bl-btn-ghost" href={labelUrl} target="_blank" rel="noopener noreferrer">On balashon.com</a>
         <button class="bl-btn" type="button" id="bl-print">Print</button>
       </div>
     </div>
@@ -74,62 +118,70 @@ const host = (url: string) => url.replace(/^https?:\/\/(www\.)?/, '');
     <article class="sheet">
       <!-- ───────────── page 1 ───────────── -->
       <section class="page">
-        <div class="mast">
-          <div>
-            <div class="mast-he he">{week.hebrew}</div>
-            <div class="mast-en">Parashat {week.parsha}</div>
-            <div class="mast-sub">{week.ref} · Shabbat {shabbat}</div>
+        <header class="mast">
+          <div class="mast-kicker">
+            <span>Balashon</span>
+            <span class="he">בלשון</span>
+            <span>Shabbat Reader</span>
           </div>
-          <div class="mast-right">
-            <div class="mast-name">Balashon on the parasha</div>
-            <div class="he mast-tag">בלשון — בלש + לשון</div>
-            <div>the Hebrew Language Detective</div>
+          <div class="mast-he he">פרשת {week.hebrew}</div>
+          <div class="mast-en">Parashat {week.parsha}</div>
+          <div class="mast-sub">
+            {week.ref} <span class="dot">◆</span> Shabbat {shabbat}
           </div>
-        </div>
+        </header>
 
-        {data.posts.length > 0 ? (
-          <p class="dek">
-            {data.posts.length === 1 ? 'One post' : `${data.posts.length} posts`} on the Hebrew of this week's reading, as
-            David Curwin has traced them on Balashon: where each comes from, what it's related to, and what it
-            became. A taste of each below; the full post is a link away.
+        {total > 0 ? (
+          <p class="lede">
+            Words from this week's reading, traced to their roots by David Curwin, the Hebrew Language Detective.
+            Each begins with the verse where the word appears and continues in his own words.
           </p>
         ) : (
           <div class="empty">
-            {!store.fetched ? (
+            {store.fetched ? (
               <p>
-                Balashon's posts haven't been pulled in yet. Read them
-                {' '}<a href={data.labelUrl} target="_blank" rel="noopener noreferrer">on balashon.com</a>.
+                Balashon hasn't filed any posts under Parashat {week.parsha} yet.{' '}
+                <a href={labelUrl} target="_blank" rel="noopener noreferrer">Search the blog for {week.parsha}</a>, or try another week below.
               </p>
             ) : (
               <p>
-                Balashon hasn't filed any posts under Parashat {week.parsha} yet.
-                {' '}<a href={data.labelUrl} target="_blank" rel="noopener noreferrer">Search the blog for {week.parsha}</a>,
-                or try another week below.
+                Balashon's posts haven't been pulled in yet. Read them{' '}
+                <a href={labelUrl} target="_blank" rel="noopener noreferrer">on balashon.com</a>.
               </p>
             )}
           </div>
         )}
 
-        <div class="posts">
-          {page1.map((p) => (
-            <article class="post">
-              <div class="post-head">
-                <a class="post-title" href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a>
-                {p.he && <span class="he post-he">{p.he}</span>}
+        {page1.map((f, i) => (
+          <article class={`feature ${i === 0 ? 'feature-lead' : ''}`}>
+            <div class="feat-head">
+              <div>
+                <div class="feat-num">{['I', 'II', 'III'][i]}</div>
+                <h2 class="feat-title">{f.title}</h2>
               </div>
-              <p class="post-body">{p.excerpt}</p>
-              <div class="post-meta">
-                {year(p.published)}{p.otherParshiot.length > 0 && ` · also ${p.otherParshiot.join(', ')}`}
-                <span class="post-url"> · {host(p.url)}</span>
-              </div>
-            </article>
-          ))}
-        </div>
+              {f.he && <div class="feat-he he">{f.he}</div>}
+            </div>
+            {f.verse && (
+              <figure class="verse">
+                <figcaption>{f.verse.ref}</figcaption>
+                <p class="verse-he he" lang="he" set:html={markVerse(f.verse.he, f.verse.word)} />
+                <p class="verse-en">{f.verse.en}</p>
+              </figure>
+            )}
+            <div class="feat-body">
+              {f.paragraphs.map((p) => <p>{p}</p>)}
+            </div>
+            <div class="feat-foot">
+              <span><span class="more-label">{f.more ? 'Continue reading' : 'Read it, with comments,'}</span> at <a href={f.url} target="_blank" rel="noopener noreferrer">{host(f.url)}</a></span>
+              <span>Balashon, {year(f.published)}{f.otherParshiot.length > 0 && ` · also ${f.otherParshiot.join(', ')}`}</span>
+            </div>
+          </article>
+        ))}
 
         <div class="foot">
           <span>
-            Excerpts from <a href="https://www.balashon.com" target="_blank" rel="noopener noreferrer">Balashon</a>
-            {' '}by David Curwin, {data.label ? `filed under “${data.label}”` : 'searched by parasha'}; each post in full on balashon.com
+            From <a href="https://www.balashon.com" target="_blank" rel="noopener noreferrer">Balashon — Hebrew Language Detective</a> by David Curwin
+            {' '}· verses from Sefaria (Miqra according to the Masorah; JPS 1917)
           </span>
           <span>1 / 2</span>
         </div>
@@ -137,55 +189,68 @@ const host = (url: string) => url.replace(/^https?:\/\/(www\.)?/, '');
 
       <!-- ───────────── page 2 ───────────── -->
       <section class="page">
-        {page2.length > 0 && (
-          <div class="posts">
-            {page2.map((p) => (
-              <article class="post">
-                <div class="post-head">
-                  <a class="post-title" href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a>
-                  {p.he && <span class="he post-he">{p.he}</span>}
-                </div>
-                <p class="post-body">{p.excerpt}</p>
-                <div class="post-meta">
-                  {year(p.published)}{p.otherParshiot.length > 0 && ` · also ${p.otherParshiot.join(', ')}`}
-                  <span class="post-url"> · {host(p.url)}</span>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
+        {page2.map((f, i) => (
+          <article class="feature">
+            <div class="feat-head">
+              <div>
+                <div class="feat-num">{['I', 'II', 'III'][page1.length + i]}</div>
+                <h2 class="feat-title">{f.title}</h2>
+              </div>
+              {f.he && <div class="feat-he he">{f.he}</div>}
+            </div>
+            {f.verse && (
+              <figure class="verse">
+                <figcaption>{f.verse.ref}</figcaption>
+                <p class="verse-he he" lang="he" set:html={markVerse(f.verse.he, f.verse.word)} />
+                <p class="verse-en">{f.verse.en}</p>
+              </figure>
+            )}
+            <div class="feat-body">
+              {f.paragraphs.map((p) => <p>{p}</p>)}
+            </div>
+            <div class="feat-foot">
+              <span><span class="more-label">{f.more ? 'Continue reading' : 'Read it, with comments,'}</span> at <a href={f.url} target="_blank" rel="noopener noreferrer">{host(f.url)}</a></span>
+              <span>Balashon, {year(f.published)}{f.otherParshiot.length > 0 && ` · also ${f.otherParshiot.join(', ')}`}</span>
+            </div>
+          </article>
+        ))}
 
-        {indexOnly.length > 0 && (
-          <>
-            <h2 class="mt">More from Balashon on {week.parsha}</h2>
-            <ul class="more">
-              {indexOnly.map((p) => (
+        {shelf.length > 0 && (
+          <section class="shelf">
+            <h3 class="sec-h">More from Balashon on {week.parsha}</h3>
+            <ul class="shelf-list">
+              {shelf.map((p) => (
                 <li>
-                  <a href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a>
-                  {p.he && <span class="he"> {p.he}</span>} <span class="more-y">{year(p.published)}</span>
+                  <div class="shelf-top">
+                    <a href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a>
+                    {p.he && <span class="he shelf-he">{p.he}</span>}
+                    <span class="shelf-y">{year(p.published)}{p.verse && ` · ${p.verse.replace(/^.* (?=\d+:\d+$)/, '')}`}</span>
+                  </div>
+                  {(p.gloss || p.teaser) && <p class="shelf-teaser">{p.gloss ?? trimTo(p.teaser, 18)}</p>}
                 </li>
               ))}
             </ul>
-          </>
+          </section>
         )}
 
-        <h2 class="mt">For the table</h2>
-        <ol class="questions">
-          <li>Which of these words would you have guessed was related to which? Which connection surprised you?</li>
-          <li>Find each word in this week's reading. Does knowing where it comes from change how you read the verse?</li>
-          <li>Which of them do you still use in Modern Hebrew, and has the meaning moved since the Torah used it?</li>
-        </ol>
+        {total > 0 && (
+          <section class="table">
+            <h3 class="sec-h">At the table</h3>
+            <ol>
+              {atTheTable.map((q) => <li set:html={q} />)}
+            </ol>
+          </section>
+        )}
 
-        <div class="about">
-          <div class="about-name">About Balashon</div>
+        <aside class="about">
+          <div class="about-he he">בַּלָּשׁ + לָשׁוֹן</div>
           <p>
-            <em>Balashon</em> (<span class="he">בלשון</span>) is David Curwin's blog on the origins of Hebrew words,
-            running since 2006. The name joins <span class="he">בַּלָּשׁ</span>, detective, and{' '}
-            <span class="he">לָשׁוֹן</span>, language. He files each post under the parshiyot whose words it
-            discusses; this sheet gathers that week's shelf. Read, comment and subscribe at{' '}
-            <a href="https://www.balashon.com" target="_blank" rel="noopener noreferrer">balashon.com</a>.
+            <strong>Balashon</strong> joins <span class="he">בַּלָּשׁ</span>, detective, and <span class="he">לָשׁוֹן</span>,
+            language. David Curwin has written it since 2006, following Hebrew words back through the Bible,
+            the Rabbis and the languages around them, and forward into the Hebrew spoken today. Read the posts
+            in full at <a href="https://www.balashon.com" target="_blank" rel="noopener noreferrer">balashon.com</a>.
           </p>
-        </div>
+        </aside>
 
         <div class="foot">
           <span>theothermatthewmiller.com/balashon/{week.slug} · more for this week at /parasha</span>
@@ -204,24 +269,61 @@ const host = (url: string) => url.replace(/^https?:\/\/(www\.)?/, '');
 
 <script>
   document.getElementById('bl-print')?.addEventListener('click', () => window.print());
+
+  // Make each A4 page fit: while a page overflows, take the last sentence off its longest feature
+  // (then shelf teasers, then shelf entries). Only on the fixed-size pages of desktop and print.
+  const words = (el: Element) => (el.textContent ?? '').split(/\s+/).filter(Boolean).length;
+  function fitPage(page: HTMLElement) {
+    for (let guard = 0; guard < 400 && page.scrollHeight > page.clientHeight + 1; guard++) {
+      const bodies = [...page.querySelectorAll<HTMLElement>('.feat-body')].filter((b) => b.children.length);
+      const body = bodies.sort((a, b) => words(b) - words(a))[0];
+      if (body && words(body) > 120) {
+        const last = body.lastElementChild as HTMLElement;
+        const text = (last.dataset.full ?? last.textContent ?? '').replace(/…$/, '').trim();
+        const sentences = text.match(/[^.!?]+[.!?]+["”’)]*\s*|[^.!?]+$/g) ?? [text];
+        if (sentences.length > 1) {
+          last.dataset.full = sentences.slice(0, -1).join('').trim();
+          last.textContent = `${last.dataset.full}…`;
+        } else {
+          last.remove();
+          const prev = body.lastElementChild as HTMLElement | null;
+          if (prev && !prev.textContent?.endsWith('…')) prev.textContent = `${prev.textContent?.trim()}…`;
+        }
+        body.closest('.feature')?.querySelector('.more-label')?.replaceChildren('Continue reading');
+        continue;
+      }
+      const teaser = [...page.querySelectorAll('.shelf-teaser')].pop();
+      if (teaser) { teaser.remove(); continue; }
+      const item = [...page.querySelectorAll('.shelf-list li')].pop();
+      if (item) { item.remove(); continue; }
+      break;
+    }
+  }
+  const fitAll = () => {
+    if (!window.matchMedia('(min-width: 721px)').matches) return;
+    document.querySelectorAll<HTMLElement>('.sheet .page').forEach(fitPage);
+  };
+  document.fonts.ready.then(fitAll);
 </script>
 
 <style is:global>
   /* A paper document on a dark site: opt out of the global theme locally, as /uriel-simon does. */
-  body:has(.bl-shell) { background: #181514 !important; }
+  body:has(.bl-shell) { background: #1a1714 !important; }
   body:has(.bl-shell) > footer { display: none !important; }
 
   .bl-shell {
-    --ink: #2a2422;
-    --muted: #6d625d;
-    --faint: #a3958f;
-    --rule: #e0d5cf;
-    --surface: #fbf8f5;
-    --accent: #8f3b2b;
-    --pad: 13mm 15mm;
+    --ink: #221d19;
+    --muted: #6b6159;
+    --faint: #a1958a;
+    --rule: #ddd2c4;
+    --paper: #fbf7ef;
+    --wash: #f3ece0;
+    --accent: #8c2f1f;
+    --mark: #f2d9a6;
+    --pad: 11mm 13mm 12mm;
     min-height: 100vh;
     padding: 1.25rem 1rem 3rem;
-    background: #181514;
+    background: #1a1714;
     font-family: 'EB Garamond', Georgia, serif;
   }
   .dark .bl-shell, .dark .bl-shell * { color: inherit; }
@@ -231,101 +333,135 @@ const host = (url: string) => url.replace(/^https?:\/\/(www\.)?/, '');
   .bl-bar, .bl-nav {
     max-width: 210mm; margin: 0 auto 1rem; display: flex; flex-wrap: wrap; gap: .75rem;
     align-items: center; justify-content: space-between;
-    font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: #a3958f;
+    font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: #a1958a;
   }
   .bl-nav { margin: 1.25rem auto 0; }
-  .bl-shell .bl-bar a, .bl-shell .bl-nav a { color: #e6ab9c; text-decoration: none; }
+  .bl-shell .bl-bar a, .bl-shell .bl-nav a { color: #e3b09f; text-decoration: none; }
   .bl-shell .bl-bar a:hover, .bl-shell .bl-nav a:hover { text-decoration: underline; }
   .bl-shell .bl-sep { opacity: .5; padding: 0 .25rem; }
   .bl-actions { display: flex; gap: .5rem; }
   .bl-shell .bl-btn {
-    display: inline-block; padding: .4rem .85rem; border: 1px solid #6a3a32;
-    background: #2a1815; color: #f3d6ce !important; border-radius: 3px;
+    display: inline-block; padding: .4rem .85rem; border: 1px solid #6a3a2e;
+    background: #2b1914; color: #f3d6cb !important; border-radius: 3px;
     font: inherit; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
     text-decoration: none; cursor: pointer;
   }
-  .bl-shell .bl-btn:hover { background: #3a211c; border-color: #9a5547; text-decoration: none; }
+  .bl-shell .bl-btn:hover { background: #3a221b; border-color: #9a5545; text-decoration: none; }
   .bl-shell .bl-btn-ghost { background: transparent; }
 
   /* ── the sheet ── */
   .bl-shell .sheet { max-width: 210mm; margin: 0 auto; }
   .bl-shell .sheet .page {
-    background: var(--surface); color: var(--ink);
-    padding: var(--pad); margin-bottom: 1.25rem;
+    background: var(--paper); color: var(--ink);
+    padding: var(--pad); margin-bottom: 1.25rem; height: 297mm; overflow: hidden;
+    display: flex; flex-direction: column;
     font-size: 10.5pt; line-height: 1.45;
-    box-shadow: 0 2px 24px rgba(0, 0, 0, .55);
+    box-shadow: 0 2px 28px rgba(0, 0, 0, .6);
   }
   .bl-shell .sheet .page:last-child { margin-bottom: 0; }
-  .bl-shell .sheet p { margin: 0 0 5pt; }
+  .bl-shell .sheet p { margin: 0; }
   .bl-shell .sheet a { color: var(--accent); }
-  .bl-shell .sheet .mast {
-    border-bottom: 2px solid var(--ink); padding-bottom: 5pt; margin-bottom: 9pt;
-    display: flex; align-items: flex-end; justify-content: space-between; gap: 12pt;
+
+  /* masthead */
+  .bl-shell .sheet .mast { text-align: center; padding-bottom: 7pt; border-bottom: 3px double var(--ink); margin-bottom: 9pt; }
+  .bl-shell .sheet .mast-kicker {
+    display: flex; justify-content: center; align-items: center; gap: 9pt;
+    font-size: 7.5pt; letter-spacing: .28em; text-transform: uppercase; color: var(--accent); font-weight: 600;
+    border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); padding: 3pt 0; margin-bottom: 7pt;
   }
-  .bl-shell .sheet .mast-he { font-size: 28pt; font-weight: 700; line-height: 1.05; text-align: left; }
-  .bl-shell .sheet .mast-en { font-size: 14pt; font-weight: 600; letter-spacing: .02em; }
-  .bl-shell .sheet .mast-sub { font-size: 8.5pt; color: var(--muted); font-style: italic; }
-  .bl-shell .sheet .mast-right { text-align: right; font-size: 8.5pt; color: var(--muted); line-height: 1.35; }
-  .bl-shell .sheet .mast-name {
-    font-size: 8pt; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 600;
-  }
-  .bl-shell .sheet .mast-tag { font-size: 11pt; color: var(--ink); }
-  .bl-shell .sheet .dek { font-size: 11pt; font-style: italic; color: var(--muted); margin-bottom: 9pt; }
+  .bl-shell .sheet .mast-kicker .he { font-size: 10pt; letter-spacing: 0; color: var(--ink); }
+  .bl-shell .sheet .mast-he { font-size: 34pt; font-weight: 900; line-height: 1; letter-spacing: .01em; }
+  .bl-shell .sheet .mast-en { font-size: 13pt; font-style: italic; margin-top: 2pt; }
+  .bl-shell .sheet .mast-sub { font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-top: 3pt; }
+  .bl-shell .sheet .mast-sub .dot { color: var(--accent); font-size: 6pt; padding: 0 4pt; vertical-align: 1pt; }
+  .bl-shell .sheet .lede { font-size: 10.5pt; font-style: italic; color: var(--muted); text-align: center; margin: 0 8mm 10pt; }
   .bl-shell .sheet .empty { padding: 10pt 12pt; border: 1px dashed var(--rule); color: var(--muted); font-style: italic; }
-  .bl-shell .sheet h2 {
-    font-size: 8pt; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
-    color: var(--accent); margin: 0 0 6pt; padding-bottom: 3pt; border-bottom: 1px solid var(--rule);
-  }
-  .bl-shell .sheet h2.mt { margin-top: 11pt; }
 
-  .bl-shell .sheet .posts { columns: 2; column-gap: 14pt; }
-  .bl-shell .sheet .post {
-    break-inside: avoid; margin: 0 0 9pt; padding-top: 5pt; border-top: 1px solid var(--rule);
-  }
-  .bl-shell .sheet .post-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8pt; }
-  .bl-shell .sheet .post-title { font-size: 13pt; font-weight: 600; color: var(--ink); text-decoration: none; line-height: 1.2; }
-  .bl-shell .sheet .post-title:hover { text-decoration: underline; }
-  .bl-shell .sheet .post-he { font-size: 14pt; color: var(--accent); white-space: nowrap; }
-  .bl-shell .sheet .post-body { font-size: 9.8pt; text-align: justify; hyphens: auto; margin: 2pt 0 2pt; }
-  .bl-shell .sheet .post-meta { font-size: 7.5pt; color: var(--faint); letter-spacing: .03em; }
+  /* features */
+  .bl-shell .sheet .feature { margin-bottom: 11pt; }
+  .bl-shell .sheet .feature + .feature { padding-top: 9pt; border-top: 1px solid var(--rule); }
+  .bl-shell .sheet .feat-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12pt; margin-bottom: 5pt; }
+  .bl-shell .sheet .feat-num { font-size: 7pt; letter-spacing: .3em; color: var(--accent); font-weight: 600; }
+  .bl-shell .sheet .feat-title { font-size: 19pt; font-weight: 500; line-height: 1.05; margin: 0; font-style: italic; color: var(--ink); }
+  .bl-shell .sheet .feat-he { font-size: 30pt; font-weight: 700; line-height: 1; color: var(--accent); }
+  .bl-shell .sheet .feature-lead .feat-title { font-size: 23pt; }
+  .bl-shell .sheet .feature-lead .feat-he { font-size: 38pt; }
 
-  .bl-shell .sheet .more { columns: 2; column-gap: 14pt; margin: 0; padding-left: 12pt; font-size: 9.5pt; }
-  .bl-shell .sheet .more li { margin-bottom: 1.5pt; break-inside: avoid; }
-  .bl-shell .sheet .more-y { color: var(--faint); font-size: 8pt; }
-  .bl-shell .sheet .questions { margin: 0; padding-left: 16pt; }
-  .bl-shell .sheet .questions li { margin-bottom: 3pt; font-size: 10pt; }
+  .bl-shell .sheet .verse {
+    margin: 0 0 7pt; padding: 6pt 11pt; background: var(--wash);
+    border-right: 3px solid var(--accent);
+  }
+  .bl-shell .sheet .verse figcaption {
+    font-size: 7pt; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin-bottom: 1pt;
+  }
+  .bl-shell .sheet .verse-he { font-size: 14pt; line-height: 1.7; text-align: right; }
+  .bl-shell .sheet .verse-he mark { background: linear-gradient(transparent 55%, var(--mark) 55%); color: var(--accent); padding: 0 1pt; font-weight: 700; }
+  .bl-shell .sheet .verse-en { font-size: 9.5pt; font-style: italic; color: var(--muted); margin-top: 1pt; }
+
+  .bl-shell .sheet .feat-body { columns: 2; column-gap: 7mm; column-rule: 1px solid var(--rule); }
+  .bl-shell .sheet .feat-body p { font-size: 10pt; text-align: justify; hyphens: auto; text-indent: 1.1em; }
+  .bl-shell .sheet .feat-body p:first-child { text-indent: 0; }
+  .bl-shell .sheet .feat-body p:first-child::first-letter {
+    float: left; font-size: 30pt; line-height: .85; padding: 2pt 3pt 0 0; color: var(--accent); font-weight: 600;
+  }
+  .bl-shell .sheet .feat-foot {
+    display: flex; justify-content: space-between; gap: 10pt; flex-wrap: wrap;
+    margin-top: 4pt; font-size: 8pt; color: var(--faint); font-style: italic;
+  }
+
+  /* page 2 */
+  .bl-shell .sheet .sec-h {
+    font-size: 7.5pt; font-weight: 600; letter-spacing: .24em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 5pt; padding-bottom: 3pt; border-bottom: 1px solid var(--ink);
+  }
+  .bl-shell .sheet .shelf { margin: 4pt 0 11pt; }
+  .bl-shell .sheet .shelf-list { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 7mm; }
+  .bl-shell .sheet .shelf-list li { break-inside: avoid; padding: 2pt 0; border-bottom: 1px dotted var(--rule); }
+  .bl-shell .sheet .shelf-top { display: flex; align-items: baseline; gap: 5pt; flex-wrap: wrap; }
+  .bl-shell .sheet .shelf-top a { font-weight: 600; color: var(--ink); text-decoration: none; font-size: 10.5pt; }
+  .bl-shell .sheet .shelf-he { color: var(--accent); font-size: 11pt; }
+  .bl-shell .sheet .shelf-y { margin-left: auto; font-size: 7.5pt; color: var(--faint); }
+  .bl-shell .sheet .shelf-teaser { font-size: 8.8pt; color: var(--muted); line-height: 1.3; }
+
+  .bl-shell .sheet .table ol { margin: 0; padding-left: 15pt; list-style: decimal; }
+  .bl-shell .sheet .table li { font-size: 10pt; margin-bottom: 3pt; padding-left: 2pt; }
+  .bl-shell .sheet .table li::marker { color: var(--accent); font-weight: 600; }
+
   .bl-shell .sheet .about {
-    margin-top: 11pt; padding: 7pt 10pt; border: 1px solid var(--rule); background: #fff;
-    font-size: 9.3pt; color: var(--muted);
+    margin-top: auto; display: flex; gap: 11pt; align-items: center;
+    padding: 8pt 11pt; background: var(--wash); font-size: 9pt; color: var(--muted); line-height: 1.4;
   }
-  .bl-shell .sheet .about p { margin: 0; }
-  .bl-shell .sheet .about-name {
-    font-size: 7.5pt; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin-bottom: 2pt;
-  }
+  .bl-shell .sheet .about-he { font-size: 14pt; font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .bl-shell .sheet .about strong { color: var(--ink); }
   .bl-shell .sheet .foot {
-    margin-top: 10pt; padding-top: 5pt; border-top: 1px solid var(--rule);
+    margin-top: auto; padding-top: 5pt; border-top: 1px solid var(--rule);
     font-size: 7pt; color: var(--faint); display: flex; justify-content: space-between; gap: 10pt;
   }
-  .bl-shell .sheet .foot a { color: inherit; text-decoration: underline; }
+  .bl-shell .sheet .about + .foot { margin-top: 8pt; }
+  .bl-shell .sheet .foot a { color: inherit; }
 
   @media (max-width: 720px) {
-    .bl-shell { --pad: 7mm 5mm; padding: 1rem .5rem 2rem; }
-    .bl-shell .sheet .mast { flex-direction: column; align-items: flex-start; }
-    .bl-shell .sheet .mast-right { text-align: left; }
-    .bl-shell .sheet .posts, .bl-shell .sheet .more { columns: 1; }
-    .bl-shell .sheet .post-body { text-align: left; }
+    .bl-shell { --pad: 8mm 5mm; padding: 1rem .5rem 2rem; }
+    .bl-shell .sheet .page { height: auto; overflow: visible; }
+    .bl-shell .sheet .feat-body, .bl-shell .sheet .shelf-list { columns: 1; }
+    .bl-shell .sheet .feat-body p { text-align: left; }
+    .bl-shell .sheet .mast-he { font-size: 26pt; }
+    .bl-shell .sheet .feat-he { font-size: 24pt; }
+    .bl-shell .sheet .about { flex-direction: column; align-items: flex-start; }
   }
 
-  @page { size: A4; margin: 12mm 14mm; }
+  @page { size: A4; margin: 11mm 13mm; }
   @media print {
-    body:has(.bl-shell) { background: #fff !important; }
-    body:has(.bl-shell) > nav, body:has(.bl-shell) header { display: none !important; }
+    body:has(.bl-shell) { background: #fff !important; padding: 0 !important; margin: 0 !important; }
+    body:has(.bl-shell) > nav, body:has(.bl-shell) header:not(.mast) { display: none !important; }
     .bl-shell { padding: 0; background: #fff; min-height: 0; }
     .bl-bar, .bl-nav { display: none; }
     .bl-shell .sheet { max-width: none; }
-    .bl-shell .sheet .page { padding: 0; margin: 0; box-shadow: none; background: #fff; page-break-after: always; font-size: 10pt; }
-    .bl-shell .sheet .page:last-child { page-break-after: auto; }
-    .bl-shell .sheet .post-url { display: inline; }
+    .bl-shell .sheet .page {
+      padding: 0; margin: 0; box-shadow: none; background: #fff;
+      height: 274mm; overflow: hidden; break-after: page;
+    }
+    .bl-shell .sheet .page:last-child { break-after: auto; }
+    .bl-shell .sheet .verse, .bl-shell .sheet .about { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
-  @media screen { .bl-shell .sheet .post-url { display: none; } }
 </style>
