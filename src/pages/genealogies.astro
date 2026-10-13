@@ -654,6 +654,9 @@ const maxGen = Math.max(...people.map((p) => p.gen));
       const mother = p.mother ? link(p.mother) : '';
       const total = NAMES ? countPerson(p, true) : null;
       const allTime = NAMES ? uniq(p.names).reduce((t, s) => t + Object.values(NAMES.names[s]?.totals || {}).reduce((a, b) => a + b, 0), 0) : null;
+      // CBS gives a year only where 5+ babies got the name that year; the rest are in the all-time total alone.
+      const yearly = NAMES ? uniq(p.names).reduce((t, s) => t + Object.values(NAMES.names[s]?.series || {}).flat().reduce((a, b) => a + b, 0), 0) : null;
+      const unplaced = allTime != null ? allTime - yearly : 0;
       const best = NAMES ? uniq(p.names).map((s) => NAMES.names[s]?.bestRank).filter(Boolean).sort((a, b) => a[0] - b[0])[0] : null;
       const sefaria = `https://www.sefaria.org/${encodeURIComponent(p.ref.replace(/ /g, '_'))}`;
       detail.innerHTML = `
@@ -675,6 +678,7 @@ const maxGen = Math.max(...people.map((p) => p.gen));
         ${p.names.length ? `
           <div class="bignum">${total != null ? fmt(total) : '…'}</div>
           <div class="muted" style="font-size:.9rem">babies named <span class="he">${uniq(p.names).join(' / ')}</span>, ${S.y0}–${S.y1}, by your filters${allTime != null ? `. All-time total, every group: ${fmt(allTime)}` : ''}${best ? `. Best rank: #${best[0]} (${best[1].split('|')[0]} ${best[1].split('|')[1] === 'M' ? 'boys' : 'girls'}, ${best[1].split('|')[2]})` : ''}.</div>
+          ${unplaced > 0 ? `<div class="note">${yearly === 0 ? `All ${fmt(allTime)}` : `${fmt(unplaced)} of the ${fmt(allTime)}`} came in years with fewer than 5 babies given the name. The CBS doesn't say which years those were, so the filters above can't count them.</div>` : ''}
           <svg id="spark" role="img" aria-label="Births per year by population group"></svg>
           <div class="legend" id="spark-legend"></div>
           ${p.caveat ? `<div class="caveat">${esc(p.caveat)}</div>` : ''}
