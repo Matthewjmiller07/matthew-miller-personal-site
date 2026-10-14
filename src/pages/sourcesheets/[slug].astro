@@ -17,6 +17,23 @@ for (const src of sheet.sources ?? []) {
   else sections.push({ title: src.section, sources: [src] });
 }
 let n = 0;
+
+// Render http(s) URLs in notes as clickable links; everything else HTML-escaped.
+function linkify(text: string): string {
+  const esc = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  return esc.replace(/(https?:\/\/[^\s<)"]+)/g, (url) => {
+    const clean = url.replace(/[.,;:!?]+$/, '');
+    const trail = url.slice(clean.length);
+    return `<a href="${clean}" target="_blank" rel="noopener">${clean}</a>${trail}`;
+  });
+}
+
+// Sources tagged not-on-sefaria (e.g. research papers) get no Sefaria ref link.
+const onSefaria = (src: SheetSource) => !(src.tags ?? []).includes('not-on-sefaria');
 ---
 
 <Layout title={sheet.title} description={sheet.subtitle ?? sheet.intro ?? `A source sheet: ${sheet.title}`}>
@@ -44,14 +61,18 @@ let n = 0;
           <article class="ss-source">
             <p class="ss-ref">
               <span class="ss-num">{++n}</span>
-              <a href={sefariaUrl(src.ref)} target="_blank" rel="noopener">{src.ref}</a>
+              {onSefaria(src) ? (
+                <a href={sefariaUrl(src.ref)} target="_blank" rel="noopener">{src.ref}</a>
+              ) : (
+                <span>{src.ref}</span>
+              )}
               {src.author && src.author !== src.ref && <span class="ss-author">{src.author}</span>}
             </p>
             <div class="ss-texts">
               {src.he_text && <p class="ss-he" dir="rtl" lang="he">{src.he_text}</p>}
               {src.en_text && <p class="ss-en">{src.en_text}</p>}
             </div>
-            {src.note && <p class="ss-note">{src.note}</p>}
+            {src.note && <p class="ss-note" set:html={linkify(src.note)} />}
           </article>
         ))}
       </section>
@@ -87,6 +108,7 @@ let n = 0;
   .ss-he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.3rem; line-height: 1.75; margin: 0; }
   .ss-en { margin: 0; }
   .ss-note { margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed var(--line); color: var(--muted); font-style: italic; }
+  .ss-note a { color: var(--accent); }
   @media (max-width: 640px) {
     .ss-texts { grid-template-columns: 1fr; gap: 12px; }
     .ss h1 { font-size: 2rem; }
