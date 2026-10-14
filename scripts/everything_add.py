@@ -56,6 +56,22 @@ def main():
     entry_id = args.id or f"{date}-{args.type}"
     details = json.loads(args.details) if args.details else {}
 
+    rel = os.path.relpath(MANIFEST, WORK)
+    if args.push:
+        # Repo-freshness rule (2026-10-11, fixed 2026-10-14): sync to latest
+        # main BEFORE writing. The old code wrote first and then aborted on
+        # its own dirty tree — --push could never succeed.
+        subprocess.run(["git", "fetch", "origin", "main"], cwd=WORK,
+                       check=True)
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain"], cwd=WORK,
+            capture_output=True, text=True).stdout.strip()
+        if dirty:
+            raise SystemExit(
+                f"--push ABORTED: site repo has local changes:\n{dirty}")
+        subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=WORK,
+                       check=True)
+
     manifest = load()
     entry = {
         "id": entry_id,
@@ -76,31 +92,7 @@ def main():
     print(f"wrote entry {entry_id} ({len(entries)} total)")
 
     if args.push:
-        # Repo-freshness rule (2026-10-11): sync to latest main BEFORE writing,
-        # commit only the manifest, refuse if anything else is staged.
-        rel = os.path.relpath(MANIFEST, WORK)
-        subprocess.run(["git", "fetch", "origin", "main"], cwd=WORK,
-                       check=True)
-        dirty = subprocess.run(
-            ["git", "status", "--porcelain"], cwd=WORK,
-            capture_output=True, text=True).stdout.strip()
-        if dirty:
-            raise SystemExit(
-                f"--push ABORTED: site repo has local changes:\n{dirty}")
-        subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=WORK,
-                       check=True)
-        # re-read + re-apply on the fresh tree (the reset just discarded the
-        # entry written above), then commit and push only this file
-        manifest = load()
-        entries = [e for e in manifest.get("entries", [])
-                   if e.get("id") != entry_id]
-        entries.append(entry)
-        entries.sort(key=lambda e: (e.get("date", ""), e.get("id", "")),
-                     reverse=True)
-        manifest["entries"] = entries
-        manifest["updated"] = datetime.now(
-            ZoneInfo("Asia/Jerusalem")).isoformat(timespec="seconds")
-        save(manifest)
+        # Commit only the manifest, then push via the Git Data API.
         subprocess.run(["git", "add", rel], cwd=WORK, check=True)
         staged = subprocess.run(
             ["git", "diff", "--cached", "--name-only"], cwd=WORK,
