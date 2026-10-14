@@ -1,0 +1,46 @@
+---
+// Client-side ticker of the latest random facts (Supabase, anon key).
+// Fetches in the browser so the homepage never needs a rebuild for new facts.
+const url = import.meta.env.PUBLIC_SUPABASE_URL;
+const key = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+---
+<div id="rf-home-ticker" class="hidden border-y border-white/10 bg-[#0a0908]" data-url={url} data-key={key}>
+  <div class="mx-auto flex max-w-6xl items-center gap-4 px-4 py-2.5">
+    <a href="/random-facts" class="shrink-0 text-xs font-bold uppercase tracking-[0.25em] text-[#c9a86a] hover:text-accent">
+      Random&nbsp;facts
+    </a>
+    <div class="relative flex-1 overflow-hidden">
+      <div class="rf-home-track flex w-max whitespace-nowrap text-sm text-[#c9c0ad] select-none"></div>
+    </div>
+    <a href="/random-facts" class="shrink-0 text-sm text-[#c9c0ad] hover:text-accent" aria-label="All random facts">→</a>
+  </div>
+</div>
+<style>
+  .rf-home-track { animation: rf-home-scroll 45s linear infinite; }
+  .rf-home-track:hover { animation-play-state: paused; }
+  @keyframes rf-home-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+</style>
+<script>
+  (async () => {
+    const el = document.getElementById('rf-home-ticker');
+    if (!el) return;
+    const url = el.dataset.url, key = el.dataset.key;
+    if (!url || !key) return;
+    const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    try {
+      const r = await fetch(
+        `${url}/rest/v1/random_facts?select=fact&status=eq.published&order=created_at.desc&limit=20`,
+        { headers: { apikey: key } }
+      );
+      if (!r.ok) return;
+      const facts = await r.json();
+      if (!facts.length) return;
+      const chunk = facts
+        .map((f) => `<a href="/random-facts" class="mx-5 hover:text-[#f4eee1]">${esc(f.fact)}</a><span class="text-[#c9a86a]">✦</span>`)
+        .join('');
+      const half = `<span class="flex items-center">${chunk}</span>`;
+      el.querySelector('.rf-home-track').innerHTML = half + half.replace('<span', '<span aria-hidden="true"');
+      el.classList.remove('hidden');
+    } catch { /* stay hidden when offline or unreachable */ }
+  })();
+</script>
