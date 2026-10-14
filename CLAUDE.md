@@ -55,3 +55,8 @@ New source sheets live in Supabase (main project), not in hand-built pages: one 
 live at `/sourcesheets/<slug>` and are listed on `/sourcesheets`. Only `status = 'published'`
 sheets are readable with the anon key. Schema and the Wisdom seed: `source-sheets-supabase-setup.sql`.
 When Matthew shares a source for a sheet, pull the Hebrew from Sefaria and insert it as a new row.
+A source can also carry a video: set `video_url` (any YouTube link; `?t=` is honored, or use `video_start`
+seconds) and it embeds in the card. Optional `video_summary` shows under it and `video_transcript` sits in a
+collapsible block. When Matthew shares a YouTube link for a sheet, insert it as a source row; fetch the
+transcript with `scripts/sourcesheets/youtube_transcript.py` (YouTube may block cloud IPs, so if it fails ask
+Matthew to paste the transcript) and write the summary yourself.

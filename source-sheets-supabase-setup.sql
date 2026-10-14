@@ -24,8 +24,19 @@ create table if not exists public.source_sheet_sources (
   en_text text,
   note text,                 -- Matthew's gloss / why this source is here
   tags text[] not null default '{}',
+  video_url text,            -- optional YouTube link (watch, youtu.be, shorts, embed); renders an embed
+  video_start int,           -- optional start time in seconds (a ?t= in the URL also works)
+  video_summary text,        -- short summary shown under the video
+  video_transcript text,     -- full transcript, shown in a collapsible block
   created_at timestamptz not null default now()
 );
+
+-- Existing databases: add the video columns.
+alter table public.source_sheet_sources
+  add column if not exists video_url text,
+  add column if not exists video_start int,
+  add column if not exists video_summary text,
+  add column if not exists video_transcript text;
 
 create index if not exists source_sheet_sources_sheet_idx on public.source_sheet_sources (sheet_id, position);
 

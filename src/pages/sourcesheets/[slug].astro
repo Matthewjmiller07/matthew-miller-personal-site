@@ -2,7 +2,7 @@
 // A source sheet rendered live from Supabase (source_sheets + source_sheet_sources).
 // Add or reorder sources in the database and the page updates on the next request.
 import Layout from '../../layouts/Layout.astro';
-import { getSheet, sefariaUrl, type SheetSource } from '../../lib/sourcesheets';
+import { getSheet, parseYouTube, sefariaUrl, type SheetSource } from '../../lib/sourcesheets';
 
 export const prerender = false;
 
@@ -72,6 +72,32 @@ const onSefaria = (src: SheetSource) => !(src.tags ?? []).includes('not-on-sefar
               {src.he_text && <p class="ss-he" dir="rtl" lang="he">{src.he_text}</p>}
               {src.en_text && <p class="ss-en">{src.en_text}</p>}
             </div>
+            {(() => {
+              const yt = parseYouTube(src.video_url, src.video_start);
+              if (!yt) return null;
+              const q = yt.start ? `&start=${yt.start}` : '';
+              return (
+                <div class="ss-video">
+                  <div class="ss-frame">
+                    <iframe
+                      src={`https://www.youtube-nocookie.com/embed/${yt.id}?rel=0${q}`}
+                      title={`Video: ${src.ref}`}
+                      loading="lazy"
+                      allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                      allowfullscreen
+                    ></iframe>
+                  </div>
+                  <a class="ss-video-print" href={`https://youtu.be/${yt.id}`}>https://youtu.be/{yt.id}</a>
+                  {src.video_summary && <p class="ss-vsum">{src.video_summary}</p>}
+                  {src.video_transcript && (
+                    <details class="ss-vtrans">
+                      <summary>Transcript</summary>
+                      <p>{src.video_transcript}</p>
+                    </details>
+                  )}
+                </div>
+              );
+            })()}
             {src.note && <p class="ss-note" set:html={linkify(src.note)} />}
           </article>
         ))}
@@ -109,12 +135,21 @@ const onSefaria = (src: SheetSource) => !(src.tags ?? []).includes('not-on-sefar
   .ss-en { margin: 0; }
   .ss-note { margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed var(--line); color: var(--muted); font-style: italic; }
   .ss-note a { color: var(--accent); }
+  .ss-video { margin-top: 14px; }
+  .ss-frame { position: relative; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; background: #000; }
+  .ss-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .ss-video-print { display: none; }
+  .ss-vsum { margin: 10px 0 0; }
+  .ss-vtrans { margin-top: 8px; color: var(--muted); font-size: 1rem; }
+  .ss-vtrans summary { cursor: pointer; color: var(--accent); }
+  .ss-vtrans p { white-space: pre-wrap; margin: 8px 0 0; max-height: 18rem; overflow-y: auto; }
   @media (max-width: 640px) {
     .ss-texts { grid-template-columns: 1fr; gap: 12px; }
     .ss h1 { font-size: 2rem; }
   }
   @media print {
-    .ss-back, .ss-print { display: none; }
+    .ss-back, .ss-print, .ss-frame, .ss-vtrans { display: none; }
+    .ss-video-print { display: block; }
     .ss { padding: 0; }
     .ss-source { border-color: #ccc; }
   }

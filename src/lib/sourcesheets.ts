@@ -13,6 +13,10 @@ export interface SheetSource {
   en_text: string | null;
   note: string | null;
   tags: string[];
+  video_url: string | null;
+  video_start: number | null;
+  video_summary: string | null;
+  video_transcript: string | null;
 }
 
 export interface Sheet {
@@ -49,7 +53,7 @@ export async function getSheet(slug: string): Promise<Sheet | null> {
   if (!client) return null;
   const { data, error } = await client
     .from('source_sheets')
-    .select('id, slug, title, title_he, subtitle, intro, updated_at, sources:source_sheet_sources(id, position, section, ref, author, he_text, en_text, note, tags)')
+    .select('id, slug, title, title_he, subtitle, intro, updated_at, sources:source_sheet_sources(id, position, section, ref, author, he_text, en_text, note, tags, video_url, video_start, video_summary, video_transcript)')
     .eq('slug', slug)
     .maybeSingle();
   if (error || !data) return null;
@@ -59,3 +63,26 @@ export async function getSheet(slug: string): Promise<Sheet | null> {
 }
 
 export const sefariaUrl = (ref: string) => `https://www.sefaria.org/${encodeURI(ref.replace(/ /g, '_'))}`;
+
+// Pull the video id and start time out of any YouTube link (watch, youtu.be, shorts, embed, live).
+export function parseYouTube(url: string | null, startOverride?: number | null): { id: string; start: number } | null {
+  if (!url) return null;
+  let u: URL;
+  try { u = new URL(url.trim()); } catch { return null; }
+  const host = u.hostname.replace(/^(www|m)\./, '');
+  let id: string | null = null;
+  if (host === 'youtu.be') id = u.pathname.slice(1).split('/')[0];
+  else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+    id = u.searchParams.get('v');
+    const m = u.pathname.match(/^\/(?:shorts|embed|live|v)\/([^/?]+)/);
+    if (!id && m) id = m[1];
+  }
+  if (!id || !/^[\w-]{11}$/.test(id)) return null;
+  let start = startOverride ?? 0;
+  if (!start) {
+    const t = u.searchParams.get('t') ?? u.searchParams.get('start') ?? '';
+    const hms = t.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/);
+    if (hms) start = (+(hms[1] ?? 0)) * 3600 + (+(hms[2] ?? 0)) * 60 + (+(hms[3] ?? 0));
+  }
+  return { id, start: start || 0 };
+}
