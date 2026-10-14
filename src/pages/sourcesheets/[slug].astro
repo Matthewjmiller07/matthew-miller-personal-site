@@ -34,6 +34,13 @@ function linkify(text: string): string {
 
 // Sources tagged not-on-sefaria (e.g. research papers) get no Sefaria ref link.
 const onSefaria = (src: SheetSource) => !(src.tags ?? []).includes('not-on-sefaria');
+
+// Original-text language: Hebrew (RTL) by default; a lang:XX tag (e.g. lang:de)
+// renders it left-to-right in a Latin serif face instead.
+const srcLang = (src: SheetSource) => {
+  const t = (src.tags ?? []).find((t) => t.startsWith('lang:'));
+  return t ? t.slice(5) : 'he';
+};
 ---
 
 <Layout title={sheet.title} description={sheet.subtitle ?? sheet.intro ?? `A source sheet: ${sheet.title}`}>
@@ -69,7 +76,15 @@ const onSefaria = (src: SheetSource) => !(src.tags ?? []).includes('not-on-sefar
               {src.author && src.author !== src.ref && <span class="ss-author">{src.author}</span>}
             </p>
             <div class="ss-texts">
-              {src.he_text && <p class="ss-he" dir="rtl" lang="he">{src.he_text}</p>}
+              {src.he_text && (
+                <p
+                  class:list={['ss-he', { 'ss-src-ltr': srcLang(src) !== 'he' }]}
+                  dir={srcLang(src) === 'he' ? 'rtl' : 'ltr'}
+                  lang={srcLang(src)}
+                >
+                  {src.he_text}
+                </p>
+              )}
               {src.en_text && <p class="ss-en">{src.en_text}</p>}
             </div>
             {(() => {
@@ -132,6 +147,7 @@ const onSefaria = (src: SheetSource) => !(src.tags ?? []).includes('not-on-sefar
   .ss-texts { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
   .ss-texts > :only-child { grid-column: 1 / -1; }
   .ss-he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.3rem; line-height: 1.75; margin: 0; }
+  .ss-src-ltr { font-family: 'Crimson Pro', Georgia, serif; font-size: 1.15rem; line-height: 1.6; }
   .ss-en { margin: 0; }
   .ss-note { margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed var(--line); color: var(--muted); font-style: italic; }
   .ss-note a { color: var(--accent); }
