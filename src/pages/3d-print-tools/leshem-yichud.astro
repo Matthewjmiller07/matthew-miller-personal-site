@@ -48,9 +48,17 @@ const swatches = [
                         <button id="ly-tilt" class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600" type="button">Tilt</button>
                         <button id="ly-face" class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600" type="button">Face on</button>
                         <button id="ly-back" class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600" type="button">Back (mirror)</button>
+                        <button id="ly-stand" class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600" type="button" aria-pressed="false">On stand</button>
                     </div>
                 </div>
                 <p class="text-xs text-gray-500 mt-2">Standard size shown. Drag to orbit, scroll to zoom.</p>
+                <div class="mt-4 flex items-center gap-4 rounded-xl border border-gray-700 bg-gray-900/60 p-3">
+                    <img src={`${DIR}/leshem-yichud-spin.gif`} alt="The card on its stand, turning" width="96" height="96" loading="lazy" class="rounded-lg shrink-0" />
+                    <div class="text-sm">
+                        <p class="text-gray-300">A spinning GIF of the card on its stand, to share.</p>
+                        <a href={`${DIR}/leshem-yichud-spin.gif`} download="leshem-yichud-card.gif" class="inline-block mt-2 px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-medium">⬇️ Download GIF</a>
+                    </div>
+                </div>
             </div>
 
             <aside class="lg:col-span-2 space-y-4">
@@ -117,6 +125,26 @@ const swatches = [
         </div>
         <p class="text-xs text-gray-500 mt-3 max-w-3xl">Times and grams are worked out from the model's geometry with Bambu's default 0.20&nbsp;mm Standard profile on a 0.4&nbsp;mm nozzle, including about six minutes of heating and bed levelling and the colour changes. Trust them to within about 20%; Bambu Studio gives the exact figure once you slice.</p>
 
+
+        <h2 id="stand" class="text-2xl font-bold mt-10 mb-4">Optional: a stand</h2>
+        <p class="text-gray-400 max-w-3xl mb-4">A sloped plinth with a slot the card drops into, leaning back {sizes[0].stand.tilt}°, for a shelf, a desk or the shtender between uses. The front lip only covers the frame below the shin, and the slot fits the card with or without its mirror. Print it flat in navy (or gold), no supports; 3 walls and 15% infill.</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {sizes.map((s) => (
+                <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5 flex flex-col">
+                    <div class="flex items-baseline justify-between">
+                        <h3 class="text-lg font-semibold">{s.label} stand</h3>
+                        <span class="font-mono text-amber-300 text-sm">{s.stand.w} × {s.stand.d} × {s.stand.h} mm</span>
+                    </div>
+                    <dl class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm mt-3">
+                        <dt class="text-gray-400">Print time</dt><dd class="text-right font-mono">≈ {fmt(s.stand.time_min)}</dd>
+                        <dt class="text-gray-400">Filament</dt><dd class="text-right font-mono">{s.stand.grams} g · {s.stand.metres} m</dd>
+                        <dt class="text-gray-400">Slot</dt><dd class="text-right font-mono">{s.stand.slot} mm</dd>
+                    </dl>
+                    <a href={`${DIR}/leshem-yichud-${s.key}-stand.stl`} download class="mt-auto pt-4 block"><span class="block text-center px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 font-medium">⬇️ Stand STL</span></a>
+                </section>
+            ))}
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
             <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
                 <h2 class="text-xl font-semibold mb-3">Printing with an AMS (A1 mini + AMS lite, X1C, P1S)</h2>
@@ -173,7 +201,7 @@ const swatches = [
 
             const group = new THREE.Group();
             scene.add(group);
-            const views = { face: [0, 0, 330], tilt: [-120, -170, 230], back: [90, -120, -280] };
+            const views = { face: [0, 0, 330], tilt: [-120, -170, 230], back: [90, -120, -280], standing: [-150, 120, 430] };
             const setView = (v) => { camera.position.set(...views[v]); controls.target.set(0, 0, 0); controls.update(); };
 
             function resize() {
@@ -185,21 +213,36 @@ const swatches = [
             new ResizeObserver(resize).observe(el);
             resize();
 
-            new GLTFLoader().load('/3d/leshem-yichud/leshem-yichud-preview.glb', (gltf) => {
-                // trimesh keeps the print's Z-up coordinates, so the card already faces +Z (the camera)
-                const m = gltf.scene;
-                // the mirror needs something to reflect; only it gets the environment map
-                const env = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
-                m.traverse((o) => { if (o.isMesh && o.material && o.material.metalness === 1) { o.material.envMap = env; o.material.needsUpdate = true; } });
+            const env = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+            const cache = {};
+            let onStand = false;
+            const load = (url, done) => (cache[url] ? done(cache[url]) : new GLTFLoader().load(url, (g) => done(cache[url] = g.scene), undefined, () => {
+                document.getElementById('ly-status').textContent = '3D preview unavailable, showing the flat render';
+            }));
+            const show = (m) => {
+                group.clear();
+                group.rotation.set(onStand ? -Math.PI / 2 : 0, 0, 0);  // the stand scene is Z-up like the print; stand it on the floor
                 group.add(m);
-                const box = new THREE.Box3().setFromObject(m);
-                m.position.sub(box.getCenter(new THREE.Vector3()));
+                group.updateMatrixWorld(true);
+                const box = new THREE.Box3().setFromObject(group);
+                m.position.sub(box.getCenter(new THREE.Vector3()).applyMatrix4(new THREE.Matrix4().copy(group.matrixWorld).invert()));
+            };
+            document.getElementById('ly-stand').addEventListener('click', (e) => {
+                onStand = !onStand;
+                e.currentTarget.setAttribute('aria-pressed', String(onStand));
+                e.currentTarget.textContent = onStand ? 'Card only' : 'On stand';
+                load(`/3d/leshem-yichud/leshem-yichud-${onStand ? 'stand-' : ''}preview.glb`, (m) => { prep(m); show(m); setView(onStand ? 'standing' : 'tilt'); });
+            });
+            const prep = (m) => m.traverse((o) => { if (o.isMesh && o.material && o.material.metalness === 1) { o.material.envMap = env; o.material.needsUpdate = true; } });
+
+            load('/3d/leshem-yichud/leshem-yichud-preview.glb', (m) => {
+                // trimesh keeps the print's Z-up coordinates, so the card already faces +Z (the camera)
+                prep(m);  // the mirror needs something to reflect; only it gets the environment map
+                show(m);
                 setView('tilt');
                 renderer.domElement.style.display = 'block';
                 document.getElementById('ly-fallback').remove();
                 document.getElementById('ly-status').textContent = 'Standard · 105 × 150 mm';
-            }, undefined, () => {
-                document.getElementById('ly-status').textContent = '3D preview unavailable, showing the flat render';
             });
 
             document.getElementById('ly-tilt').addEventListener('click', () => setView('tilt'));

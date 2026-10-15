@@ -378,6 +378,56 @@ def write_3mf(path, parts, title):
         z.writestr('3D/3dmodel.model', model)
 
 
+# ---------------------------------------------------------------- stand
+
+STAND = dict(tilt=12.0, clearance=0.5)  # card leans back 12°; slot fits the card with or without its mirror
+
+
+def stand(size):
+    """A sloped plinth with a closed-end slot the card drops into, leaning back.
+
+    The front lip only covers the frame below the shin emblem; the back wall rises higher to hold
+    the card. Prints flat, no supports. Returns the mesh, a 4×4 placing the card in the slot, and
+    its footprint/height.
+    """
+    W, k = size['w'], size['w'] / 105
+    t = math.radians(STAND['tilt'])
+    card_t = size['base'] + RELIEF['gold']             # back to the top of the gold relief
+    sw = card_t + MIRROR['t'] + STAND['clearance']     # slot width
+    L = W + 0.8                                        # slot length
+    Ws = W + 12 * k                                    # stand width
+    D = 40 * k                                         # stand depth
+    front_grip, back_grip = 5.0 * k, 14.0 * k
+    zf = 2.5                                           # slot floor (front corner)
+    hf = zf + front_grip
+    hb = zf + back_grip * math.cos(t)
+    y0 = 0.42 * D
+    front_at = lambda z: y0 + (z - zf) * math.tan(t) + 1.0  # 1 mm inside the slot, so it's cut away
+    back_top = y0 + sw / math.cos(t) + (hb - zf) * math.tan(t) + 4 * k
+    ch = 1.5 * k
+    profile = Polygon([(0, 0), (D, 0), (D, hf * 0.8), (back_top, hb), (front_at(hb), hb),
+                       (front_at(hf), hf), (ch, hf), (0, hf - ch)])
+    body = trimesh.creation.extrude_polygon(profile, Ws)
+    body.apply_transform([[0, 0, 1, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])  # (y, z, x) -> (x, y, z)
+
+    place = trimesh.transformations.translation_matrix([Ws / 2, y0, zf]) @ \
+        trimesh.transformations.rotation_matrix(-t, [1, 0, 0])
+    slot = trimesh.creation.box([L, sw, 80 * k])
+    slot.apply_translation([0, sw / 2, 40 * k])
+    slot.apply_transform(place)
+    mesh = trimesh.boolean.difference([body, slot], engine='manifold')
+
+    # card coords (x across, y up the card, z out of the face) -> slot coords, then into the slot
+    to_slot = np.array([[1, 0, 0, -W / 2], [0, 0, -1, card_t + 0.1], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=float)
+    return mesh, place @ to_slot, dict(w=round(Ws, 1), d=round(D, 1), h=round(hb, 1), slot=round(sw, 1))
+
+
+def stand_estimate(mesh):
+    """Walls + 15% infill on a chunky part come to about half solid; ~25 g an hour on Bambu defaults."""
+    g = mesh.volume / 1000 * PLA_DENSITY * 0.5
+    return dict(grams=round(g, 1), metres=round(g / G_PER_M, 2), time_min=round(g / 25 * 60 + 6))
+
+
 # ---------------------------------------------------------------- estimates
 
 def estimate(d, base_t):
@@ -437,25 +487,36 @@ def main():
         for c, m in meshes.items():
             m.export(OUT / f'{stem}-{c}.stl')
         write_3mf(OUT / f'{stem}.3mf', list(meshes.items()), f"Leshem Yichud tefillin card ({size['label']})")
+        stand_mesh, card_in_slot, stand_dims = stand(size)
+        stand_mesh.export(OUT / f'{stem}-stand.stl')
         if size['key'] == 'standard':
-            scene = trimesh.Scene()
-            for c, m in meshes.items():
-                mm = m.copy()
+            def material(c):
                 rgb = [int(COLORS[c][i:i + 2], 16) for i in (1, 3, 5)]
-                mm.visual = trimesh.visual.TextureVisuals(material=trimesh.visual.material.PBRMaterial(
+                return trimesh.visual.TextureVisuals(material=trimesh.visual.material.PBRMaterial(
                     baseColorFactor=[*rgb, 255], roughnessFactor=0.55 if c != 'gold' else 0.3,
                     metallicFactor=0.0 if c != 'gold' else 0.6))
-                scene.add_geometry(mm, node_name=c)
             glass = extrude(glass, -MIRROR['t'], MIRROR['t'])  # preview only: the mirror stuck on
             glass.visual = trimesh.visual.TextureVisuals(material=trimesh.visual.material.PBRMaterial(
                 baseColorFactor=[235, 240, 245, 255], roughnessFactor=0.04, metallicFactor=1.0))
-            scene.add_geometry(glass, node_name='mirror')
-            scene.export(OUT / 'leshem-yichud-preview.glb')
+            parts = {c: m.copy() for c, m in meshes.items()}
+            for c, m in parts.items():
+                m.visual = material(c)
+            parts['mirror'] = glass
+            flat, upright = trimesh.Scene(), trimesh.Scene()
+            for c, m in parts.items():
+                flat.add_geometry(m, node_name=c)
+                upright.add_geometry(m.copy().apply_transform(card_in_slot), node_name=c)
+            sm = stand_mesh.copy()
+            sm.visual = material('navy')
+            upright.add_geometry(sm, node_name='stand')
+            flat.export(OUT / 'leshem-yichud-preview.glb')
+            upright.export(OUT / 'leshem-yichud-stand-preview.glb')
         est = estimate(d, T)
         stats[size['key']] = dict(
             label=size['label'], w=size['w'], h=size['h'], thickness=round(T + RELIEF['gold'], 1),
             base=round(T, 2), printers=size['printers'], bag=size['bag'],
             mirror=dict(w=mirror_wh[0], h=mirror_wh[1], t=MIRROR['t'], radius=MIRROR['radius']),
+            stand=dict(**stand_dims, tilt=STAND['tilt'], **stand_estimate(stand_mesh)),
             body_em_mm=round(d['body_em'], 2), lines=d['lines'],
             triangles=sum(len(m.faces) for m in meshes.values()), **est)
         print(size['key'], json.dumps(stats[size['key']], ensure_ascii=False))
