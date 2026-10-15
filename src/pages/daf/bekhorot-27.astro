@@ -1,0 +1,547 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Rav Huna's Cellar — Daf Yomi Game: Bekhorot 27"
+  description="Bekhorot 27: sort six real teruma rulings from outside the Land, run Rav Huna's perpetual wine-nullification vat, then decode the firstborn's own-year rule from shana b'shana."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style>
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .vat-seg { transition: width 0.85s cubic-bezier(0.4,0,0.2,1), left 0.85s cubic-bezier(0.4,0,0.2,1); }
+    @keyframes nullify-wave {
+      0%   { opacity: 1; }
+      40%  { opacity: 0.35; filter: brightness(1.6); }
+      100% { opacity: 1; }
+    }
+    .nullifying { animation: nullify-wave 0.9s ease forwards; }
+    @media (prefers-reduced-motion: reduce) {
+      .vat-seg { transition: none; }
+      .nullifying { animation: none; }
+    }
+    button:focus-visible { outline: 2px solid #d4956a; outline-offset: 2px; }
+  </style>
+
+  <main class="min-h-screen bg-[#0e0810] !text-[#e4cdb5]">
+
+    <!-- HERO -->
+    <div class="border-b border-[#3a1e35] bg-gradient-to-b from-[#1c1020] to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs tracking-[0.22em] !text-[#7a5e6a]">
+        <a href="/daf" class="transition-colors hover:!text-[#e4cdb5]">daf yomi arcade</a>
+        <span class="mx-2 opacity-40">·</span>bekhorot 27<span class="mx-2 opacity-40">·</span>2026-10-15
+      </p>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl !text-[#e8d5c0]">Rav Huna's Cellar</h1>
+      <p class="frank mt-3 text-3xl font-light !text-[#c8805a]" dir="rtl" lang="he">טוֹבַת הֲנָאָה</p>
+      <p class="mt-1 text-xs italic !text-[#6a5058]">tovas hana'ah — the benefit of discretion · Bekhorot 27a:1</p>
+      <p class="mx-auto mt-5 max-w-lg text-sm leading-relaxed !text-[#b09888]">
+        Outside the Land of Israel, teruma flows by different rules. Sort six real cases,
+        run Rav Huna's perpetual nullification vat, and find the firstborn's own year.
+      </p>
+    </div>
+
+    <div class="mx-auto max-w-2xl px-4 pb-20 pt-8">
+
+      <!-- CONTEXT -->
+      <div class="mb-8 grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl border border-[#3a1e35] bg-[#190f1a] p-4">
+          <p class="mb-1 text-xs font-bold !text-[#c8805a]">tovas hana'ah — benefit of discretion</p>
+          <p class="text-xs leading-relaxed !text-[#907060]">
+            Owners choose which kohen receives their teruma. A non-priest may pay for that right;
+            a kohen may not purchase priestly gifts — that would turn sacred dues into commerce (27a:2).
+          </p>
+        </div>
+        <div class="rounded-xl border border-[#3a1e35] bg-[#190f1a] p-4">
+          <p class="mb-1 text-xs font-bold !text-[#c8805a]">Shmuel's leniencies outside Israel</p>
+          <p class="text-xs leading-relaxed !text-[#907060]">
+            Teruma from Babylon is nullified in a majority; eat before separating; only those whose
+            impurity comes from their body are forbidden to eat it; even they may touch it (27a:6–9).
+          </p>
+        </div>
+      </div>
+
+      <!-- STICKY PROGRESS -->
+      <div class="sticky top-0 z-10 mb-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 rounded-xl border border-[#3a1e35] bg-[#0e0810]/92 px-4 py-2.5 text-[11px] backdrop-blur">
+        <span class="!text-[#6a5058]">progress:</span>
+        <span id="prog-rulings" class="font-bold !text-[#c4952a]">rulings 0/6</span>
+        <span id="prog-vat" class="font-bold !text-[#9e3a5a]">vat 0/5</span>
+        <span id="prog-year" class="font-bold !text-[#6a9e7a]">year 0/3</span>
+      </div>
+
+      <!-- ========== GAME 1: RULINGS ========== -->
+      <section class="mb-14">
+        <h2 class="frank mb-1 text-2xl font-bold !text-[#e8d5c0]">Who May Drink?</h2>
+        <p class="mb-5 text-sm !text-[#7a5e6a]">Six cases from Bekhorot 27a. Rule each permitted or forbidden.</p>
+
+        <div id="ruling-card" class="rounded-2xl border border-[#3a1e35] bg-[#190f1a] p-5 sm:p-6">
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <span id="r-ref" class="text-[11px] !text-[#6a5058]"></span>
+            <span id="r-progress" class="text-[11px] !text-[#6a5058]"></span>
+          </div>
+          <div id="r-emoji" class="mb-3 text-center text-4xl"></div>
+          <p id="r-scenario" class="mb-3 text-sm leading-relaxed !text-[#c0a890]"></p>
+          <p id="r-question" class="mb-5 text-sm font-bold !text-[#e8d5c0]"></p>
+
+          <div id="r-buttons" class="flex gap-3">
+            <button id="btn-permitted"
+              class="flex-1 rounded-xl border border-[#2e5e47] bg-[#1a2e22] py-3 text-sm font-bold !text-[#7ec8a0] transition-colors hover:bg-[#2a4832]"
+              onclick="window.answerCase('permitted')">Permitted</button>
+            <button id="btn-forbidden"
+              class="flex-1 rounded-xl border border-[#5e1e30] bg-[#2e1220] py-3 text-sm font-bold !text-[#e07878] transition-colors hover:bg-[#4a1a28]"
+              onclick="window.answerCase('forbidden')">Forbidden</button>
+          </div>
+
+          <div id="r-result" class="mt-4 hidden rounded-xl border p-4">
+            <p id="r-result-label" class="mb-2 text-sm font-bold"></p>
+            <p id="r-result-explanation" class="text-xs leading-relaxed !text-[#b09888]"></p>
+            <button class="mt-3 text-xs !text-[#c8805a] underline hover:!text-[#e8d5c0]"
+              onclick="window.nextCase()">Next →</button>
+          </div>
+        </div>
+
+        <div id="ruling-done" class="hidden rounded-2xl border border-[#2e5e47] bg-[#121e16] p-6 text-center">
+          <p class="mb-2 text-4xl">🍷</p>
+          <p class="frank text-xl font-bold !text-[#7ec8a0]">Six rulings complete</p>
+          <p id="ruling-done-score" class="mt-2 text-sm !text-[#7a5e6a]"></p>
+        </div>
+      </section>
+
+      <!-- ========== GAME 2: THE VAT ========== -->
+      <section class="mb-14">
+        <h2 class="frank mb-1 text-2xl font-bold !text-[#e8d5c0]">The Perpetual Vat</h2>
+        <p class="mb-5 text-sm !text-[#7a5e6a]">Follow Rav Huna bar Rav Yehoshua's technique for handling teruma wine outside Israel.</p>
+
+        <div class="rounded-2xl border border-[#3a1e35] bg-[#190f1a] p-5 sm:p-6">
+          <!-- Barrel visual -->
+          <div class="mx-auto mb-6 max-w-sm">
+            <div class="relative h-10 overflow-hidden rounded-full border border-[#4a2535] bg-[#0e0810]">
+              <div id="vat-chulin-fill" class="vat-seg absolute bottom-0 left-0 top-0"
+                style="width:0%; background: linear-gradient(90deg,#b8820a,#d4a030)"></div>
+              <div id="vat-teruma-fill" class="vat-seg absolute bottom-0 top-0"
+                style="left:0%;width:0%; background: linear-gradient(90deg,#8b1a3a,#a03050)"></div>
+              <div class="absolute inset-0 z-10 flex items-center justify-center">
+                <span id="vat-label" class="px-2 text-center text-[11px] font-bold !text-white mix-blend-screen"></span>
+              </div>
+            </div>
+            <div class="mt-1 flex justify-between text-[10px] !text-[#6a5058]">
+              <span>← regular wine (chulin)</span>
+              <span>teruma →</span>
+            </div>
+          </div>
+
+          <div id="vat-step-info">
+            <p id="vat-step-title" class="mb-1 text-xs font-bold !text-[#c8805a]"></p>
+            <p id="vat-step-text" class="mb-5 text-sm leading-relaxed !text-[#c0a890]"></p>
+            <div class="flex items-center justify-between">
+              <span id="vat-step-count" class="text-[11px] !text-[#6a5058]"></span>
+              <button id="vat-action-btn"
+                class="rounded-xl border border-[#4a2535] bg-[#2a1520] px-5 py-2.5 text-sm font-bold !text-[#c8805a] transition-colors hover:bg-[#3a2030] hover:!text-[#e8d5c0]"
+                onclick="window.advanceVat()"></button>
+            </div>
+          </div>
+
+          <div id="vat-done" class="hidden py-4 text-center">
+            <p class="mb-2 text-4xl">🏺</p>
+            <p class="frank text-xl font-bold !text-[#c8805a]">The cellar runs itself</p>
+            <p class="mt-2 text-xs !text-[#7a5e6a]">Pour in teruma, nullify the majority, take out one jug, repeat — indefinitely.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== GAME 3: YEAR QUIZ ========== -->
+      <section class="mb-14">
+        <h2 class="frank mb-1 text-2xl font-bold !text-[#e8d5c0]">
+          <span dir="rtl" lang="he" class="frank !text-[#a0c8a0]">שָׁנָה בְּשָׁנָה</span>
+          <span class="ml-2 text-xl">— The Animal's Own Year</span>
+        </h2>
+        <p class="mb-5 text-sm !text-[#7a5e6a]">Three questions from Bekhorot 27b:3–7 on how to count the firstborn's eating window.</p>
+
+        <div id="year-card" class="rounded-2xl border border-[#3a1e35] bg-[#190f1a] p-5 sm:p-6">
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <span id="y-ref" class="text-[11px] !text-[#6a5058]"></span>
+            <span id="y-progress" class="text-[11px] !text-[#6a5058]"></span>
+          </div>
+          <p id="y-scenario" class="mb-5 text-sm leading-relaxed !text-[#c0a890]"></p>
+          <div id="y-options" class="flex flex-col gap-3"></div>
+          <div id="y-result" class="mt-4 hidden rounded-xl border p-4">
+            <p id="y-result-label" class="mb-2 text-sm font-bold"></p>
+            <p id="y-result-explanation" class="text-xs leading-relaxed !text-[#b09888]"></p>
+            <button class="mt-3 text-xs !text-[#c8805a] underline hover:!text-[#e8d5c0]"
+              onclick="window.nextYear()">Next →</button>
+          </div>
+        </div>
+
+        <div id="year-done" class="hidden rounded-2xl border border-[#6a9e7a] bg-[#121e16] p-6 text-center">
+          <p class="mb-2 text-4xl">📅</p>
+          <p class="frank text-xl font-bold !text-[#8ec4a0]">Three dates nailed</p>
+          <p id="year-done-score" class="mt-2 text-sm !text-[#7a5e6a]"></p>
+        </div>
+      </section>
+
+      <!-- LEARN MORE -->
+      <section class="rounded-2xl border border-[#3a1e35] bg-[#190f1a] p-6">
+        <h2 class="frank mb-3 text-lg font-bold !text-[#e8d5c0]">Learn the real daf</h2>
+        <div class="mb-4 flex flex-wrap gap-3">
+          <a href="https://www.sefaria.org/Bekhorot.27a" target="_blank" rel="noopener"
+            class="rounded-lg border border-[#3a1e35] px-4 py-2 text-xs font-bold !text-[#c8805a] transition-colors hover:bg-[#2a1520]">
+            Bekhorot 27a on Sefaria ↗
+          </a>
+          <a href="https://www.sefaria.org/Bekhorot.27b" target="_blank" rel="noopener"
+            class="rounded-lg border border-[#3a1e35] px-4 py-2 text-xs font-bold !text-[#c8805a] transition-colors hover:bg-[#2a1520]">
+            Bekhorot 27b on Sefaria ↗
+          </a>
+        </div>
+        <p class="mb-2 text-xs font-bold !text-[#6a5058]">Top commentaries</p>
+        <ul class="grid grid-cols-2 gap-y-1 gap-x-4 text-xs sm:grid-cols-3">
+          <li><a href="https://www.sefaria.org/Rashi_on_Bekhorot.27a" target="_blank" rel="noopener" class="!text-[#b09888] transition-colors hover:!text-[#c8805a]">Rashi (30) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.27a" target="_blank" rel="noopener" class="!text-[#b09888] transition-colors hover:!text-[#c8805a]">Rabbeinu Gershom (23) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.27a" target="_blank" rel="noopener" class="!text-[#b09888] transition-colors hover:!text-[#c8805a]">Steinsaltz (18) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rashash_on_Bekhorot.27a" target="_blank" rel="noopener" class="!text-[#b09888] transition-colors hover:!text-[#c8805a]">Rashash (14) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Tosafot_on_Bekhorot.27a" target="_blank" rel="noopener" class="!text-[#b09888] transition-colors hover:!text-[#c8805a]">Tosafot (10) ↗</a></li>
+        </ul>
+      </section>
+
+    </div>
+  </main>
+
+  <script is:inline>
+  (function () {
+
+    // ===== DATA =====
+
+    var cases = [
+      {
+        ref: 'Bekhorot 27a:2',
+        emoji: '🌾',
+        scenario: 'Reuven the Israelite has just separated teruma from his grain. His neighbor Shimon (also a non-priest) offers him a sela coin and asks him to direct the teruma to Shimon\'s priestly son-in-law.',
+        question: 'May Reuven accept the sela coin for doing so?',
+        answer: 'permitted',
+        explanation: 'Permitted. An Israelite may pay another Israelite for the right to designate which kohen receives the teruma. This is טוֹבַת הֲנָאָה — the benefit of discretion. Since neither party is a kohen purchasing priestly gifts, no prohibition applies.',
+      },
+      {
+        ref: 'Bekhorot 27a:2',
+        emoji: '🚫',
+        scenario: 'Kohen Aharon offers the Israelite farmer a sela coin in exchange for having the teruma directed to himself.',
+        question: 'Is it permitted for a kohen to pay for this right?',
+        answer: 'forbidden',
+        explanation: 'Forbidden. A kohen may not purchase priestly gifts. Priests receive teruma as a sacred due, not as merchandise — paying for the right to receive it would make commerce of something holy.',
+      },
+      {
+        ref: 'Bekhorot 27a:6',
+        emoji: '🍷',
+        scenario: 'A jug of teruma wine from Babylonia accidentally spills into a vat already holding two jugs of regular wine. The mixture is two-thirds regular wine.',
+        question: 'May a kohen drink from this vat?',
+        answer: 'permitted',
+        explanation: 'Permitted. Shmuel rules: teruma from outside the Land of Israel is nullified in a simple majority (batel be-rov). Two of the three jugs are regular wine, so the teruma is absorbed and the whole vat may be treated as ordinary wine.',
+      },
+      {
+        ref: 'Bekhorot 27a:8',
+        emoji: '🌿',
+        scenario: 'A Jewish farmer in Babylonia begins eating from his grain harvest before separating teruma from it. Has he acted improperly?',
+        question: 'Must he stop eating until he separates teruma?',
+        answer: 'permitted',
+        explanation: 'Permitted. Shmuel rules that for produce grown outside the Land of Israel, one may eat first and separate teruma afterward. The requirement to separate before eating applies only within the Land.',
+      },
+      {
+        ref: 'Bekhorot 27a:9',
+        emoji: '❌',
+        scenario: 'A priestly woman who is a niddah — her impurity comes from her own body — wants to eat teruma wine grown in Babylonia.',
+        question: 'Is she permitted to eat it?',
+        answer: 'forbidden',
+        explanation: 'Forbidden. Shmuel rules: outside-Israel teruma is prohibited only to one whose impurity comes from their body. A niddah is exactly such a case. Despite all the leniencies for outside-Israel teruma, bodily impurity still bars eating it.',
+      },
+      {
+        ref: 'Bekhorot 27a:9',
+        emoji: '🫲',
+        scenario: 'The same niddah woman reaches out to move a jug of teruma wine from Babylonia across the shelf — touching and handling it, but not drinking.',
+        question: 'Is she forbidden to touch it?',
+        answer: 'permitted',
+        explanation: 'Permitted. Shmuel\'s ruling applies only to eating, not to handling. "With regard to touching teruma from outside the Land of Israel, we have no problem with it." A niddah may freely touch outside-Israel teruma.',
+      },
+    ];
+
+    var vatSteps = [
+      {
+        title: 'The problem',
+        text: 'Rav Huna bar Rav Yehoshua has received a jug of teruma wine from outside the Land. Shmuel says it can be nullified in a majority — but he needs enough regular wine first. The vat is empty.',
+        chulin: 0, teruma: 0,
+        btn: 'Pour in 2 regular + 1 teruma →',
+      },
+      {
+        title: 'Majority achieved',
+        text: 'The vat now holds 3 jugs: 2 regular (chulin) and 1 teruma. Two-thirds is ordinary wine — the majority is chulin.',
+        chulin: 2, teruma: 1,
+        btn: 'Nullify! →',
+      },
+      {
+        title: 'Nullified',
+        text: 'The teruma is absorbed into the chulin majority. The entire vat is now ordinary wine — all three jugs may be drunk freely.',
+        chulin: 3, teruma: 0,
+        btn: 'Take out 1 jug to drink →',
+      },
+      {
+        title: '2 jugs remain',
+        text: 'After drinking one jug, two jugs of (now ordinary) wine remain. A new teruma delivery has just arrived.',
+        chulin: 2, teruma: 0,
+        btn: 'Pour in the new teruma jug →',
+      },
+      {
+        title: 'The perpetual trick',
+        text: '2 regular + 1 teruma — exactly the same 2:1 ratio as step one. Nullify again. Take out again. Add again. This cycle runs indefinitely. Rav Huna kept his cellar this way.',
+        chulin: 2, teruma: 1,
+        btn: 'Nullify and complete ✓',
+      },
+    ];
+
+    var yearCases = [
+      {
+        ref: 'Bekhorot 27b:3–4',
+        scenario: 'A firstborn lamb is born on the 20th of Adar. By what date does its first year end, according to the Gemara\'s ruling?',
+        options: [
+          { label: 'By 1 Tishrei — the start of the next calendar year', value: 'calendar' },
+          { label: 'By the 20th of Adar, one year after its birth', value: 'own' },
+        ],
+        answer: 'own',
+        explanation: 'The Gemara derives from "שָׁנָה בְשָׁנָה" that the firstborn\'s year is counted from its birth, not by the calendar year. "Its year" means the animal\'s own year. A lamb born on 20 Adar must be presented by 20 Adar the following year.',
+      },
+      {
+        ref: 'Bekhorot 27b:5',
+        scenario: 'An unblemished firstborn ox is sacrificed in the Temple on the 29th of Elul (the day before Rosh HaShana). Until when may it be eaten?',
+        options: [
+          { label: 'By the end of 29 Elul — the day of sacrifice only', value: 'one' },
+          { label: 'Through 1 Tishrei — the next calendar day', value: 'two' },
+        ],
+        answer: 'two',
+        explanation: 'The school of Rav derives: "year by year" means one day of this year and one day of that year — an unblemished firstborn may be eaten for two days and one night, like a peace offering. Sacrificed on 29 Elul, it may be eaten through 1 Tishrei.',
+      },
+      {
+        ref: 'Bekhorot 27b:6–7',
+        scenario: 'Leviticus 12:6 says to bring "a lamb in its first year [שְׁנָתוֹ]" as a sacrifice. A lamb is born in mid-Nissan. Is it still eligible as a first-year lamb at the start of the next Nissan?',
+        options: [
+          { label: 'No — the calendar year has turned over, so it is now in its second year', value: 'calendar' },
+          { label: 'Yes — its year runs to the anniversary of its birth date', value: 'own' },
+        ],
+        answer: 'own',
+        explanation: 'Rav Aḥa bar Yaakov: "its year" means the lamb\'s own year from birth — not a calendar year of the world\'s counting. All sacrificial animals\' ages run from their birth date. The lamb born in Nissan remains in its first year until the same date in Nissan the following year.',
+      },
+    ];
+
+    // ===== STATE =====
+    var cIdx = 0, cCorrect = 0;
+    var vatIdx = 0, vatAdvancing = false;
+    var yIdx = 0, yCorrect = 0;
+
+    // ===== PROGRESS =====
+    function updateProgress() {
+      document.getElementById('prog-rulings').textContent =
+        'rulings ' + Math.min(cIdx, cases.length) + '/' + cases.length;
+      document.getElementById('prog-vat').textContent =
+        'vat ' + Math.min(vatIdx, vatSteps.length) + '/' + vatSteps.length;
+      document.getElementById('prog-year').textContent =
+        'year ' + Math.min(yIdx, yearCases.length) + '/' + yearCases.length;
+    }
+
+    // ===== GAME 1: RULINGS =====
+    function renderCase() {
+      var c = cases[cIdx];
+      document.getElementById('r-ref').textContent = c.ref;
+      document.getElementById('r-progress').textContent = (cIdx + 1) + ' / ' + cases.length;
+      document.getElementById('r-emoji').textContent = c.emoji;
+      document.getElementById('r-scenario').textContent = c.scenario;
+      document.getElementById('r-question').textContent = c.question;
+      document.getElementById('r-result').classList.add('hidden');
+      document.getElementById('r-buttons').classList.remove('hidden');
+      document.getElementById('btn-permitted').disabled = false;
+      document.getElementById('btn-forbidden').disabled = false;
+    }
+
+    window.answerCase = function (ans) {
+      var c = cases[cIdx];
+      var correct = ans === c.answer;
+      if (correct) cCorrect++;
+
+      document.getElementById('btn-permitted').disabled = true;
+      document.getElementById('btn-forbidden').disabled = true;
+      document.getElementById('r-buttons').classList.add('hidden');
+
+      var res = document.getElementById('r-result');
+      res.classList.remove('hidden');
+      var permit = c.answer === 'permitted';
+      res.style.borderColor = permit ? '#2e5e47' : '#5e1e30';
+      res.style.backgroundColor = permit ? '#12201a' : '#200e18';
+
+      var lbl = document.getElementById('r-result-label');
+      if (correct) {
+        lbl.textContent = '✓ Correct!';
+        lbl.style.color = '#7ec8a0';
+      } else {
+        lbl.textContent = '✗ ' + (c.answer === 'permitted' ? 'Permitted' : 'Forbidden') + ' — here\'s why:';
+        lbl.style.color = '#e07878';
+      }
+      document.getElementById('r-result-explanation').textContent = c.explanation;
+      updateProgress();
+    };
+
+    window.nextCase = function () {
+      cIdx++;
+      if (cIdx >= cases.length) {
+        document.getElementById('ruling-card').classList.add('hidden');
+        document.getElementById('ruling-done').classList.remove('hidden');
+        document.getElementById('ruling-done-score').textContent =
+          cCorrect + ' of ' + cases.length + ' correct — all drawn from the actual daf.';
+      } else {
+        renderCase();
+      }
+      updateProgress();
+    };
+
+    // ===== GAME 2: VAT =====
+    function updateVatBar(chulin, teruma) {
+      var total = chulin + teruma;
+      var chulinEl = document.getElementById('vat-chulin-fill');
+      var terumaEl = document.getElementById('vat-teruma-fill');
+      var labelEl = document.getElementById('vat-label');
+
+      if (total === 0) {
+        chulinEl.style.width = '0%';
+        terumaEl.style.left = '0%';
+        terumaEl.style.width = '0%';
+        labelEl.textContent = 'empty';
+        return;
+      }
+
+      var cp = (chulin / total) * 100;
+      var tp = (teruma / total) * 100;
+
+      chulinEl.style.width = cp + '%';
+      terumaEl.style.left = cp + '%';
+      terumaEl.style.width = tp + '%';
+
+      labelEl.textContent = teruma === 0
+        ? 'all regular — ' + chulin + ' jug' + (chulin !== 1 ? 's' : '')
+        : chulin + ' regular : ' + teruma + ' teruma';
+    }
+
+    function renderVatStep() {
+      var s = vatSteps[vatIdx];
+      updateVatBar(s.chulin, s.teruma);
+      document.getElementById('vat-step-title').textContent = s.title;
+      document.getElementById('vat-step-text').textContent = s.text;
+      document.getElementById('vat-action-btn').textContent = s.btn;
+      document.getElementById('vat-step-count').textContent =
+        'Step ' + (vatIdx + 1) + ' of ' + vatSteps.length;
+      updateProgress();
+    }
+
+    window.advanceVat = function () {
+      if (vatAdvancing) return;
+      var currentStep = vatSteps[vatIdx];
+
+      if (currentStep.btn.indexOf('Nullify') !== -1) {
+        // Animate nullification: expand chulin to 100%, teruma to 0%
+        vatAdvancing = true;
+        var chulinEl = document.getElementById('vat-chulin-fill');
+        var terumaEl = document.getElementById('vat-teruma-fill');
+        var labelEl = document.getElementById('vat-label');
+
+        chulinEl.style.width = '100%';
+        terumaEl.style.width = '0%';
+        terumaEl.style.left = '100%';
+        labelEl.textContent = 'nullified!';
+        chulinEl.classList.add('nullifying');
+
+        setTimeout(function () {
+          chulinEl.classList.remove('nullifying');
+          vatAdvancing = false;
+          vatIdx++;
+          if (vatIdx >= vatSteps.length) {
+            finishVat();
+          } else {
+            renderVatStep();
+          }
+        }, 1000);
+        return;
+      }
+
+      vatIdx++;
+      if (vatIdx >= vatSteps.length) {
+        finishVat();
+      } else {
+        renderVatStep();
+      }
+    };
+
+    function finishVat() {
+      updateVatBar(3, 0);
+      document.getElementById('vat-step-info').classList.add('hidden');
+      document.getElementById('vat-done').classList.remove('hidden');
+      updateProgress();
+    }
+
+    // ===== GAME 3: YEAR QUIZ =====
+    function renderYearCase() {
+      var y = yearCases[yIdx];
+      document.getElementById('y-ref').textContent = y.ref;
+      document.getElementById('y-progress').textContent = (yIdx + 1) + ' / ' + yearCases.length;
+      document.getElementById('y-scenario').textContent = y.scenario;
+      document.getElementById('y-result').classList.add('hidden');
+
+      var opts = document.getElementById('y-options');
+      opts.innerHTML = '';
+      y.options.forEach(function (opt) {
+        var btn = document.createElement('button');
+        btn.className =
+          'rounded-xl border border-[#3a1e35] bg-[#1a1020] px-4 py-3 text-left text-sm transition-colors hover:bg-[#2a1a30]';
+        btn.style.color = '#c0a890';
+        btn.textContent = opt.label;
+        btn.onclick = function () { window.answerYear(opt.value); };
+        opts.appendChild(btn);
+      });
+      updateProgress();
+    }
+
+    window.answerYear = function (val) {
+      var y = yearCases[yIdx];
+      var correct = val === y.answer;
+      if (correct) yCorrect++;
+
+      document.querySelectorAll('#y-options button').forEach(function (b) {
+        b.disabled = true;
+        b.style.opacity = '0.5';
+      });
+
+      var res = document.getElementById('y-result');
+      res.classList.remove('hidden');
+      res.style.borderColor = correct ? '#2e5e47' : '#5e1e30';
+      res.style.backgroundColor = correct ? '#12201a' : '#200e18';
+
+      var lbl = document.getElementById('y-result-label');
+      lbl.textContent = correct ? '✓ Correct!' : '✗ Not quite — here\'s the ruling:';
+      lbl.style.color = correct ? '#7ec8a0' : '#e07878';
+      document.getElementById('y-result-explanation').textContent = y.explanation;
+      updateProgress();
+    };
+
+    window.nextYear = function () {
+      yIdx++;
+      if (yIdx >= yearCases.length) {
+        document.getElementById('year-card').classList.add('hidden');
+        document.getElementById('year-done').classList.remove('hidden');
+        document.getElementById('year-done-score').textContent =
+          yCorrect + ' of ' + yearCases.length + ' correct.';
+      } else {
+        renderYearCase();
+      }
+      updateProgress();
+    };
+
+    // ===== INIT =====
+    renderCase();
+    renderVatStep();
+    renderYearCase();
+
+  })();
+  </script>
+</Layout>
