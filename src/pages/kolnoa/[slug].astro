@@ -1,0 +1,542 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+export function getStaticPaths() {
+  const files = import.meta.glob('../../data/kolnoa/*.json', { eager: true });
+  return Object.values(files).map((m: any) => {
+    const lesson = m.default ?? m;
+    return { params: { slug: lesson.slug }, props: { lesson } };
+  });
+}
+
+const { lesson } = Astro.props as { lesson: any };
+const title = lesson.title.replace(/\s*\|.*$/, '');
+---
+
+<Layout
+  title={`${title} — Kolnoa`}
+  description={`Learn Hebrew from "${title}": the video with synced Hebrew and English subtitles, word-by-word links between them, and a translation drill graded by Jev.`}
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=Fraunces:opsz,wght@9..144,600;9..144,800&display=swap"
+  />
+
+  <main class="kn">
+    <header class="kn-head">
+      <p class="kn-kicker"><a href="/kolnoa">קולנוע · kolnoa</a> · subtitle language lab</p>
+      <h1>{title}</h1>
+      <p class="kn-sub">{lesson.channel} · {lesson.lines.length} lines · English audio, Hebrew subtitles by TED's volunteer translators</p>
+    </header>
+
+    <div class="kn-grid">
+      <section class="kn-stage-col">
+        <div class="kn-player"><div id="kn-yt"></div></div>
+
+        <div class="kn-stage" id="kn-stage">
+          <div class="kn-he" id="kn-he" dir="rtl" lang="he"></div>
+          <div class="kn-en" id="kn-en" lang="en"></div>
+          <div class="kn-drill" id="kn-drill" hidden>
+            <label class="kn-drill-label" id="kn-drill-label" for="kn-answer"></label>
+            <div class="kn-drill-row">
+              <input id="kn-answer" autocomplete="off" />
+              <button class="kn-btn kn-primary" id="kn-check">Check</button>
+            </div>
+            <div class="kn-result" id="kn-result" hidden>
+              <div class="kn-meter"><span id="kn-meter-fill"></span></div>
+              <p class="kn-verdict" id="kn-verdict"></p>
+              <p class="kn-ref" id="kn-ref"></p>
+            </div>
+            <div class="kn-drill-row kn-drill-actions">
+              <button class="kn-btn" id="kn-replay">↺ Replay line</button>
+              <button class="kn-btn" id="kn-skip">Skip / continue ▸</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="kn-controls">
+          <div class="kn-seg" role="group" aria-label="Mode">
+            <button data-mode="watch" class="on">Watch</button>
+            <button data-mode="drill">Drill</button>
+          </div>
+          <div class="kn-seg" role="group" aria-label="Subtitles" id="kn-show">
+            <button data-show="both" class="on">עב + EN</button>
+            <button data-show="he">עברית</button>
+            <button data-show="peek">Hide English</button>
+          </div>
+          <div class="kn-seg" role="group" aria-label="Navigate">
+            <button id="kn-prev" title="Previous line">◂</button>
+            <button id="kn-loop" title="Loop this line">⟲ Loop</button>
+            <button id="kn-next" title="Next line">▸</button>
+          </div>
+          <div class="kn-seg" role="group" aria-label="Speed" id="kn-speed">
+            <button data-rate="0.75">0.75×</button>
+            <button data-rate="1" class="on">1×</button>
+          </div>
+        </div>
+
+        <div class="kn-drillopts" id="kn-drillopts" hidden>
+          <label>Translate
+            <select id="kn-dir">
+              <option value="he2en">Hebrew → English</option>
+              <option value="en2he">English → Hebrew</option>
+            </select>
+          </label>
+          <label>Lines up to
+            <select id="kn-maxlevel">
+              <option value="0">Beginner</option>
+              <option value="1">Elementary</option>
+              <option value="2" selected>Intermediate</option>
+              <option value="3">Advanced (all)</option>
+            </select>
+          </label>
+          <label class="kn-check"><input type="checkbox" id="kn-everyday" /> Everyday phrases only</label>
+          <button class="kn-btn" id="kn-now">✎ Translate this line</button>
+          <span class="kn-score" id="kn-score"></span>
+        </div>
+
+        <p class="kn-hint">Hover or tap a Hebrew word to light up its English match. Click a word to save it to your word bank.</p>
+      </section>
+
+      <aside class="kn-side">
+        <div class="kn-tabs">
+          <button data-tab="lines" class="on">Lines</button>
+          <button data-tab="bank">Word bank <span id="kn-bank-n"></span></button>
+        </div>
+        <ol class="kn-lines" id="kn-lines"></ol>
+        <div class="kn-bank" id="kn-bank" hidden></div>
+      </aside>
+    </div>
+
+    <section class="kn-about">
+      <h2>How Jev builds this</h2>
+      <p>
+        A build script fetches the video's human-made English and Hebrew caption tracks from YouTube, lines up their
+        timings, and joins cues into whole sentences. Then <a href="https://typesafe.ai">Jev</a>, TypeSafe's System One
+        model, makes small judgments about each sentence. It doesn't write any text itself.
+      </p>
+      <ul>
+        <li><b>Word links.</b> For every Hebrew word, Jev picks which English word in the subtitle translates it (or none). These are the links you see when you hover.</li>
+        <li><b>Difficulty.</b> Jev scores how hard each Hebrew sentence is for a learner, and the drill uses that score to pick lines at your level.</li>
+        <li><b>Everyday phrases.</b> Jev says whether a line has an expression you'd reuse in daily conversation.</li>
+        <li><b>Fidelity.</b> Jev checks whether the Hebrew and English actually say the same thing. Lines where the subtitles drifted apart are left out of the drill.</li>
+        <li><b>Grading, live.</b> When you translate a line, Jev scores how much of the meaning you captured and checks each word of the original, so you can see exactly what you got and what you missed.</li>
+      </ul>
+      <p class="kn-credit">
+        Video and subtitles: <a href={lesson.source}>{lesson.title}</a>, TED, under
+        <a href="https://www.ted.com/about/our-organization/our-policies-terms/ted-talks-usage-policy">CC BY-NC-ND 4.0</a>.
+        Hebrew translation by TED's volunteer translators.
+      </p>
+    </section>
+  </main>
+
+  <script type="application/json" id="kn-data" set:html={JSON.stringify(lesson)} />
+
+  <style>
+    .kn {
+      --bg: #0d0b0a; --panel: #17130f; --line: #2c241c; --ink: #f2e8d8; --mute: #a8977f;
+      --gold: #e8b04a; --gold-soft: rgba(232, 176, 74, 0.18); --good: #7fcf8f; --bad: #ef7a6a;
+      min-height: 100vh; background: radial-gradient(ellipse at top, #241a10 0%, var(--bg) 55%) var(--bg);
+      color: var(--ink); padding: 0 16px 64px;
+    }
+    .kn a { color: var(--gold); }
+    .kn :global([hidden]) { display: none !important; }
+    .kn-head { max-width: 1200px; margin: 0 auto; padding: 40px 0 24px; }
+    .kn-kicker { font-size: 12px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--mute); }
+    .kn-kicker a { text-decoration: none; }
+    .kn-head h1 { font-family: Fraunces, Georgia, serif; font-weight: 800; font-size: clamp(28px, 5vw, 48px); line-height: 1.05; margin: 10px 0 8px; color: var(--ink); }
+    .kn-sub { color: var(--mute); font-size: 14px; }
+    .kn-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; }
+    @media (max-width: 900px) { .kn-grid { grid-template-columns: minmax(0, 1fr); } }
+    .kn-player { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+    .kn-player :global(iframe) { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+    .kn-stage { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-top: 12px; padding: 18px 20px; min-height: 150px; }
+    .kn-he { font-family: 'Frank Ruhl Libre', serif; font-size: clamp(22px, 3.4vw, 32px); line-height: 1.5; min-height: 1.5em; }
+    .kn-en { font-size: clamp(16px, 2vw, 19px); color: #d8cbb6; margin-top: 8px; line-height: 1.5; min-height: 1.5em; transition: filter 0.2s; }
+    .kn-stage.peek .kn-en { filter: blur(7px); cursor: pointer; }
+    .kn-stage.peek .kn-en:hover { filter: none; }
+    .kn-stage.he-only .kn-en { display: none; }
+    .kn-stage.drilling .kn-hide { visibility: hidden; }
+    .kn :global(.w) { border-radius: 4px; padding: 0 2px; cursor: pointer; transition: background 0.12s, color 0.12s; }
+    .kn :global(.w.lit) { background: var(--gold-soft); color: var(--gold); }
+    .kn :global(.w.saved) { text-decoration: underline dotted var(--gold); text-underline-offset: 5px; }
+    .kn :global(.w.got) { color: var(--good); }
+    .kn :global(.w.miss) { color: var(--bad); text-decoration: line-through rgba(239, 122, 106, 0.5); }
+
+    .kn-controls, .kn-drillopts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+    .kn-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .kn-seg button, .kn-tabs button { background: transparent; color: var(--mute); padding: 7px 12px; font-size: 14px; border: 0; cursor: pointer; }
+    .kn-seg button + button { border-left: 1px solid var(--line); }
+    .kn-seg button.on, .kn-tabs button.on { background: var(--gold-soft); color: var(--gold); }
+    .kn-drillopts { font-size: 14px; color: var(--mute); }
+    .kn-drillopts select { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; margin-left: 4px; }
+    .kn-check { display: inline-flex; gap: 6px; align-items: center; }
+    .kn-score { margin-left: auto; color: var(--gold); font-variant-numeric: tabular-nums; }
+    .kn-hint { color: var(--mute); font-size: 13px; margin-top: 10px; }
+
+    .kn-drill { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 14px; }
+    .kn-drill-label { display: block; color: var(--mute); font-size: 14px; margin-bottom: 8px; }
+    .kn-drill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .kn-drill-row input { flex: 1; min-width: 0; background: #0f0c09; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 17px; }
+    .kn-drill-row input:focus { outline: 2px solid var(--gold); }
+    .kn-drill-actions { margin-top: 10px; }
+    .kn-btn { background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; font-size: 14px; cursor: pointer; }
+    .kn-btn:hover { border-color: var(--gold); }
+    .kn-primary { background: var(--gold); color: #1a1208; border-color: var(--gold); font-weight: 600; }
+    .kn-primary:disabled { opacity: 0.6; cursor: wait; }
+    .kn-result { margin-top: 12px; }
+    .kn-meter { height: 8px; background: #0f0c09; border-radius: 99px; overflow: hidden; }
+    .kn-meter span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--bad), var(--gold), var(--good)); background-size: 300px 100%; transition: width 0.5s; }
+    .kn-verdict { margin-top: 8px; font-weight: 600; }
+    .kn-ref { color: var(--mute); font-size: 14px; margin-top: 4px; }
+
+    .kn-side { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; max-height: calc(100vh - 40px); position: sticky; top: 20px; }
+    @media (max-width: 900px) { .kn-side { position: static; max-height: 480px; } }
+    .kn-tabs { display: flex; border-bottom: 1px solid var(--line); }
+    .kn-tabs button { flex: 1; padding: 10px; }
+    .kn-lines, .kn-bank { overflow-y: auto; margin: 0; padding: 6px; list-style: none; }
+    .kn-lines li { padding: 8px 10px; border-radius: 6px; cursor: pointer; border-left: 3px solid transparent; }
+    .kn-lines li:hover { background: rgba(255, 255, 255, 0.03); }
+    .kn-lines li.cur { background: var(--gold-soft); border-left-color: var(--gold); }
+    .kn-lines li.dim { opacity: 0.45; }
+    .kn-lines .lhe { font-family: 'Frank Ruhl Libre', serif; font-size: 17px; direction: rtl; text-align: right; }
+    .kn-lines .len { font-size: 13px; color: var(--mute); margin-top: 2px; }
+    .kn-lines .meta { font-size: 11px; color: var(--mute); margin-top: 4px; display: flex; gap: 8px; }
+    .kn-lines .lv { color: var(--gold); letter-spacing: 1px; }
+    .kn-lines .done { color: var(--good); }
+    .kn-bank .bw { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); cursor: pointer; }
+    .kn-bank .bw b { font-family: 'Frank Ruhl Libre', serif; font-size: 20px; font-weight: 500; }
+    .kn-bank .bw span { color: var(--mute); }
+    .kn-bank .bw button { background: none; border: 0; color: var(--mute); cursor: pointer; }
+    .kn-bank .empty { color: var(--mute); padding: 16px; font-size: 14px; }
+
+    .kn-about { max-width: 1200px; margin: 48px auto 0; color: #d8cbb6; line-height: 1.65; }
+    .kn-about h2 { font-family: Fraunces, Georgia, serif; font-size: 24px; color: var(--ink); margin-bottom: 8px; }
+    .kn-about ul { margin: 12px 0; padding-left: 20px; list-style: disc; }
+    .kn-about li { margin: 6px 0; }
+    .kn-credit { font-size: 13px; color: var(--mute); }
+  </style>
+
+  <script>
+    type Line = {
+      start: number; end: number; en: string; he: string;
+      enWords: string[]; heWords: string[]; align: (number | null)[];
+      level: number; everyday: number; faithful: number;
+    };
+    type Lesson = { slug: string; youtubeId: string; title: string; lines: Line[] };
+
+    const LEVELS = ['Beginner', 'Elementary', 'Intermediate', 'Advanced'];
+    const VERDICTS = ['Missed it', 'A fragment', 'Got the gist', 'Close!', 'Spot on'];
+
+    function init() {
+      const dataEl = document.getElementById('kn-data');
+      if (!dataEl || (dataEl as any)._kn) return;
+      (dataEl as any)._kn = true;
+      const lesson: Lesson = JSON.parse(dataEl.textContent || '{}');
+      const L = lesson.lines;
+      const $ = (id: string) => document.getElementById(id)!;
+      const store = {
+        get<T>(k: string, d: T): T { try { return JSON.parse(localStorage.getItem(k) ?? '') ?? d; } catch { return d; } },
+        set(k: string, v: unknown) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+      };
+
+      // ---------- state ----------
+      let player: any = null;
+      let cur = -1;
+      let mode: 'watch' | 'drill' = 'watch';
+      let loop = false;
+      let drillLine = -1;            // line we're paused on in drill mode
+      let lastDrilled = -1;          // don't re-trigger the same line until playback leaves it
+      const doneKey = `kolnoa:done:${lesson.slug}`;
+      const done: Record<number, number> = store.get(doneKey, {});
+      const bankKey = 'kolnoa:bank';
+      type Saved = { he: string; en: string; slug: string; line: number };
+      let bank: Saved[] = store.get(bankKey, []);
+
+      // ---------- rendering ----------
+      const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+      // Wrap each token of `text` (in order) in a span, keeping punctuation/spacing between them.
+      function wrap(text: string, words: string[], side: 'he' | 'en') {
+        let out = '', pos = 0;
+        words.forEach((w, i) => {
+          const at = text.indexOf(w, pos);
+          if (at < 0) return;
+          out += esc(text.slice(pos, at)) + `<span class="w" data-side="${side}" data-i="${i}">${esc(w)}</span>`;
+          pos = at + w.length;
+        });
+        return out + esc(text.slice(pos));
+      }
+
+      const heEl = $('kn-he'), enEl = $('kn-en'), stage = $('kn-stage');
+      function showLine(i: number) {
+        if (i === cur) return;
+        cur = i;
+        const l = L[i];
+        heEl.innerHTML = l ? wrap(l.he, l.heWords, 'he') : '';
+        enEl.innerHTML = l ? wrap(l.en, l.enWords, 'en') : '';
+        markSaved();
+        document.querySelectorAll('#kn-lines li').forEach((li) => li.classList.toggle('cur', Number((li as HTMLElement).dataset.i) === i));
+        const li = document.querySelector(`#kn-lines li[data-i="${i}"]`) as HTMLElement | null;
+        const list = $('kn-lines');
+        if (li && !list.hidden) list.scrollTo({ top: li.offsetTop - list.clientHeight / 3, behavior: 'smooth' });
+      }
+
+      function markSaved() {
+        const l = L[cur];
+        if (!l) return;
+        heEl.querySelectorAll('.w').forEach((s) => {
+          const w = l.heWords[Number((s as HTMLElement).dataset.i)];
+          s.classList.toggle('saved', bank.some((b) => b.he === w));
+        });
+      }
+
+      // Hover links: Hebrew word k ↔ English word align[k]
+      function light(side: string, i: number, on: boolean) {
+        const l = L[cur];
+        if (!l) return;
+        const pairs: [string, number][] = [[side, i]];
+        if (side === 'he' && l.align[i] != null) pairs.push(['en', l.align[i]!]);
+        if (side === 'en') l.align.forEach((a, k) => a === i && pairs.push(['he', k]));
+        pairs.forEach(([s, n]) => stage.querySelector(`.w[data-side="${s}"][data-i="${n}"]`)?.classList.toggle('lit', on));
+      }
+      stage.addEventListener('mouseover', (e) => {
+        const w = (e.target as HTMLElement).closest('.w') as HTMLElement | null;
+        if (w) light(w.dataset.side!, Number(w.dataset.i), true);
+      });
+      stage.addEventListener('mouseout', (e) => {
+        const w = (e.target as HTMLElement).closest('.w') as HTMLElement | null;
+        if (w) light(w.dataset.side!, Number(w.dataset.i), false);
+      });
+      stage.addEventListener('click', (e) => {
+        const w = (e.target as HTMLElement).closest('.w') as HTMLElement | null;
+        if (!w || stage.classList.contains('drilling')) return;
+        const l = L[cur];
+        const i = Number(w.dataset.i);
+        let he: string, en: string;
+        if (w.dataset.side === 'he') { he = l.heWords[i]; en = l.align[i] != null ? l.enWords[l.align[i]!] : '—'; }
+        else { const k = l.align.indexOf(i); if (k < 0) return; he = l.heWords[k]; en = l.enWords[i]; }
+        const at = bank.findIndex((b) => b.he === he);
+        if (at >= 0) bank.splice(at, 1); else bank.unshift({ he, en, slug: lesson.slug, line: cur });
+        store.set(bankKey, bank);
+        markSaved();
+        renderBank();
+      });
+
+      // ---------- line list ----------
+      const lineList = $('kn-lines');
+      function eligible(l: Line) {
+        const max = Number(($('kn-maxlevel') as HTMLSelectElement).value);
+        const everyday = ($('kn-everyday') as HTMLInputElement).checked;
+        return l.faithful >= 0.5 && Math.round(l.level) <= max && (!everyday || l.everyday >= 0.6);
+      }
+      function renderLines() {
+        lineList.innerHTML = L.map((l, i) => {
+          const lv = Math.max(0, Math.min(3, Math.round(l.level)));
+          const dim = mode === 'drill' && !eligible(l) ? ' dim' : '';
+          return `<li data-i="${i}" class="${i === cur ? 'cur' : ''}${dim}">
+            <div class="lhe">${esc(l.he)}</div><div class="len">${esc(l.en)}</div>
+            <div class="meta"><span class="lv" title="${LEVELS[lv]}">${'●'.repeat(lv + 1)}${'○'.repeat(3 - lv)}</span>
+            ${l.everyday >= 0.6 ? '<span>everyday</span>' : ''}
+            ${l.faithful < 0.5 ? '<span title="Jev: the Hebrew and English don\'t quite match">loose</span>' : ''}
+            ${done[i] != null ? `<span class="done">✓ ${VERDICTS[Math.round(done[i])]}</span>` : ''}</div></li>`;
+        }).join('');
+      }
+      lineList.addEventListener('click', (e) => {
+        const li = (e.target as HTMLElement).closest('li') as HTMLElement | null;
+        if (li) seekLine(Number(li.dataset.i));
+      });
+
+      // ---------- word bank ----------
+      function renderBank() {
+        $('kn-bank-n').textContent = bank.length ? `(${bank.length})` : '';
+        $('kn-bank').innerHTML = bank.length
+          ? bank.map((b, n) => `<div class="bw" data-n="${n}"><b dir="rtl">${esc(b.he)}</b><span>${esc(b.en)}</span><button data-del="${n}" title="Remove">×</button></div>`).join('')
+          : '<p class="empty">Click any word in the subtitles to save it here. Saved words are kept in this browser.</p>';
+      }
+      $('kn-bank').addEventListener('click', (e) => {
+        const t = e.target as HTMLElement;
+        if (t.dataset.del) { bank.splice(Number(t.dataset.del), 1); store.set(bankKey, bank); renderBank(); markSaved(); return; }
+        const row = t.closest('.bw') as HTMLElement | null;
+        if (!row) return;
+        const b = bank[Number(row.dataset.n)];
+        if (b.slug === lesson.slug) seekLine(b.line);
+        else location.href = `/kolnoa/${b.slug}`;
+      });
+      document.querySelectorAll('.kn-tabs button').forEach((b) => b.addEventListener('click', () => {
+        document.querySelectorAll('.kn-tabs button').forEach((x) => x.classList.toggle('on', x === b));
+        const bankTab = (b as HTMLElement).dataset.tab === 'bank';
+        $('kn-bank').hidden = !bankTab;
+        lineList.hidden = bankTab;
+      }));
+
+      // ---------- player ----------
+      function seekLine(i: number) {
+        if (!L[i]) return;
+        endDrill();
+        lastDrilled = -1;
+        showLine(i);
+        player?.seekTo(L[i].start, true);
+        player?.playVideo();
+      }
+      function lineAt(t: number) {
+        for (let i = 0; i < L.length; i++) if (t >= L[i].start && t < L[i].end) return i;
+        return -1;
+      }
+      function tick() {
+        if (!player?.getCurrentTime || drillLine >= 0) return;
+        const t = player.getCurrentTime();
+        const l = L[cur];
+        if (loop && l && t >= l.end - 0.05) { player.seekTo(l.start, true); return; }
+        if (mode === 'drill' && l && cur !== lastDrilled && t >= l.end - 0.15 && eligible(l)) { startDrill(cur); return; }
+        const i = lineAt(t);
+        if (i >= 0) { if (i !== cur) lastDrilled = -1; showLine(i); }
+      }
+
+      function loadPlayer() {
+        player = new (window as any).YT.Player('kn-yt', {
+          videoId: lesson.youtubeId,
+          playerVars: { cc_load_policy: 0, rel: 0, modestbranding: 1, playsinline: 1 },
+        });
+        setInterval(tick, 120);
+      }
+      if ((window as any).YT?.Player) loadPlayer();
+      else {
+        const prev = (window as any).onYouTubeIframeAPIReady;
+        (window as any).onYouTubeIframeAPIReady = () => { prev?.(); loadPlayer(); };
+        const s = document.createElement('script');
+        s.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(s);
+      }
+
+      // ---------- drill ----------
+      const dir = () => ($('kn-dir') as HTMLSelectElement).value as 'he2en' | 'en2he';
+      const answer = $('kn-answer') as HTMLInputElement;
+      function startDrill(i: number) {
+        drillLine = i;
+        lastDrilled = i;
+        player?.pauseVideo();
+        showLine(i);
+        const he2en = dir() === 'he2en';
+        stage.classList.add('drilling');
+        heEl.classList.toggle('kn-hide', !he2en);
+        enEl.classList.toggle('kn-hide', he2en);
+        $('kn-drill-label').textContent = he2en ? 'What did they say? Type it in English.' : 'Say it in Hebrew:';
+        answer.dir = he2en ? 'ltr' : 'rtl';
+        answer.lang = he2en ? 'en' : 'he';
+        answer.value = '';
+        $('kn-result').hidden = true;
+        $('kn-drill').hidden = false;
+        answer.focus({ preventScroll: true });
+      }
+      function endDrill() {
+        drillLine = -1;
+        stage.classList.remove('drilling');
+        heEl.classList.remove('kn-hide');
+        enEl.classList.remove('kn-hide');
+        stage.querySelectorAll('.w').forEach((w) => w.classList.remove('got', 'miss'));
+        $('kn-drill').hidden = true;
+      }
+      async function check() {
+        const btn = $('kn-check') as HTMLButtonElement;
+        if (drillLine < 0 || !answer.value.trim() || btn.disabled) return;
+        btn.disabled = true;
+        btn.textContent = 'Jev is reading…';
+        try {
+          const res = await fetch('/api/kolnoa-jev', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: lesson.slug, line: drillLine, direction: dir(), answer: answer.value }),
+          });
+          const r = await res.json();
+          if (!res.ok) throw new Error(r.error || res.statusText);
+          const l = L[drillLine];
+          const he2en = r.direction === 'he2en';
+          stage.classList.remove('drilling');
+          heEl.classList.remove('kn-hide');
+          enEl.classList.remove('kn-hide');
+          const side = he2en ? 'he' : 'en';
+          for (const [k, p] of Object.entries(r.words as Record<string, number>)) {
+            stage.querySelector(`.w[data-side="${side}"][data-i="${k}"]`)?.classList.add(p >= 0.5 ? 'got' : 'miss');
+          }
+          const m = r.meaning as number;
+          ($('kn-meter-fill') as HTMLElement).style.width = `${Math.max(4, (m / 4) * 100)}%`;
+          const nat = r.natural == null ? '' : r.natural >= 0.5 ? ' · natural Hebrew ✓' : ' · the Hebrew sounds off';
+          $('kn-verdict').textContent = `${VERDICTS[Math.round(m)]}${nat}`;
+          $('kn-ref').textContent = `Subtitle: ${he2en ? l.en : l.he}`;
+          $('kn-result').hidden = false;
+          done[drillLine] = Math.max(done[drillLine] ?? 0, m);
+          store.set(doneKey, done);
+          renderLines();
+          updateScore();
+        } catch (e: any) {
+          $('kn-verdict').textContent = `Couldn't reach Jev: ${e.message}`;
+          $('kn-result').hidden = false;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Check';
+        }
+      }
+      function updateScore() {
+        const vals = Object.values(done);
+        $('kn-score').textContent = vals.length
+          ? `${vals.length} lines · avg ${Math.round((vals.reduce((a, b) => a + b, 0) / vals.length / 4) * 100)}%`
+          : '';
+      }
+      $('kn-check').addEventListener('click', check);
+      answer.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('kn-result').hidden ? check() : cont(); } });
+      $('kn-replay').addEventListener('click', () => {
+        if (drillLine < 0) return;
+        const i = drillLine;
+        player?.seekTo(L[i].start, true);
+        player?.playVideo();
+        // Pause again at the end of the line, without leaving the drill.
+        const stop = setInterval(() => {
+          if (!player || player.getCurrentTime() >= L[i].end - 0.1) { player?.pauseVideo(); clearInterval(stop); }
+        }, 100);
+      });
+      function cont() {
+        endDrill();
+        player?.playVideo();
+      }
+      $('kn-skip').addEventListener('click', cont);
+      $('kn-now').addEventListener('click', () => { if (L[cur]) startDrill(cur); });
+
+      // ---------- controls ----------
+      document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => {
+        mode = (b as HTMLElement).dataset.mode as typeof mode;
+        document.querySelectorAll('[data-mode]').forEach((x) => x.classList.toggle('on', x === b));
+        $('kn-drillopts').hidden = mode !== 'drill';
+        if (mode === 'watch') endDrill();
+        renderLines();
+      }));
+      document.querySelectorAll('[data-show]').forEach((b) => b.addEventListener('click', () => {
+        const v = (b as HTMLElement).dataset.show!;
+        document.querySelectorAll('[data-show]').forEach((x) => x.classList.toggle('on', x === b));
+        stage.classList.toggle('he-only', v === 'he');
+        stage.classList.toggle('peek', v === 'peek');
+        store.set('kolnoa:show', v);
+      }));
+      const savedShow = store.get('kolnoa:show', 'both');
+      (document.querySelector(`[data-show="${savedShow}"]`) as HTMLElement | null)?.click();
+      document.querySelectorAll('[data-rate]').forEach((b) => b.addEventListener('click', () => {
+        player?.setPlaybackRate(Number((b as HTMLElement).dataset.rate));
+        document.querySelectorAll('[data-rate]').forEach((x) => x.classList.toggle('on', x === b));
+      }));
+      $('kn-loop').addEventListener('click', () => { loop = !loop; $('kn-loop').classList.toggle('on', loop); });
+      $('kn-prev').addEventListener('click', () => seekLine(Math.max(0, cur - 1)));
+      $('kn-next').addEventListener('click', () => seekLine(Math.min(L.length - 1, cur + 1)));
+      ['kn-maxlevel', 'kn-everyday'].forEach((id) => $(id).addEventListener('change', renderLines));
+
+      renderLines();
+      renderBank();
+      updateScore();
+      showLine(0);
+    }
+
+    init();
+    document.addEventListener('astro:page-load', init);
+  </script>
+</Layout>
