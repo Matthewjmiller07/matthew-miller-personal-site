@@ -1,0 +1,137 @@
+---
+import Layout from '../layouts/Layout.astro';
+import stats from '../../public/3d/leshem-yichud/stats.json';
+
+const DIR = '/3d/leshem-yichud';
+const sizes = [
+    { key: 'pocket', he: 'כיס', ...stats.pocket },
+    { key: 'standard', he: 'רגיל', ...stats.standard },
+];
+const fmt = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')} ש׳` : `${min} דק׳`);
+---
+
+<Layout
+    title="הצעת מחיר: כרטיס לשם יחוד"
+    description="Bulk print quote request for the three-colour Leshem Yichud tefillin card: specs, files, and a short form for print shops."
+    image="/3d/leshem-yichud/leshem-yichud-flat.png"
+>
+    <main class="max-w-4xl mx-auto px-4 py-8 text-gray-100" dir="rtl" lang="he">
+        <header class="mb-8">
+            <p class="text-sm text-amber-300 mb-2">בקשה להצעת מחיר · הדפסת תלת מימד בכמות</p>
+            <h1 class="text-3xl md:text-4xl font-bold">כרטיס ״לשם יחוד״ לתיק התפילין</h1>
+            <p class="mt-3 text-gray-300 max-w-2xl">
+                שלום! אנחנו מחפשים בית דפוס תלת מימד שידפיס את הכרטיס הזה בכמות: 25, 50, 100 או 250 יחידות.
+                כל הקבצים כאן, מוכנים להדפסה. נשמח להצעת מחיר דרך הטופס למטה.
+            </p>
+            <p class="mt-2 text-sm text-gray-500" dir="ltr" lang="en">
+                English: we're looking for a shop to print this three-colour PLA card in bulk. Files and specs below; please send a quote with the form.
+            </p>
+        </header>
+
+        <div class="grid md:grid-cols-2 gap-6 items-start">
+            <img src={`${DIR}/leshem-yichud-flat.png`} alt="הכרטיס: טקסט לבן על כחול כהה עם מסגרת זהב ולוגו SCP" class="rounded-xl border border-gray-700 bg-gray-900 p-3 w-full" />
+            <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5 text-sm space-y-3">
+                <h2 class="text-lg font-semibold">מפרט</h2>
+                <ul class="space-y-1 text-gray-300">
+                    <li><strong>חומר:</strong> PLA, שלושה צבעים: כחול כהה (גוף), לבן (טקסט), זהב (מסגרת ולוגו)</li>
+                    <li><strong>הדפסה:</strong> FDM, שכבה 0.2 מ״מ, נחיר 0.4. מתאים ל-AMS או להחלפת סליל ידנית (שתי החלפות בגובה קבוע)</li>
+                    <li><strong>קבצים:</strong> 3MF רב-חלקי מוכן ל-Bambu Studio, וגם STL נפרד לכל צבע</li>
+                    <li><strong>גימור:</strong> כמו שיוצא מהמדפסת, בלי צביעה</li>
+                </ul>
+                <p><a href="/3d-print-tools/leshem-yichud" class="text-amber-300 hover:underline">לצפייה בתלת מימד ופרטים נוספים ←</a></p>
+            </section>
+        </div>
+
+        <h2 class="text-2xl font-bold mt-10 mb-4">גדלים וקבצים</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+            {sizes.map((s) => (
+                <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
+                    <h3 class="text-xl font-semibold">{s.he} <span class="text-gray-400 text-base" dir="ltr">({s.label})</span></h3>
+                    <dl class="grid grid-cols-2 gap-y-1 mt-3 text-sm">
+                        <dt class="text-gray-400">מידות</dt><dd class="font-mono" dir="ltr">{s.w} × {s.h} × {s.thickness} mm</dd>
+                        <dt class="text-gray-400">משקל לחלק</dt><dd class="font-mono" dir="ltr">≈ {s.model_g} g</dd>
+                        <dt class="text-gray-400">זמן הדפסה (AMS)</dt><dd class="font-mono">≈ {fmt(s.time_ams_min)}</dd>
+                    </dl>
+                    <div class="flex flex-wrap gap-2 mt-4 text-sm" dir="ltr">
+                        <a class="px-3 py-1 rounded bg-amber-500 text-gray-900 font-semibold hover:bg-amber-400" href={`${DIR}/leshem-yichud-${s.key}.3mf`} download>3MF</a>
+                        {['navy', 'white', 'gold'].map((c) => (
+                            <a class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600" href={`${DIR}/leshem-yichud-${s.key}-${c}.stl`} download>STL {c}</a>
+                        ))}
+                    </div>
+                </section>
+            ))}
+        </div>
+        <p class="text-xs text-gray-500 mt-3">הזמנים והמשקלים מחושבים מהמודל (פרופיל Standard של Bambu). אפשר להדפיס כמה כרטיסים על אותו משטח.</p>
+
+        <h2 class="text-2xl font-bold mt-10 mb-4">שליחת הצעת מחיר</h2>
+        <form id="pq-form" class="rounded-xl border border-gray-700 bg-gray-900/60 p-5 grid md:grid-cols-2 gap-4 text-sm">
+            <label class="flex flex-col gap-1">שם העסק *<input name="business_name" required class="pq-in" /></label>
+            <label class="flex flex-col gap-1">איש קשר<input name="contact_name" class="pq-in" /></label>
+            <label class="flex flex-col gap-1">טלפון<input name="phone" type="tel" dir="ltr" class="pq-in" /></label>
+            <label class="flex flex-col gap-1">אימייל<input name="email" type="email" dir="ltr" class="pq-in" /></label>
+            <label class="flex flex-col gap-1">גודל
+                <select name="size" class="pq-in"><option value="pocket">כיס (80×115)</option><option value="standard">רגיל (105×150)</option></select>
+            </label>
+            <label class="flex flex-col gap-1">שלושה צבעים אפשרי?
+                <select name="multicolor" class="pq-in"><option value="true">כן</option><option value="false">לא, רק צבע אחד</option></select>
+            </label>
+            <fieldset class="md:col-span-2">
+                <legend class="mb-2">מחיר ליחידה בש״ח, כולל מע״מ</legend>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[25, 50, 100, 250].map((q) => (
+                        <label class="flex flex-col gap-1 text-gray-400">{q} יח׳<input name={`price_${q}`} type="number" min="0" step="0.5" dir="ltr" class="pq-in" /></label>
+                    ))}
+                </div>
+            </fieldset>
+            <label class="flex flex-col gap-1">זמן אספקה<input name="lead_time" placeholder="למשל: שבוע" class="pq-in" /></label>
+            <label class="flex flex-col gap-1 md:col-span-2">הערות<textarea name="notes" rows="3" class="pq-in"></textarea></label>
+            <div class="md:col-span-2 flex items-center gap-4">
+                <button type="submit" class="px-5 py-2 rounded bg-amber-500 text-gray-900 font-semibold hover:bg-amber-400">שליחה</button>
+                <span id="pq-status" class="text-gray-400" aria-live="polite"></span>
+            </div>
+        </form>
+        <p class="text-xs text-gray-500 mt-3">ההצעות נשמרות אצלנו בלבד ולא מוצגות באתר. תודה!</p>
+    </main>
+</Layout>
+
+<style is:global>
+    .pq-in { background: #111827; border: 1px solid #374151; border-radius: 0.375rem; padding: 0.5rem 0.75rem; color: #f3f4f6; }
+    .pq-in:focus { outline: 2px solid #f59e0b; outline-offset: 1px; }
+</style>
+
+<script>
+    import { supabase } from '../lib/supabase';
+
+    const form = document.getElementById('pq-form') as HTMLFormElement;
+    const status = document.getElementById('pq-status')!;
+    const num = (v: FormDataEntryValue | null) => (v === null || v === '' ? null : Number(v));
+    const str = (v: FormDataEntryValue | null) => (v ? String(v).trim() || null : null);
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const f = new FormData(form);
+        status.textContent = 'שולח…';
+        const { error } = await supabase.from('print_quotes').insert({
+            business_name: str(f.get('business_name')),
+            contact_name: str(f.get('contact_name')),
+            phone: str(f.get('phone')),
+            email: str(f.get('email')),
+            size: str(f.get('size')),
+            multicolor: f.get('multicolor') === 'true',
+            price_25: num(f.get('price_25')),
+            price_50: num(f.get('price_50')),
+            price_100: num(f.get('price_100')),
+            price_250: num(f.get('price_250')),
+            lead_time: str(f.get('lead_time')),
+            notes: str(f.get('notes')),
+            source: 'web',
+        });
+        if (error) {
+            status.textContent = 'משהו השתבש, נסו שוב.';
+            console.error(error);
+            return;
+        }
+        form.reset();
+        status.textContent = 'התקבל, תודה! נחזור אליכם.';
+    });
+</script>
