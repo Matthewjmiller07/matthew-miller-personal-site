@@ -38,6 +38,11 @@ COLORS = {  # SCP navy + gold, white body text
 }
 RELIEF = {'white': 0.6, 'gold': 1.0}  # mm above the base; gold is taller so a 2-swap pause print works
 
+# Mirror on the back, for checking the shel rosh: 1 mm self-adhesive acrylic mirror stuck to the
+# flat, bed-smooth back. The card prints face up, so a deep recess there would be one long sagging
+# bridge; instead a thin groove (an easy bridge) marks where the mirror goes.
+MIRROR = dict(inset=7.0, radius=3.0, groove_w=0.8, groove_d=0.4, t=1.0)
+
 SIZES = [
     # key, label, W, H, base thickness, printers
     dict(key='pocket', label='Pocket', w=80, h=115, base=1.6,
@@ -322,6 +327,14 @@ def polys_of(g):
     return [p for sub in getattr(g, 'geoms', []) for p in polys_of(sub)]
 
 
+def mirror_outline(W, H):
+    """The mirror's shape, the guide groove just outside it, and the mirror's cut size (w, h) in mm."""
+    i = MIRROR['inset']
+    glass = rounded_rect(i, i, W - i, H - i, MIRROR['radius'])
+    groove = glass.buffer(MIRROR['groove_w'], join_style=1).difference(glass)
+    return glass, groove, (W - 2 * i, H - 2 * i)
+
+
 def extrude(g, z0, h):
     meshes = []
     g = g.simplify(0.015).buffer(-0.004, join_style=2)  # a 4 µm inset splits pinch points so every part is manifold
@@ -412,9 +425,11 @@ def main():
     stats = {}
     for size in SIZES:
         d = design(size, body_face, title_face, words)
-        T = size['base']
+        T, G = size['base'], MIRROR['groove_d']
+        glass, groove, mirror_wh = mirror_outline(size['w'], size['h'])
         meshes = {
-            'navy': extrude(d['base'], 0, T),
+            'navy': trimesh.boolean.union([extrude(d['base'].difference(groove), 0, G + 0.01),
+                                           extrude(d['base'], G, T - G)], engine='manifold'),
             'white': extrude(d['white'], T, RELIEF['white']),
             'gold': extrude(d['gold'], T, RELIEF['gold']),
         }
@@ -431,11 +446,16 @@ def main():
                     baseColorFactor=[*rgb, 255], roughnessFactor=0.55 if c != 'gold' else 0.3,
                     metallicFactor=0.0 if c != 'gold' else 0.6))
                 scene.add_geometry(mm, node_name=c)
+            glass = extrude(glass, -MIRROR['t'], MIRROR['t'])  # preview only: the mirror stuck on
+            glass.visual = trimesh.visual.TextureVisuals(material=trimesh.visual.material.PBRMaterial(
+                baseColorFactor=[235, 240, 245, 255], roughnessFactor=0.04, metallicFactor=1.0))
+            scene.add_geometry(glass, node_name='mirror')
             scene.export(OUT / 'leshem-yichud-preview.glb')
         est = estimate(d, T)
         stats[size['key']] = dict(
             label=size['label'], w=size['w'], h=size['h'], thickness=round(T + RELIEF['gold'], 1),
-            base=T, printers=size['printers'], bag=size['bag'],
+            base=round(T, 2), printers=size['printers'], bag=size['bag'],
+            mirror=dict(w=mirror_wh[0], h=mirror_wh[1], t=MIRROR['t'], radius=MIRROR['radius']),
             body_em_mm=round(d['body_em'], 2), lines=d['lines'],
             triangles=sum(len(m.faces) for m in meshes.values()), **est)
         print(size['key'], json.dumps(stats[size['key']], ensure_ascii=False))

@@ -45,6 +45,7 @@ PROMPT = f"""את/ה עוזר/ת קולי/ת אוטומטי/ת שמתקשר/ת �
 - PLA, שלושה צבעים: כחול כהה, לבן וזהב. FDM, שכבה 0.2. אפשר עם AMS או החלפת סליל ידנית.
 - גודל כיס: 8 על 11.5 ס״מ, עובי 2.6 מ״מ, בערך 20 גרם, בערך 55 דקות הדפסה ליחידה.
 - יש גם גודל רגיל: 10.5 על 15 ס״מ, בערך 35 גרם.
+- בגב הכרטיס מודבקת מראה אקרילית דביקה של 1 מ״מ (בכיס: 6.6 על 10.1 ס״מ). שאל/י אם יכולים לספק ולהדביק, ובכמה.
 - כמויות: 25, 50, 100, 250.
 - הקבצים (3MF ו-STL) מוכנים באתר: {QUOTE_LINK}  — אפשר להקריא: "דה אָדֶר מָתְיוּ מִילֶר נקודה קום, סלאש פְּרִינְט קְווֹט".
 
@@ -67,6 +68,7 @@ SCHEMA = {
         'price_250': {'type': 'number'},
         'unit_price': {'type': 'number', 'description': 'ILS per unit if only one figure was given'},
         'setup_fee': {'type': 'number'},
+        'mirror_price': {'type': 'number', 'description': 'ILS per unit to supply and fit the back mirror, if quoted'},
         'lead_time': {'type': 'string'},
         'contact_name': {'type': 'string'},
         'email': {'type': 'string'},

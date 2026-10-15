@@ -30,6 +30,7 @@ const swatches = [
             <p class="mt-3 text-gray-400 max-w-3xl">
                 The full Leshem Yichud said before putting on tefillin, with nikkud, raised in white on a navy card
                 inside a gold double frame, with the SCP logo on top and the shin of the tefillin bayit at the bottom.
+                On the back goes a mirror, for checking the shel rosh sits centred.
                 Three colours, made for the Bambu A1 mini, with a bigger version for 256&nbsp;mm printers. It lives in the tefillin bag.
             </p>
             <p class="mt-2 text-sm"><a href="/print-quote" class="text-amber-300 hover:underline">Print shops: quote a bulk run (Hebrew) →</a></p>
@@ -46,6 +47,7 @@ const swatches = [
                         <span class="flex-1"></span>
                         <button id="ly-tilt" class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600" type="button">Tilt</button>
                         <button id="ly-face" class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600" type="button">Face on</button>
+                        <button id="ly-back" class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600" type="button">Back (mirror)</button>
                     </div>
                 </div>
                 <p class="text-xs text-gray-500 mt-2">Standard size shown. Drag to orbit, scroll to zoom.</p>
@@ -63,6 +65,16 @@ const swatches = [
                         ))}
                     </ul>
                     <p class="text-xs text-gray-500 mt-3">Matte navy, a white or ivory PLA and a silk gold look best. The gold stands 1.0&nbsp;mm proud, the text 0.6&nbsp;mm, which is what lets a single-nozzle printer without an AMS do all three colours with two filament swaps.</p>
+                </section>
+                <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5 text-sm text-gray-300">
+                    <h2 class="text-lg font-semibold mb-2 text-gray-100">A mirror on the back</h2>
+                    <p>Flip the card over to check that the shel rosh sits centred, above the hairline. The back prints flat against the bed, which is the ideal surface to stick a mirror to, and a fine groove marks where it goes.</p>
+                    <ul class="mt-2 space-y-1">
+                        {sizes.map((s) => (
+                            <li><strong>{s.label}:</strong> <span class="font-mono">{s.mirror.w} × {s.mirror.h} mm</span></li>
+                        ))}
+                    </ul>
+                    <p class="mt-2">Use 1&nbsp;mm self-adhesive acrylic mirror (מראה אקרילית דביקה): score it with a knife and snap it, round the corners to 3&nbsp;mm with sandpaper, peel and press it inside the groove. The mirror adds 1&nbsp;mm, still slim enough for the bag.</p>
                 </section>
                 <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5 text-sm text-gray-300">
                     <h2 class="text-lg font-semibold mb-2 text-gray-100">A word on the text</h2>
@@ -112,7 +124,7 @@ const swatches = [
                     <li>Open the 3MF in Bambu Studio. If it asks, load it as <em>one object with multiple parts</em>. (With the STLs: import all three at once and say yes to "single object".)</li>
                     <li>In the object list, set the parts navy → slot 1, white → slot 2, gold → slot 3.</li>
                     <li>Profile: 0.20&nbsp;mm Standard (or 0.16&nbsp;mm for crisper nikkud), 3 walls, 15% infill. Leave it flat on the plate, text up.</li>
-                    <li>Smooth PEI or a textured plate both work; the textured one gives the back a nice finish.</li>
+                    <li>Use a smooth PEI plate if you're adding the mirror: the adhesive grips a smooth back best. (A textured plate gives a nice finish if you're not.)</li>
                     <li>Only the three or so relief layers have two colours, so there are just four filament changes.</li>
                 </ol>
             </section>
@@ -133,6 +145,7 @@ const swatches = [
         import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/+esm';
         import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js/+esm';
         import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js/+esm';
+        import { RoomEnvironment } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js/+esm';
 
         function boot() {
             const el = document.getElementById('ly-viewer');
@@ -160,7 +173,7 @@ const swatches = [
 
             const group = new THREE.Group();
             scene.add(group);
-            const views = { face: [0, 0, 330], tilt: [-120, -170, 230] };
+            const views = { face: [0, 0, 330], tilt: [-120, -170, 230], back: [90, -120, -280] };
             const setView = (v) => { camera.position.set(...views[v]); controls.target.set(0, 0, 0); controls.update(); };
 
             function resize() {
@@ -175,6 +188,9 @@ const swatches = [
             new GLTFLoader().load('/3d/leshem-yichud/leshem-yichud-preview.glb', (gltf) => {
                 // trimesh keeps the print's Z-up coordinates, so the card already faces +Z (the camera)
                 const m = gltf.scene;
+                // the mirror needs something to reflect; only it gets the environment map
+                const env = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+                m.traverse((o) => { if (o.isMesh && o.material && o.material.metalness === 1) { o.material.envMap = env; o.material.needsUpdate = true; } });
                 group.add(m);
                 const box = new THREE.Box3().setFromObject(m);
                 m.position.sub(box.getCenter(new THREE.Vector3()));
@@ -188,6 +204,7 @@ const swatches = [
 
             document.getElementById('ly-tilt').addEventListener('click', () => setView('tilt'));
             document.getElementById('ly-face').addEventListener('click', () => setView('face'));
+            document.getElementById('ly-back').addEventListener('click', () => setView('back'));
             renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
         }
 
