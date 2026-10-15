@@ -4,6 +4,7 @@
 import season from './phds-on-the-parsha/season-5787.json';
 import { books } from './parasha-books/books.mjs';
 import { sheets as simonSheets } from './uriel-simon-reader';
+import dweck from './dweck-haftara/episodes.json';
 
 const SHEET_FILES = import.meta.glob('./parasha-sheets/*.json', { eager: true, import: 'default' }) as Record<
   string,
@@ -35,9 +36,14 @@ const shnayimByKey = Object.fromEntries(SHNAYIM_NAMES.map((n) => [key(n), n]));
 const sheetSlugByKey = Object.fromEntries(Object.values(SHEET_FILES).map((s) => [key(s.slug), s.slug]));
 const bookByKey = Object.fromEntries(books.map((b: { slug: string }) => [key(b.slug), b]));
 const simonByKey = Object.fromEntries(simonSheets.map((s) => [key(s.slug), s]));
+const dweckByKey = Object.fromEntries(dweck.episodes.map((e) => [key(e.parsha), e]));
+
+// Rabbi Dweck's haftara episodes (The Parasha with Rabbi Dweck, 5787), newest first.
+export const dweckShow = dweck.show;
+export const dweckEpisodes = [...dweck.episodes].sort((a, b) => b.date.localeCompare(a.date));
 
 export interface Link {
-  kind: 'simon' | 'sheet' | 'balashon' | 'book' | 'phd' | 'mega' | 'shnayim' | 'sefaria';
+  kind: 'simon' | 'dweck' | 'sheet' | 'balashon' | 'book' | 'phd' | 'mega' | 'shnayim' | 'sefaria';
   label: string;
   href: string;
   note?: string;
@@ -62,6 +68,9 @@ export const weeks: Week[] = season.weeks.map((w: any) => {
 
   const simon = simonByKey[k];
   if (simon) links.push({ kind: 'simon', label: 'Uriel Simon Reader', href: `/uriel-simon/${simon.slug}`, note: simon.title });
+
+  const ep = dweckByKey[k];
+  if (ep) links.push({ kind: 'dweck', label: 'Rabbi Dweck on the haftara', href: `/parasha#dweck-${ep.slug}`, note: `“${ep.title},” ${ep.haftara}` });
 
   const sheetSlug = sheetSlugByKey[k];
   if (sheetSlug) links.push({ kind: 'sheet', label: 'Parasha sheet', href: `/parasha-sheet/${sheetSlug}` });
@@ -101,6 +110,12 @@ export const series = [
     href: '/uriel-simon',
     kind: 'Reader',
     text: 'A text and a teaching each week, in memory of Prof. Uriel Simon z"l: the verses beside his own words, on two printable pages.',
+  },
+  {
+    name: 'The Parasha with Rabbi Dweck',
+    href: '/parasha#dweck',
+    kind: 'Podcast',
+    text: "This year Rabbi Joseph Dweck is teaching the haftara: each week's prophetic reading, what it says and how it answers the parasha.",
   },
   {
     name: 'Parasha Sheets',

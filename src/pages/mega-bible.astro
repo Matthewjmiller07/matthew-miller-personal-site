@@ -1051,6 +1051,41 @@ a.w-gen-link:hover { background:var(--gold); color:#0c0b09; }
 /* Haftarah section */
 .haftarah-section { margin-top:2.5rem; }
 
+/* Rabbi Dweck on the haftara — episode card, per-verse notes, floating player */
+.dweck-card {
+  margin:0 0 1.5rem; padding:.9rem 1rem; background:var(--surface);
+  border:1px solid var(--border-hi); border-left:3px solid var(--gold); direction:ltr;
+}
+.dweck-card-kicker { font-family:var(--sc); font-size:.55rem; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); }
+.dweck-card-title { font-family:var(--display); font-size:1.25rem; font-weight:600; margin:.2rem 0 .35rem; }
+.dweck-card-title span { font-size:.8rem; font-weight:400; font-style:italic; color:var(--muted); margin-left:.4rem; }
+.dweck-card-sum { font-family:var(--display); font-size:.92rem; line-height:1.6; margin:0 0 .6rem; }
+.dweck-card-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .9rem; margin-bottom:.5rem; }
+.dweck-card-actions a { font-family:var(--sc); font-size:.62rem; letter-spacing:.1em; color:var(--gold-dim); }
+.dweck-card-moments { list-style:none; padding:0; margin:0; font-family:var(--display); font-size:.85rem; line-height:1.55; }
+.dweck-card-moments li { padding:.15rem 0; }
+.dweck-card-ref { font-family:var(--sc); font-size:.62rem; letter-spacing:.08em; color:var(--gold); margin-right:.25rem; }
+.dweck-play {
+  font-family:var(--mono); font-size:.68rem; padding:.1rem .45rem; cursor:pointer;
+  background:rgba(201,162,87,.12); color:var(--gold); border:1px solid var(--border-hi); border-radius:.2rem;
+}
+.dweck-play:hover { background:rgba(201,162,87,.25); }
+.verse-dweck { margin-top:.5rem; padding:.6rem .8rem; background:var(--surface); border:1px solid var(--border); border-left:2px solid var(--gold-dim); direction:ltr; }
+.verse-dweck-hdr { font-family:var(--sc); font-size:.5rem; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); margin-bottom:.4rem; }
+.verse-dweck p { font-family:var(--display); font-size:.85rem; line-height:1.65; margin:0 0 .4rem; }
+.verse-dweck p:last-child { margin-bottom:0; }
+.verse-dweck-src { font-style:italic; color:var(--muted); }
+.mb-page.no-haftarah .verse-dweck, .mb-page.no-haftarah .dweck-card { display:none; }
+.dweck-player {
+  position:fixed; right:1rem; bottom:1rem; z-index:60; width:min(360px, calc(100vw - 2rem));
+  padding:.5rem .6rem .6rem; background:var(--surface2); border:1px solid var(--border-hi);
+  box-shadow:0 6px 24px rgba(0,0,0,.5);
+}
+.dweck-player-head { display:flex; align-items:center; gap:.5rem; margin-bottom:.35rem; }
+.dweck-player-title { flex:1; font-family:var(--display); font-size:.85rem; color:var(--text); }
+.dweck-player-x { background:none; border:none; color:var(--muted); font-size:1.1rem; cursor:pointer; }
+.dweck-player audio { width:100%; height:32px; }
+
 /* Book sources + shared/unique viz */
 .mb-book-src-row { display:flex; align-items:center; gap:.5rem; padding:.2rem 0; }
 .mb-book-src-name { font-family:var(--sc); font-size:.58rem; letter-spacing:.12em; color:var(--gold); width:90px; flex-shrink:0; }
@@ -1622,6 +1657,99 @@ function markSheetHapax(sheets: any[]) {
       });
     }
   }
+}
+
+// ── Rabbi Dweck on the haftara ─────────────────────────────────────────────
+// The Parasha with Rabbi Dweck (5787 haftara series): each episode's verse moments, from its
+// transcript. A verse he discusses gets a note that plays the episode from that moment; the
+// haftarah gets the episode card. `t` is transcript time; `offset` is the podcast's intro.
+import DWECK from '../data/dweck-haftara/episodes.json';
+type DweckEp = (typeof DWECK.episodes)[number];
+const dweckByVerse = new Map<string, { ep: DweckEp; t: number; note: string }[]>();
+for (const ep of DWECK.episodes) {
+  for (const m of ep.moments) {
+    if (!dweckByVerse.has(m.ref)) dweckByVerse.set(m.ref, []);
+    dweckByVerse.get(m.ref)!.push({ ep, t: m.t, note: m.note });
+  }
+}
+dweckByVerse.forEach(list => list.sort((a, b) => a.t - b.t));
+const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+let dweckPlayer: HTMLElement | null = null;
+function playDweck(ep: DweckEp, t: number) {
+  if (!dweckPlayer) {
+    dweckPlayer = document.createElement('div');
+    dweckPlayer.className = 'dweck-player';
+    dweckPlayer.innerHTML =
+      `<div class="dweck-player-head"><span class="dweck-player-title"></span>` +
+      `<button type="button" class="dweck-player-x" aria-label="Close player">×</button></div>` +
+      `<audio controls preload="metadata"></audio>`;
+    dweckPlayer.querySelector('.dweck-player-x')!.addEventListener('click', () => {
+      dweckPlayer!.querySelector('audio')!.pause();
+      dweckPlayer!.remove();
+      dweckPlayer = null;
+    });
+    document.querySelector('.mb-page')!.appendChild(dweckPlayer);
+  }
+  const audio = dweckPlayer.querySelector('audio') as HTMLAudioElement;
+  dweckPlayer.querySelector('.dweck-player-title')!.textContent = `Rabbi Dweck · ${ep.title} (Haftarat ${ep.parsha})`;
+  const at = t ? t + ep.offset : 0;
+  if (audio.dataset.src !== ep.audio) {
+    audio.dataset.src = ep.audio;
+    audio.src = ep.audio;
+    audio.addEventListener('loadedmetadata', () => { audio.currentTime = at; audio.play().catch(() => {}); }, { once: true });
+  } else {
+    audio.currentTime = at;
+    audio.play().catch(() => {});
+  }
+}
+
+function dweckVerseEl(verseKey: string): HTMLElement | null {
+  const list = dweckByVerse.get(verseKey);
+  if (!list) return null;
+  const el = document.createElement('div');
+  el.className = 'verse-dweck';
+  el.innerHTML = `<div class="verse-dweck-hdr">Rabbi Dweck on this verse</div>`;
+  for (const m of list) {
+    const row = document.createElement('p');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'dweck-play';
+    btn.textContent = `▶ ${fmtClock(m.t + m.ep.offset)}`;
+    btn.title = `Play “${m.ep.title}” from here`;
+    btn.addEventListener('click', () => playDweck(m.ep, m.t));
+    row.appendChild(btn);
+    row.append(` ${m.note} `);
+    const src = document.createElement('span');
+    src.className = 'verse-dweck-src';
+    src.textContent = `“${m.ep.title}”`;
+    row.appendChild(src);
+    el.appendChild(row);
+  }
+  return el;
+}
+
+function dweckEpisodeCard(parsha: string): HTMLElement | null {
+  const ep = DWECK.episodes.find(e => e.parsha === parsha);
+  if (!ep) return null;
+  const card = document.createElement('div');
+  card.className = 'dweck-card';
+  const moments = [...ep.moments].sort((a, b) => a.t - b.t);
+  card.innerHTML =
+    `<div class="dweck-card-kicker">${escHtml(DWECK.show.name)} · ${escHtml(DWECK.show.series)}</div>` +
+    `<div class="dweck-card-title">“${escHtml(ep.title)}” <span>${escHtml(ep.haftara)} · ${ep.duration}</span></div>` +
+    `<p class="dweck-card-sum">${escHtml(ep.summary)}</p>` +
+    `<div class="dweck-card-actions"><button type="button" class="dweck-play" data-t="0">▶ Play episode</button>` +
+    `<a href="${ep.spotify}" target="_blank" rel="noopener">Spotify</a>` +
+    `<a href="${ep.apple}" target="_blank" rel="noopener">Apple Podcasts</a></div>` +
+    `<ol class="dweck-card-moments">` +
+    moments.map((m, i) => `<li><button type="button" class="dweck-play" data-i="${i}">${fmtClock(m.t + ep.offset)}</button> ` +
+      `<span class="dweck-card-ref">${escHtml(m.ref)}</span> ${escHtml(m.note)}</li>`).join('') +
+    `</ol>`;
+  card.querySelectorAll<HTMLButtonElement>('.dweck-play').forEach(b => {
+    b.addEventListener('click', () => playDweck(ep, b.dataset.i ? moments[+b.dataset.i].t : 0));
+  });
+  return card;
 }
 
 // ── Genealogies ────────────────────────────────────────────────────────────
@@ -2877,6 +3005,8 @@ async function handleHaftarahLoad() {
 
   // Haftarah viz (rite comparison table + bar chart) at the top
   main.appendChild(buildHaftarahViz(parsha));
+  const dweckCard = dweckEpisodeCard(parsha);
+  if (dweckCard) main.appendChild(dweckCard);
 
   interface VRef { book: string; ch: number; v: number; }
 
@@ -5350,6 +5480,10 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     block.appendChild(notesEl);
   }
 
+  // Rabbi Dweck — this verse's moments in his haftara episodes.
+  const dweckEl = dweckVerseEl(verseKey);
+  if (dweckEl) block.appendChild(dweckEl);
+
   // Books & Papers — scholarship on this verse (literary_bible.book_paper rows).
   renderVerseBooks(block, book, ch, v);
 
@@ -5368,6 +5502,8 @@ async function buildHaftarahSection(parsha: string): Promise<HTMLElement> {
   banner.className = 'haftarah-banner';
   banner.textContent = `Haftarah — ${parsha}`;
   section.appendChild(banner);
+  const dweckCard = dweckEpisodeCard(parsha);
+  if (dweckCard) section.appendChild(dweckCard);
 
   const parshaRites = haftarahData[parsha] || {};
 

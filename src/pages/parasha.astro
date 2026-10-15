@@ -2,7 +2,7 @@
 // /parasha — the hub for everything on the site that follows the weekly Torah reading.
 // Data: src/data/parasha-hub.ts (joins the 5787 calendar to sheets, readers, books and tools).
 import Layout from '../layouts/Layout.astro';
-import { weeks, BOOKS, series, tools } from '../data/parasha-hub';
+import { weeks, BOOKS, series, tools, dweckShow, dweckEpisodes } from '../data/parasha-hub';
 
 const fmt = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
@@ -73,6 +73,41 @@ const isExternal = (href: string) => href.startsWith('http');
           </a>
         ))}
       </div>
+    </section>
+
+    <section id="dweck" aria-labelledby="ph-dweck-h">
+      <h2 id="ph-dweck-h" class="ph-h2">The Parasha with Rabbi Dweck: the haftara</h2>
+      <p class="ph-dweck-lede">
+        This year Rabbi Joseph Dweck is teaching the haftara, the prophetic reading that follows the parasha.
+        Each verse he discusses is marked in the <a href="/mega-bible?mode=haftarah&parsha=Bereshit&rites=Sephardi">Mega Bible</a>,
+        with a button that plays the episode from that moment.
+      </p>
+      {dweckEpisodes.map((ep) => (
+        <article class="ph-dweck" id={`dweck-${ep.slug}`}>
+          <div class="ph-week-top">
+            <span class="ph-name">“{ep.title}”</span>
+            <span class="ph-meta">Haftarat {ep.parsha} · {ep.haftara} · {ep.duration}</span>
+          </div>
+          <p class="ph-dweck-sum">{ep.summary}</p>
+          <iframe
+            src={ep.embed}
+            title={`${dweckShow.name}: ${ep.title}`}
+            height="102"
+            loading="lazy"
+            frameborder="0"
+            scrolling="no"
+          ></iframe>
+          <ul class="ph-links">
+            <li><a class="ph-chip ph-k-mega" href={`/mega-bible?mode=haftarah&parsha=${encodeURIComponent(ep.parsha)}&rites=Sephardi`}>Read it in the Mega Bible</a></li>
+            <li><a class="ph-chip" href={ep.spotify} target="_blank" rel="noopener noreferrer">Spotify</a></li>
+            <li><a class="ph-chip" href={ep.apple} target="_blank" rel="noopener noreferrer">Apple Podcasts</a></li>
+          </ul>
+        </article>
+      ))}
+      <p class="ph-small">
+        All episodes: <a href={dweckShow.spotify} target="_blank" rel="noopener noreferrer">Spotify</a> ·
+        <a href={dweckShow.apple} target="_blank" rel="noopener noreferrer">Apple Podcasts</a>
+      </p>
     </section>
 
     <section aria-labelledby="ph-tools-h">
@@ -185,6 +220,14 @@ const isExternal = (href: string) => href.startsWith('http');
   .ph-k-balashon { border-color: #6a3a32; background: #2a1815; color: #f0c2b6 !important; }
   .ph-k-book { border-color: #4f3d5c; background: #221a28; color: #dcc4ec !important; }
   .ph-k-phd { border-color: #3f5a3c; background: #1a2419; color: #c3e0bd !important; }
+  .ph-k-dweck { border-color: #6a5a2a; background: #2a2412; color: #f0dc9c !important; }
+
+  .ph-dweck-lede { font-size: 1.05rem; line-height: 1.5; max-width: 44rem; color: #d4cfc5 !important; margin: 0 0 1rem; }
+  .ph-dweck-lede a, .ph-small a { color: #d8b06a !important; }
+  .ph-dweck { padding: 1rem 1.25rem; border: 1px solid #3a3f45; border-radius: 6px; background: #1a1d21; margin-bottom: .9rem; scroll-margin-top: 5rem; }
+  .ph-dweck:target { border-color: #d8b06a; }
+  .ph-dweck-sum { font-size: 1rem; line-height: 1.5; color: #b9b4aa !important; margin: .4rem 0 .7rem; }
+  .ph-dweck iframe { display: block; width: 100%; max-width: 40rem; border: 0; border-radius: 6px; }
 
   .ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .9rem; }
   .ph-card {
