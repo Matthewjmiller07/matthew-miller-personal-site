@@ -3,12 +3,19 @@ import Layout from '../../layouts/Layout.astro';
 
 const lessons = Object.values(import.meta.glob('../../data/kolnoa/*.json', { eager: true }))
   .map((m: any) => m.default ?? m)
-  .sort((a: any, b: any) => a.title.localeCompare(b.title));
+  .map((l: any) => ({ ...l, avg: l.lines.reduce((a: number, x: any) => a + x.level, 0) / l.lines.length }))
+  .sort((a: any, b: any) => a.avg - b.avg);
 
-const stats = (lines: any[]) => {
-  const easy = lines.filter((l) => Math.round(l.level) <= 1 && l.faithful >= 0.5).length;
-  const everyday = lines.filter((l) => l.everyday >= 0.6).length;
-  return { easy, everyday };
+const LEVELS = ['Beginner', 'Elementary', 'Intermediate', 'Advanced'];
+const stats = (lesson: any) => {
+  const lines = lesson.lines;
+  const easy = lines.filter((l: any) => Math.round(l.level) <= 1 && l.faithful >= 0.5).length;
+  const everyday = lines.filter((l: any) => l.everyday >= 0.6).length;
+  const minutes = Math.max(1, Math.round(lines[lines.length - 1].end / 60));
+  const level = LEVELS[Math.min(3, Math.round(lesson.avg))];
+  // Most talks average out near Elementary, so the bar spreads the 0.8–2 range where they actually differ.
+  const pct = Math.round(Math.min(1, Math.max(0.05, (lesson.avg - 0.8) / 1.2)) * 100);
+  return { easy: Math.round((easy / lines.length) * 100), everyday, minutes, level, pct };
 };
 ---
 
@@ -28,21 +35,27 @@ const stats = (lines: any[]) => {
       <h1>Kolnoa</h1>
       <p class="lede">
         A subtitle language lab. Each video plays with its human-made Hebrew and English subtitles in sync. Hover a
-        Hebrew word to see the English word it translates. Then switch to <b>Drill</b>: the video pauses after each line
-        at your level, you translate it, and <a href="https://typesafe.ai">Jev</a> shows you which words you caught.
+        Hebrew word to see the English word it translates. Then pick a game: <b>Fill the gap</b> pauses after each line
+        and hides a Hebrew word for you to find, and <b>Translate</b> has you put the whole line into the other language
+        while <a href="https://typesafe.ai">Jev</a> shows you which words you caught. Talks are ordered easiest first.
       </p>
     </header>
 
     <ul class="cards">
       {lessons.map((l: any) => {
-        const s = stats(l.lines);
+        const s = stats(l);
         return (
           <li>
-            <a href={`/kolnoa/${l.slug}`}>
-              <img src={`https://i.ytimg.com/vi/${l.youtubeId}/hqdefault.jpg`} alt="" loading="lazy" />
+            <a href={`/kolnoa/${l.slug}`} data-slug={l.slug} data-n={l.lines.length}>
+              <span class="thumb">
+                <img src={`https://i.ytimg.com/vi/${l.youtubeId}/hqdefault.jpg`} alt="" loading="lazy" />
+                <span class="mins">{s.minutes} min</span>
+              </span>
               <div>
                 <h2>{l.title.replace(/\s*\|.*$/, '')}</h2>
-                <p>{l.channel} · {l.lines.length} lines · {s.easy} beginner-friendly · {s.everyday} everyday phrases</p>
+                <p class="lvl"><span class="bar"><span style={`width:${s.pct}%`}></span></span>{s.level} · {s.easy}% easy lines</p>
+                <p>{l.channel} · {l.lines.length} lines · {s.everyday} everyday phrases</p>
+                <p class="prog" hidden></p>
               </div>
             </a>
           </li>
@@ -50,6 +63,27 @@ const stats = (lines: any[]) => {
       })}
     </ul>
   </main>
+
+  <script>
+    // Progress lives in this browser (the lesson page writes it): lines translated and gaps filled.
+    function progress() {
+      document.querySelectorAll<HTMLAnchorElement>('.cards a[data-slug]').forEach((a) => {
+        let n = 0;
+        try {
+          const seen = new Set([
+            ...Object.keys(JSON.parse(localStorage.getItem(`kolnoa:done:${a.dataset.slug}`) || '{}')),
+            ...Object.keys(JSON.parse(localStorage.getItem(`kolnoa:fill:${a.dataset.slug}`) || '{}')),
+          ]);
+          n = seen.size;
+        } catch {}
+        const el = a.querySelector<HTMLElement>('.prog')!;
+        el.hidden = !n;
+        el.textContent = `✓ ${n} of ${a.dataset.n} lines practised`;
+      });
+    }
+    progress();
+    document.addEventListener('astro:page-load', progress);
+  </script>
 
   <style>
     .kx { min-height: 100vh; background: radial-gradient(ellipse at top, #241a10 0%, #0d0b0a 55%) #0d0b0a; color: #f2e8d8; padding: 48px 16px 80px; }
@@ -61,6 +95,13 @@ const stats = (lines: any[]) => {
     .cards { list-style: none; padding: 0; margin-top: 40px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
     .cards a { display: block; text-decoration: none; background: #17130f; border: 1px solid #2c241c; border-radius: 12px; overflow: hidden; transition: border-color 0.15s, transform 0.15s; }
     .cards a:hover { border-color: #e8b04a; transform: translateY(-2px); }
+    .thumb { position: relative; display: block; }
+    .mins { position: absolute; right: 8px; bottom: 8px; background: rgba(0, 0, 0, 0.75); color: #f2e8d8; font-size: 12px; padding: 2px 6px; border-radius: 4px; }
+    .lvl { display: flex; align-items: center; gap: 8px; }
+    .bar { width: 64px; height: 5px; background: #2c241c; border-radius: 99px; overflow: hidden; }
+    .bar span { display: block; height: 100%; background: linear-gradient(90deg, #7fcf8f, #e8b04a, #ef7a6a); background-size: 64px 100%; }
+    .cards .prog { color: #7fcf8f; }
+    .cards [hidden] { display: none; }
     .cards img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
     .cards div { padding: 14px 16px 16px; }
     .cards h2 { font-family: Fraunces, Georgia, serif; font-size: 20px; color: #f2e8d8; line-height: 1.2; }
