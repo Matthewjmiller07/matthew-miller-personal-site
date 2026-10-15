@@ -107,6 +107,14 @@ const title = lesson.title.replace(/\s*\|.*$/, '');
           <span class="kn-score" id="kn-score"></span>
         </div>
 
+        <div class="kn-noa">
+          <img id="kn-noa-img" src="/images/kolnoa/noa-wave.webp" alt="Noa" width="384" height="600" />
+          <div class="kn-noa-say">
+            <p id="kn-noa-he" dir="rtl" lang="he">היי, אני נועה!</p>
+            <p id="kn-noa-en">Hi, I'm Noa! Hover a Hebrew word and I'll show you its English. Want to practise? Try <b>Fill the gap</b>, or <a href="/kolnoa/noa">come talk to me</a>.</p>
+          </div>
+        </div>
+
         <p class="kn-hint">Hover or tap a Hebrew word to light up its English match. Click a word to save it to your word bank.
           Keys: <kbd>space</kbd> play/pause · <kbd>←</kbd><kbd>→</kbd> lines · <kbd>L</kbd> loop · <kbd>S</kbd> say it in Hebrew.</p>
       </section>
@@ -217,6 +225,16 @@ const title = lesson.title.replace(/\s*\|.*$/, '');
     .kn-choices button:hover:not(:disabled) { border-color: var(--gold); }
     .kn-choices button.right { border-color: var(--good); color: var(--good); }
     .kn-choices button.wrong { border-color: var(--bad); color: var(--bad); }
+    .kn-noa { display: flex; align-items: flex-end; gap: 12px; margin-top: 14px; }
+    .kn-noa img { height: 110px; width: auto; flex: none; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5)); }
+    .kn-noa img.pop { animation: kn-pop 0.45s ease-out; }
+    @keyframes kn-pop { 0% { transform: translateY(5px) scale(0.96); } 50% { transform: translateY(-6px) scale(1.03); } 100% { transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .kn-noa img.pop { animation: none; } }
+    .kn-noa-say { position: relative; background: #fff6ec; color: #2a1d14; border-radius: 14px; padding: 10px 14px; margin-bottom: 30px; max-width: 520px; }
+    .kn-noa-say::before { content: ''; position: absolute; left: -9px; bottom: 14px; border: 9px solid transparent; border-right-color: #fff6ec; border-left: 0; }
+    .kn-noa-say #kn-noa-he { font-family: 'Frank Ruhl Libre', serif; font-size: 20px; }
+    .kn-noa-say #kn-noa-en { font-size: 13px; color: #6d5a46; }
+    .kn-noa-say a { color: #b8456f; }
     .kn-hint kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
     .kn-drill-label { display: block; color: var(--mute); font-size: 14px; margin-bottom: 8px; }
     .kn-drill-row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -467,6 +485,19 @@ const title = lesson.title.replace(/\s*\|.*$/, '');
         document.head.appendChild(s);
       }
 
+      // ---------- Noa ----------
+      // She reacts to what you do; her lines are fixed, the pose comes from the moment.
+      function noa(p: string, he: string, en: string) {
+        const im = $('kn-noa-img') as HTMLImageElement;
+        im.src = `/images/kolnoa/noa-${p}.webp`;
+        im.classList.remove('pop');
+        void im.offsetWidth;
+        im.classList.add('pop');
+        $('kn-noa-he').textContent = he;
+        $('kn-noa-en').textContent = en;
+      }
+      const any = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+
       // ---------- drill ----------
       const dir = () => ($('kn-dir') as HTMLSelectElement).value as 'he2en' | 'en2he';
       const answer = $('kn-answer') as HTMLInputElement;
@@ -480,6 +511,7 @@ const title = lesson.title.replace(/\s*\|.*$/, '');
         stage.classList.add('drilling');
         heEl.classList.toggle('kn-hide', !he2en);
         enEl.classList.toggle('kn-hide', he2en);
+        noa('listen', 'מה שמעת?', 'What did you hear?');
         $('kn-drill-label').textContent = he2en ? 'What did they say? Type it in English.' : 'Say it in Hebrew:';
         answer.dir = he2en ? 'ltr' : 'rtl';
         answer.lang = he2en ? 'en' : 'he';
@@ -538,7 +570,10 @@ const title = lesson.title.replace(/\s*\|.*$/, '');
           renderLines();
           updateScore();
           say(target);
+          if (ok) noa(any(['cheer', 'clap']), any(['יש!', 'כל הכבוד!', 'בדיוק!']), any(['Yes!', 'Well done!', 'Exactly!']));
+          else noa('oops', `כמעט! זה "${target}".`, `Almost! It's "${target}".`);
         };
+        noa('think', 'איזו מילה חסרה?', 'Which word is missing?');
         $('kn-fill').hidden = false;
       }
       async function check() {
@@ -564,6 +599,11 @@ const title = lesson.title.replace(/\s*\|.*$/, '');
             stage.querySelector(`.w[data-side="${side}"][data-i="${k}"]`)?.classList.add(p >= 0.5 ? 'got' : 'miss');
           }
           const m = r.meaning as number;
+          const rm = Math.round(m);
+          if (rm >= 4) noa('cheer', 'מושלם!', 'Perfect!');
+          else if (rm === 3) noa('clap', 'כמעט מושלם!', 'Nearly perfect!');
+          else if (rm === 2) noa('think', 'הבנת את העיקר!', 'You got the gist!');
+          else noa('oops', 'לא נורא, ננסה עוד אחד!', "No worries, let's try another!");
           ($('kn-meter-fill') as HTMLElement).style.width = `${Math.max(4, (m / 4) * 100)}%`;
           const nat = r.natural == null ? '' : r.natural >= 0.5 ? ' · natural Hebrew ✓' : ' · the Hebrew sounds off';
           $('kn-verdict').textContent = `${VERDICTS[Math.round(m)]}${nat}`;
@@ -615,6 +655,8 @@ const title = lesson.title.replace(/\s*\|.*$/, '');
         document.querySelectorAll('[data-mode]').forEach((x) => x.classList.toggle('on', x === b));
         $('kn-drillopts').hidden = mode === 'watch';
         $('kn-dir-wrap').hidden = mode !== 'drill';
+        if (mode === 'fill') noa('wave', 'יאללה, משחקים!', "Let's play! I'll pause after each line and hide a word.");
+        if (mode === 'drill') noa('wave', 'יאללה!', "Yalla! I'll pause after each line so you can translate it.");
         endDrill();
         renderLines();
       }));
