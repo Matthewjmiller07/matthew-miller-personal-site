@@ -140,7 +140,7 @@ export default function IsraelMap({
         ...regionFill(count),
       });
       (child as unknown as { bindTooltip: (s: string) => void }).bindTooltip(
-        `<strong>${escapeHtml(name.name_he || name.name_en || '')}</strong><br>` +
+        `<strong>נפת ${escapeHtml(name.name_he || name.name_en || '')}</strong><br>` +
           `${count} ${count === 1 ? 'visit' : 'visits'} logged`
       );
     });
