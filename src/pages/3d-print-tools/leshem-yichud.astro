@@ -1,0 +1,196 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import stats from '../../../public/3d/leshem-yichud/stats.json';
+
+const DIR = '/3d/leshem-yichud';
+const sizes = Object.entries(stats).map(([key, s]) => ({
+    key,
+    ...s,
+    whiteLayer: Math.round(s.base / 0.2) + 1,
+    goldLayer: Math.round((s.base + 0.6) / 0.2) + 1,
+}));
+const fmt = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} m` : `${min} m`);
+const swatches = [
+    { name: 'Navy', hex: '#1B2A5E', what: 'the card' },
+    { name: 'White', hex: '#F4F1E8', what: 'the text and the SCP letters' },
+    { name: 'Gold', hex: '#F2B340', what: 'frame, title, flame, the shin' },
+];
+---
+
+<Layout
+    title="Leshem Yichud Tefillin Card"
+    description="A printable three-colour card of the Leshem Yichud before putting on tefillin, with the SCP logo. Sized for the Bambu A1 mini and for bigger printers, with filament and time estimates."
+    image="/3d/leshem-yichud/leshem-yichud-flat.png"
+>
+    <main class="max-w-6xl mx-auto px-4 py-8 text-gray-100">
+        <p class="text-sm mb-4"><a href="/3d-print-tools" class="text-amber-300 hover:underline">← 3D Print Tools</a></p>
+        <header class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold">Leshem Yichud tefillin card</h1>
+            <p class="mt-1 text-2xl text-amber-300" dir="rtl" lang="he">לְשֵׁם יִחוּד · הֲנָחַת תְּפִלִּין</p>
+            <p class="mt-3 text-gray-400 max-w-3xl">
+                The full Leshem Yichud said before putting on tefillin, with nikkud, raised in white on a navy card
+                inside a gold double frame, with the SCP logo on top and the shin of the tefillin bayit at the bottom.
+                Three colours, made for the Bambu A1 mini, with a bigger version for 256&nbsp;mm printers. It lives in the tefillin bag.
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div class="lg:col-span-3">
+                <div class="rounded-xl overflow-hidden border border-gray-700 bg-gray-900">
+                    <div id="ly-viewer" class="w-full relative" style="height: 560px;">
+                        <img id="ly-fallback" src={`${DIR}/leshem-yichud-flat.png`} alt="The Leshem Yichud card: white Hebrew text on navy with a gold frame and the SCP logo" class="absolute inset-0 w-full h-full object-contain p-4" />
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 p-3 border-t border-gray-700 text-sm">
+                        <span id="ly-status" class="text-gray-400">Loading 3D preview…</span>
+                        <span class="flex-1"></span>
+                        <button id="ly-tilt" class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600" type="button">Tilt</button>
+                        <button id="ly-face" class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600" type="button">Face on</button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Standard size shown. Drag to orbit, scroll to zoom.</p>
+            </div>
+
+            <aside class="lg:col-span-2 space-y-4">
+                <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
+                    <h2 class="text-lg font-semibold mb-3">Colours</h2>
+                    <ul class="space-y-2 text-sm">
+                        {swatches.map((c, i) => (
+                            <li class="flex items-center gap-3">
+                                <span class="w-6 h-6 rounded border border-gray-600 shrink-0" style={`background:${c.hex}`}></span>
+                                <span><strong>{i + 1}. {c.name}</strong> <span class="text-gray-400">— {c.what}</span></span>
+                            </li>
+                        ))}
+                    </ul>
+                    <p class="text-xs text-gray-500 mt-3">Matte navy, a white or ivory PLA and a silk gold look best. The gold stands 1.0&nbsp;mm proud, the text 0.6&nbsp;mm, which is what lets a single-nozzle printer without an AMS do all three colours with two filament swaps.</p>
+                </section>
+                <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5 text-sm text-gray-300">
+                    <h2 class="text-lg font-semibold mb-2 text-gray-100">A word on the text</h2>
+                    <p>The card carries Hashem's names (יְהֹוָה, אֱלֹהֵינוּ). Treat it with the respect of a siddur, and put failed or test prints in genizah rather than the bin. Cantillation marks and meteg are left off: they're too fine to print at this size.</p>
+                </section>
+            </aside>
+        </div>
+
+        <h2 class="text-2xl font-bold mt-10 mb-4">Sizes, time and filament</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {sizes.map((s) => (
+                <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5 flex flex-col">
+                    <div class="flex items-baseline justify-between">
+                        <h3 class="text-xl font-semibold">{s.label}</h3>
+                        <span class="font-mono text-amber-300">{s.w} × {s.h} × {s.thickness} mm</span>
+                    </div>
+                    <p class="text-sm text-gray-400 mt-1">{s.bag}</p>
+                    <p class="text-xs text-gray-500 mt-1">{s.printers}</p>
+                    <dl class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm mt-4">
+                        <dt class="text-gray-400">With AMS / AMS lite</dt><dd class="text-right font-mono">≈ {fmt(s.time_ams_min)}</dd>
+                        <dt class="text-gray-400">Manual swaps <span class="text-gray-500">(+ your 2 swaps)</span></dt><dd class="text-right font-mono">≈ {fmt(s.time_manual_min)}</dd>
+                        <dt class="text-gray-400">Filament in the card</dt><dd class="text-right font-mono">{s.model_g} g · {s.metres} m</dd>
+                        <dt class="text-gray-400 pl-3">navy</dt><dd class="text-right font-mono">{s.grams.navy} g</dd>
+                        <dt class="text-gray-400 pl-3">white</dt><dd class="text-right font-mono">{s.grams.white} g</dd>
+                        <dt class="text-gray-400 pl-3">gold</dt><dd class="text-right font-mono">{s.grams.gold} g</dd>
+                        <dt class="text-gray-400">With AMS purge</dt><dd class="text-right font-mono">≈ {s.ams_total_g} g</dd>
+                        <dt class="text-gray-400">Body text size</dt><dd class="text-right font-mono">{s.body_em_mm} mm</dd>
+                    </dl>
+                    <p class="text-xs text-gray-500 mt-3">No AMS: start in navy, pause at <strong>layer {s.whiteLayer}</strong> for white and at <strong>layer {s.goldLayer}</strong> for gold (0.2&nbsp;mm layers).</p>
+                    <div class="mt-auto pt-4 space-y-2">
+                        <a href={`${DIR}/leshem-yichud-${s.key}.3mf`} download class="block text-center px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium">⬇️ 3MF (3 parts, one object)</a>
+                        <div class="grid grid-cols-3 gap-2 text-xs">
+                            {['navy', 'white', 'gold'].map((c) => (
+                                <a href={`${DIR}/leshem-yichud-${s.key}-${c}.stl`} download class="text-center px-2 py-1.5 rounded bg-gray-700 hover:bg-gray-600">{c} STL</a>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            ))}
+        </div>
+        <p class="text-xs text-gray-500 mt-3 max-w-3xl">Times and grams are worked out from the model's geometry with Bambu's default 0.20&nbsp;mm Standard profile on a 0.4&nbsp;mm nozzle, including about six minutes of heating and bed levelling and the colour changes. Trust them to within about 20%; Bambu Studio gives the exact figure once you slice.</p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+            <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
+                <h2 class="text-xl font-semibold mb-3">Printing with an AMS (A1 mini + AMS lite, X1C, P1S)</h2>
+                <ol class="text-sm text-gray-300 space-y-1.5 list-decimal list-inside">
+                    <li>Open the 3MF in Bambu Studio. If it asks, load it as <em>one object with multiple parts</em>. (With the STLs: import all three at once and say yes to "single object".)</li>
+                    <li>In the object list, set the parts navy → slot 1, white → slot 2, gold → slot 3.</li>
+                    <li>Profile: 0.20&nbsp;mm Standard (or 0.16&nbsp;mm for crisper nikkud), 3 walls, 15% infill. Leave it flat on the plate, text up.</li>
+                    <li>Smooth PEI or a textured plate both work; the textured one gives the back a nice finish.</li>
+                    <li>Only the three or so relief layers have two colours, so there are just four filament changes.</li>
+                </ol>
+            </section>
+            <section class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
+                <h2 class="text-xl font-semibold mb-3">Printing without an AMS (any single-nozzle printer)</h2>
+                <ol class="text-sm text-gray-300 space-y-1.5 list-decimal list-inside">
+                    <li>Import the 3MF or the three STLs as one object, then slice in a single filament.</li>
+                    <li>On the layer slider, right-click the layer from the size card above and choose <em>Add pause</em> (or <em>Change filament</em>): once where white starts, once where gold starts.</li>
+                    <li>Load navy and print. At the first pause swap to white, at the second to gold.</li>
+                    <li>Seen from the top every part comes out in its own colour; the gold pieces just have a thin white band on their sides.</li>
+                </ol>
+                <p class="text-xs text-gray-500 mt-3">The pocket card's text is small (2.5&nbsp;mm). A 0.4&nbsp;mm nozzle prints it readably; a 0.2&nbsp;mm nozzle makes the nikkud crisp. The standard and display sizes are comfortable on 0.4.</p>
+            </section>
+        </div>
+    </main>
+
+    <script is:inline type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/+esm';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js/+esm';
+        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js/+esm';
+
+        function boot() {
+            const el = document.getElementById('ly-viewer');
+            if (!el || el.dataset.ready) return;
+            el.dataset.ready = '1';
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            renderer.domElement.style.display = 'none';
+            el.appendChild(renderer.domElement);
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+            const camera = new THREE.PerspectiveCamera(35, 1, 1, 2000);
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 1.4));
+            const key = new THREE.DirectionalLight(0xffffff, 2.2);
+            key.position.set(-80, 140, 160);
+            scene.add(key);
+            const rim = new THREE.DirectionalLight(0xfff1d0, 0.8);
+            rim.position.set(120, -60, 80);
+            scene.add(rim);
+
+            const group = new THREE.Group();
+            scene.add(group);
+            const views = { face: [0, 0, 330], tilt: [-120, -170, 230] };
+            const setView = (v) => { camera.position.set(...views[v]); controls.target.set(0, 0, 0); controls.update(); };
+
+            function resize() {
+                const w = el.clientWidth, h = el.clientHeight;
+                renderer.setSize(w, h);
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+            }
+            new ResizeObserver(resize).observe(el);
+            resize();
+
+            new GLTFLoader().load('/3d/leshem-yichud/leshem-yichud-preview.glb', (gltf) => {
+                // trimesh keeps the print's Z-up coordinates, so the card already faces +Z (the camera)
+                const m = gltf.scene;
+                group.add(m);
+                const box = new THREE.Box3().setFromObject(m);
+                m.position.sub(box.getCenter(new THREE.Vector3()));
+                setView('tilt');
+                renderer.domElement.style.display = 'block';
+                document.getElementById('ly-fallback').remove();
+                document.getElementById('ly-status').textContent = 'Standard · 105 × 150 mm';
+            }, undefined, () => {
+                document.getElementById('ly-status').textContent = '3D preview unavailable, showing the flat render';
+            });
+
+            document.getElementById('ly-tilt').addEventListener('click', () => setView('tilt'));
+            document.getElementById('ly-face').addEventListener('click', () => setView('face'));
+            renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+        }
+
+        boot();
+        document.addEventListener('astro:page-load', boot);
+    </script>
+</Layout>
