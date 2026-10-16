@@ -1,0 +1,445 @@
+---
+// The Coffee Bar: café drinks as cutaway 3D cups. Geometry and renders come from Blender
+// (scripts/3d-designs/coffee/build.py), which reads the same drinks.json as this page.
+import Layout from '../../layouts/Layout.astro';
+import data from '../../data/coffee-3d/drinks.json';
+
+const { colors, cups, drinks } = data;
+const DIR = '/3d/coffee-bar';
+const pours = (d: (typeof drinks)[number]) => d.layers.filter((l) => 'frac' in l);
+const maxH = Math.max(...drinks.map((d) => cups[d.cup as keyof typeof cups].H));
+---
+
+<Layout
+    title="The Coffee Bar in 3D"
+    description="Kafe hafuch, cappuccino, flat white, botz, Turkish, ice kafe and more as cutaway 3D cups you can turn around, with each layer poured in the order the barista does it. Modelled in Blender."
+    image={`${DIR}/lineup.webp`}
+>
+    <main class="max-w-7xl mx-auto px-4 py-8 text-gray-100">
+        <p class="text-sm mb-4"><a href="/3d" class="text-amber-300 hover:underline">← 3D</a></p>
+        <header class="mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold">The Coffee Bar in 3D</h1>
+            <p class="mt-1 text-2xl text-amber-300" dir="rtl" lang="he">מָה יֵשׁ בַּכּוֹס?</p>
+            <p class="mt-3 text-gray-400 max-w-3xl">
+                Fifteen drinks, each cut open so you can see the layers, from Israeli café staples
+                (<a href="#hafuch" class="text-amber-300 hover:underline">kafe hafuch</a>,
+                <a href="#botz" class="text-amber-300 hover:underline">botz</a>,
+                <a href="#ice" class="text-amber-300 hover:underline">ice kafe</a>) to the Italian classics.
+                Pick a drink and watch it get made, one pour at a time. Drag to turn the cup.
+            </p>
+        </header>
+
+        <!-- Picker -->
+        <nav id="cb-picker" class="flex gap-3 overflow-x-auto pb-3 mb-6 -mx-4 px-4 snap-x" style="scrollbar-color:#4b5563 transparent;scrollbar-width:thin" aria-label="Drinks">
+            {drinks.map((d) => (
+                <a
+                    href={`#${d.id}`}
+                    data-drink={d.id}
+                    class="cb-pick snap-start shrink-0 w-28 rounded-xl border border-gray-700 bg-gray-900/60 hover:border-amber-400 transition-colors overflow-hidden text-center"
+                >
+                    <img src={`${DIR}/${d.id}.webp`} alt="" width="112" height="112" loading="lazy" class="w-28 h-28 object-cover" />
+                    <span class="block text-sm font-medium px-1 pt-1 leading-tight">{d.name}</span>
+                    <span class="block text-xs text-gray-400 pb-2" dir="rtl" lang="he">{d.he}</span>
+                </a>
+            ))}
+        </nav>
+
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <!-- Viewer -->
+            <div class="lg:col-span-3 lg:sticky lg:top-20 self-start">
+                <div class="relative rounded-xl overflow-hidden border border-gray-700" style="background:radial-gradient(ellipse at 50% 40%, #3a2618 0%, #1a110c 75%)">
+                    <div id="cb-viewer" class="w-full h-[420px] md:h-[540px]"></div>
+                    <svg id="cb-lines" class="absolute inset-0 w-full h-full pointer-events-none"></svg>
+                    <div id="cb-labels" class="absolute inset-0 pointer-events-none"></div>
+                    <img id="cb-fallback" src={`${DIR}/hafuch.webp`} alt="Kafe hafuch in a glass" class="absolute inset-0 w-full h-full object-contain" />
+                    <p id="cb-status" class="absolute left-3 bottom-2 text-xs text-gray-400">Loading the 3D cups…</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 mt-3 text-sm">
+                    <button id="cb-play" type="button" class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium">↻ Make it again</button>
+                    <button id="cb-prev" type="button" class="px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600">← Step</button>
+                    <button id="cb-next" type="button" class="px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600">Step →</button>
+                    <span class="flex-1"></span>
+                    <label class="flex items-center gap-1.5 text-gray-400"><input id="cb-showlabels" type="checkbox" checked class="accent-amber-500" /> Labels</label>
+                    <button id="cb-reset" type="button" class="px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600">Reset view</button>
+                </div>
+            </div>
+
+            <!-- Drink panel: one per drink, the script shows the selected one -->
+            <div class="lg:col-span-2">
+                {drinks.map((d) => {
+                    const cup = cups[d.cup as keyof typeof cups];
+                    return (
+                        <article class="cb-panel hidden" data-drink={d.id}>
+                            <h2 class="text-2xl font-bold">{d.name} <span class="text-amber-300 font-normal" dir="rtl" lang="he">{d.he}</span></h2>
+                            <p class="mt-2 text-gray-300">{d.tagline}</p>
+                            <div class="flex flex-wrap gap-2 mt-3 text-xs">
+                                <span class="px-2 py-1 rounded-full bg-gray-800 border border-gray-700">{d.volume}</span>
+                                <span class="px-2 py-1 rounded-full bg-gray-800 border border-gray-700">{cup.label}</span>
+                                <span class={`px-2 py-1 rounded-full border ${d.dairy ? 'bg-sky-950 border-sky-800 text-sky-200' : 'bg-emerald-950 border-emerald-800 text-emerald-200'}`}>
+                                    {d.dairy ? 'Chalavi (dairy)' : 'Pareve'}
+                                </span>
+                            </div>
+
+                            <div class="mt-5">
+                                <div class="flex h-6 rounded-md overflow-hidden border border-gray-700" role="img" aria-label={`Proportions: ${pours(d).map((l) => `${l.name} ${Math.round(l.frac * 100)}%`).join(', ')}`}>
+                                    {pours(d).map((l) => (
+                                        <div class="cb-swatch h-full" data-layer={l.id} style={`width:${l.frac * 100}%;background:${colors[l.kind as keyof typeof colors]}`} title={`${l.name} · ${Math.round(l.frac * 100)}%`}></div>
+                                    ))}
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Bottom of the cup on the left, top on the right, by height.</p>
+                            </div>
+
+                            <h3 class="mt-5 text-sm uppercase tracking-wide text-gray-400">How it's made</h3>
+                            <ol class="mt-2 space-y-2">
+                                {d.steps.map((s, i) => (
+                                    <li class="cb-step flex gap-3 rounded-lg p-2 border border-transparent cursor-pointer transition-colors" data-step={i}>
+                                        <span class="shrink-0 w-6 h-6 rounded-full bg-gray-800 border border-gray-600 text-xs flex items-center justify-center">{i + 1}</span>
+                                        <span class="text-sm text-gray-300">{s.text}</span>
+                                    </li>
+                                ))}
+                            </ol>
+
+                            <h3 class="mt-5 text-sm uppercase tracking-wide text-gray-400">In the cup</h3>
+                            <ul class="mt-2 grid grid-cols-2 gap-1.5 text-sm">
+                                {d.layers.map((l) => (
+                                    <li class="cb-legend flex items-center gap-2 rounded px-1.5 py-1 hover:bg-gray-800 cursor-default" data-layer={l.id}>
+                                        <span class="w-3.5 h-3.5 rounded-sm border border-white/20 shrink-0" style={`background:${colors[l.kind as keyof typeof colors]}`}></span>
+                                        {l.name}
+                                    </li>
+                                ))}
+                            </ul>
+                        </article>
+                    );
+                })}
+            </div>
+        </div>
+
+        <!-- At a glance -->
+        <section class="mt-14">
+            <h2 class="text-2xl font-bold">All fifteen, side by side</h2>
+            <p class="text-gray-400 mt-1 text-sm">Each column is the drink at its real height in its usual cup. Click one to open it above.</p>
+            <div class="mt-5 flex items-end gap-2 md:gap-3 overflow-x-auto pb-2" style={`scrollbar-color:#4b5563 transparent;scrollbar-width:thin;height:${Math.round(maxH * 1000 * 1.6) + 70}px`}>
+                {drinks.map((d) => {
+                    const cup = cups[d.cup as keyof typeof cups];
+                    const px = cup.H * 1000 * 1.6;
+                    return (
+                        <a href={`#${d.id}`} class="cb-col group shrink-0 w-12 md:w-14 flex flex-col items-center" title={d.name}>
+                            <div class="w-full rounded-b-md border border-t-0 border-gray-500/60 flex flex-col-reverse overflow-hidden group-hover:border-amber-400" style={`height:${px}px`}>
+                                {pours(d).map((l) => (
+                                    <div style={`height:${l.frac * d.fill * 100}%;background:${colors[l.kind as keyof typeof colors]}`}></div>
+                                ))}
+                            </div>
+                            <span class="mt-1.5 text-[11px] leading-tight text-center text-gray-400 group-hover:text-amber-300 h-8">{d.name}</span>
+                        </a>
+                    );
+                })}
+            </div>
+        </section>
+
+        <section class="mt-12 grid md:grid-cols-2 gap-6 text-sm text-gray-400">
+            <div class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
+                <h2 class="text-lg font-semibold text-gray-100">Hafuch, latte macchiato, latte: what's the difference?</h2>
+                <p class="mt-2">All three are espresso and a lot of milk. The difference is order. A latte puts the coffee in first and
+                    pours milk onto it, so it mixes. A <a href="#latte-macchiato" class="text-amber-300 hover:underline">latte macchiato</a> and a
+                    <a href="#hafuch" class="text-amber-300 hover:underline">hafuch</a> put the milk in first and pour the espresso on top, which is
+                    why hafuch is "upside down". Espresso is lighter than hot milk and heavier than foam, so it stops in between in a band.
+                    A hafuch usually has more foam and a less tidy band, and the espresso leaves its brown spot on top.</p>
+            </div>
+            <div class="rounded-xl border border-gray-700 bg-gray-900/60 p-5">
+                <h2 class="text-lg font-semibold text-gray-100">And the halacha?</h2>
+                <p class="mt-2">The bracha on all of these is shehakol, and the milk ones are chalavi.
+                    For the rest (coffee on Shabbat, bishul akum, coffee before davening, coffee in a café),
+                    see the living source sheet <a href="/coffee" class="text-amber-300 hover:underline">Coffee in Judaism →</a></p>
+                <p class="mt-3 text-xs text-gray-500">Modelled in Blender with a script that lathes each cup and its layers from
+                    the same data this page reads. The ceramic cups are drawn with a quarter cut away; the glasses are whole.</p>
+            </div>
+        </section>
+    </main>
+
+    <script type="application/json" id="cb-data" set:html={JSON.stringify({ colors, drinks })} />
+
+    <script is:inline type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/+esm';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js/+esm';
+        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js/+esm';
+        import { DRACOLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/DRACOLoader.js/+esm';
+        import { RoomEnvironment } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js/+esm';
+
+        function boot() {
+            const el = document.getElementById('cb-viewer');
+            if (!el || el.dataset.ready) return;
+            el.dataset.ready = '1';
+            const { colors, drinks } = JSON.parse(document.getElementById('cb-data').textContent);
+            const byId = Object.fromEntries(drinks.map((d) => [d.id, d]));
+            const $ = (s, root = document) => root.querySelector(s);
+            const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+            const status = $('#cb-status');
+            const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            // ---------- scene ----------
+            let renderer;
+            try {
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            } catch {
+                status.textContent = 'WebGL is off here, so this is a still render';
+                return;
+            }
+            renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            renderer.localClippingEnabled = true;
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.domElement.style.display = 'none';
+            el.appendChild(renderer.domElement);
+
+            const scene = new THREE.Scene();
+            scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+            scene.environmentIntensity = 0.55;
+            const camera = new THREE.PerspectiveCamera(32, 1, 0.005, 10);
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.enablePan = false;
+            controls.maxPolarAngle = Math.PI * 0.55;
+            scene.add(new THREE.HemisphereLight(0xfff4e6, 0x2a1a10, 0.7));
+            const key = new THREE.DirectionalLight(0xfff0dd, 2.4);
+            key.position.set(-0.3, 0.6, 0.45);
+            key.castShadow = true;
+            key.shadow.mapSize.set(1024, 1024);
+            Object.assign(key.shadow.camera, { left: -0.2, right: 0.2, top: 0.2, bottom: -0.2, near: 0.1, far: 2 });
+            key.shadow.bias = -0.0005;
+            scene.add(key);
+            const rim = new THREE.DirectionalLight(0xdde8ff, 1.0);
+            rim.position.set(0.4, 0.3, -0.5);
+            scene.add(rim);
+            const floor = new THREE.Mesh(new THREE.CircleGeometry(0.4, 64), new THREE.ShadowMaterial({ opacity: 0.35 }));
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            function resize() {
+                const w = el.clientWidth, h = el.clientHeight;
+                renderer.setSize(w, h);
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                $('#cb-lines').setAttribute('viewBox', `0 0 ${w} ${h}`);
+            }
+            new ResizeObserver(resize).observe(el);
+            resize();
+
+            // ---------- drinks ----------
+            const roots = {};
+            let cur = null;         // { d, root, layers: { id: { mesh, z0, z1, anchor, ... } } }
+            let step = -1;
+            let anims = [];         // running reveal tweens
+            let timer = null;
+
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.16,
+                clearcoat: 1, clearcoatRoughness: 0.05, depthWrite: false, side: THREE.DoubleSide,
+            });
+
+            function prepare(root) {
+                const layers = {};
+                root.traverse((o) => {
+                    if (!o.isMesh) return;
+                    o.castShadow = true;
+                    const name = o.name || o.parent?.name || '';
+                    if (o.material?.name === 'glass') {
+                        o.material = glassMat;
+                        o.renderOrder = 2;
+                        o.castShadow = false;
+                        return;
+                    }
+                    const ud = o.userData.layer ? o.userData : o.parent?.userData;
+                    if (!ud?.layer) return;
+                    o.material = o.material.clone();
+                    o.material.side = THREE.DoubleSide;  // clipped open tops still look full
+                    o.material.clippingPlanes = [];
+                    o.material.emissive = new THREE.Color(0x000000);
+                    layers[ud.layer] = { mesh: o, z0: ud.z0, z1: ud.z1, anchor: new THREE.Vector3(...ud.anchor) };
+                });
+                return layers;
+            }
+
+            function frame(root, d) {
+                const box = new THREE.Box3().setFromObject(root);
+                const sphere = box.getBoundingSphere(new THREE.Sphere());
+                const c = sphere.center, r = sphere.radius;
+                const fov = THREE.MathUtils.degToRad(camera.fov);
+                const fit = Math.min(fov, 2 * Math.atan(Math.tan(fov / 2) * camera.aspect));
+                const dist = (r / Math.sin(fit / 2)) * 0.92;
+                // the cutaway faces +X/+Z in glTF; look straight into it, a little from above
+                const yaw = THREE.MathUtils.degToRad(40), pitch = THREE.MathUtils.degToRad(d && byId[d].cup === 'tallglass' ? 14 : 24);
+                const dir = new THREE.Vector3(Math.cos(pitch) * Math.cos(yaw), Math.sin(pitch), Math.cos(pitch) * Math.sin(yaw));
+                // nudge the cup left of centre so the labels have room on the right
+                const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), dir).normalize();
+                controls.target.copy(c).addScaledVector(right, r * (camera.aspect > 1 ? 0.35 : 0.15));
+                camera.position.copy(controls.target).addScaledVector(dir, dist);
+                controls.minDistance = r * 1.5;
+                controls.maxDistance = r * 8;
+                controls.update();
+            }
+
+            // reveal: 0..1 for one layer. 'up' fills from the bottom, 'down' from the top,
+            // shapes drop or pop in.
+            function setReveal(L, t, how) {
+                const m = L.mesh;
+                m.visible = t > 0;
+                m.position.y = L.baseY;
+                m.scale.setScalar(1);
+                m.material.clippingPlanes = [];
+                if (t <= 0 || t >= 1) return;
+                const e = 1 - Math.pow(1 - t, 3);
+                if (how === 'dot') { m.scale.set(e, 1, e); return; }
+                if (how === 'drop') { m.position.y = L.baseY + (1 - e) * 0.12; return; }
+                const h = how === 'down' ? L.z1 - (L.z1 - L.z0) * e : L.z0 + (L.z1 - L.z0) * e;
+                m.material.clippingPlanes = [how === 'down' ? new THREE.Plane(new THREE.Vector3(0, 1, 0), -h) : new THREE.Plane(new THREE.Vector3(0, -1, 0), h)];
+            }
+
+            const howOf = (d, id) => {
+                const l = d.layers.find((x) => x.id === id);
+                return l.shape === 'dot' ? 'dot' : l.shape === 'scoop' || l.shape === 'straw' ? 'drop' : l.pour || 'up';
+            };
+
+            function showStep(n, animate = true) {
+                const d = cur.d;
+                step = Math.max(-1, Math.min(n, d.steps.length - 1));
+                anims = [];
+                const shown = new Set(d.steps.slice(0, step).flatMap((s) => s.reveal));
+                const now = step >= 0 ? d.steps[step].reveal : [];
+                for (const [id, L] of Object.entries(cur.layers)) setReveal(L, shown.has(id) ? 1 : 0, 'up');
+                let delay = 0;
+                for (const id of now) {
+                    const L = cur.layers[id];
+                    if (!L) continue;
+                    const dur = reduced || !animate ? 0 : Math.max(450, Math.min(1300, (L.z1 - L.z0) * 22000));
+                    anims.push({ L, how: howOf(d, id), start: performance.now() + delay, dur });
+                    delay += dur * 0.85;
+                }
+                $$('.cb-panel.is-on .cb-step').forEach((li, i) => {
+                    li.classList.toggle('bg-amber-500/10', i === step);
+                    li.classList.toggle('border-amber-500/40', i === step);
+                    li.classList.toggle('opacity-50', i > step);
+                });
+                return delay;
+            }
+
+            function play() {
+                clearTimeout(timer);
+                const go = (i) => {
+                    const t = showStep(i);
+                    if (i < cur.d.steps.length - 1) timer = setTimeout(() => go(i + 1), t + (reduced ? 900 : 1100));
+                };
+                showStep(-1);
+                timer = setTimeout(() => go(0), 300);
+            }
+
+            function select(id, { autoplay = true } = {}) {
+                if (!byId[id]) id = 'hafuch';
+                $$('.cb-panel').forEach((p) => { const on = p.dataset.drink === id; p.classList.toggle('hidden', !on); p.classList.toggle('is-on', on); });
+                $$('.cb-pick').forEach((a) => {
+                    const on = a.dataset.drink === id;
+                    a.classList.toggle('border-amber-400', on);
+                    a.classList.toggle('ring-2', on);
+                    a.classList.toggle('ring-amber-500/40', on);
+                    if (on) a.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+                });
+                if (!roots[id]) return;  // model not loaded yet; select() runs again once it is
+                Object.entries(roots).forEach(([k, r]) => (r.root.visible = k === id));
+                cur = roots[id];
+                frame(cur.root, id);
+                if (autoplay) play(); else showStep(cur.d.steps.length - 1, false);
+            }
+
+            // ---------- labels ----------
+            const labelsEl = $('#cb-labels'), linesEl = $('#cb-lines');
+            let showLabels = true;
+            const v = new THREE.Vector3();
+            function drawLabels() {
+                labelsEl.innerHTML = '';
+                linesEl.innerHTML = '';
+                if (!cur || !showLabels) return;
+                const w = el.clientWidth, h = el.clientHeight;
+                const box = new THREE.Box3().setFromObject(cur.root);
+                let right = -Infinity;
+                for (const p of [box.min, box.max, new THREE.Vector3(box.max.x, box.min.y, box.min.z), new THREE.Vector3(box.min.x, box.max.y, box.max.z)]) {
+                    v.copy(p).project(camera);
+                    right = Math.max(right, (v.x + 1) / 2 * w);
+                }
+                const items = [];
+                for (const [id, L] of Object.entries(cur.layers)) {
+                    if (!L.mesh.visible) continue;
+                    v.copy(L.anchor).add(new THREE.Vector3(0, L.mesh.position.y - L.baseY, 0)).project(camera);
+                    const l = cur.d.layers.find((x) => x.id === id);
+                    items.push({ id, x: (v.x + 1) / 2 * w, y: (1 - v.y) / 2 * h, name: l.name, color: colors[l.kind] });
+                }
+                items.sort((a, b) => a.y - b.y);
+                const lx = Math.min(right + 18, w - 150);
+                let last = -Infinity;
+                for (const it of items) {
+                    it.ly = Math.max(it.y, last + 24);
+                    last = it.ly;
+                }
+                for (const it of items) {
+                    linesEl.insertAdjacentHTML('beforeend',
+                        `<circle cx="${it.x}" cy="${it.y}" r="3" fill="#fff" stroke="#000" stroke-opacity=".4"/>` +
+                        `<polyline points="${it.x},${it.y} ${lx - 6},${it.ly} ${lx},${it.ly}" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1"/>`);
+                    const tag = document.createElement('span');
+                    tag.className = 'absolute text-xs px-2 py-0.5 rounded-full bg-black/60 border border-white/15 whitespace-nowrap flex items-center gap-1.5 -translate-y-1/2';
+                    tag.style.left = `${lx}px`;
+                    tag.style.top = `${it.ly}px`;
+                    tag.innerHTML = `<i class="inline-block w-2 h-2 rounded-full" style="background:${it.color}"></i>`;
+                    tag.append(it.name);
+                    labelsEl.append(tag);
+                }
+            }
+
+            // ---------- load ----------
+            const draco = new DRACOLoader().setDecoderPath('/draco/');
+            new GLTFLoader().setDRACOLoader(draco).load('/3d/coffee-bar/coffee-bar.glb', (g) => {
+                for (const root of [...g.scene.children]) {
+                    const id = root.name.replace(/^drink_/, '');
+                    if (!byId[id]) continue;
+                    scene.add(root);
+                    const layers = prepare(root);
+                    for (const L of Object.values(layers)) L.baseY = L.mesh.position.y;
+                    roots[id] = { d: byId[id], root, layers };
+                }
+                renderer.domElement.style.display = 'block';
+                $('#cb-fallback').remove();
+                status.textContent = '';
+                select(location.hash.slice(1));
+            }, undefined, () => { status.textContent = '3D unavailable here, showing a still render'; });
+
+            select(location.hash.slice(1) || 'hafuch');
+            addEventListener('hashchange', () => select(location.hash.slice(1)));
+            $('#cb-play').addEventListener('click', () => cur && play());
+            $('#cb-next').addEventListener('click', () => { if (cur) { clearTimeout(timer); showStep(step + 1); } });
+            $('#cb-prev').addEventListener('click', () => { if (cur) { clearTimeout(timer); showStep(step - 1, false); } });
+            $('#cb-reset').addEventListener('click', () => cur && frame(cur.root, cur.d.id));
+            $('#cb-showlabels').addEventListener('change', (e) => (showLabels = e.target.checked));
+            $$('.cb-step').forEach((li) => li.addEventListener('click', () => { if (cur) { clearTimeout(timer); showStep(+li.dataset.step); } }));
+            const highlight = (id) => cur && Object.entries(cur.layers).forEach(([k, L]) => L.mesh.material.emissive.setHex(k === id ? 0x4a3018 : 0));
+            $$('.cb-legend, .cb-swatch').forEach((x) => {
+                x.addEventListener('mouseenter', () => highlight(x.dataset.layer));
+                x.addEventListener('mouseleave', () => highlight(null));
+            });
+
+            renderer.setAnimationLoop((now) => {
+                for (const a of anims) {
+                    const t = a.dur ? (now - a.start) / a.dur : 1;
+                    if (t >= 0) setReveal(a.L, Math.min(t, 1), a.how);
+                }
+                anims = anims.filter((a) => (a.dur ? (now - a.start) / a.dur : 1) < 1);
+                controls.update();
+                renderer.render(scene, camera);
+                drawLabels();
+            });
+        }
+
+        boot();
+        document.addEventListener('astro:page-load', boot);
+    </script>
+</Layout>
