@@ -141,3 +141,19 @@ export const QUESTIONS = {
 
 // Every chat opens with these two, then a few of the rest at random.
 export const OPENERS = ['hello', 'name'];
+
+// What a chat client needs (the page and the Chrome extension): questions, hints and replies,
+// with Jev's `when` criteria left out, plus the recorded-audio manifest (text -> file).
+export const clientData = (audio) => ({
+  questions: Object.fromEntries(
+    Object.entries(QUESTIONS).map(([id, q]) => [
+      id,
+      { he: q.he, en: q.en, hints: q.hints, replies: Object.fromEntries(Object.entries(q.replies).map(([rid, r]) => [rid, { pose: r.pose, he: r.he, en: r.en }])) },
+    ]),
+  ),
+  generic: GENERIC,
+  intro: INTRO,
+  bye: BYE,
+  openers: OPENERS,
+  audio,
+});
