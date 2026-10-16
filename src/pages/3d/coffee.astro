@@ -156,7 +156,7 @@ const maxH = Math.max(...drinks.map((d) => cups[d.cup as keyof typeof cups].H));
         </section>
     </main>
 
-    <script type="application/json" id="cb-data" set:html={JSON.stringify({ colors, drinks })} />
+    <script type="application/json" id="cb-data" set:html={JSON.stringify({ colors, cups, drinks })} />
 
     <script is:inline type="module">
         import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/+esm';
@@ -165,11 +165,22 @@ const maxH = Math.max(...drinks.map((d) => cups[d.cup as keyof typeof cups].H));
         import { DRACOLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/DRACOLoader.js/+esm';
         import { RoomEnvironment } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js/+esm';
 
+        const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+        const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+        const YAW = THREE.MathUtils.degToRad(-40);  // vessels come from behind, spout toward the camera
+        const IMPACT = new THREE.Vector3(-0.004, 0, -0.004);  // just behind the axis, visible through the cutaway
+        const GRAVITY = 2.6;  // slowed down so you can see the stream fall
+
+        // what pours each kind of layer, unless the layer names its own vessel
+        const VESSEL = { espresso: 'portafilter', band: 'portafilter', milk: 'jug', microfoam: 'jug', foam: 'jug', americano: 'kettle',
+            chocolate: 'jug', cream: 'spoon', grounds: 'spoon', black: 'kettle', slush: 'jug', nes: 'jug' };
+        const WATER = '#cfdde4';
+
         function boot() {
             const el = document.getElementById('cb-viewer');
             if (!el || el.dataset.ready) return;
             el.dataset.ready = '1';
-            const { colors, drinks } = JSON.parse(document.getElementById('cb-data').textContent);
+            const { colors, cups, drinks } = JSON.parse(document.getElementById('cb-data').textContent);
             const byId = Object.fromEntries(drinks.map((d) => [d.id, d]));
             const $ = (s, root = document) => root.querySelector(s);
             const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -187,7 +198,7 @@ const maxH = Math.max(...drinks.map((d) => cups[d.cup as keyof typeof cups].H));
             renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.0;
+            renderer.toneMappingExposure = 1.05;
             renderer.localClippingEnabled = true;
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -196,24 +207,26 @@ const maxH = Math.max(...drinks.map((d) => cups[d.cup as keyof typeof cups].H));
 
             const scene = new THREE.Scene();
             scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
-            scene.environmentIntensity = 0.55;
             const camera = new THREE.PerspectiveCamera(32, 1, 0.005, 10);
             const controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.enablePan = false;
             controls.maxPolarAngle = Math.PI * 0.55;
-            scene.add(new THREE.HemisphereLight(0xfff4e6, 0x2a1a10, 0.7));
+            let touched = false;
+            controls.addEventListener('start', () => (touched = true));
+            scene.add(new THREE.HemisphereLight(0xfff4e6, 0x2a1a10, 0.6));
             const key = new THREE.DirectionalLight(0xfff0dd, 2.4);
             key.position.set(-0.3, 0.6, 0.45);
             key.castShadow = true;
             key.shadow.mapSize.set(1024, 1024);
-            Object.assign(key.shadow.camera, { left: -0.2, right: 0.2, top: 0.2, bottom: -0.2, near: 0.1, far: 2 });
+            Object.assign(key.shadow.camera, { left: -0.25, right: 0.25, top: 0.25, bottom: -0.25, near: 0.1, far: 2 });
             key.shadow.bias = -0.0005;
+            key.shadow.radius = 4;
             scene.add(key);
-            const rim = new THREE.DirectionalLight(0xdde8ff, 1.0);
+            const rim = new THREE.DirectionalLight(0xdde8ff, 1.1);
             rim.position.set(0.4, 0.3, -0.5);
             scene.add(rim);
-            const floor = new THREE.Mesh(new THREE.CircleGeometry(0.4, 64), new THREE.ShadowMaterial({ opacity: 0.35 }));
+            const floor = new THREE.Mesh(new THREE.CircleGeometry(0.5, 64), new THREE.ShadowMaterial({ opacity: 0.38 }));
             floor.rotation.x = -Math.PI / 2;
             floor.receiveShadow = true;
             scene.add(floor);
@@ -228,112 +241,319 @@ const maxH = Math.max(...drinks.map((d) => cups[d.cup as keyof typeof cups].H));
             new ResizeObserver(resize).observe(el);
             resize();
 
-            // ---------- drinks ----------
-            const roots = {};
-            let cur = null;         // { d, root, layers: { id: { mesh, z0, z1, anchor, ... } } }
-            let step = -1;
-            let anims = [];         // running reveal tweens
-            let timer = null;
-
+            // ---------- materials ----------
             const glassMat = new THREE.MeshPhysicalMaterial({
-                color: 0xffffff, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.16,
-                clearcoat: 1, clearcoatRoughness: 0.05, depthWrite: false, side: THREE.DoubleSide,
+                color: 0xffffff, roughness: 0.05, metalness: 0, transmission: 1, thickness: 0.003, ior: 1.5,
+                specularIntensity: 1, clearcoat: 1, clearcoatRoughness: 0.04, side: THREE.DoubleSide,
+            });
+            const steel = new THREE.MeshStandardMaterial({ color: 0xe6e9ee, metalness: 0.8, roughness: 0.26, envMapIntensity: 1.8, side: THREE.DoubleSide });
+            const darkSteel = new THREE.MeshStandardMaterial({ color: 0x55575c, metalness: 1, roughness: 0.3, side: THREE.DoubleSide });
+            const brass = new THREE.MeshStandardMaterial({ color: 0xc89640, metalness: 1, roughness: 0.28, side: THREE.DoubleSide });
+            const wood = new THREE.MeshStandardMaterial({ color: 0x2a1a12, roughness: 0.6 });
+
+            // ---------- vessels ----------
+            const lathe = (pts, mat, segs = 48) => new THREE.Mesh(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), segs), mat);
+            function makeJug(mat, scale = 1, longHandle = false) {
+                const g = new THREE.Group();
+                g.add(lathe([[0, 0], [0.026, 0], [0.03, 0.004], [0.033, 0.03], [0.031, 0.058], [0.027, 0.076], [0.029, 0.085], [0.0288, 0.0862]], mat));
+                const spout = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.016, 20, 1, true), mat);
+                spout.rotation.z = -Math.PI / 2 + 0.45;
+                spout.position.set(0.031, 0.081, 0);
+                g.add(spout);
+                if (longHandle) {
+                    const h = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.005, 0.11, 12), wood);
+                    h.rotation.z = Math.PI / 2 - 0.35;
+                    h.position.set(-0.08, 0.075, 0);
+                    g.add(h);
+                } else {
+                    const h = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.0035, 10, 28, Math.PI), mat);
+                    h.rotation.z = Math.PI / 2;
+                    h.position.set(-0.031, 0.047, 0);
+                    g.add(h);
+                }
+                g.scale.setScalar(scale);
+                g.userData.spouts = [new THREE.Vector3(0.039, 0.086, 0).multiplyScalar(scale)];
+                g.userData.tilt = THREE.MathUtils.degToRad(longHandle ? 70 : 62);
+                return g;
+            }
+            function makePortafilter() {
+                const g = new THREE.Group();
+                g.add(lathe([[0, -0.012], [0.03, -0.012], [0.033, 0.0], [0.034, 0.01], [0.0, 0.01]], steel));
+                const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.011, 0.11, 20), wood);
+                handle.rotation.z = Math.PI / 2;
+                handle.position.set(-0.088, 0, 0);
+                g.add(handle);
+                const spouts = [];
+                for (const dz of [-0.0065, 0.0065]) {
+                    const s = new THREE.Mesh(new THREE.CylinderGeometry(0.0034, 0.0022, 0.012, 14), steel);
+                    s.position.set(0, -0.018, dz);
+                    g.add(s);
+                    spouts.push(new THREE.Vector3(0, -0.024, dz));
+                }
+                g.userData.spouts = spouts;
+                g.userData.tilt = 0;
+                return g;
+            }
+            function makeSpoon() {
+                const g = new THREE.Group();
+                const bowl = new THREE.Mesh(new THREE.SphereGeometry(0.011, 24, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), steel);
+                bowl.scale.set(1.45, 0.55, 1);
+                g.add(bowl);
+                const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.0018, 0.0026, 0.1, 10), steel);
+                stem.rotation.z = Math.PI / 2 - 0.25;
+                stem.position.set(-0.064, 0.012, 0);
+                g.add(stem);
+                g.userData.spouts = [new THREE.Vector3(0.012, 0, 0)];
+                g.userData.tilt = THREE.MathUtils.degToRad(80);
+                return g;
+            }
+            const vessels = {
+                jug: makeJug(steel), kettle: makeJug(darkSteel, 1.25), finjan: makeJug(brass, 0.62, true),
+                portafilter: makePortafilter(), spoon: makeSpoon(),
+            };
+            Object.values(vessels).forEach((v) => {
+                v.visible = false;
+                v.traverse((o) => { if (o.isMesh) o.castShadow = true; });
             });
 
-            function prepare(root) {
+            // stream: an open tube from the spout down to the surface, wobbling
+            const streamGeo = new THREE.CylinderGeometry(1, 1, 1, 12, 24, true).translate(0, -0.5, 0);
+            const streamBase = streamGeo.attributes.position.array.slice();
+            function makeStream() {
+                const m = new THREE.Mesh(streamGeo.clone(), new THREE.MeshPhysicalMaterial({ roughness: 0.2, clearcoat: 0.6, side: THREE.DoubleSide,
+                    clippingPlanes: [new THREE.Plane(new THREE.Vector3(0, -1, 0), 10)] }));  // same shader as the liquids
+                m.userData.base = streamBase;
+                m.visible = false;
+                return m;
+            }
+            const streams = [makeStream(), makeStream()];
+
+            // the rising liquid surface, with ripples spreading from where the stream lands
+            const surfMat = new THREE.MeshPhysicalMaterial({ roughness: 0.3, clearcoat: 0.5, side: THREE.DoubleSide, clippingPlanes: [new THREE.Plane(new THREE.Vector3(0, -1, 0), 10)] });
+            let surface = null;
+            function makeSurface(sweep) {
+                const geo = new THREE.RingGeometry(0.0004, 1, 64, 10, 0, sweep);
+                const m = new THREE.Mesh(geo, surfMat);
+                m.rotation.x = -Math.PI / 2;
+                m.userData.base = geo.attributes.position.array.slice();
+                m.visible = false;
+                return m;
+            }
+
+            // splash droplets
+            const MAXD = 80;
+            const drops = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 8, 6), new THREE.MeshStandardMaterial({ roughness: 0.3 }), MAXD);
+            drops.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+            drops.frustumCulled = false;
+            drops.setColorAt(0, new THREE.Color());  // create the colour buffer now, not mid-pour
+            const dropState = Array.from({ length: MAXD }, () => ({ life: 0, p: new THREE.Vector3(), v: new THREE.Vector3(), r: 0, c: new THREE.Color() }));
+            const tmpM = new THREE.Matrix4();
+            let dropIdx = 0;
+            function spawnDrop(p, color, up = 1) {
+                const d = dropState[dropIdx++ % MAXD];
+                d.life = 0.35 + Math.random() * 0.3;
+                d.p.copy(p);
+                const a = Math.random() * Math.PI * 2, s = 0.04 + Math.random() * 0.08;
+                d.v.set(Math.cos(a) * s, up * (0.12 + Math.random() * 0.18), Math.sin(a) * s);
+                d.r = 0.0006 + Math.random() * 0.0009;
+                d.c.set(color);
+            }
+
+            // steam
+            const steamTex = (() => {
+                const c = document.createElement('canvas');
+                c.width = c.height = 64;
+                const x = c.getContext('2d');
+                const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+                g.addColorStop(0, 'rgba(255,255,255,1)');
+                g.addColorStop(1, 'rgba(255,255,255,0)');
+                x.fillStyle = g;
+                x.fillRect(0, 0, 64, 64);
+                return new THREE.CanvasTexture(c);
+            })();
+            const steam = Array.from({ length: 16 }, (_, i) => {
+                const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: steamTex, transparent: true, depthWrite: false, opacity: 0 }));
+                s.userData = { phase: i / 16, dx: Math.random() - 0.5, dz: Math.random() - 0.5, sway: Math.random() * 6 };
+                return s;
+            });
+
+            // latte art, drawn on a canvas
+            function artTexture(kind) {
+                const c = document.createElement('canvas');
+                c.width = c.height = 512;
+                const x = c.getContext('2d');
+                x.fillStyle = '#b98352';
+                x.beginPath(); x.arc(256, 256, 256, 0, Math.PI * 2); x.fill();
+                const g = x.createRadialGradient(256, 256, 180, 256, 256, 256);
+                g.addColorStop(0, 'rgba(250,244,232,0)');
+                g.addColorStop(1, 'rgba(250,244,232,0.9)');
+                x.fillStyle = g;
+                x.fillRect(0, 0, 512, 512);
+                x.translate(256, 256);
+                x.rotate(THREE.MathUtils.degToRad(-50));  // point the heart at the camera
+                x.fillStyle = '#fbf6ec';
+                x.shadowColor = 'rgba(251,246,236,0.9)';
+                x.shadowBlur = 14;
+                const heart = (cy, s) => {
+                    x.beginPath();
+                    x.moveTo(0, cy + 95 * s);
+                    x.bezierCurveTo(-150 * s, cy - 10 * s, -95 * s, cy - 120 * s, 0, cy - 55 * s);
+                    x.bezierCurveTo(95 * s, cy - 120 * s, 150 * s, cy - 10 * s, 0, cy + 95 * s);
+                    x.fill();
+                };
+                if (kind === 'tulip') { heart(-70, 0.62); heart(10, 0.78); heart(95, 0.9); }
+                else heart(0, 1.15);
+                x.fillRect(-3, -150, 6, 260 * (kind === 'tulip' ? 1.1 : 0.9));  // the pull-through line
+                const t = new THREE.CanvasTexture(c);
+                t.colorSpace = THREE.SRGBColorSpace;
+                t.anisotropy = 4;
+                return t;
+            }
+            const artMat = new THREE.MeshStandardMaterial({ roughness: 0.75, transparent: true, opacity: 0 });
+            const artCache = {};
+
+            // ---------- drinks ----------
+            const roots = {};
+            let cur = null;
+            let step = -1;
+            let anims = [];      // layer reveals
+            let sessions = [];   // vessel visits
+            let timer = null;
+            let art = null, artAt = Infinity;
+
+            const innerR = (cup, y) => {
+                const lift = cup.saucer ? 0.0058 : 0;
+                const t = clamp((y - cup.base - lift) / cup.H);
+                return (cup.r0 + (cup.r1 - cup.r0) * Math.pow(t, cup.p)) * (cup.glass ? 0.994 : 0.998);
+            };
+
+            function prepare(root, d) {
                 const layers = {};
                 root.traverse((o) => {
                     if (!o.isMesh) return;
                     o.castShadow = true;
-                    const name = o.name || o.parent?.name || '';
+                    o.receiveShadow = true;
                     if (o.material?.name === 'glass') {
                         o.material = glassMat;
-                        o.renderOrder = 2;
                         o.castShadow = false;
                         return;
                     }
                     const ud = o.userData.layer ? o.userData : o.parent?.userData;
                     if (!ud?.layer) return;
-                    o.material = o.material.clone();
-                    o.material.side = THREE.DoubleSide;  // clipped open tops still look full
-                    o.material.clippingPlanes = [];
-                    o.material.emissive = new THREE.Color(0x000000);
-                    layers[ud.layer] = { mesh: o, z0: ud.z0, z1: ud.z1, anchor: new THREE.Vector3(...ud.anchor) };
+                    const src = o.material;
+                    // every liquid shares one shader: same features, one clipping plane that is moved, never swapped
+                    const kind = d.layers.find((l) => l.id === ud.layer)?.kind;
+                    const gloss = ['espresso', 'americano', 'black', 'chocolate'].includes(kind) ? 1 : ['milk', 'band', 'nes'].includes(kind) ? 0.35 : 0.05;
+                    const plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 10);
+                    const m = new THREE.MeshPhysicalMaterial({ color: src.color, roughness: src.roughness, metalness: 0, side: THREE.DoubleSide,
+                        clearcoat: gloss, clearcoatRoughness: gloss > 0.5 ? 0.08 : 0.3, clippingPlanes: [plane] });
+                    o.material = m;
+                    const shape = d.layers.find((l) => l.id === ud.layer)?.shape;
+                    layers[ud.layer] = { mesh: o, z0: ud.z0, z1: ud.z1, anchor: new THREE.Vector3(...ud.anchor), baseY: o.position.y, shape, plane };
                 });
-                return layers;
+                const fx = new THREE.Group();
+                fx.name = 'fx';
+                root.add(fx);
+                return { layers, fx, rimY: root.userData.rim, cup: cups[d.cup] };
             }
 
-            function frame(root, d) {
-                const box = new THREE.Box3().setFromObject(root);
+            function frame(root, id) {
+                const box = new THREE.Box3();
+                root.children.forEach((ch) => { if (ch.name !== 'fx') box.expandByObject(ch); });  // not the vessels or steam
                 const sphere = box.getBoundingSphere(new THREE.Sphere());
-                const c = sphere.center, r = sphere.radius;
+                const c = sphere.center, r = sphere.radius * 1.3;  // headroom for the jug and portafilter above the cup
                 const fov = THREE.MathUtils.degToRad(camera.fov);
                 const fit = Math.min(fov, 2 * Math.atan(Math.tan(fov / 2) * camera.aspect));
-                const dist = (r / Math.sin(fit / 2)) * 0.92;
-                // the cutaway faces +X/+Z in glTF; look straight into it, a little from above
-                const yaw = THREE.MathUtils.degToRad(40), pitch = THREE.MathUtils.degToRad(d && byId[d].cup === 'tallglass' ? 14 : 24);
+                const dist = (r / Math.sin(fit / 2)) * 0.95;
+                const yaw = THREE.MathUtils.degToRad(40), pitch = THREE.MathUtils.degToRad(byId[id].cup === 'tallglass' ? 14 : 22);
                 const dir = new THREE.Vector3(Math.cos(pitch) * Math.cos(yaw), Math.sin(pitch), Math.cos(pitch) * Math.sin(yaw));
-                // nudge the cup left of centre so the labels have room on the right
                 const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), dir).normalize();
-                controls.target.copy(c).addScaledVector(right, r * (camera.aspect > 1 ? 0.35 : 0.15));
+                controls.target.copy(c).addScaledVector(right, r * (camera.aspect > 1 ? 0.3 : 0.12));
+                controls.target.y += r * 0.3;
                 camera.position.copy(controls.target).addScaledVector(dir, dist);
-                controls.minDistance = r * 1.5;
+                controls.minDistance = r * 1.4;
                 controls.maxDistance = r * 8;
                 controls.update();
             }
 
-            // reveal: 0..1 for one layer. 'up' fills from the bottom, 'down' from the top,
-            // shapes drop or pop in.
             function setReveal(L, t, how) {
                 const m = L.mesh;
                 m.visible = t > 0;
                 m.position.y = L.baseY;
                 m.scale.setScalar(1);
-                m.material.clippingPlanes = [];
+                L.plane.normal.set(0, -1, 0);
+                L.plane.constant = 10;  // keeps everything
+                L.h = null;
                 if (t <= 0 || t >= 1) return;
-                const e = 1 - Math.pow(1 - t, 3);
+                const e = how === 'up' || how === 'down' ? t : 1 - Math.pow(1 - t, 3);
                 if (how === 'dot') { m.scale.set(e, 1, e); return; }
                 if (how === 'drop') { m.position.y = L.baseY + (1 - e) * 0.12; return; }
                 const h = how === 'down' ? L.z1 - (L.z1 - L.z0) * e : L.z0 + (L.z1 - L.z0) * e;
-                m.material.clippingPlanes = [how === 'down' ? new THREE.Plane(new THREE.Vector3(0, 1, 0), -h) : new THREE.Plane(new THREE.Vector3(0, -1, 0), h)];
+                L.h = h;
+                if (how === 'down') { L.plane.normal.set(0, 1, 0); L.plane.constant = -h; }
+                else L.plane.constant = h;
             }
 
-            const howOf = (d, id) => {
-                const l = d.layers.find((x) => x.id === id);
-                return l.shape === 'dot' ? 'dot' : l.shape === 'scoop' || l.shape === 'straw' ? 'drop' : l.pour || 'up';
-            };
+            const layerOf = (d, id) => d.layers.find((x) => x.id === id);
+            const howOf = (l) => (l.shape === 'dot' ? 'dot' : l.shape === 'scoop' || l.shape === 'straw' ? 'drop' : l.pour || 'up');
+            const vesselOf = (l) => ('vessel' in l ? l.vessel : VESSEL[l.kind] ?? null);
+            const streamColor = (l, v) => (v === 'kettle' ? WATER : v === 'portafilter' ? '#6e3818' : l.kind === 'nes' ? colors.milk : colors[l.kind]);
+
+            function clearFx() {
+                Object.values(vessels).forEach((v) => (v.visible = false));
+                streams.forEach((s) => (s.visible = false));
+                if (surface) surface.visible = false;
+                dropState.forEach((d) => (d.life = 0));
+            }
 
             function showStep(n, animate = true) {
                 const d = cur.d;
                 step = Math.max(-1, Math.min(n, d.steps.length - 1));
                 anims = [];
+                sessions = [];
+                clearFx();
                 const shown = new Set(d.steps.slice(0, step).flatMap((s) => s.reveal));
                 const now = step >= 0 ? d.steps[step].reveal : [];
                 for (const [id, L] of Object.entries(cur.layers)) setReveal(L, shown.has(id) ? 1 : 0, 'up');
-                let delay = 0;
+                const last = step === d.steps.length - 1;
+                if (art) { art.material.opacity = 0; artAt = Infinity; }
+                let t = performance.now() + 120, prev = null;
                 for (const id of now) {
                     const L = cur.layers[id];
                     if (!L) continue;
-                    const dur = reduced || !animate ? 0 : Math.max(450, Math.min(1300, (L.z1 - L.z0) * 22000));
-                    anims.push({ L, how: howOf(d, id), start: performance.now() + delay, dur });
-                    delay += dur * 0.85;
+                    const l = layerOf(d, id);
+                    const how = howOf(l);
+                    const vessel = animate && !reduced ? vesselOf(l) : null;
+                    const pre = vessel && vessel !== prev ? 650 : 0;
+                    const dur = reduced || !animate ? 0 : how === 'up' || how === 'down' ? clamp((L.z1 - L.z0) * 30000, 800, 2400) : 650;
+                    const start = t + pre;
+                    anims.push({ L, l, how, start, dur, vessel });
+                    if (vessel) {
+                        const s = sessions[sessions.length - 1];
+                        if (s && s.vessel === vessel && prev === vessel) s.end = start + dur;
+                        else sessions.push({ vessel, from: start - pre, end: start + dur });
+                    }
+                    t = start + dur * (vessel ? 1 : 0.85);
+                    prev = vessel;
                 }
+                const total = Math.max(t, ...sessions.map((s) => s.end + 500)) - performance.now();
+                if (art && last) artAt = performance.now() + total - 200;
                 $$('.cb-panel.is-on .cb-step').forEach((li, i) => {
                     li.classList.toggle('bg-amber-500/10', i === step);
                     li.classList.toggle('border-amber-500/40', i === step);
                     li.classList.toggle('opacity-50', i > step);
                 });
-                return delay;
+                return total;
             }
 
             function play() {
                 clearTimeout(timer);
                 const go = (i) => {
                     const t = showStep(i);
-                    if (i < cur.d.steps.length - 1) timer = setTimeout(() => go(i + 1), t + (reduced ? 900 : 1100));
+                    if (i < cur.d.steps.length - 1) timer = setTimeout(() => go(i + 1), t + (reduced ? 900 : 700));
                 };
                 showStep(-1);
-                timer = setTimeout(() => go(0), 300);
+                timer = setTimeout(() => go(0), 400);
             }
 
             function select(id, { autoplay = true } = {}) {
@@ -349,8 +569,162 @@ const maxH = Math.max(...drinks.map((d) => cups[d.cup as keyof typeof cups].H));
                 if (!roots[id]) return;  // model not loaded yet; select() runs again once it is
                 Object.entries(roots).forEach(([k, r]) => (r.root.visible = k === id));
                 cur = roots[id];
+                cur.root.rotation.y = 0;
+                touched = false;
+                // move the shared effects into this drink
+                const sweep = cur.cup.glass ? Math.PI * 2 : Math.PI * 1.5;
+                if (!cur.surface) cur.surface = makeSurface(sweep);
+                surface = cur.surface;
+                cur.fx.add(surface, drops, ...streams, ...Object.values(vessels), ...steam);
+                art = null;
+                if (cur.d.art) {
+                    if (!cur.art) {
+                        const top = Math.max(...cur.d.layers.filter((l) => !l.shape && cur.layers[l.id]).map((l) => cur.layers[l.id].z1));
+                        const tex = artCache[cur.d.art] ??= artTexture(cur.d.art);
+                        const m = new THREE.Mesh(new THREE.RingGeometry(0.0004, innerR(cur.cup, top), 64, 1, 0, sweep), artMat.clone());
+                        m.material.map = tex;
+                        m.rotation.x = -Math.PI / 2;
+                        m.position.y = top + 0.0004;
+                        cur.art = m;
+                    }
+                    art = cur.art;
+                    cur.fx.add(art);
+                }
                 frame(cur.root, id);
                 if (autoplay) play(); else showStep(cur.d.steps.length - 1, false);
+            }
+
+            // ---------- per-frame effects ----------
+            const v3 = new THREE.Vector3(), q = new THREE.Quaternion(), eul = new THREE.Euler(0, 0, 0, 'YXZ');
+            const back = new THREE.Vector3(-Math.cos(-YAW), 0, -Math.sin(-YAW));  // away from the camera
+            function liquidTop(exceptL) {
+                let top = cur.cup.base + (cur.cup.saucer ? 0.0058 : 0);
+                for (const L of Object.values(cur.layers)) {
+                    if (L === exceptL || !L.mesh.visible || L.shape === 'straw' || L.shape === 'dot') continue;
+                    top = Math.max(top, L.h ?? L.z1);
+                }
+                return top;
+            }
+
+            function updateFx(now, dt) {
+                if (!cur) return;
+                const rimY = cur.rimY;
+                Object.values(vessels).forEach((v) => (v.visible = false));
+                streams.forEach((s) => (s.visible = false));
+                surface.visible = false;
+
+                // every vessel on stage now (one may be leaving while the next comes in)
+                const spoutsOf = {};
+                let spoonTilt = 0;
+                for (const s of sessions) {
+                    if (now < s.from || now > s.end + 600) continue;
+                    const vessel = vessels[s.vessel];
+                    const p = smooth(s.from, s.from + 380, now) * (1 - smooth(s.end + 180, s.end + 600, now));
+                    const tilt = smooth(s.from + 280, s.from + 650, now) * (1 - smooth(s.end, s.end + 260, now));
+                    const target = new THREE.Vector3(IMPACT.x, rimY + (s.vessel === 'portafilter' ? 0.075 : s.vessel === 'spoon' ? 0.018 : 0.03), IMPACT.z);
+                    eul.set(0, YAW, -vessel.userData.tilt * tilt);
+                    q.setFromEuler(eul);
+                    vessel.quaternion.copy(q);
+                    const sp = vessel.userData.spouts, k = vessel.scale.x;
+                    const mid = sp.reduce((a, b) => a.clone().add(b), new THREE.Vector3()).multiplyScalar(k / sp.length);
+                    vessel.position.copy(target).sub(mid.applyQuaternion(q));
+                    if (s.vessel !== 'portafilter') vessel.position.addScaledVector(back, (1 - p) * 0.09);
+                    vessel.position.y += (1 - p) * 0.09;
+                    vessel.visible = p > 0.01;
+                    spoutsOf[s.vessel] = sp.map((x) => x.clone().multiplyScalar(k).applyQuaternion(q).add(vessel.position));
+                    if (s.vessel === 'spoon') spoonTilt = tilt;
+                }
+
+                // streams and the rising surface for the layer being poured
+                for (const a of anims) {
+                    if (!a.vessel || a.vessel === 'spoon') continue;
+                    const t0 = a.start - 120, t1 = a.start + a.dur;
+                    const spoutsW = spoutsOf[a.vessel];
+                    if (now < t0 || now > t1 + 700 || !spoutsW) continue;
+                    const surfY = a.how === 'down' ? liquidTop(a.L) : a.L.h ?? (now < a.start ? a.L.z0 : a.L.z1);
+                    const col = streamColor(a.l, a.vessel);
+                    spoutsW.forEach((sp, i) => {
+                        const st = streams[i];
+                        const fall = (tt) => sp.y - 0.5 * GRAVITY * Math.pow(Math.max(0, (now - tt) / 1000), 2);
+                        const front = Math.max(fall(t0), surfY);
+                        const top = now > t1 ? fall(t1) : sp.y;
+                        if (top <= front + 0.0005) return;
+                        const r = a.vessel === 'portafilter' ? 0.00105 : a.vessel === 'finjan' ? 0.0022 : a.l.kind === 'foam' ? 0.0038 : 0.003;
+                        st.visible = true;
+                        st.position.set(sp.x, top, sp.z);
+                        st.scale.set(1, top - front, 1);
+                        st.material.color.set(col);
+                        st.material.transparent = a.vessel === 'kettle';
+                        st.material.opacity = a.vessel === 'kettle' ? 0.55 : 1;
+                        // narrow as it falls, and wobble
+                        const pos = st.geometry.attributes.position, b = st.userData.base;
+                        for (let k = 0; k < pos.count; k++) {
+                            const by = b[k * 3 + 1];  // 0 at the spout, -1 at the surface
+                            const w = (1 - 0.45 * Math.min(1, -by * 2)) * r * (1 + 0.12 * Math.sin(by * 40 + now * 0.03));
+                            const wob = Math.sin(by * 9 + now * 0.012) * 0.0007 * -by;
+                            pos.setXYZ(k, b[k * 3] * w + wob, by, b[k * 3 + 2] * w + wob * 0.6);
+                        }
+                        pos.needsUpdate = true;
+                        if (front <= surfY + 0.0001 && Math.random() < 0.7) spawnDrop(new THREE.Vector3(sp.x, surfY, sp.z), col);
+                    });
+                    if (a.how === 'up' && a.L.h != null) {
+                        const flatTop = a.L.z1 - (a.l.dome || 0);
+                        if (a.L.h < flatTop) {
+                            const R = innerR(cur.cup, a.L.h);
+                            surface.visible = true;
+                            surface.position.y = a.L.h + 0.0002;
+                            surface.scale.set(R, R, 1);
+                            surfMat.color.set(colors[a.l.kind]);
+                            const pos = surface.geometry.attributes.position, b = surface.userData.base;
+                            const ix = IMPACT.x / R, iy = -IMPACT.z / R;
+                            for (let k = 0; k < pos.count; k++) {
+                                const x = b[k * 3], y = b[k * 3 + 1];
+                                const dd = Math.hypot(x - ix, y - iy) * R;
+                                pos.setZ(k, 0.0007 * Math.sin(dd * 700 - now * 0.014) * Math.exp(-dd * 70));
+                            }
+                            pos.needsUpdate = true;
+                            surface.geometry.computeVertexNormals();
+                        }
+                    }
+                }
+
+                // a spoon tips its contents out
+                if (spoonTilt > 0.55 && spoutsOf.spoon) {
+                    const a = anims.find((x) => x.vessel === 'spoon' && now >= x.start - 300 && now <= x.start + x.dur);
+                    if (a && Math.random() < 0.8) spawnDrop(spoutsOf.spoon[0], colors[a.l.kind], -0.4);
+                }
+
+                // droplets
+                const floorY = liquidTop(null);
+                dropState.forEach((d, i) => {
+                    if (d.life > 0) {
+                        d.life -= dt;
+                        d.v.y -= GRAVITY * 1.4 * dt;
+                        d.p.addScaledVector(d.v, dt);
+                        if (d.p.y < floorY - 0.002 && d.v.y < 0) d.life = 0;
+                    }
+                    const r = d.life > 0 ? d.r : 0;
+                    tmpM.makeScale(r, r, r).setPosition(d.p);
+                    drops.setMatrixAt(i, tmpM);
+                    drops.setColorAt(i, d.c);
+                });
+                drops.instanceMatrix.needsUpdate = true;
+                if (drops.instanceColor) drops.instanceColor.needsUpdate = true;
+
+                // steam over hot drinks once something is in the cup
+                const hot = !['ice', 'affogato'].includes(cur.d.id) && step >= 0;
+                const R = innerR(cur.cup, rimY);
+                steam.forEach((sp) => {
+                    const u = sp.userData, age = (now / 4200 + u.phase) % 1;
+                    sp.visible = hot;
+                    sp.position.set(u.dx * R * 0.9 + Math.sin(age * u.sway) * 0.006, floorY + 0.004 + age * 0.07, u.dz * R * 0.9);
+                    const sc = 0.012 + age * 0.03;
+                    sp.scale.set(sc, sc, sc);
+                    sp.material.opacity = 0.09 * Math.sin(Math.PI * age);
+                });
+
+                // latte art appears at the end
+                if (art) art.material.opacity = smooth(artAt, artAt + 900, now);
             }
 
             // ---------- labels ----------
@@ -362,26 +736,28 @@ const maxH = Math.max(...drinks.map((d) => cups[d.cup as keyof typeof cups].H));
                 linesEl.innerHTML = '';
                 if (!cur || !showLabels) return;
                 const w = el.clientWidth, h = el.clientHeight;
-                const box = new THREE.Box3().setFromObject(cur.root);
                 let right = -Infinity;
-                for (const p of [box.min, box.max, new THREE.Vector3(box.max.x, box.min.y, box.min.z), new THREE.Vector3(box.min.x, box.max.y, box.max.z)]) {
-                    v.copy(p).project(camera);
+                const box = new THREE.Box3();
+                Object.values(cur.layers).forEach((L) => box.expandByObject(L.mesh));
+                cur.root.traverse((o) => { if (o.isMesh && /__(cup|saucer)$/.test(o.name)) box.expandByObject(o); });
+                for (const x of [0, 1]) for (const y of [0, 1]) for (const z of [0, 1]) {
+                    v.set(x ? box.max.x : box.min.x, y ? box.max.y : box.min.y, z ? box.max.z : box.min.z).project(camera);
                     right = Math.max(right, (v.x + 1) / 2 * w);
                 }
                 const items = [];
                 for (const [id, L] of Object.entries(cur.layers)) {
                     if (!L.mesh.visible) continue;
-                    v.copy(L.anchor).add(new THREE.Vector3(0, L.mesh.position.y - L.baseY, 0)).project(camera);
-                    const l = cur.d.layers.find((x) => x.id === id);
+                    v.copy(L.anchor);
+                    v.y += L.mesh.position.y - L.baseY;
+                    if (L.h != null) v.y = Math.min(v.y, (L.z0 + L.h) / 2);
+                    cur.root.localToWorld(v).project(camera);
+                    const l = layerOf(cur.d, id);
                     items.push({ id, x: (v.x + 1) / 2 * w, y: (1 - v.y) / 2 * h, name: l.name, color: colors[l.kind] });
                 }
                 items.sort((a, b) => a.y - b.y);
                 const lx = Math.min(right + 18, w - 150);
                 let last = -Infinity;
-                for (const it of items) {
-                    it.ly = Math.max(it.y, last + 24);
-                    last = it.ly;
-                }
+                for (const it of items) { it.ly = Math.max(it.y, last + 24); last = it.ly; }
                 for (const it of items) {
                     linesEl.insertAdjacentHTML('beforeend',
                         `<circle cx="${it.x}" cy="${it.y}" r="3" fill="#fff" stroke="#000" stroke-opacity=".4"/>` +
@@ -403,14 +779,25 @@ const maxH = Math.max(...drinks.map((d) => cups[d.cup as keyof typeof cups].H));
                     const id = root.name.replace(/^drink_/, '');
                     if (!byId[id]) continue;
                     scene.add(root);
-                    const layers = prepare(root);
-                    for (const L of Object.values(layers)) L.baseY = L.mesh.position.y;
-                    roots[id] = { d: byId[id], root, layers };
+                    roots[id] = { d: byId[id], root, ...prepare(root, byId[id]) };
                 }
-                renderer.domElement.style.display = 'block';
-                $('#cb-fallback').remove();
-                status.textContent = '';
-                select(location.hash.slice(1));
+                // compile every shader up front (all drinks, vessels, streams) so pours don't stall on it
+                status.textContent = 'Warming up the espresso machine…';
+                const warm = new THREE.Group();
+                const tmpSurf = makeSurface(Math.PI * 2);
+                const tmpArt = new THREE.Mesh(new THREE.CircleGeometry(0.03), artMat);
+                warm.add(...Object.values(vessels), ...streams, tmpSurf, tmpArt, drops, ...steam);
+                warm.traverse((o) => (o.visible = true));
+                scene.add(warm);
+                const done = () => {
+                    scene.remove(warm);
+                    clearFx();
+                    renderer.domElement.style.display = 'block';
+                    $('#cb-fallback')?.remove();
+                    status.textContent = '';
+                    select(location.hash.slice(1));
+                };
+                (renderer.compileAsync ? renderer.compileAsync(scene, camera) : Promise.resolve(renderer.compile(scene, camera))).then(done, done);
             }, undefined, () => { status.textContent = '3D unavailable here, showing a still render'; });
 
             select(location.hash.slice(1) || 'hafuch');
@@ -418,7 +805,7 @@ const maxH = Math.max(...drinks.map((d) => cups[d.cup as keyof typeof cups].H));
             $('#cb-play').addEventListener('click', () => cur && play());
             $('#cb-next').addEventListener('click', () => { if (cur) { clearTimeout(timer); showStep(step + 1); } });
             $('#cb-prev').addEventListener('click', () => { if (cur) { clearTimeout(timer); showStep(step - 1, false); } });
-            $('#cb-reset').addEventListener('click', () => cur && frame(cur.root, cur.d.id));
+            $('#cb-reset').addEventListener('click', () => { if (cur) { touched = false; frame(cur.root, cur.d.id); } });
             $('#cb-showlabels').addEventListener('change', (e) => (showLabels = e.target.checked));
             $$('.cb-step').forEach((li) => li.addEventListener('click', () => { if (cur) { clearTimeout(timer); showStep(+li.dataset.step); } }));
             const highlight = (id) => cur && Object.entries(cur.layers).forEach(([k, L]) => L.mesh.material.emissive.setHex(k === id ? 0x4a3018 : 0));
@@ -427,12 +814,17 @@ const maxH = Math.max(...drinks.map((d) => cups[d.cup as keyof typeof cups].H));
                 x.addEventListener('mouseleave', () => highlight(null));
             });
 
+            let lastT = performance.now();
             renderer.setAnimationLoop((now) => {
+                const dt = Math.min(0.05, (now - lastT) / 1000);
+                lastT = now;
                 for (const a of anims) {
                     const t = a.dur ? (now - a.start) / a.dur : 1;
-                    if (t >= 0) setReveal(a.L, Math.min(t, 1), a.how);
+                    if (t >= 0 && !a.done) setReveal(a.L, Math.min(t, 1), a.how);
+                    if (t >= 1) a.done = true;
                 }
-                anims = anims.filter((a) => (a.dur ? (now - a.start) / a.dur : 1) < 1);
+                if (cur && !touched && !reduced) cur.root.rotation.y = Math.sin(now / 3200) * 0.12;  // a slow sway while idle
+                updateFx(now, dt);
                 controls.update();
                 renderer.render(scene, camera);
                 drawLabels();
