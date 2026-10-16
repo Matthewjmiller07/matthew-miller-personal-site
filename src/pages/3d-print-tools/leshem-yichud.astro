@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import stats from '../../../public/3d/leshem-yichud/stats.json';
+import variants from '../../../public/3d/leshem-yichud/variants.json';
 
 const DIR = '/3d/leshem-yichud';
 const sizes = Object.entries(stats).map(([key, s]) => ({
@@ -10,6 +11,8 @@ const sizes = Object.entries(stats).map(([key, s]) => ({
     goldLayer: Math.round((s.base + 0.6) / 0.2) + 1,
 }));
 const fmt = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} m` : `${min} m`);
+const standStyle = { steps: 'Stepped pedestal', disc: 'Round disc', easel: 'Easel' };
+const more = Object.entries(variants).map(([key, v]) => ({ key, ...v, dir: `${DIR}/${key}`, stem: `leshem-yichud-${key}` }));
 const swatches = [
     { name: 'Navy', hex: '#1B2A5E', what: 'the card' },
     { name: 'White', hex: '#F4F1E8', what: 'the text and the SCP letters' },
@@ -33,7 +36,7 @@ const swatches = [
                 On the back goes a mirror, for checking the shel rosh sits centred.
                 Three colours, made for the Bambu A1 mini, with a bigger version for 256&nbsp;mm printers. It lives in the tefillin bag.
             </p>
-            <p class="mt-2 text-sm"><a href="/print-quote" class="text-amber-300 hover:underline">Print shops: quote a bulk run (Hebrew) →</a></p>
+            <p class="mt-2 text-sm flex flex-wrap gap-x-5"><a href="#more" class="text-amber-300 hover:underline">More designs: Heichal, bookmark, Luchot ↓</a><a href="/print-quote" class="text-amber-300 hover:underline">Print shops: quote a bulk run (Hebrew) →</a></p>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -89,6 +92,49 @@ const swatches = [
                     <p>The card carries Hashem's names (יְהֹוָה, אֱלֹהֵינוּ). Treat it with the respect of a siddur, and put failed or test prints in genizah rather than the bin. Cantillation marks and meteg are left off: they're too fine to print at this size.</p>
                 </section>
             </aside>
+        </div>
+
+
+        <h2 id="more" class="text-2xl font-bold mt-10 mb-2">More designs</h2>
+        <p class="text-gray-400 max-w-3xl mb-4">The same Leshem Yichud in other shapes, each with its own stand. All three print on the A1 mini, with the same three-colour trick: the accent stands taller than the text, so two filament swaps do it without an AMS.</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {more.map((v) => (
+                <section class="rounded-xl border border-gray-700 bg-gray-900/60 overflow-hidden flex flex-col">
+                    <img src={`${v.dir}/${v.stem}-spin.gif`} alt={`The ${v.label} design on its stand, turning`} width="480" height="480" loading="lazy" class="w-full aspect-square object-cover bg-black" />
+                    <div class="p-5 flex flex-col flex-1">
+                        <div class="flex items-baseline justify-between gap-2">
+                            <h3 class="text-xl font-semibold">{v.label}</h3>
+                            <span class="text-amber-300 text-lg" dir="rtl" lang="he">{v.he}</span>
+                        </div>
+                        <p class="text-sm text-gray-400 mt-2">{v.blurb}</p>
+                        <div class="flex gap-3 mt-3 text-xs text-gray-400">
+                            {v.colors.map((c) => (
+                                <span class="flex items-center gap-1.5"><span class="w-4 h-4 rounded border border-gray-600" style={`background:${c.hex}`}></span>{c.name}</span>
+                            ))}
+                        </div>
+                        <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mt-4">
+                            <dt class="text-gray-400">Card</dt><dd class="text-right font-mono">{v.w} × {v.h} × {v.thickness} mm</dd>
+                            <dt class="text-gray-400">With AMS</dt><dd class="text-right font-mono">≈ {fmt(v.time_ams_min)} · {v.model_g} g</dd>
+                            <dt class="text-gray-400">No AMS: pause at</dt><dd class="text-right font-mono">layers {Math.round(v.base / 0.2) + 1} and {Math.round((v.base + 0.6) / 0.2) + 1}</dd>
+                            <dt class="text-gray-400">Body text</dt><dd class="text-right font-mono">{v.body_em_mm} mm</dd>
+                            {v.mirror && (<><dt class="text-gray-400">Back mirror</dt><dd class="text-right font-mono">{v.mirror.w} × {v.mirror.h} mm</dd></>)}
+                            <dt class="text-gray-400">{standStyle[v.stand.style]} stand</dt><dd class="text-right font-mono">≈ {fmt(v.stand.time_min)} · {v.stand.grams} g</dd>
+                        </dl>
+                        <div class="mt-auto pt-4 space-y-2">
+                            <a href={`${v.dir}/${v.stem}.3mf`} download class="block text-center px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium">⬇️ 3MF (3 parts)</a>
+                            <div class="grid grid-cols-3 gap-2 text-xs">
+                                {v.colors.map((c) => (
+                                    <a href={`${v.dir}/${v.stem}-${c.role}.stl`} download class="text-center px-2 py-1.5 rounded bg-gray-700 hover:bg-gray-600">{c.name.split(' ').pop()} STL</a>
+                                ))}
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <a href={`${v.dir}/${v.stem}-stand.stl`} download class="text-center px-2 py-1.5 rounded bg-gray-700 hover:bg-gray-600">Stand STL</a>
+                                <a href={`${v.dir}/${v.stem}-spin.gif`} download={`leshem-yichud-${v.key}.gif`} class="text-center px-2 py-1.5 rounded bg-gray-700 hover:bg-gray-600">GIF</a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            ))}
         </div>
 
         <h2 class="text-2xl font-bold mt-10 mb-4">Sizes, time and filament</h2>

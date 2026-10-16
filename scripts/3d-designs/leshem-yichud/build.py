@@ -347,10 +347,10 @@ def extrude(g, z0, h):
     return trimesh.util.concatenate(meshes)
 
 
-def write_3mf(path, parts, title):
+def write_3mf(path, parts, title, colors=COLORS):
     """Core-spec 3MF: one object made of coloured parts (Bambu/Orca/Prusa keep them as parts)."""
     res, comps = [], []
-    mats = ''.join(f'<base name="{n}" displaycolor="{COLORS[n]}FF"/>' for n, _ in parts)
+    mats = ''.join(f'<base name="{n}" displaycolor="{colors[n]}FF"/>' for n, _ in parts)
     res.append(f'<basematerials id="1">{mats}</basematerials>')
     for i, (name, mesh) in enumerate(parts):
         oid = i + 2
