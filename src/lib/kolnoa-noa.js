@@ -41,7 +41,7 @@ export const QUESTIONS = {
     hints: [['קוראים לי דני', 'My name is Danny'], ['שמי מאיה', 'My name is Maya'], ['אני מתיו', "I'm Matthew"]],
     replies: {
       same: { when: 'The learner says their name is Noa.', pose: 'wow', he: { m: 'מה? גם אתה נועה?! איזה מצחיק!', f: 'מה? גם את נועה?! אנחנו כמו תאומות!' }, en: "What? You're Noa too?!" },
-      gave: { when: 'The learner tells Noa their name.', pose: 'wave', he: 'נעים מאוד! אני נועה.', en: "Nice to meet you! I'm Noa." },
+      gave: { when: 'The learner tells Noa their name.', pose: 'wave', he: 'נעים להכיר! קוראים לי נועה.', en: 'Nice to meet you! My name is Noa.' },
     },
   },
   age: {
@@ -123,7 +123,7 @@ export const QUESTIONS = {
     he: 'מה מזג האוויר אצלך עכשיו?', en: "What's the weather like where you are?",
     hints: [['חם', 'Hot'], ['קר וגשום', 'Cold and rainy'], ['יש שמש', "It's sunny"]],
     replies: {
-      hot: { when: 'Hot or sunny.', pose: 'cheer', he: 'יאללה לים!', en: 'Yalla, to the beach!' },
+      hot: { when: 'Hot or sunny.', pose: 'cheer', he: 'יאללה, הולכים לים!', en: "Yalla, let's go to the beach!" },
       cold: { when: 'Cold, rainy, snowy, windy or cloudy.', pose: 'wow', he: { m: 'ברררר! אל תשכח מעיל.', f: 'ברררר! אל תשכחי מעיל.' }, en: "Brrr! Don't forget a coat." },
       nice: { when: 'Pleasant, mild or nice.', pose: 'clap', he: 'מזג אוויר מושלם!', en: 'Perfect weather!' },
     },

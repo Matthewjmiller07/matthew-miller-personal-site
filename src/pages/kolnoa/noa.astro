@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { QUESTIONS, GENERIC, INTRO, BYE, OPENERS, POSES } from '../../lib/kolnoa-noa.js';
+import audio from '../../data/kolnoa/noa-audio.json';
 
 // Only what the page needs: questions, hints and replies (Jev's `when` criteria stay server-side).
 const questions = Object.fromEntries(
@@ -9,7 +10,7 @@ const questions = Object.fromEntries(
     { he: q.he, en: q.en, hints: q.hints, replies: Object.fromEntries(Object.entries(q.replies).map(([rid, r]: [string, any]) => [rid, { pose: r.pose, he: r.he, en: r.en }])) },
   ]),
 );
-const data = { questions, generic: GENERIC, intro: INTRO, bye: BYE, openers: OPENERS };
+const data = { questions, generic: GENERIC, intro: INTRO, bye: BYE, openers: OPENERS, audio: audio.files };
 ---
 
 <Layout
@@ -55,11 +56,12 @@ const data = { questions, generic: GENERIC, intro: INTRO, bye: BYE, openers: OPE
           <div class="nn-hints" id="nn-hints" hidden></div>
           <form class="nn-row" id="nn-form">
             <input id="nn-answer" dir="rtl" lang="he" autocomplete="off" placeholder="תשובה…" />
-            <button class="nn-btn nn-primary" id="nn-send">Answer</button>
+            <button class="nn-btn nn-primary" id="nn-send" disabled>Answer</button>
           </form>
           <div class="nn-row nn-tools">
             <button class="nn-btn" id="nn-help" type="button">💡 Help me answer</button>
-            <button class="nn-btn" id="nn-again" type="button">🔊 Say it again</button>
+            <button class="nn-btn" id="nn-again" type="button">↺ Say it again</button>
+            <button class="nn-btn" id="nn-mute" type="button">🔊 Sound on</button>
             <button class="nn-btn" id="nn-skip" type="button">Skip ▸</button>
             <label class="nn-small"><input type="checkbox" id="nn-showen" checked /> English under Noa</label>
           </div>
@@ -119,6 +121,8 @@ const data = { questions, generic: GENERIC, intro: INTRO, bye: BYE, openers: OPE
     .nn-bubble::after { content: ''; position: absolute; left: 50%; bottom: -10px; border: 10px solid transparent; border-top-color: #fff6ec; border-bottom: 0; transform: translateX(-50%); }
     .nn-bhe { font-family: 'Frank Ruhl Libre', serif; font-size: 24px; line-height: 1.35; }
     .nn-ben { font-size: 14px; color: #7a6650; margin-top: 4px; }
+    .nn-bubble.talking::before { content: '♪'; position: absolute; right: 12px; top: 8px; color: #d07a9c; animation: bob 0.8s ease-in-out infinite alternate; }
+    @keyframes bob { to { transform: translateY(-4px); } }
     .nn-hearts { margin-top: 10px; color: var(--pink); font-size: 20px; letter-spacing: 3px; min-height: 1.4em; }
     .nn-hearts i { color: var(--gold); font-style: normal; }
 
@@ -158,9 +162,10 @@ const data = { questions, generic: GENERIC, intro: INTRO, bye: BYE, openers: OPE
     type Text = string | { m: string; f: string };
     type Reply = { pose: string; he: Text; en: string };
     type Q = { he: Text; en: string; hints: [string, string][] | { m: [string, string][]; f: [string, string][] }; replies: Record<string, Reply> };
-    type Data = { questions: Record<string, Q>; generic: Record<string, Reply>; intro: Reply; bye: Reply; openers: string[] };
+    type Data = { questions: Record<string, Q>; generic: Record<string, Reply>; intro: Reply; bye: Reply; openers: string[]; audio: Record<string, string> };
 
     const ROUNDS = 6;
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
     function init() {
       const dataEl = document.getElementById('nn-data');
@@ -169,13 +174,60 @@ const data = { questions, generic: GENERIC, intro: INTRO, bye: BYE, openers: OPE
       const D: Data = JSON.parse(dataEl.textContent || '{}');
       const $ = (id: string) => document.getElementById(id)!;
       const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+      const store = {
+        get(k: string, d: string) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+        set(k: string, v: string) { try { localStorage.setItem(k, v); } catch {} },
+      };
 
       let gender: 'm' | 'f' = 'm';
       const pick = <T,>(v: T | { m: T; f: T }): T => (v && typeof v === 'object' && !Array.isArray(v) && 'm' in (v as any) ? (v as any)[gender] : v) as T;
       let queue: string[] = [];
       let qid = '';
-      let lastSaid = '';
+      let misses = 0;
       let hearts = 0, sparkles = 0, answered = 0;
+      let lastSaid = '';
+      let run = 0; // bumps on restart/skip so a stale turn stops mid-sequence
+
+      const input = $('nn-answer') as HTMLInputElement;
+      const sendBtn = $('nn-send') as HTMLButtonElement;
+      const setTurn = (mine: boolean) => {
+        sendBtn.disabled = !mine;
+        sendBtn.textContent = 'Answer';
+        if (mine) input.focus({ preventScroll: true });
+      };
+
+      // ---------- voice ----------
+      // Every Noa line is pre-recorded (scripts/kolnoa/noa_voice.mjs). Each line plays to the end
+      // before the next one starts; muted, she pauses about as long as it takes to read the line.
+      let muted = store.get('kolnoa:noa:muted', '0') === '1';
+      // One element for every line: Safari only lets an element play sound after a tap has
+      // started it once, and the gender buttons do that.
+      const voiceEl = new Audio();
+      let audio: HTMLAudioElement | null = null;
+      const renderMute = () => ($('nn-mute').textContent = muted ? '🔇 Sound off' : '🔊 Sound on');
+      renderMute();
+      function stopVoice() {
+        audio?.pause();
+        audio = null;
+        $('nn-bubble').classList.remove('talking');
+      }
+      function play(text: string): Promise<void> {
+        stopVoice();
+        lastSaid = text;
+        const src = D.audio[text];
+        const readTime = wait(Math.max(1200, text.length * 70));
+        if (muted || !src) return readTime;
+        return new Promise((resolve) => {
+          const a = voiceEl;
+          a.src = src;
+          audio = a;
+          const done = () => { if (audio === a) stopVoice(); resolve(); };
+          a.onended = done;
+          a.onerror = () => readTime.then(done);
+          $('nn-bubble').classList.add('talking');
+          a.play().catch(() => readTime.then(done)); // autoplay blocked: fall back to reading time
+        });
+      }
 
       // ---------- Noa ----------
       const img = $('nn-img') as HTMLImageElement;
@@ -185,30 +237,18 @@ const data = { questions, generic: GENERIC, intro: INTRO, bye: BYE, openers: OPE
         void img.offsetWidth;
         img.classList.add('pop');
       }
-      const synth = window.speechSynthesis;
-      function speak(text: string) {
-        lastSaid = text;
-        if (!synth) return;
-        synth.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'he-IL';
-        const v = synth.getVoices().find((x) => /^(he|iw)/i.test(x.lang));
-        if (v) u.voice = v;
-        u.pitch = 1.5; // she's seven
-        u.rate = 0.95;
-        synth.speak(u);
-      }
-      function noaSays(he: string, en: string, p: string, log = true) {
+      async function noaSays(line: Reply, p = line.pose, log = true) {
+        const he = pick(line.he);
         pose(p);
         $('nn-bhe').textContent = he;
-        $('nn-ben').textContent = en;
-        if (log) addLog('noa', he, en);
-        speak(he);
+        $('nn-ben').textContent = line.en;
+        if (log) addLog('noa', he, line.en);
+        await play(he);
       }
       function addLog(who: 'noa' | 'me', he: string, en = '', tag = '', off = false) {
         const li = document.createElement('li');
         li.className = who;
-        li.innerHTML = `<div class="he">${esc(he)}</div>${en ? `<div class="en">${esc(en)}</div>` : ''}${tag ? `<div class="tag${off ? ' off' : ''}">${esc(tag)}</div>` : ''}`;
+        li.innerHTML = `<div class="he">${esc(he)}</div>${en ? `<div class="en"${who === 'noa' && !showEn() ? ' hidden' : ''}>${esc(en)}</div>` : ''}${tag ? `<div class="tag${off ? ' off' : ''}">${esc(tag)}</div>` : ''}`;
         $('nn-log').appendChild(li);
         $('nn-log').scrollTop = 1e6;
       }
@@ -221,9 +261,11 @@ const data = { questions, generic: GENERIC, intro: INTRO, bye: BYE, openers: OPE
         $('nn-log').querySelectorAll('.noa .en').forEach((e) => ((e as HTMLElement).hidden = !showEn()));
       });
 
-      // ---------- flow ----------
+      // ---------- conversation ----------
       const shuffle = <T,>(a: T[]) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-      function start(g: 'm' | 'f') {
+
+      async function start(g: 'm' | 'f') {
+        const me = ++run;
         gender = g;
         hearts = sparkles = answered = 0;
         renderHearts();
@@ -233,86 +275,122 @@ const data = { questions, generic: GENERIC, intro: INTRO, bye: BYE, openers: OPE
         $('nn-end').hidden = true;
         $('nn-talk').hidden = false;
         $('nn-log').innerHTML = '';
-        noaSays(pick(D.intro.he), D.intro.en, 'wave');
-        setTimeout(ask, 1800);
+        setTurn(false);
+        // Warm the cache with all her lines (~400 KB) so there's no gap between them.
+        if (!(window as any)._nnWarm) {
+          (window as any)._nnWarm = true;
+          Object.values(D.audio).forEach((src) => fetch(src).catch(() => {}));
+        }
+        await noaSays(D.intro);
+        if (me !== run) return;
+        await wait(400);
+        if (me === run) nextQuestion();
       }
-      function ask() {
+
+      async function nextQuestion() {
+        const me = ++run;
         qid = queue.shift() ?? '';
+        misses = 0;
         $('nn-hints').hidden = true;
+        input.value = '';
         if (!qid) return finish();
+        setTurn(false);
         const q = D.questions[qid];
-        noaSays(pick(q.he), q.en, 'listen');
-        if (!showEn()) $('nn-log').querySelectorAll('.noa .en').forEach((e) => ((e as HTMLElement).hidden = true));
-        ($('nn-answer') as HTMLInputElement).focus({ preventScroll: true });
+        await noaSays({ pose: 'listen', he: q.he, en: q.en });
+        if (me === run) setTurn(true);
       }
-      function finish() {
+
+      async function finish() {
+        stopVoice();
         $('nn-talk').hidden = true;
         $('nn-end').hidden = false;
-        noaSays(pick(D.bye.he), D.bye.en, 'cheer', false);
-        $('nn-sum').textContent = `${hearts} ♥ for answers that fit Noa's questions, ${sparkles} ✦ for natural Hebrew, out of ${answered} answers.`;
+        $('nn-sum').textContent = `${hearts} ♥ for answers Noa understood, ${sparkles} ✦ for natural Hebrew, from ${answered} answers.`;
+        await noaSays(D.bye, 'cheer', false);
       }
 
       async function send(e?: Event) {
         e?.preventDefault();
-        const input = $('nn-answer') as HTMLInputElement;
-        const btn = $('nn-send') as HTMLButtonElement;
         const answer = input.value.trim();
-        if (!answer || !qid || btn.disabled) return;
-        btn.disabled = true;
-        btn.textContent = 'Noa is thinking…';
+        if (!answer || !qid || sendBtn.disabled) return;
+        const me = run;
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Noa is thinking…';
+        stopVoice();
         pose('think');
+        let r: any;
         try {
           const res = await fetch('/api/kolnoa-noa', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ q: qid, g: gender, answer }),
           });
-          const r = await res.json();
+          r = await res.json();
           if (!res.ok) throw new Error(r.error || res.statusText);
-          answered++;
-          const q = D.questions[qid];
-          const reply: Reply = q.replies[r.reply] ?? D.generic[r.reply] ?? D.generic.offtopic;
-          const fits = !!q.replies[r.reply];
-          if (fits) hearts++;
-          if (fits && r.natural != null && r.natural >= 0.5) sparkles++;
-          const tag = fits
-            ? r.natural == null ? '♥ Noa got it' : r.natural >= 0.5 ? '♥ Noa got it · ✦ natural Hebrew' : '♥ Noa got it · the Hebrew could be smoother'
-            : r.reply === 'english' ? 'Try it in Hebrew' : "Noa didn't follow";
-          addLog('me', answer, '', tag, !fits);
-          input.value = '';
-          renderHearts();
-          noaSays(pick(reply.he), reply.en, reply.pose);
-          // Off-topic or English: she waits for another try. Otherwise, on to the next question.
-          if (fits) setTimeout(ask, 2600);
         } catch (err: any) {
-          noaSays('אוי, משהו נתקע.', `Oops, something got stuck: ${err.message}`, 'oops', false);
-        } finally {
-          btn.disabled = false;
-          btn.textContent = 'Answer';
+          pose('oops');
+          $('nn-bhe').textContent = 'אוי, משהו נתקע.';
+          $('nn-ben').textContent = `Oops, something got stuck (${err.message}). Try again?`;
+          setTurn(true);
+          return;
         }
+        if (me !== run) return;
+
+        answered++;
+        const q = D.questions[qid];
+        const fits = !!q.replies[r.reply];
+        const reply: Reply = q.replies[r.reply] ?? D.generic[r.reply] ?? D.generic.offtopic;
+        if (fits) hearts++;
+        if (fits && r.natural != null && r.natural >= 0.5) sparkles++;
+        const tag = fits
+          ? r.natural == null ? '♥ Noa understood' : r.natural >= 0.5 ? '♥ Noa understood · ✦ natural Hebrew' : '♥ Noa understood · the Hebrew could be smoother'
+          : r.reply === 'english' ? 'Try it in Hebrew' : "Noa didn't follow";
+        addLog('me', answer, '', tag, !fits);
+        input.value = '';
+        renderHearts();
+        sendBtn.textContent = '…';
+
+        // Her reaction plays to the end before anything else happens.
+        await noaSays(reply);
+        if (me !== run) return;
+        await wait(500);
+        if (me !== run) return;
+        if (fits) return nextQuestion();
+
+        // She didn't follow: ask the same question again, and offer help after two misses.
+        misses++;
+        await noaSays({ pose: 'listen', he: q.he, en: q.en }, 'listen', false);
+        if (me !== run) return;
+        if (misses >= 2) showHints();
+        setTurn(true);
+      }
+
+      function showHints() {
+        const q = D.questions[qid];
+        if (!q) return;
+        $('nn-hints').innerHTML = pick(q.hints).map(([he, en]) => `<button type="button" data-he="${esc(he)}"><b>${esc(he)}</b><span>${esc(en)}</span></button>`).join('');
+        $('nn-hints').hidden = false;
       }
 
       document.querySelectorAll('[data-g]').forEach((b) => b.addEventListener('click', () => start((b as HTMLElement).dataset.g as 'm' | 'f')));
       $('nn-form').addEventListener('submit', send);
-      $('nn-skip').addEventListener('click', ask);
-      $('nn-again').addEventListener('click', () => lastSaid && speak(lastSaid));
-      $('nn-restart').addEventListener('click', () => start(gender));
-      $('nn-help').addEventListener('click', () => {
-        const q = D.questions[qid];
-        if (!q) return;
-        const box = $('nn-hints');
-        box.innerHTML = pick(q.hints).map(([he, en]) => `<button type="button" data-he="${esc(he)}"><b>${esc(he)}</b><span>${esc(en)}</span></button>`).join('');
-        box.hidden = !box.hidden;
+      $('nn-skip').addEventListener('click', () => { stopVoice(); nextQuestion(); });
+      $('nn-again').addEventListener('click', () => lastSaid && play(lastSaid));
+      $('nn-mute').addEventListener('click', () => {
+        muted = !muted;
+        store.set('kolnoa:noa:muted', muted ? '1' : '0');
+        if (muted) stopVoice();
+        renderMute();
       });
+      $('nn-restart').addEventListener('click', () => start(gender));
+      $('nn-help').addEventListener('click', () => ($('nn-hints').hidden ? showHints() : ($('nn-hints').hidden = true)));
       $('nn-hints').addEventListener('click', (e) => {
         const b = (e.target as HTMLElement).closest('button') as HTMLElement | null;
         if (!b) return;
-        const input = $('nn-answer') as HTMLInputElement;
         input.value = b.dataset.he!;
         input.focus();
       });
 
-      // Greeting without speech: browsers block audio before the first click.
+      // Greeting without sound: browsers block audio until the first click.
       $('nn-bhe').textContent = 'היי! אני נועה.';
       $('nn-ben').textContent = "Hi! I'm Noa.";
     }
