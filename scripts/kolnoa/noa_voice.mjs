@@ -6,7 +6,7 @@
 //   node scripts/kolnoa/noa_voice.mjs [--voice Leda] [--force]
 //
 // Uses Gemini 3.1 Flash TTS on Replicate (REPLICATE_API_TOKEN in .env) and ffmpeg. Writes
-// public/audio/kolnoa/noa/<hash>.mp3 and src/data/kolnoa/noa-audio.json (text -> file).
+// public/audio/kolnoa/noa/<hash>.mp3 and src/data/kolnoa-audio/noa.json (text -> file; outside src/data/kolnoa, which holds only lessons).
 // Only lines without a recording for this voice are recorded. Gemini's safety filter sometimes
 // flags harmless lines (E005), so failures are retried, then reported and left out.
 import { createHash } from 'node:crypto';
@@ -18,7 +18,7 @@ import { QUESTIONS, GENERIC, INTRO, BYE } from '../../src/lib/kolnoa-noa.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = join(ROOT, 'public/audio/kolnoa/noa');
-const MANIFEST = join(ROOT, 'src/data/kolnoa/noa-audio.json');
+const MANIFEST = join(ROOT, 'src/data/kolnoa-audio/noa.json');
 const MODEL = 'google/gemini-3.1-flash-tts';
 const STYLE =
   'Speak as Noa, a cheerful, bright seven-year-old Israeli girl, native Hebrew with a natural Israeli accent. ' +
