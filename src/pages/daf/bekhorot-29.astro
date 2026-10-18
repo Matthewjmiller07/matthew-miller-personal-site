@@ -1,0 +1,703 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Buy the Truth, Don't Sell It — Daf Yomi Game: Bekhorot 29"
+  description="Bekhorot 29: design Ila's fee so nobody can suspect him, rule on paid judges and paid purification water, pay a carpenter for his idle day, blow your way across a beit haperas, and shop at the suspects' stalls."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style>
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .card { background: #18140f; border: 1px solid #3a2f24; border-radius: 1rem; }
+    .chip { border: 1px solid #4a3c2e; border-radius: 0.6rem; padding: 0.45rem 0.75rem; font-size: 0.8rem; transition: background .15s, border-color .15s; }
+    .chip:hover { background: #251d15; }
+    .chip[aria-pressed="true"] { background: #3b2516; border-color: #c7764a; }
+    .chip.ok { background: #1c2c1f; border-color: #5f9e6c; }
+    .chip.bad { background: #351a14; border-color: #c0503a; }
+    .chip:disabled { cursor: default; }
+    .needle { transition: transform .6s cubic-bezier(.4,0,.2,1); transform-origin: 120px 120px; }
+    .jarwater { transition: fill 1.2s ease; }
+    .tile { aspect-ratio: 1; border-radius: .4rem; border: 1px solid #3a2f24; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: background .25s, transform .2s; }
+    .tile.dust { background: repeating-linear-gradient(45deg, #5a4630 0 4px, #4d3b28 4px 8px); }
+    .tile.clear { background: #2a2118; }
+    .tile.adj { outline: 2px dashed #c7764a; outline-offset: -3px; }
+    .tile.goal { box-shadow: inset 0 0 0 2px #5f9e6c; }
+    @keyframes puff { 0% { transform: scale(1); } 50% { transform: scale(.85); } 100% { transform: scale(1); } }
+    .puff { animation: puff .35s ease-out; }
+    @keyframes stamp { 0% { transform: scale(1.6) rotate(-20deg); opacity: 0; } 100% { transform: scale(1) rotate(-6deg); opacity: 1; } }
+    .stamp-in { animation: stamp .45s ease-out both; }
+    @media (prefers-reduced-motion: reduce) {
+      .needle, .jarwater, .tile { transition: none; }
+      .puff, .stamp-in { animation: none; }
+    }
+    button:focus-visible, input:focus-visible { outline: 2px solid #e0a46a; outline-offset: 2px; }
+  </style>
+
+  <main class="min-h-screen bg-[#100d0a] !text-[#efe6d2]">
+
+    <!-- HERO -->
+    <div class="border-b border-[#3a2f24] bg-gradient-to-b from-[#221a12] to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs tracking-[0.22em] !text-[#8f7f6a]">
+        <a href="/daf" class="transition-colors hover:!text-[#efe6d2]">daf yomi arcade</a>
+        <span class="mx-2 opacity-40">·</span>bekhorot 29<span class="mx-2 opacity-40">·</span>2026-10-18
+      </p>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl !text-[#f3e9d2]">Buy the Truth, Don't Sell It</h1>
+      <p class="frank mt-3 text-3xl font-light !text-[#e0a46a]" dir="rtl" lang="he">אֱמֶת קְנֵה וְאַל תִּמְכֹּר</p>
+      <p class="mt-1 text-xs italic !text-[#8f7f6a]">Proverbs 23:23, quoted in the baraita · Bekhorot 29a:8</p>
+      <p class="mx-auto mt-5 max-w-lg text-sm leading-relaxed !text-[#c4b59c]">
+        This daf is about money and trust. When can a Torah expert be paid, and when does the
+        payment ruin the ruling? And what can you buy from someone you don't trust? Five stations,
+        from Ila's fee at Yavne to the market stalls of the suspects.
+      </p>
+      <p class="mt-4 text-xs !text-[#8f7f6a]">Score: <span id="score" class="font-bold !text-[#e0a46a]">0</span> / <span id="scoreMax">0</span></p>
+    </div>
+
+    <div class="mx-auto max-w-2xl space-y-10 px-4 pb-20 pt-8">
+
+      <!-- STATION 1 -->
+      <section class="card p-5" aria-labelledby="s1h">
+        <p class="text-xs tracking-widest !text-[#e0a46a]">STATION 1 · 29a:1–4</p>
+        <h2 id="s1h" class="frank mt-1 text-2xl font-bold !text-[#f3e9d2]">Ila's Fee Schedule</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#c4b59c]">
+          An examiner who takes a fee for inspecting firstborns can't normally be trusted. But the Sages of
+          Yavne let Ila charge. Write his price list, then set the payment rules so that no one can suspect him.
+        </p>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2" id="feeBoxes"></div>
+        <div id="feeWhy" class="mt-4 hidden"></div>
+
+        <div id="policyWrap" class="mt-6 hidden">
+          <p class="text-sm font-bold !text-[#f3e9d2]">When does Ila get paid?</p>
+          <p class="text-xs !text-[#8f7f6a]">Turn the rules on and off. The gauge shows what the neighbours will whisper.</p>
+          <div class="mt-3 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+            <svg viewBox="0 0 240 140" class="w-56 shrink-0" role="img" aria-label="Suspicion gauge">
+              <path d="M20 120 A100 100 0 0 1 220 120" fill="none" stroke="#3a2f24" stroke-width="18" />
+              <path d="M20 120 A100 100 0 0 1 80 28" fill="none" stroke="#3f7a4d" stroke-width="18" />
+              <path d="M160 28 A100 100 0 0 1 220 120" fill="none" stroke="#a5422f" stroke-width="18" />
+              <g id="needle" class="needle" style="transform: rotate(0deg)">
+                <line x1="120" y1="120" x2="120" y2="34" stroke="#efe6d2" stroke-width="4" stroke-linecap="round" />
+              </g>
+              <circle cx="120" cy="120" r="8" fill="#e0a46a" />
+              <text x="22" y="138" font-size="10" fill="#8f7f6a">trusted</text>
+              <text x="178" y="138" font-size="10" fill="#8f7f6a">suspect</text>
+            </svg>
+            <div class="w-full space-y-2" id="policyToggles"></div>
+          </div>
+          <p id="policyMsg" class="mt-3 rounded-lg border border-[#3a2f24] bg-[#14100c] p-3 text-xs leading-relaxed !text-[#c4b59c]"></p>
+          <button id="policySubmit" class="chip mt-3 font-bold !text-[#e0a46a]">Seal the ordinance</button>
+        </div>
+      </section>
+
+      <!-- STATION 2 -->
+      <section class="card p-5" aria-labelledby="s2h">
+        <p class="text-xs tracking-widest !text-[#e0a46a]">STATION 2 · 29a:5–11</p>
+        <h2 id="s2h" class="frank mt-1 text-2xl font-bold !text-[#f3e9d2]">Paid For, and Void</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#c4b59c]">
+          The mishna: a paid judge's rulings are void, a paid witness's testimony is void, and paid
+          purification water is just cave water. Rule on each case. Watch the jar of red-heifer water.
+        </p>
+        <div class="mt-4 flex gap-4">
+          <svg viewBox="0 0 80 120" class="w-16 shrink-0 sm:w-20" role="img" aria-label="Jar of purification water">
+            <path d="M22 10 h36 v10 c10 6 16 18 16 34 v46 c0 8 -6 14 -14 14 h-40 c-8 0 -14 -6 -14 -14 v-46 c0 -16 6 -28 16 -34 z" fill="#2a2118" stroke="#8f7f6a" stroke-width="2" />
+            <path id="jarWater" class="jarwater" d="M8 60 h64 v40 c0 8 -6 14 -14 14 h-36 c-8 0 -14 -6 -14 -14 z" fill="#5f8fc0" />
+            <text id="jarLabel" x="40" y="92" text-anchor="middle" font-size="9" fill="#efe6d2">mei ḥatat</text>
+          </svg>
+          <div class="w-full" id="voidCard"></div>
+        </div>
+        <p id="voidProgress" class="mt-3 text-xs !text-[#8f7f6a]"></p>
+      </section>
+
+      <!-- STATION 3 -->
+      <section class="card p-5" aria-labelledby="s3h">
+        <p class="text-xs tracking-widest !text-[#e0a46a]">STATION 3 · 29a:6, 29b:3</p>
+        <h2 id="s3h" class="frank mt-1 text-2xl font-bold !text-[#f3e9d2]">Not a Wage, but Something</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#c4b59c]">
+          The expert may not take a fee, but you can't make him lose out either. Make three visitors whole.
+        </p>
+        <div id="s3" class="mt-4 space-y-5"></div>
+      </section>
+
+      <!-- STATION 4 -->
+      <section class="card p-5" aria-labelledby="s4h">
+        <p class="text-xs tracking-widest !text-[#e0a46a]">STATION 4 · 29a:12–29b:2</p>
+        <h2 id="s4h" class="frank mt-1 text-2xl font-bold !text-[#f3e9d2]">Blow and Walk</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#c4b59c]">
+          The Gemara asks how a kohen became impure on the way to examine a firstborn, since a kohen may not
+          make himself impure. Answer: he crossed a <span class="italic">beit haperas</span>, a field where a
+          grave was ploughed up and a bone the size of a barley grain could be anywhere. That ban is only
+          rabbinic, and Rav says <span class="frank" dir="rtl" lang="he">מְנַפֵּחַ אָדָם בֵּית הַפְּרָס וְהוֹלֵךְ</span>:
+          blow on the dust ahead of you, then step.
+        </p>
+        <p class="mt-2 text-xs !text-[#8f7f6a]">
+          Get the kohen 🧔 to the firstborn 🐂 on the far side. Tap a dashed square next to him: 💨 blows on it, and then 👣 steps onto it. Pick "Step without blowing" if you want to take your chances.
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button id="modeBlow" class="chip" aria-pressed="true">💨 Blow, then step</button>
+          <button id="modeRisk" class="chip" aria-pressed="false">Step without blowing</button>
+          <button id="fieldReset" class="chip">↺ New field</button>
+        </div>
+        <div id="field" class="mt-3 grid gap-1" style="grid-template-columns: repeat(8, minmax(0, 1fr));" role="grid" aria-label="Beit haperas field"></div>
+        <p id="fieldMsg" class="mt-3 text-xs leading-relaxed !text-[#c4b59c]" aria-live="polite"></p>
+        <div id="fieldQs" class="mt-4 hidden space-y-4"></div>
+      </section>
+
+      <!-- STATION 5 -->
+      <section class="card p-5" aria-labelledby="s5h">
+        <p class="text-xs tracking-widest !text-[#e0a46a]">STATION 5 · 29b:4–14</p>
+        <h2 id="s5h" class="frank mt-1 text-2xl font-bold !text-[#f3e9d2]">The Suspects' Market</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#c4b59c]">
+          Three sellers are suspected of three kinds of cheating. Go down the row: buy or pass on each item.
+          The rule of thumb: would he have bothered putting this much work into something forbidden?
+        </p>
+        <div id="stalls" class="mt-4 space-y-6"></div>
+        <div id="hideWrap" class="mt-6 hidden"></div>
+      </section>
+
+      <div id="final" class="hidden rounded-2xl border border-[#c7764a] bg-[#1d1610] p-6 text-center">
+        <p class="frank text-2xl font-bold !text-[#f3e9d2]">The market closes.</p>
+        <p id="finalMsg" class="mt-2 text-sm !text-[#c4b59c]"></p>
+        <p class="mt-3 text-xs italic !text-[#7f705c]">The daf breaks off mid-story (29b:15): "There was a certain butcher who was suspected of selling…" The rest is on 30a, tomorrow.</p>
+      </div>
+
+      <!-- LEARN MORE -->
+      <section class="card p-6">
+        <h2 class="frank mb-3 text-lg font-bold !text-[#f3e9d2]">Learn the real daf</h2>
+        <div class="mb-4 flex flex-wrap gap-3">
+          <a href="https://www.sefaria.org/Bekhorot.29a" target="_blank" rel="noopener" class="rounded-lg border border-[#3a2f24] px-4 py-2 text-xs font-bold !text-[#e0a46a] transition-colors hover:bg-[#251d15]">Bekhorot 29a on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Bekhorot.29b" target="_blank" rel="noopener" class="rounded-lg border border-[#3a2f24] px-4 py-2 text-xs font-bold !text-[#e0a46a] transition-colors hover:bg-[#251d15]">Bekhorot 29b on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Mishnah_Bekhorot.4" target="_blank" rel="noopener" class="rounded-lg border border-[#3a2f24] px-4 py-2 text-xs font-bold !text-[#e0a46a] transition-colors hover:bg-[#251d15]">Mishnah Bekhorot 4 ↗</a>
+          <a href="https://www.sefaria.org/Chagigah.25b" target="_blank" rel="noopener" class="rounded-lg border border-[#3a2f24] px-4 py-2 text-xs font-bold !text-[#e0a46a] transition-colors hover:bg-[#251d15]">Chagigah 25b: checking a beit haperas ↗</a>
+        </div>
+        <p class="mb-2 text-xs font-bold !text-[#8f7f6a]">Top commentaries</p>
+        <ul class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
+          <li><a href="https://www.sefaria.org/Rashi_on_Bekhorot.29a" target="_blank" rel="noopener" class="!text-[#c4b59c] transition-colors hover:!text-[#e0a46a]">Rashi (47) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.29a" target="_blank" rel="noopener" class="!text-[#c4b59c] transition-colors hover:!text-[#e0a46a]">Rabbeinu Gershom (30) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.29a" target="_blank" rel="noopener" class="!text-[#c4b59c] transition-colors hover:!text-[#e0a46a]">Steinsaltz (28) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rashash_on_Bekhorot.29a" target="_blank" rel="noopener" class="!text-[#c4b59c] transition-colors hover:!text-[#e0a46a]">Rashash (8) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Tosafot_on_Bekhorot.29a" target="_blank" rel="noopener" class="!text-[#c4b59c] transition-colors hover:!text-[#e0a46a]">Tosafot (7) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Tur%2C_Choshen_Mishpat.9" target="_blank" rel="noopener" class="!text-[#c4b59c] transition-colors hover:!text-[#e0a46a]">Tur, Choshen Mishpat 9 ↗</a></li>
+        </ul>
+      </section>
+
+    </div>
+  </main>
+
+  <script is:inline>
+  (function () {
+    var score = 0, max = 0;
+    var scoreEl = document.getElementById('score');
+    var maxEl = document.getElementById('scoreMax');
+    function addMax(n) { max += n; maxEl.textContent = max; }
+    function award(n) { score += n; scoreEl.textContent = score; }
+    function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+    function sef(ref) { return '<a class="underline decoration-dotted !text-[#e0a46a] hover:!text-[#f3e9d2]" target="_blank" rel="noopener" href="https://www.sefaria.org/' + ref.replace(/ /g, '_') + '">' + ref + ' ↗</a>'; }
+    var OK = 'mt-2 text-xs leading-relaxed !text-[#8fd19e]';
+    var BAD = 'mt-2 text-xs leading-relaxed !text-[#f0937f]';
+    var stationsDone = 0;
+    function stationDone() {
+      stationsDone++;
+      if (stationsDone === 5) {
+        document.getElementById('final').classList.remove('hidden');
+        var pct = Math.round(100 * score / max);
+        document.getElementById('finalMsg').textContent = 'You scored ' + score + ' of ' + max + ' (' + pct + '%). ' +
+          (pct >= 85 ? 'Yavne would let you examine firstborns, and you would only charge once.' : pct >= 60 ? 'Decent shopping. Go over the mishnayot once more before your next trip to market.' : 'Go back over the daf. Learn it for free if you can, and pay if you have to.');
+      }
+    }
+
+    // A multiple-choice question. First try scores 1 point.
+    function mcq(parent, q, opts, correctIdx, okText, onDone) {
+      var box = el('div', '');
+      box.appendChild(el('p', 'text-sm font-bold !text-[#f3e9d2]', q));
+      var row = el('div', 'mt-2 flex flex-col gap-2');
+      var fb = el('p', 'hidden');
+      var tries = 0, done = false;
+      addMax(1);
+      opts.forEach(function (o, i) {
+        var b = el('button', 'chip text-left !text-[#efe6d2]', o);
+        b.addEventListener('click', function () {
+          if (done) return;
+          tries++;
+          if (i === correctIdx) {
+            done = true;
+            if (tries === 1) award(1);
+            b.classList.add('ok');
+            Array.prototype.forEach.call(row.children, function (c) { c.disabled = true; });
+            fb.className = OK; fb.innerHTML = '✓ ' + okText;
+            if (onDone) onDone();
+          } else {
+            b.classList.add('bad');
+            fb.className = BAD; fb.textContent = 'Not that one. Try again.';
+          }
+        });
+        row.appendChild(b);
+      });
+      box.appendChild(row); box.appendChild(fb);
+      parent.appendChild(box);
+      return box;
+    }
+
+    // ===== STATION 1: Ila's fee =====
+    (function () {
+      var boxes = document.getElementById('feeBoxes');
+      var animals = [
+        { key: 'small', label: '🐑 Small animal (lamb or kid)', target: 4 },
+        { key: 'large', label: '🐂 Large animal (calf)', target: 6 }
+      ];
+      var vals = { small: 1, large: 1 };
+      var set = { small: false, large: false };
+      var tries = { small: 0, large: 0 };
+      addMax(2);
+      animals.forEach(function (a) {
+        var c = el('div', 'rounded-xl border border-[#3a2f24] bg-[#14100c] p-3');
+        c.appendChild(el('p', 'text-sm font-bold !text-[#f3e9d2]', a.label));
+        var coins = el('div', 'my-2 flex min-h-[2rem] flex-wrap gap-1');
+        var ctr = el('div', 'flex items-center gap-2');
+        var minus = el('button', 'chip !text-[#efe6d2]', '−');
+        var num = el('span', 'w-20 text-center text-sm !text-[#e0a46a]');
+        var plus = el('button', 'chip !text-[#efe6d2]', '+');
+        var go = el('button', 'chip font-bold !text-[#e0a46a]', 'Set fee');
+        minus.setAttribute('aria-label', 'One issar less'); plus.setAttribute('aria-label', 'One issar more');
+        var fb = el('p', 'hidden');
+        function draw() {
+          num.textContent = vals[a.key] + ' issar';
+          coins.innerHTML = '';
+          for (var i = 0; i < vals[a.key]; i++) coins.appendChild(el('span', 'inline-block h-6 w-6 rounded-full border border-[#a07a3a] bg-[#7a5a28] text-center text-[10px] leading-6 !text-[#f3e9d2]', 'א'));
+        }
+        minus.addEventListener('click', function () { if (!set[a.key] && vals[a.key] > 1) { vals[a.key]--; draw(); } });
+        plus.addEventListener('click', function () { if (!set[a.key] && vals[a.key] < 10) { vals[a.key]++; draw(); } });
+        go.addEventListener('click', function () {
+          if (set[a.key]) return;
+          tries[a.key]++;
+          if (vals[a.key] === a.target) {
+            set[a.key] = true;
+            if (tries[a.key] === 1) award(1);
+            fb.className = OK;
+            fb.innerHTML = '✓ ' + (a.key === 'small' ? 'אַרְבַּע אִיסָּרוֹת לִבְהֵמָה דַּקָּה: four issar for a small animal.' : 'וְשִׁשָּׁה לְגַסָּה: six for a large one.') + ' ' + sef('Bekhorot 29a:1');
+            go.disabled = true; minus.disabled = true; plus.disabled = true;
+            if (set.small && set.large) showWhy();
+          } else {
+            fb.className = BAD;
+            fb.textContent = vals[a.key] < a.target ? 'Yavne allowed him more than that.' : 'Too much. Yavne capped it lower.';
+          }
+        });
+        ctr.appendChild(minus); ctr.appendChild(num); ctr.appendChild(plus); ctr.appendChild(go);
+        c.appendChild(coins); c.appendChild(ctr); c.appendChild(fb);
+        boxes.appendChild(c);
+        draw();
+      });
+      function showWhy() {
+        var w = document.getElementById('feeWhy');
+        w.classList.remove('hidden');
+        mcq(w, 'Why does the calf cost two issar more?', [
+          'A calf is worth more, so the fee is a share of its value',
+          'Examining a large animal for blemishes is more work',
+          'The examiner gets to eat more of a large firstborn'
+        ], 1, 'הַאי טְרַח בֵּיהּ, וְהַאי לָא טְרַח בֵּיהּ: checking a large animal takes real effort, and a small one doesn\'t. The fee pays for work, not value. ' + sef('Bekhorot 29a:2'), function () {
+          document.getElementById('policyWrap').classList.remove('hidden');
+        });
+      }
+
+      // policy gauge
+      var rules = [
+        { key: 'blem', label: 'Paid when he finds a blemish (the animal may be eaten)', on: true },
+        { key: 'tam', label: 'Paid when he finds it unblemished', on: false },
+        { key: 'twice', label: 'Paid again when the same animal comes back for another look', on: false }
+      ];
+      var state = { blem: true, tam: false, twice: false };
+      var tg = document.getElementById('policyToggles');
+      var msg = document.getElementById('policyMsg');
+      var needle = document.getElementById('needle');
+      rules.forEach(function (r) {
+        var b = el('button', 'chip w-full text-left !text-[#efe6d2]', '');
+        b.setAttribute('aria-pressed', r.on ? 'true' : 'false');
+        function lbl() { b.innerHTML = (state[r.key] ? '☑ ' : '☐ ') + r.label; }
+        lbl();
+        b.addEventListener('click', function () {
+          if (sealed) return;
+          state[r.key] = !state[r.key];
+          b.setAttribute('aria-pressed', state[r.key] ? 'true' : 'false');
+          lbl(); evalPolicy();
+        });
+        tg.appendChild(b);
+      });
+      var sealed = false, policyTries = 0;
+      addMax(2);
+      function evalPolicy() {
+        var s = state, level, text;
+        if (!s.blem && !s.tam) { level = 10; text = 'No fee at all. That\'s fine for anyone else, but Yavne specifically allowed Ila a fee. Give him one.'; }
+        else if (s.blem && !s.tam) { level = 90; text = '"He only gets paid when he says blemished, so he calls them all blemished." People will say the animal he permitted was really unblemished and he declared it blemished for his fee. (29a:3)'; }
+        else if (!s.blem && s.tam) { level = 80; text = 'Now the payout points the other way: he only earns when he calls an animal unblemished, which gives him a reason to say it.'; }
+        else if (s.twice) { level = 70; text = '"He says unblemished now so he can charge again next time." If a second look pays, he has a reason to call a blemished animal unblemished today. (29a:4)'; }
+        else { level = 0; text = 'He gets paid the same whatever he finds, and only once per animal. He gains nothing by getting it wrong, and the neighbours have nothing to say.'; }
+        needle.style.transform = 'rotate(' + (-80 + level * 1.6) + 'deg)';
+        msg.textContent = text;
+        return level;
+      }
+      evalPolicy();
+      var sub = document.getElementById('policySubmit');
+      sub.addEventListener('click', function () {
+        if (sealed) return;
+        policyTries++;
+        var lv = evalPolicy();
+        if (lv === 0 && state.blem && state.tam && !state.twice) {
+          sealed = true;
+          award(policyTries === 1 ? 2 : 1);
+          sub.disabled = true;
+          msg.innerHTML = '✓ <span class="!text-[#8fd19e]">The ordinance of Yavne: בֵּין תָּם וּבֵין בַּעַל מוּם, whether unblemished or blemished, and only once. "The Sages instituted that he takes his fee once; they did not institute that he takes it twice."</span> ' + sef('Bekhorot 29a:4');
+          stationDone();
+        } else {
+          msg.textContent = 'The gauge isn\'t in the green yet. ' + msg.textContent;
+        }
+      });
+    })();
+
+    // ===== STATION 2: void or valid =====
+    (function () {
+      var water = document.getElementById('jarWater');
+      var label = document.getElementById('jarLabel');
+      var box = document.getElementById('voidCard');
+      var prog = document.getElementById('voidProgress');
+      var cases = [
+        { q: 'A judge takes a fee for judging cases. His rulings?', a: ['Valid', 'Void'], c: 1,
+          why: 'דִּינָיו בְּטֵלִין. Rav learns it from Deut. 4:5, "Behold, I have taught you statutes": מָה אֲנִי בְּחִנָּם, אַף אַתֶּם בְּחִנָּם. Just as Moses learned for free, so must you. ' + sef('Bekhorot 29a:7') },
+        { q: 'A witness takes a fee for testifying. His testimony?', a: ['Valid', 'Void'], c: 1,
+          why: 'עֵדוּתוֹ בְּטֵלָה. His testimony is void. ' + sef('Bekhorot 29a:5') },
+        { q: 'Someone is paid to sprinkle the red-heifer water on a person impure from a corpse. The water?', a: ['Still mei ḥatat', 'Plain cave water'], c: 1, jar: 'cave',
+          why: 'מֵימָיו מֵי מְעָרָה. The water now has the status of ordinary cave water and purifies no one. ' + sef('Bekhorot 29a:5') },
+        { q: 'Someone is paid to sanctify the water, putting the ashes into it. The ashes?', a: ['Plain burnt ashes', 'Still the heifer\'s ashes'], c: 0, jar: 'ash',
+          why: 'וְאֶפְרוֹ אֵפֶר מִקְלֶה. His ashes are just ashes from a fire. ' + sef('Bekhorot 29a:5') },
+        { q: 'Kiddushin 58a: a man betroths a woman with purification water or ashes. Is she betrothed?', a: ['Yes', 'No, you can\'t profit from them'], c: 0, jar: 'reset',
+          why: 'She is betrothed, even by an Israelite. So you can get something of value out of them? That looks like a contradiction. ' + sef('Kiddushin 58a') },
+        { q: 'How does Abaye settle it?', a: ['Kiddushin is about payment for bringing the ashes and filling the vessel, which is allowed. Our mishna is about payment for the sprinkling and sanctifying.', 'Kiddushin is about a kohen, who is allowed to profit.', 'Ashes have no monetary value, so the betrothal must be with something else.'], c: 0,
+          why: 'בִּשְׂכַר הֲבָאָה וּמִלּוּי. Carrying the ashes and drawing the water is ordinary labour, and she saves what she would have paid someone to do it. The wording fits too: our mishna says "to sprinkle" and "to sanctify", and Kiddushin says "water of purification" and "ashes of purification", not yet mixed. שְׁמַע מִינַּהּ. ' + sef('Bekhorot 29a:10') },
+        { q: 'You can\'t find anyone to teach you Torah for free. May you pay a teacher?', a: ['No, Torah is only learned for free', 'Yes'], c: 1,
+          why: '"אֱמֶת קְנֵה": buy the truth. If you can\'t find it free, pay for it. ' + sef('Bekhorot 29a:8') },
+        { q: 'You paid for your learning. May you now charge your own students, since it cost you?', a: ['Yes, it\'s only fair', 'No'], c: 1,
+          why: '"וְאַל תִּמְכֹּר": and do not sell it. Don\'t say "I learned for money, so I\'ll teach for money." ' + sef('Bekhorot 29a:8') }
+      ];
+      var i = 0, tries = 0;
+      addMax(cases.length);
+      function render() {
+        box.innerHTML = '';
+        prog.textContent = 'Case ' + Math.min(i + 1, cases.length) + ' of ' + cases.length;
+        if (i >= cases.length) {
+          prog.textContent = 'All eight cases ruled.';
+          box.appendChild(el('p', 'text-sm !text-[#c4b59c]', 'Torah, testimony and the red heifer\'s water are given for free. What you can be paid for is the ordinary work around them.'));
+          stationDone();
+          return;
+        }
+        var c = cases[i]; tries = 0;
+        box.appendChild(el('p', 'text-sm font-bold !text-[#f3e9d2]', c.q));
+        var row = el('div', 'mt-2 flex flex-col gap-2');
+        var fb = el('p', 'hidden');
+        var stamp = el('div', 'hidden');
+        c.a.forEach(function (txt, k) {
+          var b = el('button', 'chip text-left !text-[#efe6d2]', txt);
+          b.addEventListener('click', function () {
+            if (b.disabled) return;
+            tries++;
+            if (k === c.c) {
+              if (tries === 1) award(1);
+              b.classList.add('ok');
+              Array.prototype.forEach.call(row.children, function (x) { x.disabled = true; });
+              fb.className = OK; fb.innerHTML = '✓ ' + c.why;
+              if (c.jar === 'cave') { water.setAttribute('fill', '#6b6458'); label.textContent = 'cave water'; }
+              if (c.jar === 'ash') { water.setAttribute('fill', '#3b3631'); label.textContent = 'just ash'; }
+              if (c.jar === 'reset') { water.setAttribute('fill', '#5f8fc0'); label.textContent = 'mei ḥatat'; }
+              if (/Void|cave|burnt/.test(txt)) { stamp.className = 'stamp-in mt-2 inline-block rounded border-2 border-[#c0503a] px-2 py-0.5 text-xs font-black tracking-widest !text-[#f0937f]'; stamp.textContent = 'בָּטֵל · VOID'; }
+              var next = el('button', 'chip mt-3 font-bold !text-[#e0a46a]', 'Next case →');
+              next.addEventListener('click', function () { i++; render(); });
+              box.appendChild(next);
+              next.focus();
+            } else {
+              b.classList.add('bad');
+              fb.className = BAD; fb.textContent = 'Not according to the daf. Try the other way.';
+            }
+          });
+          row.appendChild(b);
+        });
+        box.appendChild(row); box.appendChild(stamp); box.appendChild(fb);
+      }
+      render();
+    })();
+
+    // ===== STATION 3: compensation =====
+    (function () {
+      var root = document.getElementById('s3');
+      var parts = 0;
+      function partDone() { parts++; if (parts === 4) stationDone(); }
+
+      // 3a: kohen's tray
+      var a = el('div', 'rounded-xl border border-[#3a2f24] bg-[#14100c] p-3');
+      a.appendChild(el('p', 'text-sm font-bold !text-[#f3e9d2]', '🧔 The examiner is a kohen. You took him somewhere he became impure, and now he can\'t eat his teruma today. What do you owe him?'));
+      a.appendChild(el('p', 'text-xs !text-[#8f7f6a]', 'Pick everything the mishna lists, then hand it over.'));
+      var items = [
+        { t: '🍞 Food', ok: true }, { t: '🍷 Drink', ok: true }, { t: '🫒 Oil to anoint himself', ok: true },
+        { t: '🪙 A fee for the examination', ok: false }, { t: '🌾 Replacement teruma', ok: false }
+      ];
+      var picked = {};
+      var tray = el('div', 'mt-2 flex flex-wrap gap-2');
+      items.forEach(function (it, k) {
+        var b = el('button', 'chip !text-[#efe6d2]', it.t);
+        b.setAttribute('aria-pressed', 'false');
+        b.addEventListener('click', function () { if (aDone) return; picked[k] = !picked[k]; b.setAttribute('aria-pressed', picked[k] ? 'true' : 'false'); });
+        tray.appendChild(b);
+      });
+      var give = el('button', 'chip mt-2 font-bold !text-[#e0a46a]', 'Hand it over');
+      var afb = el('p', 'hidden'), aDone = false, aTries = 0;
+      addMax(1);
+      give.addEventListener('click', function () {
+        if (aDone) return;
+        aTries++;
+        var good = items.every(function (it, k) { return !!picked[k] === it.ok; });
+        if (good) {
+          aDone = true; if (aTries === 1) award(1);
+          afb.className = OK;
+          afb.innerHTML = '✓ נוֹתֵן לוֹ מַאֲכָל וּמַשְׁקֶה וְסִיכָה: food, drink and oil, from your own non-sacred property, to replace the teruma he would have eaten, drunk and anointed with. A fee would still make his ruling void. ' + sef('Bekhorot 29a:6');
+          partDone();
+        } else { afb.className = BAD; afb.textContent = 'Not quite. The mishna lists exactly three things, and none of them is a fee.'; }
+      });
+      a.appendChild(tray); a.appendChild(give); a.appendChild(afb);
+      root.appendChild(a);
+
+      // 3b: elder
+      var b = el('div', 'rounded-xl border border-[#3a2f24] bg-[#14100c] p-3');
+      root.appendChild(b);
+      mcq(b, '👴 The examiner is old and the firstborn is far away. What do you do?', ['Send him the animal\'s description', 'Put him on a donkey', 'Pay him extra to walk'], 1, 'מַרְכִּיבוֹ עַל הַחֲמוֹר: you put him on a donkey. ' + sef('Bekhorot 29b:3'), partDone);
+
+      // 3c: Abaye's idle laborer, carpenter
+      var c = el('div', 'rounded-xl border border-[#3a2f24] bg-[#14100c] p-3');
+      c.appendChild(el('p', 'text-sm font-bold !text-[#f3e9d2]', '🪚 The examiner is a carpenter who earns 3 zuz a day at heavy work. He gives up his day for you.'));
+      c.appendChild(el('p', 'mt-1 text-xs !text-[#c4b59c]', 'The baraita: pay him <span class="italic">ke-po\'el batel</span>, like an idle labourer. Abaye: <span class="frank" dir="rtl" lang="he">כְּפוֹעֵל בָּטֵל שֶׁל אוֹתָהּ מְלָאכָה</span>, like a labourer idle from <em>that</em> work. What would a carpenter take to skip a day of hard work and do this light job instead?'));
+      var sl = el('input', 'mt-3 w-full accent-[#c7764a]');
+      sl.type = 'range'; sl.min = 0; sl.max = 3; sl.step = 0.5; sl.value = 3;
+      sl.setAttribute('aria-label', 'Zuz to pay the carpenter');
+      var out = el('p', 'text-center text-sm font-bold !text-[#e0a46a]', '3 zuz');
+      sl.addEventListener('input', function () { out.textContent = sl.value + ' zuz'; });
+      var pay = el('button', 'chip mt-2 font-bold !text-[#e0a46a]', 'Pay him');
+      var cfb = el('p', 'hidden'), cDone = false, cTries = 0;
+      addMax(1);
+      pay.addEventListener('click', function () {
+        if (cDone) return;
+        cTries++;
+        var v = parseFloat(sl.value);
+        if (v === 1) {
+          cDone = true; if (cTries === 1) award(1);
+          sl.disabled = true;
+          cfb.className = OK;
+          cfb.innerHTML = '✓ Rashi\'s own example: a carpenter earning three zuz would gladly take one zuz to skip his heavy work for the day and do this light job. That is what you pay. ' + sef('Bekhorot 29b:3');
+          partDone();
+        } else if (v === 3) { cfb.className = BAD; cfb.textContent = 'That\'s his full wage, as if he had worked hard all day. He didn\'t. He spent it on easy work.'; }
+        else if (v === 0) { cfb.className = BAD; cfb.textContent = 'He lost a day\'s work for you. He has to get something.'; }
+        else { cfb.className = BAD; cfb.textContent = 'Close. Rashi gives a specific number for the carpenter. Think about how glad he\'d be to put the heavy tools down.'; }
+      });
+      c.appendChild(sl); c.appendChild(out); c.appendChild(pay); c.appendChild(cfb);
+      root.appendChild(c);
+
+      // 3d: pearl driller
+      var d = el('div', 'rounded-xl border border-[#3a2f24] bg-[#14100c] p-3');
+      root.appendChild(d);
+      mcq(d, '💎 Now the examiner drills pearls: easy work that pays well. What do you pay him for the day?',
+        ['About a third of his wage, like the carpenter', 'Only a little less than his full wage', 'Nothing, since his work is easy anyway'], 1,
+        'Rashi: his work is easy and pays well, so he would barely give up any of his wage to sit it out. You take off only a little. The amount depends on both how hard his usual work is and how much it pays. ' + sef('Bekhorot 29b:3'), partDone);
+    })();
+
+    // ===== STATION 4: beit haperas =====
+    (function () {
+      var COLS = 8, ROWS = 4;
+      var field = document.getElementById('field');
+      var msg = document.getElementById('fieldMsg');
+      var mBlow = document.getElementById('modeBlow'), mRisk = document.getElementById('modeRisk');
+      var mode = 'blow';
+      var grid, pos, won = false, dead = false, cleanWalk = true, qsShown = false;
+      addMax(1);
+      mBlow.addEventListener('click', function () { mode = 'blow'; mBlow.setAttribute('aria-pressed', 'true'); mRisk.setAttribute('aria-pressed', 'false'); });
+      mRisk.addEventListener('click', function () { mode = 'risk'; mRisk.setAttribute('aria-pressed', 'true'); mBlow.setAttribute('aria-pressed', 'false'); });
+      document.getElementById('fieldReset').addEventListener('click', function () { if (!won) newField(); });
+      function newField() {
+        grid = [];
+        for (var r = 0; r < ROWS; r++) { grid.push([]); for (var c = 0; c < COLS; c++) grid[r].push({ dust: c > 0 && c < COLS - 1, bone: false }); }
+        var n = 0;
+        while (n < 9) {
+          var rr = Math.floor(Math.random() * ROWS), cc = 1 + Math.floor(Math.random() * (COLS - 2));
+          if (!grid[rr][cc].bone) { grid[rr][cc].bone = true; n++; }
+        }
+        pos = { r: Math.floor(Math.random() * ROWS), c: 0 };
+        dead = false;
+        cleanWalk = true;
+        msg.textContent = 'The field is covered in ploughed dust. Somewhere under it are bone fragments the size of barley grains.';
+        draw();
+      }
+      function adj(r, c) { return Math.abs(r - pos.r) + Math.abs(c - pos.c) === 1; }
+      function draw() {
+        field.innerHTML = '';
+        for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) (function (r, c) {
+          var t = grid[r][c];
+          var cls = 'tile ' + (t.dust ? 'dust' : 'clear');
+          if (!won && adj(r, c)) cls += ' adj';
+          if (c === COLS - 1) cls += ' goal';
+          var b = el('button', cls, '');
+          var content = '';
+          if (r === pos.r && c === pos.c) content = '🧔';
+          else if (!t.dust && t.bone) content = '🦴';
+          else if (c === COLS - 1 && r === 1) content = '🐂';
+          b.textContent = content;
+          b.setAttribute('aria-label', 'Row ' + (r + 1) + ', column ' + (c + 1) + (t.dust ? ', dust' : t.bone ? ', bone' : ', clear') + (r === pos.r && c === pos.c ? ', kohen here' : ''));
+          b.addEventListener('click', function () { act(r, c, b); });
+          field.appendChild(b);
+        })(r, c);
+      }
+      function pushBone(r, c) {
+        // Rashi: blowing pushes the bone away in front of him (מדחיא מקמיה)
+        var opts = [[r - 1, c], [r + 1, c], [r, c + 1], [r, c - 1]].filter(function (p) {
+          return p[0] >= 0 && p[0] < ROWS && p[1] > 0 && p[1] < COLS - 1 && !(p[0] === pos.r && p[1] === pos.c) && !grid[p[0]][p[1]].bone;
+        });
+        grid[r][c].bone = false;
+        if (opts.length) { var p = opts[Math.floor(Math.random() * opts.length)]; grid[p[0]][p[1]].bone = true; grid[p[0]][p[1]].dust = false; }
+      }
+      function act(r, c, btn) {
+        if (won || dead || !adj(r, c)) return;
+        var t = grid[r][c];
+        if (t.dust && mode === 'blow') {
+          t.dust = false;
+          if (t.bone) { pushBone(r, c); msg.textContent = '💨 A bone was there, and the blowing pushed it out of the way. Rashi: a barley-grain bone makes you impure by touching or carrying, not by being under the same roof, and the blowing moves it before you touch it. Now step.'; }
+          else msg.textContent = '💨 Clear. Tap again to step.';
+          draw();
+          return;
+        }
+        if (t.dust && mode === 'risk') {
+          t.dust = false;
+          if (t.bone) {
+            cleanWalk = false; dead = true;
+            msg.innerHTML = '<span class="!text-[#f0937f]">🦴 Your foot came down on a bone. The kohen is impure from the dead, which a kohen is forbidden to become. Rav only allows crossing the field by blowing first.</span> Press ↺ New field to start again.';
+            draw();
+            return;
+          }
+          cleanWalk = false;
+          msg.textContent = 'You got away with it, but you stepped without checking. That isn\'t the walk Rav allowed.';
+        }
+        if (!t.dust && t.bone) { msg.textContent = 'That square has the bone you pushed aside. Go around it.'; return; }
+        pos = { r: r, c: c };
+        if (c === COLS - 1) {
+          won = true;
+          if (cleanWalk) award(1);
+          msg.innerHTML = (cleanWalk ? '✓ ' : '') + 'The kohen reaches the firstborn having blown his way across. Going through the field was allowed. But Rashi adds that he still can\'t eat teruma tonight: "we check for those offering the Pesach, but not for those eating teruma." ' + sef('Chagigah 25b') + ' That lost teruma is why you owe him food, drink and oil.';
+          showQs();
+        }
+        draw();
+      }
+      function showQs() {
+        if (qsShown) return; qsShown = true;
+        var q = document.getElementById('fieldQs');
+        q.classList.remove('hidden');
+        var left = 2;
+        function d() { left--; if (left === 0) stationDone(); }
+        mcq(q, 'Rav Yehuda bar Ami adds: a beit haperas that people have trodden into a path is…', ['Still forbidden to a kohen', 'Pure'], 1,
+          'בֵּית הַפְּרָס שֶׁנִּידַּשׁ טָהוֹר. Rashi: the only worry in a beit haperas is a barley-grain bone, and no bone that small survives people walking all over it. ' + sef('Bekhorot 29b:1'), d);
+        mcq(q, 'The Gemara\'s other answer: how else could a kohen get impure on the job without breaking a prohibition?', ['From other kinds of impurity, which kohanim aren\'t warned against', 'He can\'t, so the mishna must be about a Levite', 'By entering a tent with a corpse in it, if it was urgent'], 0,
+          'אִי נָמֵי בִּשְׁאָר טוּמְאוֹת דְּלָא מַזְהַר עֲלַיְיהוּ. A kohen is only forbidden to become impure from the dead, but any impurity stops him eating teruma. ' + sef('Bekhorot 29b:2'), d);
+      }
+      newField();
+    })();
+
+    // ===== STATION 5: suspects' market =====
+    (function () {
+      var stalls = [
+        { who: 'Suspected about firstborns', he: 'הֶחָשׁוּד עַל הַבְּכוֹרוֹת', sub: 'He slaughters firstborn animals and sells the meat.', ref: 'Bekhorot 29b:4', items: [
+          { t: '🦌 Deer meat', buy: false, why: 'Even deer meat: it can be passed off as veal. ' + sef('Bekhorot 29b:5') },
+          { t: '🟫 Raw, untanned hide', buy: false, why: 'Untanned hides are on the mishna\'s list. ' + sef('Bekhorot 29b:4') },
+          { t: '🟤 Tanned leather', buy: true, why: 'He wouldn\'t bother tanning a firstborn\'s hide. If the Sages found out, they would take it from him and he\'d lose all that work. ' + sef('Bekhorot 29b:6') },
+          { t: '🐄 Untanned hide of a female, according to the first tanna', buy: false, why: 'He might cut away the male parts of a male\'s hide and say "mice ate it". ' + sef('Bekhorot 29b:8') },
+          { t: '🐄 Untanned hide of a female, according to Rabbi Eliezer', buy: true, why: 'Firstborn law only applies to males, and you can tell a female hide by looking. As for the mice story, you can tell mouse bites from a knife. ' + sef('Bekhorot 29b:7') },
+          { t: '🐑 Washed, bleached wool', buy: false, why: 'Bleached-and-cleaned is one item, not two. Even after the washing, raw wool is forbidden. ' + sef('Bekhorot 29b:9') },
+          { t: '🧵 Spun yarn', buy: true, why: 'Spinning is too much work to invest in forbidden wool. ' + sef('Bekhorot 29b:4') },
+          { t: '🧥 A felt garment', buy: true, why: 'Felt is made without spinning, so the mishna has to say it separately. "Garments" means felt garments. ' + sef('Bekhorot 29b:10') }
+        ] },
+        { who: 'Suspected about the Sabbatical Year', he: 'הֶחָשׁוּד עַל הַשְּׁבִיעִית', sub: 'He sows or trades in shemitta produce.', ref: 'Bekhorot 29b:11', items: [
+          { t: '🌾 Combed flax', buy: false, why: 'Not even combed flax, though a lot of work went into it. ' + sef('Bekhorot 29b:11') },
+          { t: '🧶 Spun linen thread', buy: true, why: 'Spun thread may be bought. ' + sef('Bekhorot 29b:11') },
+          { t: '⛓️ Chain-woven work, never spun', buy: true, why: '"Woven" means work woven into chains without being spun, otherwise it would add nothing to "spun". ' + sef('Bekhorot 29b:12') }
+        ] },
+        { who: 'Suspected of selling teruma as ḥullin', he: 'הֶחָשׁוּד לִהְיוֹת מוֹכֵר תְּרוּמָה לְשׁוּם חוּלִּין', sub: 'He passes off priests\' produce as ordinary food.', ref: 'Bekhorot 29b:13', items: [
+          { t: '🧂 Water and salt, according to Rabbi Yehuda', buy: false, why: 'Rabbi Yehuda: not even water and salt. ' + sef('Bekhorot 29b:13') },
+          { t: '🧂 Water and salt, according to Rabbi Shimon', buy: true, why: 'Rabbi Shimon: teruma and tithes don\'t apply to water and salt, so buy them. ' + sef('Bekhorot 29b:13') },
+          { t: '🐟 Fish innards, according to Rabbi Shimon', buy: false, why: 'Rabbi Shimon\'s "anything connected to teruma" adds fish innards: people mix oil into them, and it might be teruma oil. ' + sef('Bekhorot 29b:14') }
+        ] }
+      ];
+      var root = document.getElementById('stalls');
+      var total = 0, answered = 0;
+      stalls.forEach(function (s) {
+        var c = el('div', 'rounded-xl border border-[#3a2f24] bg-[#14100c] p-3');
+        c.appendChild(el('p', 'frank text-lg font-bold !text-[#f3e9d2]', s.who + ' <span class="frank text-base font-normal !text-[#e0a46a]" dir="rtl" lang="he">' + s.he + '</span>'));
+        c.appendChild(el('p', 'text-xs !text-[#8f7f6a]', s.sub));
+        var list = el('div', 'mt-2 space-y-2');
+        s.items.forEach(function (it) {
+          total++; addMax(1);
+          var row = el('div', 'rounded-lg border border-[#2e251c] p-2');
+          var top = el('div', 'flex flex-wrap items-center justify-between gap-2');
+          top.appendChild(el('span', 'text-sm !text-[#efe6d2]', it.t));
+          var btns = el('div', 'flex gap-2');
+          var fb = el('p', 'hidden');
+          var tries = 0, done = false;
+          [['Buy 🛒', true], ['Pass ✋', false]].forEach(function (o) {
+            var b = el('button', 'chip !text-[#efe6d2]', o[0]);
+            b.addEventListener('click', function () {
+              if (done) return;
+              tries++;
+              if (o[1] === it.buy) {
+                done = true; answered++;
+                if (tries === 1) award(1);
+                b.classList.add('ok');
+                Array.prototype.forEach.call(btns.children, function (x) { x.disabled = true; });
+                fb.className = OK; fb.innerHTML = '✓ ' + it.why;
+                if (answered === total) showHide();
+              } else {
+                b.classList.add('bad');
+                fb.className = BAD; fb.textContent = o[1] ? 'You can\'t trust this from him.' : 'This one is fine to buy. Ask yourself whether he would have put that much work into a forbidden item.';
+              }
+            });
+            btns.appendChild(b);
+          });
+          top.appendChild(btns);
+          row.appendChild(top); row.appendChild(fb);
+          list.appendChild(row);
+        });
+        c.appendChild(list);
+        root.appendChild(c);
+      });
+
+      function showHide() {
+        var w = document.getElementById('hideWrap');
+        w.classList.remove('hidden');
+        w.appendChild(el('p', 'text-sm font-bold !text-[#f3e9d2]', 'Rabbi Eliezer\'s eye: "בֵּי עַכְבָּרִים מִידָּע יְדִיעַ", you can tell where mice have been.'));
+        w.appendChild(el('p', 'mt-1 text-xs !text-[#c4b59c]', 'The seller hands you two hides, each with a piece missing, and says mice got both. One is telling the truth. Which one was cut with a knife?'));
+        var row = el('div', 'mt-3 grid grid-cols-2 gap-3');
+        // A: ragged mouse bites; B: clean knife cut
+        var hideA = '<svg viewBox="0 0 120 100" class="w-full"><path d="M10 15 Q60 0 110 15 L105 85 Q60 100 15 85 Z" fill="#8a5e3a" stroke="#5a3a20" stroke-width="2"/><path d="M70 70 q4 -6 8 -2 q3 -7 9 -3 q4 -5 8 1 q2 6 -3 9 q4 5 -2 9 q-5 3 -9 -1 q-5 4 -9 -1 q-6 -2 -2 -12 z" fill="#14100c"/></svg>';
+        var hideB = '<svg viewBox="0 0 120 100" class="w-full"><path d="M10 15 Q60 0 110 15 L105 85 Q60 100 15 85 Z" fill="#8a5e3a" stroke="#5a3a20" stroke-width="2"/><path d="M68 62 L96 62 L96 90 L68 90 Z" fill="#14100c"/></svg>';
+        var fb = el('p', 'hidden'), tries = 0, done = false;
+        addMax(1);
+        [[hideA, false, 'Hide A'], [hideB, true, 'Hide B']].forEach(function (h) {
+          var b = el('button', 'chip flex flex-col items-center !text-[#efe6d2]', h[0] + '<span class="mt-1 text-xs">' + h[2] + '</span>');
+          b.addEventListener('click', function () {
+            if (done) return;
+            tries++;
+            if (h[1]) {
+              done = true; if (tries === 1) award(1);
+              b.classList.add('ok');
+              fb.className = OK;
+              fb.innerHTML = '✓ Straight edges and square corners: that\'s a knife, not mice. Rashi: he cuts away the male parts so the hide looks female, and when asked "what is this cut?" he says "mice ate it." The first tanna doesn\'t trust you to spot it, so he forbids even female hides. Rabbi Eliezer thinks anyone can tell. ' + sef('Bekhorot 29b:8');
+              stationDone();
+            } else { b.classList.add('bad'); fb.className = BAD; fb.textContent = 'Those ragged little nibbles look like real mice. Look at the other one.'; }
+          });
+          row.appendChild(b);
+        });
+        w.appendChild(row); w.appendChild(fb);
+      }
+    })();
+  })();
+  </script>
+</Layout>
