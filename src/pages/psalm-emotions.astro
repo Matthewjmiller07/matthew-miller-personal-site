@@ -43,6 +43,25 @@ for (const e of EMOTIONS) {
   topVerses[e.id].sort((a, b) => b.score - a.score);
   topVerses[e.id] = topVerses[e.id].slice(0, 30);
 }
+
+// Per-psalm detail: verses with full scores + mean score per emotion.
+const psalmDetail = {};
+for (const [ref, v] of Object.entries(emoData.verses)) {
+  const m = ref.match(/^Psalms (\d+):(\d+)$/);
+  if (!m) continue;
+  const psalm = +m[1], verse = +m[2];
+  psalmDetail[psalm] = psalmDetail[psalm] || { verses: [] };
+  psalmDetail[psalm].verses.push({ verse, tags: v.tags || [], scores: v.scores || {} });
+}
+for (const psalm of Object.keys(psalmDetail)) {
+  const vs = psalmDetail[psalm].verses.sort((a, b) => a.verse - b.verse);
+  const means = {};
+  for (const e of EMOTIONS) {
+    means[e.id] = vs.reduce((s, v) => s + (v.scores[e.id] || 0), 0) / vs.length;
+  }
+  psalmDetail[psalm].means = means;
+  psalmDetail[psalm].count = vs.length;
+}
 const sortedEmos = [...EMOTIONS].sort((a, b) => emoCounts[b.id] - emoCounts[a.id]);
 const maxCount = Math.max(...Object.values(emoCounts));
 const totalTagged = Object.values(emoCounts).reduce((a, b) => a + b, 0);
@@ -61,6 +80,21 @@ const totalTagged = Object.values(emoCounts).reduce((a, b) => a + b, 0);
         to open it in the Mega Bible.
       </p>
     </header>
+
+    <section aria-label="Psalm detail" id="pe-psalm-sec" hidden>
+      <div class="pe-psalm-head">
+        <h2 id="pe-psalm-h">Psalm</h2>
+        <a id="pe-psalm-mb" href="#">Open in the Mega Bible →</a>
+      </div>
+      <p class="pe-hint" id="pe-psalm-sub"></p>
+      <h3 class="pe-h3">Emotional profile</h3>
+      <div class="pe-bars" id="pe-psalm-bars"></div>
+      <h3 class="pe-h3">Verse by verse</h3>
+      <p class="pe-hint">Each column is a verse; color depth is that emotion's score in the verse.</p>
+      <div class="pe-arc" id="pe-psalm-arc"></div>
+      <h3 class="pe-h3">Tagged verses</h3>
+      <ol class="pe-verses" id="pe-psalm-verses"></ol>
+    </section>
 
     <section aria-label="Emotions">
       <h2>The twelve emotions</h2>
@@ -83,7 +117,7 @@ const totalTagged = Object.values(emoCounts).reduce((a, b) => a + b, 0);
 
     <section aria-label="Psalm by psalm">
       <h2>Psalm by psalm</h2>
-      <p class="pe-hint">Each row is a psalm; color depth is how many verses carry that emotion. Click a psalm number to open it in the Mega Bible.</p>
+      <p class="pe-hint">Each row is a psalm; color depth is how many verses carry that emotion. Click a psalm number to see its emotional profile.</p>
       <div class="pe-heat">
         <div class="pe-heat-head">
           <span class="pe-heat-corner">Ps.</span>
@@ -93,7 +127,7 @@ const totalTagged = Object.values(emoCounts).reduce((a, b) => a + b, 0);
         </div>
         {Array.from({ length: 150 }, (_, i) => i + 1).map(psalm => (
           <div class="pe-heat-row">
-            <a class="pe-heat-psalm" href={`/mega-bible/?book=Psalms&chapter=${psalm}`}>{psalm}</a>
+            <button class="pe-heat-psalm" data-psalm={psalm}>{psalm}</button>
             {EMOTIONS.map(e => {
               const c = (psalmEmo[psalm] && psalmEmo[psalm][e.id]) || 0;
               const a = c ? Math.min(1, 0.25 + 0.75 * Math.min(1, c / 6)) : 0;
@@ -113,7 +147,7 @@ const totalTagged = Object.values(emoCounts).reduce((a, b) => a + b, 0);
     </footer>
   </main>
 
-  <script define:vars={{ topVerses, emoById }}>
+  <script define:vars={{ topVerses, emoById, psalmDetail }}>
     const barsEl = document.getElementById('pe-bars');
     const versesEl = document.getElementById('pe-verses');
     const versesH = document.getElementById('pe-verses-h');
@@ -156,6 +190,89 @@ const totalTagged = Object.values(emoCounts).reduce((a, b) => a + b, 0);
       }));
 
     if (active) renderVerses(active);
+
+    // ---- Per-psalm detail viz (?psalm=N) ----
+    const psalmSec = document.getElementById('pe-psalm-sec');
+    const psalmH = document.getElementById('pe-psalm-h');
+    const psalmSub = document.getElementById('pe-psalm-sub');
+    const psalmMb = document.getElementById('pe-psalm-mb');
+    const psalmBars = document.getElementById('pe-psalm-bars');
+    const psalmArc = document.getElementById('pe-psalm-arc');
+    const psalmVerses = document.getElementById('pe-psalm-verses');
+    const emoIds = Object.keys(emoById);
+
+    function renderPsalm(n) {
+      const d = psalmDetail[n];
+      if (!d) return;
+      psalmSec.hidden = false;
+      psalmH.textContent = `Psalm ${n}`;
+      psalmMb.href = `/mega-bible/?book=Psalms&chapter=${n}`;
+      const top3 = emoIds.slice().sort((a, b) => d.means[b] - d.means[a]).slice(0, 3);
+      psalmSub.textContent = `${d.count} verses · strongest: ${top3.map(t => `${t} (${d.means[t].toFixed(2)})`).join(', ')}`;
+      // Profile bars: mean score per emotion.
+      const maxMean = Math.max(...emoIds.map(e => d.means[e]), 0.01);
+      psalmBars.innerHTML = '';
+      for (const e of emoIds.slice().sort((a, b) => d.means[b] - d.means[a])) {
+        const row = document.createElement('div');
+        row.className = 'pe-bar-row';
+        row.innerHTML =
+          `<span class="pe-bar-name" style="color:${emoById[e].color}">${e}</span>` +
+          `<span class="pe-bar-track"><span class="pe-bar-fill" style="width:${(100 * d.means[e] / maxMean).toFixed(1)}%;background:${emoById[e].color}"></span></span>` +
+          `<span class="pe-bar-count">${d.means[e].toFixed(2)}</span>`;
+        psalmBars.appendChild(row);
+      }
+      // Verse-by-verse arc: stacked columns of emotion scores.
+      psalmArc.innerHTML = '';
+      for (const v of d.verses) {
+        const col = document.createElement('div');
+        col.className = 'pe-arc-col';
+        const total = emoIds.reduce((s, e) => s + (v.scores[e] || 0), 0) || 1;
+        let segs = '', tip = [`${n}:${v.verse}`];
+        for (const e of emoIds) {
+          const s = v.scores[e] || 0;
+          if (s > 0.02) {
+            segs += `<span style="height:${(100 * s / total).toFixed(1)}%;background:${emoById[e].color}" title="${e} ${s.toFixed(2)}"></span>`;
+            tip.push(`${e} ${s.toFixed(2)}`);
+          }
+        }
+        col.innerHTML = segs || '<span style="height:100%;background:rgba(255,255,255,.05)"></span>';
+        col.title = tip.join('\n');
+        const lab = document.createElement('span');
+        lab.className = 'pe-arc-lab';
+        lab.textContent = v.verse;
+        col.appendChild(lab);
+        psalmArc.appendChild(col);
+      }
+      // Tagged verses.
+      psalmVerses.innerHTML = '';
+      for (const v of d.verses.filter(v => v.tags.length)) {
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>Psalm ${n}:${v.verse}</strong><span>` +
+          v.tags.map(t => `<span class="pe-tag" style="border-color:${emoById[t].color};color:${emoById[t].color}">${t}</span>`).join(' ') +
+          `</span>`;
+        psalmVerses.appendChild(li);
+      }
+      document.querySelectorAll('.pe-heat-psalm').forEach(b =>
+        b.classList.toggle('pe-psalm-active', +b.dataset.psalm === n));
+    }
+
+    function showPsalm(n) {
+      n = +n;
+      if (!psalmDetail[n]) return;
+      const params = new URLSearchParams(location.search);
+      params.set('psalm', n);
+      history.replaceState(null, '', `?${params.toString()}`);
+      renderPsalm(n);
+      psalmSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.querySelector('.pe-heat').addEventListener('click', ev => {
+      const b = ev.target.closest('.pe-heat-psalm');
+      if (b) showPsalm(b.dataset.psalm);
+    });
+
+    const psalmParam = new URLSearchParams(location.search).get('psalm');
+    if (psalmParam && psalmDetail[+psalmParam]) renderPsalm(+psalmParam);
   </script>
 
   <style>
@@ -191,11 +308,26 @@ const totalTagged = Object.values(emoCounts).reduce((a, b) => a + b, 0);
     .pe-heat-col:hover, .pe-col-active { background: rgba(201,162,87,.12); }
     .pe-heat-row:nth-child(odd) { background: rgba(255,255,255,.015); }
     .pe-heat-psalm { padding: .18rem .2rem; font-size: .72rem; text-align: center; color: #c9a257;
-      text-decoration: none; font-variant-numeric: tabular-nums; }
+      background: none; border: none; cursor: pointer; font-variant-numeric: tabular-nums; }
     .pe-heat-psalm:hover { text-decoration: underline; }
+    .pe-psalm-active { background: rgba(201,162,87,.2); border-radius: .25rem; }
     .pe-cell { height: 1.05rem; margin: 1px; border-radius: 2px; background: rgba(255,255,255,.04); }
     .pe-foot { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,.1);
       font-size: .82rem; opacity: .6; line-height: 1.6; }
     .pe-foot a { color: #c9a257; }
+    .pe-psalm-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    .pe-psalm-head h2 { margin-bottom: .25rem; }
+    .pe-psalm-head a { color: #c9a257; font-size: .85rem; text-decoration: none; }
+    .pe-psalm-head a:hover { text-decoration: underline; }
+    .pe-h3 { font-size: 1rem; color: #f2ecdd; margin: 1.75rem 0 .75rem; font-weight: 600; }
+    .pe-arc { display: flex; gap: 2px; align-items: stretch; overflow-x: auto; padding-bottom: .4rem;
+      border: 1px solid rgba(255,255,255,.08); border-radius: .4rem; padding: .6rem .6rem .4rem; }
+    .pe-arc-col { flex: 1 0 10px; min-width: 10px; max-width: 26px; height: 7rem; display: flex;
+      flex-direction: column; border-radius: 2px; overflow: hidden; background: rgba(255,255,255,.03); position: relative; }
+    .pe-arc-col > span:first-child, .pe-arc-col > span { display: block; width: 100%; }
+    .pe-arc-lab { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: .55rem;
+      color: rgba(232,226,212,.55); background: rgba(0,0,0,.45); line-height: 1.3; }
+    .pe-tag { display: inline-block; border: 1px solid; border-radius: 99px; padding: .05rem .5rem;
+      font-size: .72rem; margin: .1rem .15rem; }
   </style>
 </Layout>
