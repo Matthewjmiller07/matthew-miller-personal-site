@@ -801,7 +801,20 @@ const maxH = Math.max(...drinks.map((d) => cups[d.cup as keyof typeof cups].H));
             }, undefined, () => { status.textContent = '3D unavailable here, showing a still render'; });
 
             select(location.hash.slice(1) || 'hafuch');
-            addEventListener('hashchange', () => select(location.hash.slice(1)));
+            addEventListener('hashchange', () => el.isConnected && select(location.hash.slice(1)));
+            addEventListener('popstate', () => el.isConnected && byId[location.hash.slice(1)] && select(location.hash.slice(1)));
+            // Astro's router turns #drink links into pushState, which never fires hashchange, so handle them here.
+            // Clicking the drink that's already up makes it again.
+            el.closest('main').addEventListener('click', (e) => {
+                const a = e.target.closest('a[href^="#"]');
+                const id = a?.getAttribute('href').slice(1);
+                if (!byId[id] || e.button || e.metaKey || e.ctrlKey || e.shiftKey) return;
+                e.preventDefault();
+                history.replaceState(history.state, '', `#${id}`);
+                select(id);
+                const view = el.getBoundingClientRect();
+                if (!a.closest('#cb-picker') && (view.top < 0 || view.bottom > innerHeight)) el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+            });
             $('#cb-play').addEventListener('click', () => cur && play());
             $('#cb-next').addEventListener('click', () => { if (cur) { clearTimeout(timer); showStep(step + 1); } });
             $('#cb-prev').addEventListener('click', () => { if (cur) { clearTimeout(timer); showStep(step - 1, false); } });
