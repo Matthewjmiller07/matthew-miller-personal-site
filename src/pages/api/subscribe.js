@@ -14,6 +14,32 @@ const ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY || process.env.PUBLIC_
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
+// Starts the newsletter delivery run now, so a new subscriber gets the latest issue within
+// a minute instead of at the next hourly run. Needs GITHUB_DISPATCH_TOKEN (a token that can
+// run workflows on this repo). Without it, or if GitHub doesn't answer, the hourly run still delivers.
+const DISPATCH_TOKEN = import.meta.env.GITHUB_DISPATCH_TOKEN || process.env.GITHUB_DISPATCH_TOKEN;
+const DELIVER_URL =
+  'https://api.github.com/repos/Matthewjmiller07/matthew-miller-personal-site/actions/workflows/newsletter-deliver.yml/dispatches';
+
+async function startDelivery() {
+  if (!DISPATCH_TOKEN) return;
+  try {
+    await fetch(DELIVER_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${DISPATCH_TOKEN}`,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      body: JSON.stringify({ ref: 'main' }),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    // The hourly run picks this subscriber up.
+  }
+}
+
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -48,5 +74,6 @@ export async function POST({ request }) {
   if (error && error.code !== '23505') {
     return json({ error: 'Couldn’t save that just now — please try again.' }, 500);
   }
+  if (!error) await startDelivery();
   return json({ ok: true });
 }
