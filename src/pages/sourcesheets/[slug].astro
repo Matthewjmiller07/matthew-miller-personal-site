@@ -32,6 +32,15 @@ function linkify(text: string): string {
   });
 }
 
+// Highlight ==marked== spans in source text; everything else HTML-escaped.
+function renderRich(text: string): string {
+  const esc = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return esc.replace(/==(.+?)==/g, '<mark>$1</mark>');
+}
+
 // Sources tagged not-on-sefaria (e.g. research papers) get no Sefaria ref link.
 const onSefaria = (src: SheetSource) => !(src.tags ?? []).includes('not-on-sefaria');
 
@@ -81,11 +90,10 @@ const srcLang = (src: SheetSource) => {
                   class:list={['ss-he', { 'ss-src-ltr': srcLang(src) !== 'he' }]}
                   dir={srcLang(src) === 'he' ? 'rtl' : 'ltr'}
                   lang={srcLang(src)}
-                >
-                  {src.he_text}
-                </p>
+                  set:html={renderRich(src.he_text)}
+                />
               )}
-              {src.en_text && <p class="ss-en">{src.en_text}</p>}
+              {src.en_text && <p class="ss-en" set:html={renderRich(src.en_text)} />}
             </div>
             {(() => {
               const yt = parseYouTube(src.video_url, src.video_start);
@@ -149,6 +157,8 @@ const srcLang = (src: SheetSource) => {
   .ss-he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.3rem; line-height: 1.75; margin: 0; }
   .ss-src-ltr { font-family: 'Crimson Pro', Georgia, serif; font-size: 1.15rem; line-height: 1.6; }
   .ss-en { margin: 0; }
+  .ss-texts mark { background: #fef08a; color: inherit; padding: 0 2px; border-radius: 2px; }
+  :global(.dark) .ss-texts mark { background: #713f12; }
   .ss-note { margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed var(--line); color: var(--muted); font-style: italic; }
   .ss-note a { color: var(--accent); }
   .ss-video { margin-top: 14px; }
