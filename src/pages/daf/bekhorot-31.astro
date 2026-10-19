@@ -1,0 +1,680 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Say It in My Name — Daf Yomi Game: Bekhorot 31"
+  description="Bekhorot 31: open the door for the returning ḥaver, inspect your own animals without a conflict of interest, choose market or home for blemished offerings, fold tithe meat into the price of its horns, and build the citation chains that make a scholar's lips move in the grave."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style>
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .card { background: #17111a; border: 1px solid #3a2a3f; border-radius: 1rem; }
+    .chip { border: 1px solid #4b3752; border-radius: 0.6rem; padding: 0.45rem 0.75rem; font-size: 0.8rem; transition: background .15s, border-color .15s, transform .15s; }
+    .chip:hover:not(:disabled) { background: #251a2b; }
+    .chip[aria-pressed="true"] { background: #3a1f3f; border-color: #b46fc0; }
+    .chip.ok { background: #1b2b1f; border-color: #5f9e6c; }
+    .chip.bad { background: #351a1d; border-color: #c0503a; }
+    .chip:disabled { cursor: default; opacity: .85; }
+    .door { width: 100%; min-height: 5.5rem; border-radius: .7rem .7rem .2rem .2rem; border: 2px solid #5a4262; background: linear-gradient(#2b1d31, #1e1523); transition: background .25s, border-color .25s; position: relative; overflow: hidden; }
+    .door[aria-pressed="true"] { background: linear-gradient(#e7c27a22, #e7c27a08); border-color: #e7c27a; }
+    .door.ok { box-shadow: 0 0 0 2px #5f9e6c; }
+    .door.bad { box-shadow: 0 0 0 2px #c0503a; }
+    .gauge-fill { transition: width .7s cubic-bezier(.4,0,.2,1), background .4s; }
+    .beam { transition: transform .8s cubic-bezier(.4,0,.2,1); transform-origin: 150px 40px; }
+    .tile { border: 1px solid #5a4262; border-radius: 999px; padding: .4rem .8rem; font-size: .8rem; background: #211727; transition: background .15s, transform .15s; }
+    .tile:hover:not(:disabled) { background: #2f2036; }
+    .tile.used { opacity: .25; }
+    .tile.shake { animation: shake .3s; }
+    @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+    .lip-top, .lip-bot { transition: transform .25s ease-in-out; transform-box: fill-box; }
+    .speaking .lip-top { animation: lipT .5s ease-in-out 6 alternate; }
+    .speaking .lip-bot { animation: lipB .5s ease-in-out 6 alternate; }
+    @keyframes lipT { to { transform: translateY(-3px); } }
+    @keyframes lipB { to { transform: translateY(4px); } }
+    .grape { transition: transform .3s; }
+    .bubbling .grape { animation: bub .6s ease-in-out 4 alternate; }
+    .bubbling .grape:nth-child(2n) { animation-delay: .15s; }
+    .bubbling .grape:nth-child(3n) { animation-delay: .3s; }
+    @keyframes bub { to { transform: translateY(-3px); } }
+    @keyframes stamp { 0% { transform: scale(1.6) rotate(-20deg); opacity: 0; } 100% { transform: scale(1) rotate(-6deg); opacity: 1; } }
+    .stamp-in { animation: stamp .45s ease-out both; }
+    @media (prefers-reduced-motion: reduce) {
+      .gauge-fill, .beam, .door, .tile { transition: none; }
+      .speaking .lip-top, .speaking .lip-bot, .bubbling .grape, .stamp-in, .tile.shake { animation: none; }
+    }
+    button:focus-visible { outline: 2px solid #e7c27a; outline-offset: 2px; }
+  </style>
+
+  <main class="min-h-screen bg-[#0e0a10] !text-[#efe4ec]">
+
+    <!-- HERO -->
+    <div class="border-b border-[#3a2a3f] bg-gradient-to-b from-[#24162a] to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs tracking-[0.22em] !text-[#8f7a92]">
+        <a href="/daf" class="transition-colors hover:!text-[#efe4ec]">daf yomi arcade</a>
+        <span class="mx-2 opacity-40">·</span>bekhorot 31<span class="mx-2 opacity-40">·</span>2026-10-19
+      </p>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl !text-[#f5e9f0]">Say It in My Name</h1>
+      <p class="frank mt-3 text-3xl font-light !text-[#e7c27a]" dir="rtl" lang="he">דּוֹבֵב שִׂפְתֵי יְשֵׁנִים</p>
+      <p class="mt-1 text-xs italic !text-[#8f7a92]">"Moving gently the lips of those who sleep" · Song of Songs 7:10, quoted on Bekhorot 31b:11</p>
+      <p class="mx-auto mt-5 max-w-lg text-sm leading-relaxed !text-[#c9b6c6]">
+        Rav Sheshet worked out a hard question overnight. His attendant repeated the answer in the study
+        hall and left out whose it was, and Rav Sheshet was furious. Before you reach that story, the daf
+        asks who gets let back in, who can judge his own animals, and how to sell meat you aren't allowed to sell.
+        Five stations.
+      </p>
+      <p class="mt-4 text-xs !text-[#8f7a92]">Score: <span id="score" class="font-bold !text-[#e7c27a]">0</span> / <span id="scoreMax">0</span></p>
+    </div>
+
+    <div class="mx-auto max-w-2xl space-y-10 px-4 pb-20 pt-8">
+
+      <!-- STATION 1 -->
+      <section class="card p-5 sm:p-6" aria-labelledby="s1h">
+        <p class="text-xs font-bold tracking-[0.2em] !text-[#b46fc0]">STATION 1 · 31a:1–6</p>
+        <h2 id="s1h" class="frank mt-1 text-2xl font-bold !text-[#f5e9f0]">The Door Back</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#c9b6c6]">
+          An am ha'aretz took on the strict practices of a <em>ḥaver</em>, then dropped them, and now wants back in.
+          Each row is one opinion. Tap the doors that opinion would <strong class="!text-[#e7c27a]">open</strong>, leave the
+          rest shut, then check your answers.
+        </p>
+        <div id="doors" class="mt-5 space-y-5"></div>
+        <button id="doorCheck" class="chip mt-5 font-bold !text-[#e7c27a]">Check all the doors</button>
+        <p id="doorFb" class="hidden"></p>
+        <div id="s1more" class="mt-6 hidden space-y-6"></div>
+      </section>
+
+      <!-- STATION 2 -->
+      <section class="card p-5 sm:p-6" aria-labelledby="s2h">
+        <p class="text-xs font-bold tracking-[0.2em] !text-[#b46fc0]">STATION 2 · 31a:7–12</p>
+        <h2 id="s2h" class="frank mt-1 text-2xl font-bold !text-[#f5e9f0]">Judge Your Own Flock</h2>
+        <p class="frank mt-2 text-lg !text-[#e7c27a]" dir="rtl" lang="he">כׇּל הַבְּכוֹרוֹת אָדָם רוֹאֶה, חוּץ מִשֶּׁל עַצְמוֹ</p>
+        <p class="mt-2 text-sm leading-relaxed !text-[#c9b6c6]">
+          You're an expert, and these are your own animals and your own food. The gauge shows how much you stand to gain.
+          For each one, decide if you can rule on it yourself. If you can, pick the <strong class="!text-[#e7c27a]">way out</strong>
+          that empties the gauge: something else you could have done to get the same result, so you have no reason to lie.
+        </p>
+        <div id="valves" class="mt-5 space-y-5"></div>
+        <div id="s2more" class="mt-6 hidden"></div>
+      </section>
+
+      <!-- STATION 3 -->
+      <section class="card p-5 sm:p-6" aria-labelledby="s3h">
+        <p class="text-xs font-bold tracking-[0.2em] !text-[#b46fc0]">STATION 3 · Mishna 31a:14–16 · 31b:1–5</p>
+        <h2 id="s3h" class="frank mt-1 text-2xl font-bold !text-[#f5e9f0]">Market or Home</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#c9b6c6]">
+          Three blemished animals are ready to sell. For each one, set both switches: <em>where</em> it's sold and slaughtered,
+          and <em>how</em> the meat is priced. Then stamp it.
+        </p>
+        <div id="stalls" class="mt-5 space-y-4"></div>
+        <div id="scaleWrap" class="mt-8 hidden"></div>
+        <div id="s3more" class="mt-6 hidden"></div>
+      </section>
+
+      <!-- STATION 4 -->
+      <section class="card p-5 sm:p-6" aria-labelledby="s4h">
+        <p class="text-xs font-bold tracking-[0.2em] !text-[#b46fc0]">STATION 4 · 31b:6–8, 12–20</p>
+        <h2 id="s4h" class="frank mt-1 text-2xl font-bold !text-[#f5e9f0]">Fold It Into the Horns</h2>
+        <p class="frank mt-2 text-lg !text-[#e7c27a]" dir="rtl" lang="he">מַבְלִיעוֹ בְּעוֹרוֹ, בְּחֶלְבּוֹ, וּבְגִידוֹ, וּבְקַרְנָיו</p>
+        <p class="mt-2 text-sm leading-relaxed !text-[#c9b6c6]">
+          Animal-tithe meat may not be sold. But a baraita allows <em>havla'ah</em>, "folding in": you sell the hide, fat, sinews
+          and horns, which are allowed, at a price that also covers the meat. Abaye and Rava read that baraita differently.
+          Pick a reader, then price each item the way he would.
+        </p>
+        <div class="mt-4 flex gap-2" role="tablist" aria-label="Reader">
+          <button class="chip font-bold" data-reader="abaye" aria-pressed="true">Abaye's reading</button>
+          <button class="chip font-bold" data-reader="rava" aria-pressed="false">Rava's reading</button>
+        </div>
+        <div id="tags" class="mt-4 space-y-3"></div>
+        <button id="tagCheck" class="chip mt-4 font-bold !text-[#e7c27a]">Check this reading</button>
+        <p id="tagFb" class="hidden"></p>
+        <div id="s4more" class="mt-6 hidden space-y-6"></div>
+      </section>
+
+      <!-- STATION 5 -->
+      <section class="card p-5 sm:p-6" aria-labelledby="s5h">
+        <p class="text-xs font-bold tracking-[0.2em] !text-[#b46fc0]">STATION 5 · 31a:3, 9 · 31b:8–11</p>
+        <h2 id="s5h" class="frank mt-1 text-2xl font-bold !text-[#f5e9f0]">Say It in My Name</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#c9b6c6]">
+          "Whenever a Torah scholar is quoted by name in this world, his lips move in the grave."
+          Build each chain of who said it in whose name. Start with the person speaking and work back to whoever
+          said it first. If you get the chain right, the lips move and the grapes in the pile start to stir.
+        </p>
+        <div class="mt-5 grid grid-cols-[1fr_auto] items-center gap-4">
+          <div>
+            <p id="chainNum" class="text-xs font-bold tracking-[0.18em] !text-[#8f7a92]"></p>
+            <p id="chainTeaching" class="mt-1 text-sm leading-relaxed !text-[#f5e9f0]"></p>
+          </div>
+          <svg id="grave" viewBox="0 0 120 110" class="h-28 w-28" role="img" aria-label="A sleeping scholar's lips and a pile of grapes">
+            <rect x="8" y="8" width="104" height="58" rx="28" fill="#211727" stroke="#4b3752" />
+            <path d="M30 34 q8 -5 16 0" stroke="#8f7a92" stroke-width="2" fill="none" />
+            <path d="M74 34 q8 -5 16 0" stroke="#8f7a92" stroke-width="2" fill="none" />
+            <g>
+              <path class="lip-top" d="M42 48 q9 -7 18 -2 q9 -5 18 2 q-18 3 -36 0z" fill="#b5566e" />
+              <path class="lip-bot" d="M42 49 q18 2 36 0 q-8 9 -18 9 q-10 0 -18 -9z" fill="#9c4359" />
+            </g>
+            <g id="grapes">
+              <circle class="grape" cx="40" cy="98" r="6" fill="#6d3b7a" />
+              <circle class="grape" cx="52" cy="98" r="6" fill="#7c4589" />
+              <circle class="grape" cx="64" cy="98" r="6" fill="#6d3b7a" />
+              <circle class="grape" cx="76" cy="98" r="6" fill="#7c4589" />
+              <circle class="grape" cx="46" cy="88" r="6" fill="#86509a" />
+              <circle class="grape" cx="58" cy="88" r="6" fill="#6d3b7a" />
+              <circle class="grape" cx="70" cy="88" r="6" fill="#86509a" />
+              <circle class="grape" cx="52" cy="78" r="6" fill="#7c4589" />
+              <circle class="grape" cx="64" cy="78" r="6" fill="#86509a" />
+            </g>
+          </svg>
+        </div>
+        <div class="mt-4 min-h-[3rem] rounded-xl border border-dashed border-[#4b3752] p-3">
+          <p id="chainBuilt" class="text-sm !text-[#e7c27a]" aria-live="polite"></p>
+        </div>
+        <div id="chainTiles" class="mt-4 flex flex-wrap gap-2"></div>
+        <p id="chainFb" class="hidden"></p>
+        <button id="chainNext" class="chip mt-4 hidden font-bold !text-[#e7c27a]">Next chain →</button>
+      </section>
+
+      <div id="final" class="hidden rounded-2xl border border-[#b46fc0] bg-[#1b1220] p-6 text-center">
+        <p class="frank text-2xl font-bold !text-[#f5e9f0]">The lips are still moving.</p>
+        <p id="finalMsg" class="mt-2 text-sm !text-[#c9b6c6]"></p>
+        <p class="mt-3 text-xs italic !text-[#7f6a82]">The daf stops partway through Rava's argument (31b:20). The Sages barred selling only the part of the animal that is valued while it's alive. Rava finishes the thought tomorrow, on 32a.</p>
+      </div>
+
+      <!-- LEARN MORE -->
+      <section class="card p-6">
+        <h2 class="frank mb-3 text-lg font-bold !text-[#f5e9f0]">Learn the real daf</h2>
+        <div class="mb-4 flex flex-wrap gap-3">
+          <a href="https://www.sefaria.org/Bekhorot.31a" target="_blank" rel="noopener" class="rounded-lg border border-[#3a2a3f] px-4 py-2 text-xs font-bold !text-[#e7c27a] transition-colors hover:bg-[#251a2b]">Bekhorot 31a on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Bekhorot.31b" target="_blank" rel="noopener" class="rounded-lg border border-[#3a2a3f] px-4 py-2 text-xs font-bold !text-[#e7c27a] transition-colors hover:bg-[#251a2b]">Bekhorot 31b on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Mishnah_Bekhorot.5.1" target="_blank" rel="noopener" class="rounded-lg border border-[#3a2a3f] px-4 py-2 text-xs font-bold !text-[#e7c27a] transition-colors hover:bg-[#251a2b]">Mishnah Bekhorot 5:1 ↗</a>
+          <a href="https://www.sefaria.org/Yevamot.96b" target="_blank" rel="noopener" class="rounded-lg border border-[#3a2a3f] px-4 py-2 text-xs font-bold !text-[#e7c27a] transition-colors hover:bg-[#251a2b]">Yevamot 96b–97a: lips in the grave, again ↗</a>
+        </div>
+        <p class="mb-2 text-xs font-bold !text-[#8f7a92]">Top commentaries</p>
+        <ul class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
+          <li><a href="https://www.sefaria.org/Rashi_on_Bekhorot.31a" target="_blank" rel="noopener" class="!text-[#c9b6c6] transition-colors hover:!text-[#e7c27a]">Rashi (60) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.31a" target="_blank" rel="noopener" class="!text-[#c9b6c6] transition-colors hover:!text-[#e7c27a]">Rabbeinu Gershom (36) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.31a" target="_blank" rel="noopener" class="!text-[#c9b6c6] transition-colors hover:!text-[#e7c27a]">Steinsaltz (35) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Mishneh_Torah%2C_Firstlings.6" target="_blank" rel="noopener" class="!text-[#c9b6c6] transition-colors hover:!text-[#e7c27a]">Rambam, Firstlings 6 ↗</a></li>
+          <li><a href="https://www.sefaria.org/Kessef_Mishneh_on_Mishneh_Torah%2C_Firstlings.6" target="_blank" rel="noopener" class="!text-[#c9b6c6] transition-colors hover:!text-[#e7c27a]">Kessef Mishneh (9) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Har_HaMoriyah_on_Mishneh_Torah%2C_Firstlings.6" target="_blank" rel="noopener" class="!text-[#c9b6c6] transition-colors hover:!text-[#e7c27a]">Har HaMoriyah (9) ↗</a></li>
+        </ul>
+      </section>
+
+    </div>
+  </main>
+
+  <script is:inline>
+  (function () {
+    var score = 0, max = 0;
+    var scoreEl = document.getElementById('score');
+    var maxEl = document.getElementById('scoreMax');
+    function addMax(n) { max += n; maxEl.textContent = max; }
+    function award(n) { score += n; scoreEl.textContent = score; }
+    function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+    function sef(ref) { return '<a class="underline decoration-dotted !text-[#e7c27a] hover:!text-[#f5e9f0]" target="_blank" rel="noopener" href="https://www.sefaria.org/' + ref.replace(/ /g, '_') + '">' + ref + ' ↗</a>'; }
+    var OK = 'mt-3 text-xs leading-relaxed !text-[#8fd19e]';
+    var BAD = 'mt-3 text-xs leading-relaxed !text-[#f0937f]';
+    var NOTE = 'mt-3 text-xs leading-relaxed !text-[#c9b6c6]';
+    var TOTAL_STATIONS = 5, stationsDone = 0;
+    function stationDone() {
+      stationsDone++;
+      if (stationsDone === TOTAL_STATIONS) {
+        var f = document.getElementById('final');
+        f.classList.remove('hidden');
+        var pct = Math.round(100 * score / max);
+        document.getElementById('finalMsg').textContent = 'You scored ' + score + ' of ' + max + ' (' + pct + '%). ' +
+          (pct >= 85 ? 'Rav Sheshet would happily let you repeat his teachings, as long as you name him.' :
+           pct >= 60 ? 'Not bad. Go back over the mishna and the Abaye–Rava argument once more.' :
+           'Go back and learn the daf. Return, backsliding children: the door is open.');
+      }
+    }
+
+    // Multiple-choice question. Scores 1 point if right on the first try.
+    function mcq(parent, q, opts, correctIdx, okHtml, onDone) {
+      addMax(1);
+      var box = el('div', '');
+      box.appendChild(el('p', 'text-sm font-bold !text-[#f5e9f0]', q));
+      var row = el('div', 'mt-2 flex flex-col gap-2');
+      var fb = el('p', 'hidden');
+      var tries = 0, done = false;
+      opts.forEach(function (o, i) {
+        var b = el('button', 'chip text-left !text-[#efe4ec]', o);
+        b.addEventListener('click', function () {
+          if (done) return;
+          tries++;
+          if (i === correctIdx) {
+            done = true; if (tries === 1) award(1);
+            b.classList.add('ok'); fb.className = OK; fb.innerHTML = '✓ ' + okHtml;
+            row.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+            if (onDone) onDone();
+          } else { b.classList.add('bad'); b.disabled = true; fb.className = BAD; fb.textContent = 'Not that one. Try again.'; }
+        });
+        row.appendChild(b);
+      });
+      box.appendChild(row); box.appendChild(fb);
+      parent.appendChild(box);
+    }
+
+    // ---------- STATION 1: The Door Back ----------
+    (function () {
+      var A = { l: 'Dropped it in private, still acts as a ḥaver in public' };
+      var B = { l: 'Dropped it openly, in public' };
+      var C = { l: 'When he was a ḥaver, kept the practices in private too' };
+      var D = { l: 'When he was a ḥaver, kept them only where people could see' };
+      var rows = [
+        { who: 'Rabbi Meir', he: 'רַבִּי מֵאִיר', doors: [A, B], open: [false, false],
+          why: 'Rabbi Meir: once they go back, <em>they are never accepted</em>.' },
+        { who: 'Rabbi Yehuda', he: 'רַבִּי יְהוּדָה', doors: [A, B], open: [false, true],
+          why: 'Rabbi Yehuda: someone who drops it secretly but keeps up appearances is a fake, so he is not accepted. Someone who drops it openly, <em>befarheseya</em>, was honest even when leaving, so he can be trusted.' },
+        { who: 'The other version (אִיכָּא דְּאָמְרִי)', he: 'אִיכָּא דְּאָמְרִי', doors: [C, D], open: [true, false],
+          why: 'The other version looks at how he acted <em>while he was a ḥaver</em>. If he kept the practices in private too, he meant it, so he is accepted back. If he only kept them in public, he is not.' },
+        { who: 'Rabbi Shimon & Rabbi Yehoshua ben Korḥa', he: 'ר׳ שִׁמְעוֹן וְר׳ יְהוֹשֻׁעַ בֶּן קׇרְחָה', doors: [A, B], open: [true, true],
+          why: 'Rabbi Shimon and Rabbi Yehoshua ben Korḥa: <em>either way they are accepted</em>, because "Return, you backsliding children" (Jeremiah 3:22).' }
+      ];
+      addMax(rows.length);
+      var wrap = document.getElementById('doors');
+      var state = rows.map(function (r) { return r.doors.map(function () { return false; }); });
+      var btns = [];
+      rows.forEach(function (r, ri) {
+        var box = el('div', '');
+        box.appendChild(el('p', 'text-sm font-bold !text-[#f5e9f0]', r.who + ' <span class="frank font-normal !text-[#8f7a92]" dir="rtl" lang="he">' + r.he + '</span>'));
+        var g = el('div', 'mt-2 grid grid-cols-2 gap-3');
+        btns[ri] = [];
+        r.doors.forEach(function (d, di) {
+          var b = el('button', 'door p-3 text-left');
+          b.setAttribute('aria-pressed', 'false');
+          b.innerHTML = '<span class="block text-[0.65rem] font-bold tracking-widest !text-[#8f7a92]">' + (di === 0 ? 'DOOR ONE' : 'DOOR TWO') + ' · <span class="st">SHUT</span></span><span class="mt-1 block text-xs leading-snug !text-[#efe4ec]">' + d.l + '</span>';
+          b.addEventListener('click', function () {
+            if (b.disabled) return;
+            state[ri][di] = !state[ri][di];
+            b.setAttribute('aria-pressed', String(state[ri][di]));
+            b.querySelector('.st').textContent = state[ri][di] ? 'OPEN' : 'SHUT';
+          });
+          g.appendChild(b); btns[ri].push(b);
+        });
+        box.appendChild(g);
+        box.appendChild(el('p', 'hidden why'));
+        wrap.appendChild(box);
+      });
+      var check = document.getElementById('doorCheck');
+      var fb = document.getElementById('doorFb');
+      check.addEventListener('click', function () {
+        var got = 0;
+        rows.forEach(function (r, ri) {
+          var right = r.open.every(function (o, di) { return o === state[ri][di]; });
+          if (right) got++;
+          btns[ri].forEach(function (b, di) {
+            b.disabled = true;
+            b.classList.add(r.open[di] === state[ri][di] ? 'ok' : 'bad');
+            b.setAttribute('aria-pressed', String(r.open[di]));
+            b.querySelector('.st').textContent = r.open[di] ? 'OPEN' : 'SHUT';
+          });
+          var w = wrap.children[ri].querySelector('.why');
+          w.className = right ? OK : BAD;
+          w.innerHTML = (right ? '✓ ' : '✗ Corrected above. ') + r.why + ' ' + sef(ri === 2 ? 'Bekhorot 31a:2' : ri === 3 ? 'Bekhorot 31a:3' : 'Bekhorot 31a:1');
+        });
+        award(got);
+        check.disabled = true;
+        fb.className = NOTE;
+        fb.textContent = got + ' of 4 rows right.';
+        var more = document.getElementById('s1more');
+        more.classList.remove('hidden');
+        mcq(more, 'Whose view is the halakha? (Rabbi Yitzḥak of Kfar Akko, in the name of Rabbi Yoḥanan)',
+          ['Rabbi Meir: never accepted', 'Rabbi Yehuda: depends on public vs. private', 'Rabbi Shimon and Rabbi Yehoshua ben Korḥa: accepted either way'], 2,
+          '<span class="frank" dir="rtl" lang="he">הֲלָכָה כְּאוֹתוֹ הַזּוּג</span>: "the halakha follows that pair." ' + sef('Bekhorot 31a:3'),
+          function () {
+            var story = el('div', '');
+            story.appendChild(el('p', 'text-sm leading-relaxed !text-[#c9b6c6]',
+              'The Sages needed Rav Huna bar Ḥiyya for something. Rabba, Rav Yosef and <strong class="!text-[#e7c27a]">four hundred pairs</strong> of scholars came to his house, and he set out four hundred chairs for them. Then they heard he had become a tax collector, and sent him: "Go back to your important job, and to how you were before." He replied: "I have repented." ' + sef('Bekhorot 31a:5')));
+            more.appendChild(story);
+            mcq(more, 'Rav Yosef didn\'t go back to him. Rabba did. What was each relying on?',
+              ['Rav Yosef: the early ruling, that he isn\'t accepted even after resigning. Rabba: the later ruling, that he goes back to being like anyone else.',
+               'Rav Yosef: Rabbi Meir. Rabba: Rabbi Yehuda.',
+               'Rav Yosef thought he hadn\'t really resigned. Rabba believed him.'], 0,
+              'Both quote the same baraita (31a:4). At first the Sages said a ḥaver who became a tax collector is never accepted back. In later generations they said that once he resigns, he is like anyone else. Rav Yosef followed the first part, Rabba the second. ' + sef('Bekhorot 31a:6'),
+              stationDone);
+          });
+      });
+    })();
+
+    // ---------- STATION 2: Judge Your Own Flock ----------
+    (function () {
+      var VALVES = [
+        { k: 'vow', l: 'He could ask a sage to annul the consecration' },
+        { k: 'herd', l: 'He could have blemished the whole herd before tithing' },
+        { k: 'impure', l: 'He can still eat it in his days of impurity' },
+        { k: 'none', l: 'No way out: he has a real stake' }
+      ];
+      var CASES = [
+        { t: 'His own firstborn', d: 'He wants to declare its blemish permanent so he can slaughter and eat it.', trust: false, valve: 'none',
+          why: 'Not trusted. A firstborn can\'t be unconsecrated and has no other way out, so a blemish is the only way to eat it, and his stake is real. He may inspect <em>everyone else\'s</em> firstborns. ' + sef('Bekhorot 31a:7') },
+        { t: 'His own consecrated animal', d: 'He wants to say it has a blemish so it can be redeemed.', trust: true, valve: 'vow',
+          why: 'Trusted. If he wanted it back that badly, he could ask a sage to annul the vow that consecrated it. With an honest way out available, he gains nothing by lying. ' + sef('Bekhorot 31a:10') },
+        { t: 'His own animal tithe', d: 'He rules on whether an animal is fit to be offered.', trust: true, valve: 'herd',
+          why: 'Trusted. If he wanted to avoid bringing offerings, he could have blemished his whole herd before separating the tithe, and none of it would be fit. ' + sef('Bekhorot 31a:11') },
+        { t: 'His own pure food', d: 'Did this food become impure? He asks himself and decides.', trust: true, valve: 'impure',
+          why: 'Trusted. Not much rides on it: even if it is impure, he can still eat it during his own days of impurity. ' + sef('Bekhorot 31a:12') }
+      ];
+      addMax(CASES.length);
+      var wrap = document.getElementById('valves');
+      var left = CASES.length;
+      CASES.forEach(function (c) {
+        var box = el('div', 'rounded-xl border border-[#3a2a3f] p-4');
+        box.appendChild(el('p', 'text-sm font-bold !text-[#f5e9f0]', c.t));
+        box.appendChild(el('p', 'mt-1 text-xs !text-[#c9b6c6]', c.d));
+        var gauge = el('div', 'mt-3 h-3 w-full overflow-hidden rounded-full bg-[#251a2b]');
+        gauge.setAttribute('role', 'meter'); gauge.setAttribute('aria-label', 'Personal stake'); gauge.setAttribute('aria-valuemin', '0'); gauge.setAttribute('aria-valuemax', '100'); gauge.setAttribute('aria-valuenow', '100');
+        var fill = el('div', 'gauge-fill h-full rounded-full'); fill.style.width = '100%'; fill.style.background = '#c0503a';
+        gauge.appendChild(fill); box.appendChild(gauge);
+        box.appendChild(el('p', 'mt-1 text-[0.65rem] tracking-widest !text-[#8f7a92]', 'PERSONAL STAKE'));
+        var step1 = el('div', 'mt-3 flex gap-2');
+        var step2 = el('div', 'mt-3 hidden grid gap-2 sm:grid-cols-2');
+        var fb = el('p', 'hidden');
+        var firstTry = true, finished = false;
+        function finish() {
+          finished = true; left--;
+          box.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+          if (firstTry) award(1);
+          fb.className = firstTry ? OK : NOTE;
+          fb.innerHTML = (firstTry ? '✓ ' : '') + c.why;
+          if (c.trust) { fill.style.width = '0%'; fill.style.background = '#5f9e6c'; gauge.setAttribute('aria-valuenow', '0'); }
+          if (left === 0) showMore();
+        }
+        [['May rule on it himself', true], ['Must not rule on it', false]].forEach(function (p) {
+          var b = el('button', 'chip flex-1 !text-[#efe4ec]', p[0]);
+          b.addEventListener('click', function () {
+            if (finished) return;
+            if (p[1] !== c.trust) { firstTry = false; b.classList.add('bad'); b.disabled = true; fb.className = BAD; fb.textContent = c.trust ? 'Think again. Is there an honest way he could get the same result anyway?' : 'Look for a way out. Is there any?'; return; }
+            b.classList.add('ok');
+            step1.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+            fb.className = 'hidden';
+            if (!c.trust) { finish(); return; }
+            step2.classList.remove('hidden');
+          });
+          step1.appendChild(b);
+        });
+        VALVES.filter(function (v) { return v.k !== 'none'; }).forEach(function (v) {
+          var b = el('button', 'chip text-left !text-[#efe4ec]', '⟲ ' + v.l);
+          b.addEventListener('click', function () {
+            if (finished) return;
+            if (v.k !== c.valve) { firstTry = false; b.classList.add('bad'); b.disabled = true; fill.style.width = '70%'; fb.className = BAD; fb.textContent = 'That way out doesn\'t apply here. The gauge barely moves.'; return; }
+            b.classList.add('ok'); finish();
+          });
+          step2.appendChild(b);
+        });
+        box.appendChild(step1); box.appendChild(step2); box.appendChild(fb);
+        wrap.appendChild(box);
+      });
+      function showMore() {
+        var more = document.getElementById('s2more');
+        more.classList.remove('hidden');
+        mcq(more, '"A person may inspect all firstborns except his own." Who is this person? It can\'t be one of three judges, since a mishna lets a judge marry a woman who did ḥalitza before his court of three. So who is he?',
+          ['A single expert. Rav Ḥisda, in the name of Rabbi Yoḥanan: even vows can be dissolved by one expert.',
+           'A kohen, because only kohanim may inspect firstborns.',
+           'The owner\'s son, acting on his behalf.'], 0,
+          'One judge out of three doesn\'t decide alone, so his stake doesn\'t matter. The baraita must mean <em>a single expert</em> ruling alone. He may rule on other people\'s firstborns, but not his own. ' + sef('Bekhorot 31a:8') + ' ' + sef('Bekhorot 31a:9'),
+          stationDone);
+      }
+    })();
+
+    // ---------- STATION 3: Market or Home ----------
+    (function () {
+      var ANIMALS = [
+        { t: 'A blemished consecrated animal, redeemed', where: 'market', how: 'scale',
+          why: 'All other disqualified consecrated animals go to the butchers\' market: sold there, slaughtered there, and weighed by the <em>litra</em> like ordinary meat. ' + sef('Bekhorot 31a:14') },
+        { t: 'A blemished firstborn, in the kohen\'s hands', where: 'home', how: 'eye',
+          why: 'Firstborn and tithe are the exceptions: sold and slaughtered only at the owner\'s home, and sold by estimate, not by weight. Any profit goes to the owner, and you don\'t treat consecrated meat like ordinary meat just to get him a better price. ' + sef('Bekhorot 31a:15') },
+        { t: 'A blemished animal tithe', where: 'home', how: 'eye',
+          why: 'The mishna groups the tithe with the firstborn: at home, by estimate. (The Gemara will soon ask how a tithe can be sold at all.) ' + sef('Bekhorot 31a:15') }
+      ];
+      addMax(ANIMALS.length);
+      var wrap = document.getElementById('stalls');
+      var left = ANIMALS.length;
+      ANIMALS.forEach(function (a) {
+        var box = el('div', 'relative rounded-xl border border-[#3a2a3f] p-4');
+        box.appendChild(el('p', 'text-sm font-bold !text-[#f5e9f0]', '🐑 ' + a.t));
+        var sel = { where: null, how: null };
+        var grid = el('div', 'mt-3 grid grid-cols-2 gap-3');
+        [['where', [['market', 'Butchers\' market'], ['home', 'Owner\'s home']]], ['how', [['scale', '⚖ By the litra'], ['eye', '👁 By estimate']]]].forEach(function (grp) {
+          var col = el('div', 'flex flex-col gap-2');
+          col.appendChild(el('p', 'text-[0.65rem] font-bold tracking-widest !text-[#8f7a92]', grp[0] === 'where' ? 'WHERE' : 'HOW'));
+          grp[1].forEach(function (o) {
+            var b = el('button', 'chip !text-[#efe4ec]', o[1]);
+            b.setAttribute('aria-pressed', 'false');
+            b.addEventListener('click', function () {
+              sel[grp[0]] = o[0];
+              col.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+            });
+            col.appendChild(b);
+          });
+          grid.appendChild(col);
+        });
+        box.appendChild(grid);
+        var stampBtn = el('button', 'chip mt-3 font-bold !text-[#e7c27a]', 'Stamp it');
+        var fb = el('p', 'hidden');
+        var tries = 0;
+        stampBtn.addEventListener('click', function () {
+          if (!sel.where || !sel.how) { fb.className = BAD; fb.textContent = 'Set both switches first.'; return; }
+          tries++;
+          if (sel.where === a.where && sel.how === a.how) {
+            if (tries === 1) award(1);
+            box.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+            var st = el('span', 'stamp-in absolute right-3 top-3 rounded border-2 border-[#5f9e6c] px-2 py-0.5 text-xs font-black tracking-widest !text-[#8fd19e]', a.where === 'market' ? 'ITLIZ' : 'HOME');
+            box.appendChild(st);
+            fb.className = OK; fb.innerHTML = '✓ ' + a.why;
+            left--; if (left === 0) showScale();
+          } else { fb.className = BAD; fb.textContent = (sel.where !== a.where ? 'Wrong place. ' : '') + (sel.how !== a.how ? 'Wrong pricing. ' : '') + 'Try again.'; }
+        });
+        box.appendChild(stampBtn); box.appendChild(fb);
+        wrap.appendChild(box);
+      });
+
+      function showScale() {
+        var w = document.getElementById('scaleWrap');
+        w.classList.remove('hidden');
+        addMax(1);
+        w.appendChild(el('p', 'text-sm font-bold !text-[#f5e9f0]', 'The kohen\'s neighbor has ordinary meat worth a hundred dinars and wants an equal amount of firstborn meat. What may go on the other pan?'));
+        w.innerHTML += '<svg viewBox="0 0 300 150" class="mx-auto mt-3 w-full max-w-sm" aria-hidden="true">' +
+          '<rect x="145" y="40" width="10" height="100" fill="#4b3752"/><rect x="110" y="138" width="80" height="8" rx="3" fill="#4b3752"/>' +
+          '<g id="beam" class="beam" style="transform: rotate(-8deg)"><rect x="40" y="36" width="220" height="8" rx="4" fill="#8f7a92"/>' +
+          '<line x1="55" y1="40" x2="55" y2="80" stroke="#8f7a92"/><line x1="245" y1="40" x2="245" y2="80" stroke="#8f7a92"/>' +
+          '<path d="M25 80 h60 q-30 22 -60 0z" fill="#3a2a3f"/><path d="M215 80 h60 q-30 22 -60 0z" fill="#3a2a3f"/>' +
+          '<text x="55" y="76" text-anchor="middle" font-size="11" fill="#e7c27a">firstborn</text><text id="rightPan" x="245" y="76" text-anchor="middle" font-size="11" fill="#c9b6c6">?</text></g></svg>';
+        var row = el('div', 'mt-3 grid gap-2 sm:grid-cols-2');
+        var fb = el('p', 'hidden');
+        var tries = 0, done = false;
+        [['Litra weights', false], ['A portion of the ordinary meat', true]].forEach(function (o) {
+          var b = el('button', 'chip !text-[#efe4ec]', o[0]);
+          b.addEventListener('click', function () {
+            if (done) return; tries++;
+            document.getElementById('rightPan').textContent = o[1] ? 'chulin' : 'litra';
+            if (o[1]) {
+              done = true; if (tries === 1) award(1);
+              document.getElementById('beam').style.transform = 'rotate(0deg)';
+              b.classList.add('ok'); fb.className = OK;
+              fb.innerHTML = '✓ The pans balance. Firstborn meat may not be weighed by the litra, but you may weigh a portion of it against a portion of ordinary meat, because that isn\'t how ordinary meat is sold. ' + sef('Bekhorot 31a:16');
+              row.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+              showWhy();
+            } else { b.classList.add('bad'); b.disabled = true; fb.className = BAD; fb.textContent = 'That\'s exactly how a butcher sells ordinary meat, and the mishna forbids treating firstborn meat that way.'; }
+          });
+          row.appendChild(b);
+        });
+        w.appendChild(row); w.appendChild(fb);
+      }
+      function showWhy() {
+        var more = document.getElementById('s3more');
+        more.classList.remove('hidden');
+        mcq(more, 'The mishna says the market sale is "for the benefit of the Temple." But a redeemed animal already belongs to its owner, and an unredeemed one has to be set before a kohen and valued while alive. So how does the Temple benefit?',
+          ['The market profit is paid to the Temple treasury.',
+           'Because he knows he can resell it in the market at full price, the owner pays more to redeem it in the first place.',
+           'The butchers pay a Temple tax.'], 1,
+          'The "benefit" is the redemption price. Allowing the market, the slaughter there and sale by weight makes the animal worth more, so the owner pays the Temple more for it up front. ' + sef('Bekhorot 31b:4') + ' ' + sef('Bekhorot 31b:5'),
+          stationDone);
+      }
+    })();
+
+    // ---------- STATION 4: Fold It Into the Horns ----------
+    (function () {
+      var MODES = [['plain', 'Sell it normally'], ['fold', 'Fold the price in'], ['no', 'No sale at all']];
+      var ITEMS = [
+        { k: 'orphan', t: 'Tithe meat of young orphans', s: 'Blemished, slaughtered, more than they can eat before it spoils.' },
+        { k: 'adult', t: 'Tithe meat of an adult, slaughtered', s: 'An ordinary owner with no special circumstances.' },
+        { k: 'etrog', t: 'Etrog from an am ha\'aretz in the Sabbatical Year', s: 'You may not pay him for Sabbatical produce. You are buying his lulav.' }
+      ];
+      var KEY = {
+        abaye: { orphan: 'fold', adult: 'no', etrog: 'fold' },
+        rava: { orphan: 'plain', adult: 'fold', etrog: 'fold' }
+      };
+      var WHY = {
+        abaye: 'Abaye reads the baraita as <em>one</em> case: orphans\' tithe may be sold, but only by folding the price in. So an adult\'s tithe can\'t be sold at all, not even that way. The etrog still works by folding (Rav Huna, Sukka 3:11): add its price to the lulav. ' + sef('Bekhorot 31b:13') + ' ' + sef('Bekhorot 31b:15'),
+        rava: 'Rava: why say "animal tithe" twice? It must be <em>two</em> cases. Orphans sell it normally. An adult who slaughtered it sells by folding the price into the hide, fat, sinews and horns. The etrog folds into the lulav as before. ' + sef('Bekhorot 31b:17')
+      };
+      var reader = 'abaye';
+      var picks = { abaye: {}, rava: {} };
+      var checked = { abaye: false, rava: false };
+      addMax(2);
+      var tagsEl = document.getElementById('tags');
+      var fb = document.getElementById('tagFb');
+      var checkBtn = document.getElementById('tagCheck');
+      function render() {
+        tagsEl.innerHTML = '';
+        ITEMS.forEach(function (it) {
+          var box = el('div', 'rounded-xl border border-[#3a2a3f] p-3');
+          box.appendChild(el('p', 'text-sm font-bold !text-[#f5e9f0]', '🏷 ' + it.t));
+          box.appendChild(el('p', 'mt-0.5 text-xs !text-[#8f7a92]', it.s));
+          var row = el('div', 'mt-2 flex flex-wrap gap-2');
+          MODES.forEach(function (m) {
+            var b = el('button', 'chip !text-[#efe4ec]', m[1]);
+            var on = picks[reader][it.k] === m[0];
+            b.setAttribute('aria-pressed', String(on));
+            if (checked[reader]) { b.disabled = true; if (KEY[reader][it.k] === m[0]) b.classList.add('ok'); else if (on) b.classList.add('bad'); }
+            b.addEventListener('click', function () { picks[reader][it.k] = m[0]; render(); });
+            row.appendChild(b);
+          });
+          box.appendChild(row);
+          tagsEl.appendChild(box);
+        });
+        checkBtn.disabled = checked[reader];
+        if (checked[reader]) { fb.className = NOTE; fb.innerHTML = WHY[reader]; } else { fb.className = 'hidden'; }
+      }
+      document.querySelectorAll('[data-reader]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          reader = b.dataset.reader;
+          document.querySelectorAll('[data-reader]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+          render();
+        });
+      });
+      checkBtn.addEventListener('click', function () {
+        var missing = ITEMS.some(function (it) { return !picks[reader][it.k]; });
+        if (missing) { fb.className = BAD; fb.textContent = 'Price all three items first.'; return; }
+        checked[reader] = true;
+        var right = ITEMS.every(function (it) { return picks[reader][it.k] === KEY[reader][it.k]; });
+        if (right) award(1);
+        render();
+        fb.innerHTML = (right ? '✓ ' : '✗ Corrected above. ') + WHY[reader];
+        fb.className = right ? OK : BAD;
+        if (checked.abaye && checked.rava) showMore();
+      });
+      render();
+
+      function showMore() {
+        var more = document.getElementById('s4more');
+        if (!more.classList.contains('hidden')) return;
+        more.classList.remove('hidden');
+        mcq(more, 'According to Abaye, why can the etrog be folded into the lulav\'s price when an adult\'s tithe meat can\'t be folded into the horns?',
+          ['An etrog is worth less than meat.', 'Lulav prices go up and down anyway, so nobody can tell. A cheap hide sold at the price of a whole animal is an obvious trick.', 'The Sabbatical Year is only rabbinic.'], 1,
+          '<span class="frank" dir="rtl" lang="he">הָתָם לָא מוֹכְחָא מִילְּתָא, הָכָא מוֹכְחָא מִילְּתָא</span>: "there it isn\'t obvious, here it is." ' + sef('Bekhorot 31b:16'),
+          function () {
+            mcq(more, 'Rava finds a source for selling a slaughtered tithe. Leviticus 27:33 puts substitution right next to "it shall not be redeemed." What does that pairing teach?',
+              ['Just as substitution only works while the animal is alive, the ban on selling only applies while it is alive. Once slaughtered, the Torah permits the sale, and only the Sages forbade it.',
+               'Just as a substitute becomes holy, the money from a sale becomes holy.',
+               'Neither can ever happen, alive or slaughtered.'], 0,
+              'You can only substitute for a tithe animal while it\'s alive, so the ban on "redeeming" (selling) it also applies only while it\'s alive. The Sages banned selling the slaughtered meat in case people sold it before slaughter, but not the hide and horns, which aren\'t what the animal is valued for. ' + sef('Bekhorot 31b:18') + ' ' + sef('Bekhorot 31b:19'),
+              stationDone);
+          });
+      }
+    })();
+
+    // ---------- STATION 5: Say It in My Name ----------
+    (function () {
+      var CHAINS = [
+        { teach: 'Rav Sheshet\'s attendant heard his answer about the orphans\' tithe and repeated it in the study hall without his name. Fix it: who said this?', ref: 'Bekhorot 31b:9',
+          chain: ['Rav Sheshet'], decoys: ['Rav Idi', 'Abaye'],
+          after: 'Rav Sheshet: "Whoever stung me, may a scorpion sting him." Being quoted by name was worth that much to him.' },
+        { teach: '"The halakha follows that pair": the returning ḥaver is accepted either way.', ref: 'Bekhorot 31a:3',
+          chain: ['Rabbi Yitzḥak of Kfar Akko', 'Rabbi Yoḥanan'], decoys: ['Rabbi Meir', 'Rav Ḥisda'],
+          after: 'אָמַר רַבִּי יִצְחָק אִישׁ כְּפַר עַכּוֹ אָמַר רַבִּי יוֹחָנָן' },
+        { teach: '"Vows may be dissolved even by a single expert."', ref: 'Bekhorot 31a:9',
+          chain: ['Rav Ḥisda', 'Rabbi Yoḥanan'], decoys: ['Rav Huna', 'Rabbi Shimon ben Yoḥai'],
+          after: 'This is how the Gemara knows a single expert can rule on firstborns too.' },
+        { teach: '"I will dwell in Your tent <em>olamim</em>." Can a person live in two worlds? David asked to be quoted in this world after he was gone.', ref: 'Bekhorot 31b:9',
+          chain: ['Rav Yehuda', 'Rav'], decoys: ['Rav Yosef', 'Rabba'],
+          after: 'דְּאָמַר רַב יְהוּדָה אָמַר רַב: מַאי דִּכְתִיב ״אָגוּרָה בְּאׇהׇלְךָ עוֹלָמִים״' },
+        { teach: '"Any Torah scholar quoted by name in this world, his lips move in the grave."', ref: 'Bekhorot 31b:10',
+          chain: ['Rabbi Yoḥanan', 'Rabbi Shimon ben Yoḥai'], decoys: ['Rabbi Yehuda', 'Rav Sheshet'],
+          after: 'שִׂפְתוֹתָיו דּוֹבְבוֹת בַּקֶּבֶר' },
+        { teach: 'Which verse is it from? "Moving gently the lips of those who sleep." Torah in the mouth is like a warm pile of grapes: touch it and the wine starts to flow, with a sound.', ref: 'Bekhorot 31b:11',
+          chain: ['Rabbi Yitzḥak bar Ze\'eiri'], decoys: ['Rabbi Yitzḥak of Kfar Akko', 'Rav Idi'],
+          after: 'כְּכוֹמֶר שֶׁל עֲנָבִים: like a pile of grapes. Every time you quote someone, you press the grapes.' }
+      ];
+      addMax(CHAINS.length);
+      var idx = 0, pos = 0, clean = true;
+      var numEl = document.getElementById('chainNum');
+      var teachEl = document.getElementById('chainTeaching');
+      var builtEl = document.getElementById('chainBuilt');
+      var tilesEl = document.getElementById('chainTiles');
+      var fb = document.getElementById('chainFb');
+      var next = document.getElementById('chainNext');
+      var grave = document.getElementById('grave');
+      var grapes = document.getElementById('grapes');
+      function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+      function load() {
+        var c = CHAINS[idx];
+        pos = 0; clean = true;
+        numEl.textContent = 'CHAIN ' + (idx + 1) + ' OF ' + CHAINS.length;
+        teachEl.innerHTML = c.teach;
+        builtEl.textContent = '…';
+        fb.className = 'hidden';
+        next.classList.add('hidden');
+        grave.classList.remove('speaking'); grapes.classList.remove('bubbling');
+        tilesEl.innerHTML = '';
+        shuffle(c.chain.concat(c.decoys)).forEach(function (name) {
+          var b = el('button', 'tile !text-[#efe4ec]', name);
+          b.addEventListener('click', function () { tap(b, name); });
+          tilesEl.appendChild(b);
+        });
+      }
+      function tap(b, name) {
+        var c = CHAINS[idx];
+        if (pos >= c.chain.length || b.disabled) return;
+        if (name === c.chain[pos]) {
+          b.classList.add('used'); b.disabled = true;
+          var parts = c.chain.slice(0, pos + 1);
+          builtEl.textContent = parts.map(function (p, i) { return i === 0 ? p + ' said' : (i === 1 && parts.length > 1 ? 'in the name of ' + p : p); }).join(' ') + (pos + 1 < c.chain.length ? ' …' : ':');
+          pos++;
+          if (pos === c.chain.length) complete();
+        } else {
+          clean = false;
+          b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
+          fb.className = BAD;
+          fb.textContent = c.decoys.indexOf(name) >= 0 ? name + ' isn\'t part of this chain.' : 'Right name, wrong place: start with the person speaking now.';
+        }
+      }
+      function complete() {
+        var c = CHAINS[idx];
+        if (clean) award(1);
+        tilesEl.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+        grave.classList.add('speaking'); grapes.classList.add('bubbling');
+        var heb = /[֐-׿]/.test(c.after);
+        fb.className = clean ? OK : NOTE;
+        fb.innerHTML = (clean ? '✓ The lips move. ' : 'The lips move. ') + (heb ? '<span class="frank text-sm" dir="rtl" lang="he">' + c.after + '</span>' : c.after) + ' ' + sef(c.ref);
+        if (idx + 1 < CHAINS.length) { next.classList.remove('hidden'); next.focus(); }
+        else stationDone();
+      }
+      next.addEventListener('click', function () { idx++; load(); });
+      load();
+    })();
+  })();
+  </script>
+</Layout>
