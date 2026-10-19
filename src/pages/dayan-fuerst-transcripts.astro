@@ -1,0 +1,199 @@
+---
+// /dayan-fuerst-transcripts — searchable Dayan Fuerst shiur transcripts,
+// auto-transcribed with Whisper, with listenable audio.
+import Layout from '../layouts/Layout.astro';
+
+const pageTitle = 'Dayan Fuerst — Shiur Transcripts';
+---
+
+<Layout title={pageTitle}>
+  <main class="raw-page">
+    <header class="hero">
+      <div class="kicker">Dayan Fuerst</div>
+      <h1>Shiur Transcripts</h1>
+      <p class="sub">
+        Every Dayan Fuerst shiur from TorahAnytime, transcribed with Whisper and
+        searchable. Click a timestamp to jump the audio to that moment.
+        Transcripts are auto-generated — treat them as a close paraphrase, not an
+        exact quote.
+      </p>
+      <p class="sub count" id="count"></p>
+    </header>
+
+    <section id="listView">
+      <div class="controls">
+        <input id="q" type="search" placeholder="Search titles…" autocomplete="off" />
+      </div>
+      <div id="rows"></div>
+    </section>
+
+    <section id="detailView" hidden>
+      <a class="back" id="backBtn">← All transcripts</a>
+      <h2 id="dTitle"></h2>
+      <div class="meta" id="dMeta"></div>
+      <audio id="dAudio" controls preload="none" class="player" hidden></audio>
+      <div class="warn">Auto-generated transcript. Treat as a close paraphrase, not an exact quote.</div>
+      <div id="dBody"><p>Loading…</p></div>
+    </section>
+
+    <footer class="foot">
+      <p>
+        Transcribed with Whisper from
+        <a href="https://www.torahanytime.com/" target="_blank" rel="noopener">TorahAnytime</a>
+        · audio hosted for listening · also browsable at
+        <a href="https://yutorah-rss.netlify.app/transcripts/" target="_blank" rel="noopener">the transcript browser</a>.
+      </p>
+    </footer>
+  </main>
+
+  <script>
+    let items = [];
+    const rows = document.getElementById('rows');
+    const q = document.getElementById('q');
+    const listView = document.getElementById('listView');
+    const detailView = document.getElementById('detailView');
+
+    function fmtDur(s) {
+      s = parseInt(s, 10);
+      if (isNaN(s)) return '';
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+      return h ? h + 'h ' + m + 'm' : m + ' min';
+    }
+    function esc(t) {
+      return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function renderList(filter) {
+      const f = (filter || '').toLowerCase();
+      const shown = items.filter((it) => !f || it.title.toLowerCase().includes(f));
+      document.getElementById('count').textContent =
+        items.length + ' shiurim transcribed' + (f ? ' · ' + shown.length + ' match' : '');
+      rows.innerHTML = '';
+      for (const it of shown) {
+        const div = document.createElement('div');
+        div.className = 'row';
+        div.innerHTML =
+          '<div class="row-title">' + esc(it.title) + '</div>' +
+          '<div class="row-meta">' + esc(it.date || '') +
+          (it.duration_s ? ' · ' + fmtDur(it.duration_s) : '') + '</div>';
+        div.addEventListener('click', () => show(it.id));
+        rows.appendChild(div);
+      }
+      if (!shown.length) rows.innerHTML = '<p class="empty">No matches.</p>';
+    }
+
+    async function show(id) {
+      const it = items.find((x) => String(x.id) === String(id));
+      if (!it) return;
+      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+      listView.hidden = true;
+      detailView.hidden = false;
+      document.getElementById('dTitle').textContent = it.title;
+      document.getElementById('dMeta').textContent =
+        (it.date || '') + (it.duration_s ? ' · ' + fmtDur(it.duration_s) : '');
+      const audio = document.getElementById('dAudio');
+      if (it.audio && it.audio.indexOf('redacted') === -1) {
+        audio.src = it.audio;
+        audio.hidden = false;
+      } else {
+        audio.removeAttribute('src');
+        audio.hidden = true;
+      }
+      const body = document.getElementById('dBody');
+      body.innerHTML = '<p>Loading…</p>';
+      try {
+        const res = await fetch('/fuerst-transcripts/' + encodeURIComponent(it.id) + '.md');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const raw = await res.text();
+        const parts = raw.split(/^---$/m);
+        const text = parts.length >= 3 ? parts.slice(2).join('---') : raw;
+        const paras = text.trim().split(/\n\s*\n/);
+        body.innerHTML = '';
+        for (const p of paras) {
+          if (/^#\s/.test(p)) continue;
+          const m = p.match(/^\[(\d{2}:\d{2}:\d{2})\]\s*([\s\S]*)$/);
+          const div = document.createElement('p');
+          div.className = 'para';
+          if (m) {
+            const tp = m[1].split(':').map(Number);
+            const secs = tp[0] * 3600 + tp[1] * 60 + tp[2];
+            div.innerHTML =
+              '<span class="ts" data-t="' + secs + '" title="Play from here">' +
+              esc(m[1]) + '</span>' + esc(m[2]);
+          } else {
+            div.textContent = p;
+          }
+          body.appendChild(div);
+        }
+        body.querySelectorAll('.ts').forEach((chip) => {
+          chip.addEventListener('click', () => {
+            const a = document.getElementById('dAudio');
+            if (a.hidden || !a.getAttribute('src')) return;
+            a.currentTime = +chip.dataset.t;
+            a.play().catch(() => {});
+          });
+        });
+      } catch (e) {
+        body.innerHTML = '<p>Could not load transcript.</p>';
+      }
+      window.scrollTo(0, 0);
+    }
+
+    function back() {
+      try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      detailView.hidden = true;
+      listView.hidden = false;
+      const a = document.getElementById('dAudio');
+      a.pause();
+      window.scrollTo(0, 0);
+    }
+    document.getElementById('backBtn').addEventListener('click', back);
+    q.addEventListener('input', () => renderList(q.value));
+
+    fetch('/data/fuerst-transcripts.json')
+      .then((r) => r.json())
+      .then((d) => {
+        items = d;
+        renderList('');
+        const h = location.hash.replace('#', '');
+        if (h && /^\d+$/.test(h)) show(h);
+      })
+      .catch(() => {
+        rows.innerHTML = '<p class="empty">Could not load the transcript index.</p>';
+      });
+  </script>
+
+  <style>
+    .raw-page { max-width: 860px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    .hero { text-align: center; margin-bottom: 2rem; }
+    .kicker { font-size: 1.1rem; color: #d4a017; margin: 0 0 .4rem; font-weight: 700;
+              text-transform: uppercase; letter-spacing: .12em; }
+    .hero h1 { font-size: 2.2rem; margin: 0 0 .8rem; letter-spacing: -.01em; }
+    .hero .sub { max-width: 640px; margin: .5rem auto; color: #555; line-height: 1.6; }
+    .hero .count { color: #8a7c5f; font-size: .95rem; }
+    .controls { margin-bottom: 1.2rem; }
+    .controls input { width: 100%; padding: .7rem 1rem; font-size: 1rem;
+      border: 1px solid #e8e2d4; border-radius: 10px; background: #fff; }
+    .row { background: #fff; border: 1px solid #e8e2d4; border-radius: 10px;
+           padding: .85rem 1.1rem; margin-bottom: .6rem; cursor: pointer;
+           transition: border-color .15s; }
+    .row:hover { border-color: #d4a017; }
+    .row-title { font-weight: 600; color: #1d1a14; line-height: 1.45; }
+    .row-meta { font-size: .85rem; color: #8a7c5f; margin-top: .25rem; }
+    .empty { color: #8a7c5f; text-align: center; padding: 2rem 0; }
+    .back { color: #8a6d1f; cursor: pointer; text-decoration: none; font-size: .95rem; }
+    .back:hover { text-decoration: underline; }
+    #detailView h2 { font-size: 1.6rem; line-height: 1.35; margin: 1rem 0 .4rem; }
+    .meta { color: #8a7c5f; font-size: .92rem; margin-bottom: 1rem; }
+    .player { width: 100%; margin-bottom: 1rem; }
+    .warn { background: #faf6ea; border: 1px solid #e8e2d4; border-radius: 8px;
+            padding: .6rem .9rem; font-size: .85rem; color: #8a7c5f; margin-bottom: 1.2rem; }
+    .para { line-height: 1.75; margin: 0 0 1.1rem; color: #2a251c; }
+    .ts { display: inline-block; background: #f3ecd9; color: #8a6d1f; font-size: .8rem;
+          font-weight: 700; border-radius: 6px; padding: .1rem .45rem; margin-right: .5rem;
+          cursor: pointer; }
+    .ts:hover { background: #e8d9ae; }
+    .foot { text-align: center; margin-top: 3rem; color: #777; font-size: .95rem; }
+    .foot a { color: #8a6d1f; }
+  </style>
+</Layout>
