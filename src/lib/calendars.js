@@ -1,5 +1,6 @@
 import likuteiPeshatimEvents from '../data/likutei-peshatim/events.json';
 import raananaGaniYolaEvents from '../data/raanana-gani-yola/events.json';
+import torahTidbitsEvents from '../data/torah-tidbits-events/events.json';
 
 export const siteBase = 'https://theothermatthewmiller.com';
 
@@ -54,6 +55,17 @@ const rawCalendars = [
     eventCount: raananaGaniYolaEvents.length,
     note: 'Static for the 5787 school year — re-transcribed each year from the municipality\'s calendar, not auto-updated. Hanukkah and Purim party dates are set by the kindergarten staff closer to the time and aren\'t included. Per Ministry of Education/Yol"a policy, during vacation weeks there is no kindergarten activity on Fridays (this doesn\'t apply to regular in-session Fridays).',
     noteHe: 'לוח סטטי לשנת הלימודים תשפ"ז — מועתק מחדש מדי שנה מלוח העירייה, אינו מתעדכן אוטומטית. מועדי מסיבות חנוכה ופורים נקבעים ע"י צוות הגן בסמוך למועד ואינם כלולים כאן. על פי מדיניות משרד החינוך/יול"א, בשבועות החופשה אין פעילות יול"א בימי שישי (אינו חל על ימי שישי רגילים בזמן לימודים).',
+  },
+  {
+    slug: 'TorahTidbitsEvents',
+    id: 'torah_tidbits_events',
+    name: 'Torah Tidbits — Advertised Events',
+    description: 'Dated events advertised in the weekly OU Israel Torah Tidbits: Nefesh B\'Nefesh programs, community events, tours, and special shiurim. Parsed from each week\'s issue.',
+    file: '/calendar/torah_tidbits_events.ics',
+    source: 'https://www.torahtidbits.com',
+    tags: ['Jewish', 'Israel', 'Events', 'Weekly'],
+    eventCount: torahTidbitsEvents.length,
+    note: 'Updated weekly from the latest Torah Tidbits issue. Best-effort date parsing — always double-check exact times with the organizer. Each event\'s calendar description cites the issue it came from.',
   },
 ];
 
