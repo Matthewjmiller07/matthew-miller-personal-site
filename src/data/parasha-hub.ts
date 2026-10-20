@@ -56,8 +56,12 @@ export interface LevyThesis {
   blurb: string;
   url: string;
   urlLabel: string;
+  anchor: string; // in-page anchor of this thesis's card in the #levy-theses section
 }
-export const levyTheses: LevyThesis[] = [...(levyThesesData.theses as LevyThesis[])].sort((a, b) => a.year - b.year);
+const thesisAnchor = (author: string) => `levy-${author.split(' ').pop()!.toLowerCase().replace(/[^a-z]/g, '')}`;
+export const levyTheses: LevyThesis[] = [...(levyThesesData.theses as Omit<LevyThesis, 'anchor'>[])]
+  .sort((a, b) => a.year - b.year)
+  .map((t) => ({ ...t, anchor: thesisAnchor(t.author) }));
 export const levyThesesIntro = levyThesesData.intro;
 
 // "Genesis 37:1–40:23" → comparable [chapter, verse] endpoints.
@@ -131,7 +135,7 @@ export const weeks: Week[] = season.weeks.map((w: any) => {
     links.push({
       kind: 'thesis',
       label: 'Levy thesis',
-      href: `/mega-bible?book=${t.book}&chapter=${t.chapter}`,
+      href: `/parasha#${t.anchor}`,
       note: `${t.author} on ${t.ref} (${t.year})`,
     });
   }

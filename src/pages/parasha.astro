@@ -34,9 +34,17 @@ const isExternal = (href: string) => href.startsWith('http');
         Every reader, sheet, book, episode and tool on this site that follows the parasha, in one place.
         Start with this week, or find any parasha in the year below.
       </p>
+      <nav class="ph-jump" aria-label="On this page">
+        <a href="#now">This week</a>
+        <a href="#series">Readers &amp; series</a>
+        <a href="#dweck">Dweck on the haftara</a>
+        <a href="#levy-theses">The Levy theses</a>
+        <a href="#tools">Tools</a>
+        <a href="#year">Every parasha</a>
+      </nav>
     </header>
 
-    <section class="ph-now" aria-labelledby="ph-now-h">
+    <section class="ph-now" id="now" aria-labelledby="ph-now-h">
       <h2 id="ph-now-h" class="ph-h2">This week</h2>
       <div id="ph-now">
         {thisWeek.map((w) => (
@@ -62,7 +70,7 @@ const isExternal = (href: string) => href.startsWith('http');
       <p class="ph-small">Dates follow the Israel reading schedule for 5787.</p>
     </section>
 
-    <section aria-labelledby="ph-series-h">
+    <section id="series" aria-labelledby="ph-series-h">
       <h2 id="ph-series-h" class="ph-h2">Readers and series</h2>
       <div class="ph-grid">
         {series.map((s) => (
@@ -110,26 +118,34 @@ const isExternal = (href: string) => href.startsWith('http');
       </p>
     </section>
 
-    <section id="levy-theses" aria-labelledby="ph-levy-h">
+    <section id="levy-theses" class="ph-levy" aria-labelledby="ph-levy-h">
       <h2 id="ph-levy-h" class="ph-h2">The History of a Verse: the Levy theses</h2>
       <p class="ph-dweck-lede">{levyThesesIntro}</p>
-      {levyTheses.map((t) => (
-        <article class="ph-dweck ph-thesis">
-          <div class="ph-week-top">
-            <span class="ph-name">{t.author}</span>
-            <span class="ph-meta">{t.ref} · {t.parsha} · McGill M.A. {t.year}</span>
-          </div>
-          <p class="ph-thesis-title">“{t.title}”</p>
-          <p class="ph-dweck-sum">{t.blurb}</p>
-          <ul class="ph-links">
-            <li><a class="ph-chip ph-k-thesis" href={`/mega-bible?book=${t.book}&chapter=${t.chapter}`}>Read the verse in the Mega Bible</a></li>
-            <li><a class="ph-chip" href={t.url} target="_blank" rel="noopener noreferrer">{t.urlLabel}</a></li>
-          </ul>
-        </article>
-      ))}
+      <div class="ph-thesis-grid">
+        {levyTheses.map((t) => (
+          <article class="ph-thesis-card" id={t.anchor}>
+            <div class="ph-thesis-top">
+              <span class="ph-thesis-author">{t.author}</span>
+              <span class="ph-year">McGill M.A. {t.year}</span>
+            </div>
+            <p class="ph-thesis-title">
+              <a href={t.url} target="_blank" rel="noopener noreferrer">“{t.title}”<span class="ph-ext" aria-hidden="true">↗</span></a>
+            </p>
+            <p class="ph-thesis-meta">
+              <a class="ph-ref-link" href={`/mega-bible?book=${t.book}&chapter=${t.chapter}`}>{t.ref}</a>
+              <span aria-hidden="true">·</span> {t.parsha}
+            </p>
+            <p class="ph-thesis-blurb">{t.blurb}</p>
+            <ul class="ph-links">
+              <li><a class="ph-chip ph-k-thesis" href={`/mega-bible?book=${t.book}&chapter=${t.chapter}`}>Read the passage in the Mega Bible</a></li>
+              <li><a class="ph-chip ph-chip-ext" href={t.url} target="_blank" rel="noopener noreferrer">{t.urlLabel}<span class="ph-ext" aria-hidden="true">↗</span></a></li>
+            </ul>
+          </article>
+        ))}
+      </div>
     </section>
 
-    <section aria-labelledby="ph-tools-h">
+    <section id="tools" aria-labelledby="ph-tools-h">
       <h2 id="ph-tools-h" class="ph-h2">Tools for any parasha</h2>
       <div class="ph-grid ph-grid-tools">
         {tools.map((t) => (
@@ -141,7 +157,7 @@ const isExternal = (href: string) => href.startsWith('http');
       </div>
     </section>
 
-    <section aria-labelledby="ph-year-h">
+    <section id="year" aria-labelledby="ph-year-h">
       <h2 id="ph-year-h" class="ph-h2">Every parasha, 5787</h2>
       {byBook.map((b) => (
         <div class="ph-book">
@@ -195,77 +211,152 @@ const isExternal = (href: string) => href.startsWith('http');
 
 <style>
   .ph {
-    max-width: 62rem; margin: 0 auto; padding: 3rem 1rem 4rem;
+    max-width: 62rem; margin: 0 auto; padding: 3rem 1rem 4.5rem;
     font-family: 'EB Garamond', Georgia, serif; color: #e7e3da;
   }
   :global(.dark) .ph :global(*) { color: inherit; }
   .ph :global(.he) { font-family: 'Frank Ruhl Libre', serif; direction: rtl; unicode-bidi: isolate; }
+  .ph section { scroll-margin-top: 4.5rem; }
+  .ph a:focus-visible { outline: 2px solid #d8b06a; outline-offset: 2px; border-radius: 4px; }
 
-  .ph-kicker { font-size: .75rem; letter-spacing: .18em; text-transform: uppercase; color: #d8b06a !important; }
-  h1 { font-size: 2.8rem; font-weight: 600; line-height: 1.1; margin: .35rem 0 .75rem; }
-  .ph-lede { font-size: 1.2rem; line-height: 1.55; max-width: 44rem; color: #d4cfc5 !important; }
-  .ph-h2 {
-    font-size: .8rem; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
-    color: #d8b06a !important; margin: 2.75rem 0 1rem; padding-bottom: .4rem; border-bottom: 1px solid #3a3f45;
+  /* ---- Header ---- */
+  .ph-head { padding-bottom: 1.5rem; border-bottom: 1px solid #2c3036; position: relative; }
+  .ph-head::after {
+    content: ''; position: absolute; left: 0; bottom: -1px; height: 2px; width: min(16rem, 60%);
+    background: linear-gradient(90deg, #d8b06a, rgba(216, 176, 106, 0));
   }
-  .ph-small { font-size: .85rem; color: #8f949b !important; margin-top: .5rem; }
+  .ph-kicker { font-size: .75rem; letter-spacing: .18em; text-transform: uppercase; color: #d8b06a !important; }
+  h1 { font-size: 2.9rem; font-weight: 600; line-height: 1.08; margin: .35rem 0 .75rem; color: #f2ecdf !important; }
+  .ph-lede { font-size: 1.22rem; line-height: 1.55; max-width: 44rem; color: #d4cfc5 !important; margin: 0; }
+  .ph-jump { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: 1.35rem; }
+  .ph-jump a {
+    font-size: .85rem; padding: .32rem .8rem; border-radius: 999px; text-decoration: none;
+    border: 1px solid #3d434a; color: #cfd4da !important; background: #17191d;
+    transition: border-color .15s, color .15s, transform .15s;
+  }
+  .ph-jump a:hover { border-color: #d8b06a; color: #f0dc9c !important; transform: translateY(-1px); }
 
-  .ph-week { padding: .8rem 0; border-bottom: 1px solid #2c3036; scroll-margin-top: 5rem; }
+  /* ---- Section headings ---- */
+  .ph-h2 {
+    display: flex; align-items: center; gap: .9rem;
+    font-size: 1.6rem; font-weight: 600; line-height: 1.2; letter-spacing: 0; text-transform: none;
+    color: #f0e9db !important; margin: 3.4rem 0 1.15rem; padding: 0; border: 0;
+  }
+  .ph-h2::before { content: ''; flex: none; width: 2.1rem; height: 2px; background: #d8b06a; }
+  .ph-h2::after {
+    content: ''; flex: 1; height: 1px; min-width: 2rem;
+    background: linear-gradient(90deg, rgba(216, 176, 106, .45), rgba(216, 176, 106, 0));
+  }
+  .ph-small { font-size: .9rem; color: #9aa0a7 !important; margin-top: .6rem; }
+  .ph-small a, .ph-dweck-lede a { color: #d8b06a !important; text-underline-offset: 3px; }
+  .ph-small a:hover, .ph-dweck-lede a:hover { color: #f0dc9c !important; }
+
+  /* ---- Week rows ---- */
+  .ph-week { padding: .85rem .6rem; border-bottom: 1px solid #2c3036; border-radius: 8px; scroll-margin-top: 5rem; transition: background .15s; }
+  .ph-week:hover { background: rgba(231, 227, 218, .025); }
   .ph-week-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .8rem; }
   .ph-he { font-size: 1.35rem; font-weight: 700; }
-  .ph-name { font-size: 1.1rem; font-weight: 600; }
-  .ph-meta { font-size: .85rem; color: #9aa0a7 !important; }
-  .ph-current { background: linear-gradient(90deg, rgba(216, 176, 106, .09), transparent 70%); }
-  .ph-current .ph-name::after { content: ' · this week'; font-size: .75rem; color: #d8b06a !important; font-weight: 400; }
+  .ph-name { font-size: 1.12rem; font-weight: 600; }
+  .ph-meta { font-size: .88rem; color: #9aa0a7 !important; }
+  .ph-current { background: linear-gradient(90deg, rgba(216, 176, 106, .1), transparent 70%); }
+  .ph-current .ph-name::after { content: ' · this week'; font-size: .78rem; color: #d8b06a !important; font-weight: 400; }
 
-  #ph-now .ph-week { padding: 1.1rem 1.25rem; border: 1px solid #4a4130; border-radius: 6px; background: #1d1b17; margin-bottom: .75rem; }
+  #ph-now .ph-week {
+    padding: 1.15rem 1.3rem; border: 1px solid #4a4130; border-radius: 10px; margin-bottom: .75rem;
+    background: linear-gradient(180deg, #201d17, #1a1813); box-shadow: 0 6px 24px rgba(0, 0, 0, .28);
+  }
+  #ph-now .ph-week:hover { background: linear-gradient(180deg, #201d17, #1a1813); }
   #ph-now .ph-he { font-size: 2rem; }
   #ph-now .ph-name { font-size: 1.5rem; }
   #ph-now .ph-current .ph-name::after, #ph-now .ph-name::after { content: none; }
 
+  /* ---- Link chips ---- */
   .ph-links { list-style: none; padding: 0; margin: .55rem 0 0; display: flex; flex-wrap: wrap; gap: .4rem .5rem; }
   #ph-now .ph-links { flex-direction: column; gap: .5rem; }
   #ph-now .ph-links li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .6rem; }
   .ph-book .ph-note { display: none; }
   .ph-note { font-size: .95rem; font-style: italic; color: #b9b4aa !important; }
   .ph-chip {
-    display: inline-block; padding: .18rem .6rem; border-radius: 999px; font-size: .82rem;
+    display: inline-block; padding: .2rem .65rem; border-radius: 999px; font-size: .84rem; line-height: 1.35;
     text-decoration: none; border: 1px solid #3d434a; color: #cfd4da !important; background: #1b1f23;
-    white-space: nowrap;
+    white-space: nowrap; transition: border-color .15s, transform .15s, box-shadow .15s;
   }
-  .ph-chip:hover { border-color: #8a9099; }
+  a.ph-chip:hover { border-color: #d8b06a; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0, 0, 0, .3); }
+  .ph-chip .ph-ext { margin-left: .3rem; }
   .ph-k-simon { border-color: #36546a; background: #17242d; color: #a9cde4 !important; }
   .ph-k-sheet { border-color: #5a4a28; background: #241f14; color: #e8d4aa !important; }
   .ph-k-balashon { border-color: #6a3a32; background: #2a1815; color: #f0c2b6 !important; }
   .ph-k-book { border-color: #4f3d5c; background: #221a28; color: #dcc4ec !important; }
   .ph-k-phd { border-color: #3f5a3c; background: #1a2419; color: #c3e0bd !important; }
   .ph-k-thesis { border-color: #2f5f6a; background: #12262b; color: #a8d8de !important; }
-  .ph-thesis-title { font-size: 1.05rem; font-style: italic; line-height: 1.45; color: #e7e3da !important; margin: .35rem 0 .1rem; }
   .ph-k-dweck { border-color: #6a5a2a; background: #2a2412; color: #f0dc9c !important; }
 
-  .ph-dweck-lede { font-size: 1.05rem; line-height: 1.5; max-width: 44rem; color: #d4cfc5 !important; margin: 0 0 1rem; }
-  .ph-dweck-lede a, .ph-small a { color: #d8b06a !important; }
-  .ph-dweck { padding: 1rem 1.25rem; border: 1px solid #3a3f45; border-radius: 6px; background: #1a1d21; margin-bottom: .9rem; scroll-margin-top: 5rem; }
-  .ph-dweck:target { border-color: #d8b06a; }
-  .ph-dweck-sum { font-size: 1rem; line-height: 1.5; color: #b9b4aa !important; margin: .4rem 0 .7rem; }
-  .ph-dweck iframe { display: block; width: 100%; max-width: 40rem; border: 0; border-radius: 6px; }
-
+  /* ---- Series & tool cards ---- */
   .ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .9rem; }
   .ph-card {
-    display: block; padding: 1rem 1.1rem; border: 1px solid #3a3f45; border-radius: 6px;
-    background: #1a1d21; text-decoration: none; transition: border-color .15s;
+    display: block; padding: 1.05rem 1.15rem; border: 1px solid #3a3f45; border-radius: 10px;
+    background: linear-gradient(180deg, #1c1f24, #17191d); text-decoration: none;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
   }
-  .ph-card:hover { border-color: #d8b06a; }
+  .ph-card:hover { border-color: #d8b06a; transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0, 0, 0, .32); }
   .ph-card-kind { font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: #d8b06a !important; }
-  .ph-card-name { font-size: 1.25rem; font-weight: 600; margin: .15rem 0 .3rem; }
-  .ph-card p { font-size: .95rem; line-height: 1.45; color: #b9b4aa !important; margin: 0; }
+  .ph-card-name { font-size: 1.25rem; font-weight: 600; margin: .15rem 0 .3rem; color: #f0e9db !important; }
+  .ph-card p { font-size: .97rem; line-height: 1.45; color: #b9b4aa !important; margin: 0; }
   .ph-card-tool .ph-card-name { font-size: 1.1rem; }
 
-  .ph-book h3 { font-size: 1.35rem; font-weight: 600; margin: 1.75rem 0 .25rem; }
-  .ph-book-en { font-size: .9rem; color: #8f949b !important; font-weight: 400; }
+  /* ---- Dweck ---- */
+  .ph-dweck-lede { font-size: 1.08rem; line-height: 1.55; max-width: 46rem; color: #d4cfc5 !important; margin: 0 0 1.1rem; }
+  .ph-dweck {
+    padding: 1.05rem 1.3rem; border: 1px solid #3a3f45; border-radius: 10px; margin-bottom: .9rem;
+    background: linear-gradient(180deg, #1c1f24, #17191d); scroll-margin-top: 5rem;
+  }
+  .ph-dweck:target { border-color: #d8b06a; box-shadow: 0 0 0 1px #d8b06a; }
+  .ph-dweck-sum { font-size: 1rem; line-height: 1.5; color: #b9b4aa !important; margin: .4rem 0 .7rem; }
+  .ph-dweck iframe { display: block; width: 100%; max-width: 40rem; border: 0; border-radius: 8px; }
+
+  /* ---- The Levy theses ---- */
+  .ph-thesis-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 27rem), 1fr)); gap: .9rem; }
+  .ph-thesis-card {
+    display: flex; flex-direction: column; padding: 1.1rem 1.25rem 1.2rem;
+    border: 1px solid #3a3f45; border-left: 3px solid #2f5f6a; border-radius: 10px;
+    background: linear-gradient(180deg, #1b2026, #16181c); scroll-margin-top: 5rem;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .ph-thesis-card:target { border-color: #d8b06a; box-shadow: 0 0 0 1px #d8b06a; }
+  .ph-thesis-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .3rem .8rem; }
+  .ph-thesis-author { font-size: 1.18rem; font-weight: 600; color: #f0e9db !important; }
+  .ph-year {
+    font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
+    padding: .14rem .55rem; border-radius: 999px; border: 1px solid #5a4a28; color: #e8d4aa !important; background: #241f14;
+  }
+  .ph-thesis-title { font-size: 1.06rem; font-style: italic; line-height: 1.45; margin: .5rem 0 .15rem; }
+  .ph-thesis-title a { color: #e7e3da !important; text-decoration: underline; text-decoration-color: rgba(168, 216, 222, .55); text-underline-offset: 3px; transition: color .15s, text-decoration-color .15s; }
+  .ph-thesis-title a:hover { color: #f0dc9c !important; text-decoration-color: #d8b06a; }
+  .ph-ext { font-style: normal; font-size: .78em; color: #d8b06a !important; margin-left: .25rem; }
+  .ph-thesis-meta { font-size: .92rem; color: #9aa0a7 !important; margin: .1rem 0 0; }
+  .ph-ref-link { color: #a8d8de !important; text-decoration: underline; text-decoration-color: rgba(168, 216, 222, .4); text-underline-offset: 3px; }
+  .ph-ref-link:hover { color: #d8b06a !important; text-decoration-color: #d8b06a; }
+  .ph-thesis-blurb { font-size: 1rem; line-height: 1.5; color: #b9b4aa !important; margin: .45rem 0 .8rem; flex: 1; }
+  .ph-thesis-card .ph-links { margin-top: auto; }
+
+  /* ---- Year ---- */
+  .ph-book h3 { font-size: 1.4rem; font-weight: 600; margin: 1.9rem 0 .35rem; color: #f0e9db !important; }
+  .ph-book-en { font-size: .92rem; color: #8f949b !important; font-weight: 400; }
 
   @media (max-width: 640px) {
-    h1 { font-size: 2.2rem; }
-    .ph-chip { font-size: .78rem; }
+    .ph { padding: 2.25rem .9rem 3.5rem; }
+    h1 { font-size: 2.15rem; }
+    .ph-lede { font-size: 1.1rem; }
+    .ph-h2 { font-size: 1.32rem; margin: 2.6rem 0 1rem; gap: .65rem; }
+    .ph-h2::before { width: 1.4rem; }
+    .ph-jump a { font-size: .8rem; padding: .28rem .65rem; }
+    .ph-chip { font-size: .79rem; }
+    #ph-now .ph-week { padding: 1rem 1.05rem; }
+    #ph-now .ph-he { font-size: 1.6rem; }
+    #ph-now .ph-name { font-size: 1.3rem; }
+    .ph-dweck { padding: .95rem 1.05rem; }
+    .ph-thesis-card { padding: .95rem 1.05rem 1.05rem; }
+    .ph-thesis-author { font-size: 1.1rem; }
+    .ph-week { padding: .8rem .35rem; }
   }
 </style>
