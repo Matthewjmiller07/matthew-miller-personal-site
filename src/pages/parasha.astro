@@ -2,7 +2,7 @@
 // /parasha — the hub for everything on the site that follows the weekly Torah reading.
 // Data: src/data/parasha-hub.ts (joins the 5787 calendar to sheets, readers, books and tools).
 import Layout from '../layouts/Layout.astro';
-import { weeks, BOOKS, series, tools, dweckShow, dweckEpisodes, levyTheses, levyThesesIntro } from '../data/parasha-hub';
+import { weeks, BOOKS, series, tools, dweckShow, dweckEpisodes, levyTheses, levyThesesIntro, type Link } from '../data/parasha-hub';
 
 const fmt = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
@@ -14,6 +14,31 @@ const thisWeek = weeks.filter((w) => w.date === nextDate);
 
 const byBook = BOOKS.map((b) => ({ ...b, weeks: weeks.filter((w) => w.book === b.en) }));
 const isExternal = (href: string) => href.startsWith('http');
+
+// The This-week card groups its scholarly links so the two series never blur
+// into one stack: PhDs on the Parsha (a guest scholar per week) on one side,
+// the Levy theses (The History of a Verse) on the other; everything else is
+// the plain resource list.
+const groupLinks = (links: Link[]) => ({
+  resources: links.filter((l) => l.kind !== 'phd' && l.kind !== 'thesis'),
+  phd: links.filter((l) => l.kind === 'phd'),
+  theses: links.filter((l) => l.kind === 'thesis'),
+});
+const thisWeekGrouped = thisWeek.map((w) => ({ w, ...groupLinks(w.links) }));
+
+// Index of the Levy theses by parasha, in Torah order (weeks run in calendar
+// order), for the "By parasha" line at the top of the theses section.
+const parshaKey = (s: string) => {
+  const k = s.toLowerCase().replace(/[^a-z]/g, '');
+  return k === 'breishit' ? 'bereshit' : k; // the season data spells it Breishit
+};
+const weekOrder = new Map(weeks.map((w, i) => [parshaKey(w.parsha), i]));
+const thesesByParasha = [...levyTheses].sort(
+  (a, b) =>
+    (weekOrder.get(parshaKey(a.parsha.replace(/\(.*\)/, ''))) ?? 999) -
+    (weekOrder.get(parshaKey(b.parsha.replace(/\(.*\)/, ''))) ?? 999),
+);
+const surname = (author: string) => author.split(' ').pop() ?? author;
 ---
 
 <Layout
@@ -47,7 +72,7 @@ const isExternal = (href: string) => href.startsWith('http');
     <section class="ph-now" id="now" aria-labelledby="ph-now-h">
       <h2 id="ph-now-h" class="ph-h2">This week</h2>
       <div id="ph-now">
-        {thisWeek.map((w) => (
+        {thisWeekGrouped.map(({ w, resources, phd, theses }) => (
           <article class="ph-week ph-week-big" data-date={w.date}>
             <div class="ph-week-top">
               <span class="he ph-he">{w.hebrew}</span>
@@ -55,7 +80,7 @@ const isExternal = (href: string) => href.startsWith('http');
               <span class="ph-meta">{w.ref} · Shabbat {fmt(w.date)}</span>
             </div>
             <ul class="ph-links">
-              {w.links.map((l) => (
+              {resources.map((l) => (
                 <li>
                   <a class="ph-chip" href={l.href} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
                     {l.label}
@@ -72,6 +97,52 @@ const isExternal = (href: string) => href.startsWith('http');
                 </li>
               ))}
             </ul>
+            {phd.length > 0 && (
+              <div class="ph-group">
+                <div class="ph-group-label">PhDs on the Parsha</div>
+                <ul class="ph-links">
+                  {phd.map((l) => (
+                    <li>
+                      <a class="ph-chip" href={l.href} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                        {l.label}
+                        {isExternal(l.href) && <span class="ph-ext" aria-hidden="true">↗</span>}
+                      </a>
+                      {l.note && (l.noteHref ? (
+                        <a class="ph-note ph-note-link" href={l.noteHref} target="_blank" rel="noopener noreferrer">
+                          {l.note}
+                          <span class="ph-ext" aria-hidden="true">↗</span>
+                        </a>
+                      ) : (
+                        <span class="ph-note">{l.note}</span>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {theses.length > 0 && (
+              <div class="ph-group">
+                <div class="ph-group-label">The History of a Verse · Levy theses</div>
+                <ul class="ph-links">
+                  {theses.map((l) => (
+                    <li>
+                      <a class="ph-chip" href={l.href} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                        {l.label}
+                        {isExternal(l.href) && <span class="ph-ext" aria-hidden="true">↗</span>}
+                      </a>
+                      {l.note && (l.noteHref ? (
+                        <a class="ph-note ph-note-link" href={l.noteHref} target="_blank" rel="noopener noreferrer">
+                          {l.note}
+                          <span class="ph-ext" aria-hidden="true">↗</span>
+                        </a>
+                      ) : (
+                        <span class="ph-note">{l.note}</span>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </article>
         ))}
       </div>
@@ -129,6 +200,15 @@ const isExternal = (href: string) => href.startsWith('http');
     <section id="levy-theses" class="ph-levy" aria-labelledby="ph-levy-h">
       <h2 id="ph-levy-h" class="ph-h2">The History of a Verse: the Levy theses</h2>
       <p class="ph-dweck-lede">{levyThesesIntro}</p>
+      <p class="ph-byparasha">
+        <span class="ph-byparasha-label">By parasha:</span>
+        {thesesByParasha.map((t, i) => (
+          <>
+            {i > 0 && <span aria-hidden="true"> · </span>}
+            <a href={`#${t.anchor}`}>{t.parsha} — {surname(t.author)} ({t.ref})</a>
+          </>
+        ))}
+      </p>
       <div class="ph-thesis-grid">
         {levyTheses.map((t) => (
           <article class="ph-thesis-card" id={t.anchor}>
@@ -141,7 +221,7 @@ const isExternal = (href: string) => href.startsWith('http');
             </p>
             <p class="ph-thesis-meta">
               <a class="ph-ref-link" href={`/mega-bible?book=${t.book}&chapter=${t.chapter}`}>{t.ref}</a>
-              <span aria-hidden="true">·</span> {t.parsha}
+              <span class="ph-parsha-chip">Parshat {t.parsha}</span>
             </p>
             <p class="ph-thesis-blurb">{t.blurb}</p>
             <ul class="ph-links">
@@ -178,7 +258,7 @@ const isExternal = (href: string) => href.startsWith('http');
                 <span class="ph-meta">{w.ref} · {fmt(w.date)}</span>
               </div>
               <ul class="ph-links">
-                {w.links.map((l) => (
+                {w.links.filter((l) => l.kind !== 'thesis').map((l) => (
                   <li>
                     <a class="ph-chip" href={l.href} title={l.note} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
                       {l.label}
@@ -193,6 +273,16 @@ const isExternal = (href: string) => href.startsWith('http');
                   </li>
                 ))}
               </ul>
+              {w.links.some((l) => l.kind === 'thesis') && (
+                <div class="ph-thesis-group">
+                  <div class="ph-group-label">The History of a Verse · Levy theses</div>
+                  <ul class="ph-thesis-lines">
+                    {w.links.filter((l) => l.kind === 'thesis').map((l) => (
+                      <li><a href={l.href}>{l.note}</a></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </article>
           ))}
         </div>
@@ -221,6 +311,43 @@ const isExternal = (href: string) => href.startsWith('http');
     );
   }
   rows.filter((r) => r.dataset.date === next).forEach((r) => r.classList.add('ph-current'));
+
+  // --- Reliable anchor landings --------------------------------------------
+  // Two failure modes seen live: the ViewTransitions router turns a same-page
+  // absolute link (/parasha#levy-brodt) into a navigation that strips the
+  // fragment, and on a fresh load the browser's first jump can be undone by
+  // layout shift when the webfonts swap in. So: re-scroll to the hash target
+  // once layout settles (rAF + fonts.ready + window load), follow hashchange,
+  // and intercept clicks on same-page anchor links — fragment or absolute
+  // form — with a smooth scrollIntoView (which honours the targets'
+  // scroll-margin-top) instead of letting the router navigate.
+  const scrollToHash = (smooth = false) => {
+    if (!location.hash) return;
+    let id = location.hash.slice(1);
+    try { id = decodeURIComponent(id); } catch { /* keep the raw id */ }
+    document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: smooth ? 'smooth' : 'auto' });
+  };
+  if (location.hash) {
+    requestAnimationFrame(() => setTimeout(() => scrollToHash(), 50));
+    if (document.fonts?.ready) document.fonts.ready.then(() => scrollToHash());
+    window.addEventListener('load', () => scrollToHash());
+  }
+  const phWin = window as unknown as { __phAnchorInit?: boolean };
+  if (!phWin.__phAnchorInit) {
+    phWin.__phAnchorInit = true;
+    window.addEventListener('hashchange', () => scrollToHash(true));
+    document.addEventListener('click', (e) => {
+      const a = (e.target as Element | null)?.closest<HTMLAnchorElement>('a[href]');
+      if (!a) return;
+      const url = new URL(a.href, location.href);
+      if (url.origin === location.origin && url.pathname === location.pathname && url.hash) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (location.hash !== url.hash) history.pushState(null, '', url.hash);
+        scrollToHash(true);
+      }
+    }, true);
+  }
 </script>
 
 <style>
@@ -230,7 +357,7 @@ const isExternal = (href: string) => href.startsWith('http');
   }
   :global(.dark) .ph :global(*) { color: inherit; }
   .ph :global(.he) { font-family: 'Frank Ruhl Libre', serif; direction: rtl; unicode-bidi: isolate; }
-  .ph section { scroll-margin-top: 4.5rem; }
+  .ph section { scroll-margin-top: 6.5rem; }
   .ph a:focus-visible { outline: 2px solid #d8b06a; outline-offset: 2px; border-radius: 4px; }
 
   /* ---- Header ---- */
@@ -266,7 +393,7 @@ const isExternal = (href: string) => href.startsWith('http');
   .ph-small a:hover, .ph-dweck-lede a:hover { color: #f0dc9c !important; }
 
   /* ---- Week rows ---- */
-  .ph-week { padding: .85rem .6rem; border-bottom: 1px solid #2c3036; border-radius: 8px; scroll-margin-top: 5rem; transition: background .15s; }
+  .ph-week { padding: .85rem .6rem; border-bottom: 1px solid #2c3036; border-radius: 8px; scroll-margin-top: 6.5rem; transition: background .15s; }
   .ph-week:hover { background: rgba(231, 227, 218, .025); }
   .ph-week-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .8rem; }
   .ph-he { font-size: 1.35rem; font-weight: 700; }
@@ -314,6 +441,30 @@ const isExternal = (href: string) => href.startsWith('http');
   }
   a.ph-note-link:hover { color: #f0dc9c !important; text-decoration-color: #d8b06a; }
 
+  /* ---- Scholarly groups: the two thesis series get their own labelled
+     blocks, set apart from the plain resource rows — small-caps gold label
+     with a fading rule. Used in the This-week card (PhDs + Levy theses) and
+     in the year rows (Levy theses, as visible author–ref lines). ---- */
+  .ph-group { margin-top: 1.15rem; }
+  .ph-group-label {
+    display: flex; align-items: center; gap: .6rem;
+    font-size: .74rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: #d8b06a !important; margin-bottom: .5rem;
+  }
+  .ph-group-label::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, rgba(216, 176, 106, .4), rgba(216, 176, 106, 0));
+  }
+  .ph-group .ph-links { margin-top: 0; }
+  .ph-thesis-group { margin-top: .75rem; }
+  .ph-thesis-lines { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .3rem; }
+  .ph-thesis-lines a {
+    font-size: .97rem; color: #e3c98f !important; text-decoration: underline;
+    text-decoration-color: rgba(216, 176, 106, .45); text-underline-offset: 3px;
+    transition: color .15s, text-decoration-color .15s;
+  }
+  .ph-thesis-lines a:hover { color: #f0dc9c !important; text-decoration-color: #d8b06a; }
+
   /* ---- Series & tool cards ---- */
   .ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .9rem; }
   .ph-card {
@@ -331,7 +482,7 @@ const isExternal = (href: string) => href.startsWith('http');
   .ph-dweck-lede { font-size: 1.08rem; line-height: 1.55; max-width: 46rem; color: #d4cfc5 !important; margin: 0 0 1.1rem; }
   .ph-dweck {
     padding: 1.05rem 1.3rem; border: 1px solid #3a3f45; border-radius: 10px; margin-bottom: .9rem;
-    background: linear-gradient(180deg, #1c1f24, #17191d); scroll-margin-top: 5rem;
+    background: linear-gradient(180deg, #1c1f24, #17191d); scroll-margin-top: 6.5rem;
   }
   .ph-dweck:target { border-color: #d8b06a; box-shadow: 0 0 0 1px #d8b06a; }
   .ph-dweck-sum { font-size: 1rem; line-height: 1.5; color: #b9b4aa !important; margin: .4rem 0 .7rem; }
@@ -342,7 +493,7 @@ const isExternal = (href: string) => href.startsWith('http');
   .ph-thesis-card {
     display: flex; flex-direction: column; padding: 1.1rem 1.25rem 1.2rem;
     border: 1px solid #3a3f45; border-left: 3px solid #b28c46; border-radius: 10px;
-    background: linear-gradient(180deg, #1b2026, #16181c); scroll-margin-top: 5rem;
+    background: linear-gradient(180deg, #1b2026, #16181c); scroll-margin-top: 6.5rem;
     transition: border-color .15s, box-shadow .15s;
   }
   .ph-thesis-card:target { border-color: #d8b06a; box-shadow: 0 0 0 1px #d8b06a; }
@@ -361,6 +512,24 @@ const isExternal = (href: string) => href.startsWith('http');
   .ph-ref-link:hover { color: #d8b06a !important; text-decoration-color: #d8b06a; }
   .ph-thesis-blurb { font-size: 1rem; line-height: 1.5; color: #b9b4aa !important; margin: .45rem 0 .8rem; flex: 1; }
   .ph-thesis-card .ph-links { margin-top: auto; }
+  /* "By parasha" index at the top of the theses section. */
+  .ph-byparasha { font-size: 1rem; line-height: 1.7; color: #b9b4aa !important; max-width: 54rem; margin: -.35rem 0 1.25rem; }
+  .ph-byparasha-label {
+    font-size: .74rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: #d8b06a !important; margin-right: .3rem;
+  }
+  .ph-byparasha a {
+    color: #e3c98f !important; text-decoration: underline;
+    text-decoration-color: rgba(216, 176, 106, .4); text-underline-offset: 3px;
+    transition: color .15s, text-decoration-color .15s;
+  }
+  .ph-byparasha a:hover { color: #f0dc9c !important; text-decoration-color: #d8b06a; }
+  /* The parsha a thesis belongs to, as a chip on its card. */
+  .ph-parsha-chip {
+    display: inline-block; margin-left: .55rem; padding: .13rem .55rem; border-radius: 999px;
+    border: 1px solid #54492c; background: #1b1f23; color: #e3c98f !important;
+    font-size: .76rem; letter-spacing: .05em; white-space: nowrap; vertical-align: .1em;
+  }
 
   /* ---- Year ---- */
   .ph-book h3 { font-size: 1.4rem; font-weight: 600; margin: 1.9rem 0 .35rem; color: #f0e9db !important; }

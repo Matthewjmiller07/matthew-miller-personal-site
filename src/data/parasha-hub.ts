@@ -126,7 +126,7 @@ export const weeks: Week[] = season.weeks.map((w: any) => {
   if (simon) links.push({ kind: 'simon', label: 'Uriel Simon Reader', href: `/uriel-simon/${simon.slug}`, note: simon.title });
 
   const ep = dweckByKey[k];
-  if (ep) links.push({ kind: 'dweck', label: 'Rabbi Dweck on the haftara', href: `/parasha#dweck-${ep.slug}`, note: `“${ep.title},” ${ep.haftara}` });
+  if (ep) links.push({ kind: 'dweck', label: 'Rabbi Dweck on the haftara', href: `#dweck-${ep.slug}`, note: `“${ep.title},” ${ep.haftara}` });
 
   const sheetSlug = sheetSlugByKey[k];
   if (sheetSlug) links.push({ kind: 'sheet', label: 'Parasha sheet', href: `/parasha-sheet/${sheetSlug}` });
@@ -150,7 +150,7 @@ export const weeks: Week[] = season.weeks.map((w: any) => {
     links.push({
       kind: 'thesis',
       label: 'Levy thesis',
-      href: `/parasha#${t.anchor}`,
+      href: `#${t.anchor}`,
       note: `${t.author} on ${t.ref} (${t.year})`,
     });
   }
@@ -184,7 +184,7 @@ export const series = [
   },
   {
     name: 'The Parasha with Rabbi Dweck',
-    href: '/parasha#dweck',
+    href: '#dweck',
     kind: 'Podcast',
     text: "This year Rabbi Joseph Dweck is teaching the haftara: each week's prophetic reading, what it says and how it answers the parasha.",
   },
@@ -214,7 +214,7 @@ export const series = [
   },
   {
     name: 'The History of a Verse',
-    href: '/parasha#levy-theses',
+    href: '#levy-theses',
     kind: 'Theses',
     text: "McGill M.A. theses from B. Barry Levy's stream on the history of Jewish interpretation: one verse, a hundred sources, a whole thesis. Each is attached to its verse in the Mega Bible.",
   },
