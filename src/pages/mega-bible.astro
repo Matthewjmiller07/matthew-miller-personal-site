@@ -1091,10 +1091,61 @@ a.w-gen-link:hover { background:var(--gold); color:#0c0b09; }
 }
 .cb-action:hover { background:rgba(201,162,87,.14); }
 .cb-badge { color:var(--gold); border-color:var(--gold-dim); }
-.lw-mark {
-  background:rgba(201,162,87,.32); border-bottom:2px solid var(--gold);
-  border-radius:.15rem;
+/* Leitwort occurrences get a SOLID gold fill, so they read as their own
+   layer — clearly apart from the part-of-speech underlines, which only tint
+   a border color (.w.pos-noun etc.). The .w.lw-mark form ties that rule's
+   specificity and comes later in the sheet, so the fill and dark text win. */
+.w.lw-mark, .lw-mark {
+  background:var(--gold); color:#221806; font-weight:600;
+  border-bottom:2px solid rgba(34,24,6,.45);
+  border-radius:.18rem; padding:0 .08em;
 }
+.w.lw-mark.lw-flash { animation:lwFlash 1.7s ease; }
+@keyframes lwFlash {
+  0%, 40% { background:#ffeda6; box-shadow:0 0 0 3px rgba(201,162,87,.9); }
+  100% { background:var(--gold); box-shadow:0 0 0 0 rgba(201,162,87,0); }
+}
+.cb-band.cb-flash { animation:cbFlash 1.7s ease; }
+@keyframes cbFlash {
+  0%, 35% { box-shadow:0 0 0 3px var(--gold), 0 0 26px rgba(201,162,87,.45); }
+  100% { box-shadow:0 0 0 0 rgba(201,162,87,0); }
+}
+/* The tally chip is a button: it toggles the band's references list. */
+.cb-tally { cursor:pointer; background:transparent; }
+.cb-tally:hover { background:rgba(201,162,87,.12); }
+.cb-refs { display:flex; flex-wrap:wrap; align-items:center; gap:.35rem; margin:.55rem 0 .15rem; }
+.cb-refs[hidden] { display:none; }
+.cb-refs-label {
+  font-family:var(--sc); font-size:.55rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--muted);
+}
+.cb-ref-chip {
+  font-family:var(--sc); font-size:.6rem; letter-spacing:.05em; color:var(--gold);
+  border:1px solid var(--gold-dim); border-radius:999px; padding:.14rem .55rem;
+  background:rgba(201,162,87,.07); cursor:pointer;
+}
+.cb-ref-chip:hover { background:rgba(201,162,87,.18); }
+/* Chapter-top strip: names the chapter's Commentator's Eye entries up top,
+   with a jump button per entry, so they are found without scrolling. */
+.cb-strip {
+  display:flex; flex-wrap:wrap; align-items:center; gap:.45rem .8rem;
+  margin:0 0 1.2rem; padding:.6rem .95rem;
+  border:1px solid var(--border-hi); border-left:3px solid var(--gold);
+  background:linear-gradient(180deg, rgba(201,162,87,.09), rgba(201,162,87,.03));
+  font-family:var(--display); font-size:.95rem; color:var(--text);
+}
+.cb-strip-kicker {
+  font-family:var(--sc); font-size:.58rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--gold);
+}
+.cb-strip-entry strong { font-weight:600; }
+.cb-strip-jump {
+  font-family:var(--sc); font-size:.6rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--gold); border:1px solid var(--gold-dim); border-radius:999px;
+  background:transparent; padding:.22rem .7rem; cursor:pointer;
+}
+.cb-strip-jump:hover { background:rgba(201,162,87,.14); }
+.mb-page.no-books .cb-strip { display:none; }
 .mb-page.no-books .cb-band, .mb-page.no-books .cb-badge { display:none; }
 .mb-page.no-books .verse-block.cb-covered::before,
 .mb-page.no-books .verse-block.cb-covered::after { display:none; }
@@ -3676,30 +3727,119 @@ function bandHtml(e: any, book: string, ch: number): string {
   const notes = (e.book_notes || '').split('\n').filter((p: string) => p.trim())
     .map((p: string) => `<p>${bookLineHtml(p)}</p>`).join('');
   const url = (e.urls || '').split(';').map((u: string) => u.trim()).filter(Boolean)[0];
-  const tally = (hasFocus && e.words && !/\s/.test(e.words.trim()))
-    ? `<span class="cb-chip cb-tally" data-cb-tally="${escHtml(e.id)}"><span dir="rtl" lang="he">${escHtml(e.words.trim())}</span> · counting…</span>` : '';
+  const lwReady = !!(hasFocus && e.words && !/\s/.test(e.words.trim()));
+  const tally = lwReady
+    ? `<button type="button" class="cb-chip cb-tally" data-cb-tally="${escHtml(e.id)}" aria-expanded="false" title="Show every occurrence in the focus verses"><span dir="rtl" lang="he">${escHtml(e.words.trim())}</span> · counting…</button>` : '';
+  const refs = lwReady ? `<div class="cb-refs" data-cb-refs="${escHtml(e.id)}" hidden></div>` : '';
   return `<div class="cb-kicker">Commentator's Eye</div>`
     + `<div class="cb-name">${escHtml(name)}</div>`
     + `<div class="cb-work">${bookLineHtml(e.book_paper || '')}</div>`
     + `<div class="cb-chips"><span class="cb-chip">${escHtml(book)} ${ch}:${start}–${end}${focusTxt}</span>${tally}</div>`
+    + refs
     + (notes ? `<div class="cb-notes">${notes}</div>` : '')
     + (url ? `<div class="cb-actions"><a class="cb-action" href="${escHtml(url)}" target="_blank" rel="noopener">Read the commentary on Sefaria ↗</a></div>` : '');
 }
 
 // Fill every band's leitwort tally from the .lw-mark spans actually present
-// in the band's focus verses (runs after chapter assembly settles).
+// in the band's focus verses (runs after chapter assembly settles), and build
+// the band's references list from those same spans: one chip per occurrence,
+// each pointing at its own span (which gets a stable id here). The count and
+// the list always come from live matching — never from the row data alone.
 function recountBandTallies() {
   document.querySelectorAll<HTMLElement>('.cb-tally').forEach(el => {
     const band = el.closest('.cb-band') as HTMLElement | null;
     if (!band || !band.dataset.focusStart || !band.dataset.focusEnd) return;
     const fStart = Number(band.dataset.focusStart), fEnd = Number(band.dataset.focusEnd);
     const bk = band.dataset.book, cp = band.dataset.chapter;
-    let n = 0;
+    const entryId = el.dataset.cbTally || '';
+    const marks: { span: HTMLElement, v: number }[] = [];
     for (let v = fStart; v <= fEnd; v++) {
       const blk = document.querySelector(`.verse-block[data-verse-ref="${bk} ${cp}:${v}"]`);
-      n += blk ? blk.querySelectorAll('.lw-mark').length : 0;
+      if (blk) blk.querySelectorAll<HTMLElement>('.lw-mark').forEach(span => marks.push({ span, v }));
     }
-    el.innerHTML = `<span dir="rtl" lang="he">${escHtml(band.dataset.leitwort || '')}</span> ×${n} in vv. ${fStart}–${fEnd}`;
+    el.innerHTML = `<span dir="rtl" lang="he">${escHtml(band.dataset.leitwort || '')}</span> ×${marks.length} in vv. ${fStart}–${fEnd} — see all`;
+    const refs = band.querySelector<HTMLElement>('.cb-refs');
+    if (refs) {
+      refs.innerHTML = '';
+      const lbl = document.createElement('span');
+      lbl.className = 'cb-refs-label';
+      lbl.textContent = 'All references';
+      refs.appendChild(lbl);
+      marks.forEach((mk, i) => {
+        const id = `lwref-${entryId}-${i}`;
+        mk.span.id = id;
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'cb-ref-chip';
+        chip.dataset.target = id;
+        chip.textContent = `${bk} ${cp}:${mk.v}`;
+        refs.appendChild(chip);
+      });
+    }
+  });
+}
+
+// Chapter-top Commentator's Eye strip: names every range entry touching the
+// visible window, with a jump button per entry, so a reader landing on the
+// chapter knows the entries are there without scrolling to find the bands.
+function buildCbStrip(book: string, sc: number, sv: number, ec: number, ev: number): HTMLElement | null {
+  const hits: { e: any, ch: number }[] = [];
+  for (let ch = sc; ch <= ec; ch++) {
+    const minV = ch === sc ? sv : 1;
+    const maxV = ch === ec ? ev : Infinity;
+    rangeEntriesFor(book, ch).forEach(e => {
+      if (Number(e.verse_end) >= minV && Number(e.verse) <= maxV) hits.push({ e, ch });
+    });
+  }
+  if (!hits.length) return null;
+  const strip = document.createElement('div');
+  strip.className = 'cb-strip';
+  let html = `<span class="cb-strip-kicker">${sc === ec ? 'In this chapter' : 'In this reading'} — Commentator's Eye</span>`;
+  hits.forEach(({ e, ch }) => {
+    html += `<span class="cb-strip-entry"><strong>${escHtml(entryCommentator(e))}</strong> on ${escHtml(book)} ${ch}:${Number(e.verse)}–${Number(e.verse_end)}</span>`
+      + `<button type="button" class="cb-strip-jump" data-book="${escHtml(book)}" data-chapter="${ch}" data-verse="${Number(e.verse)}">Jump to it ↓</button>`;
+  });
+  strip.innerHTML = html;
+  return strip;
+}
+
+// Commentator's Eye click wiring — delegated ONCE on the document (bands and
+// strips are rebuilt on every render, and ViewTransitions can re-run this
+// script, so a window flag guards against stacked listeners double-toggling).
+if (!(window as any).__cbWired) {
+  (window as any).__cbWired = true;
+  document.addEventListener('click', (ev) => {
+    const t = ev.target as HTMLElement;
+    const jump = t.closest<HTMLElement>('.cb-strip-jump');
+    if (jump) {
+      const blk = document.querySelector(`.verse-block[data-verse-ref="${jump.dataset.book} ${jump.dataset.chapter}:${jump.dataset.verse}"]`);
+      if (blk) {
+        blk.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const band = blk.querySelector<HTMLElement>('.cb-band') || (blk as HTMLElement);
+        band.classList.remove('cb-flash'); void band.offsetWidth; band.classList.add('cb-flash');
+        setTimeout(() => band.classList.remove('cb-flash'), 1800);
+      }
+      return;
+    }
+    const tally = t.closest<HTMLElement>('.cb-tally');
+    if (tally) {
+      const refs = tally.closest('.cb-band')?.querySelector<HTMLElement>('.cb-refs');
+      if (refs) {
+        const open = refs.hasAttribute('hidden');
+        if (open) refs.removeAttribute('hidden'); else refs.setAttribute('hidden', '');
+        tally.setAttribute('aria-expanded', String(open));
+      }
+      return;
+    }
+    const chip = t.closest<HTMLElement>('.cb-ref-chip');
+    if (chip && chip.dataset.target) {
+      const mark = document.getElementById(chip.dataset.target);
+      if (mark) {
+        mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        mark.classList.remove('lw-flash'); void mark.offsetWidth; mark.classList.add('lw-flash');
+        setTimeout(() => mark.classList.remove('lw-flash'), 1800);
+      }
+    }
   });
 }
 
@@ -5039,8 +5179,14 @@ async function renderRange(
       }
     }
 
-    // Build stats panel then append verses (stats only in non-append mode)
-    if (!appendMode) main.appendChild(buildStatsPanel(stats, devices.length));
+    // Build stats panel then append verses (stats only in non-append mode).
+    // The Commentator's Eye strip rides directly under the stats panel so a
+    // range entry in this chapter is announced at the top, not found by luck.
+    if (!appendMode) {
+      main.appendChild(buildStatsPanel(stats, devices.length));
+      const cbStrip = buildCbStrip(book, sc, sv, ec, ev);
+      if (cbStrip) main.appendChild(cbStrip);
+    }
     verseBlocks.forEach(b => main.appendChild(b));
     markSheetHapax(rangeSheets);
     markGenNames(rangeGen);
