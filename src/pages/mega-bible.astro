@@ -1039,6 +1039,69 @@ a.w-gen-link:hover { background:var(--gold); color:#0c0b09; }
   color:var(--muted); border:1px solid var(--border); vertical-align:middle;
 }
 .mb-page.no-books .verse-books, .mb-page.no-books .books-badge { display:none; }
+
+/* Commentary ranges — a book_paper row with verse_end set comments on a
+   whole passage: a gold bracket runs beside the covered verses in the text
+   column, and a Commentator's Eye band sits at the head of the range. On
+   narrow screens the bracket collapses away; the band and its range chip
+   carry the information. */
+.verse-block.cb-covered { position:relative; padding-left:1.1rem; }
+.verse-block.cb-covered::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+  background:var(--gold); opacity:.8; border-radius:2px;
+}
+.verse-block.cb-range-mid::before, .verse-block.cb-range-end::before { top:-1.45rem; }
+.verse-block.cb-range-start::after, .verse-block.cb-range-end::after {
+  content:''; position:absolute; left:0; width:.75rem; height:3px;
+  background:var(--gold); opacity:.8;
+}
+.verse-block.cb-range-start::after { top:0; }
+.verse-block.cb-range-end::after { bottom:0; }
+.cb-band {
+  margin:0 0 1rem; padding:.95rem 1.1rem 1.05rem; direction:ltr;
+  background:linear-gradient(180deg, rgba(201,162,87,.10), rgba(201,162,87,.04));
+  border:1px solid var(--border-hi); border-top:3px solid var(--gold);
+}
+.cb-kicker {
+  font-family:var(--sc); font-size:.55rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--gold);
+}
+.cb-name {
+  font-family:var(--display); font-size:1.35rem; font-weight:600;
+  line-height:1.25; margin:.15rem 0 .1rem; color:var(--text);
+}
+.cb-work { font-family:var(--display); font-size:.85rem; font-style:italic; color:var(--muted); }
+.cb-chips { display:flex; flex-wrap:wrap; gap:.4rem; margin:.55rem 0 .1rem; }
+.cb-chip {
+  font-family:var(--sc); font-size:.58rem; letter-spacing:.08em; color:var(--muted);
+  border:1px solid var(--border-hi); padding:.12rem .5rem; border-radius:999px;
+}
+.cb-tally { color:var(--gold); border-color:var(--gold-dim); font-size:.7rem; }
+.cb-notes { margin-top:.5rem; }
+.cb-notes p {
+  font-family:var(--display); font-size:.92rem; line-height:1.65;
+  color:var(--text); margin:0 0 .55rem;
+}
+.cb-notes p:last-child { margin-bottom:0; }
+.cb-actions { margin-top:.65rem; }
+.cb-action {
+  display:inline-block; font-family:var(--sc); font-size:.62rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); border:1px solid var(--gold-dim);
+  padding:.35rem .8rem; text-decoration:none;
+}
+.cb-action:hover { background:rgba(201,162,87,.14); }
+.cb-badge { color:var(--gold); border-color:var(--gold-dim); }
+.lw-mark {
+  background:rgba(201,162,87,.32); border-bottom:2px solid var(--gold);
+  border-radius:.15rem;
+}
+.mb-page.no-books .cb-band, .mb-page.no-books .cb-badge { display:none; }
+.mb-page.no-books .verse-block.cb-covered::before,
+.mb-page.no-books .verse-block.cb-covered::after { display:none; }
+@media (max-width: 700px) {
+  .verse-block.cb-covered { padding-left:0; }
+  .verse-block.cb-covered::before, .verse-block.cb-covered::after { display:none; }
+}
 .dev-browser-mycomment {
   color:var(--text); font-size:.78rem; margin-top:.3rem;
   padding-top:.3rem; border-top:1px solid var(--faint); line-height:1.55;
@@ -3544,7 +3607,7 @@ async function fetchDevices(book: string): Promise<any[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/literary_bible?select=id,book,chapter,verse,device,words,sources,urls,notes,my_comments,book_paper,book_pages,book_notes&book=eq.${encodeURIComponent(book)}`,
+      `${SUPABASE_URL}/rest/v1/literary_bible?select=id,book,chapter,verse,verse_end,focus_verse,focus_verse_end,device,words,sources,urls,notes,my_comments,book_paper,book_pages,book_notes&book=eq.${encodeURIComponent(book)}`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     if (!r.ok) return [];
@@ -3558,7 +3621,7 @@ async function fetchDevices(book: string): Promise<any[]> {
 
 function booksFor(book: string, ch: number, v: number): any[] {
   return (booksCache.get(book) || [])
-    .filter(d => String(d.chapter) === String(ch) && String(d.verse) === String(v));
+    .filter(d => !d.verse_end && String(d.chapter) === String(ch) && String(d.verse) === String(v));
 }
 
 // Escaped text with any bare URL turned into a link.
@@ -3583,14 +3646,119 @@ function bookEntryHtml(e: any): string {
     + `</div>`;
 }
 
+// ── Commentary ranges ─────────────────────────────────────────────────────
+// A book_paper row with verse_end set is a RANGE entry: it comments on a
+// whole passage, not a single verse. At the head of its range it renders as
+// a full-width "Commentator's Eye" band; every verse it covers gets a
+// continuous gold bracket in the text column; and when the row also names a
+// focus sub-range (focus_verse..focus_verse_end) and a single-word leitwort
+// in `words`, each occurrence of that word inside the focus verses is
+// highlighted in the text and tallied in the band. Rows without verse_end
+// keep the plain Books & Papers treatment (booksFor above excludes them).
+function rangeEntriesFor(book: string, ch: number): any[] {
+  return (booksCache.get(book) || [])
+    .filter(d => d.verse_end && String(d.chapter) === String(ch));
+}
+
+function entryCommentator(e: any): string {
+  const src = (e.sources || '').split(';').map((s: string) => s.trim()).filter(Boolean)[0];
+  if (src) return src;
+  const bp = (e.book_paper || '').trim();
+  const m = bp.match(/^([^,]+?)(?:\s+on\s|,)/i);
+  return (m ? m[1] : bp).trim();
+}
+
+function bandHtml(e: any, book: string, ch: number): string {
+  const name = entryCommentator(e);
+  const start = Number(e.verse), end = Number(e.verse_end);
+  const hasFocus = !!(e.focus_verse && e.focus_verse_end);
+  const focusTxt = hasFocus ? ` · focus vv. ${e.focus_verse}–${e.focus_verse_end}` : '';
+  const notes = (e.book_notes || '').split('\n').filter((p: string) => p.trim())
+    .map((p: string) => `<p>${bookLineHtml(p)}</p>`).join('');
+  const url = (e.urls || '').split(';').map((u: string) => u.trim()).filter(Boolean)[0];
+  const tally = (hasFocus && e.words && !/\s/.test(e.words.trim()))
+    ? `<span class="cb-chip cb-tally" data-cb-tally="${escHtml(e.id)}"><span dir="rtl" lang="he">${escHtml(e.words.trim())}</span> · counting…</span>` : '';
+  return `<div class="cb-kicker">Commentator's Eye</div>`
+    + `<div class="cb-name">${escHtml(name)}</div>`
+    + `<div class="cb-work">${bookLineHtml(e.book_paper || '')}</div>`
+    + `<div class="cb-chips"><span class="cb-chip">${escHtml(book)} ${ch}:${start}–${end}${focusTxt}</span>${tally}</div>`
+    + (notes ? `<div class="cb-notes">${notes}</div>` : '')
+    + (url ? `<div class="cb-actions"><a class="cb-action" href="${escHtml(url)}" target="_blank" rel="noopener">Read the commentary on Sefaria ↗</a></div>` : '');
+}
+
+// Fill every band's leitwort tally from the .lw-mark spans actually present
+// in the band's focus verses (runs after chapter assembly settles).
+function recountBandTallies() {
+  document.querySelectorAll<HTMLElement>('.cb-tally').forEach(el => {
+    const band = el.closest('.cb-band') as HTMLElement | null;
+    if (!band || !band.dataset.focusStart || !band.dataset.focusEnd) return;
+    const fStart = Number(band.dataset.focusStart), fEnd = Number(band.dataset.focusEnd);
+    const bk = band.dataset.book, cp = band.dataset.chapter;
+    let n = 0;
+    for (let v = fStart; v <= fEnd; v++) {
+      const blk = document.querySelector(`.verse-block[data-verse-ref="${bk} ${cp}:${v}"]`);
+      n += blk ? blk.querySelectorAll('.lw-mark').length : 0;
+    }
+    el.innerHTML = `<span dir="rtl" lang="he">${escHtml(band.dataset.leitwort || '')}</span> ×${n} in vv. ${fStart}–${fEnd}`;
+  });
+}
+
 // (Re)build a verse block's Books & Papers badge + section from booksCache.
 function renderVerseBooks(block: HTMLElement, book: string, ch: number, v: number) {
   block.querySelector('.books-badge')?.remove();
   block.querySelector('.verse-books')?.remove();
+  block.querySelector('.cb-band')?.remove();
+  block.classList.remove('cb-covered', 'cb-range-start', 'cb-range-mid', 'cb-range-end');
+
+  // Commentary ranges covering this verse: band at the head of the range,
+  // bracket classes on every covered verse, leitwort marks in the focus.
+  const ranges = rangeEntriesFor(book, ch)
+    .filter(e => v >= Number(e.verse) && v <= Number(e.verse_end));
+  let bandPlaced = false;
+  ranges.forEach(e => {
+    block.classList.add('cb-covered');
+    block.classList.add(v === Number(e.verse) ? 'cb-range-start'
+      : v === Number(e.verse_end) ? 'cb-range-end' : 'cb-range-mid');
+    if (v === Number(e.verse)) {
+      const band = document.createElement('div');
+      band.className = 'cb-band';
+      band.dataset.book = book;
+      band.dataset.chapter = String(ch);
+      if (e.focus_verse && e.focus_verse_end) {
+        band.dataset.focusStart = String(e.focus_verse);
+        band.dataset.focusEnd = String(e.focus_verse_end);
+      }
+      if (e.words) band.dataset.leitwort = e.words.trim();
+      band.innerHTML = bandHtml(e, book, ch);
+      block.insertBefore(band, block.firstChild);
+      bandPlaced = true;
+    }
+    if (e.focus_verse && e.focus_verse_end
+        && v >= Number(e.focus_verse) && v <= Number(e.focus_verse_end)
+        && e.words && !/\s/.test(e.words.trim())) {
+      const lw = e.words.trim();
+      block.querySelectorAll<HTMLElement>('.w').forEach(span => {
+        const bare = (span.dataset.word || '').replace(/[.,;:!?()"“”]/g, '');
+        if (bare === lw || (bare.length > lw.length && bare.endsWith(lw)
+            && /^[והבכלמש]+$/.test(bare.slice(0, bare.length - lw.length)))) {
+          span.classList.add('lw-mark');
+        }
+      });
+    }
+  });
+  if (ranges.length) setTimeout(recountBandTallies, 0);
+
   const books = booksFor(book, ch, v);
-  if (!books.length) return;
+  if (!books.length && !bandPlaced) return;
 
   const ref = block.querySelector('.verse-ref');
+  if (bandPlaced) {
+    const cbBadge = document.createElement('span');
+    cbBadge.className = 'books-badge cb-badge';
+    cbBadge.textContent = "Commentator's Eye";
+    ref?.insertBefore(cbBadge, ref.querySelector('.bk-add'));
+  }
+  if (!books.length) return;
   const badge = document.createElement('span');
   badge.className = 'books-badge';
   badge.textContent = books.length === 1 ? 'Book/Paper' : `Books & Papers ×${books.length}`;
