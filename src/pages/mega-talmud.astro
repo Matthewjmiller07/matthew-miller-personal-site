@@ -1,5 +1,18 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import structure from '../data/talmud-structure.json';
+import insights from '../data/talmud-insights.json';
+
+const lafMods = import.meta.glob('../data/laf-yomi/*.json', { eager: true });
+const lafByDaf = {};
+for (const mod of Object.values(lafMods)) {
+  const issue = mod.default ?? mod;
+  lafByDaf[issue.daf] = {
+    date: issue.date, pdf: issue.pdf,
+    daf_summary: issue.daf_summary, jokes: issue.jokes,
+  };
+}
+const ATTACH = { laf: lafByDaf, insights };
 ---
 
 <Layout
@@ -10,6 +23,62 @@ import Layout from '../layouts/Layout.astro';
 <style is:global>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Cormorant+SC:wght@400;500;600&family=Frank+Ruhl+Libre:wght@400;500;700&display=swap');
 body:has(.mega-talmud) { background:#0c0b09 !important; }
+</style>
+
+<style is:global>
+/* ——— Mega Talmud browser (client-rendered: global styles, mtb- prefix) ——— */
+.mtb-intro { font-family:'Cormorant Garamond',Georgia,serif; font-size:1.08rem; line-height:1.55; color:#8a7a5a; max-width:44rem; margin:0 0 1.2rem; }
+.mtb-controls { display:flex; flex-wrap:wrap; gap:.7rem 1rem; align-items:flex-end; margin-bottom:.55rem; }
+.mtb-controls label { font-family:'Cormorant SC',Georgia,serif; font-size:.64rem; letter-spacing:.22em; text-transform:uppercase; color:#c9a257; display:flex; flex-direction:column; gap:.35rem; }
+.mtb-controls select { font-family:'Cormorant Garamond',Georgia,serif; font-size:1.05rem; color:#261f14; background:#faf5ea; border:1px solid rgba(201,162,87,.5); padding:.42rem .6rem; min-width:11rem; }
+.mtb-nav { display:flex; gap:.5rem; }
+.mtb-nav button, .mtb-amud button { font-family:'Cormorant SC',Georgia,serif; font-size:.68rem; letter-spacing:.16em; text-transform:uppercase; color:#c9a257; background:transparent; border:1px solid rgba(201,162,87,.4); padding:.5rem .9rem; cursor:pointer; }
+.mtb-nav button:hover:not(:disabled), .mtb-amud button:hover { border-color:#c9a257; color:#e8d4aa; }
+.mtb-nav button:disabled { opacity:.35; cursor:default; }
+.mtb-amud { display:flex; gap:.5rem; margin-left:auto; }
+.mtb-legend { font-family:'Cormorant Garamond',Georgia,serif; font-size:.95rem; color:#8a7a5a; margin:0 0 1.1rem; }
+.mtb-panel { background:#faf5ea; color:#261f14; border:1px solid rgba(201,162,87,.45); padding:1.6rem 1.5rem 2rem; }
+.mtb-status { font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; font-size:1.1rem; color:#6f6350; padding:.6rem 0; }
+.mtb-status.err { color:#9c3d1e; font-style:normal; }
+.mtb-badges { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1.1rem; }
+.mtb-badge { font-family:'Cormorant SC',Georgia,serif; font-size:.64rem; letter-spacing:.16em; text-transform:uppercase; background:#8c6b2e; color:#fffdf6; padding:.34rem .75rem; text-decoration:none; }
+.mtb-badge.alt { background:transparent; color:#8c6b2e; border:1px solid rgba(140,107,46,.55); }
+a.mtb-badge:hover { filter:brightness(1.12); }
+.mtb-summary { background:#f3ecd9; border:1px solid rgba(140,107,46,.25); padding:1rem 1.2rem; font-family:'Cormorant Garamond',Georgia,serif; font-size:1.1rem; line-height:1.6; margin-bottom:1.4rem; }
+.mtb-summary .lbl { font-family:'Cormorant SC',Georgia,serif; font-size:.62rem; letter-spacing:.26em; color:#8c6b2e; text-transform:uppercase; display:block; margin-bottom:.45rem; }
+.mtb-insight { background:#fffdf6; border:1px solid rgba(140,107,46,.4); border-left:4px solid #8c6b2e; padding:1.15rem 1.3rem; margin-bottom:1.4rem; }
+.mtb-insight-head { display:flex; flex-wrap:wrap; gap:.5rem .9rem; align-items:baseline; margin-bottom:.55rem; }
+.mtb-insight-title { font-family:'Cormorant SC',Georgia,serif; font-size:.72rem; letter-spacing:.22em; text-transform:uppercase; color:#8c6b2e; }
+.mtb-insight-date { font-family:'Cormorant Garamond',Georgia,serif; font-size:1.02rem; color:#6f6350; }
+.mtb-insight-list { list-style:none; margin:.4rem 0 .8rem; padding:0; }
+.mtb-insight-list li { padding:.42rem 0; border-bottom:1px dashed rgba(140,107,46,.25); font-family:'Cormorant Garamond',Georgia,serif; font-size:1.08rem; line-height:1.45; }
+.mtb-insight-list li:last-child { border-bottom:none; }
+.mtb-insight-list .k { font-family:'Cormorant SC',Georgia,serif; font-size:.62rem; letter-spacing:.18em; text-transform:uppercase; color:#a08c66; display:block; }
+.mtb-jev { display:inline-block; font-family:'Cormorant SC',Georgia,serif; font-size:.62rem; letter-spacing:.12em; background:#8c6b2e; color:#fffdf6; border-radius:999px; padding:.14rem .55rem; margin-left:.5rem; vertical-align:.18em; }
+.mtb-pdfbtn { display:inline-block; font-family:'Cormorant SC',Georgia,serif; font-size:.68rem; letter-spacing:.18em; text-transform:uppercase; color:#fffdf6; background:#8c6b2e; padding:.55rem 1.05rem; text-decoration:none; font-weight:600; }
+.mtb-pdfbtn:hover { filter:brightness(1.12); }
+.mtb-joke { background:#fffdf6; border:1px solid rgba(140,107,46,.3); padding:1.25rem 1.35rem; margin-bottom:1.05rem; scroll-margin-top:1.5rem; }
+.mtb-joke:target { border-color:#8c6b2e; box-shadow:0 0 0 3px rgba(194,165,88,.35); }
+.mtb-joke .ctx { font-family:'Cormorant SC',Georgia,serif; font-size:.66rem; letter-spacing:.18em; text-transform:uppercase; color:#8c6b2e; margin-bottom:.65rem; }
+.mtb-joke img { display:block; max-height:180px; max-width:min(320px,100%); margin:0 auto .9rem; }
+.mtb-joke .setup { font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; font-size:1.06rem; line-height:1.55; color:#6f6350; margin:0 0 .55rem; }
+.mtb-joke .punch { font-family:'Cormorant Garamond',Georgia,serif; font-weight:600; font-size:1.28rem; line-height:1.45; margin:0 0 .65rem; }
+.mtb-joke .speaker { font-family:'Cormorant SC',Georgia,serif; font-size:.68rem; letter-spacing:.2em; text-transform:uppercase; color:#8c6b2e; }
+.mtb-joke .links { margin-top:.85rem; padding-top:.75rem; border-top:1px dashed rgba(140,107,46,.3); display:flex; flex-wrap:wrap; gap:.45rem 1.3rem; font-size:.92rem; font-family:'Cormorant Garamond',Georgia,serif; }
+.mtb-joke .links a { color:#8c6b2e; text-decoration:none; border-bottom:1px solid rgba(140,107,46,.5); }
+.mtb-joke .links a:hover { color:#261f14; }
+.mtb-joke .seg-label { color:#6f6350; font-size:.88rem; width:100%; }
+.mtb-dafhead { font-family:'Cormorant Garamond',Georgia,serif; font-weight:400; font-size:1.7rem; margin:1.8rem 0 .6rem; color:#261f14; }
+.mtb-seg { padding:.95rem 1.1rem; border-left:3px solid transparent; border-bottom:1px solid rgba(140,107,46,.22); scroll-margin-top:1.5rem; }
+.mtb-seg:target { animation:mtbSegFlash 1.8s ease; border-left-color:#8c6b2e; background:#fdf3d7; }
+@keyframes mtbSegFlash { 0% { background:#f3d98b; } 100% { background:#fdf3d7; } }
+.mtb-seg .ref { font-family:'Cormorant SC',Georgia,serif; font-size:.62rem; letter-spacing:.22em; text-transform:uppercase; color:#a08c66; margin-bottom:.4rem; }
+.mtb-seg .he { font-family:'Frank Ruhl Libre','Noto Serif Hebrew',serif; direction:rtl; text-align:right; font-size:1.2rem; line-height:1.9; margin:0 0 .45rem; }
+.mtb-seg .en { font-family:'Cormorant Garamond',Georgia,serif; font-size:1.04rem; line-height:1.55; color:#3d3423; margin:0; }
+.mtb-seg .chips { margin-bottom:.55rem; display:flex; flex-wrap:wrap; gap:.4rem; }
+.mtb-chip { font-family:'Cormorant SC',Georgia,serif; font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; background:#8c6b2e; color:#fffdf6; padding:.3rem .65rem; text-decoration:none; }
+.mtb-chip:hover { filter:brightness(1.12); }
+.mtb-foot { margin-top:1.6rem; font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; color:#6f6350; font-size:.98rem; }
 </style>
 
 <style>
@@ -52,6 +121,33 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
     <h1>Mega <em>Talmud</em></h1>
     <p class="lede">The daily daf, mined from every maggid shiur — the insights worth keeping, the highlights worth sharing, and one laugh a day.</p>
 
+    <div class="section" id="browser">
+      <h2>The Talmud browser</h2>
+      <p class="mtb-intro">Every daf in Shas, pulled live from Sefaria. Where a day's learning left something behind — a Daily Reader insight, a Laf Yomi laugh sheet — it hangs on the daf itself, anchored to the sugya it belongs to.</p>
+      <div class="mtb-controls">
+        <label>Masechet
+          <select id="mtb-tractate" aria-label="Tractate"></select>
+        </label>
+        <label>Daf
+          <select id="mtb-daf" aria-label="Daf"></select>
+        </label>
+        <div class="mtb-nav">
+          <button id="mtb-prev" type="button">← Prev</button>
+          <button id="mtb-next" type="button">Next →</button>
+        </div>
+        <div class="mtb-amud" id="mtb-amud"></div>
+      </div>
+      <p class="mtb-legend">In the daf picker: 😂 marks a daf with a Laf Yomi sheet attached · 💡 marks one with a Daily Reader insight.</p>
+      <div class="mtb-panel">
+        <div class="mtb-status" id="mtb-status">Loading the daf…</div>
+        <div id="mtb-attach"></div>
+        <div id="mtb-jokes"></div>
+        <h3 class="mtb-dafhead" id="mtb-dafhead"></h3>
+        <div id="mtb-segs"></div>
+        <p class="mtb-foot">Talmud text: Sefaria (Steinsaltz), loaded live. Insights are the day's Daily Reader daf sections with their Jev scores; Laf Yomi jokes are mined verbatim from the day's shiur transcripts on alldaf.org, and their 🎧 links open the shiur audio at the moment the joke begins.</p>
+      </div>
+    </div>
+
     <div class="section">
       <h2>Laf Yomi — the daily laugh sheet</h2>
       <div class="card">
@@ -61,7 +157,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
         <a class="dl" href="/laf-yomi/2026-10-20/" style="background:transparent; color:var(--gold); border:1px solid var(--border-hi); margin-left:.5rem">Read with the daf →</a>
         <div class="meta" style="margin-top:.6rem">October 20, 2026 · 2 pages</div>
       </div>
-      <p class="coming">Yesterday's sheets archive here as the days pile up.</p>
+      <p class="coming">Yesterday's sheets archive here as the days pile up — and every sheet is in the browser above, on its daf.</p>
     </div>
 
     <div class="section">
@@ -70,8 +166,223 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
         <h3>From today's shiurim</h3>
         <p>Key insights from Bornstein, Elefant, Rothstein and more — matched to source sheets, with new sheets proposed where the daf demands one.</p>
       </div>
-      <p class="coming">The per-daf insight feed is being built — check back soon.</p>
+      <p class="coming">The Daily Reader's per-daf insights live in the browser above — look for the 💡 on a daf.</p>
     </div>
   </div>
 </main>
+
+<script define:vars={{ ATTACH, STRUCTURE: structure }}>
+  const DQ = /\u05D0[\u0591-\u05C7]*\u05DC[\u0591-\u05C7]*\u05D4[\u0591-\u05C7]*\u05D9[\u0591-\u05C7]*\u05DD/g;
+  const dq = (t) => (typeof t === 'string' ? t.replace(DQ, (m) => m.replace('\u05D4', '\u05E7')) : t);
+  const $ = (id) => document.getElementById(id);
+  const els = { tr: $('mtb-tractate'), daf: $('mtb-daf'), prev: $('mtb-prev'), next: $('mtb-next'),
+                amud: $('mtb-amud'), status: $('mtb-status'), attach: $('mtb-attach'),
+                jokes: $('mtb-jokes'), head: $('mtb-dafhead'), segs: $('mtb-segs') };
+  const tract = (title) => STRUCTURE.find((t) => t.title === title);
+  const refOf = (title, daf) => `${title} ${daf}`;
+  const attachOf = (title, daf) => {
+    const r = refOf(title, daf);
+    return { laf: ATTACH.laf[r] || null, ins: ATTACH.insights[r] || null };
+  };
+
+  const params = new URLSearchParams(location.search);
+  let cur = { title: 'Bekhorot', daf: 32 };
+  if (params.get('tractate') && tract(params.get('tractate'))) {
+    cur.title = params.get('tractate');
+    const d = parseInt(params.get('daf'), 10);
+    if (d >= 2 && d <= tract(cur.title).lastDaf) cur.daf = d;
+  }
+
+  function buildTractates() {
+    const groups = new Map();
+    for (const t of STRUCTURE) {
+      if (!groups.has(t.seder)) groups.set(t.seder, []);
+      groups.get(t.seder).push(t);
+    }
+    els.tr.innerHTML = '';
+    for (const [seder, ts] of groups) {
+      const og = document.createElement('optgroup');
+      og.label = seder.replace('Seder ', '');
+      for (const t of ts) {
+        const o = document.createElement('option');
+        o.value = t.title;
+        o.textContent = t.heTitle ? `${t.title} · ${t.heTitle}` : t.title;
+        og.appendChild(o);
+      }
+      els.tr.appendChild(og);
+    }
+    els.tr.value = cur.title;
+  }
+
+  function buildDafim() {
+    const t = tract(cur.title);
+    els.daf.innerHTML = '';
+    for (let d = 2; d <= t.lastDaf; d++) {
+      const { laf, ins } = attachOf(cur.title, d);
+      const o = document.createElement('option');
+      o.value = d;
+      o.textContent = `${d}${d === t.lastDaf && t.lastAmud === 'a' ? ' (a only)' : ''}${laf ? ' 😂' : ''}${ins ? ' 💡' : ''}`;
+      els.daf.appendChild(o);
+    }
+    els.daf.value = cur.daf;
+    els.prev.disabled = cur.daf <= 2;
+    els.next.disabled = cur.daf >= t.lastDaf;
+  }
+
+  function segJokesMap(laf) {
+    const m = {};
+    (laf ? laf.jokes : []).forEach((j, i) => {
+      (j.seg_refs || []).forEach((n) => { (m[n] = m[n] || []).push(i); });
+    });
+    return m;
+  }
+
+  function renderInsight(ins) {
+    if (!ins) return '';
+    const items = ins.sections.map((s) => {
+      const pill = typeof s.score === 'number'
+        ? `<span class="mtb-jev" title="${(s.score_note || '').replace(/"/g, '&quot;')}">Jev ${s.score.toFixed(2)}</span>` : '';
+      return `<li><span class="k"></span><span class="h"></span>${pill}</li>`;
+    });
+    const wrap = document.createElement('aside');
+    wrap.className = 'mtb-insight';
+    wrap.innerHTML = `
+      <div class="mtb-insight-head">
+        <span class="mtb-insight-title">💡 Daf insight</span>
+        <span class="mtb-insight-date">From the Daily Reader · ${ins.date_str}${ins.parsha ? ` · Parshat ${ins.parsha}` : ''}</span>
+      </div>
+      <ul class="mtb-insight-list">${items.join('')}</ul>
+      ${ins.pdf ? `<a class="mtb-pdfbtn" href="${ins.pdf}">Open that day's Daily Reader (PDF) ↓</a>` : ''}`;
+    wrap.querySelectorAll('.mtb-insight-list li').forEach((li, i) => {
+      li.querySelector('.k').textContent = ins.sections[i].kicker || '';
+      li.querySelector('.h').textContent = ins.sections[i].heading || '';
+    });
+    return wrap;
+  }
+
+  function renderJokes(laf, ref) {
+    els.jokes.innerHTML = '';
+    if (!laf) return;
+    if (laf.daf_summary) {
+      const sum = document.createElement('div');
+      sum.className = 'mtb-summary';
+      sum.innerHTML = '<span class="lbl">On this daf — Laf Yomi</span>';
+      const body = document.createElement('span');
+      body.textContent = laf.daf_summary;
+      sum.appendChild(body);
+      els.jokes.appendChild(sum);
+    }
+    const h = document.createElement('h3');
+    h.className = 'mtb-dafhead';
+    h.style.marginTop = '0.4rem';
+    h.textContent = `The jokes — Laf Yomi · ${ref}`;
+    els.jokes.appendChild(h);
+    laf.jokes.forEach((j, i) => {
+      const art = document.createElement('article');
+      art.className = 'mtb-joke';
+      art.id = `mtb-joke-${i + 1}`;
+      art.innerHTML = `
+        ${j.context ? `<div class="ctx"></div>` : ''}
+        ${j.img ? `<img src="${j.img}" alt="" loading="lazy" />` : ''}
+        <p class="setup"><span style="font-style:normal; color:#8c6b2e">${i + 1}.</span> <span class="setup-t"></span></p>
+        <p class="punch"></p>
+        <div class="speaker"></div>
+        <div class="links">
+          ${j.seg_refs && j.seg_refs.length ? `<a href="#mtb-seg-${j.seg_refs[0]}">📖 In the daf — ${ref} ${j.seg_amud || ''}</a>` : ''}
+          ${j.shiur_audio_ts ? `<a href="${j.shiur_audio_ts}" target="_blank" rel="noopener">🎧 Hear it in the shiur — ${j.shiur_speaker || ''} · ${j.ts || ''}</a>` : ''}
+          ${j.shiur_page ? `<a href="${j.shiur_page}" target="_blank" rel="noopener">Shiur page ↗</a>` : ''}
+          ${j.seg_label ? `<span class="seg-label"></span>` : ''}
+        </div>`;
+      if (j.context) art.querySelector('.ctx').textContent = j.context;
+      art.querySelector('.setup-t').textContent = j.setup || '';
+      art.querySelector('.punch').textContent = j.punchline || '';
+      art.querySelector('.speaker').textContent = j.speaker ? `— ${j.speaker}` : '';
+      const lbl = art.querySelector('.seg-label');
+      if (lbl) lbl.textContent = j.seg_label;
+      els.jokes.appendChild(art);
+    });
+  }
+
+  async function load() {
+    const { laf, ins } = attachOf(cur.title, cur.daf);
+    const ref = refOf(cur.title, cur.daf);
+    els.status.className = 'mtb-status';
+    els.status.textContent = `Loading ${ref}…`;
+    els.attach.innerHTML = ''; els.jokes.innerHTML = ''; els.segs.innerHTML = '';
+    els.head.textContent = ''; els.amud.innerHTML = '';
+    const badges = [];
+    if (ins) badges.push('<a class="mtb-badge" href="#mtb-insight-panel">💡 Daily Reader insight</a>');
+    if (laf) badges.push(`<a class="mtb-badge" href="#mtb-joke-1">😂 Laf Yomi — ${laf.jokes.length} jokes</a>`);
+    if (laf && laf.pdf) badges.push(`<a class="mtb-badge alt" href="${laf.pdf}">Laf Yomi PDF ↓</a>`);
+    els.attach.innerHTML = badges.length ? `<div class="mtb-badges">${badges.join('')}</div>` : '';
+    if (ins) {
+      const panel = renderInsight(ins);
+      panel.id = 'mtb-insight-panel';
+      els.attach.appendChild(panel);
+    }
+    renderJokes(laf, ref);
+    try {
+      const url = `https://www.sefaria.org/api/texts/${cur.title.replace(/ /g, '_')}.${cur.daf}?lang=bi&context=0`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Sefaria returned ${res.status}`);
+      const d = await res.json();
+      const heParts = d.he || [], enParts = d.text || [];
+      const bySeg = segJokesMap(laf);
+      const frag = document.createDocumentFragment();
+      const amudim = new Set();
+      let n = 0;
+      heParts.forEach((hePart, pi) => {
+        const enPart = enParts[pi] || [];
+        const amud = `${cur.daf}${pi === 0 ? 'a' : pi === 1 ? 'b' : pi}`;
+        const count = Math.min((hePart || []).length, enPart.length);
+        for (let i = 0; i < count; i++) {
+          amudim.add(amud);
+          const sec = document.createElement('section');
+          sec.className = 'mtb-seg';
+          sec.id = `mtb-seg-${n}`;
+          sec.dataset.amud = amud;
+          const chips = (bySeg[n] || []).map((ji) =>
+            `<a class="mtb-chip" href="#mtb-joke-${ji + 1}">😂 Joke ${ji + 1} is on this</a>`).join('');
+          sec.innerHTML = `
+            <div class="ref">${ref} ${amud} · segment ${n + 1}</div>
+            ${chips ? `<div class="chips">${chips}</div>` : ''}
+            <p class="he"></p>
+            <p class="en"></p>`;
+          sec.querySelector('.he').innerHTML = dq(hePart[i]);
+          sec.querySelector('.en').innerHTML = enParts[pi][i];
+          frag.appendChild(sec);
+          n++;
+        }
+      });
+      els.segs.appendChild(frag);
+      els.head.textContent = `The daf — ${ref} (Sefaria)`;
+      els.status.textContent = n ? '' : 'No text came back from Sefaria for this daf.';
+      for (const a of amudim) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = a;
+        b.addEventListener('click', () => {
+          const target = els.segs.querySelector(`[data-amud="${a}"]`);
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        els.amud.appendChild(b);
+      }
+    } catch (e) {
+      els.status.className = 'mtb-status err';
+      els.status.textContent = `Could not load ${ref} from Sefaria — check your connection and try another daf.`;
+    }
+    const p = new URLSearchParams(location.search);
+    p.set('tractate', cur.title); p.set('daf', cur.daf);
+    history.replaceState(null, '', `${location.pathname}?${p.toString()}`);
+  }
+
+  els.tr.addEventListener('change', () => { cur.title = els.tr.value; cur.daf = 2; buildDafim(); load(); });
+  els.daf.addEventListener('change', () => { cur.daf = parseInt(els.daf.value, 10); buildDafim(); load(); });
+  els.prev.addEventListener('click', () => { if (cur.daf > 2) { cur.daf--; buildDafim(); load(); } });
+  els.next.addEventListener('click', () => { if (cur.daf < tract(cur.title).lastDaf) { cur.daf++; buildDafim(); load(); } });
+
+  buildTractates();
+  buildDafim();
+  load();
+</script>
 </Layout>
