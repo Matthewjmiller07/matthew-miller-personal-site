@@ -1,0 +1,140 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+export function getStaticPaths() {
+  const mods = import.meta.glob('../../data/laf-yomi/*.json', { eager: true });
+  return Object.entries(mods).map(([path, mod]) => {
+    const date = path.split('/').pop().replace('.json', '');
+    return { params: { date }, props: { issue: mod.default ?? mod } };
+  });
+}
+
+const { issue } = Astro.props;
+const dateLong = new Date(issue.date + 'T12:00:00').toLocaleDateString('en-US', {
+  weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+});
+
+// segment n -> [joke indices anchored there]
+const segJokes = {};
+issue.jokes.forEach((j, i) => {
+  (j.seg_refs || []).forEach((n) => {
+    (segJokes[n] = segJokes[n] || []).push(i);
+  });
+});
+---
+
+<Layout
+  title={`Laf Yomi · ${issue.daf} — the daf, with the jokes anchored`}
+  description={`The daily Laf Yomi laugh sheet for ${issue.daf}, read against the daf itself: every joke linked to the sugya it riffs on and to the moment in the shiur where it was told.`}
+>
+
+<style is:global>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Cormorant+SC:wght@400;500;600&family=Frank+Ruhl+Libre:wght@400;500;700&display=swap');
+body:has(.laf-yomi) { background:#faf5ea !important; }
+</style>
+
+<style>
+.laf-yomi {
+  --bg:#faf5ea; --surface:#fffdf6; --surface2:#f3ecd9;
+  --border:rgba(140,107,46,.25); --border-hi:rgba(140,107,46,.55);
+  --text:#261f14; --muted:#6f6350; --faint:#a08c66;
+  --gold:#8c6b2e; --gold-light:#c2a558;
+  --heb:'Frank Ruhl Libre','Noto Serif Hebrew',serif;
+  --display:'Cormorant Garamond',Georgia,serif;
+  --sc:'Cormorant SC',Georgia,serif;
+  background:var(--bg); color:var(--text); min-height:100vh;
+  padding:3rem 1rem 5rem;
+}
+.wrap { max-width:880px; margin:0 auto; }
+.back { font-family:var(--sc); font-size:.68rem; letter-spacing:.24em; text-transform:uppercase; color:var(--muted); text-decoration:none; }
+.back:hover { color:var(--gold); }
+.kicker { font-family:var(--sc); font-size:.72rem; letter-spacing:.34em; color:var(--gold); text-transform:uppercase; margin-top:1.2rem; }
+h1 { font-family:var(--display); font-weight:300; font-size:clamp(2.4rem, 6vw, 3.8rem); line-height:1.02; margin:.5rem 0 .4rem; }
+h1 em { font-style:italic; color:var(--gold); }
+.dateline { font-family:var(--display); font-size:1.15rem; color:var(--muted); margin:0 0 1.4rem; }
+.dl { display:inline-block; font-family:var(--sc); font-size:.7rem; letter-spacing:.2em; text-transform:uppercase; color:#fffdf6; background:var(--gold); padding:.55rem 1.1rem; text-decoration:none; font-weight:600; }
+.dl:hover { filter:brightness(1.12); }
+.dl.ghost { background:transparent; color:var(--gold); border:1px solid var(--border-hi); }
+h2.sec { font-family:var(--sc); font-size:.8rem; letter-spacing:.26em; text-transform:uppercase; color:var(--gold); margin:2.6rem 0 1rem; font-weight:500; border-bottom:1px solid var(--border-hi); padding-bottom:.5rem; }
+.summary { background:var(--surface2); border:1px solid var(--border); padding:1.1rem 1.3rem; font-family:var(--display); font-size:1.12rem; line-height:1.6; }
+.summary .lbl { font-family:var(--sc); font-size:.65rem; letter-spacing:.26em; color:var(--gold); text-transform:uppercase; display:block; margin-bottom:.5rem; }
+
+.joke { background:var(--surface); border:1px solid var(--border); padding:1.3rem 1.4rem; margin-bottom:1.1rem; scroll-margin-top:1.5rem; }
+.joke:target { border-color:var(--gold); box-shadow:0 0 0 3px rgba(194,165,88,.35); }
+.joke .ctx { font-family:var(--sc); font-size:.68rem; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); margin-bottom:.7rem; }
+.joke img { display:block; max-height:180px; max-width:min(320px,100%); margin:0 auto .9rem; }
+.joke .setup { font-family:var(--display); font-style:italic; font-size:1.08rem; line-height:1.55; color:var(--muted); margin:0 0 .6rem; }
+.joke .punch { font-family:var(--display); font-weight:600; font-size:1.3rem; line-height:1.45; margin:0 0 .7rem; }
+.joke .speaker { font-family:var(--sc); font-size:.7rem; letter-spacing:.2em; text-transform:uppercase; color:var(--gold); }
+.joke .links { margin-top:.9rem; padding-top:.8rem; border-top:1px dashed var(--border); display:flex; flex-wrap:wrap; gap:.5rem 1.4rem; font-size:.92rem; }
+.joke .links a { color:var(--gold); text-decoration:none; border-bottom:1px solid var(--border-hi); }
+.joke .links a:hover { color:var(--text); }
+.joke .seg-label { color:var(--muted); font-size:.88rem; width:100%; }
+
+.seg { padding:1rem 1.2rem; border-left:3px solid transparent; border-bottom:1px solid var(--border); scroll-margin-top:1.5rem; }
+.seg:target { animation:segFlash 1.8s ease; border-left-color:var(--gold); background:#fdf3d7; }
+@keyframes segFlash { 0% { background:#f3d98b; } 100% { background:#fdf3d7; } }
+.seg .ref { font-family:var(--sc); font-size:.64rem; letter-spacing:.22em; text-transform:uppercase; color:var(--faint); margin-bottom:.45rem; }
+.seg .he { font-family:var(--heb); direction:rtl; text-align:right; font-size:1.22rem; line-height:1.9; margin:0 0 .5rem; }
+.seg .en { font-family:var(--display); font-size:1.06rem; line-height:1.55; color:#3d3423; margin:0; }
+.seg .chips { margin-bottom:.6rem; display:flex; flex-wrap:wrap; gap:.4rem; }
+.chip { font-family:var(--sc); font-size:.64rem; letter-spacing:.14em; text-transform:uppercase; background:var(--gold); color:#fffdf6; padding:.32rem .7rem; text-decoration:none; }
+.chip:hover { filter:brightness(1.12); }
+.foot { margin-top:2.5rem; font-family:var(--display); font-style:italic; color:var(--muted); font-size:1rem; }
+</style>
+
+<main class="laf-yomi">
+  <div class="wrap">
+    <a class="back" href="/mega-talmud">← Mega Talmud</a>
+    <div class="kicker">Laf Yomi · the daily laugh sheet, anchored to the daf</div>
+    <h1>{issue.daf.split(' ')[0]} <em>{issue.daf.split(' ').slice(1).join(' ')}</em></h1>
+    <p class="dateline">{dateLong} · every joke linked to the sugya it riffs on — and to the moment in the shiur where it was told.</p>
+    <a class="dl" href={issue.pdf}>Download the 2-page PDF</a>
+    <a class="dl ghost" href="#the-daf" style="margin-left:.6rem">Skip to the daf ↓</a>
+
+    {issue.daf_summary && (
+      <div class="summary" style="margin-top:1.6rem">
+        <span class="lbl">On today's daf</span>
+        <span dir="auto">{issue.daf_summary}</span>
+      </div>
+    )}
+
+    <h2 class="sec">The jokes</h2>
+    {issue.jokes.map((j, i) => (
+      <article class="joke" id={`joke-${i + 1}`}>
+        {j.context && <div class="ctx" dir="auto">{j.context}</div>}
+        {j.img && <img src={j.img} alt="" loading="lazy" />}
+        <p class="setup" dir="auto"><span style="font-style:normal; color:var(--gold)">{i + 1}.</span> {j.setup}</p>
+        <p class="punch" dir="auto">{j.punchline}</p>
+        <div class="speaker">— {j.speaker}</div>
+        <div class="links">
+          {j.seg_refs?.length > 0 && (
+            <a href={`#seg-${j.seg_refs[0]}`}>📖 In the daf — {issue.daf} {j.seg_amud}</a>
+          )}
+          <a href={j.shiur_audio_ts} target="_blank" rel="noopener">🎧 Hear it in the shiur — {j.shiur_speaker} · {j.ts}</a>
+          <a href={j.shiur_page} target="_blank" rel="noopener">Shiur page ↗</a>
+          {j.seg_label && <span class="seg-label" dir="auto">{j.seg_label}</span>}
+        </div>
+      </article>
+    ))}
+
+    <h2 class="sec" id="the-daf">The daf — {issue.daf} (Sefaria)</h2>
+    {issue.segments.map((s) => (
+      <section class="seg" id={`seg-${s.n}`}>
+        <div class="ref">{issue.daf} {s.amud} · segment {s.n + 1}</div>
+        {segJokes[s.n] && (
+          <div class="chips">
+            {segJokes[s.n].map((ji) => (
+              <a class="chip" href={`#joke-${ji + 1}`}>😂 Joke {ji + 1} is on this</a>
+            ))}
+          </div>
+        )}
+        <p class="he" set:html={s.he}></p>
+        <p class="en" set:html={s.en}></p>
+      </section>
+    ))}
+
+    <p class="foot">Talmud text: Sefaria (Steinsaltz). Jokes mined verbatim from the day's shiur transcripts on alldaf.org; timestamps are the moment each joke begins in its shiur. The 🎧 links open the shiur audio at that moment.</p>
+  </div>
+</main>
+</Layout>
