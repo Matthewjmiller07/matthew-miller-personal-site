@@ -1,0 +1,807 @@
+---
+import Layout from '../layouts/Layout.astro';
+import '../styles/mega-reader.css';
+import toc from '../data/mega-rambam/toc.json';
+
+const sections = toc.books.flatMap((b) => b.sections);
+const chapters = sections.reduce((a, s) => a + s.chapters, 0);
+// The traditional 83 sets of hilchot: not the introduction, and not Seder Tefillot (the Rambam's siddur).
+const hilchot = toc.books.slice(1).flatMap((b) => b.sections).filter((s) => s.name !== 'The Order of Prayer').length;
+---
+
+<Layout
+  title="Mega Maimonides"
+  description="The Rambam's Mishneh Torah, all fourteen books, in Hebrew and English, with the Ra'avad's objections flagged, the Talmud behind every halakhah, the classic commentaries, Rambam Yomi on one- and three-chapter tracks, and siyum progress."
+>
+
+<style is:global>
+/* ── RAMBAM-SPECIFIC ── */
+.mm-title .mr-check { margin:0 0 0 .6rem; align-self:center; }
+.mm-title.learned .mr-check { background:var(--accent); border-color:var(--accent); color:var(--bg); }
+.mm-para.mr-hasagah { box-shadow:inset 3px 0 0 var(--warn); }
+.mm-para.mr-hasagah.selected { box-shadow:inset 3px 0 0 var(--gold); }
+.mm-page[data-sages="0"] .mm-para.mr-hasagah:not(.selected) { box-shadow:none; }
+.mm-page[data-sages="0"] .mm-badge.raavad { display:none; }
+.mm-badge.raavad { border-color:var(--warn); color:var(--warn); }
+.mm-badge.xl { border-color:var(--border-hi); color:var(--accent); text-decoration:none; }
+.mm-badge.xl:hover { border-color:var(--accent); }
+.mm-xl { font-family:var(--sc); font-size:.54rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); text-decoration:none; border:1px solid var(--border); padding:.02rem .35rem; white-space:nowrap; }
+.mm-xl:hover { border-color:var(--accent); }
+.mr-strip { display:flex; flex-wrap:wrap; gap:.3rem; align-items:center; margin:-.2rem 0 1.1rem; }
+.mr-strip .mm-voices-label { margin-right:.2rem; }
+.mr-strip a { text-decoration:none; }
+.mr-track { font-family:var(--sc); font-size:.58rem; letter-spacing:.12em; }
+a.mm-chip { text-decoration:none; }
+.mm-sedarim h3 small { white-space:nowrap; }
+</style>
+
+<div class="mm-page" id="mm-page" data-theme="night" data-lang="both" data-layout="stack" data-focus="0" data-sages="1">
+  <div class="mm-bar">
+    <button class="mm-btn mm-icon-btn mm-only-mobile" id="mm-toc-toggle" aria-label="Contents">☰</button>
+    <span class="mm-logo">MEGA MAIMONIDES</span>
+    <select class="mm-sel mm-tr-sel" id="mm-tractate" aria-label="Hilchot"></select>
+    <select class="mm-sel mm-ch-sel" id="mm-chapter" aria-label="Chapter"></select>
+    <button class="mm-btn primary" id="mm-today-btn" title="Open today's Rambam Yomi">Today</button>
+    <div class="mm-seg mm-hide-mobile" role="group" aria-label="Language">
+      <button class="mm-btn" data-lang="he">עב</button>
+      <button class="mm-btn on" data-lang="both">עב + En</button>
+      <button class="mm-btn" data-lang="en">En</button>
+    </div>
+    <button class="mm-btn mm-hide-mobile" id="mm-layout" title="Hebrew and English stacked or side by side">Stacked</button>
+    <div class="mm-seg" role="group" aria-label="Text size">
+      <button class="mm-btn mm-icon-btn" id="mm-smaller" aria-label="Smaller text">A−</button>
+      <button class="mm-btn mm-icon-btn" id="mm-bigger" aria-label="Larger text">A+</button>
+    </div>
+    <span class="mm-spacer"></span>
+    <button class="mm-btn on" id="mm-sages" title="Flag every halakhah the Ra'avad objects to">Ra'avad</button>
+    <button class="mm-btn" id="mm-focus" title="Hide the sources panel">Focus</button>
+    <button class="mm-btn mm-icon-btn" id="mm-theme" title="Night / parchment">◐</button>
+    <button class="mm-btn mm-icon-btn mm-only-mobile" id="mm-panel-toggle" aria-label="Sources">✎</button>
+  </div>
+
+  <div class="mm-today" id="mm-today"></div>
+
+  <div class="mm-body">
+    <aside class="mm-sidebar" id="mm-sidebar">
+      <input class="mm-search" id="mm-search" type="search" placeholder="Find hilchot… / הלכות" autocomplete="off" />
+      <nav class="mm-toc" id="mm-toc" aria-label="Contents"></nav>
+    </aside>
+
+    <main class="mm-main" id="mm-main">
+      <div class="mm-main-inner" id="mm-content">
+        <div class="mm-welcome">
+          <div class="mm-crumbs"><span>Mishneh Torah</span><span>משנה תורה · יד החזקה</span></div>
+          <h1>Mega Maimonides</h1>
+          <p>The Rambam's Mishneh Torah — all of Jewish law in fourteen books — in Hebrew and English from Sefaria. Every halakhah the Ra'avad objects to is flagged in the margin, each one shows the Gemara and Mishnah it rests on (and opens them in the Mega Talmud and Mega Mishnah), and the panel holds the Maggid Mishneh, Kesef Mishneh, Lechem Mishneh and the rest. Follow Rambam Yomi on the one- or three-chapter track and mark chapters as you go.</p>
+          <div class="mm-stat-row">
+            <div class="mm-stat"><b>14</b><span>books</span></div>
+            <div class="mm-stat"><b>{hilchot}</b><span>sets of hilchot</span></div>
+            <div class="mm-stat"><b>{chapters.toLocaleString('en-US')}</b><span>chapters</span></div>
+            <div class="mm-stat" id="mr-stat-mine" hidden><b></b><span>you've learned</span></div>
+          </div>
+          <div class="mm-sedarim">
+            {toc.books.map((b) => (
+              <div>
+                <h3><span>{b.name.replace(/^Sefer /, '')}<small>{b.gloss}</small></span><span class="he">{b.he}</span></h3>
+                {b.sections.map((s) => (
+                  <button data-t={sections.indexOf(s)} data-ch="1"><span>{s.name}</span><span class="he">{s.he.replace(/^הלכות /, '')}</span></button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="mm-panel" id="mm-panel">
+      <div class="mm-panel-head">
+        <h2 id="mm-panel-title">Sources</h2>
+        <button class="mm-btn mm-icon-btn mm-only-mobile" id="mm-panel-close" aria-label="Close">✕</button>
+      </div>
+      <div class="mm-panel-body" id="mm-panel-body"></div>
+    </aside>
+    <div class="mm-scrim" id="mm-scrim"></div>
+  </div>
+</div>
+
+<script>
+import tocData from '../data/mega-rambam/toc.json';
+import { megaLink } from '../components/mega/links';
+
+const SEFARIA = 'https://www.sefaria.org';
+
+type Section = { name: string; he: string; book: string; chapters: number; sefer: string; seferHe: string; idx: number };
+const BOOKS = tocData.books;
+const SECTIONS: Section[] = BOOKS.flatMap((b) => b.sections.map((s) => ({ ...s, sefer: b.name, seferHe: b.he, idx: 0 })));
+SECTIONS.forEach((s, i) => { s.idx = i; });
+const TOTAL_CHAPTERS = SECTIONS.reduce((a, s) => a + s.chapters, 0);
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const bySlug = (s: string) => SECTIONS.find((x) => slug(x.name) === slug(s));
+const byName = (s: string) => SECTIONS.find((x) => x.name === s);
+const shortHe = (s: Section) => s.he.replace(/^הלכות /, '');
+
+// Commentaries shown first, in this order; anything else Sefaria links follows alphabetically.
+const COMM_ORDER = [
+  'Hasagot HaRaavad', 'Maggid Mishneh', 'Kesef Mishneh', 'Lechem Mishneh', 'Mishneh LaMelech', 'Migdal Oz', 'Hagahot Maimoniyot',
+  'Radbaz', 'Or Sameach', 'Avodat HaMelekh', 'Yad Peshutah', 'Steinsaltz',
+];
+const TAB_ORDER = ['Commentary', 'Talmud', 'Mishnah', 'Tanakh', 'Halakhah', 'Midrash', 'Other'];
+const isRaavad = (l: any) => /ra'?avad/i.test(`${l.collectiveTitle?.en || ''} ${l.index_title || ''}`);
+
+/* ───────────────────────── storage ───────────────────────── */
+const store = {
+  get(k: string, d: any = null) { try { const v = localStorage.getItem('mr:' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k: string, v: any) { try { localStorage.setItem('mr:' + k, JSON.stringify(v)); } catch {} },
+};
+
+/* ───────────────────────── state ───────────────────────── */
+const state: any = {
+  sec: null as Section | null,
+  ch: 0,
+  paras: [] as { he: string; en: string }[],
+  enVersion: '',
+  heVersion: '',
+  linkSummary: new Map<number, any>(),
+  selected: null as number | null,
+  panelLinks: null as any[] | null,
+  panelTab: 'Commentary',
+  spotlight: null as null | { h: number; src: string },
+  // Today's chapters on each track: [{ sec, ch }]
+  today: { 1: [], 3: [] } as Record<string, { sec: Section; ch: number }[]>,
+  todayLabel: { 1: '', 3: '' } as Record<string, string>,
+  // learned: { "Repentance": [1, 2] }
+  learned: store.get('learned', {}) as Record<string, number[]>,
+};
+
+const $ = (id: string) => document.getElementById(id)!;
+const page = $('mm-page');
+const esc = (s: any) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+const encodeRef = (ref: string) => encodeURIComponent(ref.replace(/ /g, '_')).replace(/%3A/gi, '.').replace(/%2C/gi, ',');
+const strip = (s: string) => s.replace(/[֑-ׇ]/g, '');
+
+/* ───────────────────────── gematria ───────────────────────── */
+function gem(n: number, marks = true) {
+  const ones = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+  const tens = ['', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ'];
+  const hundreds = ['', 'ק', 'ר', 'ש'];
+  let s = '';
+  n %= 1000;
+  while (n >= 400) { s += 'ת'; n -= 400; }
+  if (n >= 100) { s += hundreds[Math.floor(n / 100)]; n %= 100; }
+  if (n === 15) s += 'טו'; else if (n === 16) s += 'טז'; else s += tens[Math.floor(n / 10)] + ones[n % 10];
+  if (!marks) return s;
+  return s.length > 1 ? `${s.slice(0, -1)}״${s.slice(-1)}` : `${s}׳`;
+}
+
+/* ───────────────────────── learned progress ───────────────────────── */
+const learnedIn = (s: Section) => state.learned[s.name] || [];
+const isLearned = (s: Section, ch: number) => learnedIn(s).includes(ch);
+function setLearned(s: Section, chs: number[], on: boolean) {
+  const cur = new Set(learnedIn(s));
+  chs.forEach((c) => (on ? cur.add(c) : cur.delete(c)));
+  if (cur.size) state.learned[s.name] = [...cur].sort((a, b) => a - b);
+  else delete state.learned[s.name];
+  store.set('learned', state.learned);
+}
+const totalLearned = () => SECTIONS.reduce((a, s) => a + learnedIn(s).length, 0);
+const track = () => String(store.get('prefs', {}).track || '1');
+
+/* ───────────────────────── Sefaria ───────────────────────── */
+const ALLOWED = new Set(['B', 'STRONG', 'I', 'EM', 'SMALL', 'BIG', 'BR', 'SUP', 'SPAN', 'U']);
+const DROP = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'TEMPLATE', 'NOSCRIPT', 'SVG', 'MATH']);
+function sanitize(html: string) {
+  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+  const walk = (node: Node): string => {
+    let out = '';
+    node.childNodes.forEach((c) => {
+      if (c.nodeType === 3) { out += esc(c.textContent); return; }
+      if (c.nodeType !== 1) return;
+      const el = c as Element;
+      if (DROP.has(el.tagName.toUpperCase())) return;
+      const inner = walk(el);
+      if (!ALLOWED.has(el.tagName)) { out += inner; return; }
+      const tag = el.tagName.toLowerCase();
+      if (tag === 'br') { out += '<br>'; return; }
+      const cls = el.getAttribute('class') || '';
+      const keep = /footnote-marker|footnote/.test(cls) ? ` class="${cls.includes('marker') ? 'footnote-marker' : 'footnote'}"` : '';
+      out += `<${tag}${keep}>${inner}</${tag}>`;
+    });
+    return out;
+  };
+  return walk(doc.body.firstChild!);
+}
+const flat = (x: any): string[] => Array.isArray(x) ? x.flatMap(flat) : (x == null ? [] : [String(x)]);
+const textCache = new Map<string, any>();
+
+async function fetchChapter(s: Section, ch: number) {
+  const ref = `${s.book} ${ch}`;
+  if (textCache.has(ref)) return textCache.get(ref);
+  const cached = store.get('t:' + ref);
+  if (cached) { textCache.set(ref, cached); return cached; }
+  const r = await fetch(`${SEFARIA}/api/texts/${encodeRef(ref)}?context=0&commentary=0&pad=0`);
+  if (!r.ok) throw new Error(`Sefaria ${r.status}`);
+  const j = await r.json();
+  if (j.error) throw new Error(j.error);
+  const he = flat(j.he);
+  const en = flat(j.text);
+  const n = Math.max(he.length, en.length);
+  const data = {
+    paras: Array.from({ length: n }, (_, i) => ({ he: he[i] || '', en: en[i] || '' })),
+    enVersion: en.length ? j.versionTitle || '' : '',
+    heVersion: j.heVersionTitle || '',
+  };
+  textCache.set(ref, data);
+  // Keep a copy so chapters already opened still read offline.
+  try { localStorage.setItem('mr:t:' + ref, JSON.stringify(data)); } catch { /* quota — fine */ }
+  return data;
+}
+
+const linkCache = new Map<string, any[]>();
+async function fetchLinks(ref: string, withText: boolean) {
+  const k = `${withText ? 1 : 0}:${ref}`;
+  if (linkCache.has(k)) return linkCache.get(k)!;
+  try {
+    const r = await fetch(`${SEFARIA}/api/links/${encodeRef(ref)}?with_text=${withText ? 1 : 0}`);
+    const j = r.ok ? await r.json() : [];
+    const out = Array.isArray(j) ? j : [];
+    linkCache.set(k, out);
+    return out;
+  } catch { return []; }
+}
+
+/** Which halakhah of the open chapter a link hangs on (0 if none). */
+function linkHalakhah(l: any, s: Section, ch: number) {
+  const prefix = `${s.book} ${ch}:`;
+  const anchors = [l.anchorRef, ...(l.anchorRefExpanded || [])].map(String);
+  for (const a of anchors) if (a.startsWith(prefix)) { const m = a.slice(prefix.length).match(/^(\d+)/); if (m) return Number(m[1]); }
+  return 0;
+}
+const linkGroup = (l: any) => l.collectiveTitle?.en || l.index_title || l.category || 'Other';
+const isBavli = (l: any) => l.category === 'Talmud' && /^\D+ \d+[ab]/.test(String(l.ref)) && !/^Jerusalem/.test(String(l.ref));
+const tabOf = (l: any) => {
+  const c = l.category === 'Quoting Commentary' ? 'Commentary' : l.category;
+  return TAB_ORDER.includes(c) ? c : 'Other';
+};
+
+/** Per-halakhah counts for the badges, from one chapter-level links call. */
+async function loadLinkSummary(s: Section, ch: number) {
+  const links = await fetchLinks(`${s.book} ${ch}`, false);
+  if (state.sec !== s || state.ch !== ch) return;
+  const sum = new Map<number, any>();
+  for (const l of links) {
+    const h = linkHalakhah(l, s, ch);
+    if (!h) continue;
+    if (!sum.has(h)) sum.set(h, { raavad: 0, bavli: new Set<string>(), yer: 0, mishnah: new Set<string>(), tanakh: 0, sa: 0, comm: new Set<string>() });
+    const x = sum.get(h);
+    if (isRaavad(l)) x.raavad++;
+    if (isBavli(l)) x.bavli.add(String(l.ref).replace(/-.*$/, ''));
+    else if (l.category === 'Talmud') x.yer++;
+    else if (l.category === 'Mishnah') x.mishnah.add(String(l.ref).replace(/-.*$/, ''));
+    else if (l.category === 'Tanakh') x.tanakh++;
+    else if (l.category === 'Halakhah' && /^Shulchan Arukh/.test(String(l.ref))) x.sa++;
+    else if (l.category === 'Commentary') x.comm.add(linkGroup(l).replace(/ on .*$/, ''));
+  }
+  state.linkSummary = sum;
+  renderBadges();
+  renderStrip();
+  if (!state.selected) renderPanel();
+}
+
+/* ───────────────────────── Rambam Yomi ───────────────────────── */
+/** "Mishneh Torah, Repentance 4-6" → its chapters; a range across sets of hilchot runs to the end of the first. */
+function chaptersOf(ref: string) {
+  const out: { sec: Section; ch: number }[] = [];
+  const m = ref.match(/^Mishneh Torah, (.+?) (\d+)(?::\d+)?(?:-(?:Mishneh Torah, )?(.*?)\s*(\d+)(?::\d+)?)?$/);
+  if (!m) return out;
+  const sec = byName(m[1]);
+  if (!sec) return out;
+  const from = Number(m[2]);
+  const otherSec = m[3] ? byName(m[3].trim()) : null;
+  const to = m[4] && !otherSec ? Number(m[4]) : otherSec ? sec.chapters : from;
+  for (let c = from; c <= to; c++) out.push({ sec, ch: c });
+  if (otherSec && m[4]) for (let c = 1; c <= Number(m[4]); c++) out.push({ sec: otherSec, ch: c });
+  return out;
+}
+
+async function loadToday() {
+  const cached = store.get('today');
+  const todayKey = new Date().toDateString();
+  let items: any[] = cached?.day === todayKey ? cached.items : [];
+  if (!items.length) {
+    try {
+      const r = await fetch(`${SEFARIA}/api/calendars?diaspora=1`);
+      const j = await r.json();
+      items = (j.calendar_items || []).filter((i: any) => /^Daily Rambam/.test(i.title?.en || ''))
+        .map((i: any) => ({ title: i.title.en, ref: i.ref || '', label: i.displayValue?.en || i.ref || '' }));
+      if (items.length) store.set('today', { day: todayKey, items });
+    } catch { /* offline */ }
+  }
+  for (const i of items) {
+    const k = /3/.test(i.title) ? '3' : '1';
+    state.today[k] = chaptersOf(i.ref);
+    state.todayLabel[k] = i.label;
+  }
+  renderToday();
+  renderToc(($('mm-search') as HTMLInputElement).value);
+  if (state.sec) renderTitleBanner();
+}
+const isToday = (s: Section, ch: number) => state.today[track()].some((x: any) => x.sec === s && x.ch === ch);
+
+/* ───────────────────────── rendering ───────────────────────── */
+const HE_MONTH: Record<string, string> = {
+  Tishri: 'תשרי', Heshvan: 'חשון', Kislev: 'כסלו', Tevet: 'טבת', Shevat: 'שבט', 'Adar I': 'אדר א׳', Adar: 'אדר',
+  'Adar II': 'אדר ב׳', Nisan: 'ניסן', Iyar: 'אייר', Sivan: 'סיון', Tamuz: 'תמוז', Av: 'אב', Elul: 'אלול',
+};
+function hebDate() {
+  try {
+    const parts = new Intl.DateTimeFormat('en-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric' }).formatToParts(new Date());
+    const get = (k: string) => parts.find((p) => p.type === k)?.value ?? '';
+    return `${gem(Number(get('day')))} ${HE_MONTH[get('month')] || get('month')} ${gem(Number(get('year')))}`;
+  } catch { return ''; }
+}
+
+function renderToday() {
+  const done = totalLearned();
+  const pct = (done / TOTAL_CHAPTERS) * 100;
+  const siyumim = SECTIONS.filter((s) => learnedIn(s).length === s.chapters).length;
+  const tr = track();
+  const next = nextUnlearned();
+  const chip = (k: string) => state.todayLabel[k]
+    ? `<button class="mm-chip${k === tr ? ' say' : ''}" data-go="today" data-track="${k}" title="${k === '1' ? 'One chapter a day' : 'Three chapters a day'}">${k === '1' ? '1 chapter' : '3 chapters'} · ${esc(state.todayLabel[k].replace(/^Mishneh Torah, /, ''))}</button>`
+    : '';
+  $('mm-today').innerHTML = `
+    <span class="mm-today-date">${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}<span class="he">${esc(hebDate())}</span></span>
+    ${state.todayLabel[1] || state.todayLabel[3] ? '<span class="mr-track">Rambam Yomi</span>' : ''}${chip('1')}${chip('3')}
+    ${next && done ? `<button class="mm-chip" data-go="next">Continue · ${esc(next.sec.name)} ${next.ch}</button>` : ''}
+    <span class="mm-loc mm-prog" title="Chapters you have marked learned">
+      <span class="mm-prog-bar"><i style="width:${pct.toFixed(2)}%"></i></span>
+      <span>${done.toLocaleString()} / ${TOTAL_CHAPTERS.toLocaleString()} chapters${siyumim ? ` · ${siyumim} siyum${siyumim > 1 ? 'im' : ''}` : ''}</span>
+    </span>`;
+}
+
+/** First unlearned chapter after the last one you marked, in Mishneh Torah order. */
+function nextUnlearned() {
+  const last = store.get('lastLearned', null) as null | { s: string; ch: number };
+  let si = last ? Math.max(0, SECTIONS.findIndex((s) => s.name === last.s)) : 0;
+  let ch = last ? last.ch + 1 : 1;
+  for (let guard = 0; guard < 1200; guard++) {
+    const s = SECTIONS[si];
+    if (ch > s.chapters) { ch = 1; si = (si + 1) % SECTIONS.length; continue; }
+    if (!isLearned(s, ch)) return { sec: s, ch };
+    ch++;
+  }
+  return null;
+}
+
+function renderToc(filter = '') {
+  const q = filter.trim().toLowerCase();
+  const strippedQ = strip(q);
+  const html = BOOKS.map((b) => {
+    const secs = SECTIONS.filter((s) => s.sefer === b.name)
+      .filter((s) => !q || s.name.toLowerCase().includes(q) || s.he.includes(strippedQ) || b.name.toLowerCase().includes(q) || b.he.includes(strippedQ) || b.gloss.toLowerCase().includes(q));
+    if (!secs.length) return '';
+    const items = secs.map((s) => {
+      const done = learnedIn(s).length;
+      const cur = state.sec === s;
+      const cells = Array.from({ length: s.chapters }, (_, i) => {
+        const c = i + 1;
+        const cls = [cur && state.ch === c ? 'current' : '', isLearned(s, c) ? 'full' : '', isToday(s, c) ? 'today' : ''].join(' ');
+        return `<button class="mm-cell ${cls}" data-t="${s.idx}" data-ch="${c}" title="Chapter ${c}${isLearned(s, c) ? ' · learned' : ''}">${gem(c, false)}</button>`;
+      }).join('');
+      return `<details class="mm-tr${cur ? ' current' : ''}"${cur || q ? ' open' : ''}>
+        <summary>${esc(s.name)}<span class="he">${esc(shortHe(s))}</span><span class="pct${done === s.chapters ? ' done' : ''}">${done ? (done === s.chapters ? '✓' : Math.floor((done / s.chapters) * 100) + '%') : ''}</span></summary>
+        <div class="mm-grid">${cells}</div>
+      </details>`;
+    }).join('');
+    const open = q || (state.sec ? state.sec.sefer === b.name : b.name === 'Sefer HaMadda');
+    return `<details class="mm-seder"${open ? ' open' : ''}><summary>${esc(b.name)}<span class="gloss">${esc(b.gloss)}</span><span class="he">${esc(b.he)}</span></summary><div class="kids">${items}</div></details>`;
+  }).join('');
+  $('mm-toc').innerHTML = html || '<div class="mm-toc-empty">Nothing matches.</div>';
+}
+
+function fillSelects() {
+  const sSel = $('mm-tractate') as HTMLSelectElement;
+  if (!sSel.options.length) {
+    sSel.innerHTML = '<option value="">Hilchot…</option>' + BOOKS.map((b) => `<optgroup label="${esc(b.name)} · ${esc(b.he)}">${
+      SECTIONS.filter((s) => s.sefer === b.name).map((s) => `<option value="${s.idx}">${esc(s.name)} · ${esc(shortHe(s))}</option>`).join('')
+    }</optgroup>`).join('');
+  }
+  sSel.value = state.sec ? String(state.sec.idx) : '';
+  const chSel = $('mm-chapter') as HTMLSelectElement;
+  chSel.innerHTML = state.sec ? Array.from({ length: state.sec.chapters }, (_, i) => `<option value="${i + 1}">פרק ${gem(i + 1)}</option>`).join('') : '<option>—</option>';
+  chSel.disabled = !state.sec;
+  if (state.sec) chSel.value = String(state.ch);
+}
+
+const WELCOME = $('mm-content').innerHTML;
+function renderWelcome() {
+  $('mm-content').innerHTML = WELCOME;
+  const done = totalLearned();
+  const mine = document.getElementById('mr-stat-mine');
+  if (mine && done) { mine.hidden = false; mine.querySelector('b')!.textContent = done.toLocaleString(); }
+  $('mm-panel-title').textContent = 'About';
+  $('mm-panel-body').innerHTML = `<div class="mm-intro">
+    <p><b>Read.</b> Pick a set of hilchot on the left or press <b>Today</b> for the day's Rambam Yomi. The chips above switch between the one-chapter and three-chapter tracks.</p>
+    <p><b>Ra'avad.</b> Halakhot that Rabbi Avraham ben David objects to carry an amber rule in the margin and a badge; tap it for his hasagah and the defence of the Maggid Mishneh and Kesef Mishneh. The Ra'avad button turns the flags off.</p>
+    <p><b>Sources.</b> Each halakhah shows the Gemara and Mishnah it rests on; those open in the Mega Talmud and Mega Mishnah. Tap a halakhah for all its commentaries, verses and later codes here.</p>
+    <p><b>Progress.</b> The square beside each chapter title marks it learned. Progress lives in this browser.</p>
+    <p><b>Keys.</b> <span class="mm-kbd">j</span> / <span class="mm-kbd">k</span> next and previous halakhah, <span class="mm-kbd">x</span> mark the chapter learned, <span class="mm-kbd">[</span> / <span class="mm-kbd">]</span> previous and next chapter.</p>
+  </div>`;
+}
+
+function neighbours() {
+  const s: Section = state.sec;
+  const prev = state.ch > 1 ? { s, ch: state.ch - 1 } : s.idx > 0 ? { s: SECTIONS[s.idx - 1], ch: SECTIONS[s.idx - 1].chapters } : null;
+  const next = state.ch < s.chapters ? { s, ch: state.ch + 1 } : s.idx < SECTIONS.length - 1 ? { s: SECTIONS[s.idx + 1], ch: 1 } : null;
+  return { prev, next };
+}
+
+function renderChapter() {
+  const s: Section = state.sec;
+  const blocks = state.paras.map((p: { he: string; en: string }, i: number) => {
+    const h = i + 1;
+    const cls = ['mm-para', state.selected === h ? 'selected' : ''].join(' ');
+    return `<div class="${cls}" data-p="${h}" id="h${h}">
+      <div class="mm-num"><span class="he">${gem(h, false)}</span><span class="ar">${h}</span>${shareBtn({ h }, 'this halakhah')}</div>
+      <div class="mm-he" lang="he" dir="rtl">${sanitize(p.he).replace(/\(([א-ת\s'"״׳]{2,24})\)/g, '<span class="mm-cite">($1)</span>')}</div>
+      ${p.en ? `<div class="mm-en">${sanitize(p.en)}</div>` : ''}
+      <div class="mm-badges" data-badges="${h}"></div>
+    </div>`;
+  }).join('');
+  const { prev, next } = neighbours();
+  const learned = isLearned(s, state.ch);
+  $('mm-content').innerHTML = `
+    <div class="mm-crumbs"><span>${esc(s.sefer)}</span><span>${esc(s.name)}</span><span>Chapter ${state.ch} of ${s.chapters}</span></div>
+    <div class="mm-title${learned ? ' learned' : ''}" id="mr-title"><h1>${esc(s.name)} ${state.ch}</h1><span class="he">${esc(s.he)} פרק ${gem(state.ch)}<button class="mm-check mr-check" data-check="1" title="Mark chapter learned (x)" aria-label="Mark chapter learned">✓</button></span></div>
+    <div id="mr-banner"></div>
+    <div class="mr-strip" id="mr-strip"></div>
+    ${blocks || '<div class="mm-empty">Sefaria has no text for this chapter.</div>'}
+    <div class="mm-perek-actions">
+      <button class="mm-btn" id="mm-mark-perek">${learned ? 'Unmark this chapter' : 'Mark chapter learned'}</button>
+      <a class="mm-btn" href="${SEFARIA}/${encodeRef(`${s.book} ${state.ch}`)}" target="_blank" rel="noopener">Open on Sefaria ↗</a>
+    </div>
+    <div class="mm-hint" style="margin-top:.8rem">${esc(state.heVersion)}${state.enVersion ? ` · ${esc(state.enVersion)}` : ''} — via Sefaria</div>
+    <div class="mm-pager">
+      <button class="prev" data-t="${prev ? prev.s.idx : ''}" data-ch="${prev ? prev.ch : ''}" ${prev ? '' : 'disabled'}><small>Previous</small>${prev ? `${esc(prev.s.name)} ${prev.ch}` : '—'}</button>
+      <button class="next" data-t="${next ? next.s.idx : ''}" data-ch="${next ? next.ch : ''}" ${next ? '' : 'disabled'}><small>Next</small>${next ? `${esc(next.s.name)} ${next.ch}` : '—'}</button>
+    </div>`;
+  renderTitleBanner();
+  renderBadges();
+  renderStrip();
+}
+
+function renderTitleBanner() {
+  const el = document.getElementById('mr-banner');
+  if (!el || !state.sec) return;
+  const tr = track();
+  el.innerHTML = isToday(state.sec, state.ch)
+    ? `<div class="mm-banner say"><b>Rambam Yomi</b> — on today’s ${tr === '1' ? 'one-chapter' : 'three-chapter'} track.</div>`
+    : '';
+}
+
+/** Above the text: how often the Ra'avad objects here, and the dapim the chapter is built on. */
+function renderStrip() {
+  const el = document.getElementById('mr-strip');
+  if (!el) return;
+  const s = [...state.linkSummary.entries()];
+  if (!s.length) { el.innerHTML = ''; return; }
+  const raavad = s.filter(([, x]) => x.raavad).map(([h]) => h).sort((a, b) => a - b);
+  const dapim = new Map<string, number>();
+  s.forEach(([, x]) => (x.bavli as Set<string>).forEach((r) => { const d = r.replace(/:.*$/, ''); dapim.set(d, (dapim.get(d) || 0) + 1); }));
+  const top = [...dapim.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  el.innerHTML = `
+    ${raavad.length ? `<span class="mm-voices-label">Ra'avad</span><button class="mm-badge raavad" data-jump="${raavad[0]}" title="Jump to the first">objects to ${raavad.length} of ${state.paras.length} halakhot</button>` : ''}
+    ${top.length ? `<span class="mm-voices-label" style="margin-left:.6rem">Built on</span>${top.map(([d]) => { const x = megaLink(d); return x ? `<a class="mm-badge xl" href="${x.href}" title="Open in ${x.label}">${esc(d)}</a>` : ''; }).join('')}` : ''}`;
+}
+
+function renderBadges() {
+  document.querySelectorAll<HTMLElement>('[data-badges]').forEach((el) => {
+    const h = Number(el.dataset.badges);
+    const s = state.linkSummary.get(h);
+    el.closest('.mm-para')?.classList.toggle('mr-hasagah', !!s?.raavad);
+    if (!s) { el.innerHTML = ''; return; }
+    const out: string[] = [];
+    if (s.raavad) out.push(`<span class="mm-badge raavad" data-open-tab="Commentary" data-focus-raavad="1">Ra'avad objects</span>`);
+    const bavli = [...s.bavli] as string[];
+    for (const r of bavli.slice(0, 2)) {
+      const x = megaLink(r);
+      out.push(x ? `<a class="mm-badge xl" href="${x.href}" title="Open in ${x.label}">${esc(r.replace(/:\d+$/, ''))} ↗</a>` : '');
+    }
+    if (bavli.length > 2) out.push(`<span class="mm-badge" data-open-tab="Talmud">+${bavli.length - 2} Bavli</span>`);
+    if (s.yer) out.push(`<span class="mm-badge" data-open-tab="Talmud">Yerushalmi ${s.yer}</span>`);
+    for (const r of [...s.mishnah].slice(0, 1) as string[]) {
+      const x = megaLink(r);
+      out.push(x ? `<a class="mm-badge xl" href="${x.href}" title="Open in ${x.label}">${esc(r)} ↗</a>` : '');
+    }
+    if (s.tanakh) out.push(`<span class="mm-badge" data-open-tab="Tanakh">Tanakh ${s.tanakh}</span>`);
+    if (s.sa) out.push(`<span class="mm-badge" data-open-tab="Halakhah">Shulchan Arukh ${s.sa}</span>`);
+    if (s.comm.size) out.push(`<span class="mm-badge comm" data-open-tab="Commentary"><b>${s.comm.size}</b> commentaries</span>`);
+    el.innerHTML = out.join('');
+  });
+}
+
+function panelGroupsHtml(links: any[]) {
+  const inTab = links.filter((l) => tabOf(l) === state.panelTab);
+  if (!inTab.length) return '<div class="mm-empty">Nothing in this category for this halakhah.</div>';
+  const groups = new Map<string, any[]>();
+  for (const l of inTab) {
+    const name = linkGroup(l).replace(/ on Mishneh Torah.*$| on .*$/, '');
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name)!.push(l);
+  }
+  const rank = (name: string) => { const i = COMM_ORDER.findIndex((c) => name.replace(/'/g, '').startsWith(c)); return i < 0 ? 99 : i; };
+  const sorted = [...groups.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]));
+  return `<div class="mm-lib">${sorted.map(([name, items], gi) => `
+    <details${gi < 3 || items.some((l) => l.ref === state.focusSrc) ? ' open' : ''}><summary>${esc(name)} <span class="n">${items.length}</span><span class="cat">${esc(items[0].collectiveTitle?.he || '')}</span></summary>
+      ${items.filter((l, i) => i < 20 || l.ref === state.focusSrc).map((l) => {
+        const he = flat(l.he).join(' ');
+        const en = flat(l.text).join(' ');
+        const x = megaLink(String(l.ref));
+        return `<div class="mm-lib-item" data-ref="${esc(l.ref)}">
+          <div class="mm-lib-ref-row"><a class="mm-lib-ref" href="${SEFARIA}/${encodeRef(l.ref)}" target="_blank" rel="noopener">${esc(l.ref)}</a>
+            ${x ? `<a class="mm-xl" href="${x.href}">${x.label} ↗</a>` : ''}${shareBtn({ h: state.selected, src: l.ref }, 'this source')}</div>
+          ${he ? `<div class="mm-lib-he" lang="he" dir="rtl">${sanitize(he.length > 1400 ? he.slice(0, 1400) + '…' : he)}</div>` : ''}
+          ${en ? `<div class="mm-lib-en">${sanitize(en.length > 1000 ? en.slice(0, 1000) + '…' : en)}</div>` : ''}
+        </div>`;
+      }).join('')}
+      ${items.length > 20 ? `<div class="mm-hint">+${items.length - 20} more on Sefaria</div>` : ''}
+    </details>`).join('')}</div>`;
+}
+
+function renderPanel() {
+  const s: Section = state.sec;
+  const body = $('mm-panel-body');
+  if (!s) return;
+  if (!state.selected) {
+    $('mm-panel-title').textContent = 'Sources';
+    const x = [...state.linkSummary.values()];
+    body.innerHTML = `<div class="mm-scope"><b>${esc(s.name)} ${state.ch}</b> · ${state.paras.length} halakhot</div>
+      <div class="mm-intro"><p>Tap any halakhah to open its commentaries, the Gemara behind it and the later codes here.</p>
+      ${x.length ? `<p>In this chapter: <b>${new Set(x.flatMap((y) => [...y.bavli])).size}</b> Bavli sources, <b>${x.filter((y) => y.raavad).length}</b> hasagot of the Ra'avad, <b>${x.reduce((a, y) => a + y.tanakh, 0)}</b> verses.</p>` : ''}</div>`;
+    return;
+  }
+  const ref = `${s.book} ${state.ch}:${state.selected}`;
+  $('mm-panel-title').textContent = `${s.name} ${state.ch}:${state.selected}`;
+  if (!state.panelLinks) { body.innerHTML = '<div class="mm-loading">Loading sources…</div>'; return; }
+  const links = state.panelLinks as any[];
+  const counts = new Map<string, number>();
+  links.forEach((l) => counts.set(tabOf(l), (counts.get(tabOf(l)) || 0) + 1));
+  if (!counts.get(state.panelTab)) state.panelTab = TAB_ORDER.find((x) => counts.get(x)) || 'Commentary';
+  body.innerHTML = `
+    <div class="mm-scope"><b>${esc(shortHe(s))} ${gem(state.ch)}:${gem(state.selected)}</b> · <a href="${SEFARIA}/${encodeRef(ref)}?with=all" target="_blank" rel="noopener" style="color:var(--gold)">Sefaria ↗</a></div>
+    <div class="mm-tabs">${TAB_ORDER.filter((x) => counts.get(x)).map((x) =>
+      `<button class="mm-tab${x === state.panelTab ? ' on' : ''}" data-tab="${x}">${x}<span class="n">${counts.get(x)}</span></button>`).join('')}</div>
+    ${links.length ? panelGroupsHtml(links) : '<div class="mm-empty">No linked sources on Sefaria for this halakhah.</div>'}`;
+}
+
+/* ───────────────────────── links & spotlight ───────────────────────── */
+// ?s=repentance&c=3                  a chapter
+// ?s=…&c=…&h=4                       one halakhah
+// ?s=…&c=…&h=…&src=<Sefaria ref>     one commentary or source on it, spotlighted in the panel
+function shareUrl(o: { h?: number | null; src?: string }) {
+  const q = new URLSearchParams({ s: slug(state.sec.name), c: String(state.ch) });
+  if (o.h) q.set('h', String(o.h));
+  if (o.src) q.set('src', o.src);
+  return `${location.origin}${location.pathname}?${q}`;
+}
+function shareBtn(o: { h?: number | null; src?: string }, what: string) {
+  return `<button class="mm-share" type="button" data-share="${esc(shareUrl(o))}" title="Copy a link to ${what}">Link</button>`;
+}
+document.addEventListener('click', async (e) => {
+  const btn = (e.target as HTMLElement).closest('.mm-share') as HTMLElement | null;
+  if (!btn) return;
+  e.preventDefault(); e.stopPropagation();
+  const url = btn.dataset.share || '';
+  try { await navigator.clipboard.writeText(url); }
+  catch { window.prompt('Copy this link:', url); return; }
+  btn.textContent = 'Copied'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Link'; btn.classList.remove('copied'); }, 1600);
+}, true);
+
+function spot(el: Element | null) {
+  if (!el) return;
+  el.classList.remove('mm-spot'); void (el as HTMLElement).offsetWidth; el.classList.add('mm-spot');
+}
+
+/** Land on what a shared link names, once the halakhah's sources are in. */
+function applySpotlight() {
+  const f = state.spotlight;
+  if (!f || f.h !== state.selected || !state.panelLinks) return;
+  state.spotlight = null;
+  const block = document.getElementById('h' + f.h);
+  block?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  spot(block);
+  const l = f.src ? (state.panelLinks as any[]).find((x) => x.ref === f.src)
+    : f.raavad ? (state.panelLinks as any[]).find(isRaavad) : null;
+  if (l) {
+    state.panelTab = tabOf(l);
+    state.focusSrc = l.ref;
+    renderPanel();
+    if (window.matchMedia('(max-width: 900px)').matches) page.dataset.panel = '1';
+    const el = $('mm-panel-body').querySelector(`.mm-lib-item[data-ref="${CSS.escape(l.ref)}"]`);
+    requestAnimationFrame(() => { el?.scrollIntoView({ block: 'center', behavior: 'smooth' }); spot(el); });
+  }
+  syncUrl();
+}
+
+async function selectHalakhah(h: number | null, scroll = false) {
+  state.selected = h;
+  document.querySelectorAll('.mm-para').forEach((el) => el.classList.toggle('selected', Number((el as HTMLElement).dataset.p) === h));
+  syncUrl();
+  if (h && scroll) document.getElementById('h' + h)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  if (!h) { state.panelLinks = null; renderPanel(); return; }
+  const s: Section = state.sec;
+  const ch = state.ch;
+  state.panelLinks = null;
+  renderPanel();
+  const links = await fetchLinks(`${s.book} ${ch}:${h}`, true);
+  if (state.sec !== s || state.ch !== ch || state.selected !== h) return;
+  state.panelLinks = links;
+  renderPanel();
+  applySpotlight();
+}
+
+async function openChapter(s: Section, ch: number, h: number | null = null) {
+  ch = Math.min(Math.max(1, ch), s.chapters);
+  state.sec = s; state.ch = ch; state.selected = h; state.panelLinks = null; state.linkSummary = new Map(); state.focusSrc = '';
+  store.set('last', { s: s.name, ch });
+  fillSelects();
+  renderToc(($('mm-search') as HTMLInputElement).value);
+  $('mm-content').innerHTML = `<div class="mm-loading">Loading ${esc(s.name)} ${ch}…</div>`;
+  $('mm-main').scrollTop = 0;
+  page.dataset.sidebar = '0';
+  syncUrl();
+  try {
+    const data = await fetchChapter(s, ch);
+    if (state.sec !== s || state.ch !== ch) return;
+    state.paras = data.paras; state.enVersion = data.enVersion; state.heVersion = data.heVersion;
+    renderChapter();
+    renderPanel();
+    loadLinkSummary(s, ch);
+    if (h) selectHalakhah(h, true);
+  } catch (err: any) {
+    $('mm-content').innerHTML = `<div class="mm-error">Couldn't load ${esc(s.name)} ${ch} from Sefaria (${esc(err.message || err)}). Check your connection and try again.</div>`;
+  }
+}
+
+function syncUrl() {
+  const u = new URL(location.href);
+  if (state.sec) { u.searchParams.set('s', slug(state.sec.name)); u.searchParams.set('c', String(state.ch)); } else { u.searchParams.delete('s'); u.searchParams.delete('c'); }
+  if (state.selected) u.searchParams.set('h', String(state.selected)); else u.searchParams.delete('h');
+  if (!state.spotlight?.src) u.searchParams.delete('src');
+  history.replaceState(null, '', u);
+}
+
+function toggleChapter() {
+  const s: Section = state.sec;
+  const on = !isLearned(s, state.ch);
+  setLearned(s, [state.ch], on);
+  if (on) store.set('lastLearned', { s: s.name, ch: state.ch });
+  $('mr-title').classList.toggle('learned', on);
+  const btn = document.getElementById('mm-mark-perek');
+  if (btn) btn.textContent = on ? 'Unmark this chapter' : 'Mark chapter learned';
+  renderToday();
+  renderToc(($('mm-search') as HTMLInputElement).value);
+}
+
+/* ───────────────────────── preferences & controls ───────────────────────── */
+function applyPrefs() {
+  const prefs = store.get('prefs', {});
+  page.dataset.theme = prefs.theme || 'night';
+  page.dataset.lang = prefs.lang || 'both';
+  page.dataset.layout = prefs.layout || 'stack';
+  page.dataset.focus = prefs.focus ? '1' : '0';
+  page.dataset.sages = prefs.raavad === false ? '0' : '1';
+  page.style.setProperty('--heb-size', `${prefs.heb || 1.5}rem`);
+  page.style.setProperty('--en-size', `${(prefs.heb || 1.5) * 0.7}rem`);
+  document.querySelectorAll('.mm-bar [data-lang]').forEach((b) => b.classList.toggle('on', (b as HTMLElement).dataset.lang === page.dataset.lang));
+  $('mm-layout').textContent = page.dataset.layout === 'side' ? 'Side by side' : 'Stacked';
+  $('mm-focus').classList.toggle('on', !!prefs.focus);
+  $('mm-sages').classList.toggle('on', page.dataset.sages === '1');
+}
+function setPref(k: string, val: any) { const p = store.get('prefs', {}); p[k] = val; store.set('prefs', p); applyPrefs(); }
+
+document.querySelectorAll('.mm-bar [data-lang]').forEach((b) => b.addEventListener('click', () => setPref('lang', (b as HTMLElement).dataset.lang)));
+$('mm-layout').addEventListener('click', () => setPref('layout', page.dataset.layout === 'side' ? 'stack' : 'side'));
+$('mm-theme').addEventListener('click', () => setPref('theme', page.dataset.theme === 'night' ? 'parchment' : 'night'));
+$('mm-focus').addEventListener('click', () => setPref('focus', page.dataset.focus !== '1'));
+$('mm-sages').addEventListener('click', () => setPref('raavad', page.dataset.sages !== '1'));
+$('mm-smaller').addEventListener('click', () => setPref('heb', Math.max(1.05, +(store.get('prefs', {}).heb || 1.5) - 0.15)));
+$('mm-bigger').addEventListener('click', () => setPref('heb', Math.min(3.2, +(store.get('prefs', {}).heb || 1.5) + 0.15)));
+$('mm-today-btn').addEventListener('click', () => goToday());
+$('mm-toc-toggle').addEventListener('click', () => { page.dataset.sidebar = page.dataset.sidebar === '1' ? '0' : '1'; page.dataset.panel = '0'; });
+$('mm-panel-toggle').addEventListener('click', () => { page.dataset.panel = page.dataset.panel === '1' ? '0' : '1'; page.dataset.sidebar = '0'; });
+$('mm-panel-close').addEventListener('click', () => { page.dataset.panel = '0'; });
+$('mm-scrim').addEventListener('click', () => { page.dataset.panel = '0'; page.dataset.sidebar = '0'; });
+$('mm-search').addEventListener('input', (e) => renderToc((e.target as HTMLInputElement).value));
+$('mm-tractate').addEventListener('change', (e) => { const val = (e.target as HTMLSelectElement).value; if (val) openChapter(SECTIONS[Number(val)], 1); });
+$('mm-chapter').addEventListener('change', (e) => { if (state.sec) openChapter(state.sec, Number((e.target as HTMLSelectElement).value)); });
+
+/** Open today's first unlearned chapter on the chosen track (or its first chapter). */
+function goToday(tr = track()) {
+  const list = state.today[tr] as { sec: Section; ch: number }[];
+  if (!list.length) return;
+  const pick = list.find((x) => !isLearned(x.sec, x.ch)) || list[0];
+  openChapter(pick.sec, pick.ch);
+}
+
+// Any [data-t][data-ch] button (contents grid, welcome lists, pager) opens that chapter.
+document.addEventListener('click', (e) => {
+  const el = (e.target as HTMLElement).closest('[data-t][data-ch]') as HTMLElement | null;
+  if (el && el.dataset.t !== '' && !(el as HTMLButtonElement).disabled) { openChapter(SECTIONS[Number(el.dataset.t)], Number(el.dataset.ch)); return; }
+  const go = (e.target as HTMLElement).closest('[data-go]') as HTMLElement | null;
+  if (go?.dataset.go === 'today') {
+    if (go.dataset.track && go.dataset.track !== track()) { setPref('track', go.dataset.track); renderToday(); renderToc(($('mm-search') as HTMLInputElement).value); }
+    goToday(go.dataset.track);
+  }
+  if (go?.dataset.go === 'next') { const n = nextUnlearned(); if (n) openChapter(n.sec, n.ch); }
+});
+
+$('mm-panel-body').addEventListener('click', (e) => {
+  const tab = (e.target as HTMLElement).closest('[data-tab]') as HTMLElement | null;
+  if (tab) { state.panelTab = tab.dataset.tab; renderPanel(); }
+});
+
+$('mm-content').addEventListener('click', (e) => {
+  const t = e.target as HTMLElement;
+  if (!state.sec) return;
+  if (t.classList.contains('footnote-marker')) {
+    t.nextElementSibling?.classList.toggle('open');
+    e.stopPropagation();
+    return;
+  }
+  if (t.closest('[data-check]') || t.id === 'mm-mark-perek') { toggleChapter(); return; }
+  const jump = t.closest('[data-jump]') as HTMLElement | null;
+  if (jump) {
+    const h = Number(jump.dataset.jump);
+    state.spotlight = { h, src: '', raavad: true };
+    selectHalakhah(h, true);
+    return;
+  }
+  if (t.closest('a')) return;
+  const para = t.closest('.mm-para') as HTMLElement | null;
+  if (!para || window.getSelection()?.toString().trim()) return;
+  const h = Number(para.dataset.p);
+  const badge = t.closest('[data-open-tab]') as HTMLElement | null;
+  if (badge) {
+    state.panelTab = badge.dataset.openTab;
+    if (badge.dataset.focusRaavad) state.spotlight = { h, src: '', raavad: true };
+    selectHalakhah(h);
+  } else selectHalakhah(state.selected === h ? null : h);
+  if (state.selected && window.matchMedia('(max-width: 900px)').matches) page.dataset.panel = '1';
+});
+
+document.addEventListener('keydown', (e) => {
+  const tag = (e.target as HTMLElement).tagName;
+  if (/INPUT|TEXTAREA|SELECT/.test(tag) || e.metaKey || e.ctrlKey || e.altKey || !state.sec) return;
+  const n = state.paras.length;
+  if (e.key === 'j') selectHalakhah(Math.min(n, (state.selected || 0) + 1), true);
+  else if (e.key === 'k') selectHalakhah(Math.max(1, (state.selected || 2) - 1), true);
+  else if (e.key === 'x') toggleChapter();
+  else if (e.key === ']' || e.key === '[') {
+    const { prev, next } = neighbours();
+    const go = e.key === ']' ? next : prev;
+    if (go) openChapter(go.s, go.ch);
+  } else if (e.key === 'Escape') selectHalakhah(null);
+});
+
+/* ───────────────────────── boot ───────────────────────── */
+(function boot() {
+  applyPrefs();
+  fillSelects();
+  renderToc();
+  renderToday();
+  const u = new URL(location.href);
+  const s = bySlug(u.searchParams.get('s') || '');
+  if (s) {
+    const ch = Number(u.searchParams.get('c')) || 1;
+    const h = Number(u.searchParams.get('h')) || null;
+    if (h) state.spotlight = { h, src: u.searchParams.get('src') || '' };
+    openChapter(s, ch, h);
+  } else {
+    renderWelcome();
+  }
+  loadToday();
+})();
+</script>
+</Layout>

@@ -1,0 +1,988 @@
+---
+// The Mega Talmud reader: the Bavli daf by daf from Sefaria, in the Mega Mishnah's shell.
+// The page passes the day's Laf Yomi card in the default slot; it shows on the welcome screen.
+import fs from 'node:fs';
+import path from 'node:path';
+import '../../styles/mega-reader.css';
+import toc from '../../data/mega-talmud/toc.json';
+
+const tractates = toc.sedarim.flatMap((s) => s.tractates);
+const totalAmudim = tractates.reduce((a, t) => a + t.amudim, 0);
+
+// Daf games already built at /daf/<slug>, and every Laf Yomi sheet in public/laf-yomi.
+const games = Object.keys(import.meta.glob('../../pages/daf/*.astro'))
+  .map((p) => p.split('/').pop()!.replace(/\.astro$/, ''))
+  .filter((s) => s !== 'index');
+let laf: string[] = [];
+try {
+  laf = fs.readdirSync(path.join(process.cwd(), 'public/laf-yomi'))
+    .map((f) => f.match(/^laf-yomi-(\d{4}-\d{2}-\d{2})\.pdf$/)?.[1])
+    .filter(Boolean)
+    .sort()
+    .reverse() as string[];
+} catch { /* no sheets yet */ }
+const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+---
+
+<style is:global>
+/* ── TALMUD-SPECIFIC ── */
+.mm-amud-head { display:flex; align-items:center; gap:.7rem; margin:1.6rem 0 .6rem; padding:.35rem 0; border-bottom:1px solid var(--border-hi); }
+.mm-amud-head:first-of-type { margin-top:.4rem; }
+.mm-amud-head h2 { font-family:var(--sc); font-size:.72rem; letter-spacing:.24em; text-transform:uppercase; color:var(--gold); margin:0; font-weight:500; }
+.mm-amud-head .he { font-family:var(--heb); color:var(--gold); font-size:1.15rem; }
+.mm-amud-head .mm-check { margin:0 0 0 auto; }
+.mm-amud-head.learned .mm-check { background:var(--accent); border-color:var(--accent); color:var(--bg); }
+.mm-amud-head .lbl { font-family:var(--sc); font-size:.55rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.mm-amud-head.learned .lbl { color:var(--accent); }
+.mm-para.mt-mishnah { background:rgba(121,184,164,.05); box-shadow:inset 2px 0 0 var(--accent); }
+.mm-para.mt-mishnah.selected { box-shadow:inset 2px 0 0 var(--gold); }
+.mt-kind { font-family:var(--sc); font-size:.52rem; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); }
+.mm-badge.xl { border-color:var(--border-hi); color:var(--accent); text-decoration:none; }
+.mm-badge.xl:hover { border-color:var(--accent); }
+.mm-xl { font-family:var(--sc); font-size:.54rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); text-decoration:none; border:1px solid var(--border); padding:.02rem .35rem; white-space:nowrap; }
+.mm-xl:hover { border-color:var(--accent); }
+.mt-game { display:flex; align-items:center; gap:.8rem; border:1px solid var(--border-hi); border-left:3px solid var(--accent); background:var(--surface); padding:.55rem .8rem; margin:0 0 1rem; font-family:var(--display); font-size:1rem; color:var(--text); text-decoration:none; }
+.mt-game:hover { border-color:var(--accent); }
+.mt-game b { font-family:var(--sc); font-size:.62rem; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); font-weight:600; }
+.mt-game span { margin-left:auto; color:var(--accent); }
+a.mm-chip { text-decoration:none; }
+/* The day's Laf Yomi card (markup from the page) */
+.mt-laf { margin-top:1.8rem; }
+.mt-laf > h2 { font-family:var(--sc); font-size:.72rem; letter-spacing:.24em; text-transform:uppercase; color:var(--gold); margin:0 0 .7rem; font-weight:500; border-bottom:1px solid var(--border-hi); padding-bottom:.4rem; }
+.mt-laf .card { background:var(--surface); border:1px solid var(--border-hi); padding:1.1rem 1.2rem; }
+.mt-laf .card h3 { font-family:var(--display); font-weight:400; font-size:1.45rem; margin:0 0 .35rem; color:var(--text); }
+.mt-laf .card p { font-family:var(--display); font-size:1.02rem; line-height:1.5; color:var(--muted); margin:0 0 .6rem; }
+.mt-laf .meta { font-family:var(--sc); font-size:.6rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); }
+.mt-laf .dl { display:inline-block; font-family:var(--sc); font-size:.66rem; letter-spacing:.2em; text-transform:uppercase; color:var(--bg); background:var(--gold); padding:.5rem 1rem; text-decoration:none; font-weight:600; }
+.mt-laf .dl:hover { filter:brightness(1.1); }
+.mt-laf .coming, .mt-archive { font-family:var(--display); color:var(--muted); font-size:.98rem; margin:.6rem 0 0; }
+.mt-archive a { color:var(--gold); margin-right:.6rem; white-space:nowrap; }
+</style>
+
+<div class="mm-page" id="mm-page" data-theme="night" data-lang="both" data-layout="stack" data-focus="0" data-sages="1">
+  <div class="mm-bar">
+    <button class="mm-btn mm-icon-btn mm-only-mobile" id="mm-toc-toggle" aria-label="Contents">☰</button>
+    <span class="mm-logo">MEGA TALMUD</span>
+    <select class="mm-sel mm-tr-sel" id="mm-tractate" aria-label="Tractate"></select>
+    <select class="mm-sel mm-ch-sel" id="mm-chapter" aria-label="Daf"></select>
+    <button class="mm-btn primary" id="mm-today-btn" title="Open today's Daf Yomi">Today</button>
+    <div class="mm-seg mm-hide-mobile" role="group" aria-label="Language">
+      <button class="mm-btn" data-lang="he">עב</button>
+      <button class="mm-btn on" data-lang="both">עב + En</button>
+      <button class="mm-btn" data-lang="en">En</button>
+    </div>
+    <button class="mm-btn mm-hide-mobile" id="mm-layout" title="Hebrew and English stacked or side by side">Stacked</button>
+    <div class="mm-seg" role="group" aria-label="Text size">
+      <button class="mm-btn mm-icon-btn" id="mm-smaller" aria-label="Smaller text">A−</button>
+      <button class="mm-btn mm-icon-btn" id="mm-bigger" aria-label="Larger text">A+</button>
+    </div>
+    <span class="mm-spacer"></span>
+    <button class="mm-btn on" id="mm-sages" title="Colour each sage's name and show who speaks on this daf">Voices</button>
+    <button class="mm-btn" id="mm-focus" title="Hide the sources panel">Focus</button>
+    <button class="mm-btn mm-icon-btn" id="mm-theme" title="Night / parchment">◐</button>
+    <button class="mm-btn mm-icon-btn mm-only-mobile" id="mm-panel-toggle" aria-label="Sources">✎</button>
+  </div>
+
+  <div class="mm-today" id="mm-today"></div>
+
+  <div class="mm-body">
+    <aside class="mm-sidebar" id="mm-sidebar">
+      <input class="mm-search" id="mm-search" type="search" placeholder="Find a tractate… / מסכת" autocomplete="off" />
+      <nav class="mm-toc" id="mm-toc" aria-label="Contents"></nav>
+    </aside>
+
+    <main class="mm-main" id="mm-main">
+      <div class="mm-main-inner" id="mm-content">
+        <div class="mm-welcome">
+          <div class="mm-crumbs"><span>Talmud Bavli</span><span>תלמוד בבלי</span></div>
+          <h1>Mega Talmud</h1>
+          <p>The Babylonian Talmud daf by daf — vocalised Aramaic and the Koren–Steinsaltz English from Sefaria. Every sage is coloured by name so you can follow an argument across the page, each passage shows where Rashi and Tosafot comment, which verses it quotes, which mishnah it explains and where the Rambam and Shulchan Arukh rule on it, and the panel opens all of them. Mark each amud as you learn it and the contents fill in toward a siyum.</p>
+          <div class="mm-stat-row">
+            <div class="mm-stat"><b>6</b><span>sedarim</span></div>
+            <div class="mm-stat"><b>{tractates.length}</b><span>masechtot</span></div>
+            <div class="mm-stat"><b>{tractates.reduce((a, t) => a + t.last - t.first + 1, 0).toLocaleString('en-US')}</b><span>dapim</span></div>
+            <div class="mm-stat"><b>{totalAmudim.toLocaleString('en-US')}</b><span>amudim</span></div>
+            <div class="mm-stat" id="mt-stat-mine" hidden><b></b><span>you've learned</span></div>
+          </div>
+          <div class="mt-laf">
+            <h2>Laf Yomi — the daily laugh sheet</h2>
+            <slot />
+            {laf.length > 1 && (
+              <p class="mt-archive">Earlier sheets: {laf.slice(1).map((d) => <a href={`/laf-yomi/laf-yomi-${d}.pdf`}>{fmt(d)}</a>)}</p>
+            )}
+          </div>
+          <div class="mm-sedarim">
+            {toc.sedarim.map((s) => (
+              <div>
+                <h3><span>{s.name}<small>{s.gloss}</small></span><span class="he">{s.he}</span></h3>
+                {s.tractates.map((t) => (
+                  <button data-t={tractates.indexOf(t)} data-ch={t.first}><span>{t.name}</span><span class="he">{t.he}</span></button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="mm-panel" id="mm-panel">
+      <div class="mm-panel-head">
+        <h2 id="mm-panel-title">Sources</h2>
+        <button class="mm-btn mm-icon-btn mm-only-mobile" id="mm-panel-close" aria-label="Close">✕</button>
+      </div>
+      <div class="mm-panel-body" id="mm-panel-body"></div>
+    </aside>
+    <div class="mm-scrim" id="mm-scrim"></div>
+  </div>
+</div>
+
+<script type="application/json" id="mt-extra" set:html={JSON.stringify({ games, laf: laf[0] || '' })} />
+
+<script>
+import tocData from '../../data/mega-talmud/toc.json';
+import { megaLink } from './links';
+
+const SEFARIA = 'https://www.sefaria.org';
+const EXTRA = JSON.parse(document.getElementById('mt-extra')?.textContent || '{}') as { games: string[]; laf: string };
+const GAMES = new Set(EXTRA.games || []);
+
+type Tractate = {
+  name: string; he: string; first: number; firstAmud: string; last: number; lastAmud: string; amudim: number;
+  seder: string; sederHe: string; idx: number;
+};
+const SEDARIM = tocData.sedarim;
+const TRACTATES: Tractate[] = SEDARIM.flatMap((s) => s.tractates.map((t) => ({ ...t, seder: s.name, sederHe: s.he, idx: 0 })));
+TRACTATES.forEach((t, i) => { t.idx = i; });
+const TOTAL_AMUDIM = TRACTATES.reduce((a, t) => a + t.amudim, 0);
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const bySlug = (s: string) => TRACTATES.find((t) => slug(t.name) === slug(s));
+const byName = (s: string) => TRACTATES.find((t) => t.name === s);
+
+/** The amudim a daf has: Tamid opens on 25b, and some tractates end on an amud a. */
+function amudsOf(t: Tractate, d: number) {
+  const out: string[] = [];
+  if (!(d === t.first && t.firstAmud === 'b')) out.push(`${d}a`);
+  if (!(d === t.last && t.lastAmud === 'a')) out.push(`${d}b`);
+  return out;
+}
+const amudOrder = (a: string) => parseInt(a) * 2 + (a.endsWith('b') ? 1 : 0);
+
+// Commentaries shown first, in this order; anything else Sefaria links follows alphabetically.
+const COMM_ORDER = [
+  'Rashi', 'Tosafot', 'Steinsaltz', 'Rashbam', 'Rabbeinu Chananel', 'Rif', 'Rosh', 'Ramban', 'Rashba', 'Ritva', 'Ran',
+  'Meiri', 'Maharsha', 'Maharam', 'Penei Yehoshua', 'Rabbi Akiva Eiger', 'Shita Mekubetzet',
+];
+const TAB_ORDER = ['Commentary', 'Tanakh', 'Mishnah', 'Halakhah', 'Talmud', 'Midrash', 'Other'];
+
+/* ───────────────────────── storage ───────────────────────── */
+const store = {
+  get(k: string, d: any = null) { try { const v = localStorage.getItem('mt:' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k: string, v: any) { try { localStorage.setItem('mt:' + k, JSON.stringify(v)); } catch {} },
+};
+
+/* ───────────────────────── state ───────────────────────── */
+type Seg = { amud: string; n: number; key: string; he: string; en: string };
+const state: any = {
+  tr: null as Tractate | null,
+  daf: 0,
+  segs: [] as Seg[],
+  enVersion: '',
+  heVersion: '',
+  linkSummary: new Map<string, any>(),
+  selected: null as string | null, // "2a:3"
+  panelLinks: null as any[] | null,
+  panelTab: 'Commentary',
+  solo: '',
+  spotlight: null as null | { s: string; src: string },
+  today: null as null | { tr: Tractate | null; daf: number; ref: string; label: string },
+  // learned: { "Berakhot": ["2a", "2b"] }
+  learned: store.get('learned', {}) as Record<string, string[]>,
+};
+
+const $ = (id: string) => document.getElementById(id)!;
+const page = $('mm-page');
+const esc = (s: any) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+const encodeRef = (ref: string) => encodeURIComponent(ref.replace(/ /g, '_')).replace(/%3A/gi, '.').replace(/%2C/gi, ',');
+const segId = (key: string) => 's' + key.replace(':', '-');
+
+/* ───────────────────────── gematria ───────────────────────── */
+function gem(n: number, marks = true) {
+  const ones = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+  const tens = ['', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ'];
+  const hundreds = ['', 'ק', 'ר', 'ש'];
+  let s = '';
+  n %= 1000;
+  while (n >= 400) { s += 'ת'; n -= 400; }
+  if (n >= 100) { s += hundreds[Math.floor(n / 100)]; n %= 100; }
+  if (n === 15) s += 'טו'; else if (n === 16) s += 'טז'; else s += tens[Math.floor(n / 10)] + ones[n % 10];
+  if (!marks) return s;
+  return s.length > 1 ? `${s.slice(0, -1)}״${s.slice(-1)}` : `${s}׳`;
+}
+const heAmud = (a: string) => `${gem(parseInt(a), false)}${a.endsWith('a') ? '.' : ':'}`;
+
+/* ───────────────────────── learned progress ───────────────────────── */
+const learnedIn = (t: Tractate) => state.learned[t.name] || [];
+const isLearned = (t: Tractate, amud: string) => learnedIn(t).includes(amud);
+function setLearned(t: Tractate, amuds: string[], on: boolean) {
+  const cur = new Set(learnedIn(t));
+  amuds.forEach((a) => (on ? cur.add(a) : cur.delete(a)));
+  if (cur.size) state.learned[t.name] = [...cur].sort((a, b) => amudOrder(a) - amudOrder(b));
+  else delete state.learned[t.name];
+  store.set('learned', state.learned);
+}
+const totalLearned = () => TRACTATES.reduce((a, t) => a + learnedIn(t).length, 0);
+
+/* ───────────────────────── sages (the "Voices" layer) ───────────────────────── */
+// The Bavli's Hebrew is vocalised, so every pattern allows nikkud after each letter.
+const NIK = '[\\u0591-\\u05C7]*';
+const LET = '[\\u05D0-\\u05EA]';
+const WORD = `(?:${LET}${NIK})+`;
+const v = (s: string) => [...s].map((c) => (c === ' ' ? '\\s+' : c + NIK)).join('');
+const strip = (s: string) => s.replace(/[֑-ׇ]/g, '');
+const NOT_HEB_BEFORE = '(?<![\\u05D0-\\u05EA\\u0591-\\u05C7])';
+const NOT_HEB_AFTER = '(?![\\u05D0-\\u05EA\\u0591-\\u05C7])';
+const PFX = `(?:[ושהלכדמ]${NIK}){0,2}`;
+// Sages known by a bare name rather than a title.
+const BARE = ['ריש לקיש', 'אביי', 'רבא', 'רבה', 'שמואל', 'רבינא', 'עולא', 'זעירי', 'חזקיה', 'רבנן', 'חכמים', 'בית שמאי', 'בית הלל'];
+// The words after a title are only looked at, not consumed: in רב יהודה אמר רב the second רב is a sage too.
+const SAGE_RE = new RegExp(
+  `${NOT_HEB_BEFORE}(${PFX})(?:(${v('רבי')}|${v('רבן')}|${v('רב')})${NOT_HEB_AFTER}(?=((?:\\s+${WORD}){0,3}))|(${BARE.map(v).join('|')})${NOT_HEB_AFTER})`,
+  'g',
+);
+const NOT_NAMES = new Set([
+  'אומר', 'אומרים', 'אמר', 'אמרו', 'אמרי', 'ואמר', 'דאמר', 'סבר', 'סברי', 'תני', 'מתני', 'איתמר', 'הוה', 'הוו', 'ליה', 'להו',
+  'לא', 'נמי', 'משמיה', 'היא', 'הוא', 'היה', 'מתיר', 'אוסר', 'מודה', 'פוטר', 'מחייב', 'עד', 'אף', 'אלא', 'את', 'על', 'מאי',
+  'קשיא', 'בעי', 'בעא', 'לטעמיה', 'כדאמר', 'דתניא', 'אדם', 'גובריה',
+]);
+const SUFFIXES = new Set(['הגלילי', 'הכהן', 'הסנדלר', 'הקטן', 'הזקן', 'הנשיא', 'נפחא', 'סבא', 'זוטי', 'בריה']);
+const SAGE_EN: Record<string, string> = {
+  'רבי': 'Rabbi Yehudah HaNasi', 'רב': 'Rav', 'רבן': 'Rabban', 'חכמים': 'Chakhamim', 'רבנן': 'Rabbanan', 'בית שמאי': 'Beit Shammai', 'בית הלל': 'Beit Hillel',
+  'אביי': 'Abaye', 'רבא': 'Rava', 'רבה': 'Rabbah', 'שמואל': 'Shmuel', 'רבינא': 'Ravina', 'עולא': 'Ulla', 'זעירי': "Ze'eiri", 'חזקיה': 'Chizkiyah', 'ריש לקיש': 'Reish Lakish',
+  'יוחנן': 'R. Yochanan', 'מאיר': 'R. Meir', 'יהודה': 'R. Yehudah', 'יוסי': 'R. Yose', 'שמעון': 'R. Shimon', 'אליעזר': 'R. Eliezer',
+  'יהושע': 'R. Yehoshua', 'עקיבא': 'R. Akiva', 'טרפון': 'R. Tarfon', 'ישמעאל': 'R. Yishmael', 'אלעזר': 'R. Elazar', 'זירא': 'R. Zeira',
+  'אבהו': 'R. Abbahu', 'אמי': 'R. Ami', 'אסי': 'R. Asi', 'חנינא': 'R. Chanina', 'יונתן': 'R. Yonatan', 'נתן': 'R. Natan', 'ירמיה': 'R. Yirmeyah',
+  'רב פפא': 'Rav Pappa', 'רב אשי': 'Rav Ashi', 'רב נחמן': 'Rav Nachman', 'רב יהודה': 'Rav Yehudah', 'רב הונא': 'Rav Huna', 'רב חסדא': 'Rav Chisda',
+  'רב ששת': 'Rav Sheshet', 'רב יוסף': 'Rav Yosef', 'רב כהנא': 'Rav Kahana', 'רב אחא': 'Rav Acha', 'רב זביד': 'Rav Zevid', 'רב שמואל בר נחמני': 'R. Shmuel b. Nachmani',
+  'רב נחמן בר יצחק': 'Rav Nachman b. Yitzchak', 'רב הונא בריה': 'Rav Huna b. R. Yehoshua', 'רב אדא בר אהבה': 'Rav Adda b. Ahavah', 'רב חייא בר אבא': 'R. Chiyya b. Abba',
+  'שמעון בן לקיש': 'Reish Lakish', 'אלעזר בן עזריה': 'R. Elazar b. Azariah', 'יוסי בר חנינא': 'R. Yose b. Chanina', 'יהושע בן לוי': 'R. Yehoshua b. Levi',
+  'רבן גמליאל': 'Rabban Gamliel', 'רבן שמעון בן גמליאל': 'Rabban Shimon b. Gamliel', 'רבן יוחנן בן זכאי': 'Rabban Yochanan b. Zakkai', 'חייא': 'R. Chiyya',
+};
+const SAGE_COLOR: Record<string, string> = {
+  'רב': '#e07a5f', 'שמואל': '#6fa8dc', 'יוחנן': '#e6b450', 'ריש לקיש': '#9fc56b', 'שמעון בן לקיש': '#9fc56b', 'אביי': '#c38fd8', 'רבא': '#5fc4c4',
+  'רב פפא': '#e88fb0', 'רב אשי': '#8f9ee8', 'רב נחמן': '#d98c4a', 'רב יהודה': '#7fc98f', 'רב הונא': '#c9776e', 'רב חסדא': '#b98fe0',
+  'חכמים': '#a39a86', 'רבנן': '#a39a86', 'בית שמאי': '#d98c4a', 'בית הלל': '#6fa8dc', 'רבי': '#c9b37a', 'מאיר': '#e07a5f', 'יהודה': '#9fc56b',
+  'עקיבא': '#e88fb0', 'אליעזר': '#e6b450', 'יהושע': '#8f9ee8',
+};
+const PALETTE = ['#e07a5f', '#6fa8dc', '#9fc56b', '#c38fd8', '#e6b450', '#5fc4c4', '#e88fb0', '#8f9ee8', '#d98c4a', '#7fc98f', '#c9776e', '#b98fe0'];
+function sageColor(key: string) {
+  if (SAGE_COLOR[key]) return SAGE_COLOR[key];
+  let h = 0;
+  for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return PALETTE[h % PALETTE.length];
+}
+const sageLabel = (key: string) => SAGE_EN[key] || (/^(רב|רבן) /.test(key) ? key : `ר׳ ${key}`);
+
+/** Decide which of the (up to three) words after רבי/רבן/רב belong to the name. */
+function parseName(title: string, rest: string): { key: string; used: string } {
+  const parts = rest.match(/\s+\S+/g) || [];
+  const words = parts.map((p) => strip(p.trim()).replace(/[^א-ת]/g, ''));
+  const t = strip(title);
+  // A word opening with vav ("and") starts the next phrase, as in רב ושמואל.
+  if (!words.length || !words[0] || NOT_NAMES.has(words[0]) || words[0].startsWith('ו')) return { key: t, used: '' };
+  let n = 1;
+  let name = words[0];
+  if ((words[1] === 'בן' || words[1] === 'בר') && words[2]) { name += ` ${words[1]} ${words[2]}`; n = 3; }
+  else if (words[1] && SUFFIXES.has(words[1])) { name += ` ${words[1]}`; n = 2; }
+  // Amoraim of Babylonia carry רב as part of the name; Tannaim and Israeli Amoraim are keyed bare.
+  const key = t === 'רבן' ? `רבן ${name}` : t === 'רב' ? `רב ${name}` : name;
+  return { key, used: parts.slice(0, n).join('') };
+}
+
+/** Wrap each sage's name in a coloured span; returns the html and the keys found. */
+function markSages(html: string, found: Map<string, number>) {
+  const wrap = (key: string, text: string) => {
+    found.set(key, (found.get(key) || 0) + 1);
+    return `<span class="mm-sage" data-sage="${esc(key)}" style="--c:${sageColor(key)}">${text}</span>`;
+  };
+  return html.split(/(<[^>]+>)/).map((chunk) => {
+    if (chunk.startsWith('<')) return chunk;
+    let marked = '';
+    let last = 0;
+    SAGE_RE.lastIndex = 0;
+    for (let m = SAGE_RE.exec(chunk); m; m = SAGE_RE.exec(chunk)) {
+      const [all, pfx, title, rest, bare] = m;
+      marked += chunk.slice(last, m.index) + pfx;
+      if (bare) {
+        marked += wrap(strip(bare).replace(/\s+/g, ' '), bare);
+        last = m.index + all.length;
+      } else {
+        const { key, used } = parseName(title, rest || '');
+        marked += wrap(key, title + used);
+        last = m.index + pfx.length + title.length + used.length;
+      }
+      SAGE_RE.lastIndex = last;
+    }
+    marked += chunk.slice(last);
+    return marked.replace(/\(([א-ת\s'"״׳]{2,24})\)/g, '<span class="mm-cite">($1)</span>');
+  }).join('');
+}
+
+/* ───────────────────────── Sefaria ───────────────────────── */
+const ALLOWED = new Set(['B', 'STRONG', 'I', 'EM', 'SMALL', 'BIG', 'BR', 'SUP', 'SPAN', 'U']);
+const DROP = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'TEMPLATE', 'NOSCRIPT', 'SVG', 'MATH']);
+function sanitize(html: string) {
+  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+  const walk = (node: Node): string => {
+    let out = '';
+    node.childNodes.forEach((c) => {
+      if (c.nodeType === 3) { out += esc(c.textContent); return; }
+      if (c.nodeType !== 1) return;
+      const el = c as Element;
+      if (DROP.has(el.tagName.toUpperCase())) return;
+      const inner = walk(el);
+      if (!ALLOWED.has(el.tagName)) { out += inner; return; }
+      const tag = el.tagName.toLowerCase();
+      if (tag === 'br') { out += '<br>'; return; }
+      const cls = el.getAttribute('class') || '';
+      const keep = /footnote-marker|footnote/.test(cls) ? ` class="${cls.includes('marker') ? 'footnote-marker' : 'footnote'}"` : '';
+      out += `<${tag}${keep}>${inner}</${tag}>`;
+    });
+    return out;
+  };
+  return walk(doc.body.firstChild!);
+}
+const flat = (x: any): string[] => Array.isArray(x) ? x.flatMap(flat) : (x == null ? [] : [String(x)]);
+const textCache = new Map<string, any>();
+
+async function fetchAmud(t: Tractate, amud: string) {
+  const ref = `${t.name} ${amud}`;
+  if (textCache.has(ref)) return textCache.get(ref);
+  const cached = store.get('t:' + ref);
+  if (cached) { textCache.set(ref, cached); return cached; }
+  const r = await fetch(`${SEFARIA}/api/texts/${encodeRef(ref)}?context=0&commentary=0&pad=0`);
+  if (!r.ok) throw new Error(`Sefaria ${r.status}`);
+  const j = await r.json();
+  if (j.error) throw new Error(j.error);
+  const he = flat(j.he);
+  const en = flat(j.text);
+  const n = Math.max(he.length, en.length);
+  const data = {
+    paras: Array.from({ length: n }, (_, i) => ({ he: he[i] || '', en: en[i] || '' })),
+    enVersion: en.length ? j.versionTitle || '' : '',
+    heVersion: j.heVersionTitle || '',
+  };
+  textCache.set(ref, data);
+  // Keep a copy so dapim already opened still read offline.
+  try { localStorage.setItem('mt:t:' + ref, JSON.stringify(data)); } catch { /* quota — fine */ }
+  return data;
+}
+
+const linkCache = new Map<string, any[]>();
+async function fetchLinks(ref: string, withText: boolean) {
+  const k = `${withText ? 1 : 0}:${ref}`;
+  if (linkCache.has(k)) return linkCache.get(k)!;
+  try {
+    const r = await fetch(`${SEFARIA}/api/links/${encodeRef(ref)}?with_text=${withText ? 1 : 0}`);
+    const j = r.ok ? await r.json() : [];
+    const out = Array.isArray(j) ? j : [];
+    linkCache.set(k, out);
+    return out;
+  } catch { return []; }
+}
+
+/** Which segment of an amud a link hangs on ("2a:3"), or '' if none. */
+function linkSeg(l: any, t: Tractate, amud: string) {
+  const prefix = `${t.name} ${amud}:`;
+  const anchors = [l.anchorRef, ...(l.anchorRefExpanded || [])].map(String);
+  for (const a of anchors) if (a.startsWith(prefix)) { const m = a.slice(prefix.length).match(/^(\d+)/); if (m) return `${amud}:${m[1]}`; }
+  return '';
+}
+const linkGroup = (l: any) => l.collectiveTitle?.en || l.index_title || l.category || 'Other';
+const tabOf = (l: any) => {
+  const c = l.category === 'Quoting Commentary' ? 'Commentary' : l.category;
+  return TAB_ORDER.includes(c) ? c : 'Other';
+};
+
+/** Per-segment counts for the badges under each passage, from one links call per amud. */
+async function loadLinkSummary(t: Tractate, d: number) {
+  const amuds = amudsOf(t, d);
+  const lists = await Promise.all(amuds.map((a) => fetchLinks(`${t.name} ${a}`, false)));
+  if (state.tr !== t || state.daf !== d) return;
+  const sum = new Map<string, any>();
+  lists.forEach((links, i) => {
+    for (const l of links) {
+      const key = linkSeg(l, t, amuds[i]);
+      if (!key) continue;
+      if (!sum.has(key)) sum.set(key, { rashi: 0, tosafot: 0, tanakh: 0, mishnah: new Set<string>(), rambam: new Set<string>(), sa: 0, comm: new Set<string>() });
+      const s = sum.get(key);
+      const g = linkGroup(l);
+      if (l.category === 'Tanakh') s.tanakh++;
+      else if (l.category === 'Mishnah') s.mishnah.add(String(l.ref).replace(/-.*$/, ''));
+      else if (l.category === 'Halakhah') {
+        if (/^Mishneh Torah/.test(String(l.ref))) s.rambam.add(String(l.ref).replace(/-.*$/, ''));
+        else if (/^Shulchan Arukh/.test(String(l.ref))) s.sa++;
+      } else if (l.category === 'Commentary') {
+        if (g === 'Rashi') s.rashi++;
+        else if (g === 'Tosafot') s.tosafot++;
+        s.comm.add(g);
+      }
+    }
+  });
+  state.linkSummary = sum;
+  renderBadges();
+  if (!state.selected) renderPanel();
+}
+
+/* ───────────────────────── Daf Yomi ───────────────────────── */
+async function loadToday() {
+  const cached = store.get('today');
+  const todayKey = new Date().toDateString();
+  let ref = cached?.day === todayKey ? cached.ref : '';
+  if (!ref) {
+    try {
+      const r = await fetch(`${SEFARIA}/api/calendars?diaspora=1`);
+      const j = await r.json();
+      ref = (j.calendar_items || []).find((i: any) => i.title?.en === 'Daf Yomi')?.ref || '';
+      if (ref) store.set('today', { day: todayKey, ref });
+    } catch { /* offline */ }
+  }
+  const m = ref.match(/^(.*?) (\d+)[ab]?(?:[-–].*)?$/);
+  if (m) {
+    // Kinnim and Middot have no Gemara; the daf falls back to the Mishnah reader.
+    state.today = { tr: byName(m[1]) || null, daf: Number(m[2]), ref, label: `${m[1]} ${m[2]}` };
+  }
+  renderToday();
+  renderToc(($('mm-search') as HTMLInputElement).value);
+}
+
+/* ───────────────────────── rendering ───────────────────────── */
+const HE_MONTH: Record<string, string> = {
+  Tishri: 'תשרי', Heshvan: 'חשון', Kislev: 'כסלו', Tevet: 'טבת', Shevat: 'שבט', 'Adar I': 'אדר א׳', Adar: 'אדר',
+  'Adar II': 'אדר ב׳', Nisan: 'ניסן', Iyar: 'אייר', Sivan: 'סיון', Tamuz: 'תמוז', Av: 'אב', Elul: 'אלול',
+};
+function hebDate() {
+  try {
+    const parts = new Intl.DateTimeFormat('en-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric' }).formatToParts(new Date());
+    const get = (k: string) => parts.find((p) => p.type === k)?.value ?? '';
+    return `${gem(Number(get('day')))} ${HE_MONTH[get('month')] || get('month')} ${gem(Number(get('year')))}`;
+  } catch { return ''; }
+}
+const gameSlug = (t: Tractate, d: number) => `${slug(t.name)}-${d}`;
+
+function renderToday() {
+  const done = totalLearned();
+  const pct = (done / TOTAL_AMUDIM) * 100;
+  const siyumim = TRACTATES.filter((t) => learnedIn(t).length === t.amudim).length;
+  const td = state.today;
+  const next = nextUnlearned();
+  const todayChip = !td ? '' : td.tr
+    ? `<button class="mm-chip say" data-go="today">Daf Yomi · ${esc(td.label)}</button>`
+    : `<a class="mm-chip say" href="/mega-mishnah?t=${slug('Mishnah ' + td.label.replace(/ \d+$/, ''))}">Daf Yomi · ${esc(td.label)} (Mishnah) ↗</a>`;
+  const game = td?.tr && GAMES.has(gameSlug(td.tr, td.daf)) ? `<a class="mm-chip" href="/daf/${gameSlug(td.tr, td.daf)}">Today's daf game ↗</a>` : '';
+  $('mm-today').innerHTML = `
+    <span class="mm-today-date">${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}<span class="he">${esc(hebDate())}</span></span>
+    ${todayChip}${game}
+    ${EXTRA.laf ? `<a class="mm-chip note" href="/laf-yomi/laf-yomi-${EXTRA.laf}.pdf">Laf Yomi PDF</a>` : ''}
+    ${next && done ? `<button class="mm-chip" data-go="next">Continue · ${esc(next.t.name)} ${esc(next.amud)}</button>` : ''}
+    <span class="mm-loc mm-prog" title="Amudim you have marked learned">
+      <span class="mm-prog-bar"><i style="width:${pct.toFixed(2)}%"></i></span>
+      <span>${done.toLocaleString()} / ${TOTAL_AMUDIM.toLocaleString()} amudim${siyumim ? ` · ${siyumim} siyum${siyumim > 1 ? 'im' : ''}` : ''}</span>
+    </span>`;
+}
+
+/** First unlearned amud after the last one you marked, in Shas order. */
+function nextUnlearned() {
+  const last = store.get('lastLearned', null) as null | { t: string; amud: string };
+  let ti = last ? Math.max(0, TRACTATES.findIndex((t) => t.name === last.t)) : 0;
+  let from = last ? amudOrder(last.amud) + 1 : 0;
+  for (let guard = 0; guard <= TRACTATES.length; guard++) {
+    const t = TRACTATES[ti];
+    for (let d = t.first; d <= t.last; d++) {
+      for (const a of amudsOf(t, d)) if (amudOrder(a) >= from && !isLearned(t, a)) return { t, daf: d, amud: a };
+    }
+    ti = (ti + 1) % TRACTATES.length; from = 0;
+  }
+  return null;
+}
+
+function renderToc(filter = '') {
+  const q = filter.trim().toLowerCase();
+  const strippedQ = strip(q);
+  const td = state.today;
+  const html = SEDARIM.map((s) => {
+    const trs = TRACTATES.filter((t) => t.seder === s.name)
+      .filter((t) => !q || t.name.toLowerCase().includes(q) || t.he.includes(strippedQ) || s.name.toLowerCase().includes(q) || s.he.includes(strippedQ));
+    if (!trs.length) return '';
+    const items = trs.map((t) => {
+      const done = learnedIn(t);
+      const cur = state.tr === t;
+      let cells = '';
+      // Only the open tractate draws its daf grid; the rest stay collapsed to keep the list light.
+      if (cur || q || (td && td.tr === t)) {
+        for (let d = t.first; d <= t.last; d++) {
+          const amuds = amudsOf(t, d);
+          const l = amuds.filter((a) => done.includes(a)).length;
+          const cls = [cur && state.daf === d ? 'current' : '', l === amuds.length ? 'full' : '', td && td.tr === t && td.daf === d ? 'today' : ''].join(' ');
+          cells += `<button class="mm-cell ${cls}" data-t="${t.idx}" data-ch="${d}" title="Daf ${d} · ${l}/${amuds.length} amudim learned">${gem(d, false)}${l && l < amuds.length ? `<i style="height:50%"></i>` : ''}</button>`;
+        }
+      }
+      return `<details class="mm-tr${cur ? ' current' : ''}" data-tr="${t.idx}"${cur || q ? ' open' : ''}>
+        <summary>${esc(t.name)}<span class="he">${esc(t.he)}</span><span class="pct${done.length === t.amudim ? ' done' : ''}">${done.length ? (done.length === t.amudim ? '✓' : Math.max(1, Math.floor((done.length / t.amudim) * 100)) + '%') : ''}</span></summary>
+        <div class="mm-grid">${cells}</div>
+      </details>`;
+    }).join('');
+    const open = q || (state.tr ? state.tr.seder === s.name : s.name === 'Zeraim');
+    return `<details class="mm-seder"${open ? ' open' : ''}><summary>Seder ${esc(s.name)}<span class="gloss">${esc(s.gloss)}</span><span class="he">${esc(s.he)}</span></summary><div class="kids">${items}</div></details>`;
+  }).join('');
+  $('mm-toc').innerHTML = html || '<div class="mm-toc-empty">No tractate matches.</div>';
+}
+
+// Fill a tractate's grid the first time it is opened in the contents.
+$('mm-toc').addEventListener('toggle', (e) => {
+  const d = e.target as HTMLDetailsElement;
+  if (!d.open || !d.dataset.tr) return;
+  const grid = d.querySelector('.mm-grid')!;
+  if (grid.childElementCount) return;
+  const t = TRACTATES[Number(d.dataset.tr)];
+  const done = learnedIn(t);
+  let cells = '';
+  for (let dd = t.first; dd <= t.last; dd++) {
+    const amuds = amudsOf(t, dd);
+    const l = amuds.filter((a) => done.includes(a)).length;
+    cells += `<button class="mm-cell${l === amuds.length ? ' full' : ''}" data-t="${t.idx}" data-ch="${dd}" title="Daf ${dd}">${gem(dd, false)}${l && l < amuds.length ? '<i style="height:50%"></i>' : ''}</button>`;
+  }
+  grid.innerHTML = cells;
+}, true);
+
+function fillSelects() {
+  const trSel = $('mm-tractate') as HTMLSelectElement;
+  if (!trSel.options.length) {
+    trSel.innerHTML = '<option value="">Tractate…</option>' + SEDARIM.map((s) => `<optgroup label="${esc(s.name)} · ${esc(s.he)}">${
+      TRACTATES.filter((t) => t.seder === s.name).map((t) => `<option value="${t.idx}">${esc(t.name)} · ${esc(t.he)}</option>`).join('')
+    }</optgroup>`).join('');
+  }
+  trSel.value = state.tr ? String(state.tr.idx) : '';
+  const dSel = $('mm-chapter') as HTMLSelectElement;
+  const t: Tractate | null = state.tr;
+  dSel.innerHTML = t ? Array.from({ length: t.last - t.first + 1 }, (_, i) => `<option value="${t.first + i}">דף ${gem(t.first + i)}</option>`).join('') : '<option>—</option>';
+  dSel.disabled = !t;
+  if (t) dSel.value = String(state.daf);
+}
+
+const WELCOME = $('mm-content').innerHTML;
+function renderWelcome() {
+  $('mm-content').innerHTML = WELCOME;
+  const done = totalLearned();
+  const mine = document.getElementById('mt-stat-mine');
+  if (mine && done) { mine.hidden = false; mine.querySelector('b')!.textContent = done.toLocaleString(); }
+  $('mm-panel-title').textContent = 'About';
+  $('mm-panel-body').innerHTML = `<div class="mm-intro">
+    <p><b>Read.</b> Pick a tractate on the left or press <b>Today</b> for the day's Daf Yomi. Each daf opens with both amudim; the Mishnah passages are tinted so you can see where the Gemara begins.</p>
+    <p><b>Voices.</b> Rav and Shmuel, Abaye and Rava, Rabbi Yochanan and Reish Lakish — every sage is underlined in a colour of their own. The strip above the daf counts who speaks; tap a name to follow only that voice.</p>
+    <p><b>Sources.</b> Tap a passage to load Rashi, Tosafot and the other commentaries, the verses it quotes, the mishnah it explains, and where the Rambam and Shulchan Arukh rule on it. Rambam, Mishnah and Tanakh sources open in the other Mega readers.</p>
+    <p><b>Progress.</b> The square beside each amud marks it learned. Progress lives in this browser.</p>
+    <p><b>Keys.</b> <span class="mm-kbd">j</span> / <span class="mm-kbd">k</span> next and previous passage, <span class="mm-kbd">x</span> mark the passage's amud learned, <span class="mm-kbd">[</span> / <span class="mm-kbd">]</span> previous and next daf.</p>
+  </div>`;
+}
+
+function neighbours() {
+  const t: Tractate = state.tr;
+  const prev = state.daf > t.first ? { t, d: state.daf - 1 } : t.idx > 0 ? { t: TRACTATES[t.idx - 1], d: TRACTATES[t.idx - 1].last } : null;
+  const next = state.daf < t.last ? { t, d: state.daf + 1 } : t.idx < TRACTATES.length - 1 ? { t: TRACTATES[t.idx + 1], d: TRACTATES[t.idx + 1].first } : null;
+  return { prev, next };
+}
+
+function renderDaf() {
+  const t: Tractate = state.tr;
+  const found = new Map<string, number>();
+  const td = state.today;
+  const isToday = td && td.tr === t && td.daf === state.daf;
+  let lastAmud = '';
+  const blocks = state.segs.map((p: Seg) => {
+    let head = '';
+    if (p.amud !== lastAmud) {
+      lastAmud = p.amud;
+      head = `<div class="mm-amud-head${isLearned(t, p.amud) ? ' learned' : ''}" data-amud="${p.amud}">
+        <h2>Amud ${p.amud.slice(-1)}</h2><span class="he">${heAmud(p.amud)}</span>
+        <span class="lbl">${isLearned(t, p.amud) ? 'Learned' : ''}</span>
+        <button class="mm-check" data-check="${p.amud}" title="Mark amud learned (x)" aria-label="Mark ${t.name} ${p.amud} learned">✓</button>
+      </div>`;
+    }
+    const plain = strip(p.he.replace(/<[^>]+>/g, '')).trim();
+    const kind = /^מתני/.test(plain) ? 'Mishnah' : /^גמ/.test(plain) ? 'Gemara' : '';
+    const he = markSages(sanitize(p.he), found);
+    const cls = ['mm-para', kind === 'Mishnah' ? 'mt-mishnah' : '', state.selected === p.key ? 'selected' : ''].join(' ');
+    return `${head}<div class="${cls}" data-p="${p.key}" id="${segId(p.key)}">
+      <div class="mm-num"><span class="he">${gem(p.n, false)}</span><span class="ar">${p.n}</span>${shareBtn({ s: p.key }, 'this passage')}</div>
+      ${kind ? `<div class="mt-kind">${kind}</div>` : ''}
+      <div class="mm-he" lang="he" dir="rtl">${he}</div>
+      ${p.en ? `<div class="mm-en">${sanitize(p.en)}</div>` : ''}
+      <div class="mm-badges" data-badges="${p.key}"></div>
+    </div>`;
+  }).join('');
+  const voices = [...found.entries()].sort((a, b) => b[1] - a[1]).slice(0, 18);
+  const { prev, next } = neighbours();
+  const amuds = amudsOf(t, state.daf);
+  const allDone = amuds.every((a) => isLearned(t, a));
+  const g = gameSlug(t, state.daf);
+  const inner = $('mm-content');
+  inner.removeAttribute('data-solo');
+  state.solo = '';
+  inner.innerHTML = `
+    <div class="mm-crumbs"><span>Seder ${esc(t.seder)}</span><span>${esc(t.name)}</span><span>Daf ${state.daf} of ${t.last}</span></div>
+    <div class="mm-title"><h1>${esc(t.name)} ${state.daf}</h1><span class="he">${esc(t.he)} ${gem(state.daf)}</span></div>
+    ${isToday ? '<div class="mm-banner say"><b>Daf Yomi</b> — this is today’s daf.</div>' : ''}
+    ${GAMES.has(g) ? `<a class="mt-game" href="/daf/${g}"><b>Daf game</b> A game built from this daf’s arguments<span>Play →</span></a>` : ''}
+    ${voices.length ? `<div class="mm-voices"><span class="mm-voices-label">Voices</span>${voices.map(([k, n]) =>
+      `<button class="mm-voice" data-voice="${esc(k)}" style="--c:${sageColor(k)}"><span class="sw"></span>${esc(sageLabel(k))}<span class="n">${n}</span></button>`).join('')}</div>` : ''}
+    ${blocks || '<div class="mm-empty">Sefaria has no text for this daf.</div>'}
+    <div class="mm-perek-actions">
+      <button class="mm-btn" id="mm-mark-perek">${allDone ? 'Unmark this daf' : 'Mark whole daf learned'}</button>
+      <a class="mm-btn" href="${SEFARIA}/${encodeRef(`${t.name} ${amuds[0]}`)}" target="_blank" rel="noopener">Open on Sefaria ↗</a>
+    </div>
+    <div class="mm-hint" style="margin-top:.8rem">${esc(state.heVersion)}${state.enVersion ? ` · ${esc(state.enVersion)}` : ''} — via Sefaria</div>
+    <div class="mm-pager">
+      <button class="prev" data-t="${prev ? prev.t.idx : ''}" data-ch="${prev ? prev.d : ''}" ${prev ? '' : 'disabled'}><small>Previous</small>${prev ? `${esc(prev.t.name)} ${prev.d}` : '—'}</button>
+      <button class="next" data-t="${next ? next.t.idx : ''}" data-ch="${next ? next.d : ''}" ${next ? '' : 'disabled'}><small>Next</small>${next ? `${esc(next.t.name)} ${next.d}` : '—'}</button>
+    </div>`;
+  renderBadges();
+}
+
+function renderBadges() {
+  document.querySelectorAll<HTMLElement>('[data-badges]').forEach((el) => {
+    const s = state.linkSummary.get(el.dataset.badges);
+    if (!s) { el.innerHTML = ''; return; }
+    const out: string[] = [];
+    if (s.rashi) out.push(`<span class="mm-badge bavli" data-open-tab="Commentary">Rashi</span>`);
+    if (s.tosafot) out.push(`<span class="mm-badge bavli" data-open-tab="Commentary">Tosafot</span>`);
+    const others = s.comm.size - (s.rashi ? 1 : 0) - (s.tosafot ? 1 : 0);
+    if (others > 0) out.push(`<span class="mm-badge comm" data-open-tab="Commentary">+<b>${others}</b> commentaries</span>`);
+    if (s.tanakh) out.push(`<span class="mm-badge" data-open-tab="Tanakh">Tanakh ${s.tanakh}</span>`);
+    for (const ref of [...s.mishnah].slice(0, 2)) {
+      const x = megaLink(ref);
+      out.push(x ? `<a class="mm-badge xl" href="${x.href}" title="Open in ${x.label}">${esc(ref)} ↗</a>` : `<span class="mm-badge" data-open-tab="Mishnah">${esc(ref)}</span>`);
+    }
+    const rambam = [...s.rambam] as string[];
+    if (rambam.length) {
+      const x = megaLink(rambam[0]);
+      const label = rambam[0].replace(/^Mishneh Torah, /, 'Rambam, ');
+      out.push(x ? `<a class="mm-badge xl" href="${x.href}" title="Open in ${x.label}">${esc(label)}${rambam.length > 1 ? ` +${rambam.length - 1}` : ''} ↗</a>` : '');
+    }
+    if (s.sa) out.push(`<span class="mm-badge" data-open-tab="Halakhah">Shulchan Arukh ${s.sa}</span>`);
+    el.innerHTML = out.join('');
+  });
+}
+
+function panelGroupsHtml(links: any[]) {
+  const inTab = links.filter((l) => tabOf(l) === state.panelTab);
+  if (!inTab.length) return '<div class="mm-empty">Nothing in this category for this passage.</div>';
+  const groups = new Map<string, any[]>();
+  for (const l of inTab) {
+    const name = linkGroup(l).replace(/ on .*$/, '');
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name)!.push(l);
+  }
+  const rank = (name: string) => { const i = COMM_ORDER.findIndex((c) => name === c || name.startsWith(c + ' ')); return i < 0 ? 99 : i; };
+  const sorted = [...groups.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]));
+  return `<div class="mm-lib">${sorted.map(([name, items], gi) => `
+    <details${gi < 2 || items.some((l) => l.ref === state.focusSrc) ? ' open' : ''}><summary>${esc(name)} <span class="n">${items.length}</span><span class="cat">${esc(items[0].collectiveTitle?.he || '')}</span></summary>
+      ${items.filter((l, i) => i < 20 || l.ref === state.focusSrc).map((l) => {
+        const he = flat(l.he).join(' ');
+        const en = flat(l.text).join(' ');
+        const x = megaLink(String(l.ref));
+        return `<div class="mm-lib-item" data-ref="${esc(l.ref)}">
+          <div class="mm-lib-ref-row"><a class="mm-lib-ref" href="${SEFARIA}/${encodeRef(l.ref)}" target="_blank" rel="noopener">${esc(l.ref)}</a>
+            ${x ? `<a class="mm-xl" href="${x.href}">${x.label} ↗</a>` : ''}${shareBtn({ s: state.selected, src: l.ref }, 'this source')}</div>
+          ${he ? `<div class="mm-lib-he" lang="he" dir="rtl">${sanitize(he.length > 1400 ? he.slice(0, 1400) + '…' : he)}</div>` : ''}
+          ${en ? `<div class="mm-lib-en">${sanitize(en.length > 1000 ? en.slice(0, 1000) + '…' : en)}</div>` : ''}
+        </div>`;
+      }).join('')}
+      ${items.length > 20 ? `<div class="mm-hint">+${items.length - 20} more on Sefaria</div>` : ''}
+    </details>`).join('')}</div>`;
+}
+
+function renderPanel() {
+  const t: Tractate = state.tr;
+  const body = $('mm-panel-body');
+  if (!t) return;
+  if (!state.selected) {
+    $('mm-panel-title').textContent = 'Sources';
+    const s = [...state.linkSummary.values()];
+    const rambam = new Set(s.flatMap((x) => [...x.rambam]));
+    body.innerHTML = `<div class="mm-scope"><b>${esc(t.name)} ${state.daf}</b> · ${state.segs.length} passages</div>
+      <div class="mm-intro"><p>Tap any passage to open Rashi, Tosafot, the verses it quotes and where the halakhah lands, here.</p>
+      ${s.length ? `<p>On this daf: <b>${s.filter((x) => x.rashi).length}</b> passages with Rashi, <b>${s.filter((x) => x.tosafot).length}</b> with Tosafot, <b>${s.reduce((a, x) => a + x.tanakh, 0)}</b> verses quoted, <b>${rambam.size}</b> Rambam rulings.</p>` : ''}
+      ${rambam.size ? `<p>${[...rambam].slice(0, 8).map((r) => { const x = megaLink(String(r)); return x ? `<a class="mm-xl" href="${x.href}">${esc(String(r).replace(/^Mishneh Torah, /, ''))}</a>` : ''; }).join(' ')}</p>` : ''}</div>`;
+    return;
+  }
+  const ref = `${t.name} ${state.selected}`;
+  $('mm-panel-title').textContent = ref;
+  if (!state.panelLinks) { body.innerHTML = '<div class="mm-loading">Loading sources…</div>'; return; }
+  const links = state.panelLinks as any[];
+  const counts = new Map<string, number>();
+  links.forEach((l) => counts.set(tabOf(l), (counts.get(tabOf(l)) || 0) + 1));
+  if (!counts.get(state.panelTab)) state.panelTab = TAB_ORDER.find((x) => counts.get(x)) || 'Commentary';
+  const [amud, n] = state.selected.split(':');
+  body.innerHTML = `
+    <div class="mm-scope"><b>${esc(t.he)} ${heAmud(amud)} ${gem(Number(n))}</b> · <a href="${SEFARIA}/${encodeRef(ref)}?with=all" target="_blank" rel="noopener" style="color:var(--gold)">Sefaria ↗</a></div>
+    <div class="mm-tabs">${TAB_ORDER.filter((x) => counts.get(x)).map((x) =>
+      `<button class="mm-tab${x === state.panelTab ? ' on' : ''}" data-tab="${x}">${x}<span class="n">${counts.get(x)}</span></button>`).join('')}</div>
+    ${links.length ? panelGroupsHtml(links) : '<div class="mm-empty">No linked sources on Sefaria for this passage.</div>'}`;
+}
+
+/* ───────────────────────── links & spotlight ───────────────────────── */
+// ?t=berakhot&d=2                   a daf
+// ?t=…&d=…&s=2a:3                   one passage on it
+// ?t=…&d=…&s=…&src=<Sefaria ref>    one commentary or source on it, spotlighted in the panel
+// ?t=…&d=…&v=<sage>                 the daf with one sage's voice picked out
+function shareUrl(o: { s?: string | null; src?: string }) {
+  const q = new URLSearchParams({ t: slug(state.tr.name), d: String(state.daf) });
+  if (o.s) q.set('s', o.s);
+  if (o.src) q.set('src', o.src);
+  return `${location.origin}${location.pathname}?${q}`;
+}
+function shareBtn(o: { s?: string | null; src?: string }, what: string) {
+  return `<button class="mm-share" type="button" data-share="${esc(shareUrl(o))}" title="Copy a link to ${what}">Link</button>`;
+}
+document.addEventListener('click', async (e) => {
+  const btn = (e.target as HTMLElement).closest('.mm-share') as HTMLElement | null;
+  if (!btn) return;
+  e.preventDefault(); e.stopPropagation();
+  const url = btn.dataset.share || '';
+  try { await navigator.clipboard.writeText(url); }
+  catch { window.prompt('Copy this link:', url); return; }
+  btn.textContent = 'Copied'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Link'; btn.classList.remove('copied'); }, 1600);
+}, true);
+
+function spot(el: Element | null) {
+  if (!el) return;
+  el.classList.remove('mm-spot'); void (el as HTMLElement).offsetWidth; el.classList.add('mm-spot');
+}
+
+/** Land on what a shared link names, once the passage's sources are in. */
+function applySpotlight() {
+  const f = state.spotlight;
+  if (!f || f.s !== state.selected || !state.panelLinks) return;
+  state.spotlight = null;
+  const block = document.getElementById(segId(f.s));
+  block?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  spot(block);
+  if (f.src) {
+    const l = (state.panelLinks as any[]).find((x) => x.ref === f.src);
+    if (l) {
+      state.panelTab = tabOf(l);
+      state.focusSrc = l.ref;
+      renderPanel();
+      if (window.matchMedia('(max-width: 900px)').matches) page.dataset.panel = '1';
+      const el = $('mm-panel-body').querySelector(`.mm-lib-item[data-ref="${CSS.escape(l.ref)}"]`);
+      requestAnimationFrame(() => { el?.scrollIntoView({ block: 'center', behavior: 'smooth' }); spot(el); });
+    }
+  }
+  syncUrl();
+}
+
+async function selectSeg(key: string | null, scroll = false) {
+  state.selected = key;
+  document.querySelectorAll('.mm-para').forEach((el) => el.classList.toggle('selected', (el as HTMLElement).dataset.p === key));
+  syncUrl();
+  if (key && scroll) document.getElementById(segId(key))?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  if (!key) { state.panelLinks = null; renderPanel(); return; }
+  const t: Tractate = state.tr;
+  const d = state.daf;
+  state.panelLinks = null;
+  renderPanel();
+  const links = await fetchLinks(`${t.name} ${key}`, true);
+  if (state.tr !== t || state.daf !== d || state.selected !== key) return;
+  state.panelLinks = links;
+  renderPanel();
+  applySpotlight();
+}
+
+async function openDaf(t: Tractate, d: number, s: string | null = null) {
+  d = Math.min(Math.max(t.first, d), t.last);
+  state.tr = t; state.daf = d; state.selected = s; state.panelLinks = null; state.linkSummary = new Map(); state.focusSrc = '';
+  store.set('last', { t: t.name, d });
+  fillSelects();
+  renderToc(($('mm-search') as HTMLInputElement).value);
+  $('mm-content').innerHTML = `<div class="mm-loading">Loading ${esc(t.name)} ${d}…</div>`;
+  $('mm-main').scrollTop = 0;
+  page.dataset.sidebar = '0';
+  syncUrl();
+  try {
+    const amuds = amudsOf(t, d);
+    const parts = await Promise.all(amuds.map((a) => fetchAmud(t, a)));
+    if (state.tr !== t || state.daf !== d) return;
+    state.segs = parts.flatMap((p, i) => p.paras.map((x: any, j: number) => ({ amud: amuds[i], n: j + 1, key: `${amuds[i]}:${j + 1}`, he: x.he, en: x.en })));
+    state.enVersion = parts[0]?.enVersion || ''; state.heVersion = parts[0]?.heVersion || '';
+    renderDaf();
+    if (state.pendingVoice) { soloVoice(state.pendingVoice); state.pendingVoice = ''; }
+    renderPanel();
+    loadLinkSummary(t, d);
+    if (s) selectSeg(s, true);
+  } catch (err: any) {
+    $('mm-content').innerHTML = `<div class="mm-error">Couldn't load ${esc(t.name)} ${d} from Sefaria (${esc(err.message || err)}). Check your connection and try again.</div>`;
+  }
+}
+
+function syncUrl() {
+  const u = new URL(location.href);
+  if (state.tr) { u.searchParams.set('t', slug(state.tr.name)); u.searchParams.set('d', String(state.daf)); } else { u.searchParams.delete('t'); u.searchParams.delete('d'); }
+  if (state.selected) u.searchParams.set('s', state.selected); else u.searchParams.delete('s');
+  if (!state.spotlight?.src) u.searchParams.delete('src');
+  if (state.solo) u.searchParams.set('v', state.solo); else u.searchParams.delete('v');
+  history.replaceState(null, '', u);
+}
+
+function toggleAmud(amud: string) {
+  const t: Tractate = state.tr;
+  const on = !isLearned(t, amud);
+  setLearned(t, [amud], on);
+  if (on) store.set('lastLearned', { t: t.name, amud });
+  afterProgress();
+}
+function afterProgress() {
+  const t: Tractate = state.tr;
+  document.querySelectorAll<HTMLElement>('.mm-amud-head').forEach((h) => {
+    const on = isLearned(t, h.dataset.amud!);
+    h.classList.toggle('learned', on);
+    h.querySelector('.lbl')!.textContent = on ? 'Learned' : '';
+  });
+  const btn = document.getElementById('mm-mark-perek');
+  if (btn) btn.textContent = amudsOf(t, state.daf).every((a) => isLearned(t, a)) ? 'Unmark this daf' : 'Mark whole daf learned';
+  renderToday();
+  renderToc(($('mm-search') as HTMLInputElement).value);
+}
+
+/* ───────────────────────── preferences & controls ───────────────────────── */
+function applyPrefs() {
+  const prefs = store.get('prefs', {});
+  page.dataset.theme = prefs.theme || 'night';
+  page.dataset.lang = prefs.lang || 'both';
+  page.dataset.layout = prefs.layout || 'stack';
+  page.dataset.focus = prefs.focus ? '1' : '0';
+  page.dataset.sages = prefs.sages === false ? '0' : '1';
+  page.style.setProperty('--heb-size', `${prefs.heb || 1.5}rem`);
+  page.style.setProperty('--en-size', `${(prefs.heb || 1.5) * 0.7}rem`);
+  document.querySelectorAll('.mm-bar [data-lang]').forEach((b) => b.classList.toggle('on', (b as HTMLElement).dataset.lang === page.dataset.lang));
+  $('mm-layout').textContent = page.dataset.layout === 'side' ? 'Side by side' : 'Stacked';
+  $('mm-focus').classList.toggle('on', !!prefs.focus);
+  $('mm-sages').classList.toggle('on', page.dataset.sages === '1');
+}
+function setPref(k: string, val: any) { const p = store.get('prefs', {}); p[k] = val; store.set('prefs', p); applyPrefs(); }
+
+document.querySelectorAll('.mm-bar [data-lang]').forEach((b) => b.addEventListener('click', () => setPref('lang', (b as HTMLElement).dataset.lang)));
+$('mm-layout').addEventListener('click', () => setPref('layout', page.dataset.layout === 'side' ? 'stack' : 'side'));
+$('mm-theme').addEventListener('click', () => setPref('theme', page.dataset.theme === 'night' ? 'parchment' : 'night'));
+$('mm-focus').addEventListener('click', () => setPref('focus', page.dataset.focus !== '1'));
+$('mm-sages').addEventListener('click', () => setPref('sages', page.dataset.sages !== '1'));
+$('mm-smaller').addEventListener('click', () => setPref('heb', Math.max(1.05, +(store.get('prefs', {}).heb || 1.5) - 0.15)));
+$('mm-bigger').addEventListener('click', () => setPref('heb', Math.min(3.2, +(store.get('prefs', {}).heb || 1.5) + 0.15)));
+$('mm-today-btn').addEventListener('click', goToday);
+$('mm-toc-toggle').addEventListener('click', () => { page.dataset.sidebar = page.dataset.sidebar === '1' ? '0' : '1'; page.dataset.panel = '0'; });
+$('mm-panel-toggle').addEventListener('click', () => { page.dataset.panel = page.dataset.panel === '1' ? '0' : '1'; page.dataset.sidebar = '0'; });
+$('mm-panel-close').addEventListener('click', () => { page.dataset.panel = '0'; });
+$('mm-scrim').addEventListener('click', () => { page.dataset.panel = '0'; page.dataset.sidebar = '0'; });
+$('mm-search').addEventListener('input', (e) => renderToc((e.target as HTMLInputElement).value));
+$('mm-tractate').addEventListener('change', (e) => { const val = (e.target as HTMLSelectElement).value; if (val) { const t = TRACTATES[Number(val)]; openDaf(t, t.first); } });
+$('mm-chapter').addEventListener('change', (e) => { if (state.tr) openDaf(state.tr, Number((e.target as HTMLSelectElement).value)); });
+
+function goToday() {
+  const td = state.today;
+  if (td?.tr) openDaf(td.tr, td.daf);
+  else if (td) location.href = `/mega-mishnah?t=${slug('Mishnah ' + td.label.replace(/ \d+$/, ''))}`;
+}
+
+// Any [data-t][data-ch] button (contents grid, welcome lists, pager) opens that daf.
+document.addEventListener('click', (e) => {
+  const el = (e.target as HTMLElement).closest('[data-t][data-ch]') as HTMLElement | null;
+  if (el && el.dataset.t !== '' && !(el as HTMLButtonElement).disabled) { openDaf(TRACTATES[Number(el.dataset.t)], Number(el.dataset.ch)); return; }
+  const go = (e.target as HTMLElement).closest('[data-go]') as HTMLElement | null;
+  if (go?.dataset.go === 'today') goToday();
+  if (go?.dataset.go === 'next') { const n = nextUnlearned(); if (n) openDaf(n.t, n.daf, `${n.amud}:1`); }
+});
+
+$('mm-panel-body').addEventListener('click', (e) => {
+  const tab = (e.target as HTMLElement).closest('[data-tab]') as HTMLElement | null;
+  if (tab) { state.panelTab = tab.dataset.tab; renderPanel(); }
+});
+
+$('mm-content').addEventListener('click', (e) => {
+  const t = e.target as HTMLElement;
+  if (!state.tr) return;
+  if (t.classList.contains('footnote-marker')) {
+    t.nextElementSibling?.classList.toggle('open');
+    e.stopPropagation();
+    return;
+  }
+  const check = t.closest('[data-check]') as HTMLElement | null;
+  if (check) { toggleAmud(check.dataset.check!); return; }
+  if (t.id === 'mm-mark-perek') {
+    const amuds = amudsOf(state.tr, state.daf);
+    const on = !amuds.every((a) => isLearned(state.tr, a));
+    setLearned(state.tr, amuds, on);
+    if (on) store.set('lastLearned', { t: state.tr.name, amud: amuds[amuds.length - 1] });
+    afterProgress();
+    return;
+  }
+  if (t.closest('a')) return;
+  const voice = (t.closest('[data-voice]') || (page.dataset.sages === '1' ? t.closest('[data-sage]') : null)) as HTMLElement | null;
+  if (voice) {
+    const key = voice.dataset.voice || voice.dataset.sage || '';
+    soloVoice(state.solo === key ? '' : key);
+    if (voice.dataset.voice) return;
+  }
+  const para = t.closest('.mm-para') as HTMLElement | null;
+  if (!para || window.getSelection()?.toString().trim()) return;
+  const key = para.dataset.p!;
+  const badge = t.closest('[data-open-tab]') as HTMLElement | null;
+  if (badge) { state.panelTab = badge.dataset.openTab; selectSeg(key); }
+  else selectSeg(state.selected === key ? null : key);
+  if (state.selected && window.matchMedia('(max-width: 900px)').matches) page.dataset.panel = '1';
+});
+
+function soloVoice(key: string) {
+  state.solo = key;
+  const inner = $('mm-content');
+  if (key) inner.setAttribute('data-solo', key); else inner.removeAttribute('data-solo');
+  inner.querySelectorAll<HTMLElement>('.mm-sage').forEach((s) => s.classList.toggle('solo', s.dataset.sage === key));
+  inner.querySelectorAll<HTMLElement>('.mm-voice').forEach((b) => b.classList.toggle('on', b.dataset.voice === key));
+  inner.querySelectorAll<HTMLElement>('.mm-para').forEach((p) => p.classList.toggle('has-solo', !!key && !!p.querySelector(`.mm-sage.solo`)));
+  syncUrl();
+}
+
+document.addEventListener('keydown', (e) => {
+  const tag = (e.target as HTMLElement).tagName;
+  if (/INPUT|TEXTAREA|SELECT/.test(tag) || e.metaKey || e.ctrlKey || e.altKey || !state.tr) return;
+  const keys = state.segs.map((s: Seg) => s.key);
+  const i = keys.indexOf(state.selected);
+  if (e.key === 'j' && keys.length) selectSeg(keys[Math.min(keys.length - 1, i + 1)], true);
+  else if (e.key === 'k' && keys.length) selectSeg(keys[Math.max(0, i < 0 ? 0 : i - 1)], true);
+  else if (e.key === 'x' && state.selected) toggleAmud(state.selected.split(':')[0]);
+  else if (e.key === ']' || e.key === '[') {
+    const { prev, next } = neighbours();
+    const go = e.key === ']' ? next : prev;
+    if (go) openDaf(go.t, go.d);
+  } else if (e.key === 'Escape') { selectSeg(null); soloVoice(''); }
+});
+
+/* ───────────────────────── boot ───────────────────────── */
+(function boot() {
+  applyPrefs();
+  fillSelects();
+  renderToc();
+  renderToday();
+  const u = new URL(location.href);
+  const t = bySlug(u.searchParams.get('t') || '');
+  if (t) {
+    const d = Number(u.searchParams.get('d')) || t.first;
+    const s = u.searchParams.get('s') || null;
+    if (s) state.spotlight = { s, src: u.searchParams.get('src') || '' };
+    state.pendingVoice = u.searchParams.get('v') || '';
+    openDaf(t, d, s);
+  } else {
+    renderWelcome();
+  }
+  loadToday();
+})();
+</script>

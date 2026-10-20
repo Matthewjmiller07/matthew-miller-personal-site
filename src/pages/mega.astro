@@ -1,7 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import mishnahToc from '../data/mega-mishnah/toc.json';
+import talmudToc from '../data/mega-talmud/toc.json';
+import rambamToc from '../data/mega-rambam/toc.json';
 
+const masechtot = talmudToc.sedarim.reduce((a, s) => a + s.tractates.length, 0);
+const dapim = talmudToc.sedarim.reduce((a, s) => a + s.tractates.reduce((b, t) => b + t.last - t.first + 1, 0), 0);
+const rambamChapters = rambamToc.books.reduce((a, b) => a + b.sections.reduce((x, s) => x + s.chapters, 0), 0);
 const mishnayot = mishnahToc.sedarim.reduce((a, s) => a + s.tractates.reduce((b, t) => b + t.chapters.reduce((x, y) => x + y, 0), 0), 0);
 
 // The Mega readers: one per shelf of the Jewish library, each a single page
@@ -39,6 +44,36 @@ const megas = [
     stats: [['6', 'sedarim'], ['63', 'masechtot'], [mishnayot.toLocaleString('en-US'), 'mishnayot']],
   },
   {
+    slug: 'mega-talmud',
+    name: 'Mega Talmud',
+    he: 'תלמוד',
+    shelf: 'Oral Torah',
+    tagline: 'The Bavli daf by daf, with every Amora colour-coded so you can follow Abaye and Rava down the page.',
+    features: [
+      'Vocalised Aramaic and the Koren–Steinsaltz English for every tractate of the Daf Yomi cycle, both amudim on one page',
+      'Voices layer: Rav, Shmuel, Rabbi Yochanan, Reish Lakish and the rest each in their own colour, with a per-daf tally you can filter by',
+      'Rashi and Tosafot badges on every passage, the verses it quotes and the mishnah it explains',
+      'Where the Rambam and Shulchan Arukh rule on it, opening straight into Mega Maimonides',
+      'Daf Yomi, the daily Laf Yomi laugh sheet, the day’s daf game, and progress amud by amud',
+    ],
+    stats: [[String(masechtot), 'masechtot'], [dapim.toLocaleString('en-US'), 'dapim'], ['2,711', 'days a cycle']],
+  },
+  {
+    slug: 'mega-maimonides',
+    name: 'Mega Maimonides',
+    he: 'רמב״ם',
+    shelf: 'Halakhah',
+    tagline: 'The Mishneh Torah whole, with the Ra’avad’s objections flagged and the Gemara behind every ruling.',
+    features: [
+      'All fourteen books of the Mishneh Torah in Hebrew and English',
+      'Ra’avad layer: every halakhah he objects to flagged in the margin, one tap from his hasagah',
+      'Each chapter’s Bavli sources gathered at the top and opened in the Mega Talmud',
+      'Maggid Mishneh, Kesef Mishneh, Lechem Mishneh, Mishneh LaMelech and more in the side panel',
+      'Rambam Yomi on the one- and three-chapter tracks, with progress toward each siyum',
+    ],
+    stats: [['14', 'books'], ['83', 'sets of hilchot'], [rambamChapters.toLocaleString('en-US'), 'chapters']],
+  },
+  {
     slug: 'mega-siddur',
     name: 'Mega Siddur',
     he: 'סדור',
@@ -57,8 +92,8 @@ const megas = [
 ---
 
 <Layout
-  title="Mega — Bible, Mishnah, Siddur"
-  description="The Mega readers: Mega Bible, Mega Mishnah and Mega Siddur — single-page readers for Tanakh, Mishnah and the siddur, built on Sefaria and layered with morphology, sages, commentary and daily learning."
+  title="Mega — Bible, Mishnah, Talmud, Maimonides, Siddur"
+  description="The Mega readers: Mega Bible, Mega Mishnah, Mega Talmud, Mega Maimonides and Mega Siddur — single-page readers for Tanakh, Mishnah, the Bavli, the Mishneh Torah and the siddur, built on Sefaria and layered with morphology, sages, commentary and daily learning."
 >
 
 <style is:global>
@@ -88,7 +123,10 @@ h1 em { font-style:italic; color:var(--gold); }
 .shelf span + span { border-left:1px solid var(--border); }
 .shelf small { display:block; font-family:var(--sc); font-size:.6rem; letter-spacing:.22em; color:var(--muted); text-transform:uppercase; margin-top:.2rem; }
 
-.grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:1rem; }
+.grid { display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:1rem; }
+.grid > .card { grid-column:span 2; }
+/* Five cards: three across, then two centred beneath. */
+.grid > .card:nth-child(4) { grid-column:2 / span 2; }
 .card {
   display:flex; flex-direction:column; background:var(--surface); border:1px solid var(--border-hi);
   padding:1.4rem 1.4rem 1.2rem; color:inherit; text-decoration:none; position:relative; overflow:hidden;
@@ -118,6 +156,7 @@ h1 em { font-style:italic; color:var(--gold); }
 
 @media (max-width: 960px) {
   .grid { grid-template-columns:1fr; }
+  .grid > .card, .grid > .card:nth-child(4) { grid-column:auto; }
   .shared { grid-template-columns:1fr; gap:.6rem; }
 }
 </style>
@@ -126,11 +165,12 @@ h1 em { font-style:italic; color:var(--gold); }
   <div class="wrap">
     <div class="kicker">The Mega readers</div>
     <h1>One page per <em>shelf</em>.</h1>
-    <p class="lede">Each Mega reader takes one shelf of the Jewish library — Tanakh, Mishnah, the siddur — puts the entire text on a single page, and then piles on everything I wanted while learning it: grammar, sages, commentaries, the day's calendar, and a record of how far I've got.</p>
+    <p class="lede">Each Mega reader takes one shelf of the Jewish library — Tanakh, Mishnah, Talmud, the Rambam, the siddur — puts the entire text on a single page, and then piles on everything I wanted while learning it: grammar, sages, commentaries, the day's calendar, and a record of how far I've got.</p>
 
     <div class="shelf" aria-hidden="true">
       <span>תורה שבכתב<small>Written</small></span>
       <span>תורה שבעל פה<small>Oral</small></span>
+      <span>הלכה<small>Law</small></span>
       <span>תפילה<small>Prayer</small></span>
     </div>
 
@@ -153,8 +193,8 @@ h1 em { font-style:italic; color:var(--gold); }
     <section class="shared">
       <h3>What they share</h3>
       <div>
-        <p>All three read their texts live from <a href="https://www.sefaria.org" target="_blank" rel="noopener">Sefaria</a>'s open API, so nothing is copied or frozen. They share one look — dark ink-and-gold by default, parchment if you prefer — and the same habits: Hebrew, English or both, stacked or side by side; a contents sidebar; a panel of linked sources for whatever you tap; links you can share to the exact verse, mishnah or paragraph.</p>
-        <p>Each one also knows what today is: the Mega Bible has the week's parasha and haftarah, the Mega Mishnah opens to the day's Mishnah Yomit, and the Mega Siddur adjusts the service to the date and the hour.</p>
+        <p>All five read their texts live from <a href="https://www.sefaria.org" target="_blank" rel="noopener">Sefaria</a>'s open API, so nothing is copied or frozen. They share one look — dark ink-and-gold by default, parchment if you prefer — and the same habits: Hebrew, English or both, stacked or side by side; a contents sidebar; a panel of linked sources for whatever you tap; links you can share to the exact verse, mishnah, passage, halakhah or paragraph. And they point at each other: a Rambam ruling opens the daf it comes from, and a daf opens the Rambam, the mishnah and the verse it cites.</p>
+        <p>Each one also knows what today is: the Mega Bible has the week's parasha and haftarah, the Mega Mishnah opens to the day's Mishnah Yomit, the Mega Talmud to the Daf Yomi, the Mega Maimonides to the day's Rambam, and the Mega Siddur adjusts the service to the date and the hour.</p>
       </div>
     </section>
   </div>
