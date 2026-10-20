@@ -37,7 +37,7 @@ const isExternal = (href: string) => href.startsWith('http');
       <nav class="ph-jump" aria-label="On this page">
         <a href="#now">This week</a>
         <a href="#series">Readers &amp; series</a>
-        <a href="#dweck">Dweck on the haftara</a>
+        <a href="#dweck">Rabbi Dweck on the haftara</a>
         <a href="#levy-theses">The Levy theses</a>
         <a href="#tools">Tools</a>
         <a href="#year">Every parasha</a>
@@ -57,10 +57,18 @@ const isExternal = (href: string) => href.startsWith('http');
             <ul class="ph-links">
               {w.links.map((l) => (
                 <li>
-                  <a class={`ph-chip ph-k-${l.kind}`} href={l.href} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                  <a class="ph-chip" href={l.href} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
                     {l.label}
+                    {isExternal(l.href) && <span class="ph-ext" aria-hidden="true">↗</span>}
                   </a>
-                  {l.note && <span class="ph-note">{l.note}</span>}
+                  {l.note && (l.noteHref ? (
+                    <a class="ph-note ph-note-link" href={l.noteHref} target="_blank" rel="noopener noreferrer">
+                      {l.note}
+                      <span class="ph-ext" aria-hidden="true">↗</span>
+                    </a>
+                  ) : (
+                    <span class="ph-note">{l.note}</span>
+                  ))}
                 </li>
               ))}
             </ul>
@@ -106,9 +114,9 @@ const isExternal = (href: string) => href.startsWith('http');
             scrolling="no"
           ></iframe>
           <ul class="ph-links">
-            <li><a class="ph-chip ph-k-mega" href={`/mega-bible?mode=haftarah&parsha=${encodeURIComponent(ep.parsha)}&rites=Sephardi`}>Read it in the Mega Bible</a></li>
-            <li><a class="ph-chip" href={ep.spotify} target="_blank" rel="noopener noreferrer">Spotify</a></li>
-            <li><a class="ph-chip" href={ep.apple} target="_blank" rel="noopener noreferrer">Apple Podcasts</a></li>
+            <li><a class="ph-chip ph-chip-primary" href={`/mega-bible?mode=haftarah&parsha=${encodeURIComponent(ep.parsha)}&rites=Sephardi`}>Read it in the Mega Bible</a></li>
+            <li><a class="ph-chip" href={ep.spotify} target="_blank" rel="noopener noreferrer">Spotify<span class="ph-ext" aria-hidden="true">↗</span></a></li>
+            <li><a class="ph-chip" href={ep.apple} target="_blank" rel="noopener noreferrer">Apple Podcasts<span class="ph-ext" aria-hidden="true">↗</span></a></li>
           </ul>
         </article>
       ))}
@@ -137,8 +145,8 @@ const isExternal = (href: string) => href.startsWith('http');
             </p>
             <p class="ph-thesis-blurb">{t.blurb}</p>
             <ul class="ph-links">
-              <li><a class="ph-chip ph-k-thesis" href={`/mega-bible?book=${t.book}&chapter=${t.chapter}`}>Read the passage in the Mega Bible</a></li>
-              <li><a class="ph-chip ph-chip-ext" href={t.url} target="_blank" rel="noopener noreferrer">{t.urlLabel}<span class="ph-ext" aria-hidden="true">↗</span></a></li>
+              <li><a class="ph-chip ph-chip-primary" href={`/mega-bible?book=${t.book}&chapter=${t.chapter}`}>Read the passage in the Mega Bible</a></li>
+              <li><a class="ph-chip" href={t.url} target="_blank" rel="noopener noreferrer">{t.urlLabel}<span class="ph-ext" aria-hidden="true">↗</span></a></li>
             </ul>
           </article>
         ))}
@@ -172,10 +180,16 @@ const isExternal = (href: string) => href.startsWith('http');
               <ul class="ph-links">
                 {w.links.map((l) => (
                   <li>
-                    <a class={`ph-chip ph-k-${l.kind}`} href={l.href} title={l.note} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                    <a class="ph-chip" href={l.href} title={l.note} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
                       {l.label}
+                      {isExternal(l.href) && <span class="ph-ext" aria-hidden="true">↗</span>}
                     </a>
-                    {l.note && <span class="ph-note">{l.note}</span>}
+                    {l.note && l.noteHref && (
+                      <a class="ph-note ph-note-link" href={l.noteHref} target="_blank" rel="noopener noreferrer">
+                        {l.note}
+                        <span class="ph-ext" aria-hidden="true">↗</span>
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -230,8 +244,8 @@ const isExternal = (href: string) => href.startsWith('http');
   .ph-lede { font-size: 1.22rem; line-height: 1.55; max-width: 44rem; color: #d4cfc5 !important; margin: 0; }
   .ph-jump { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: 1.35rem; }
   .ph-jump a {
-    font-size: .85rem; padding: .32rem .8rem; border-radius: 999px; text-decoration: none;
-    border: 1px solid #3d434a; color: #cfd4da !important; background: #17191d;
+    font-size: .86rem; padding: .32rem .85rem; border-radius: 999px; text-decoration: none; line-height: 1.35;
+    border: 1px solid #54492c; color: #ece5d3 !important; background: #1b1f23;
     transition: border-color .15s, color .15s, transform .15s;
   }
   .ph-jump a:hover { border-color: #d8b06a; color: #f0dc9c !important; transform: translateY(-1px); }
@@ -270,26 +284,35 @@ const isExternal = (href: string) => href.startsWith('http');
   #ph-now .ph-name { font-size: 1.5rem; }
   #ph-now .ph-current .ph-name::after, #ph-now .ph-name::after { content: none; }
 
-  /* ---- Link chips ---- */
+  /* ---- Link chips: ONE system, two variants ----
+     Secondary (default .ph-chip): gold-outline on dark, shared by every link
+     chip on the page and by the jump-nav pills (.ph-jump a uses the same box).
+     Primary (.ph-chip-primary): filled gold — only the "read it here" action
+     in the feature cards (Rabbi Dweck episodes, Levy theses).
+     No per-kind colours anywhere. */
   .ph-links { list-style: none; padding: 0; margin: .55rem 0 0; display: flex; flex-wrap: wrap; gap: .4rem .5rem; }
-  #ph-now .ph-links { flex-direction: column; gap: .5rem; }
-  #ph-now .ph-links li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .6rem; }
-  .ph-book .ph-note { display: none; }
-  .ph-note { font-size: .95rem; font-style: italic; color: #b9b4aa !important; }
   .ph-chip {
-    display: inline-block; padding: .2rem .65rem; border-radius: 999px; font-size: .84rem; line-height: 1.35;
-    text-decoration: none; border: 1px solid #3d434a; color: #cfd4da !important; background: #1b1f23;
-    white-space: nowrap; transition: border-color .15s, transform .15s, box-shadow .15s;
+    display: inline-block; padding: .32rem .85rem; border-radius: 999px; font-size: .86rem; line-height: 1.35;
+    text-decoration: none; border: 1px solid #54492c; color: #ece5d3 !important; background: #1b1f23;
+    white-space: nowrap; transition: border-color .15s, color .15s, background .15s, transform .15s, box-shadow .15s;
   }
-  a.ph-chip:hover { border-color: #d8b06a; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0, 0, 0, .3); }
+  a.ph-chip:hover { border-color: #d8b06a; color: #f0dc9c !important; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0, 0, 0, .3); }
+  .ph-chip-primary { background: linear-gradient(180deg, #e3bd77, #d3a95e); border-color: #d8b06a; color: #241a05 !important; font-weight: 600; }
+  a.ph-chip-primary:hover { background: linear-gradient(180deg, #eecf92, #dbb46c); border-color: #eecf92; color: #241a05 !important; }
   .ph-chip .ph-ext { margin-left: .3rem; }
-  .ph-k-simon { border-color: #36546a; background: #17242d; color: #a9cde4 !important; }
-  .ph-k-sheet { border-color: #5a4a28; background: #241f14; color: #e8d4aa !important; }
-  .ph-k-balashon { border-color: #6a3a32; background: #2a1815; color: #f0c2b6 !important; }
-  .ph-k-book { border-color: #4f3d5c; background: #221a28; color: #dcc4ec !important; }
-  .ph-k-phd { border-color: #3f5a3c; background: #1a2419; color: #c3e0bd !important; }
-  .ph-k-thesis { border-color: #2f5f6a; background: #12262b; color: #a8d8de !important; }
-  .ph-k-dweck { border-color: #6a5a2a; background: #2a2412; color: #f0dc9c !important; }
+
+  /* ---- Notes: each resource in the This-week card is its own row — chip on
+     its own line, its description beneath it in muted italic. In the year list
+     only notes that are links render (plain notes stay off, as before). ---- */
+  #ph-now .ph-links { flex-direction: column; gap: 1rem; margin-top: .9rem; }
+  #ph-now .ph-links li { display: flex; flex-direction: column; align-items: flex-start; gap: .3rem; }
+  .ph-note { font-size: .97rem; font-style: italic; line-height: 1.45; color: #b9b4aa !important; }
+  .ph-book a.ph-note-link { margin-left: .3rem; }
+  a.ph-note-link {
+    text-decoration: underline; text-decoration-color: rgba(216, 176, 106, .45); text-underline-offset: 3px;
+    transition: color .15s, text-decoration-color .15s;
+  }
+  a.ph-note-link:hover { color: #f0dc9c !important; text-decoration-color: #d8b06a; }
 
   /* ---- Series & tool cards ---- */
   .ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .9rem; }
@@ -318,7 +341,7 @@ const isExternal = (href: string) => href.startsWith('http');
   .ph-thesis-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 27rem), 1fr)); gap: .9rem; }
   .ph-thesis-card {
     display: flex; flex-direction: column; padding: 1.1rem 1.25rem 1.2rem;
-    border: 1px solid #3a3f45; border-left: 3px solid #2f5f6a; border-radius: 10px;
+    border: 1px solid #3a3f45; border-left: 3px solid #b28c46; border-radius: 10px;
     background: linear-gradient(180deg, #1b2026, #16181c); scroll-margin-top: 5rem;
     transition: border-color .15s, box-shadow .15s;
   }
@@ -327,14 +350,14 @@ const isExternal = (href: string) => href.startsWith('http');
   .ph-thesis-author { font-size: 1.18rem; font-weight: 600; color: #f0e9db !important; }
   .ph-year {
     font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
-    padding: .14rem .55rem; border-radius: 999px; border: 1px solid #5a4a28; color: #e8d4aa !important; background: #241f14;
+    padding: .14rem .55rem; border-radius: 999px; border: 1px solid #54492c; color: #ece5d3 !important; background: #1b1f23;
   }
   .ph-thesis-title { font-size: 1.06rem; font-style: italic; line-height: 1.45; margin: .5rem 0 .15rem; }
-  .ph-thesis-title a { color: #e7e3da !important; text-decoration: underline; text-decoration-color: rgba(168, 216, 222, .55); text-underline-offset: 3px; transition: color .15s, text-decoration-color .15s; }
+  .ph-thesis-title a { color: #e7e3da !important; text-decoration: underline; text-decoration-color: rgba(216, 176, 106, .5); text-underline-offset: 3px; transition: color .15s, text-decoration-color .15s; }
   .ph-thesis-title a:hover { color: #f0dc9c !important; text-decoration-color: #d8b06a; }
   .ph-ext { font-style: normal; font-size: .78em; color: #d8b06a !important; margin-left: .25rem; }
   .ph-thesis-meta { font-size: .92rem; color: #9aa0a7 !important; margin: .1rem 0 0; }
-  .ph-ref-link { color: #a8d8de !important; text-decoration: underline; text-decoration-color: rgba(168, 216, 222, .4); text-underline-offset: 3px; }
+  .ph-ref-link { color: #e3c98f !important; text-decoration: underline; text-decoration-color: rgba(216, 176, 106, .45); text-underline-offset: 3px; }
   .ph-ref-link:hover { color: #d8b06a !important; text-decoration-color: #d8b06a; }
   .ph-thesis-blurb { font-size: 1rem; line-height: 1.5; color: #b9b4aa !important; margin: .45rem 0 .8rem; flex: 1; }
   .ph-thesis-card .ph-links { margin-top: auto; }
@@ -349,11 +372,13 @@ const isExternal = (href: string) => href.startsWith('http');
     .ph-lede { font-size: 1.1rem; }
     .ph-h2 { font-size: 1.32rem; margin: 2.6rem 0 1rem; gap: .65rem; }
     .ph-h2::before { width: 1.4rem; }
-    .ph-jump a { font-size: .8rem; padding: .28rem .65rem; }
-    .ph-chip { font-size: .79rem; }
+    .ph-jump a { font-size: .82rem; padding: .3rem .75rem; }
+    .ph-chip { font-size: .82rem; padding: .3rem .75rem; }
     #ph-now .ph-week { padding: 1rem 1.05rem; }
     #ph-now .ph-he { font-size: 1.6rem; }
     #ph-now .ph-name { font-size: 1.3rem; }
+    #ph-now .ph-meta { flex-basis: 100%; }
+    #ph-now .ph-note { font-size: .94rem; }
     .ph-dweck { padding: .95rem 1.05rem; }
     .ph-thesis-card { padding: .95rem 1.05rem 1.05rem; }
     .ph-thesis-author { font-size: 1.1rem; }

@@ -94,7 +94,16 @@ export interface Link {
   label: string;
   href: string;
   note?: string;
+  noteHref?: string; // when set, the note itself renders as a link (e.g. a PhD guest's cited work)
 }
+
+// Where a PhD guest's cited work has a verified record of its own, the note links
+// there rather than to the scholar's profile in the season data (guest.url).
+// Bernat: *Sign of the Covenant* (SBL Press, Ancient Israel and Its Literature 3,
+// 2009), hosted by the publisher; verified resolving 2026-10-20.
+const PHD_WORK_URL: Record<string, string> = {
+  lechlecha: 'https://www.sbl-site.org/wp-content/uploads/2024/12/Bernat_Sign.pdf',
+};
 
 export interface Week {
   n: number;
@@ -128,7 +137,13 @@ export const weeks: Week[] = season.weeks.map((w: any) => {
   if (pb) links.push({ kind: 'book', label: 'Picture book', href: `/parasha-books/${pb.slug}`, note: pb.title });
 
   if (w.guest?.name) {
-    links.push({ kind: 'phd', label: 'PhDs on the Parsha', href: '/phds-on-the-parsha', note: `${w.guest.name}, “${w.guest.title}”` });
+    links.push({
+      kind: 'phd',
+      label: 'PhDs on the Parsha',
+      href: '/phds-on-the-parsha',
+      note: `${w.guest.name}, “${w.guest.title}”`,
+      noteHref: PHD_WORK_URL[k] ?? (w.guest.url || undefined),
+    });
   }
 
   for (const t of thesesForWeek(w)) {
