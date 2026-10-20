@@ -1,6 +1,7 @@
 import likuteiPeshatimEvents from '../data/likutei-peshatim/events.json';
 import raananaGaniYolaEvents from '../data/raanana-gani-yola/events.json';
 import torahTidbitsEvents from '../data/torah-tidbits-events/events.json';
+import aiTechEvents from '../data/ai-tech-events/events.json';
 
 export const siteBase = 'https://theothermatthewmiller.com';
 
@@ -66,6 +67,17 @@ const rawCalendars = [
     tags: ['Jewish', 'Israel', 'Events', 'Weekly'],
     eventCount: torahTidbitsEvents.length,
     note: 'Updated weekly from the latest Torah Tidbits issue. Best-effort date parsing — always double-check exact times with the organizer. Each event\'s calendar description cites the issue it came from.',
+  },
+  {
+    slug: 'AITechEvents',
+    id: 'ai_tech_events',
+    name: 'AI Tech Events — Sharon & Central Israel',
+    description: 'AI and tech networking events in the Sharon and central Israel: conferences, summits, meetups and community gatherings in Tel Aviv, Herzliya, Ra\'anana, Rishon LeZion and the wider center. Researched daily from event listings (Lynx, Meetup, Eventbrite, Luma, organizer sites).',
+    file: '/calendar/ai_tech_events.ics',
+    source: 'https://www.meetup.com/find/?location=il--tel-aviv-yafo&source=GROUPS',
+    tags: ['AI', 'Tech', 'Israel', 'Networking', 'Events'],
+    eventCount: aiTechEvents.length,
+    note: 'Researched and refreshed daily. Times are best-effort from the organizer listings — always confirm exact times and registration with the organizer before heading out. Multi-day conferences appear once per day or as a single all-day block.',
   },
 ];
 
