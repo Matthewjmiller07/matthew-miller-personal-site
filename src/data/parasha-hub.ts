@@ -5,6 +5,7 @@ import season from './phds-on-the-parsha/season-5787.json';
 import { books } from './parasha-books/books.mjs';
 import { sheets as simonSheets } from './uriel-simon-reader';
 import dweck from './dweck-haftara/episodes.json';
+import levyThesesData from './levy-theses.json';
 
 const SHEET_FILES = import.meta.glob('./parasha-sheets/*.json', { eager: true, import: 'default' }) as Record<
   string,
@@ -38,12 +39,54 @@ const bookByKey = Object.fromEntries(books.map((b: { slug: string }) => [key(b.s
 const simonByKey = Object.fromEntries(simonSheets.map((s) => [key(s.slug), s]));
 const dweckByKey = Object.fromEntries(dweck.episodes.map((e) => [key(e.parsha), e]));
 
+// The Levy theses: McGill M.A. theses from B. Barry Levy's "History of the Jewish
+// Interpretation of the Bible" stream, each tracing one verse/passage through its
+// Jewish interpretation. Data: src/data/levy-theses.json (also mirrored into the
+// Mega Bible's literary_bible table, keyed to the same verses).
+export interface LevyThesis {
+  author: string;
+  title: string;
+  year: number;
+  book: string;
+  chapter: number;
+  verse: number;
+  verseEnd: number | null;
+  ref: string;
+  parsha: string;
+  blurb: string;
+  url: string;
+  urlLabel: string;
+}
+export const levyTheses: LevyThesis[] = [...(levyThesesData.theses as LevyThesis[])].sort((a, b) => a.year - b.year);
+export const levyThesesIntro = levyThesesData.intro;
+
+// "Genesis 37:1–40:23" → comparable [chapter, verse] endpoints.
+const refRange = (ref: string) => {
+  const m = ref.replace(/–/g, '-').match(/^(\w+) (\d+):(\d+)-(\d+):(\d+)$/);
+  if (!m) return null;
+  return { book: m[1], from: [Number(m[2]), Number(m[3])] as const, to: [Number(m[4]), Number(m[5])] as const };
+};
+const pos = (c: number, v: number) => c * 1000 + v;
+// Theses whose verse/passage falls inside this week's Torah reading. A thesis on a
+// haftarah (Binik on Joshua 2, read with Shelach) attaches by parsha name instead.
+const thesesForWeek = (w: any): LevyThesis[] => {
+  const range = refRange(w.ref);
+  return levyTheses.filter((t) => {
+    if (range && t.book === range.book) {
+      const from = pos(t.chapter, t.verse);
+      const to = pos(t.chapter, t.verseEnd ?? t.verse);
+      if (from >= pos(range.from[0], range.from[1]) && to <= pos(range.to[0], range.to[1])) return true;
+    }
+    return key(t.parsha.replace(/\(.*\)/, '')) === key(w.parsha);
+  });
+};
+
 // Rabbi Dweck's haftara episodes (The Parasha with Rabbi Dweck, 5787), newest first.
 export const dweckShow = dweck.show;
 export const dweckEpisodes = [...dweck.episodes].sort((a, b) => b.date.localeCompare(a.date));
 
 export interface Link {
-  kind: 'simon' | 'dweck' | 'sheet' | 'balashon' | 'book' | 'phd' | 'mega' | 'shnayim' | 'sefaria';
+  kind: 'simon' | 'dweck' | 'sheet' | 'balashon' | 'book' | 'phd' | 'thesis' | 'mega' | 'shnayim' | 'sefaria';
   label: string;
   href: string;
   note?: string;
@@ -82,6 +125,15 @@ export const weeks: Week[] = season.weeks.map((w: any) => {
 
   if (w.guest?.name) {
     links.push({ kind: 'phd', label: 'PhDs on the Parsha', href: '/phds-on-the-parsha', note: `${w.guest.name}, “${w.guest.title}”` });
+  }
+
+  for (const t of thesesForWeek(w)) {
+    links.push({
+      kind: 'thesis',
+      label: 'Levy thesis',
+      href: `/mega-bible?book=${t.book}&chapter=${t.chapter}`,
+      note: `${t.author} on ${t.ref} (${t.year})`,
+    });
   }
 
   links.push({ kind: 'mega', label: 'Mega Bible', href: `/mega-bible?book=${book}&chapter=${chapter}` });
@@ -140,6 +192,12 @@ export const series = [
     href: '/phds-on-the-parsha',
     kind: 'Podcast',
     text: 'One parsha, one guest who wrote a doctorate on it. The full 5787 season schedule.',
+  },
+  {
+    name: 'The History of a Verse',
+    href: '/parasha#levy-theses',
+    kind: 'Theses',
+    text: "McGill M.A. theses from B. Barry Levy's stream on the history of Jewish interpretation: one verse, a hundred sources, a whole thesis. Each is attached to its verse in the Mega Bible.",
   },
 ];
 
