@@ -7,6 +7,9 @@
 # guard is a defensive backstop (e.g. a run that starts before midnight and
 # crosses into Shabbos, or a manual invocation on a Saturday).
 #
+# The cloud twin is .github/workflows/likutei-peshatim.yml (IMAP + claude -p); this
+# launchd job stopped after July 30, 2026 without anyone noticing, so that's now primary.
+#
 # Naturally self-healing: fetch-new-emails.mjs only ever returns emails not yet
 # recorded in processed-emails.json, so a missed week is picked up next run.
 

@@ -1,0 +1,107 @@
+# Likutei Peshatim newsletter -> /calendars ICS, in the cloud.
+#
+# The original pipeline (scripts/likutei-peshatim/weekly-run.sh) runs from launchd on the
+# Mac and reads Gmail through the local `gws` OAuth CLI; it silently stopped after Ekev
+# (July 30, 2026) and the calendar went stale for months. This workflow does the same job
+# without the Mac: fetch-new-emails-imap.py reads the inbox over IMAP with a Gmail app
+# password, and `claude -p` follows .claude/skills/likutei-peshatim/SKILL.md per email.
+# It's self-healing like the Mac run: any email not in processed-emails.json is picked
+# up next time, so the two can coexist (whichever runs first wins; the other no-ops).
+#
+# - schedule: the issue lands Thursdays ~19:15 UTC. Runs Sun-Thu 20:17 UTC and Friday
+#   06:17 UTC; never on Shabbos. Exits in seconds when there's nothing new.
+# - workflow_dispatch: run it by hand (e.g. to clear a backlog with a larger max).
+#
+# Secrets: CLAUDE_CODE_OAUTH_TOKEN (already used by daf-game.yml) and a Gmail app password
+# for the inbox the newsletter goes to: LP_GMAIL_USER / LP_GMAIL_APP_PASSWORD, falling back
+# to GMAIL_USER / GMAIL_APP_PASSWORD (the newsletter-send secrets) when that's the same inbox.
+#
+# Commits only the three Likutei Peshatim files; pushes to main don't deploy on their own,
+# so new events go live with the nightly deploy.
+
+name: Likutei Peshatim calendar
+
+on:
+  schedule:
+    - cron: '17 20 * * 0-4'
+    - cron: '17 6 * * 5'
+  workflow_dispatch:
+    inputs:
+      max:
+        description: 'Max emails to process this run'
+        required: false
+        default: '6'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: likutei-peshatim
+  cancel-in-progress: false
+
+jobs:
+  calendar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Find new emails
+        id: fetch
+        env:
+          LP_GMAIL_USER: ${{ secrets.LP_GMAIL_USER || secrets.GMAIL_USER }}
+          LP_GMAIL_APP_PASSWORD: ${{ secrets.LP_GMAIL_APP_PASSWORD || secrets.GMAIL_APP_PASSWORD }}
+          LP_MAX_PER_RUN: ${{ github.event.inputs.max || '4' }}
+        run: |
+          python3 scripts/likutei-peshatim/fetch-new-emails-imap.py > /tmp/new-emails.jsonl
+          cat /tmp/new-emails.jsonl
+          echo "count=$(grep -c . /tmp/new-emails.jsonl || true)" >> "$GITHUB_OUTPUT"
+
+      - name: Install Claude Code
+        if: steps.fetch.outputs.count != '0'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Parse emails into events
+        if: steps.fetch.outputs.count != '0'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          git config user.name "likutei-peshatim-bot"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          FAILED=0
+          while IFS= read -r LINE; do
+            [ -z "$LINE" ] && continue
+            ID=$(jq -r .id <<<"$LINE"); SUBJECT=$(jq -r .subject <<<"$LINE")
+            DATE=$(jq -r .date <<<"$LINE"); TEXTFILE=$(jq -r .textFile <<<"$LINE")
+            echo "::group::$SUBJECT ($ID)"
+            claude -p "Invoke the /likutei-peshatim skill and follow .claude/skills/likutei-peshatim/SKILL.md to parse the Likutei Peshatim email \"$SUBJECT\" (Gmail message id $ID, sent $DATE). Rules for this automated run:
+          - If src/data/likutei-peshatim/processed-emails.json already has an entry for message id $ID, print \"already processed\" and stop without changing anything.
+          - The raw body is already saved at: $TEXTFILE — read it directly; there is no Gmail access in this run.
+          - If it's a resend of an issue already in processed-emails.json (same subject), still dedupe every event against events.json, and record it with its own entry.
+          - Follow the skill fully: extract calendar-worthy events (including yahrzeits as all-day events), resolve Hebrew dates with the Hebcal API, append to events.json with unique ids, dedupe against existing entries.
+          - Append an entry to processed-emails.json for this email (even if eventCount is 0), run node scripts/likutei-peshatim/generate-ics.mjs, then git add ONLY events.json, processed-emails.json and public/calendar/likutei_peshatim.ics.
+          - Commit with message \"Add Likutei Peshatim events: <parsha> - <date>\" and push to origin main. If the push is rejected, git pull --rebase origin main and push again." \
+              --dangerously-skip-permissions || { echo "::error::FAILED: $SUBJECT ($ID)"; FAILED=1; }
+            echo "::endgroup::"
+          done < /tmp/new-emails.jsonl
+          exit $FAILED
+
+      # The old pipeline died silently. If no issue has been recorded for over two weeks
+      # (longer than any holiday gap), fail loudly so GitHub emails Matthew.
+      - name: Staleness alarm
+        if: always()
+        run: |
+          git pull -q origin main || true
+          LAST=$(jq -r 'map(.date) | max' src/data/likutei-peshatim/processed-emails.json)
+          AGE=$(( ( $(date -u +%s) - $(date -u -d "$LAST" +%s) ) / 86400 ))
+          echo "Newest processed issue: $LAST ($AGE days ago)"
+          if [ "$AGE" -gt 15 ]; then
+            echo "::error::Likutei Peshatim calendar is stale: newest processed issue is $LAST ($AGE days ago). Check the Gmail app password secret and this run's log."
+            exit 1
+          fi
