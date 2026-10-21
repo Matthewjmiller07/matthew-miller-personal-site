@@ -101,6 +101,31 @@ select {
 #limits { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
 #limits path { fill: none; stroke: #fff; stroke-width: 2.5; stroke-dasharray: 7 5; filter: drop-shadow(0 0 2px rgba(0,0,0,.6)); }
 
+/* Streets: lines are drawn in map pixels inside one transformed group; labels are placed per frame */
+#streets { position: fixed; inset: 0; z-index: 3; pointer-events: none; width: 100%; height: 100%; }
+#streets .net path { fill: none; stroke: rgba(255,255,255,.75); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+#streets .net path.major { stroke-width: 2.5; }
+#streets .hl path { fill: none; stroke: var(--accent); stroke-width: 5; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
+#streets text { font: 500 12px/1 var(--font-body); fill: #1f3530; stroke: rgba(255,255,255,.92); stroke-width: 3.5px; paint-order: stroke; stroke-linejoin: round; }
+#streets text.major { font-weight: 600; font-size: 13px; }
+
+.search { position: relative; }
+.search input {
+  font: 500 14px/1 var(--font-body); color: var(--ink); background: var(--panel);
+  border: 1px solid var(--panel-line); border-radius: 8px; padding: 8px 10px; width: min(260px, 70vw);
+}
+.search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.results {
+  position: absolute; left: 0; bottom: calc(100% + 8px); width: max(100%, 280px); max-height: 50vh; overflow: auto;
+  margin: 0; padding: 4px; list-style: none; background: var(--panel); border: 1px solid var(--panel-line);
+  border-radius: 10px; box-shadow: var(--shadow);
+}
+.results li { padding: 8px 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.results li .he { color: var(--muted); }
+.results li .note { color: var(--muted); font-size: 12px; }
+.results li[aria-selected="true"], .results li:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+
+.pin[hidden] { display: none; }
 .pin { position: fixed; z-index: 4; transform: translate(-50%, -100%); pointer-events: none; display: grid; justify-items: center; gap: 2px; }
 .pin span { background: var(--panel); color: var(--ink); border: 1px solid var(--panel-line); box-shadow: var(--shadow);
   font: 500 13px/1.2 var(--font-body); padding: 5px 8px; border-radius: 6px; white-space: nowrap; }
@@ -117,12 +142,13 @@ select {
 <body>
 
 <div id="map" aria-label="Zoomable pixel-art map of Ra'anana"></div>
+<svg id="streets"><g class="net" hidden></g><g class="hl"></g><g class="labels" hidden></g></svg>
 <svg id="limits" hidden><path id="limitsPath" d=""></path></svg>
 <div id="divider" hidden><div class="tag l">3D render</div><div class="tag r">pixel art</div><div class="grip" id="grip" role="slider" aria-label="Compare render and map" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">⇔</div></div>
 
 <section class="card">
   <h1>tiny ra'anana <span class="he" lang="he" dir="rtl">רעננה הקטנה</span></h1>
-  <p>All of Ra'anana as one isometric pixel-art map, drawn from Google's 3D city model. Drag to pan, scroll or pinch to zoom.</p>
+  <p>All of Ra'anana as one isometric pixel-art map, drawn from Google's 3D city model. Drag to pan, scroll or pinch to zoom. Search for any street or address below.</p>
   <details>
     <summary>How it was made</summary>
     <ol>
@@ -132,7 +158,7 @@ select {
       <li>Total cloud spend: about $14.</li>
     </ol>
   </details>
-  <p class="credit">Imagery derived from Google Photorealistic 3D Tiles (Map data ©2026 Google). City limits and places © OpenStreetMap contributors. Inspired by tiny.london and isometric.nyc.</p>
+  <p class="credit">Imagery derived from Google Photorealistic 3D Tiles (Map data ©2026 Google). City limits, streets, addresses and places © OpenStreetMap contributors. Inspired by tiny.london and isometric.nyc.</p>
 </section>
 
 <nav class="dock" aria-label="Map controls">
@@ -145,17 +171,22 @@ select {
     <div class="sep"></div>
     <div class="group">
       <button id="compareBtn" aria-pressed="false">Compare with 3D</button>
+      <button id="streetsBtn" aria-pressed="false">Streets</button>
       <button id="limitsBtn" aria-pressed="false">City limits</button>
     </div>
     <div class="sep"></div>
-    <select id="place" aria-label="Go to a place"><option value="">Go to…</option></select>
+    <div class="search">
+      <input id="q" type="search" placeholder="Street, address or place…" aria-label="Find a street, address or place"
+        autocomplete="off" role="combobox" aria-expanded="false" aria-controls="results" enterkeyhint="go">
+      <ul id="results" class="results" role="listbox" hidden></ul>
+    </div>
   </div>
 </nav>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
 <script>
 (async function () {
-  const places = await fetch("places.json").then((r) => r.json());
+  const [places, streets] = await Promise.all(["places.json", "streets.json"].map((u) => fetch(u).then((r) => r.json())));
   const [W, H] = places.size;
   // Deep Zoom descriptors inline, so only tiles are fetched.
   const dzi = (name, w, h) => ({ Image: { xmlns: "http://schemas.microsoft.com/deepzoom/2008", Url: name + "_files/",
@@ -178,12 +209,6 @@ select {
 
   const toVp = (x, y) => new OpenSeadragon.Point(x / W, y / W);
   let renderImg = null;
-
-  viewer.addOnceHandler("open", () => {
-    const start = places.landmarks.find((l) => slug(l.name) === location.hash.slice(1));
-    if (start) goTo(start, true);
-    updateScale();
-  });
 
   // Scale bar: horizontal metres per screen pixel at the current zoom.
   const nice = [10, 20, 50, 100, 200, 500, 1000, 2000];
@@ -252,8 +277,6 @@ select {
     }
   });
 
-  viewer.addHandler("update-viewport", () => { updateScale(); drawLimits(); clipRender(); placePin(); });
-  viewer.addHandler("resize", () => { drawLimits(); clipRender(); placePin(); });
 
   document.getElementById("zin").onclick = () => viewer.viewport.zoomBy(1.6);
   document.getElementById("zout").onclick = () => viewer.viewport.zoomBy(1 / 1.6);
@@ -265,16 +288,70 @@ select {
     drawLimits();
   };
 
-  // Places
-  const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const select = document.getElementById("place");
-  for (const l of places.landmarks) {
-    const o = document.createElement("option");
-    o.value = slug(l.name);
-    o.textContent = `${l.name} · ${l.he}`;
-    select.append(o);
+  // Streets: every named road as a polyline in map pixels (streets.json, from OpenStreetMap).
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("streets");
+  const net = svg.querySelector(".net"), hl = svg.querySelector(".hl"), labelsG = svg.querySelector(".labels");
+  const pathD = (line) => line.reduce((d, v, i) => d + (i % 2 ? " " : i ? "L" : "M") + v, "");
+  for (const st of streets) {
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("d", st.lines.map(pathD).join(""));
+    if (st.r <= 2) p.classList.add("major");
+    net.append(p);
+    // Label on the middle of the street's longest stretch, turned to follow it
+    let best = null, bestLen = 0;
+    for (const l of st.lines) for (let i = 0; i + 3 < l.length; i += 2) {
+      const dx = l[i + 2] - l[i], dy = l[i + 3] - l[i + 1], len = Math.hypot(dx, dy);
+      if (len > bestLen) { bestLen = len; best = [l[i] + dx / 2, l[i + 1] + dy / 2, Math.atan2(dy, dx)]; }
+    }
+    if (!best) best = [st.lines[0][0], st.lines[0][1], 0];
+    let a = best[2] * 180 / Math.PI;
+    if (a > 90) a -= 180; else if (a < -90) a += 180;
+    const t = document.createElementNS(NS, "text");
+    t.textContent = st.en || st.he;
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("dominant-baseline", "central");
+    if (st.r <= 2) t.classList.add("major");
+    labelsG.append(t);
+    st.label = { el: t, x: best[0], y: best[1], a, seg: bestLen, w: (st.en || st.he).length * 7 + 8 };
   }
+  // Labels drawn in priority order (big roads first), skipping any that would overlap one already placed
+  const byRank = [...streets].sort((a, b) => a.r - b.r || b.label.seg - a.label.seg);
+  let streetsOn = false;
+  function drawStreets() {
+    const p0 = viewer.viewport.viewportToViewerElementCoordinates(toVp(0, 0));
+    const k = viewer.viewport.viewportToViewerElementCoordinates(toVp(W, 0)).x - p0.x;
+    const sc = k / W;  // screen px per map px
+    const tf = `translate(${p0.x} ${p0.y}) scale(${sc})`;
+    net.setAttribute("transform", tf);
+    hl.setAttribute("transform", tf);
+    if (!streetsOn) return;
+    const vw = window.innerWidth, vh = window.innerHeight, boxes = [];
+    for (const st of byRank) {
+      const L = st.label, x = p0.x + L.x * sc, y = p0.y + L.y * sc;
+      const minScale = st.r <= 1 ? 0.12 : st.r <= 3 ? 0.3 : 0.5;
+      let show = sc >= minScale && x > -50 && y > -20 && x < vw + 50 && y < vh + 20 && L.seg * sc > L.w * 0.6;
+      if (show) {
+        const r = Math.max(L.w * Math.abs(Math.cos(L.a * Math.PI / 180)), 16) / 2 + 4;
+        const r2 = Math.max(L.w * Math.abs(Math.sin(L.a * Math.PI / 180)), 16) / 2 + 4;
+        const b = [x - r, y - r2, x + r, y + r2];
+        show = !boxes.some((o) => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]);
+        if (show) boxes.push(b);
+      }
+      L.el.style.display = show ? "" : "none";
+      if (show) L.el.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${L.a.toFixed(1)})`);
+    }
+  }
+  function setStreets(on) {
+    streetsOn = on;
+    document.getElementById("streetsBtn").setAttribute("aria-pressed", on);
+    net.hidden = labelsG.hidden = !on;
+    drawStreets();
+  }
+  document.getElementById("streetsBtn").onclick = (e) => setStreets(e.currentTarget.getAttribute("aria-pressed") !== "true");
+
   // The pin is placed by hand each frame; OpenSeadragon's own overlays landed off-screen here.
+  const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const pin = document.createElement("div");
   pin.className = "pin";
   pin.hidden = true;
@@ -287,18 +364,148 @@ select {
     pin.style.left = s.x + "px";
     pin.style.top = s.y + "px";
   }
-  function goTo(l, instant) {
-    pinAt = toVp(l.x, l.y);
+  function flyTo(x, y, text, instant) {
+    pinAt = toVp(x, y);
     viewer.viewport.zoomTo(viewer.world.getItemAt(0).imageToViewportZoom(1), null, instant);
     viewer.viewport.panTo(pinAt, instant);
-    pin.querySelector("span").textContent = `${l.name} · ${l.he}`;
+    pin.querySelector("span").textContent = text;
     pin.hidden = false;
     placePin();
+  }
+  function goTo(l, instant) {
+    hl.replaceChildren();
+    flyTo(l.x, l.y, `${l.name} · ${l.he}`, instant);
     try { history.replaceState(null, "", "#" + slug(l.name)); } catch (e) {}
   }
-  select.addEventListener("change", () => {
-    const l = places.landmarks.find((x) => slug(x.name) === select.value);
-    if (l) goTo(l, false);
+
+  // Search: streets (English or Hebrew), "street number" addresses, and the landmarks.
+  const norm = (s) => (s || "").toLowerCase().replace(/['"״׳`.\-,]/g, "").replace(/\s+/g, " ").trim()
+    .replace(/^(rechov|rehov|street|st|רחוב|רח) /, "").replace(/ (street|st|rd|road)$/, "");
+  for (const st of streets) st.keys = [norm(st.en), norm(st.he)].filter(Boolean);
+  const matchScore = (keys, q) => {
+    let best = 9;
+    for (const k of keys) {
+      if (k === q) best = Math.min(best, 0);
+      else if (k.startsWith(q)) best = Math.min(best, 1);
+      else if (k.split(" ").some((w) => w.startsWith(q))) best = Math.min(best, 2);
+      else if (k.includes(q) || k.replace(/ /g, "").includes(q.replace(/ /g, ""))) best = Math.min(best, 3);
+    }
+    return best;
+  };
+  function streetMid(st) {
+    const l = st.lines.reduce((a, b) => (b.length > a.length ? b : a));
+    const i = Math.floor(l.length / 4) * 2;
+    return [l[i], l[i + 1]];
+  }
+  // Where a house number is: exactly if OpenStreetMap has it; else between the nearest known numbers
+  // on the same side of the street (Israeli streets number odd and even on opposite sides); else the street.
+  function locate(st, n) {
+    const a = st.a || [];
+    const exact = a.find((h) => h[0] === n);
+    if (exact) return { x: exact[2], y: exact[3], note: "" };
+    const side = a.filter((h) => h[0] % 2 === n % 2);
+    const pool = side.length ? side : a;
+    const lo = pool.filter((h) => h[0] < n).sort((p, q) => q[0] - p[0])[0];
+    const hi = pool.filter((h) => h[0] > n).sort((p, q) => p[0] - q[0])[0];
+    if (lo && hi && hi[0] - lo[0] <= 30) {
+      const t = (n - lo[0]) / (hi[0] - lo[0]);
+      return { x: lo[2] + (hi[2] - lo[2]) * t, y: lo[3] + (hi[3] - lo[3]) * t, note: `between no. ${lo[1]} and ${hi[1]}` };
+    }
+    const near = pool.sort((p, q) => Math.abs(p[0] - n) - Math.abs(q[0] - n))[0];
+    if (near && Math.abs(near[0] - n) <= 6) return { x: near[2], y: near[3], note: `next to no. ${near[1]}` };
+    const [x, y] = streetMid(st);
+    return { x, y, note: "no. not mapped; showing the street" };
+  }
+  function search(raw) {
+    const m = raw.match(/(^|\s)(\d{1,4})[א-תa-z]?(?=\s|$)/i);
+    const num = m ? +m[2] : null;
+    const q = norm(m ? raw.replace(m[0], " ") : raw);
+    if (!q) return [];
+    const out = [];
+    for (const st of streets) {
+      const sc = matchScore(st.keys, q);
+      if (sc < 9) out.push({ kind: "street", st, num, sc: sc + st.r * 0.05 });
+    }
+    for (const l of places.landmarks) {
+      const sc = matchScore([norm(l.name), norm(l.he)], q);
+      if (sc < 9) out.push({ kind: "place", l, sc: sc - 0.5 });
+    }
+    return out.sort((a, b) => a.sc - b.sc).slice(0, 8);
+  }
+  function pick(r, instant) {
+    if (r.kind === "place") return goTo(r.l, instant);
+    const st = r.st;
+    hl.replaceChildren();
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("d", st.lines.map(pathD).join(""));
+    hl.append(p);
+    const name = st.en ? `${st.en} · ${st.he}` : st.he;
+    if (r.num != null) {
+      const at = locate(st, r.num);
+      flyTo(at.x, at.y, `${st.en || st.he} ${r.num}` + (at.note ? ` (${at.note})` : ""), instant);
+    } else {
+      // Fit the whole street on screen
+      const xs = st.lines.flatMap((l) => l.filter((_, i) => i % 2 === 0)), ys = st.lines.flatMap((l) => l.filter((_, i) => i % 2));
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), pad = 250;
+      viewer.viewport.fitBounds(new OpenSeadragon.Rect((x0 - pad) / W, (y0 - pad) / W, (x1 - x0 + 2 * pad) / W, (y1 - y0 + 2 * pad) / W), instant);
+      pinAt = null;
+      pin.hidden = true;
+    }
+    drawStreets();
+    try { history.replaceState(null, "", "#q=" + encodeURIComponent(r.num != null ? `${st.en || st.he} ${r.num}` : st.en || st.he)); } catch (e) {}
+  }
+
+  const input = document.getElementById("q");
+  const list = document.getElementById("results");
+  let results = [], sel = 0;
+  function showResults() {
+    list.replaceChildren(...results.map((r, i) => {
+      const li = document.createElement("li");
+      li.setAttribute("role", "option");
+      li.setAttribute("aria-selected", i === sel);
+      const a = document.createElement("span"), b = document.createElement("span");
+      if (r.kind === "place") { a.textContent = r.l.name; b.textContent = r.l.he; }
+      else { a.textContent = (r.st.en || r.st.he) + (r.num != null ? " " + r.num : ""); b.textContent = r.st.he + (r.num != null ? " " + r.num : ""); }
+      b.className = "he"; b.lang = "he"; b.dir = "rtl";
+      li.append(a, b);
+      li.addEventListener("pointerdown", (e) => { e.preventDefault(); choose(i); });
+      return li;
+    }));
+    list.hidden = !results.length;
+    input.setAttribute("aria-expanded", !list.hidden);
+  }
+  function choose(i) {
+    const r = results[i];
+    if (!r) return;
+    input.value = list.querySelectorAll("li")[i].firstChild.textContent;
+    results = [];
+    showResults();
+    input.blur();
+    pick(r, false);
+  }
+  input.addEventListener("input", () => { results = search(input.value); sel = 0; showResults(); });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      sel = (sel + (e.key === "ArrowDown" ? 1 : results.length - 1)) % Math.max(1, results.length);
+      showResults(); e.preventDefault();
+    } else if (e.key === "Enter") { choose(sel); e.preventDefault(); }
+    else if (e.key === "Escape") { results = []; showResults(); }
+  });
+  input.addEventListener("blur", () => setTimeout(() => { results = []; showResults(); }, 100));
+
+  // Handlers last, once everything they call exists
+  viewer.addHandler("update-viewport", () => { updateScale(); drawLimits(); clipRender(); placePin(); drawStreets(); });
+  viewer.addHandler("resize", () => { drawLimits(); clipRender(); placePin(); drawStreets(); });
+  viewer.addOnceHandler("open", () => {
+    const h = decodeURIComponent(location.hash.slice(1));
+    if (h.startsWith("q=")) {
+      const r = search(h.slice(2))[0];
+      if (r) { input.value = h.slice(2); pick(r, true); }
+    } else {
+      const start = places.landmarks.find((l) => slug(l.name) === h);
+      if (start) goTo(start, true);
+    }
+    updateScale();
   });
 })();
 </script>
