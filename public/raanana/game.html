@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<base href="/raanana/">
+<meta name="description" content="Four games on a pixel-art map of Ra'anana: deliveries, find-it, city builder and a treasure hunt.">
+<title>tiny ra'anana: the game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Rubik:wght@400;500;600;700&display=swap">
+<style>
+/* Four games on one map. Screen-space sprites live in #fx; road highlights and buildings live in map pixels in #world. */
+:root {
+  --sky: #c4d6d0;
+  --panel: #f6f7f1; --panel-line: #d5dccf; --ink: #1f3530; --muted: #5b6f68;
+  --accent: #e2851f; --accent-ink: #2a1a05; --good: #2f9e57; --bad: #d2443a; --gold: #f2c230;
+  --shadow: 0 6px 24px rgba(23, 45, 38, .22);
+  --font-pixel: "Silkscreen", ui-monospace, "Courier New", monospace;
+  --font-body: "Rubik", system-ui, -apple-system, "Segoe UI", "Arial Hebrew", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --panel: #18282a; --panel-line: #2c4244; --ink: #e8efe9; --muted: #9db3ab;
+    --accent: #f0a043; --accent-ink: #231504; --shadow: 0 6px 24px rgba(0, 0, 0, .5); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --panel: #18282a; --panel-line: #2c4244; --ink: #e8efe9; --muted: #9db3ab;
+  --accent: #f0a043; --accent-ink: #231504; --shadow: 0 6px 24px rgba(0, 0, 0, .5); color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--sky); color: var(--ink); font-family: var(--font-body); overflow: hidden; -webkit-user-select: none; user-select: none; }
+#map { position: fixed !important; inset: 0; width: 100%; height: 100%; background: var(--sky); }
+#map .openseadragon-canvas:focus { outline: none; }
+svg.layer { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; overflow: visible; }
+#world path { fill: none; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+#world image, #fx image { image-rendering: pixelated; }
+.route { stroke: #fff; stroke-width: 5; stroke-dasharray: 2 9; opacity: .95; }
+.next { stroke: var(--accent); stroke-width: 6; opacity: .85; }
+.target-street { stroke: var(--accent); stroke-width: 6; opacity: .9; }
+.answer-line { stroke: #fff; stroke-width: 3; stroke-dasharray: 6 6; }
+.hint-circle { fill: rgba(242, 194, 48, .16); stroke: var(--gold); stroke-width: 3; stroke-dasharray: 8 6; vector-effect: non-scaling-stroke; }
+#fx text { font: 600 13px/1 var(--font-body); paint-order: stroke; stroke: rgba(255,255,255,.95); stroke-width: 4px; fill: #1f3530; }
+#fx .emoji { font-size: 22px; stroke: none; }
+.clickable { pointer-events: auto; cursor: pointer; }
+
+button { font: 600 14px/1 var(--font-body); color: var(--ink); background: var(--panel); border: 1px solid var(--panel-line);
+  border-radius: 9px; padding: 9px 13px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.pixel { font-family: var(--font-pixel); }
+
+/* Menu */
+#menu { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px;
+  background: color-mix(in srgb, var(--sky) 55%, transparent); backdrop-filter: blur(2px); overflow: auto; }
+#menu[hidden] { display: none; }
+.menu-card { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 14px; box-shadow: var(--shadow);
+  padding: 22px; max-width: 720px; width: 100%; display: grid; gap: 16px; }
+.menu-card h1 { margin: 0; font: 700 clamp(24px, 5vw, 36px)/1.05 var(--font-pixel); letter-spacing: .02em; }
+.menu-card h1 small { display: block; font: 500 15px/1.4 var(--font-body); color: var(--muted); margin-top: 6px; letter-spacing: 0; }
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.mode { text-align: left; display: grid; gap: 6px; padding: 14px; border-radius: 12px; align-content: start; }
+.mode .ico { font-size: 30px; line-height: 1; }
+.mode b { font: 700 15px/1.1 var(--font-pixel); }
+.mode span { font: 400 13px/1.4 var(--font-body); color: var(--muted); }
+.mode .best { font: 600 12px/1 var(--font-body); color: var(--accent); }
+.menu-foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); }
+.menu-foot a { color: var(--ink); }
+
+/* HUD */
+.hud { position: fixed; z-index: 10; top: calc(10px + env(safe-area-inset-top, 0px)); left: 10px; right: 10px;
+  display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; pointer-events: none; }
+.hud > * { pointer-events: auto; }
+.chip { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; box-shadow: var(--shadow);
+  padding: 8px 11px; font: 600 14px/1.2 var(--font-body); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.chip .big { font: 700 18px/1 var(--font-pixel); font-variant-numeric: tabular-nums; }
+.chip .lbl { font: 500 11px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.stat { display: grid; gap: 3px; }
+.card { position: fixed; z-index: 10; left: 50%; transform: translateX(-50%);
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: min(560px, calc(100vw - 20px));
+  background: var(--panel); border: 1px solid var(--panel-line); border-radius: 12px; box-shadow: var(--shadow);
+  padding: 12px 14px; display: grid; gap: 8px; }
+.card[hidden] { display: none; }
+.card h2 { margin: 0; font: 700 18px/1.2 var(--font-body); }
+.card h2 .he { font-weight: 500; color: var(--muted); margin-left: 10px; }
+.card p { margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
+.card .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.card .grow { flex: 1; }
+.toast { position: fixed; z-index: 15; left: 50%; top: 22%; transform: translate(-50%, 0); pointer-events: none;
+  font: 700 clamp(20px, 4vw, 30px)/1.1 var(--font-pixel); color: #fff; text-align: center;
+  text-shadow: 0 2px 0 #1f3530, 0 0 12px rgba(0,0,0,.35); opacity: 0; transition: opacity .25s, transform .25s; }
+.toast.on { opacity: 1; transform: translate(-50%, -8px); }
+
+/* Delivery */
+#arrow { position: fixed; z-index: 9; width: 44px; height: 44px; margin: -22px 0 0 -22px; pointer-events: none;
+  display: grid; place-items: center; font-size: 26px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
+#arrow[hidden] { display: none; }
+.pad { position: fixed; z-index: 11; right: calc(14px + env(safe-area-inset-right, 0px)); bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+  display: grid; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(3, 52px); gap: 4px; touch-action: none; }
+.pad[hidden] { display: none; }
+.pad button { font-size: 20px; padding: 0; border-radius: 12px; opacity: .92; touch-action: none; }
+.pad .u { grid-area: 1 / 2; } .pad .l { grid-area: 2 / 1; } .pad .r { grid-area: 2 / 3; } .pad .d { grid-area: 3 / 2; }
+.timebar { height: 6px; background: var(--panel-line); border-radius: 3px; overflow: hidden; }
+.timebar i { display: block; height: 100%; background: var(--good); width: 100%; transition: width .2s linear, background .3s; }
+
+/* Builder */
+.palette { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.palette button { display: grid; justify-items: center; gap: 3px; padding: 6px 8px; min-width: 70px; font: 600 12px/1.1 var(--font-body); }
+.palette button img { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+.palette button small { font: 500 11px/1 var(--font-body); color: var(--muted); }
+.palette button[aria-pressed="true"] small { color: var(--accent-ink); }
+.meter { width: 70px; height: 6px; background: var(--panel-line); border-radius: 3px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--good); }
+
+/* Treasure */
+.riddles { display: flex; gap: 4px; flex-wrap: wrap; }
+.riddles button { width: 30px; height: 30px; padding: 0; font: 700 12px/1 var(--font-pixel); }
+.riddles button.found { background: var(--gold); border-color: var(--gold); color: #3a2a00; }
+.riddles button[aria-current="true"] { outline: 2px solid var(--accent); outline-offset: 1px; }
+.riddle { font: 500 16px/1.4 var(--font-body); color: var(--ink) !important; }
+
+@media (max-width: 560px) {
+  .chip { padding: 6px 9px; gap: 8px; }
+  .chip .big { font-size: 15px; }
+  .pad { grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(3, 48px); bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+
+<div id="map" aria-label="Map of Ra'anana"></div>
+<svg class="layer" id="worldSvg"><g id="world"><g id="buildings"></g><g id="lines"></g></g></svg>
+<svg class="layer" id="fx"></svg>
+<div id="arrow" hidden>➤</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="hud" id="hud" hidden>
+  <div class="chip" id="hudLeft"></div>
+  <div class="chip"><button id="exitBtn" aria-label="Back to menu">☰ Menu</button></div>
+</div>
+<div class="card" id="card" hidden></div>
+<div class="pad" id="pad" hidden aria-label="Steering">
+  <button class="u" data-k="up" aria-label="Up">▲</button><button class="l" data-k="left" aria-label="Left">◀</button>
+  <button class="r" data-k="right" aria-label="Right">▶</button><button class="d" data-k="down" aria-label="Down">▼</button>
+</div>
+
+<div id="menu">
+  <div class="menu-card">
+    <h1>tiny ra'anana<br>the game <small>Four ways to play the whole city, drawn as pixel art from Google's 3D model. Real streets, real addresses, real places.</small></h1>
+    <div class="modes">
+      <button class="mode" data-mode="deliver"><div class="ico">🛵</div><b>Shlichut rush</b><span>Ride the real streets. Grab food, deliver to real addresses before the timer runs out.</span><span class="best" data-best="deliver"></span></button>
+      <button class="mode" data-mode="find"><div class="ico">📍</div><b>Find it</b><span>A street or place name pops up. Tap where it is. 10 rounds, up to 1000 points each.</span><span class="best" data-best="find"></span></button>
+      <button class="mode" data-mode="build"><div class="ico">🏗️</div><b>Ra'anana 2040</b><span>Build houses, towers, parks and a light rail. Grow the city to 20,000 people.</span><span class="best" data-best="build"></span></button>
+      <button class="mode" data-mode="treasure"><div class="ico">💎</div><b>Treasure hunt</b><span>16 gems hidden at real landmarks. Solve the riddles, zoom in, find them.</span><span class="best" data-best="treasure"></span></button>
+    </div>
+    <div class="menu-foot"><span>Arrow keys / WASD or the on-screen pad to ride. Scroll or pinch to zoom.</span><a href="./">← Back to the map</a></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
+<script>
+(async function () {
+  const [places, streets, game] = await Promise.all(["places.json", "streets.json", "game.json"].map((u) => fetch(u).then((r) => r.json())));
+  const [W, H] = places.size;
+  const MPP = places.metersPerPx;
+  // Ground metres between two map points: the camera looks down at 45°, so map y is squashed by cos 45°
+  const meters = (dx, dy) => MPP * Math.hypot(dx, dy * Math.SQRT2);
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("tr-" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("tr-" + k, JSON.stringify(v)); } catch (e) {} },
+  };
+  const rand = (a) => a[Math.floor(Math.random() * a.length)];
+  const fmt = (n) => Math.round(n).toLocaleString("en-US");
+
+  const viewer = OpenSeadragon({
+    element: $("map"),
+    tileSources: [{ tileSource: { Image: { xmlns: "http://schemas.microsoft.com/deepzoom/2008", Url: "map_files/", Format: "webp",
+      Overlap: "0", TileSize: "1024", Size: { Width: String(W), Height: String(H) } } }, x: 0, y: 0, width: 1 }],
+    showNavigationControl: false, imageSmoothingEnabled: false, maxZoomPixelRatio: 3, minZoomImageRatio: 0.6,
+    visibilityRatio: 0.4, blendTime: 0.1, animationTime: 0.8,
+    gestureSettingsMouse: { clickToZoom: false, dblClickToZoom: false }, gestureSettingsTouch: { pinchRotate: false, dblClickToZoom: false },
+  });
+  const toVp = (x, y) => new OpenSeadragon.Point(x / W, y / W);
+  // Map pixel <-> screen pixel, refreshed every frame of movement
+  let p0 = { x: 0, y: 0 }, sc = 1;
+  const scr = (x, y) => [p0.x + x * sc, p0.y + y * sc];
+  const unscr = (sx, sy) => [(sx - p0.x) / sc, (sy - p0.y) / sc];
+  function syncView() {
+    p0 = viewer.viewport.viewportToViewerElementCoordinates(toVp(0, 0));
+    sc = (viewer.viewport.viewportToViewerElementCoordinates(toVp(W, 0)).x - p0.x) / W;
+    $("world").setAttribute("transform", `translate(${p0.x} ${p0.y}) scale(${sc})`);
+    if (mode && mode.draw) mode.draw();
+  }
+  const zoomFor = (s) => viewer.world.getItemAt(0).imageToViewportZoom(s);
+  function fitMap(x0, y0, x1, y1, instant) {
+    viewer.viewport.fitBounds(new OpenSeadragon.Rect(x0 / W, y0 / W, (x1 - x0) / W, (y1 - y0) / W), instant);
+  }
+  const limitsBox = (() => {
+    const xs = places.limits.map((p) => p[0]), ys = places.limits.map((p) => p[1]);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  })();
+  function insideLimits(x, y) {
+    let c = false;
+    const L = places.limits;
+    for (let i = 0, j = L.length - 1; i < L.length; j = i++) {
+      if ((L[i][1] > y) !== (L[j][1] > y) && x < ((L[j][0] - L[i][0]) * (y - L[i][1])) / (L[j][1] - L[i][1]) + L[i][0]) c = !c;
+    }
+    return c;
+  }
+
+  // ---------- small helpers: svg, sound, toast ----------
+  const el = (tag, attrs, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.append(e);
+    return e;
+  };
+  const fx = $("fx"), lines = $("lines"), buildingsG = $("buildings");
+  const pathD = (flat) => flat.reduce((d, v, i) => d + (i % 2 ? " " : i ? "L" : "M") + Math.round(v), "");
+  let audio = null;
+  function beep(freq, dur = 0.08, type = "square", vol = 0.05) {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g).connect(audio.destination);
+      g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+      o.start(); o.stop(audio.currentTime + dur);
+    } catch (e) {}
+  }
+  const jingle = (notes) => notes.forEach((f, i) => setTimeout(() => beep(f, 0.12), i * 90));
+  let toastT = 0;
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("on");
+    clearTimeout(toastT);
+    toastT = setTimeout(() => t.classList.remove("on"), 1600);
+  }
+  // Nearest point on any named street to (x, y), in map pixels
+  function nearestStreet(x, y) {
+    let best = null, bd = Infinity;
+    for (const st of streets) for (const l of st.lines) for (let i = 0; i + 3 < l.length; i += 2) {
+      const [d, px, py] = segDist(x, y, l[i], l[i + 1], l[i + 2], l[i + 3]);
+      if (d < bd) { bd = d; best = { st, x: px, y: py, d }; }
+    }
+    return best;
+  }
+  function segDist(x, y, ax, ay, bx, by) {
+    // distance in ground metres, so the 45° squash doesn't favour north-south streets
+    const k = Math.SQRT2;
+    const dx = bx - ax, dy = (by - ay) * k, qx = x - ax, qy = (y - ay) * k;
+    const L = dx * dx + dy * dy;
+    const t = L ? Math.max(0, Math.min(1, (qx * dx + qy * dy) / L)) : 0;
+    const px = ax + (bx - ax) * t, py = ay + (by - ay) * t;
+    return [meters(x - px, y - py), px, py];
+  }
+
+  // ---------- pixel sprites, drawn once on tiny canvases ----------
+  function sprite(w, h, paint) {
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const g = c.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    const px = (x, y, ww, hh, col) => { g.fillStyle = col; g.fillRect(x, y, ww, hh); };
+    paint(px, g);
+    return { url: c.toDataURL(), w, h };
+  }
+  // An isometric box: footprint fw x fd (2:1 diamond), height ht, with optional window rows
+  function isoBox(px, ox, oy, fw, fd, ht, top, left, right, win) {
+    const hw = fw / 2, hd = fd / 2;
+    for (let i = 0; i <= hw; i++) {        // left face
+      const y0 = oy - ht + Math.round(i / 2) + Math.round(hd / 2);
+      px(ox - hw + i, y0, 1, ht, left);
+    }
+    for (let i = 0; i <= hw; i++) {        // right face
+      const y0 = oy - ht + Math.round((hw - i) / 2) + Math.round(hd / 2);
+      px(ox + i, y0, 1, ht, right);
+    }
+    for (let r = 0; r <= hd; r++) {        // top diamond
+      const span = Math.round((r / hd) * hw);
+      px(ox - span, oy - ht - Math.round(hd / 2) + r, span * 2 + 1, 1, top);
+      px(ox - span, oy - ht + Math.round(hd / 2) - r + Math.round(hd / 2), span * 2 + 1, 1, top);
+    }
+    if (win) for (let y = oy - ht + Math.round(hd) + 2; y < oy - 2; y += 4) {
+      for (let x = ox - hw + 2; x < ox - 1; x += 3) px(x, y + Math.round((x - ox + hw) / 2), 1, 2, win);
+      for (let x = ox + 2; x < ox + hw - 1; x += 3) px(x, y + Math.round((ox + hw - x) / 2), 1, 2, win);
+    }
+  }
+  const tree = (px, x, y) => { px(x, y - 2, 1, 3, "#5b3a1e"); px(x - 2, y - 7, 5, 5, "#2f7d3b"); px(x - 1, y - 8, 3, 1, "#3f9a4a"); px(x - 3, y - 6, 1, 3, "#2f7d3b"); px(x + 3, y - 6, 1, 3, "#256b31"); };
+  const SPR = {
+    house: sprite(20, 20, (px) => { isoBox(px, 10, 18, 16, 10, 7, "#d9643a", "#f3e6c8", "#d9c9a3"); px(4, 7, 12, 2, "#b84d2a"); px(6, 5, 8, 2, "#d9643a"); px(8, 4, 4, 1, "#b84d2a"); }),
+    apartment: sprite(24, 38, (px) => isoBox(px, 12, 36, 20, 12, 24, "#e9e3d2", "#f6efdd", "#d6cdb6", "#6d8fa3")),
+    tower: sprite(26, 74, (px) => { isoBox(px, 13, 72, 22, 12, 58, "#c9d6dc", "#b8d3e2", "#93b4c6", "#e8f4fb"); px(12, 2, 1, 6, "#555"); px(11, 1, 3, 1, "#d2443a"); }),
+    park: sprite(28, 20, (px) => { for (let r = 0; r < 8; r++) { const s = Math.round((r / 8) * 13); px(14 - s, 9 + r, s * 2 + 1, 1, "#7cc35b"); px(14 - s, 9 + 15 - r, s * 2 + 1, 1, "#7cc35b"); } px(13, 12, 3, 6, "#e7d9a8"); tree(px, 8, 15); tree(px, 19, 13); tree(px, 14, 11); }),
+    cafe: sprite(20, 22, (px) => { isoBox(px, 10, 20, 16, 10, 9, "#f3e6c8", "#fff7e6", "#e6d6b6", "#6d8fa3"); for (let i = 0; i < 16; i += 2) px(2 + i, 9 + (i >> 2), 2, 2, i % 4 ? "#ffffff" : "#e2851f"); px(15, 15, 3, 3, "#7a4a24"); }),
+    school: sprite(34, 26, (px) => { isoBox(px, 17, 24, 30, 14, 11, "#d2443a", "#f2d27a", "#ddb95c", "#6d8fa3"); px(26, 2, 1, 10, "#555"); px(27, 2, 5, 3, "#ffffff"); px(27, 3, 5, 1, "#3864c8"); }),
+    office: sprite(24, 50, (px) => isoBox(px, 12, 48, 20, 12, 36, "#9aa5ab", "#b9c2c7", "#8e999f", "#3e7fb5")),
+    rail: sprite(36, 22, (px) => { for (let r = 0; r < 7; r++) { const s = Math.round((r / 7) * 17); px(18 - s, 9 + r, s * 2 + 1, 1, "#b8b8b0"); px(18 - s, 9 + 13 - r, s * 2 + 1, 1, "#b8b8b0"); } px(6, 9, 24, 5, "#d2443a"); px(6, 8, 24, 1, "#f2f2f2"); for (let x = 8; x < 28; x += 4) px(x, 10, 2, 2, "#cfe8f5"); px(6, 14, 24, 1, "#333"); }),
+    gem: sprite(14, 14, (px) => { px(4, 1, 6, 2, "#bff3ff"); px(2, 3, 10, 3, "#5fd3f0"); px(3, 6, 8, 2, "#2aa9d6"); px(4, 8, 6, 2, "#1a86b8"); px(6, 10, 2, 2, "#126891"); px(4, 3, 2, 2, "#ffffff"); }),
+    coin: sprite(10, 10, (px) => { px(3, 0, 4, 1, "#c9971a"); px(1, 1, 8, 8, "#f2c230"); px(0, 3, 10, 4, "#f2c230"); px(3, 9, 4, 1, "#c9971a"); px(4, 3, 2, 4, "#c9971a"); px(2, 2, 2, 2, "#fff3b5"); }),
+    scooter: sprite(26, 20, (px) => {
+      px(2, 2, 9, 8, "#e2851f"); px(2, 2, 9, 1, "#f6b161"); px(4, 5, 5, 2, "#ffffff");      // delivery box
+      px(4, 10, 14, 3, "#d2443a"); px(16, 4, 2, 7, "#d2443a"); px(15, 3, 5, 1, "#333");     // body, stem, bar
+      px(10, 4, 4, 6, "#2b4c7e"); px(10, 1, 4, 3, "#f1c27d"); px(10, 0, 4, 2, "#222");       // rider
+      px(1, 13, 6, 6, "#222"); px(3, 15, 2, 2, "#aaa"); px(16, 13, 6, 6, "#222"); px(18, 15, 2, 2, "#aaa");
+    }),
+  };
+
+  // ---------- road graph (game.json) ----------
+  const nodes = game.nodes;
+  const edges = game.edges.map(([a, b, name, flat]) => {
+    const pts = [];
+    for (let i = 0; i < flat.length; i += 2) pts.push([flat[i], flat[i + 1]]);
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + meters(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    return { a, b, name, pts, cum, len: cum[cum.length - 1], flat };
+  });
+  const adj = nodes.map(() => []);
+  edges.forEach((e, i) => { adj[e.a].push(i); adj[e.b].push(i); });
+  // The biggest connected piece of road; targets snap to it so every order is reachable
+  const comp = new Int32Array(nodes.length).fill(-1);
+  let mainComp = 0, mainSize = 0;
+  for (let s = 0, c = 0; s < nodes.length; s++) {
+    if (comp[s] >= 0 || !adj[s].length) continue;
+    let size = 0;
+    const stack = [s];
+    comp[s] = c;
+    while (stack.length) {
+      const n = stack.pop(); size++;
+      for (const ei of adj[n]) { const o = edges[ei].a === n ? edges[ei].b : edges[ei].a; if (comp[o] < 0) { comp[o] = c; stack.push(o); } }
+    }
+    if (size > mainSize) { mainSize = size; mainComp = c; }
+    c++;
+  }
+  const mainNodes = nodes.map((_, i) => i).filter((i) => comp[i] === mainComp && insideLimits(nodes[i][0], nodes[i][1]));
+  function nearestNode(x, y) {
+    let best = mainNodes[0], bd = Infinity;
+    for (const i of mainNodes) { const d = meters(nodes[i][0] - x, nodes[i][1] - y); if (d < bd) { bd = d; best = i; } }
+    return best;
+  }
+  function pointAt(e, s) {
+    let i = 1;
+    while (i < e.cum.length - 1 && e.cum[i] < s) i++;
+    const t = (s - e.cum[i - 1]) / ((e.cum[i] - e.cum[i - 1]) || 1);
+    const a = e.pts[i - 1], b = e.pts[i];
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  }
+  // Shortest path in metres from node s; returns dist and the edge used to reach each node
+  function dijkstra(s) {
+    const dist = new Float64Array(nodes.length).fill(Infinity), via = new Int32Array(nodes.length).fill(-1);
+    const heap = [[0, s]];
+    dist[s] = 0;
+    while (heap.length) {
+      let bi = 0;
+      // small graph: a linear scan of a pruned frontier is fast enough
+      for (let i = 1; i < heap.length; i++) if (heap[i][0] < heap[bi][0]) bi = i;
+      const [d, n] = heap[bi];
+      heap[bi] = heap[heap.length - 1]; heap.pop();
+      if (d > dist[n]) continue;
+      for (const ei of adj[n]) {
+        const e = edges[ei], o = e.a === n ? e.b : e.a, nd = d + e.len;
+        if (nd < dist[o]) { dist[o] = nd; via[o] = ei; heap.push([nd, o]); }
+      }
+    }
+    return { dist, via };
+  }
+  // Route from the Dijkstra source to target, as [x, y] points in travel order
+  function routePts(sp, target) {
+    const out = [];
+    let n = target;
+    while (sp.via[n] >= 0) {
+      const e = edges[sp.via[n]];
+      const pts = e.b === n ? e.pts : [...e.pts].reverse();   // runs from the far end to n
+      for (let i = pts.length - 1; i >= 0; i--) out.push(pts[i]);
+      n = e.b === n ? e.a : e.b;
+    }
+    return out.reverse();
+  }
+
+  // ---------- input ----------
+  const keys = { up: false, down: false, left: false, right: false };
+  const KEYMAP = { ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right" };
+  let keyPressedAt = 0;
+  addEventListener("keydown", (e) => {
+    const k = KEYMAP[e.code];
+    if (k && mode && mode.steer) { if (!keys[k]) keyPressedAt = performance.now(); keys[k] = true; e.preventDefault(); }
+    if (e.code === "Escape" && mode) openMenu();
+    if (mode && mode.key) mode.key(e);
+  });
+  addEventListener("keyup", (e) => { const k = KEYMAP[e.code]; if (k) keys[k] = false; });
+  for (const b of $("pad").querySelectorAll("button")) {
+    const k = b.dataset.k;
+    b.addEventListener("pointerdown", (e) => { keys[k] = true; keyPressedAt = performance.now(); b.setPointerCapture(e.pointerId); e.preventDefault(); });
+    for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) b.addEventListener(ev, () => (keys[k] = false));
+  }
+  const wantDir = () => {
+    const x = (keys.right ? 1 : 0) - (keys.left ? 1 : 0), y = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+    const n = Math.hypot(x, y);
+    return n ? [x / n, y / n] : null;
+  };
+  // Taps on the map (not drags) go to the current mode
+  viewer.addHandler("canvas-click", (e) => {
+    if (!e.quick || !mode || !mode.tap) return;
+    const [x, y] = unscr(e.position.x, e.position.y);
+    mode.tap(x, y, e);
+  });
+
+  // ---------- modes ----------
+  let mode = null;
+  const hudLeft = $("hudLeft"), card = $("card");
+  function clearStage() {
+    fx.replaceChildren(); lines.replaceChildren();
+    $("arrow").hidden = true; $("pad").hidden = true; card.hidden = true;
+    for (const k in keys) keys[k] = false;
+  }
+  function openMenu() {
+    if (mode && mode.stop) mode.stop();
+    mode = null;
+    clearStage();
+    buildingsG.replaceChildren();
+    $("hud").hidden = true;
+    $("menu").hidden = false;
+    viewer.setMouseNavEnabled(true);
+    for (const b of document.querySelectorAll("[data-best]")) {
+      const v = store.get("best-" + b.dataset.best, null);
+      b.textContent = v == null ? "" : { deliver: `Best shift: ₪${v}`, find: `Best: ${fmt(v)} / 10,000`, build: `Record: ${fmt(v)} people`, treasure: `Found: ${v} / 16` }[b.dataset.best];
+    }
+    try { history.replaceState(null, "", location.pathname); } catch (e) {}
+  }
+  function start(name) {
+    $("menu").hidden = true;
+    $("hud").hidden = false;
+    clearStage();
+    mode = MODES[name]();
+    try { history.replaceState(null, "", "#" + name); } catch (e) {}
+    syncView();
+  }
+  for (const b of document.querySelectorAll(".mode")) b.onclick = () => { beep(660); start(b.dataset.mode); };
+  $("exitBtn").onclick = openMenu;
+
+  const MODES = {};
+
+  // ===== 1. Shlichut rush: deliveries on the real road network =====
+  MODES.deliver = () => {
+    const SHIFT = 180, SPEED = 16;   // seconds, metres per second (game speed, about 58 km/h)
+    const foodIcon = (f) => /pizza/.test(f.cuisine) ? "🍕" : /burger/.test(f.cuisine) ? "🍔" : /sushi|japanese/.test(f.cuisine) ? "🍣"
+      : /coffee/.test(f.cuisine) || f.kind === "cafe" ? "☕" : f.kind === "ice_cream" ? "🍦" : /falafel|kebab|regional|sandwich/.test(f.cuisine) ? "🥙" : "🥡";
+    const addresses = [];
+    for (const st of streets) for (const a of st.a || []) if (insideLimits(a[2], a[3])) addresses.push({ label: `${st.en || st.he} ${a[1]}`, he: `${st.he} ${a[1]}`, x: a[2], y: a[3] });
+    const food = game.food.filter((f) => insideLimits(f.x, f.y));
+    let cur = null, s = 0, dir = 1, heading = [1, 0], pos = [0, 0], node = null;
+    let money = 0, delivered = 0, timeLeft = SHIFT, order = null, last = 0, raf = 0, over = false, gpsUntil = 0, gpsReady = 0, streak = 0;
+    let coins = [];
+    viewer.setMouseNavEnabled(false);
+    $("pad").hidden = !matchMedia("(pointer: coarse)").matches;
+    viewer.viewport.zoomTo(zoomFor(1.25), null, true);
+
+    // start on a random road near the middle of town
+    const startNode = nearestNode(6400, 5000);
+    cur = adj[startNode][0]; dir = edges[cur].a === startNode ? 1 : -1; s = dir > 0 ? 0 : edges[cur].len;
+
+    const scooter = el("image", { href: SPR.scooter.url, width: 52, height: 40 }, fx);
+    const pickM = el("g", {}, fx), dropM = el("g", {}, fx);
+    const pickT = el("text", { class: "emoji", "text-anchor": "middle" }, pickM);
+    const dropT = el("text", { class: "emoji", "text-anchor": "middle" }, dropM);
+    dropT.textContent = "🏠";
+    const pickL = el("text", { "text-anchor": "middle", y: 16 }, pickM), dropL = el("text", { "text-anchor": "middle", y: 16 }, dropM);
+    const coinG = el("g", {}, fx);
+    const nextPath = el("path", { class: "next" }, lines), routePath = el("path", { class: "route" }, lines);
+
+    function spawnCoins() {
+      while (coins.length < 30) {
+        const ei = Math.floor(Math.random() * edges.length), e = edges[ei];
+        if (comp[e.a] !== mainComp || e.len < 30) continue;
+        const [x, y] = pointAt(e, Math.random() * e.len);
+        if (!insideLimits(x, y)) continue;
+        coins.push({ x, y, img: el("image", { href: SPR.coin.url, width: 14, height: 14 }, coinG) });
+      }
+    }
+    function newOrder() {
+      const f = rand(food), a = rand(addresses);
+      const pn = nearestNode(f.x, f.y), dn = nearestNode(a.x, a.y);
+      const sp = dijkstra(pn);
+      const dist = sp.dist[dn];
+      if (!isFinite(dist) || dist < 250) return newOrder();
+      order = { f, a, pn, dn, stage: "pick", dist, limit: Math.round(dist / SPEED * 1.5 + 12), t: 0 };
+      pickT.textContent = foodIcon(f);
+      pickL.textContent = f.en;
+      dropL.textContent = a.label;
+      pickM.style.display = ""; dropM.style.display = "none";
+      renderCard();
+    }
+    function renderCard() {
+      card.hidden = false;
+      const o = order;
+      const pick = o.stage === "pick";
+      card.innerHTML = `<div class="row"><h2 class="grow">${pick ? "Pick up at " + o.f.en : "Deliver to " + o.a.label}${(pick ? o.f.he : o.a.he) !== (pick ? o.f.en : o.a.label) ? `<span class="he" lang="he" dir="rtl">${pick ? o.f.he : o.a.he}</span>` : ""}</h2><span class="pixel" id="dist"></span></div>
+        <div class="timebar" ${pick ? "hidden" : ""}><i id="tb"></i></div>
+        <div class="row"><p class="grow">${pick ? "Ride to the " + pickT.textContent + " and grab the order." : `Get it there in ${o.limit}s for a full tip.`} Steer with arrow keys / WASD${matchMedia("(pointer: coarse)").matches ? " or the pad" : ""}; ride into a junction holding a direction to turn.</p>
+        <button id="gps">🧭 GPS</button></div>`;
+      $("gps").onclick = () => {
+        const wait = Math.ceil((gpsReady - performance.now()) / 1000);
+        if (wait > 0) return toast(`GPS recharging… ${wait}s`);
+        gpsUntil = performance.now() + 6000; gpsReady = performance.now() + 20000; beep(440);
+      };
+    }
+    function hud() {
+      hudLeft.innerHTML = `<div class="stat"><span class="lbl">Shift</span><span class="big">${Math.ceil(timeLeft)}s</span></div>
+        <div class="stat"><span class="lbl">Earned</span><span class="big">₪${money}</span></div>
+        <div class="stat"><span class="lbl">Delivered</span><span class="big">${delivered}</span></div>
+        ${streak > 1 ? `<div class="stat"><span class="lbl">Streak</span><span class="big">x${streak}</span></div>` : ""}`;
+    }
+    // Choose the road to take at node n, given the road we arrived on
+    function chooseAt(n, fromEi, want) {
+      const opts = adj[n].filter((ei) => ei !== fromEi);
+      if (!opts.length) return fromEi;   // dead end: turn round
+      const look = want || heading;
+      let best = opts[0], bd = -Infinity;
+      for (const ei of opts) {
+        const e = edges[ei];
+        const pts = e.a === n ? e.pts : [...e.pts].reverse();
+        const q = pts[Math.min(2, pts.length - 1)];
+        const v = [q[0] - pts[0][0], (q[1] - pts[0][1])];
+        const m = Math.hypot(v[0], v[1]) || 1;
+        const d = (v[0] * look[0] + v[1] * look[1]) / m;
+        if (d > bd) { bd = d; best = ei; }
+      }
+      return best;
+    }
+    function upcoming() {
+      const e = edges[cur];
+      return dir > 0 ? e.b : e.a;
+    }
+    function step(dt) {
+      const want = wantDir();
+      // pressing against the direction of travel turns the scooter round on the spot
+      if (want && want[0] * heading[0] + want[1] * heading[1] < -0.75 && performance.now() - keyPressedAt < 200) { dir = -dir; keyPressedAt = 0; }
+      let move = SPEED * dt;
+      let guard = 0;
+      while (move > 0 && guard++ < 20) {
+        const e = edges[cur];
+        const room = dir > 0 ? e.len - s : s;
+        if (move < room) { s += dir * move; move = 0; break; }
+        move -= room;
+        const n = dir > 0 ? e.b : e.a;
+        const ni = chooseAt(n, cur, want);
+        const ne = edges[ni];
+        cur = ni;
+        if (ne.a === n) { dir = 1; s = 0; } else { dir = -1; s = ne.len; }
+      }
+      const p = pointAt(edges[cur], s);
+      const v = [p[0] - pos[0], p[1] - pos[1]], m = Math.hypot(v[0], v[1]);
+      if (m > 0.01) heading = [v[0] / m, v[1] / m];
+      pos = p;
+    }
+    function check() {
+      // coins
+      for (let i = coins.length - 1; i >= 0; i--) {
+        const c = coins[i];
+        if (meters(c.x - pos[0], c.y - pos[1]) < 9) { money += 2; beep(1320, 0.06); c.img.remove(); coins.splice(i, 1); }
+      }
+      spawnCoins();
+      const o = order;
+      const tgt = o.stage === "pick" ? nodes[o.pn] : nodes[o.dn];
+      if (meters(tgt[0] - pos[0], tgt[1] - pos[1]) < 14) {
+        if (o.stage === "pick") {
+          o.stage = "drop"; o.t = 0;
+          pickM.style.display = "none"; dropM.style.display = "";
+          jingle([523, 659]);
+          toast(`Got it! ${pickT.textContent}`);
+          renderCard();
+        } else {
+          const fast = o.t <= o.limit;
+          streak = fast ? streak + 1 : 0;
+          const tip = fast ? Math.round(10 + 20 * (1 - o.t / o.limit)) * Math.min(3, Math.max(1, streak)) : 0;
+          const pay = 15 + tip;
+          money += pay; delivered++;
+          timeLeft = Math.min(SHIFT, timeLeft + (fast ? 10 : 4));
+          jingle(fast ? [523, 659, 784, 1046] : [392, 330]);
+          toast(fast ? `Delivered! +₪${pay}${streak > 1 ? "  x" + Math.min(3, streak) + " streak" : ""}` : `Late… +₪${pay}`);
+          newOrder();
+        }
+      }
+    }
+    function frame(t) {
+      if (over) return;
+      const dt = Math.min(0.05, (t - (last || t)) / 1000);
+      last = t;
+      timeLeft -= dt;
+      if (order && order.stage === "drop") order.t += dt;
+      step(dt);
+      check();
+      viewer.viewport.panTo(toVp(pos[0], pos[1]), true);
+      if (timeLeft <= 0) return end();
+      hud();
+      raf = requestAnimationFrame(frame);
+    }
+    function draw() {
+      const [sx, sy] = scr(pos[0], pos[1]);
+      const flip = heading[0] < 0;
+      scooter.setAttribute("transform", `translate(${sx} ${sy - 34}) ${flip ? "scale(-1 1) " : ""}translate(-26 0)`);
+      for (const c of coins) { const [cx, cy] = scr(c.x, c.y); c.img.setAttribute("x", cx - 7); c.img.setAttribute("y", cy - 7); }
+      if (!order) return;
+      const pn = nodes[order.pn], dn = nodes[order.dn];
+      const bob = Math.sin(performance.now() / 180) * 3;
+      let [x, y] = scr(pn[0], pn[1]); pickM.setAttribute("transform", `translate(${x} ${y - 14 + bob})`);
+      [x, y] = scr(dn[0], dn[1]); dropM.setAttribute("transform", `translate(${x} ${y - 14 + bob})`);
+      // where the next junction will send you
+      const n = upcoming(), want = wantDir();
+      const ni = chooseAt(n, cur, want), ne = edges[ni];
+      const pts = ne.a === n ? ne.pts : [...ne.pts].reverse();
+      // the rest of this road up to the junction, then the first stretch of the road it will turn onto
+      const e0 = edges[cur], ahead = [pos];
+      if (dir > 0) { for (let i = 0; i < e0.pts.length; i++) if (e0.cum[i] > s) ahead.push(e0.pts[i]); }
+      else { for (let i = e0.pts.length - 1; i >= 0; i--) if (e0.cum[i] < s) ahead.push(e0.pts[i]); }
+      const prev = [...ahead.slice(0, -1), pts[0]];
+      for (let i = 1, acc = 0; i < pts.length && acc < 45; i++) {
+        const a = prev[prev.length - 1], b = pts[i], d = meters(b[0] - a[0], b[1] - a[1]);
+        if (acc + d > 45) { const t = (45 - acc) / d; prev.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); break; }
+        prev.push(b); acc += d;
+      }
+      nextPath.setAttribute("d", pathD(prev.flat()));
+      // distance + edge arrow
+      const tgt = order.stage === "pick" ? pn : dn;
+      const d = meters(tgt[0] - pos[0], tgt[1] - pos[1]);
+      const de = $("dist"); if (de) de.textContent = d > 950 ? (d / 1000).toFixed(1) + " km" : Math.round(d / 10) * 10 + " m";
+      const tb = $("tb"); if (tb) { const f = Math.max(0, 1 - order.t / order.limit); tb.style.width = f * 100 + "%"; tb.style.background = f > 0.35 ? "var(--good)" : f > 0 ? "var(--accent)" : "var(--bad)"; }
+      const [tx, ty] = scr(tgt[0], tgt[1]);
+      const off = tx < 30 || ty < 70 || tx > innerWidth - 30 || ty > innerHeight - 140;
+      const ar = $("arrow");
+      ar.hidden = !off;
+      if (off) {
+        const cx = innerWidth / 2, cy = innerHeight / 2, ang = Math.atan2(ty - cy, tx - cx);
+        const r = Math.min(innerWidth / 2 - 40, innerHeight / 2 - 110);
+        ar.style.left = cx + Math.cos(ang) * r + "px"; ar.style.top = cy + Math.sin(ang) * r + "px";
+        ar.style.transform = `rotate(${ang}rad)`;
+        ar.style.color = order.stage === "pick" ? "#e2851f" : "#2f9e57";
+      }
+      // GPS: shortest route for a few seconds
+      if (performance.now() < gpsUntil) {
+        if (!draw.sp || draw.spFrom !== n || draw.spTo !== order.stage) { draw.sp = dijkstra(n); draw.spFrom = n; draw.spTo = order.stage; }
+        routePath.setAttribute("d", pathD([pos, ...routePts(draw.sp, order.stage === "pick" ? order.pn : order.dn)].flat()));
+      } else routePath.setAttribute("d", "");
+    }
+    function end() {
+      over = true;
+      cancelAnimationFrame(raf);
+      const best = store.get("best-deliver", 0);
+      if (money > best) store.set("best-deliver", money);
+      jingle([784, 659, 523, 392]);
+      card.hidden = false;
+      card.innerHTML = `<h2>Shift over!</h2><p>${delivered} deliveries, <b>₪${money}</b> earned.${money > best ? " New best shift! 🏆" : ` Best: ₪${best}.`}</p>
+        <div class="row"><button class="primary" id="again">Ride again</button><button id="menuB">Menu</button></div>`;
+      $("again").onclick = () => start("deliver");
+      $("menuB").onclick = openMenu;
+      $("arrow").hidden = true;
+    }
+    pos = pointAt(edges[cur], s);
+    spawnCoins();
+    newOrder();
+    hud();
+    toast("Shift starts! 🛵");
+    raf = requestAnimationFrame(frame);
+    return { steer: true, draw, stop() { over = true; cancelAnimationFrame(raf); viewer.setMouseNavEnabled(true); } };
+  };
+
+  // ===== 2. Find it: tap where a street or place is =====
+  MODES.find = () => {
+    const ROUNDS = 10;
+    const bigStreets = streets.filter((st) => st.en && st.r <= 4 && st.lines.some((l) => l.length >= 6) && insideLimits(...st.lines[0].slice(0, 2)));
+    const named = game.pois.filter((p) => p.en && insideLimits(p.x, p.y) && !/townhall|information/.test(p.kind));
+    const pool = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      // mix: 6 streets, 3 places, 1 landmark
+      const pick = i % 10 === 0 ? { kind: "place", name: rand(places.landmarks) } : i % 3 === 1 ? { kind: "poi", p: rand(named) } : { kind: "street", st: rand(bigStreets) };
+      if (pool.some((q) => (q.st && q.st === pick.st) || (q.p && q.p === pick.p) || (q.name && q.name === pick.name))) { i--; continue; }
+      pool.push(pick);
+    }
+    let round = 0, total = 0, answered = false, marker = null;
+    const fitCity = (instant) => fitMap(limitsBox[0] - 300, limitsBox[1] - 300, limitsBox[2] + 300, limitsBox[3] + 300, instant);
+    fitCity(true);
+    const q = () => pool[round];
+    const title = (t) => t.kind === "street" ? [t.st.en, t.st.he, "Street"] : t.kind === "poi" ? [t.p.en, t.p.he, "Place"] : [t.name.name, t.name.he, "Landmark"];
+    function show() {
+      answered = false;
+      lines.replaceChildren(); fx.replaceChildren(); marker = null;
+      const [en, he, what] = title(q());
+      card.hidden = false;
+      card.innerHTML = `<div class="row"><span class="pixel">${what} ${round + 1}/${ROUNDS}</span></div><h2>${en}<span class="he" lang="he" dir="rtl">${he}</span></h2><p>Zoom and pan, then tap where you think it is.</p>`;
+      hud();
+    }
+    function hud() {
+      hudLeft.innerHTML = `<div class="stat"><span class="lbl">Round</span><span class="big">${Math.min(round + 1, ROUNDS)}/${ROUNDS}</span></div><div class="stat"><span class="lbl">Score</span><span class="big">${fmt(total)}</span></div>`;
+    }
+    function tap(x, y) {
+      if (answered) return;
+      answered = true;
+      const t = q();
+      let tx, ty, d;
+      if (t.kind === "street") {
+        d = Infinity;
+        for (const l of t.st.lines) for (let i = 0; i + 3 < l.length; i += 2) {
+          const [dd, px, py] = segDist(x, y, l[i], l[i + 1], l[i + 2], l[i + 3]);
+          if (dd < d) { d = dd; tx = px; ty = py; }
+        }
+        el("path", { class: "target-street", d: t.st.lines.map(pathD).join("") }, lines);
+      } else {
+        const p = t.kind === "poi" ? t.p : t.name;
+        tx = p.x; ty = p.y; d = meters(tx - x, ty - y);
+      }
+      el("path", { class: "answer-line", d: `M${x} ${y}L${tx} ${ty}` }, lines);
+      marker = { you: [x, y], it: [tx, ty] };
+      const pts = Math.round(1000 * Math.exp(-Math.max(0, d - 25) / 350));
+      total += pts;
+      pts > 800 ? jingle([523, 659, 784]) : pts > 300 ? jingle([523, 659]) : beep(220, 0.2);
+      const pad = 250;
+      fitMap(Math.min(x, tx) - pad, Math.min(y, ty) - pad, Math.max(x, tx) + pad, Math.max(y, ty) + pad, false);
+      const verdict = d < 60 ? "Bullseye! 🎯" : d < 250 ? "So close!" : d < 800 ? "Not bad." : "Way off… 😅";
+      card.innerHTML = `<div class="row"><h2 class="grow">${verdict}</h2><span class="pixel">+${pts}</span></div><p>You were ${d >= 1000 ? (d / 1000).toFixed(1) + " km" : Math.round(d) + " m"} away.</p>
+        <div class="row"><button class="primary" id="nextB">${round + 1 < ROUNDS ? "Next" : "See score"}</button></div>`;
+      $("nextB").onclick = next;
+      $("nextB").focus();
+      hud();
+    }
+    function next() {
+      round++;
+      if (round >= ROUNDS) return finish();
+      fitCity(false);
+      show();
+    }
+    function finish() {
+      const best = store.get("best-find", 0);
+      if (total > best) store.set("best-find", total);
+      lines.replaceChildren(); fx.replaceChildren(); marker = null;
+      fitCity(false);
+      const rank = total > 8500 ? "Ra'anana native 👑" : total > 6500 ? "Local legend" : total > 4000 ? "Knows the way" : total > 2000 ? "Weekend visitor" : "Just moved here";
+      card.innerHTML = `<h2>${fmt(total)} / 10,000</h2><p>${rank}.${total > best ? " New best! 🏆" : ` Best: ${fmt(best)}.`}</p>
+        <div class="row"><button class="primary" id="again">Play again</button><button id="menuB">Menu</button></div>`;
+      $("again").onclick = () => start("find");
+      $("menuB").onclick = openMenu;
+      jingle([523, 659, 784, 1046]);
+    }
+    function draw() {
+      if (!marker) return;
+      fx.replaceChildren();
+      const [ax, ay] = scr(...marker.you), [bx, by] = scr(...marker.it);
+      el("text", { class: "emoji", x: ax, y: ay, "text-anchor": "middle" }, fx).textContent = "❌";
+      el("text", { class: "emoji", x: bx, y: by - 4, "text-anchor": "middle" }, fx).textContent = "📍";
+    }
+    show();
+    return { tap, draw, key(e) { if (e.code === "Enter" && answered && $("nextB")) next(); } };
+  };
+
+  // ===== 3. Ra'anana 2040: a small city builder on top of the map =====
+  MODES.build = () => {
+    const T = {
+      house:     { name: "House", cost: 120, cap: 6, jobs: 0, joy: 0, upkeep: 0.2, spr: SPR.house },
+      apartment: { name: "Apartments", cost: 450, cap: 60, jobs: 0, joy: -1, upkeep: 1, spr: SPR.apartment },
+      tower:     { name: "Tower", cost: 1400, cap: 260, jobs: 20, joy: -3, upkeep: 4, spr: SPR.tower },
+      cafe:      { name: "Café", cost: 220, cap: 0, jobs: 8, joy: 2, upkeep: 0.5, income: 6, spr: SPR.cafe },
+      office:    { name: "Offices", cost: 900, cap: 0, jobs: 120, joy: -1, upkeep: 2, income: 20, spr: SPR.office },
+      park:      { name: "Park", cost: 150, cap: 0, jobs: 1, joy: 6, upkeep: 0.5, spr: SPR.park },
+      school:    { name: "School", cost: 700, cap: 0, jobs: 30, joy: 10, upkeep: 3, spr: SPR.school },
+      rail:      { name: "Light rail", cost: 2500, cap: 0, jobs: 15, joy: 25, upkeep: 5, spr: SPR.rail },
+    };
+    const GOAL = 20000;
+    let st = store.get("city", null) || { money: 3000, pop: 0, items: [], milestones: 0 };
+    let tool = "house", timer = 0;
+    fitMap(5900, 4500, 7400, 5500, true);
+    function stats() {
+      let cap = 0, jobs = 0, joy = 0, upkeep = 0, income = 0;
+      for (const it of st.items) { const t = T[it.t]; cap += t.cap; jobs += t.jobs; joy += t.joy; upkeep += t.upkeep; income += t.income || 0; }
+      // happiness: amenities per 1,000 residents of capacity, minus a jobs gap
+      const happy = Math.max(0, Math.min(100, 55 + joy * 1000 / Math.max(800, cap) * 0.6 - (st.pop > jobs * 2 + 200 ? 20 : 0)));
+      return { cap, jobs, happy, upkeep, income };
+    }
+    function drawItems() {
+      buildingsG.replaceChildren();
+      const sorted = [...st.items].sort((a, b) => a.y - b.y);
+      for (const it of sorted) {
+        const s = T[it.t].spr;
+        const k = 1.6;
+        el("image", { href: s.url, x: it.x - s.w * k / 2, y: it.y - s.h * k, width: s.w * k, height: s.h * k }, buildingsG);
+      }
+    }
+    function tick() {
+      const s = stats();
+      const target = s.cap * (0.35 + 0.65 * s.happy / 100);
+      st.pop += (target - st.pop) * 0.08;
+      st.money += Math.round(st.pop * 0.05 * (0.5 + s.happy / 100) + s.income - s.upkeep);
+      const ms = [1000, 5000, 10000, GOAL];
+      if (st.milestones < ms.length && st.pop >= ms[st.milestones]) {
+        toast(st.milestones === ms.length - 1 ? "Ra'anana 2040 complete! 🎉" : `${fmt(ms[st.milestones])} residents!`);
+        jingle([523, 659, 784, 1046]);
+        st.milestones++;
+      }
+      if (st.pop > store.get("best-build", 0)) store.set("best-build", Math.round(st.pop));
+      store.set("city", st);
+      hud(s);
+    }
+    function hud(s = stats()) {
+      hudLeft.innerHTML = `<div class="stat"><span class="lbl">Residents</span><span class="big">${fmt(st.pop)}</span></div>
+        <div class="stat"><span class="lbl">Budget</span><span class="big">₪${fmt(st.money)}</span></div>
+        <div class="stat"><span class="lbl">Happy ${Math.round(s.happy)}%</span><div class="meter"><i style="width:${s.happy}%;background:${s.happy > 60 ? "var(--good)" : s.happy > 35 ? "var(--accent)" : "var(--bad)"}"></i></div></div>
+        <div class="stat"><span class="lbl">Jobs</span><span class="big">${fmt(s.jobs)}</span></div>`;
+    }
+    function palette() {
+      card.hidden = false;
+      card.innerHTML = `<div class="row"><p class="grow">Tap the map to build inside the city limits. Goal: ${fmt(GOAL)} residents. Parks, schools and light rail keep people happy; cafés and offices make money.</p></div>
+        <div class="palette" role="toolbar" aria-label="Buildings">${Object.entries(T).map(([k, t]) =>
+          `<button data-t="${k}" aria-pressed="${tool === k}"><img src="${t.spr.url}" alt="">${t.name}<small>₪${fmt(t.cost)}</small></button>`).join("")}
+          <button data-t="bulldoze" aria-pressed="${tool === "bulldoze"}"><span style="font-size:24px;line-height:32px">🚜</span>Bulldoze<small>refund ½</small></button>
+          <button data-t="reset" aria-pressed="false"><span style="font-size:24px;line-height:32px">♻️</span>New city<small>start over</small></button></div>`;
+      for (const b of card.querySelectorAll("[data-t]")) b.onclick = () => {
+        if (b.dataset.t === "reset") {
+          if (b.dataset.armed) { st = { money: 3000, pop: 0, items: [], milestones: 0 }; drawItems(); tick(); palette(); toast("Fresh start"); }
+          else { b.dataset.armed = "1"; b.querySelector("small").textContent = "tap again"; }
+          return;
+        }
+        tool = b.dataset.t; beep(880, 0.04); palette();
+      };
+    }
+    function tap(x, y) {
+      if (tool === "bulldoze") {
+        let bi = -1, bd = 30;
+        st.items.forEach((it, i) => { const d = Math.hypot(it.x - x, it.y - 6 - y); if (d < bd) { bd = d; bi = i; } });
+        if (bi >= 0) { st.money += Math.round(T[st.items[bi].t].cost / 2); st.items.splice(bi, 1); beep(150, 0.15, "sawtooth"); drawItems(); tick(); }
+        return;
+      }
+      const t = T[tool];
+      if (!insideLimits(x, y)) return toast("Build inside the city limits");
+      if (st.money < t.cost) { beep(200, 0.15); return toast("Not enough budget"); }
+      st.money -= t.cost;
+      st.items.push({ t: tool, x: Math.round(x), y: Math.round(y) });
+      beep(520, 0.05); setTimeout(() => beep(780, 0.06), 60);
+      drawItems(); hud();
+      store.set("city", st);
+    }
+    drawItems(); palette(); hud();
+    timer = setInterval(tick, 1000);
+    return { tap, stop() { clearInterval(timer); store.set("city", st); } };
+  };
+
+  // ===== 4. Treasure hunt: gems at real places, found by riddle =====
+  MODES.treasure = () => {
+    const R = [
+      [394589793, "Rows of seats in a half-circle, a stage under the open sky, in the city's biggest park."],
+      [1019268703, "The park's own lake. A gallery looks out over the water."],
+      [582918318, "Goats, rabbits and chickens wait here to meet the kids."],
+      [5705790741, "Trains stop here, at the southern edge of town."],
+      [91707465, "A big hospital where people learn to walk and live again after injuries."],
+      [102716891, "A mall that shares its name with a park."],
+      [270161934, "Popcorn and the big screen."],
+      [881915662, "Where the mayor goes to work."],
+      [763367960, "A diamond in the Sharon. Not jewellery: baseball."],
+      [9705560579, "Someone named Alon left a piano out here, and painted it yellow."],
+      [8273672897, "A turtle that never moves an inch. It's art."],
+      [391086886, "Yad LaBanim: a house built in memory of the city's fallen soldiers."],
+      [242468202, "Lanes of water, starting blocks and a scoreboard."],
+      [1043769281, "The shopping centre of Neve Zemer."],
+      [894200410, "Bounce, flip, repeat. Sky's the limit."],
+      [263148411, "Where the city learns music and the arts."],
+    ];
+    const byId = new Map(game.pois.map((p) => [p.id, p]));
+    const items = R.map(([id, riddle]) => ({ p: byId.get(id), riddle })).filter((t) => t.p);
+    let found = new Set(store.get("found", []));
+    let curI = items.findIndex((_, i) => !found.has(items[i].p.id));
+    if (curI < 0) curI = 0;
+    let hints = 0, circle = null;
+    const startT = performance.now();
+    fitMap(limitsBox[0] - 200, limitsBox[1] - 200, limitsBox[2] + 200, limitsBox[3] + 200, true);
+    const gems = items.map((t) => {
+      const g = el("image", { href: SPR.gem.url, width: 28, height: 28, class: "clickable" }, fx);
+      g.addEventListener("click", () => collect(t));
+      return g;
+    });
+    function collect(t) {
+      if (found.has(t.p.id)) return;
+      found.add(t.p.id);
+      store.set("found", [...found]);
+      if (found.size > store.get("best-treasure", 0)) store.set("best-treasure", found.size);
+      jingle([659, 784, 988, 1318]);
+      toast(`💎 ${t.p.en || t.p.he}!`);
+      const next = items.findIndex((x) => !found.has(x.p.id));
+      if (next >= 0) curI = next;
+      hints = 0; circle = null; lines.replaceChildren();
+      render();
+      if (found.size === items.length) setTimeout(() => toast("All gems found! 👑"), 1700);
+    }
+    function render() {
+      const t = items[curI];
+      const done = found.has(t.p.id);
+      card.hidden = false;
+      card.innerHTML = `<div class="riddles" role="tablist" aria-label="Riddles">${items.map((x, i) =>
+          `<button data-i="${i}" class="${found.has(x.p.id) ? "found" : ""}" aria-current="${i === curI}" aria-label="Riddle ${i + 1}">${i + 1}</button>`).join("")}</div>
+        ${done ? `<h2>💎 ${t.p.en || ""}<span class="he" lang="he" dir="rtl">${t.p.he}</span></h2><p>Found! Pick another number.</p>`
+               : `<p class="riddle">“${t.riddle}”</p><p id="hintText">${hints >= 1 ? "Near " + (nearestStreet(t.p.x, t.p.y).st.en || nearestStreet(t.p.x, t.p.y).st.he) + "." : "Find the spot and zoom in close: the gem only shows up near street level."}</p>
+                 <div class="row"><button id="hintB">${hints === 0 ? "Hint: nearest street" : hints === 1 ? "Hint: search area" : "No more hints"}</button></div>`}`;
+      for (const b of card.querySelectorAll("[data-i]")) b.onclick = () => { curI = +b.dataset.i; hints = 0; circle = null; lines.replaceChildren(); render(); };
+      const hb = $("hintB");
+      if (hb) hb.onclick = () => {
+        if (hints >= 2) return;
+        hints++;
+        if (hints === 2) {
+          const a = Math.random() * Math.PI * 2, r = 120 + Math.random() * 120;   // map px, keep the gem off-centre
+          circle = [t.p.x + Math.cos(a) * r, t.p.y + Math.sin(a) * r / Math.SQRT2];
+          el("ellipse", { class: "hint-circle", cx: circle[0], cy: circle[1], rx: 420, ry: 420 / Math.SQRT2 }, lines);
+          fitMap(circle[0] - 600, circle[1] - 450, circle[0] + 600, circle[1] + 450, false);
+        }
+        beep(440);
+        render();
+      };
+      hud();
+    }
+    function hud() {
+      const mins = Math.floor((performance.now() - startT) / 60000);
+      hudLeft.innerHTML = `<div class="stat"><span class="lbl">Gems</span><span class="big">💎 ${found.size}/${items.length}</span></div><div class="stat"><span class="lbl">This hunt</span><span class="big">${mins}m</span></div>`;
+    }
+    function draw() {
+      items.forEach((t, i) => {
+        const [x, y] = scr(t.p.x, t.p.y);
+        const visible = found.has(t.p.id) || sc >= 0.55;
+        gems[i].style.display = visible ? "" : "none";
+        gems[i].style.opacity = found.has(t.p.id) ? 0.45 : 1;
+        const bob = Math.sin(performance.now() / 250 + i) * 3;
+        gems[i].setAttribute("x", x - 14);
+        gems[i].setAttribute("y", y - 28 + bob);
+      });
+    }
+    // tapping close to a visible gem also counts (fingers are big)
+    function tap(x, y) {
+      if (sc < 0.55) return;
+      for (const t of items) if (!found.has(t.p.id) && Math.hypot((t.p.x - x) * sc, (t.p.y - y) * sc) < 30) return collect(t);
+    }
+    const spin = setInterval(() => { draw(); hud(); }, 120);
+    render();
+    return { tap, draw, stop() { clearInterval(spin); } };
+  };
+
+  // ---------- wiring ----------
+  viewer.addHandler("update-viewport", syncView);
+  viewer.addHandler("resize", syncView);
+  viewer.addOnceHandler("open", () => {
+    syncView();
+    const h = location.hash.slice(1);
+    if (MODES[h]) start(h); else openMenu();
+  });
+})();
+</script>
+
+</body>
+</html>
