@@ -1,0 +1,573 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Free Wire — Daf Yomi Game: Bekhorot 32"
+  description="Bekhorot 32: fold tithe meat into the price of its bones, patch the switchboard of verbal analogies between tithe, firstborn and ḥaramim until one 'it shall not be redeemed' runs free, throw Rav Ashi's alive/slaughtered lever, and seat the guests at a blemished firstborn's table."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style>
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .card { background: #111816; border: 1px solid #2c3b36; border-radius: 1rem; }
+    .chip { border: 1px solid #3d524b; border-radius: 0.6rem; padding: 0.45rem 0.75rem; font-size: 0.8rem; transition: background .15s, border-color .15s; text-align: left; }
+    .chip:hover:not(:disabled) { background: #1b2622; }
+    .chip[aria-pressed="true"] { background: #2b2614; border-color: #c9a24a; }
+    .chip.ok { background: #16281d; border-color: #5f9e6c; }
+    .chip.bad { background: #331a17; border-color: #c0503a; }
+    .chip:disabled { cursor: default; opacity: .9; }
+    .plug { border: 1px solid #4a5f57; border-radius: .8rem; padding: .6rem .8rem; background: linear-gradient(#18221f, #121a17); text-align: left; transition: background .15s, border-color .15s, transform .15s; }
+    .plug:hover:not(:disabled) { border-color: #c9a24a; transform: translateY(-1px); }
+    .plug.ok { border-color: #5f9e6c; background: #16281d; }
+    .plug.bad { border-color: #c0503a; background: #331a17; }
+    .plug.shake { animation: shake .3s; }
+    @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+    .wire { fill: none; stroke-width: 5; stroke-linecap: round; transition: stroke .4s, opacity .4s; }
+    .wire.idle { stroke: #2a3632; }
+    .wire.test { stroke: #c9a24a; stroke-dasharray: 10 8; animation: flow 1s linear infinite; }
+    .wire.live { stroke: #6fc28a; }
+    .wire.cut { stroke: #c0503a; stroke-dasharray: 3 9; opacity: .7; }
+    .wire.blocked { stroke: #7a5aa0; stroke-dasharray: 2 6; }
+    @keyframes flow { to { stroke-dashoffset: -36; } }
+    .jack { transition: fill .3s, stroke .3s; }
+    .jack.free { fill: #6fc28a; }
+    .spark { opacity: 0; }
+    .spark.on { animation: spark .6s ease-out; }
+    @keyframes spark { 0% { opacity: 1; transform: scale(.4); } 100% { opacity: 0; transform: scale(1.8); } }
+    .lever { transition: transform .5s cubic-bezier(.4,0,.2,1); transform-origin: 60px 70px; }
+    .seat { width: 4.2rem; height: 4.2rem; border-radius: 999px; border: 2px dashed #3d524b; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: .7rem; transition: background .2s, border-color .2s; }
+    .seat[aria-pressed="true"] { border-style: solid; border-color: #c9a24a; background: #2b2614; }
+    .seat.ok { box-shadow: 0 0 0 3px #5f9e6c; }
+    .seat.bad { box-shadow: 0 0 0 3px #c0503a; }
+    @media (prefers-reduced-motion: reduce) {
+      .wire, .plug, .lever, .seat, .chip { transition: none; }
+      .wire.test, .spark.on, .plug.shake { animation: none; }
+    }
+    button:focus-visible { outline: 2px solid #c9a24a; outline-offset: 2px; }
+  </style>
+
+  <main class="min-h-screen bg-[#0a0f0d] !text-[#e6ece8]">
+
+    <!-- HERO -->
+    <div class="border-b border-[#2c3b36] bg-gradient-to-b from-[#14231e] to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs tracking-[0.22em] !text-[#7f948c]">
+        <a href="/daf" class="transition-colors hover:!text-[#e6ece8]">daf yomi arcade</a>
+        <span class="mx-2 opacity-40">·</span>bekhorot 32<span class="mx-2 opacity-40">·</span>2026-10-21
+      </p>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl !text-[#f1f4ef]">The Free Wire</h1>
+      <p class="frank mt-3 text-3xl font-light !text-[#c9a24a]" dir="rtl" lang="he">מֻפְנֶה, דְּאִי לָא מֻפְנֶה אִיכָּא לְמִפְרַךְ</p>
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed !text-[#a9bab3]">
+        Three holy things share one Torah phrase: <em>it shall not be redeemed</em>. Tithe, firstborn, and <em>ḥaramim</em> (property devoted to the priests).
+        The Gemara wants to send the ban on <em>selling</em> down one wire, from ḥaramim to the tithe. A verbal analogy only carries current if one end is <strong>free</strong>, a word the Torah didn't need for anything else.
+        Patch the board, cut the wires that can be refuted, and find the one that holds.
+      </p>
+      <p class="mt-5 text-sm !text-[#a9bab3]">Score <span id="score" class="font-bold !text-[#c9a24a]">0</span> / <span id="scoreMax">0</span></p>
+    </div>
+
+    <div class="mx-auto max-w-3xl space-y-8 px-4 py-10">
+
+      <!-- STATION 1 -->
+      <section class="card p-6" aria-labelledby="s1h">
+        <p class="text-xs tracking-[0.2em] !text-[#7f948c]">STATION 1 · 32a:1–6</p>
+        <h2 id="s1h" class="frank mt-1 text-2xl font-bold !text-[#f1f4ef]">Price It by the Bones</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#a9bab3]">
+          A blemished animal-tithe offering may be eaten, but its meat may not be sold. Yesterday's trick: put the price into the hide and horns, which nobody values the live animal for.
+          For each item, choose how it can be sold.
+        </p>
+        <div id="bones" class="mt-5 space-y-3"></div>
+        <button id="bonesCheck" class="mt-4 rounded-lg bg-[#c9a24a] px-4 py-2 text-sm font-bold !text-[#0a0f0d] hover:bg-[#dcb862]">Check the price tags</button>
+        <p id="bonesFb" class="hidden"></p>
+        <div id="s1more" class="mt-4 hidden"></div>
+      </section>
+
+      <!-- STATION 2 -->
+      <section class="card p-6" aria-labelledby="s2h">
+        <p class="text-xs tracking-[0.2em] !text-[#7f948c]">STATION 2 · 32a:7–32b:1</p>
+        <h2 id="s2h" class="frank mt-1 text-2xl font-bold !text-[#f1f4ef]">The Switchboard</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#a9bab3]">
+          Each jack is a holy thing and the phrase the Torah uses for it. A gold dashed wire is a verbal analogy (<em>gezeira shava</em>) being tested.
+          If neither end is free, a difference between the two cases cuts it. Plug in the difference the Gemara uses, or tell the board why the wire holds.
+        </p>
+
+        <div class="mt-5 grid gap-5 md:grid-cols-[1fr_1fr]">
+          <svg viewBox="0 0 360 300" class="w-full rounded-xl bg-[#0c1311]" role="img" aria-labelledby="boardTitle">
+            <title id="boardTitle">Switchboard with three jacks: animal tithe at top, ḥaramim at bottom left, firstborn at bottom right.</title>
+            <defs>
+              <radialGradient id="brass" cx="40%" cy="35%"><stop offset="0" stop-color="#f0d38a"/><stop offset="1" stop-color="#8a6a26"/></radialGradient>
+            </defs>
+            <path id="w-MH" class="wire idle" d="M180 70 Q 95 120 70 220" />
+            <path id="w-BH" class="wire idle" d="M95 240 Q 180 275 265 240" />
+            <path id="w-BM" class="wire idle" d="M180 70 Q 265 120 290 220" />
+            <text id="lab-MH" x="92" y="138" font-size="10" fill="#7f948c" text-anchor="middle" transform="rotate(-58 92 138)">גְּאוּלָּה · גְּאוּלָּה</text>
+            <text id="lab-BH" x="180" y="290" font-size="10" fill="#7f948c" text-anchor="middle">פְּדִיָּה · גְּאוּלָּה</text>
+            <text id="lab-BM" x="268" y="138" font-size="10" fill="#7f948c" text-anchor="middle" transform="rotate(58 268 138)">הַעֲבָרָה · הַעֲבָרָה</text>
+            <g>
+              <circle cx="180" cy="50" r="30" fill="url(#brass)" />
+              <circle id="j-M" class="jack" cx="180" cy="50" r="9" fill="#1a1a14" stroke="#0a0f0d" stroke-width="2" />
+              <text x="180" y="98" font-size="12" fill="#e6ece8" text-anchor="middle" font-weight="bold">Animal tithe</text>
+              <text x="180" y="112" font-size="11" fill="#c9a24a" text-anchor="middle" font-family="Frank Ruhl Libre, serif">לֹא יִגָּאֵל</text>
+            </g>
+            <g>
+              <circle cx="65" cy="225" r="30" fill="url(#brass)" />
+              <circle id="j-H" class="jack" cx="65" cy="225" r="9" fill="#1a1a14" stroke="#0a0f0d" stroke-width="2" />
+              <text x="65" y="186" font-size="12" fill="#e6ece8" text-anchor="middle" font-weight="bold">Ḥaramim</text>
+              <text x="65" y="173" font-size="11" fill="#c9a24a" text-anchor="middle" font-family="Frank Ruhl Libre, serif">לֹא יִמָּכֵר וְלֹא יִגָּאֵל</text>
+            </g>
+            <g>
+              <circle cx="295" cy="225" r="30" fill="url(#brass)" />
+              <circle id="j-B" class="jack" cx="295" cy="225" r="9" fill="#1a1a14" stroke="#0a0f0d" stroke-width="2" />
+              <text x="295" y="186" font-size="12" fill="#e6ece8" text-anchor="middle" font-weight="bold">Firstborn</text>
+              <text x="295" y="173" font-size="11" fill="#c9a24a" text-anchor="middle" font-family="Frank Ruhl Libre, serif">לֹא תִפְדֶּה</text>
+            </g>
+            <circle id="spark" class="spark" cx="180" cy="160" r="14" fill="#f0a35a" style="transform-box: fill-box; transform-origin: center;" />
+          </svg>
+
+          <div>
+            <p id="roundNum" class="text-xs tracking-[0.2em] !text-[#7f948c]"></p>
+            <p id="roundPrompt" class="mt-2 text-sm leading-relaxed !text-[#e6ece8]"></p>
+            <div id="roundChoices" class="mt-4 grid gap-2"></div>
+            <p id="roundFb" class="hidden"></p>
+            <button id="roundNext" class="mt-3 hidden rounded-lg border border-[#c9a24a] px-4 py-2 text-sm font-bold !text-[#c9a24a] hover:bg-[#1b2622]">Next patch →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STATION 3 -->
+      <section class="card p-6" aria-labelledby="s3h">
+        <p class="text-xs tracking-[0.2em] !text-[#7f948c]">STATION 3 · 32b:2–8</p>
+        <h2 id="s3h" class="frank mt-1 text-2xl font-bold !text-[#f1f4ef]">Rav Ashi's Lever</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#a9bab3]">
+          Rav Ashi skips the switchboard. He reads Leviticus 27:33 on its own: <span class="frank !text-[#c9a24a]" dir="rtl" lang="he">וְהָיָה הוּא וּתְמוּרָתוֹ יִהְיֶה קֹּדֶשׁ לֹא יִגָּאֵל</span>.
+          Substitution and "not redeemed" sit in the same verse, so they switch on and off together. Throw the lever and set what the Torah says about the tithe animal in each state, according to Rav Ashi.
+        </p>
+        <div class="mt-5 grid items-center gap-6 sm:grid-cols-[140px_1fr]">
+          <button id="lever" class="mx-auto block" aria-label="Lever: animal is alive. Press to switch.">
+            <svg viewBox="0 0 120 130" width="120" height="130" aria-hidden="true">
+              <rect x="20" y="80" width="80" height="30" rx="6" fill="#1b2622" stroke="#3d524b" />
+              <g id="leverArm" class="lever" style="transform: rotate(-35deg)">
+                <rect x="56" y="10" width="8" height="62" rx="4" fill="#8a6a26" />
+                <circle cx="60" cy="12" r="11" fill="url(#brass)" />
+              </g>
+              <circle cx="60" cy="72" r="7" fill="#c9a24a" />
+              <text x="28" y="124" font-size="10" fill="#7f948c">ALIVE</text>
+              <text x="66" y="124" font-size="10" fill="#7f948c">SLAUGHTERED</text>
+            </svg>
+          </button>
+          <div>
+            <p class="text-sm !text-[#e6ece8]">Animal is now: <strong id="leverState" class="!text-[#c9a24a]">alive</strong></p>
+            <div id="ashiGrid" class="mt-3 space-y-3"></div>
+            <button id="ashiCheck" class="mt-4 rounded-lg bg-[#c9a24a] px-4 py-2 text-sm font-bold !text-[#0a0f0d] hover:bg-[#dcb862]">Check both states</button>
+            <p id="ashiFb" class="hidden"></p>
+          </div>
+        </div>
+        <div id="s3more" class="mt-4 hidden"></div>
+      </section>
+
+      <!-- STATION 4 -->
+      <section class="card p-6" aria-labelledby="s4h">
+        <p class="text-xs tracking-[0.2em] !text-[#7f948c]">STATION 4 · 32b:9–11</p>
+        <h2 id="s4h" class="frank mt-1 text-2xl font-bold !text-[#f1f4ef]">Who Sits at the Firstborn's Table?</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#a9bab3]">
+          A blemished firstborn belongs to the kohen and is eaten as meat. Who may be counted in the group that eats it?
+          Seat the guests each school allows, then check.
+        </p>
+        <p class="frank mt-3 text-lg !text-[#c9a24a]" dir="rtl" lang="he">בֵּית שַׁמַּאי אוֹמְרִים: לֹא יִמָּנֶה יִשְׂרָאֵל עִם הַכֹּהֵן לַבְּכוֹר, וּבֵית הִלֵּל מַתִּירִין, וַאֲפִילּוּ גּוֹי.</p>
+        <div id="tables" class="mt-5 grid gap-5 sm:grid-cols-2"></div>
+        <button id="tableCheck" class="mt-4 rounded-lg bg-[#c9a24a] px-4 py-2 text-sm font-bold !text-[#0a0f0d] hover:bg-[#dcb862]">Check the seating</button>
+        <p id="tableFb" class="hidden"></p>
+        <div id="s4more" class="mt-4 hidden"></div>
+      </section>
+
+      <!-- FINISH -->
+      <div id="finish" class="card hidden p-6 text-center">
+        <p class="frank text-2xl font-bold !text-[#f1f4ef]">Board patched.</p>
+        <p id="finalMsg" class="mt-2 text-sm !text-[#a9bab3]"></p>
+      </div>
+
+      <!-- LEARN MORE -->
+      <section class="card p-6">
+        <h2 class="frank mb-3 text-lg font-bold !text-[#f1f4ef]">Learn the real daf</h2>
+        <div class="mb-4 flex flex-wrap gap-3">
+          <a href="https://www.sefaria.org/Bekhorot.32a" target="_blank" rel="noopener" class="rounded-lg border border-[#2c3b36] px-4 py-2 text-xs font-bold !text-[#c9a24a] transition-colors hover:bg-[#1b2622]">Bekhorot 32a on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Bekhorot.32b" target="_blank" rel="noopener" class="rounded-lg border border-[#2c3b36] px-4 py-2 text-xs font-bold !text-[#c9a24a] transition-colors hover:bg-[#1b2622]">Bekhorot 32b on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Leviticus.27.28-33" target="_blank" rel="noopener" class="rounded-lg border border-[#2c3b36] px-4 py-2 text-xs font-bold !text-[#c9a24a] transition-colors hover:bg-[#1b2622]">Leviticus 27:28–33 ↗</a>
+          <a href="https://www.sefaria.org/Numbers.18.14-18" target="_blank" rel="noopener" class="rounded-lg border border-[#2c3b36] px-4 py-2 text-xs font-bold !text-[#c9a24a] transition-colors hover:bg-[#1b2622]">Numbers 18:14–18 ↗</a>
+        </div>
+        <p class="mb-2 text-xs font-bold !text-[#7f948c]">Top commentaries</p>
+        <ul class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
+          <li><a href="https://www.sefaria.org/Rashi_on_Bekhorot.32a" target="_blank" rel="noopener" class="!text-[#a9bab3] transition-colors hover:!text-[#c9a24a]">Rashi (36) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.32a" target="_blank" rel="noopener" class="!text-[#a9bab3] transition-colors hover:!text-[#c9a24a]">Steinsaltz (36) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.32a" target="_blank" rel="noopener" class="!text-[#a9bab3] transition-colors hover:!text-[#c9a24a]">Rabbeinu Gershom (20) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rashash_on_Bekhorot.32a" target="_blank" rel="noopener" class="!text-[#a9bab3] transition-colors hover:!text-[#c9a24a]">Rashash (8) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Tosafot_on_Bekhorot.32a" target="_blank" rel="noopener" class="!text-[#a9bab3] transition-colors hover:!text-[#c9a24a]">Tosafot (6) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Torah_Temimah_on_Torah%2C_Leviticus.27.33" target="_blank" rel="noopener" class="!text-[#a9bab3] transition-colors hover:!text-[#c9a24a]">Torah Temimah (6) ↗</a></li>
+        </ul>
+      </section>
+
+    </div>
+  </main>
+
+  <script is:inline>
+  (function () {
+    var score = 0, max = 0, stationsDone = 0;
+    var scoreEl = document.getElementById('score');
+    var maxEl = document.getElementById('scoreMax');
+    var OK = 'mt-3 rounded-lg border border-[#5f9e6c] bg-[#16281d] p-3 text-sm leading-relaxed !text-[#d6efdc]';
+    var BAD = 'mt-3 rounded-lg border border-[#c0503a] bg-[#331a17] p-3 text-sm leading-relaxed !text-[#f3d6cf]';
+    function addMax(n) { max += n; maxEl.textContent = max; }
+    function award(n) { score += n; scoreEl.textContent = score; }
+    function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+    function sef(ref) { return '<a class="underline decoration-dotted !text-[#c9a24a] hover:!text-[#f1f4ef]" target="_blank" rel="noopener" href="https://www.sefaria.org/' + ref.replace(/ /g, '_') + '">' + ref + ' ↗</a>'; }
+    function he(t) { return '<span class="frank !text-[#c9a24a]" dir="rtl" lang="he">' + t + '</span>'; }
+    function stationDone() {
+      stationsDone++;
+      if (stationsDone === 4) {
+        var f = document.getElementById('finish');
+        f.classList.remove('hidden');
+        document.getElementById('finalMsg').textContent = 'You scored ' + score + ' of ' + max + '. ' +
+          (score >= max - 2 ? 'Every wire traced: you know which "it shall not be redeemed" is free and why.' : 'Replay the switchboard: the whole daf is one argument about which word the Torah had to spare.');
+      }
+    }
+    // Multiple-choice helper: one point if right on first try.
+    function mcq(host, q, opts, right, why, done) {
+      addMax(1);
+      var box = el('div', 'mt-4 rounded-xl border border-[#2c3b36] p-4');
+      box.appendChild(el('p', 'text-sm !text-[#e6ece8]', q));
+      var list = el('div', 'mt-3 grid gap-2');
+      var fb = el('p', 'hidden');
+      var first = true;
+      opts.forEach(function (o, i) {
+        var b = el('button', 'chip !text-[#e6ece8]', o);
+        b.addEventListener('click', function () {
+          if (i === right) {
+            if (first) award(1);
+            b.classList.add('ok');
+            list.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+            fb.className = OK; fb.innerHTML = '✓ ' + why;
+            if (done) done();
+          } else {
+            first = false; b.classList.add('bad'); b.disabled = true;
+            fb.className = BAD; fb.textContent = 'Not quite. Try another.';
+          }
+        });
+        list.appendChild(b);
+      });
+      box.appendChild(list); box.appendChild(fb);
+      host.appendChild(box);
+      host.classList.remove('hidden');
+    }
+
+    // ---------- STATION 1: bones ----------
+    (function () {
+      var OPTS = [['sell', 'Sell as meat'], ['fold', 'Fold into the price'], ['none', 'No way to sell it']];
+      var ITEMS = [
+        { k: 'meat', label: 'An adult\'s blemished tithe meat, sold on its own by weight', ans: 'none', ref: 'Bekhorot 32a:1',
+          why: 'The Sages forbade selling the meat itself, since it is what the live animal is valued for.' },
+        { k: 'hide', label: 'The same meat, priced into its hide, fat, sinews and horns', ans: 'fold', ref: 'Bekhorot 32a:1',
+          why: 'Nobody prices a live animal by its hide and sinews, so the Sages didn\'t extend their decree to them.' },
+        { k: 'small', label: 'The meat, priced into the bones of a sheep or goat', ans: 'none', ref: 'Bekhorot 32a:5',
+          why: 'Bones of a small animal can\'t be made into utensils, so nobody sells them. Putting the price there fools no one.' },
+        { k: 'large', label: 'The meat, priced into the bones of an ox', ans: 'fold', ref: 'Bekhorot 32a:5',
+          why: 'Large bones are made into utensils and sold. (Or: it depends on whether bones are sold where you live. ' + sef('Bekhorot 32a:6') + ')' },
+        { k: 'orphan', label: 'Young orphans\' blemished tithe meat', ans: 'sell', ref: 'Bekhorot 32a:1',
+          why: 'For orphans the Sages left the Torah law in place, and by Torah law slaughtered tithe meat may be sold.' }
+      ];
+      addMax(ITEMS.length);
+      var picks = {}, checked = false;
+      var host = document.getElementById('bones');
+      ITEMS.forEach(function (it) {
+        var row = el('div', 'rounded-xl border border-[#2c3b36] p-3');
+        row.appendChild(el('p', 'text-sm !text-[#e6ece8]', it.label));
+        var g = el('div', 'mt-2 flex flex-wrap gap-2');
+        OPTS.forEach(function (o) {
+          var b = el('button', 'chip !text-[#e6ece8]', o[1]);
+          b.setAttribute('aria-pressed', 'false');
+          b.dataset.v = o[0];
+          b.addEventListener('click', function () {
+            if (checked) return;
+            picks[it.k] = o[0];
+            g.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+          });
+          g.appendChild(b);
+        });
+        row.appendChild(g);
+        var why = el('p', 'mt-2 hidden text-xs leading-relaxed !text-[#a9bab3]', it.why + ' ' + sef(it.ref));
+        row.appendChild(why);
+        it.row = row; it.g = g; it.whyEl = why;
+        host.appendChild(row);
+      });
+      var fb = document.getElementById('bonesFb');
+      document.getElementById('bonesCheck').addEventListener('click', function () {
+        if (checked) return;
+        if (ITEMS.some(function (it) { return !picks[it.k]; })) { fb.className = BAD; fb.textContent = 'Tag all five items first.'; return; }
+        checked = true;
+        var n = 0;
+        ITEMS.forEach(function (it) {
+          var right = picks[it.k] === it.ans;
+          if (right) n++;
+          it.g.querySelectorAll('button').forEach(function (b) {
+            b.disabled = true;
+            if (b.dataset.v === it.ans) b.classList.add('ok');
+            else if (b.dataset.v === picks[it.k]) b.classList.add('bad');
+          });
+          it.whyEl.classList.remove('hidden');
+        });
+        award(n);
+        fb.className = n === ITEMS.length ? OK : BAD;
+        fb.textContent = n + ' of ' + ITEMS.length + ' right. Rabbi Ḥiyya and Rabbi Shimon son of Rabbi Yehuda HaNasi disputed the bones, and the Gemara says they don\'t really disagree: small animal vs. large, or each followed his own town\'s custom.';
+        mcq(document.getElementById('s1more'),
+          'Rav Shmuel bar Rav Yitzḥak finds a verse that the Torah lets you sell slaughtered tithe meat: "you may slaughter and eat meat, <em>according to the blessing</em> of the Lord your God" (Deut. 12:15). How does he read it?',
+          ['Any meat you slaughter is a blessing.',
+           'Something with no "blessing" (no permitted benefit) while alive that gains one once slaughtered: that can only be tithe meat.',
+           'It refers to the firstborn, which the kohen may sell alive.'], 1,
+          'Which thing has no blessing alive but has a blessing after slaughter? ' + he('הֱוֵי אוֹמֵר זֶה בְּשַׂר מַעֲשֵׂר') + '. ' + sef('Bekhorot 32a:3'),
+          stationDone);
+      });
+    })();
+
+    // ---------- STATION 2: switchboard ----------
+    (function () {
+      var PLUGS = {
+        all: { t: 'חָלִים עַל הַכֹּל', d: 'Ḥaramim take hold of anything you own. The tithe applies only to kosher animals.' },
+        before: { t: 'קָדוֹשׁ לְפָנָיו וּלְאַחֲרָיו', d: 'The tithe is holy before and after: call the 9th or 11th animal "tenth" by mistake and it becomes holy too.' },
+        womb: { t: 'קְדוּשָּׁתוֹ מֵרֶחֶם', d: 'The firstborn is holy from the womb. Ḥaramim need an act of consecration.' },
+        kohen: { t: 'לַכֹּהֵן', d: 'The firstborn goes to the kohen.' },
+        owner: { t: 'נֶאֱכָל לַבְּעָלִים', d: 'The tithe is eaten by its owner.' }
+      };
+      var PLUG_ORDER = ['all', 'before', 'womb', 'kohen', 'owner'];
+      var DECOY = { kohen: 'True, but ḥaramim go to the kohen too, so it isn\'t a difference.', owner: 'True, but the Gemara doesn\'t raise it here.' };
+      var wires = { MH: document.getElementById('w-MH'), BH: document.getElementById('w-BH'), BM: document.getElementById('w-BM') };
+      function setWire(k, s) { wires[k].setAttribute('class', 'wire ' + s); }
+      function free(j, on) { document.getElementById('j-' + j).classList.toggle('free', on); }
+      function spark() {
+        var s = document.getElementById('spark');
+        s.classList.remove('on'); void s.getBBox(); s.classList.add('on');
+      }
+      var ROUNDS = [
+        { kind: 'plug', wire: 'MH', ans: 'all', ref: 'Bekhorot 32a:9',
+          q: 'The goal: the tithe may not be <strong>sold</strong>, because ḥaramim "may neither be sold nor redeemed" (Lev. 27:28) and both share ' + he('לֹא יִגָּאֵל') + '. Rav Naḥman bar Yitzḥak: one end must be free, or the analogy can be refuted. With neither end free, what would cut this wire?',
+          after: function () { setWire('MH', 'cut'); },
+          why: he('מָה לַחֲרָמִים שֶׁכֵּן חָלִים עַל הַכֹּל') + ': ḥaramim are broader than the tithe. So one of the two phrases has to be free. Let\'s find one.' },
+        { kind: 'plug', wire: 'MH', ans: 'before', ref: 'Bekhorot 32a:11',
+          q: 'Try freeing ḥaramim\'s phrase. Learn "ḥaramim can\'t be redeemed" from the tithe instead, and the Torah\'s own words about ḥaramim would be spare. What cuts the wire from tithe to ḥaramim?',
+          after: function () { setWire('MH', 'cut'); },
+          why: he('מָה לְמַעֲשֵׂר שֶׁכֵּן קָדוֹשׁ לְפָנָיו וּלְאַחֲרָיו') + '. The tithe has a stringency ḥaramim lack, so ḥaramim need their own verse. Not free.' },
+        { kind: 'plug', wire: 'BH', ans: 'womb', ref: 'Bekhorot 32a:13',
+          q: 'Then learn ḥaramim from the firstborn, which also "may not be redeemed" (Num. 18:17). What cuts this wire?',
+          after: function () { setWire('BH', 'cut'); },
+          why: he('מָה לִבְכוֹר שֶׁכֵּן קְדוּשָּׁתוֹ מֵרֶחֶם') + '. Ḥaramim\'s phrase is still needed for itself.' },
+        { kind: 'plug', wire: 'BM', ans: 'womb', ref: 'Bekhorot 32a:15',
+          q: 'Turn it around: free the <em>tithe\'s</em> phrase. Learn "the tithe can\'t be redeemed" from the firstborn through a different shared word: the tithe "passes (<span class="frank" dir="rtl" lang="he">יַעֲבֹר</span>) under the rod" (Lev. 27:32), the firstborn "you shall make pass (<span class="frank" dir="rtl" lang="he">וְהַעֲבַרְתָּ</span>)" (Ex. 13:12). What objection does the Gemara raise against this wire?',
+          after: function () { setWire('BM', 'test'); },
+          why: 'Same objection as before: the firstborn is holy from the womb. But wait. Is the ' + he('הַעֲבָרָה') + ' wire actually cut?' },
+        { kind: 'mcq', wire: 'BM', ref: 'Bekhorot 32a:16',
+          q: 'Does the ' + he('הַעֲבָרָה · הַעֲבָרָה') + ' wire snap?',
+          opts: ['Yes. "Holy from the womb" cuts it like the last one.',
+                 'No. "And you shall make pass" is extra: the verse could have said "all that opens the womb is the Lord\'s." A free word can\'t be refuted.'], right: 1,
+          after: function () { setWire('BM', 'live'); free('M', true); setTimeout(function () { setWire('MH', 'live'); }, 500); },
+          why: 'The ' + he('הַעֲבָרָה') + ' wire holds, so the tithe gets "can\'t be redeemed" from the firstborn. That leaves the tithe\'s own ' + he('לֹא יִגָּאֵל') + ' free, and the free word carries ḥaramim\'s ban on <strong>selling</strong> over to the tithe. The circuit is live.' },
+        { kind: 'mcq', wire: 'BH', ref: 'Bekhorot 32a:19',
+          q: 'Problem: why not run the same current to the firstborn and ban selling it too? (The baraita says a kohen <em>may</em> sell a firstborn.) What blocks the firstborn–ḥaramim wire?',
+          opts: ['The firstborn\'s phrase is not free: it\'s needed for itself and as the source for the tithe. And it uses a different word: ' + he('פְּדִיָּה') + ', not ' + he('גְּאוּלָּה') + '.',
+                 'A firstborn is holy from the womb.',
+                 'Firstborns are only for kohanim.'], right: 0,
+          after: function () { setWire('BH', 'blocked'); },
+          why: he('דָּנִין גְּאוּלָּה מִגְּאוּלָּה, וְאֵין דָּנִין פְּדִיָּה מִגְּאוּלָּה') + ': we compare "redeem" to the same word, not to a synonym.' },
+        { kind: 'mcq', wire: 'BH', ref: 'Bekhorot 32a:21',
+          q: 'But the school of Rabbi Yishmael linked "the priest shall <em>return</em>" (Lev. 14:39) with "the priest shall <em>come</em>" (Lev. 14:44), two different words. Why can\'t ' + he('פְּדִיָּה') + ' link with ' + he('גְּאוּלָּה') + '?',
+          opts: ['That was only for houses with tzara\'at.',
+                 'Different words only link when no matching word exists. Here ' + he('גְּאוּלָּה') + ' has a perfect match in the tithe, so that\'s where the analogy goes.',
+                 'Rabbi Yishmael\'s rules don\'t apply to holy things.'], right: 1,
+          why: 'The analogy goes to the matching word when there is one. ' + sef('Bekhorot 32a:20') },
+        { kind: 'mcq', wire: 'BM', ref: 'Bekhorot 32a:23',
+          q: 'Back-current: the firstborn and tithe are joined by the live ' + he('הַעֲבָרָה') + ' wire. Couldn\'t the no-sale rule flow back from the tithe into the firstborn?',
+          opts: ['Yes, so a firstborn can\'t be sold either.',
+                 'No. Of ḥaramim the Torah says "<em>it</em> is most holy" (Lev. 27:28): <em>it</em>, not the firstborn. And why not "it, not the tithe"? Because the tithe shares the word ' + he('גְּאוּלָּה') + ', so the tithe is in and the firstborn is out.'], right: 1,
+          after: function () { document.getElementById('lab-BM').setAttribute('fill', '#7a5aa0'); },
+          why: he('״הוּא״ — וְלֹא בְּכוֹר... מַעֲשֵׂר גְּאוּלָּה כְּמוֹתוֹ') + '.' },
+        { kind: 'mcq', wire: 'MH', ref: 'Bekhorot 32a:24',
+          q: 'Rava has a shortcut: ḥaramim\'s own ' + he('לֹא יִגָּאֵל') + ' is free. Why doesn\'t it have a job of its own?',
+          opts: ['Ḥaramim are never consecrated at all.',
+                 'While the owner holds them, ḥaramim are fully holy ("most holy," Lev. 27:28). Once given to the kohen, they are ordinary property ("shall be yours," Num. 18:14). Either way there\'s nothing to "redeem," so the phrase goes to the tithe.',
+                 'Ḥaramim may be redeemed, so the phrase is a mistake.'], right: 1,
+          after: function () { free('H', true); setWire('MH', 'live'); },
+          why: 'A baraita: in the owner\'s hands, ḥaramim are holy in every way; in the kohen\'s hands, ordinary in every way. ' + sef('Bekhorot 32a:25') + ' And it goes to the tithe, not the firstborn, because the tithe shares ' + he('גְּאוּלָּה') + '. ' + sef('Bekhorot 32b:1') }
+      ];
+      addMax(ROUNDS.length);
+      var idx = 0;
+      var numEl = document.getElementById('roundNum'), qEl = document.getElementById('roundPrompt');
+      var chEl = document.getElementById('roundChoices'), fb = document.getElementById('roundFb'), next = document.getElementById('roundNext');
+      function load() {
+        var r = ROUNDS[idx], first = true;
+        numEl.textContent = 'PATCH ' + (idx + 1) + ' OF ' + ROUNDS.length;
+        qEl.innerHTML = r.q;
+        fb.className = 'hidden'; next.classList.add('hidden');
+        chEl.innerHTML = '';
+        Object.keys(wires).forEach(function (k) { if (wires[k].getAttribute('class').indexOf('test') > -1) setWire(k, 'idle'); });
+        if (wires[r.wire].getAttribute('class').indexOf('live') === -1 && wires[r.wire].getAttribute('class').indexOf('blocked') === -1) setWire(r.wire, 'test');
+        function win(b) {
+          if (first) award(1);
+          b.classList.add(r.kind === 'plug' ? 'ok' : 'ok');
+          chEl.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+          if (r.kind === 'plug' && r.wire !== 'BM') spark();
+          if (r.after) r.after();
+          fb.className = OK; fb.innerHTML = '✓ ' + r.why + ' ' + sef(r.ref);
+          if (idx < ROUNDS.length - 1) next.classList.remove('hidden');
+          else { next.classList.add('hidden'); stationDone(); }
+        }
+        if (r.kind === 'plug') {
+          PLUG_ORDER.forEach(function (k) {
+            var p = PLUGS[k];
+            var b = el('button', 'plug', '<span class="frank block text-base !text-[#c9a24a]" dir="rtl" lang="he">' + p.t + '</span><span class="block text-xs !text-[#a9bab3]">' + p.d + '</span>');
+            b.addEventListener('click', function () {
+              if (k === r.ans) return win(b);
+              first = false; b.classList.add('bad', 'shake'); b.disabled = true;
+              fb.className = BAD; fb.textContent = DECOY[k] || 'That\'s a real feature, but it doesn\'t separate these two ends.';
+            });
+            chEl.appendChild(b);
+          });
+        } else {
+          r.opts.forEach(function (o, i) {
+            var b = el('button', 'chip !text-[#e6ece8]', o);
+            b.addEventListener('click', function () {
+              if (i === r.right) return win(b);
+              first = false; b.classList.add('bad'); b.disabled = true;
+              fb.className = BAD; fb.textContent = 'The board sparks. Try another.';
+            });
+            chEl.appendChild(b);
+          });
+        }
+      }
+      next.addEventListener('click', function () { idx++; load(); chEl.querySelector('button').focus(); });
+      load();
+    })();
+
+    // ---------- STATION 3: Rav Ashi's lever ----------
+    (function () {
+      var ROWS = [
+        { k: 'temura', label: 'Can it make a substitute (temura) holy?', key: { alive: true, dead: false } },
+        { k: 'sale', label: 'Does "it shall not be redeemed" (= not sold) forbid selling it, by Torah law?', key: { alive: true, dead: false } }
+      ];
+      addMax(2);
+      var state = 'alive', picks = { alive: {}, dead: {} }, checked = false;
+      var arm = document.getElementById('leverArm'), stEl = document.getElementById('leverState'), lever = document.getElementById('lever');
+      var grid = document.getElementById('ashiGrid'), fb = document.getElementById('ashiFb');
+      function render() {
+        arm.style.transform = state === 'alive' ? 'rotate(-35deg)' : 'rotate(35deg)';
+        stEl.textContent = state === 'alive' ? 'alive' : 'slaughtered';
+        lever.setAttribute('aria-label', 'Lever: animal is ' + stEl.textContent + '. Press to switch.');
+        grid.innerHTML = '';
+        ROWS.forEach(function (r) {
+          var row = el('div', 'rounded-xl border border-[#2c3b36] p-3');
+          row.appendChild(el('p', 'text-sm !text-[#e6ece8]', r.label));
+          var g = el('div', 'mt-2 flex gap-2');
+          [[true, 'Yes'], [false, 'No']].forEach(function (o) {
+            var b = el('button', 'chip !text-[#e6ece8]', o[1]);
+            b.setAttribute('aria-pressed', String(picks[state][r.k] === o[0]));
+            if (checked) {
+              b.disabled = true;
+              if (r.key[state] === o[0]) b.classList.add('ok');
+              else if (picks[state][r.k] === o[0]) b.classList.add('bad');
+            }
+            b.addEventListener('click', function () { if (checked) return; picks[state][r.k] = o[0]; render(); });
+            g.appendChild(b);
+          });
+          row.appendChild(g);
+          grid.appendChild(row);
+        });
+      }
+      lever.addEventListener('click', function () { state = state === 'alive' ? 'dead' : 'alive'; render(); });
+      document.getElementById('ashiCheck').addEventListener('click', function () {
+        if (checked) return;
+        var missing = ['alive', 'dead'].some(function (s) { return ROWS.some(function (r) { return picks[s][r.k] === undefined; }); });
+        if (missing) { fb.className = BAD; fb.textContent = 'Set both rows in both lever positions (throw the lever).'; return; }
+        checked = true;
+        var n = 0;
+        ['alive', 'dead'].forEach(function (s) { if (ROWS.every(function (r) { return picks[s][r.k] === r.key[s]; })) n++; });
+        award(n);
+        render();
+        fb.className = n === 2 ? OK : BAD;
+        fb.innerHTML = (n === 2 ? '✓ ' : '✗ Corrected (throw the lever to see both). ') +
+          'Substitution only works on a live animal, and the ban sits beside it in the same verse, so it too applies only while alive. Once slaughtered, the Torah allows the sale. ' + he('״לֹא יִגָּאֵל״ — לֹא יִמָּכֵר הוּא') + ' ' + sef('Bekhorot 32b:4');
+        var more = document.getElementById('s3more');
+        mcq(more, 'Why can\'t ' + he('לֹא יִגָּאֵל') + ' simply mean "may not be redeemed" (alive only), leaving redemption open after slaughter?',
+          ['Redemption needs the animal stood up and valued by a kohen, and a carcass can\'t stand.',
+           'A kal va-ḥomer: alive, its holiness is strong enough to pass into a substitute, and still it can\'t be redeemed. Slaughtered, its holiness is too weak to pass into a substitute, so surely it couldn\'t pass into redemption money.',
+           'Slaughtered tithe meat has no holiness left.'], 1,
+          'The first answer was Rav Ashi\'s opening move, but it only works for those who say blemished offerings needed standing and valuation. The Gemara\'s answer for everyone is the kal va-ḥomer. ' + sef('Bekhorot 32b:5') + ' ' + sef('Bekhorot 32b:7'),
+          function () {
+            mcq(more, 'If it means "may not be sold," why didn\'t the Torah just write ' + he('לֹא יִמָּכֵר') + '?',
+              ['It did, in a different verse.',
+               'Then you\'d think only a sale is banned, since a sale turns holy into ordinary money, but redemption (which makes the money holy) is fine. "Not redeemed" bans both.',
+               'Selling and redeeming are the same thing.'], 1,
+              'One phrase teaches both bans. ' + sef('Bekhorot 32b:8'), stationDone);
+          });
+      });
+      render();
+    })();
+
+    // ---------- STATION 4: the table ----------
+    (function () {
+      var GUESTS = [['kohen', 'Kohen', '🧑‍🦳'], ['yisrael', 'Israelite', '🧑'], ['goy', 'Gentile', '🧔']];
+      var SCHOOLS = [
+        { k: 'bs', name: 'Beit Shammai', key: { kohen: true, yisrael: false, goy: false } },
+        { k: 'bh', name: 'Beit Hillel (the mishna)', key: { kohen: true, yisrael: true, goy: true } }
+      ];
+      addMax(2);
+      var seats = { bs: {}, bh: {} }, checked = false;
+      var host = document.getElementById('tables'), fb = document.getElementById('tableFb');
+      SCHOOLS.forEach(function (s) {
+        var box = el('div', 'rounded-xl border border-[#2c3b36] p-4 text-center');
+        box.appendChild(el('p', 'frank text-lg font-bold !text-[#f1f4ef]', s.name));
+        var row = el('div', 'mt-3 flex justify-center gap-3');
+        GUESTS.forEach(function (g) {
+          var b = el('button', 'seat !text-[#e6ece8]', '<span class="text-xl" aria-hidden="true">' + g[2] + '</span><span>' + g[1] + '</span>');
+          b.setAttribute('aria-pressed', 'false');
+          b.setAttribute('aria-label', 'Seat ' + g[1] + ' at ' + s.name + '\'s table');
+          b.addEventListener('click', function () {
+            if (checked) return;
+            seats[s.k][g[0]] = !seats[s.k][g[0]];
+            b.setAttribute('aria-pressed', String(!!seats[s.k][g[0]]));
+          });
+          b.dataset.g = g[0];
+          row.appendChild(b);
+        });
+        s.row = row;
+        box.appendChild(row);
+        host.appendChild(box);
+      });
+      document.getElementById('tableCheck').addEventListener('click', function () {
+        if (checked) return;
+        checked = true;
+        var n = 0;
+        SCHOOLS.forEach(function (s) {
+          var all = true;
+          s.row.querySelectorAll('button').forEach(function (b) {
+            var right = !!seats[s.k][b.dataset.g] === s.key[b.dataset.g];
+            if (!right) all = false;
+            b.classList.add(right ? 'ok' : 'bad');
+            b.disabled = true;
+          });
+          if (all) n++;
+        });
+        award(n);
+        fb.className = n === 2 ? OK : BAD;
+        fb.innerHTML = (n === 2 ? '✓ ' : '✗ Red rings were wrong. ') + 'Beit Shammai: only kohanim. Beit Hillel: an Israelite may join, and even a gentile. ' + sef('Bekhorot 32b:9');
+        var more = document.getElementById('s4more');
+        mcq(more, 'A baraita records Beit Hillel saying only "even non-kohanim." Whose report of Beit Hillel does the mishna follow when it adds "even a gentile"?',
+          ['Rabbi Meir', 'Rabbi Akiva', 'Rabbi Yishmael'], 1,
+          'Rabbi Akiva says Beit Hillel permit even a gentile to eat a blemished firstborn. ' + sef('Bekhorot 32b:10'),
+          function () {
+            mcq(more, 'What is Beit Shammai\'s source?',
+              ['"Their meat shall be yours, <em>like the breast of waving and the right thigh</em>" (Num. 18:18). Breast and thigh are eaten only by kohanim and their families (Lev. 10:14), so the firstborn is too.',
+               'The firstborn is holy from the womb.',
+               'A gentile may not eat any offering, so an Israelite may not either.'], 0,
+              'Just as with the breast and thigh, kohanim eat and Israelites don\'t. ' + sef('Bekhorot 32b:11'), stationDone);
+          });
+      });
+    })();
+  })();
+  </script>
+</Layout>
