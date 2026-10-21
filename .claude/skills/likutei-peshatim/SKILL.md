@@ -14,9 +14,11 @@ served from the `/calendars` page.
 
 ## 1. Get the raw email
 
-Automated runs pass a scratch text file path (written by
-`scripts/likutei-peshatim/fetch-new-emails.mjs`, which uses the local `gws` CLI — read-only
-Gmail OAuth scope, no API billing). For an ad hoc run on a specific message, fetch it directly:
+Automated runs pass a scratch text file path. Two runners write it, with the same output and
+the same processed-emails.json bookkeeping, so whichever runs first wins:
+`.github/workflows/likutei-peshatim.yml` (the main one: `fetch-new-emails-imap.py` reads the
+inbox over IMAP with a Gmail app password; Thursday night, plus a staleness alarm) and the Mac's
+launchd `weekly-run.sh` (`fetch-new-emails.mjs`, via the local `gws` CLI). For an ad hoc run on a specific message, fetch it directly:
 
 ```bash
 gws gmail users messages get --params '{"userId":"me","id":"<messageId>","format":"full"}'
