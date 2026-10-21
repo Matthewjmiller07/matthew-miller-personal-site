@@ -129,6 +129,34 @@ export interface BibleCoin {
 export const bibleCoins: BibleCoin[] = [...(coinsData.coins as Omit<BibleCoin, 'anchor'>[])]
   .sort((a, b) => a.year - b.year)
   .map((c) => ({ ...c, anchor: `coin-${c.year}` }));
+// Canonical Tanakh order — the DEFAULT order for presenting the coins as a
+// set (the /bible-coins page and the hub's #bible-coins grid): book order,
+// then chapter, then verse. (Genesis 1 first; the year of issue is card
+// metadata, not the sort key.) bibleCoins above stays year-ordered for the
+// per-week joins; sort a copy with byBibleOrder wherever a set is displayed.
+export const TANAKH_BOOK_ORDER = [
+  'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy',
+  'Joshua', 'Judges', '1 Samuel', '2 Samuel', '1 Kings', '2 Kings',
+  'Isaiah', 'Jeremiah', 'Ezekiel',
+  'Hosea', 'Joel', 'Amos', 'Obadiah', 'Jonah', 'Micah', 'Nahum',
+  'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi',
+  'Psalms', 'Proverbs', 'Job', 'Song of Songs', 'Ruth', 'Lamentations',
+  'Ecclesiastes', 'Esther', 'Daniel', 'Ezra', 'Nehemiah',
+  '1 Chronicles', '2 Chronicles',
+];
+const tanakhIdx = (book: string) => {
+  const i = TANAKH_BOOK_ORDER.indexOf(book);
+  return i === -1 ? TANAKH_BOOK_ORDER.length : i;
+};
+export const byBibleOrder = (
+  a: { book: string; chapter: number; verse: number; year?: number },
+  b: { book: string; chapter: number; verse: number; year?: number },
+) =>
+  tanakhIdx(a.book) - tanakhIdx(b.book) ||
+  a.chapter - b.chapter ||
+  a.verse - b.verse ||
+  (a.year ?? 0) - (b.year ?? 0);
+export const bibleCoinsCanon: BibleCoin[] = [...bibleCoins].sort(byBibleOrder);
 export const coinsIntro = coinsData.series.intro;
 export const coinsCatalogUrl = coinsData.series.catalog_url;
 // Coins whose scene falls inside this week's Torah reading (verse-range
