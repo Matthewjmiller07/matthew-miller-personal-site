@@ -185,7 +185,7 @@ function ShekelTab({ data }: { data: FxData | null }) {
       </div>
       <Tiles
         items={[
-          { value: latest ? `₪${latest.toFixed(3)}` : '—', label: `${sym}1 = ? · Bank of Israel` },
+          { value: latest ? `₪${latest.toFixed(3)}` : '—', label: `${sym}1 = ${latest ? `₪${latest.toFixed(3)}` : '—'} · Bank of Israel` },
           {
             value: `${change >= 0 ? '+' : ''}${change.toFixed(0)}%`,
             label: `shekel ${change >= 0 ? 'weaker' : 'stronger'} since 2006`,
