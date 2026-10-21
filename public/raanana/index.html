@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<base href="/raanana/">
+<meta name="description" content="All of Ra'anana as one zoomable isometric pixel-art map, drawn from Google's 3D city model.">
+<title>tiny ra'anana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Rubik:wght@400;500;600&display=swap">
+<style>
+/* Layout: the map is the whole screen; a title card top-left, a control dock along the bottom. */
+:root {
+  --sky: #c4d6d0;          /* the world past the drawn band; baked into the tiles too */
+  --panel: #f6f7f1;
+  --panel-line: #d5dccf;
+  --ink: #1f3530;
+  --muted: #5b6f68;
+  --accent: #e2851f;       /* Sharon citrus */
+  --accent-ink: #2a1a05;
+  --shadow: 0 6px 24px rgba(23, 45, 38, .18);
+  --font-pixel: "Silkscreen", ui-monospace, "Courier New", monospace;
+  --font-body: "Rubik", system-ui, -apple-system, "Segoe UI", "Arial Hebrew", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --panel: #18282a; --panel-line: #2c4244; --ink: #e8efe9; --muted: #9db3ab;
+    --accent: #f0a043; --accent-ink: #231504; --shadow: 0 6px 24px rgba(0, 0, 0, .45); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --panel: #18282a; --panel-line: #2c4244; --ink: #e8efe9; --muted: #9db3ab;
+  --accent: #f0a043; --accent-ink: #231504; --shadow: 0 6px 24px rgba(0, 0, 0, .45); color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; }
+body { background: var(--sky); color: var(--ink); font-family: var(--font-body); overflow: hidden; }
+#map { position: fixed !important; inset: 0; width: 100%; height: 100%; background: var(--sky); }
+#map .openseadragon-canvas:focus { outline: none; }
+
+.card {
+  position: fixed; z-index: 5;
+  top: calc(12px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
+  max-width: min(340px, calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; box-shadow: var(--shadow);
+  padding: 14px 16px; display: grid; gap: 8px;
+}
+.card h1 { margin: 0; font: 400 22px/1 var(--font-pixel); letter-spacing: .02em; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.card h1 .he { font: 500 16px/1 var(--font-body); color: var(--muted); }
+.card p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.card details { font-size: 13px; line-height: 1.5; }
+.card summary { cursor: pointer; color: var(--ink); font-weight: 500; width: fit-content; }
+.card summary:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.card ol { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; color: var(--muted); }
+.card .credit { font-size: 11px; color: var(--muted); }
+
+.dock {
+  position: fixed; z-index: 5; left: 0; right: 0;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; justify-content: center; pointer-events: none;
+}
+.dock-inner {
+  pointer-events: auto; max-width: 100%;
+  background: var(--panel); border: 1px solid var(--panel-line); border-radius: 12px; box-shadow: var(--shadow);
+  padding: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center;
+}
+.group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sep { width: 1px; align-self: stretch; background: var(--panel-line); }
+button {
+  font: 500 13px/1 var(--font-body); color: var(--ink); background: transparent;
+  border: 1px solid var(--panel-line); border-radius: 8px; padding: 8px 11px; cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+select {
+  font: 500 13px/1 var(--font-body); color: var(--ink); background: var(--panel);
+  border: 1px solid var(--panel-line); border-radius: 8px; padding: 7px 8px; max-width: 46vw;
+}
+.zoom button { width: 34px; padding: 8px 0; font-size: 16px; }
+
+.scale { display: grid; gap: 3px; font: 11px/1 var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; min-width: 70px; }
+.scale .bar { height: 5px; border: 1.5px solid var(--ink); border-top: 0; }
+
+/* Compare: render shows left of the divider */
+#divider {
+  position: fixed; z-index: 4; top: 0; bottom: 0; width: 0; left: 50%;
+  border-left: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25);
+}
+#divider .grip {
+  position: absolute; top: 50%; left: -19px; width: 36px; height: 36px; margin-top: -18px;
+  border-radius: 50%; background: #fff; color: #1f3530; box-shadow: var(--shadow);
+  display: grid; place-items: center; cursor: ew-resize; touch-action: none; font: 600 14px/1 var(--font-body);
+}
+#divider .tag {
+  position: absolute; top: calc(50% + 26px); font: 600 11px/1 var(--font-body); color: #fff;
+  background: rgba(20,35,32,.75); padding: 4px 6px; border-radius: 4px; white-space: nowrap;
+}
+#divider .tag.l { right: 8px; } #divider .tag.r { left: 8px; }
+
+#limits { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+#limits path { fill: none; stroke: #fff; stroke-width: 2.5; stroke-dasharray: 7 5; filter: drop-shadow(0 0 2px rgba(0,0,0,.6)); }
+
+.pin { position: fixed; z-index: 4; transform: translate(-50%, -100%); pointer-events: none; display: grid; justify-items: center; gap: 2px; }
+.pin span { background: var(--panel); color: var(--ink); border: 1px solid var(--panel-line); box-shadow: var(--shadow);
+  font: 500 13px/1.2 var(--font-body); padding: 5px 8px; border-radius: 6px; white-space: nowrap; }
+.pin i { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; }
+
+@media (max-width: 560px) {
+  .card { padding: 10px 12px; }
+  .card p:first-of-type, .card .credit { display: none; }
+  .sep { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+
+<div id="map" aria-label="Zoomable pixel-art map of Ra'anana"></div>
+<svg id="limits" hidden><path id="limitsPath" d=""></path></svg>
+<div id="divider" hidden><div class="tag l">3D render</div><div class="tag r">pixel art</div><div class="grip" id="grip" role="slider" aria-label="Compare render and map" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">⇔</div></div>
+
+<section class="card">
+  <h1>tiny ra'anana <span class="he" lang="he" dir="rtl">רעננה הקטנה</span></h1>
+  <p>All of Ra'anana as one isometric pixel-art map, drawn from Google's 3D city model. Drag to pan, scroll or pinch to zoom.</p>
+  <details>
+    <summary>How it was made</summary>
+    <ol>
+      <li>One orthographic camera, tilted 45° and turned 15°, renders the city from Google's 3D tiles in 26 shots that line up to the pixel. 1 px = 0.586 m.</li>
+      <li>Nano Banana Pro redrew 38 render frames as pixel art; checks against the render, and a look by eye, kept 30.</li>
+      <li>Qwen-Image-Edit redrew all 127 overlapping windows. Each overlap is cut along the path where neighbours agree best, so no window edge shows.</li>
+      <li>Total cloud spend: about $12.</li>
+    </ol>
+  </details>
+  <p class="credit">Imagery derived from Google Photorealistic 3D Tiles (Map data ©2026 Google). City limits and places © OpenStreetMap contributors. Inspired by tiny.london and isometric.nyc.</p>
+</section>
+
+<nav class="dock" aria-label="Map controls">
+  <div class="dock-inner">
+    <div class="group zoom">
+      <button id="zin" aria-label="Zoom in">+</button>
+      <button id="zout" aria-label="Zoom out">−</button>
+    </div>
+    <div class="scale" aria-hidden="true"><span id="scaleLabel">100 m</span><div class="bar" id="scaleBar" style="width:60px"></div></div>
+    <div class="sep"></div>
+    <div class="group">
+      <button id="compareBtn" aria-pressed="false">Compare with 3D</button>
+      <button id="limitsBtn" aria-pressed="false">City limits</button>
+    </div>
+    <div class="sep"></div>
+    <select id="place" aria-label="Go to a place"><option value="">Go to…</option></select>
+  </div>
+</nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
+<script>
+(async function () {
+  const places = await fetch("places.json").then((r) => r.json());
+  const [W, H] = places.size;
+  // Deep Zoom descriptors inline, so only tiles are fetched.
+  const dzi = (name, w, h) => ({ Image: { xmlns: "http://schemas.microsoft.com/deepzoom/2008", Url: name + "_files/",
+    Format: "webp", Overlap: "0", TileSize: "1024", Size: { Width: String(w), Height: String(h) } } });
+
+  const viewer = OpenSeadragon({
+    element: document.getElementById("map"),
+    tileSources: [{ tileSource: dzi("map", W, H), x: 0, y: 0, width: 1 }],
+    showNavigationControl: false,
+    imageSmoothingEnabled: false,
+    maxZoomPixelRatio: 3,
+    minZoomImageRatio: 0.6,
+    visibilityRatio: 0.4,
+    immediateRender: false,
+    blendTime: 0.1,
+    animationTime: 0.9,
+    gestureSettingsMouse: { clickToZoom: false, dblClickToZoom: true },
+    gestureSettingsTouch: { pinchRotate: false },
+  });
+
+  const toVp = (x, y) => new OpenSeadragon.Point(x / W, y / W);
+  let renderImg = null;
+
+  viewer.addOnceHandler("open", () => {
+    const start = places.landmarks.find((l) => slug(l.name) === location.hash.slice(1));
+    if (start) goTo(start, true);
+    updateScale();
+  });
+
+  // Scale bar: horizontal metres per screen pixel at the current zoom.
+  const nice = [10, 20, 50, 100, 200, 500, 1000, 2000];
+  function updateScale() {
+    const item = viewer.world.getItemAt(0);
+    if (!item) return;
+    const imgPerScreen = 1 / item.viewportToImageZoom(viewer.viewport.getZoom(true));
+    const mPerScreenPx = places.metersPerPx * imgPerScreen;
+    const target = mPerScreenPx * 80;
+    const m = nice.reduce((a, b) => (Math.abs(b - target) < Math.abs(a - target) ? b : a));
+    document.getElementById("scaleBar").style.width = Math.round(m / mPerScreenPx) + "px";
+    document.getElementById("scaleLabel").textContent = m >= 1000 ? m / 1000 + " km" : m + " m";
+  }
+
+  // City limits as an SVG path redrawn on every frame of movement.
+  const limitsSvg = document.getElementById("limits");
+  const limitsPath = document.getElementById("limitsPath");
+  function drawLimits() {
+    if (limitsSvg.hidden) return;
+    const vp = viewer.viewport;
+    limitsPath.setAttribute("d", places.limits.map(([x, y], i) => {
+      const p = vp.viewportToViewerElementCoordinates(toVp(x, y));
+      return (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1);
+    }).join("") + "Z");
+  }
+
+  // Compare: the half-size render sits on top, clipped to the left of the divider.
+  const divider = document.getElementById("divider");
+  const grip = document.getElementById("grip");
+  let split = 0.5;
+  function clipRender() {
+    if (!renderImg) return;
+    const sx = window.innerWidth * split;
+    const vpPt = viewer.viewport.viewerElementToViewportCoordinates(new OpenSeadragon.Point(sx, 0));
+    const ix = renderImg.viewportToImageCoordinates(vpPt).x;
+    const full = renderImg.getContentSize();
+    renderImg.setClip(new OpenSeadragon.Rect(0, 0, Math.max(0, Math.min(full.x, ix)), full.y));
+    divider.style.left = sx + "px";
+    grip.setAttribute("aria-valuenow", Math.round(split * 100));
+  }
+  function setCompare(on) {
+    document.getElementById("compareBtn").setAttribute("aria-pressed", on);
+    divider.hidden = !on;
+    if (on && !renderImg) {
+      viewer.addTiledImage({
+        tileSource: dzi("render", Math.round(W / 2), Math.round(H / 2)), x: 0, y: 0, width: 1,
+        success: (e) => { renderImg = e.item; clipRender(); },
+      });
+    } else if (renderImg) {
+      renderImg.setOpacity(on ? 1 : 0);
+      clipRender();
+    }
+  }
+  let dragging = false;
+  grip.addEventListener("pointerdown", (e) => { dragging = true; grip.setPointerCapture(e.pointerId); });
+  grip.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    split = Math.min(0.97, Math.max(0.03, e.clientX / window.innerWidth));
+    clipRender();
+  });
+  grip.addEventListener("pointerup", () => (dragging = false));
+  grip.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      split = Math.min(0.97, Math.max(0.03, split + (e.key === "ArrowLeft" ? -0.04 : 0.04)));
+      clipRender(); e.preventDefault();
+    }
+  });
+
+  viewer.addHandler("update-viewport", () => { updateScale(); drawLimits(); clipRender(); placePin(); });
+  viewer.addHandler("resize", () => { drawLimits(); clipRender(); placePin(); });
+
+  document.getElementById("zin").onclick = () => viewer.viewport.zoomBy(1.6);
+  document.getElementById("zout").onclick = () => viewer.viewport.zoomBy(1 / 1.6);
+  document.getElementById("compareBtn").onclick = (e) => setCompare(e.currentTarget.getAttribute("aria-pressed") !== "true");
+  document.getElementById("limitsBtn").onclick = (e) => {
+    const on = e.currentTarget.getAttribute("aria-pressed") !== "true";
+    e.currentTarget.setAttribute("aria-pressed", on);
+    limitsSvg.hidden = !on;
+    drawLimits();
+  };
+
+  // Places
+  const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const select = document.getElementById("place");
+  for (const l of places.landmarks) {
+    const o = document.createElement("option");
+    o.value = slug(l.name);
+    o.textContent = `${l.name} · ${l.he}`;
+    select.append(o);
+  }
+  // The pin is placed by hand each frame; OpenSeadragon's own overlays landed off-screen here.
+  const pin = document.createElement("div");
+  pin.className = "pin";
+  pin.hidden = true;
+  pin.innerHTML = `<span></span><i></i>`;
+  document.body.append(pin);
+  let pinAt = null;
+  function placePin() {
+    if (!pinAt) return;
+    const s = viewer.viewport.viewportToViewerElementCoordinates(pinAt);
+    pin.style.left = s.x + "px";
+    pin.style.top = s.y + "px";
+  }
+  function goTo(l, instant) {
+    pinAt = toVp(l.x, l.y);
+    viewer.viewport.zoomTo(viewer.world.getItemAt(0).imageToViewportZoom(1), null, instant);
+    viewer.viewport.panTo(pinAt, instant);
+    pin.querySelector("span").textContent = `${l.name} · ${l.he}`;
+    pin.hidden = false;
+    placePin();
+    try { history.replaceState(null, "", "#" + slug(l.name)); } catch (e) {}
+  }
+  select.addEventListener("change", () => {
+    const l = places.landmarks.find((x) => slug(x.name) === select.value);
+    if (l) goTo(l, false);
+  });
+})();
+</script>
+
+</body>
+</html>
