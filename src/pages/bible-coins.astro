@@ -1,0 +1,246 @@
+---
+// /bible-coins — the Bank of Israel "Pictures from the Bible" (תמונות מן התנ״ך)
+// commemorative coins, the complete set in one view: every coin with its full
+// connection chain — depicted scene → verse (inferred) → parsha or reading →
+// the verse in the Mega Bible and the coin at the Bank of Israel.
+// Data: src/data/boi-bible-coins.json (the same dataset the parasha hub joins
+// to the weekly readings, and that is mirrored into the Mega Bible).
+import Layout from '../layouts/Layout.astro';
+import coinsData from '../data/boi-bible-coins.json';
+
+type Coin = (typeof coinsData.coins)[number] & {
+  alt?: { book: string; chapter: number; verse: number; ref: string };
+};
+
+// How each coin connects to the reading cycle.
+const connOf = (c: Coin): 'torah' | 'reading' | 'scene' =>
+  c.attach === 'torah' ? 'torah' : c.attach === 'haftarah' || /^Read (at|on)\b/.test(c.association ?? '') ? 'reading' : 'scene';
+const connLabel = (c: Coin): string =>
+  c.attach === 'torah'
+    ? `Parshat ${c.parsha}`
+    : c.attach === 'haftarah'
+      ? (c.association ?? `Haftara · ${c.parsha}`)
+      : (c.association ?? '');
+
+const coins = [...coinsData.coins].sort((a, b) => a.year - b.year) as Coin[];
+const BOOK_ORDER = ['Genesis', 'Exodus', 'Numbers', 'Joshua', 'Judges', '1 Samuel', '1 Kings', '2 Kings', 'Isaiah', 'Jonah', 'Daniel', 'Ruth'];
+const byBook = BOOK_ORDER.map((book) => ({ book, coins: coins.filter((c) => c.book === book) })).filter((g) => g.coins.length);
+const counts = {
+  all: coins.length,
+  torah: coins.filter((c) => connOf(c) === 'torah').length,
+  reading: coins.filter((c) => connOf(c) === 'reading').length,
+  scene: coins.filter((c) => connOf(c) === 'scene').length,
+};
+const megaHref = (book: string, chapter: number) => `/mega-bible?book=${book}&chapter=${chapter}`;
+---
+
+<Layout
+  title="Pictures from the Bible — the Bank of Israel coins"
+  description="All 29 Bank of Israel 'Pictures from the Bible' commemorative coins in one place: each coin's scene, its verse, its parsha or reading, and links to the verse in the Mega Bible and the Bank of Israel catalog."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Frank+Ruhl+Libre:wght@400;700&display=swap"
+  />
+
+  <main class="bc">
+    <header class="bc-head">
+      <div class="bc-kicker">Bank of Israel · <span class="he">תמונות מן התנ״ך</span></div>
+      <h1>Pictures from the Bible</h1>
+      <p class="bc-lede">{coinsData.series.intro}</p>
+      <nav class="bc-jump" aria-label="Connections">
+        <a href="/parasha#bible-coins">The coins on the Parasha Hub</a>
+        <a href="/mega-bible">Mega Bible</a>
+        <a href={coinsData.series.catalog_url} target="_blank" rel="noopener noreferrer">The series at the Bank of Israel ↗</a>
+      </nav>
+    </header>
+
+    <div class="bc-filters" role="group" aria-label="Filter coins by connection">
+      <button type="button" class="bc-filter is-active" data-filter="all">All {counts.all} coins</button>
+      <button type="button" class="bc-filter" data-filter="torah">Parsha coins · {counts.torah}</button>
+      <button type="button" class="bc-filter" data-filter="reading">Haftara &amp; other readings · {counts.reading}</button>
+      <button type="button" class="bc-filter" data-filter="scene">Nevi'im &amp; Ketuvim scenes · {counts.scene}</button>
+    </div>
+
+    {byBook.map((g) => (
+      <section class="bc-book" data-book={g.book}>
+        <h2 class="bc-h2">{g.book}</h2>
+        <div class="bc-grid">
+          {g.coins.map((c) => (
+            <article class="bc-card" id={`coin-${c.year}`} data-conn={connOf(c)}>
+              <img class="bc-img" src={`/images/coins/${c.image}`} alt={`Bank of Israel coin, ${c.year}: ${c.name_en}`} loading="lazy" />
+              <div class="bc-body">
+                <div class="bc-top">
+                  <span class="bc-name">{c.name_en}</span>
+                  <span class="bc-year">BOI {c.year}</span>
+                </div>
+                <p class="bc-he"><span class="he">{c.name_he}</span></p>
+                <p class="bc-note">{c.note}</p>
+                <dl class="bc-chain">
+                  <div>
+                    <dt>Verse</dt>
+                    <dd>
+                      <a class="bc-ref-link" href={megaHref(c.book, c.chapter)}>{c.ref}</a>
+                      <span class="bc-inferred">inferred</span>
+                      {c.alt && (
+                        <>
+                          {' '}· also entered at{' '}
+                          <a class="bc-ref-link" href={megaHref(c.alt.book, c.alt.chapter)}>{c.alt.ref}</a>
+                        </>
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Reading</dt>
+                    <dd>{connLabel(c) || 'No weekly reading — a standalone scene'}</dd>
+                  </div>
+                </dl>
+                <ul class="bc-links">
+                  <li><a class="bc-chip bc-chip-primary" href={megaHref(c.book, c.chapter)}>Read it in the Mega Bible</a></li>
+                  <li><a class="bc-chip" href={`/parasha#coin-${c.year}`}>On the Parasha Hub</a></li>
+                  <li><a class="bc-chip" href={c.boi_url} target="_blank" rel="noopener noreferrer">Bank of Israel<span class="bc-ext" aria-hidden="true">↗</span></a></li>
+                </ul>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <p class="bc-foot">
+      Every coin here is also attached to its verse in the <a href="/mega-bible">Mega Bible</a>, and the parsha-attached
+      coins appear in their week's row on the <a href="/parasha">Parasha Hub</a>. Coin names, years and designs are the
+      Bank of Israel's; the verse and parsha mappings are inference from the depicted scenes, labelled as such.
+    </p>
+  </main>
+</Layout>
+
+<script>
+  // Connection filters: show only the cards whose data-conn matches, and hide
+  // a book section when none of its cards remain visible.
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.bc-filter'));
+  const cards = Array.from(document.querySelectorAll<HTMLElement>('.bc-card'));
+  const sections = Array.from(document.querySelectorAll<HTMLElement>('.bc-book'));
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      buttons.forEach((b) => b.classList.toggle('is-active', b === btn));
+      const f = btn.dataset.filter;
+      cards.forEach((card) => {
+        card.style.display = f === 'all' || card.dataset.conn === f ? '' : 'none';
+      });
+      sections.forEach((sec) => {
+        const any = Array.from(sec.querySelectorAll<HTMLElement>('.bc-card')).some((c) => c.style.display !== 'none');
+        sec.style.display = any ? '' : 'none';
+      });
+    });
+  });
+</script>
+
+<style>
+  .bc {
+    max-width: 62rem; margin: 0 auto; padding: 3rem 1rem 4.5rem;
+    font-family: 'EB Garamond', Georgia, serif; color: #e7e3da;
+  }
+  :global(.dark) .bc :global(*) { color: inherit; }
+  .bc :global(.he) { font-family: 'Frank Ruhl Libre', serif; direction: rtl; unicode-bidi: isolate; }
+  .bc a:focus-visible, .bc button:focus-visible { outline: 2px solid #d8b06a; outline-offset: 2px; border-radius: 4px; }
+
+  .bc-head { padding-bottom: 1.5rem; border-bottom: 1px solid #2c3036; position: relative; }
+  .bc-head::after {
+    content: ''; position: absolute; left: 0; bottom: -1px; height: 2px; width: min(16rem, 60%);
+    background: linear-gradient(90deg, #d8b06a, rgba(216, 176, 106, 0));
+  }
+  .bc-kicker { font-size: .75rem; letter-spacing: .18em; text-transform: uppercase; color: #d8b06a !important; }
+  h1 { font-size: 2.9rem; font-weight: 600; line-height: 1.08; margin: .35rem 0 .75rem; color: #f2ecdf !important; }
+  .bc-lede { font-size: 1.22rem; line-height: 1.55; max-width: 46rem; color: #d4cfc5 !important; margin: 0; }
+  .bc-jump { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: 1.35rem; }
+  .bc-jump a {
+    font-size: .86rem; padding: .32rem .85rem; border-radius: 999px; text-decoration: none; line-height: 1.35;
+    border: 1px solid #54492c; color: #ece5d3 !important; background: #1b1f23;
+    transition: border-color .15s, color .15s, transform .15s;
+  }
+  .bc-jump a:hover { border-color: #d8b06a; color: #f0dc9c !important; transform: translateY(-1px); }
+
+  .bc-filters { display: flex; flex-wrap: wrap; gap: .45rem; margin: 1.6rem 0 .4rem; }
+  .bc-filter {
+    font: inherit; font-size: .88rem; cursor: pointer; padding: .34rem .9rem; border-radius: 999px; line-height: 1.35;
+    border: 1px solid #54492c; color: #ece5d3; background: #1b1f23;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .bc-filter:hover { border-color: #d8b06a; color: #f0dc9c; }
+  .bc-filter.is-active { background: linear-gradient(180deg, #e3bd77, #d3a95e); border-color: #d8b06a; color: #241a05; font-weight: 600; }
+
+  .bc-h2 {
+    display: flex; align-items: center; gap: .9rem;
+    font-size: 1.6rem; font-weight: 600; line-height: 1.2;
+    color: #f0e9db !important; margin: 3rem 0 1.15rem; padding: 0; border: 0;
+  }
+  .bc-h2::before { content: ''; flex: none; width: 2.1rem; height: 2px; background: #d8b06a; }
+  .bc-h2::after {
+    content: ''; flex: 1; height: 1px; min-width: 2rem;
+    background: linear-gradient(90deg, rgba(216, 176, 106, .45), rgba(216, 176, 106, 0));
+  }
+
+  .bc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 27rem), 1fr)); gap: .9rem; }
+  .bc-card {
+    display: flex; gap: 1rem; padding: 1.1rem 1.25rem 1.2rem;
+    border: 1px solid #3a3f45; border-left: 3px solid #b28c46; border-radius: 10px;
+    background: linear-gradient(180deg, #1b2026, #16181c); scroll-margin-top: 6.5rem;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .bc-card:target { border-color: #d8b06a; box-shadow: 0 0 0 1px #d8b06a; }
+  .bc-img {
+    width: 6.2rem; height: 6.2rem; border-radius: 50%; object-fit: cover; flex: none;
+    border: 1px solid #54492c; box-shadow: 0 4px 14px rgba(0, 0, 0, .4);
+  }
+  .bc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .bc-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .3rem .8rem; }
+  .bc-name { font-size: 1.18rem; font-weight: 600; color: #f0e9db !important; }
+  .bc-year {
+    font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
+    padding: .14rem .55rem; border-radius: 999px; border: 1px solid #54492c; color: #ece5d3 !important; background: #1b1f23;
+  }
+  .bc-he { font-size: 1.05rem; margin: .15rem 0 0; color: #d4cfc5 !important; }
+  .bc-note { font-size: 1rem; line-height: 1.5; color: #b9b4aa !important; margin: .45rem 0 .6rem; }
+
+  .bc-chain { margin: 0 0 .8rem; display: flex; flex-direction: column; gap: .3rem; }
+  .bc-chain > div { display: flex; gap: .6rem; align-items: baseline; }
+  .bc-chain dt {
+    flex: none; width: 3.6rem; font-size: .72rem; font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; color: #d8b06a !important; margin: 0;
+  }
+  .bc-chain dd { margin: 0; font-size: .97rem; line-height: 1.45; color: #d4cfc5 !important; }
+  .bc-ref-link { color: #e3c98f !important; text-decoration: underline; text-decoration-color: rgba(216, 176, 106, .45); text-underline-offset: 3px; }
+  .bc-ref-link:hover { color: #d8b06a !important; text-decoration-color: #d8b06a; }
+  .bc-inferred {
+    display: inline-block; margin-left: .45rem; padding: .1rem .5rem; border-radius: 999px;
+    border: 1px solid #54492c; background: #1b1f23; color: #b9b4aa !important;
+    font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; vertical-align: .08em;
+  }
+
+  .bc-links { list-style: none; padding: 0; margin: auto 0 0; display: flex; flex-wrap: wrap; gap: .4rem .5rem; }
+  .bc-chip {
+    display: inline-block; padding: .32rem .85rem; border-radius: 999px; font-size: .86rem; line-height: 1.35;
+    text-decoration: none; border: 1px solid #54492c; color: #ece5d3 !important; background: #1b1f23;
+    white-space: nowrap; transition: border-color .15s, color .15s, background .15s, transform .15s, box-shadow .15s;
+  }
+  a.bc-chip:hover { border-color: #d8b06a; color: #f0dc9c !important; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0, 0, 0, .3); }
+  .bc-chip-primary { background: linear-gradient(180deg, #e3bd77, #d3a95e); border-color: #d8b06a; color: #241a05 !important; font-weight: 600; }
+  a.bc-chip-primary:hover { background: linear-gradient(180deg, #eecf92, #dbb46c); border-color: #eecf92; color: #241a05 !important; }
+  .bc-ext { font-style: normal; font-size: .78em; color: #d8b06a !important; margin-left: .25rem; }
+
+  .bc-foot { font-size: 1rem; line-height: 1.55; color: #b9b4aa !important; max-width: 46rem; margin-top: 3rem; }
+  .bc-foot a { color: #d8b06a !important; text-underline-offset: 3px; }
+  .bc-foot a:hover { color: #f0dc9c !important; }
+
+  @media (max-width: 640px) {
+    .bc { padding: 2.25rem .9rem 3.5rem; }
+    h1 { font-size: 2.15rem; }
+    .bc-lede { font-size: 1.1rem; }
+    .bc-h2 { font-size: 1.32rem; margin: 2.6rem 0 1rem; gap: .65rem; }
+    .bc-h2::before { width: 1.4rem; }
+    .bc-card { padding: .95rem 1.05rem 1.05rem; gap: .8rem; }
+    .bc-img { width: 4.6rem; height: 4.6rem; }
+  }
+</style>

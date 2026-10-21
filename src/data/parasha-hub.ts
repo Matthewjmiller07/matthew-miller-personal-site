@@ -6,6 +6,7 @@ import { books } from './parasha-books/books.mjs';
 import { sheets as simonSheets } from './uriel-simon-reader';
 import dweck from './dweck-haftara/episodes.json';
 import levyThesesData from './levy-theses.json';
+import coinsData from './boi-bible-coins.json';
 
 const SHEET_FILES = import.meta.glob('./parasha-sheets/*.json', { eager: true, import: 'default' }) as Record<
   string,
@@ -90,12 +91,60 @@ export const dweckShow = dweck.show;
 export const dweckEpisodes = [...dweck.episodes].sort((a, b) => b.date.localeCompare(a.date));
 
 export interface Link {
-  kind: 'simon' | 'dweck' | 'sheet' | 'balashon' | 'book' | 'phd' | 'thesis' | 'mega' | 'shnayim' | 'sefaria';
+  kind: 'simon' | 'dweck' | 'sheet' | 'balashon' | 'book' | 'phd' | 'thesis' | 'coin' | 'mega' | 'shnayim' | 'sefaria';
   label: string;
   href: string;
   note?: string;
   noteHref?: string; // when set, the note itself renders as a link (e.g. a PhD guest's cited work)
+  img?: string; // optional thumbnail (coin links carry the coin's image)
 }
+
+// The Bank of Israel "Pictures from the Bible" (תמונות מן התנ״ך) coins: one
+// commemorative coin on a biblical scene a year, 1994–2025. Data:
+// src/data/boi-bible-coins.json (also mirrored into the Mega Bible's
+// literary_bible table, keyed to the same verses). The Bank's catalog names
+// each scene but prints no chapter and verse, so every verse/parsha mapping
+// is INFERENCE from the depicted scene and is labelled as such wherever shown.
+export interface BibleCoin {
+  year: number;
+  name_en: string;
+  name_he: string;
+  slug: string;
+  image: string;
+  book: string;
+  chapter: number;
+  verse: number;
+  chapter_end: number;
+  verse_end: number;
+  ref: string;
+  parsha: string | null;
+  attach: 'torah' | 'haftarah' | null;
+  association: string | null;
+  note: string;
+  boi_url: string;
+  words?: string;
+  alt?: { book: string; chapter: number; verse: number; ref: string };
+  anchor: string; // in-page anchor of this coin's card in the #bible-coins section
+}
+export const bibleCoins: BibleCoin[] = [...(coinsData.coins as Omit<BibleCoin, 'anchor'>[])]
+  .sort((a, b) => a.year - b.year)
+  .map((c) => ({ ...c, anchor: `coin-${c.year}` }));
+export const coinsIntro = coinsData.series.intro;
+export const coinsCatalogUrl = coinsData.series.catalog_url;
+// Coins whose scene falls inside this week's Torah reading (verse-range
+// containment, like the theses). A coin on a haftarah (Solomon's Judgment,
+// read with Miketz; Deborah, read with Beshalach) attaches by parsha name.
+const coinsForWeek = (w: any): BibleCoin[] => {
+  const range = refRange(w.ref);
+  return bibleCoins.filter((c) => {
+    if (c.attach === 'torah' && range && c.book === range.book) {
+      if (pos(c.chapter, c.verse) >= pos(range.from[0], range.from[1]) &&
+          pos(c.chapter_end, c.verse_end) <= pos(range.to[0], range.to[1])) return true;
+    }
+    if (c.attach === 'haftarah' && c.parsha) return key(c.parsha) === key(w.parsha);
+    return false;
+  });
+};
 
 // Where a PhD guest's cited work has a verified record of its own, the note links
 // there rather than to the scholar's profile in the season data (guest.url).
@@ -152,6 +201,17 @@ export const weeks: Week[] = season.weeks.map((w: any) => {
       label: 'Levy thesis',
       href: `#${t.anchor}`,
       note: `${t.author} on ${t.ref} (${t.year})`,
+    });
+  }
+
+  for (const c of coinsForWeek(w)) {
+    links.push({
+      kind: 'coin',
+      label: 'Bible coin',
+      href: `/bible-coins#${c.anchor}`,
+      note: `${c.year} · “${c.name_en}” (${c.name_he}) · ${c.ref} · inferred`,
+      noteHref: c.boi_url,
+      img: `/images/coins/${c.image}`,
     });
   }
 
@@ -217,6 +277,12 @@ export const series = [
     href: '#levy-theses',
     kind: 'Theses',
     text: "McGill M.A. theses from B. Barry Levy's stream on the history of Jewish interpretation: one verse, a hundred sources, a whole thesis. Each is attached to its verse in the Mega Bible.",
+  },
+  {
+    name: 'Pictures from the Bible',
+    href: '/bible-coins',
+    kind: 'Coins',
+    text: "The Bank of Israel's commemorative coins on biblical scenes, one a year since 1994 — each mapped to its verse and its parasha, and attached to its verse in the Mega Bible. Verse mappings are inferred from the scenes.",
   },
 ];
 

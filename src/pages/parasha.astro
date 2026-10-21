@@ -2,7 +2,7 @@
 // /parasha — the hub for everything on the site that follows the weekly Torah reading.
 // Data: src/data/parasha-hub.ts (joins the 5787 calendar to sheets, readers, books and tools).
 import Layout from '../layouts/Layout.astro';
-import { weeks, BOOKS, series, tools, dweckShow, dweckEpisodes, levyTheses, levyThesesIntro, type Link } from '../data/parasha-hub';
+import { weeks, BOOKS, series, tools, dweckShow, dweckEpisodes, levyTheses, levyThesesIntro, bibleCoins, coinsIntro, coinsCatalogUrl, type Link } from '../data/parasha-hub';
 
 const fmt = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
@@ -20,9 +20,10 @@ const isExternal = (href: string) => href.startsWith('http');
 // the Levy theses (The History of a Verse) on the other; everything else is
 // the plain resource list.
 const groupLinks = (links: Link[]) => ({
-  resources: links.filter((l) => l.kind !== 'phd' && l.kind !== 'thesis'),
+  resources: links.filter((l) => l.kind !== 'phd' && l.kind !== 'thesis' && l.kind !== 'coin'),
   phd: links.filter((l) => l.kind === 'phd'),
   theses: links.filter((l) => l.kind === 'thesis'),
+  coins: links.filter((l) => l.kind === 'coin'),
 });
 const thisWeekGrouped = thisWeek.map((w) => ({ w, ...groupLinks(w.links) }));
 
@@ -39,6 +40,14 @@ const thesesByParasha = [...levyTheses].sort(
     (weekOrder.get(parshaKey(b.parsha.replace(/\(.*\)/, ''))) ?? 999),
 );
 const surname = (author: string) => author.split(' ').pop() ?? author;
+
+// Index of the parsha-attached coins, in Torah order, for the "By parasha"
+// line at the top of the coins section.
+const coinsByParasha = bibleCoins
+  .filter((c) => c.attach)
+  .sort((a, b) => (weekOrder.get(parshaKey(a.parsha ?? '')) ?? 999) - (weekOrder.get(parshaKey(b.parsha ?? '')) ?? 999));
+const coinChip = (c: (typeof bibleCoins)[number]) =>
+  c.attach === 'haftarah' ? `Haftara · ${c.parsha}` : c.attach === 'torah' ? `Parshat ${c.parsha}` : (c.association ?? '');
 ---
 
 <Layout
@@ -64,6 +73,7 @@ const surname = (author: string) => author.split(' ').pop() ?? author;
         <a href="#series">Readers &amp; series</a>
         <a href="#dweck">Rabbi Dweck on the haftara</a>
         <a href="#levy-theses">The Levy theses</a>
+        <a href="#bible-coins">Bible coins</a>
         <a href="#tools">Tools</a>
         <a href="#year">Every parasha</a>
       </nav>
@@ -72,7 +82,7 @@ const surname = (author: string) => author.split(' ').pop() ?? author;
     <section class="ph-now" id="now" aria-labelledby="ph-now-h">
       <h2 id="ph-now-h" class="ph-h2">This week</h2>
       <div id="ph-now">
-        {thisWeekGrouped.map(({ w, resources, phd, theses }) => (
+        {thisWeekGrouped.map(({ w, resources, phd, theses, coins }) => (
           <article class="ph-week ph-week-big" data-date={w.date}>
             <div class="ph-week-top">
               <span class="he ph-he">{w.hebrew}</span>
@@ -129,6 +139,29 @@ const surname = (author: string) => author.split(' ').pop() ?? author;
                       <a class="ph-chip" href={l.href} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
                         {l.label}
                         {isExternal(l.href) && <span class="ph-ext" aria-hidden="true">↗</span>}
+                      </a>
+                      {l.note && (l.noteHref ? (
+                        <a class="ph-note ph-note-link" href={l.noteHref} target="_blank" rel="noopener noreferrer">
+                          {l.note}
+                          <span class="ph-ext" aria-hidden="true">↗</span>
+                        </a>
+                      ) : (
+                        <span class="ph-note">{l.note}</span>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {coins.length > 0 && (
+              <div class="ph-group">
+                <div class="ph-group-label">Pictures from the Bible · Bank of Israel coins</div>
+                <ul class="ph-links">
+                  {coins.map((l) => (
+                    <li>
+                      <a class="ph-chip ph-chip-coin" href={l.href}>
+                        {l.img && <img class="ph-coin-thumb" src={l.img} alt="" loading="lazy" />}
+                        {l.label}
                       </a>
                       {l.note && (l.noteHref ? (
                         <a class="ph-note ph-note-link" href={l.noteHref} target="_blank" rel="noopener noreferrer">
@@ -233,6 +266,48 @@ const surname = (author: string) => author.split(' ').pop() ?? author;
       </div>
     </section>
 
+    <section id="bible-coins" class="ph-coins" aria-labelledby="ph-coins-h">
+      <h2 id="ph-coins-h" class="ph-h2">Pictures from the Bible: the Bank of Israel coins</h2>
+      <p class="ph-dweck-lede">{coinsIntro}</p>
+      <p class="ph-byparasha">
+        <span class="ph-byparasha-label">By parasha:</span>
+        {coinsByParasha.map((c, i) => (
+          <>
+            {i > 0 && <span aria-hidden="true"> · </span>}
+            <a href={`#${c.anchor}`}>{c.parsha} — {c.year} ({c.ref})</a>
+          </>
+        ))}
+      </p>
+      <div class="ph-coin-grid">
+        {bibleCoins.map((c) => (
+          <article class="ph-coin-card" id={c.anchor}>
+            <img class="ph-coin-img" src={`/images/coins/${c.image}`} alt={`Bank of Israel coin, ${c.year}: ${c.name_en}`} loading="lazy" />
+            <div class="ph-coin-body">
+              <div class="ph-thesis-top">
+                <span class="ph-thesis-author">{c.name_en}</span>
+                <span class="ph-year">BOI {c.year}</span>
+              </div>
+              <p class="ph-coin-he"><span class="he">{c.name_he}</span></p>
+              <p class="ph-thesis-meta">
+                <a class="ph-ref-link" href={`/mega-bible?book=${c.book}&chapter=${c.chapter}`}>{c.ref}</a>
+                {coinChip(c) && <span class="ph-parsha-chip">{coinChip(c)}</span>}
+              </p>
+              <p class="ph-thesis-blurb">{c.note}</p>
+              <p class="ph-coin-inferred">Verse mapping inferred — the Bank's catalog names the scene, not the passage.</p>
+              <ul class="ph-links">
+                <li><a class="ph-chip ph-chip-primary" href={`/mega-bible?book=${c.book}&chapter=${c.chapter}`}>Read the passage in the Mega Bible</a></li>
+                <li><a class="ph-chip" href={c.boi_url} target="_blank" rel="noopener noreferrer">Bank of Israel catalog<span class="ph-ext" aria-hidden="true">↗</span></a></li>
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+      <p class="ph-coins-more">
+        <a class="ph-chip ph-chip-primary" href="/bible-coins">See all 29 coins and their connections →</a>
+        <a class="ph-chip" href={coinsCatalogUrl} target="_blank" rel="noopener noreferrer">The full series at the Bank of Israel<span class="ph-ext" aria-hidden="true">↗</span></a>
+      </p>
+    </section>
+
     <section id="tools" aria-labelledby="ph-tools-h">
       <h2 id="ph-tools-h" class="ph-h2">Tools for any parasha</h2>
       <div class="ph-grid ph-grid-tools">
@@ -258,7 +333,7 @@ const surname = (author: string) => author.split(' ').pop() ?? author;
                 <span class="ph-meta">{w.ref} · {fmt(w.date)}</span>
               </div>
               <ul class="ph-links">
-                {w.links.filter((l) => l.kind !== 'thesis').map((l) => (
+                {w.links.filter((l) => l.kind !== 'thesis' && l.kind !== 'coin').map((l) => (
                   <li>
                     <a class="ph-chip" href={l.href} title={l.note} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
                       {l.label}
@@ -279,6 +354,22 @@ const surname = (author: string) => author.split(' ').pop() ?? author;
                   <ul class="ph-thesis-lines">
                     {w.links.filter((l) => l.kind === 'thesis').map((l) => (
                       <li><a href={l.href}>{l.note}</a></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {w.links.some((l) => l.kind === 'coin') && (
+                <div class="ph-thesis-group">
+                  <div class="ph-group-label">Pictures from the Bible · Bank of Israel coins</div>
+                  <ul class="ph-thesis-lines">
+                    {w.links.filter((l) => l.kind === 'coin').map((l) => (
+                      <li class="ph-coin-line">
+                        {l.img && <img class="ph-coin-thumb" src={l.img} alt="" loading="lazy" />}
+                        <a href={l.href}>{l.note}</a>
+                        {l.noteHref && (
+                          <a class="ph-coin-boi" href={l.noteHref} target="_blank" rel="noopener noreferrer">Bank of Israel<span class="ph-ext" aria-hidden="true">↗</span></a>
+                        )}
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -531,6 +622,34 @@ const surname = (author: string) => author.split(' ').pop() ?? author;
     font-size: .76rem; letter-spacing: .05em; white-space: nowrap; vertical-align: .1em;
   }
 
+  /* ---- The Bible coins ---- */
+  .ph-coin-thumb {
+    width: 1.35rem; height: 1.35rem; border-radius: 50%; object-fit: cover;
+    vertical-align: -.38rem; margin-right: .45rem; border: 1px solid #54492c;
+  }
+  .ph-chip-coin { display: inline-flex; align-items: center; }
+  .ph-chip-coin .ph-coin-thumb { margin-right: .1rem; }
+  .ph-coin-line { display: flex; align-items: center; flex-wrap: wrap; gap: .1rem .45rem; }
+  .ph-coin-line .ph-coin-thumb { margin-right: 0; flex: none; }
+  .ph-coin-boi { font-size: .82rem; white-space: nowrap; }
+  .ph-coin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 27rem), 1fr)); gap: .9rem; }
+  .ph-coin-card {
+    display: flex; gap: 1rem; padding: 1.1rem 1.25rem 1.2rem;
+    border: 1px solid #3a3f45; border-left: 3px solid #b28c46; border-radius: 10px;
+    background: linear-gradient(180deg, #1b2026, #16181c); scroll-margin-top: 6.5rem;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .ph-coin-card:target { border-color: #d8b06a; box-shadow: 0 0 0 1px #d8b06a; }
+  .ph-coin-img {
+    width: 6.2rem; height: 6.2rem; border-radius: 50%; object-fit: cover; flex: none;
+    border: 1px solid #54492c; box-shadow: 0 4px 14px rgba(0, 0, 0, .4);
+  }
+  .ph-coin-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .ph-coin-body .ph-links { margin-top: auto; }
+  .ph-coin-he { font-size: 1.05rem; margin: .15rem 0 0; color: #d4cfc5 !important; }
+  .ph-coin-inferred { font-size: .82rem; font-style: italic; color: #8f949b !important; margin: 0 0 .7rem; }
+  .ph-coins-more { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.2rem; }
+
   /* ---- Year ---- */
   .ph-book h3 { font-size: 1.4rem; font-weight: 600; margin: 1.9rem 0 .35rem; color: #f0e9db !important; }
   .ph-book-en { font-size: .92rem; color: #8f949b !important; font-weight: 400; }
@@ -550,6 +669,8 @@ const surname = (author: string) => author.split(' ').pop() ?? author;
     #ph-now .ph-note { font-size: .94rem; }
     .ph-dweck { padding: .95rem 1.05rem; }
     .ph-thesis-card { padding: .95rem 1.05rem 1.05rem; }
+    .ph-coin-card { padding: .95rem 1.05rem 1.05rem; gap: .8rem; }
+    .ph-coin-img { width: 4.6rem; height: 4.6rem; }
     .ph-thesis-author { font-size: 1.1rem; }
     .ph-week { padding: .8rem .35rem; }
   }
