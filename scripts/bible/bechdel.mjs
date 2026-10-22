@@ -81,6 +81,7 @@ for (const book of books) {
     }
   }));
   out.tested = new Date().toISOString().slice(0, 10);
+  fs.mkdirSync('./public/data/bechdel', { recursive: true });
   fs.writeFileSync(OUT, JSON.stringify(out) + '\n');
   const passes = Object.values(out.books[book]).filter(([n, t, m]) => n >= 0.5 && t >= 0.5 && m >= 0.5).length;
   console.log(`${book}: ${Object.keys(out.books[book]).length} chapters, ${passes} pass · ${(tokens / 1e6).toFixed(2)}M tokens · $${(tokens * PRICE_PER_TOKEN).toFixed(4)} so far`);

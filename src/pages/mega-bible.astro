@@ -1466,6 +1466,7 @@ a.w-gen-link:hover { background:var(--gold); color:#0c0b09; }
 .mb-bechdel-badge .row b { font-family: var(--sc); font-size: .7rem; letter-spacing: .12em; color: var(--text); font-weight: 500; }
 .mb-bechdel-badge .st.ok { color: var(--text); }
 .mb-bechdel-badge .st.no { opacity: .55; }
+.mb-bechdel-badge .st.na { opacity: .3; }
 .mb-bechdel-badge .verdict { font-family: var(--sc); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; padding: .12rem .5rem; border: 1px solid var(--border-hi); border-radius: 999px; }
 .mb-bechdel-badge .lvl3 .verdict { background: #d9a441; color: #0c0b09; border-color: #d9a441; }
 .mb-bechdel-link { font-family: var(--sc); font-size: .66rem; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); background: none; border: 0; padding: 0; cursor: pointer; border-bottom: 1px solid var(--gold-dim); }
@@ -6621,8 +6622,12 @@ function bechdelBadge(book: string, sc: number, ec: number): HTMLElement {
       if (!row) continue;
       const st = bechdelSteps(row, strict);
       const lvl = bechdelLevel(row, strict);
-      const marks = BECHDEL_STEPS.map(([, label], i) =>
-        `<span class="st ${st[i] ? 'ok' : 'no'}" title="${label}: Jev ${(i === 2 && strict ? row[3] : row[i]).toFixed(2)}">${st[i] ? '✓' : '✗'} ${label}</span>`).join('');
+      // Steps after the first failure don't apply ("–"): step 3 only matters if two named women talk.
+      const marks = BECHDEL_STEPS.map(([, label], i) => {
+        const p = (i === 2 && strict ? row[3] : row[i]).toFixed(2);
+        const mark = i > lvl ? ['na', '–'] : st[i] ? ['ok', '✓'] : ['no', '✗'];
+        return `<span class="st ${mark[0]}" title="${label}: Jev ${p}">${mark[1]} ${label}</span>`;
+      }).join('');
       parts.push(`<div class="row lvl${lvl}">${sc !== ec ? `<b>Ch ${ch}</b>` : ''}${marks}<span class="verdict">${lvl === 3 ? 'Passes' : 'Does not pass'}</span></div>`);
     }
     if (!parts.length) return;
