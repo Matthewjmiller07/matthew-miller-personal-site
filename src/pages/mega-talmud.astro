@@ -118,6 +118,15 @@ a.mtb-badge:hover { filter:brightness(1.12); }
 .mtf-tip { position:absolute; pointer-events:none; background:#261f14; color:#faf5ea; font-family:'Cormorant Garamond',Georgia,serif; font-size:.95rem; padding:.3rem .6rem; white-space:nowrap; transform:translate(-50%, -130%); }
 .mtf-stats { display:flex; flex-wrap:wrap; gap:.4rem .9rem; margin-top:.8rem; font-family:'Cormorant Garamond',Georgia,serif; font-size:1rem; color:#8a7a5a; }
 .mtf-stats i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:.35rem; }
+/* ——— Layer toggles: main.hide-<layer> hides every [data-layer=<layer>] ——— */
+.mtl-layers { display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; margin:-1.4rem 0 2.2rem; }
+.mtl-layers span { font-family:'Cormorant SC',Georgia,serif; font-size:.66rem; letter-spacing:.22em; text-transform:uppercase; color:#8a7a5a; margin-right:.2rem; }
+.mtl-layers button { font-family:'Cormorant Garamond',Georgia,serif; font-size:.98rem; color:#8a7a5a; background:transparent; border:1px solid rgba(201,162,87,.25); border-radius:999px; padding:.25rem .8rem; cursor:pointer; text-decoration:line-through; }
+.mtl-layers button[aria-pressed="true"] { color:#e8d4aa; border-color:#c9a257; background:rgba(201,162,87,.12); text-decoration:none; }
+main.hide-flow [data-layer="flow"], main.hide-map [data-layer="map"], main.hide-insight [data-layer="insight"],
+main.hide-laf [data-layer="laf"] { display:none !important; }
+main.hide-map .mtb-seg[data-move] { border-left-color:transparent; }
+main.hide-he .mtb-seg .he, main.hide-en .mtb-seg .en { display:none; }
 .mtb-panel .mtb-sugya { font-family:'Cormorant SC',Georgia,serif; font-size:.7rem; letter-spacing:.24em; text-transform:uppercase; color:#7c5f24; margin:1.4rem 0 .2rem; padding-top:.6rem; border-top:2px solid rgba(140,107,46,.45); }
 .mtb-panel .mtb-foot { margin-top:1.6rem; font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; color:#5d5142; font-size:.98rem; }
 </style>
@@ -161,8 +170,17 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
     <div class="kicker">The Mega readers</div>
     <h1>Mega <em>Talmud</em></h1>
     <p class="lede">The daily daf, mined from every maggid shiur — the insights worth keeping, the highlights worth sharing, and one laugh a day.</p>
+    <div class="mtl-layers" id="mtl-layers" aria-label="Show or hide layers">
+      <span>Show</span>
+      <button type="button" data-layer="flow" aria-pressed="true">🎨 Flow art</button>
+      <button type="button" data-layer="map" aria-pressed="true">🧭 Sugya map</button>
+      <button type="button" data-layer="insight" aria-pressed="true">💡 Daily Reader</button>
+      <button type="button" data-layer="laf" aria-pressed="true">😂 Laf Yomi</button>
+      <button type="button" data-layer="he" aria-pressed="true">Hebrew</button>
+      <button type="button" data-layer="en" aria-pressed="true">English</button>
+    </div>
 
-    <div class="section" id="flow">
+    <div class="section" id="flow" data-layer="flow">
       <h2>The flow of the argument</h2>
       <p class="mtb-intro">Every segment of the Gemara, coloured by the move it makes: question, answer, verse, baraita, dispute, ruling, story. Each column is one daf, read top to bottom, and the gaps are where a new sugya begins. Jev mapped each segment once, ahead of time. Masechtot that haven't been mapped yet show as blank parchment. Tap any column to open that daf in the browser below.</p>
       <div class="mtb-controls mtf-controls">
@@ -205,15 +223,15 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
       <div class="mtb-panel">
         <div class="mtb-status" id="mtb-status">Loading the daf…</div>
         <div id="mtb-attach"></div>
-        <div id="mtb-jokes"></div>
+        <div id="mtb-jokes" data-layer="laf"></div>
         <h3 class="mtb-dafhead" id="mtb-dafhead"></h3>
-        <div id="mtb-map" class="mtb-map"></div>
+        <div id="mtb-map" class="mtb-map" data-layer="map"></div>
         <div id="mtb-segs"></div>
         <p class="mtb-foot">Talmud text: Sefaria (Steinsaltz), loaded live. Insights are the day's Daily Reader daf sections with their Jev scores; Laf Yomi jokes are mined verbatim from the day's shiur transcripts on alldaf.org, and their 🎧 links open the shiur audio at the moment the joke begins.</p>
       </div>
     </div>
 
-    <div class="section">
+    <div class="section" data-layer="laf">
       <h2>Laf Yomi — the daily laugh sheet</h2>
       <div class="card">
         <h3>Laf Yomi · Bekhorot 34</h3>
@@ -225,7 +243,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
       <p class="coming">Yesterday's sheets archive here as the days pile up — and every sheet is in the browser above, on its daf.</p>
     </div>
 
-    <div class="section">
+    <div class="section" data-layer="insight">
       <h2>Insights &amp; highlights</h2>
       <div class="card">
         <h3>From today's shiurim</h3>
@@ -472,10 +490,10 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
       s.style.setProperty('--mv', color);
       const refEl = s.querySelector('.ref');
       refEl.querySelector('.mv')?.remove();
-      refEl.insertAdjacentHTML('beforeend', `<span class="mv" title="Jev confidence ${m.conf.toFixed(2)}">${label}${m.conf < MIN_SURE ? '?' : ''}</span>`);
+      refEl.insertAdjacentHTML('beforeend', `<span class="mv" data-layer="map" title="Jev confidence ${m.conf.toFixed(2)}">${label}${m.conf < MIN_SURE ? '?' : ''}</span>`);
       if (i === 0 || m.newSugya >= NEW_SUGYA) {
         sugyot.push({ start: i, moves: [] });
-        s.insertAdjacentHTML('beforebegin', `<div class="mtb-sugya">Sugya ${sugyot.length}</div>`);
+        s.insertAdjacentHTML('beforebegin', `<div class="mtb-sugya" data-layer="map">Sugya ${sugyot.length}</div>`);
       }
       sugyot[sugyot.length - 1]?.moves.push(m.move);
     });
@@ -547,13 +565,14 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
     els.segs.classList.remove('mtb-segs-filtered');
     els.head.textContent = ''; els.amud.innerHTML = '';
     const badges = [];
-    if (ins) badges.push('<a class="mtb-badge" href="#mtb-insight-panel">💡 Daily Reader insight</a>');
-    if (laf) badges.push(`<a class="mtb-badge" href="#mtb-joke-1">😂 Laf Yomi — ${laf.jokes.length} jokes</a>`);
-    if (laf && laf.pdf) badges.push(`<a class="mtb-badge alt" href="${laf.pdf}">Laf Yomi PDF ↓</a>`);
+    if (ins) badges.push('<a class="mtb-badge" data-layer="insight" href="#mtb-insight-panel">💡 Daily Reader insight</a>');
+    if (laf) badges.push(`<a class="mtb-badge" data-layer="laf" href="#mtb-joke-1">😂 Laf Yomi — ${laf.jokes.length} jokes</a>`);
+    if (laf && laf.pdf) badges.push(`<a class="mtb-badge alt" data-layer="laf" href="${laf.pdf}">Laf Yomi PDF ↓</a>`);
     els.attach.innerHTML = badges.length ? `<div class="mtb-badges">${badges.join('')}</div>` : '';
     if (ins) {
       const panel = renderInsight(ins);
       panel.id = 'mtb-insight-panel';
+      panel.dataset.layer = 'insight';
       els.attach.appendChild(panel);
     }
     renderJokes(laf, ref);
@@ -580,7 +599,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
           sec.id = `mtb-seg-${n}`;
           sec.dataset.amud = amud;
           const chips = (bySeg[n] || []).map((ji) =>
-            `<a class="mtb-chip" href="#mtb-joke-${ji + 1}">😂 Joke ${ji + 1} is on this</a>`).join('');
+            `<a class="mtb-chip" data-layer="laf" href="#mtb-joke-${ji + 1}">😂 Joke ${ji + 1} is on this</a>`).join('');
           sec.innerHTML = `
             <div class="ref">${ref} ${amud} · segment ${n + 1}</div>
             ${chips ? `<div class="chips">${chips}</div>` : ''}
@@ -807,6 +826,29 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
   buildTractates();
   buildDafim();
   load();
+  // Layer toggles, remembered per browser.
+  const LAYER_KEY = 'mtl-hidden:v1';
+  const main = document.querySelector('main.mega-talmud');
+  let hidden = [];
+  try { hidden = JSON.parse(localStorage.getItem(LAYER_KEY) || '[]'); } catch {}
+  document.querySelectorAll('#mtl-layers button').forEach((b) => {
+    const layer = b.dataset.layer;
+    const set = (off) => {
+      main.classList.toggle(`hide-${layer}`, off);
+      b.setAttribute('aria-pressed', String(!off));
+    };
+    set(hidden.includes(layer));
+    b.addEventListener('click', () => {
+      const off = b.getAttribute('aria-pressed') === 'true';
+      // Never hide both languages at once.
+      if (off && (layer === 'he' || layer === 'en') && main.classList.contains(`hide-${layer === 'he' ? 'en' : 'he'}`)) return;
+      set(off);
+      hidden = off ? [...new Set([...hidden, layer])] : hidden.filter((x) => x !== layer);
+      try { localStorage.setItem(LAYER_KEY, JSON.stringify(hidden)); } catch {}
+      if (layer === 'flow' && !off) drawFlow();
+    });
+  });
+
   fl.masechet = cur.title; fl.seder = tract(cur.title).seder;
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(drawFlow);
 </script>
