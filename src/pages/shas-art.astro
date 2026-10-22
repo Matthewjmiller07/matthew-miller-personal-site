@@ -39,11 +39,11 @@ const posters = [...featured.map((f) => f.name), ...structure.map((t) => `Tracta
     <div class="grid">
       {featured.map((f) => (
         <article class="card">
-          <button class="flip" type="button" aria-label={`Show the ${f.name} print`}>
+          <button class="flip" type="button" data-slug={f.slug} data-name={f.name} data-he={f.he} aria-label={`View the ${f.name} mockups`}>
             <img class="room" src={`/images/shas-art/${f.slug}-room.jpg`} alt={`${f.name} poster, framed on a wall`} loading="lazy" />
             <img class="print" src={`/images/shas-art/${f.slug}-print.jpg`} alt={`${f.name} poster`} loading="lazy" />
           </button>
-          <div class="meta"><span class="he">{f.he}</span><span class="en">{f.name}</span><span class="sub">{f.sub}</span></div>
+          <div class="meta"><span class="he">{f.he}</span><span class="en">{f.name}</span><span class="sub">{f.sub} · <button class="see" type="button">See mockups</button></span></div>
           <a class="want" href="#interest" data-poster={f.name}>I'd buy this</a>
         </article>
       ))}
@@ -56,17 +56,28 @@ const posters = [...featured.map((f) => f.name), ...structure.map((t) => `Tracta
       <div class="grid">
         {s.masechtot.map((m) => (
           <article class="card">
-            <button class="flip" type="button" aria-label={`Show the ${m.name} print`}>
+            <button class="flip" type="button" data-slug={m.slug} data-name={`Tractate ${m.name}`} data-he={`מסכת ${m.he}`} aria-label={`View the Tractate ${m.name} mockups`}>
               <img class="room" src={`/images/shas-art/${m.slug}-room.jpg`} alt={`Tractate ${m.name} poster, framed on a wall`} loading="lazy" />
               <img class="print" src={`/images/shas-art/${m.slug}-print.jpg`} alt={`Tractate ${m.name} poster`} loading="lazy" />
             </button>
-            <div class="meta"><span class="he">{m.he}</span><span class="en">{m.name}</span><span class="sub">{m.dafim} dafim</span></div>
+            <div class="meta"><span class="he">{m.he}</span><span class="en">{m.name}</span><span class="sub">{m.dafim} dafim · <button class="see" type="button">See mockups</button></span></div>
             <a class="want" href="#interest" data-poster={`Tractate ${m.name}`}>I'd buy this</a>
           </article>
         ))}
       </div>
     </section>
   ))}
+
+  <dialog id="sa-view" class="sa-view" aria-label="Poster mockups">
+    <div class="bar"><span class="he" id="sv-he"></span><span class="en" id="sv-name"></span><button type="button" class="x" aria-label="Close">✕</button></div>
+    <div class="stage"><img id="sv-img" alt="" /></div>
+    <div class="thumbs">
+      <button type="button" data-v="room">On the wall</button>
+      <button type="button" data-v="framed">Framed</button>
+      <button type="button" data-v="print">The print</button>
+      <a class="want" href="#interest" id="sv-want">I'd buy this</a>
+    </div>
+  </dialog>
 
   <section id="interest" class="sa-form-wrap">
     <h2>I'd like one</h2>
@@ -119,7 +130,21 @@ const posters = [...featured.map((f) => f.name), ...structure.map((t) => `Tracta
   .sa .flip { position: relative; padding: 0; border: 1px solid var(--line); background: #f3f2ef; cursor: pointer; aspect-ratio: 1; overflow: hidden; }
   .sa .flip img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .3s; }
   .sa .flip .print { object-fit: contain; background: #f6efdf; opacity: 0; }
-  .sa .flip.on .print { opacity: 1; }
+  .sa .flip:hover .print { opacity: 1; }
+  .sa .see { background: none; border: 0; padding: 0; font: inherit; color: var(--gold); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .sa-view { width: min(1100px, 96vw); max-height: 94vh; padding: 0; border: 1px solid var(--line); background: #0c0b09; color: var(--text); }
+  .sa-view::backdrop { background: rgba(0,0,0,.82); }
+  .sa-view .bar { display: flex; align-items: baseline; gap: .7rem; padding: .7rem 1rem; border-bottom: 1px solid var(--line); }
+  .sa-view .bar .he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.3rem; }
+  .sa-view .bar .en { font-size: 1.2rem; }
+  .sa-view .x { margin-left: auto; background: none; border: 0; color: var(--text); font-size: 1.3rem; cursor: pointer; }
+  .sa-view .stage { display: grid; place-items: center; background: #f3f2ef; }
+  .sa-view .stage img { display: block; max-width: 100%; max-height: calc(94vh - 9rem); object-fit: contain; }
+  .sa-view .thumbs { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .8rem 1rem; }
+  .sa-view .thumbs button { font-family: 'Cormorant SC', Georgia, serif; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase;
+    background: none; color: var(--text); border: 1px solid var(--line); padding: .45rem .9rem; cursor: pointer; }
+  .sa-view .thumbs button.on { background: var(--gold); color: #0c0b09; border-color: var(--gold); }
+  .sa-view .thumbs .want { margin-left: auto; }
   .sa .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .6rem; }
   .sa .meta .he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.15rem; }
   .sa .meta .en { font-size: 1.1rem; }
@@ -146,7 +171,40 @@ const posters = [...featured.map((f) => f.name), ...structure.map((t) => `Tracta
     form.dataset.bound = '1';
     const status = form.querySelector('.status') as HTMLElement;
     const poster = form.elements.namedItem('poster') as HTMLSelectElement;
-    document.querySelectorAll<HTMLElement>('.flip').forEach((b) => b.addEventListener('click', () => b.classList.toggle('on')));
+    // Mockup viewer: the full room shot, the framed poster, and the print.
+    const view = document.getElementById('sa-view') as HTMLDialogElement;
+    const img = document.getElementById('sv-img') as HTMLImageElement;
+    const VIEWS = ['room', 'framed', 'print'];
+    const FILE: Record<string, string> = { room: 'mockup-room', framed: 'mockup-framed', print: 'print-lg' };
+    let cur = { slug: '', name: '', v: 'room' };
+    const show = (v: string) => {
+      cur.v = v;
+      img.src = `/images/shas-art/${cur.slug}-${FILE[v]}.jpg`;
+      img.alt = `${cur.name}: ${v === 'print' ? 'the print' : v === 'framed' ? 'framed poster' : 'framed on a wall'}`;
+      view.querySelectorAll<HTMLElement>('.thumbs button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+    };
+    const open = (b: HTMLElement) => {
+      cur = { slug: b.dataset.slug!, name: b.dataset.name!, v: 'room' };
+      (document.getElementById('sv-name') as HTMLElement).textContent = cur.name;
+      (document.getElementById('sv-he') as HTMLElement).textContent = b.dataset.he || '';
+      (document.getElementById('sv-want') as HTMLElement).dataset.poster = cur.name;
+      show('room');
+      view.showModal();
+    };
+    document.querySelectorAll<HTMLElement>('.card').forEach((card) => {
+      const b = card.querySelector<HTMLElement>('.flip')!;
+      b.addEventListener('click', () => open(b));
+      card.querySelector('.see')?.addEventListener('click', () => open(b));
+    });
+    view.querySelectorAll<HTMLElement>('.thumbs button').forEach((b) => b.addEventListener('click', () => show(b.dataset.v!)));
+    view.querySelector('.x')!.addEventListener('click', () => view.close());
+    view.addEventListener('click', (e) => { if (e.target === view) view.close(); });
+    view.addEventListener('keydown', (e) => {
+      const i = VIEWS.indexOf(cur.v);
+      if (e.key === 'ArrowRight') show(VIEWS[(i + 1) % 3]);
+      if (e.key === 'ArrowLeft') show(VIEWS[(i + 2) % 3]);
+    });
+    (document.getElementById('sv-want') as HTMLElement).addEventListener('click', () => { poster.value = cur.name; view.close(); });
     document.querySelectorAll<HTMLAnchorElement>('[data-poster]').forEach((a) => a.addEventListener('click', () => {
       if (a.dataset.poster) poster.value = a.dataset.poster;
     }));
