@@ -80,6 +80,28 @@ a.mtb-badge:hover { filter:brightness(1.12); }
 .mtb-seg .chips { margin-bottom:.55rem; display:flex; flex-wrap:wrap; gap:.4rem; }
 .mtb-chip { font-family:'Cormorant SC',Georgia,serif; font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; background:#8c6b2e; color:#fffdf6; padding:.3rem .65rem; text-decoration:none; }
 .mtb-chip:hover { filter:brightness(1.12); }
+/* ——— Sugya map (Jev) ——— */
+.mtb-map { margin:0 0 1.2rem; }
+.mtb-map-go { font-family:'Cormorant SC',Georgia,serif; font-size:.7rem; letter-spacing:.16em; text-transform:uppercase; color:#fffdf6; background:#8c6b2e; border:0; padding:.6rem 1.1rem; cursor:pointer; }
+.mtb-map-go:disabled { opacity:.6; cursor:progress; }
+.mtb-panel .mtb-map-note { font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; font-size:1rem; color:#5d5142; margin:.5rem 0 0; }
+.mtb-strip { display:flex; flex-wrap:wrap; gap:3px; margin:.2rem 0 .8rem; }
+.mtb-strip a { display:block; width:18px; height:26px; border-radius:2px; }
+.mtb-strip a.new { margin-left:10px; box-shadow:-5px 0 0 -3px #8c6b2e; }
+.mtb-strip a.unsure { opacity:.45; }
+.mtb-moves { display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.9rem; }
+.mtb-move { font-family:'Cormorant SC',Georgia,serif; font-size:.64rem; letter-spacing:.12em; text-transform:uppercase; background:#fffdf6; color:#33291a; border:1px solid rgba(140,107,46,.35); padding:.28rem .6rem; cursor:pointer; display:inline-flex; gap:.4rem; align-items:center; }
+.mtb-move i { width:10px; height:10px; border-radius:2px; display:inline-block; }
+.mtb-move.on { border-color:#261f14; box-shadow:0 0 0 1px #261f14; }
+.mtb-outline { background:#f3ecd9; border:1px solid rgba(140,107,46,.25); padding:.8rem 1.1rem; margin:0; list-style:none; }
+.mtb-panel .mtb-outline li { font-family:'Cormorant Garamond',Georgia,serif; font-size:1.02rem; line-height:1.45; color:#33291a; padding:.35rem 0; border-bottom:1px dashed rgba(140,107,46,.25); }
+.mtb-outline li:last-child { border-bottom:none; }
+.mtb-outline a { color:#7c5f24; text-decoration:none; font-family:'Cormorant SC',Georgia,serif; font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; margin-right:.5rem; }
+.mtb-panel .mtb-outline .flow { display:block; font-size:.9rem; color:#7a6435; }
+.mtb-seg[data-move] { border-left-color:var(--mv); }
+.mtb-panel .mtb-seg .mv { color:#fffdf6; background:var(--mv); padding:.1rem .45rem; margin-left:.5rem; letter-spacing:.12em; }
+.mtb-segs-filtered .mtb-seg:not(.hit) { opacity:.28; }
+.mtb-panel .mtb-sugya { font-family:'Cormorant SC',Georgia,serif; font-size:.7rem; letter-spacing:.24em; text-transform:uppercase; color:#7c5f24; margin:1.4rem 0 .2rem; padding-top:.6rem; border-top:2px solid rgba(140,107,46,.45); }
 .mtb-panel .mtb-foot { margin-top:1.6rem; font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; color:#5d5142; font-size:.98rem; }
 </style>
 
@@ -145,6 +167,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
         <div id="mtb-attach"></div>
         <div id="mtb-jokes"></div>
         <h3 class="mtb-dafhead" id="mtb-dafhead"></h3>
+        <div id="mtb-map" class="mtb-map"></div>
         <div id="mtb-segs"></div>
         <p class="mtb-foot">Talmud text: Sefaria (Steinsaltz), loaded live. Insights are the day's Daily Reader daf sections with their Jev scores; Laf Yomi jokes are mined verbatim from the day's shiur transcripts on alldaf.org, and their 🎧 links open the shiur audio at the moment the joke begins.</p>
       </div>
@@ -179,7 +202,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
   const $ = (id) => document.getElementById(id);
   const els = { tr: $('mtb-tractate'), daf: $('mtb-daf'), prev: $('mtb-prev'), next: $('mtb-next'),
                 amud: $('mtb-amud'), status: $('mtb-status'), attach: $('mtb-attach'),
-                jokes: $('mtb-jokes'), head: $('mtb-dafhead'), segs: $('mtb-segs') };
+                jokes: $('mtb-jokes'), head: $('mtb-dafhead'), segs: $('mtb-segs'), map: $('mtb-map') };
   const tract = (title) => STRUCTURE.find((t) => t.title === title);
   const refOf = (title, daf) => `${title} ${daf}`;
   const attachOf = (title, daf) => {
@@ -305,12 +328,130 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
     });
   }
 
+  // ——— Sugya map: Jev labels each segment's move and where a new sugya opens ———
+  // Keys match MOVE in /api/mega-talmud-jev.
+  const MOVES = {
+    mishnah: ['Mishnah', '#5b4a8a'], question: ['Question', '#b5452b'], answer: ['Answer', '#2f7a4f'],
+    verse: ['From a verse', '#2b6a9a'], baraita: ['Baraita', '#7a5a2b'], dispute: ['Dispute', '#a8327a'],
+    ruling: ['Ruling', '#1f5f5f'], story: ['Story', '#c27a12'], explanation: ['Explanation', '#7d7468'],
+  };
+  const MAP_API = '/api/mega-talmud-jev';
+  const MAP_BATCH = 12;
+  const MIN_SURE = 0.45;   // below this, the label is shown faded in the strip
+  const NEW_SUGYA = 0.5;
+  const mapKey = (ref) => `mtb-map:v1:${ref}`;
+  const plain = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
+  const escH = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function renderMapButton(ref) {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(mapKey(ref)) || 'null'); } catch {}
+    if (saved) { applyMap(saved); return; }
+    els.map.innerHTML = `<button type="button" class="mtb-map-go">🧭 Map the argument with Jev</button>
+      <p class="mtb-map-note">Labels every segment (question, answer, verse, baraita, dispute, ruling, story…) and marks where each sugya begins.</p>`;
+    const btn = els.map.querySelector('button');
+    btn.addEventListener('click', () => mapDaf(ref, btn));
+  }
+
+  async function mapDaf(ref, btn) {
+    const segs = [...els.segs.querySelectorAll('.mtb-seg')];
+    const payload = segs.map((s, i) => ({
+      previous: i ? plain(segs[i - 1].querySelector('.en')) : '',
+      hebrew: plain(s.querySelector('.he')), english: plain(s.querySelector('.en')),
+    }));
+    const results = new Array(payload.length);
+    let done = 0;
+    btn.disabled = true;
+    btn.textContent = `Mapping… 0/${payload.length}`;
+    const batches = [];
+    for (let i = 0; i < payload.length; i += MAP_BATCH) batches.push(i);
+    try {
+      let next = 0;
+      await Promise.all([0, 1, 2].map(async () => {
+        while (next < batches.length) {
+          const start = batches[next++];
+          const res = await fetch(MAP_API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ daf: ref, segments: payload.slice(start, start + MAP_BATCH) }) });
+          if (!res.ok) throw new Error(`Jev returned ${res.status}`);
+          const { results: r } = await res.json();
+          r.forEach((x, k) => { results[start + k] = x; });
+          done += r.length;
+          btn.textContent = `Mapping… ${done}/${payload.length}`;
+        }
+      }));
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = '🧭 Try mapping again';
+      return;
+    }
+    if (refOf(cur.title, cur.daf) !== ref) return;   // the reader moved on while Jev worked
+    const map = results.map((r) => (r && !r.error ? { move: r.move, conf: r.confidence, newSugya: r.newSugya } : null));
+    try { localStorage.setItem(mapKey(ref), JSON.stringify(map)); } catch {}
+    applyMap(map);
+  }
+
+  function applyMap(map) {
+    const segs = [...els.segs.querySelectorAll('.mtb-seg')];
+    if (map.length !== segs.length) { localStorage.removeItem(mapKey(refOf(cur.title, cur.daf))); renderMapButton(refOf(cur.title, cur.daf)); return; }
+    els.segs.querySelectorAll('.mtb-sugya').forEach((h) => h.remove());
+    const sugyot = [];
+    segs.forEach((s, i) => {
+      const m = map[i];
+      if (!m || !MOVES[m.move]) return;
+      const [label, color] = MOVES[m.move];
+      s.dataset.move = m.move;
+      s.style.setProperty('--mv', color);
+      const refEl = s.querySelector('.ref');
+      refEl.querySelector('.mv')?.remove();
+      refEl.insertAdjacentHTML('beforeend', `<span class="mv" title="Jev confidence ${m.conf.toFixed(2)}">${label}${m.conf < MIN_SURE ? '?' : ''}</span>`);
+      if (i === 0 || m.newSugya >= NEW_SUGYA) {
+        sugyot.push({ start: i, moves: [] });
+        s.insertAdjacentHTML('beforebegin', `<div class="mtb-sugya">Sugya ${sugyot.length}</div>`);
+      }
+      sugyot[sugyot.length - 1]?.moves.push(m.move);
+    });
+
+    const counts = {};
+    map.forEach((m) => { if (m && MOVES[m.move]) counts[m.move] = (counts[m.move] || 0) + 1; });
+    const strip = map.map((m, i) => {
+      if (!m || !MOVES[m.move]) return `<a href="#mtb-seg-${i}" style="background:#ddd"></a>`;
+      const [label, color] = MOVES[m.move];
+      const cls = [i > 0 && m.newSugya >= NEW_SUGYA ? 'new' : '', m.conf < MIN_SURE ? 'unsure' : ''].join(' ');
+      return `<a href="#mtb-seg-${i}" class="${cls}" style="background:${color}" title="Segment ${i + 1}: ${label}"></a>`;
+    }).join('');
+    const legend = Object.entries(MOVES).filter(([k]) => counts[k]).map(([k, [label, color]]) =>
+      `<button type="button" class="mtb-move" data-move="${k}"><i style="background:${color}"></i>${label} · ${counts[k]}</button>`).join('');
+    // Collapse runs ("question, question, answer" → "Question ×2 → Answer") for the outline.
+    const flow = (moves) => {
+      const runs = [];
+      for (const mv of moves) { const last = runs[runs.length - 1]; if (last && last[0] === mv) last[1]++; else runs.push([mv, 1]); }
+      return runs.map(([mv, n]) => MOVES[mv][0] + (n > 1 ? ` ×${n}` : '')).join(' → ');
+    };
+    const outline = sugyot.map((g, k) => {
+      const opener = plain(segs[g.start].querySelector('.en'));
+      return `<li><a href="#mtb-seg-${g.start}">Sugya ${k + 1}</a>${escH(opener.length > 140 ? opener.slice(0, 140).replace(/\s+\S*$/, '') + ' …' : opener)}
+        <span class="flow">${escH(flow(g.moves))}</span></li>`;
+    }).join('');
+
+    els.map.innerHTML = `<div class="mtb-strip">${strip}</div><div class="mtb-moves">${legend}</div>
+      <ol class="mtb-outline">${outline}</ol>
+      <p class="mtb-map-note">Mapped by Jev, one segment at a time. A “?” or faded block means Jev was unsure. Tap a move to pick out every segment that makes it.</p>`;
+    els.map.querySelectorAll('.mtb-move').forEach((b) => b.addEventListener('click', () => {
+      const on = !b.classList.contains('on');
+      els.map.querySelectorAll('.mtb-move').forEach((x) => x.classList.remove('on'));
+      els.segs.classList.toggle('mtb-segs-filtered', on);
+      segs.forEach((s) => s.classList.toggle('hit', on && s.dataset.move === b.dataset.move));
+      if (on) { b.classList.add('on'); els.segs.querySelector('.hit')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    }));
+  }
+
   async function load() {
     const { laf, ins } = attachOf(cur.title, cur.daf);
     const ref = refOf(cur.title, cur.daf);
     els.status.className = 'mtb-status';
     els.status.textContent = `Loading ${ref}…`;
-    els.attach.innerHTML = ''; els.jokes.innerHTML = ''; els.segs.innerHTML = '';
+    els.attach.innerHTML = ''; els.jokes.innerHTML = ''; els.segs.innerHTML = ''; els.map.innerHTML = '';
+    els.segs.classList.remove('mtb-segs-filtered');
     els.head.textContent = ''; els.amud.innerHTML = '';
     const badges = [];
     if (ins) badges.push('<a class="mtb-badge" href="#mtb-insight-panel">💡 Daily Reader insight</a>');
@@ -359,6 +500,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
       els.segs.appendChild(frag);
       els.head.textContent = `The daf — ${ref} (Sefaria)`;
       els.status.textContent = n ? '' : 'No text came back from Sefaria for this daf.';
+      if (n) renderMapButton(ref);
       for (const a of amudim) {
         const b = document.createElement('button');
         b.type = 'button';
