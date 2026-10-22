@@ -19,6 +19,7 @@ function column(g, entry, x, top, w, h, colors) {
     if (k && ns >= 0.5 && sh > 3) { g.fillStyle = PARCH; g.fillRect(x, top + k * sh - Math.min(4, sh * .12), w, Math.min(10, sh * .3)); }
   });
 }
+const firstDaf = (r) => { const k = Object.keys(r.dafim).map(Number); return k.length ? Math.min(...k) : 2; };
 window.draw = (spec) => {
   const W = 5400, H = 7200, u = W / 18;
   const c = document.getElementById('c'); c.width = W; c.height = H;
@@ -37,14 +38,15 @@ window.draw = (spec) => {
   const count = (e) => { dafim++; segs += e.s.length; sugyot += 1 + e.s.filter((x, k) => k && x[2] >= 0.5).length; };
   if (spec.kind === 'masechet') {
     const r = spec.rows[0];
-    const ds = Array.from({ length: r.lastDaf - 1 }, (_, i) => i + 2);
+    const first = firstDaf(r);   // Tamid's Gemara only begins at 25b
+    const ds = Array.from({ length: r.lastDaf - first + 1 }, (_, i) => i + first);
     const step = (W - 2 * m) / ds.length, gap = Math.max(3, step * 0.1), colW = step - gap, every = ds.length > 90 ? 10 : ds.length > 45 ? 5 : 1;
     ds.forEach((d, i) => {
       const x = m + i * step + gap / 2, e = r.dafim[d];
       if (e) { column(g, e, x, top, colW, bottom - top, spec.colors); count(e);
         if (e.a && e.a < e.s.length) { g.fillStyle = GOLD; g.fillRect(x - gap / 2, top + (e.a / e.s.length) * (bottom - top) - u * 0.008, gap, u * 0.016); } }
       else { g.fillStyle = 'rgba(154,118,50,.08)'; g.fillRect(x, top, colW, bottom - top); }
-      if (d === 2 || d % every === 0 || d === r.lastDaf) { g.fillStyle = INK; g.font = `500 ${u * 0.16}px "Cormorant Garamond"`; g.fillText(String(d), x + colW / 2, bottom + u * 0.3); }
+      if (d === first || d % every === 0 || d === r.lastDaf) { g.fillStyle = INK; g.font = `500 ${u * 0.16}px "Cormorant Garamond"`; g.fillText(String(d), x + colW / 2, bottom + u * 0.3); }
     });
   } else {
     // one band per masechet, labels on the left, sedarim separated
@@ -56,9 +58,9 @@ window.draw = (spec) => {
     let y = top;
     spec.rows.forEach((r, ri) => {
       if (ri && r.seder !== spec.rows[ri - 1].seder) y += sederGap;
-      const ds = r.lastDaf - 1, step = w / ds, gap = step >= 6 ? Math.min(3, step * .12) : 0;
-      for (let d = 2; d <= r.lastDaf; d++) {
-        const x = x0 + (d - 2) * step, e = r.dafim[d];
+      const first = firstDaf(r), ds = r.lastDaf - first + 1, step = w / ds, gap = step >= 6 ? Math.min(3, step * .12) : 0;
+      for (let d = first; d <= r.lastDaf; d++) {
+        const x = x0 + (d - first) * step, e = r.dafim[d];
         if (e) { column(g, e, x, y, Math.max(1, step - gap), rh, spec.colors); count(e); }
         else { g.fillStyle = 'rgba(154,118,50,.08)'; g.fillRect(x, y, Math.max(1, step - gap), rh); }
       }

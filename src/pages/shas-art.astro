@@ -1,0 +1,173 @@
+---
+import Layout from '../layouts/Layout.astro';
+import structure from '../data/talmud-structure.json';
+
+// One poster per masechet, per seder, and for all of Shas, drawn from the sugya maps
+// (scripts/talmud/posters). Images live in /images/shas-art/<slug>-{room,print}.jpg.
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const SEDER_HE = { 'Seder Zeraim': 'סדר זרעים', 'Seder Moed': 'סדר מועד', 'Seder Nashim': 'סדר נשים', 'Seder Nezikin': 'סדר נזיקין', 'Seder Kodashim': 'סדר קדשים', 'Seder Tahorot': 'סדר טהרות' };
+const sedarim = Object.keys(SEDER_HE).map((s) => ({
+  name: s, he: SEDER_HE[s], slug: slug(s),
+  masechtot: structure.filter((t) => t.seder === s).map((t) => ({ name: t.title, he: t.heTitle, slug: slug(t.title), dafim: t.lastDaf - 1 })),
+}));
+const featured = [{ name: 'All of Shas', he: 'תלמוד בבלי', slug: 'shas', sub: '37 masechtot, one weave' }, ...sedarim.map((s) => ({ name: s.name, he: s.he, slug: s.slug, sub: `${s.masechtot.length} masechtot` }))];
+const posters = [...featured.map((f) => f.name), ...structure.map((t) => `Tractate ${t.title}`)];
+---
+
+<Layout
+  title="Shas as Art"
+  description="Every masechet of the Talmud as a poster: each segment of the Gemara coloured by the move it makes in the argument, mapped by Jev. Framed, canvas or print, 18×24 in."
+  image="/images/shas-art/shas-room.jpg"
+>
+<main class="sa">
+  <header class="sa-head">
+    <div class="sa-intro">
+      <div class="kicker">From the Mega Talmud</div>
+      <h1>Shas <em>as art</em></h1>
+      <p class="lede">Every segment of the Gemara, coloured by the move it makes: question, answer, verse, baraita, dispute,
+        ruling, story. Each column is one daf, and the gaps are where a new sugya begins. Jev, a small AI model from
+        TypeSafe, read all 81,709 segments of Shas. Every masechet, every seder and the whole Talmud are available as an 18×24 in
+        print, canvas or framed poster.</p>
+      <p class="lede">See any of them live, daf by daf, in the <a href="/mega-talmud#flow">Mega Talmud</a>.</p>
+      <a class="btn" href="#interest" data-poster="">I'd like one →</a>
+    </div>
+    <video class="sa-trailer" src="/videos/sugya-map-trailer.mp4" poster="/videos/sugya-map-trailer-poster.jpg" controls playsinline preload="none"></video>
+  </header>
+
+  <section>
+    <h2>Shas and the six sedarim</h2>
+    <div class="grid">
+      {featured.map((f) => (
+        <article class="card">
+          <button class="flip" type="button" aria-label={`Show the ${f.name} print`}>
+            <img class="room" src={`/images/shas-art/${f.slug}-room.jpg`} alt={`${f.name} poster, framed on a wall`} loading="lazy" />
+            <img class="print" src={`/images/shas-art/${f.slug}-print.jpg`} alt={`${f.name} poster`} loading="lazy" />
+          </button>
+          <div class="meta"><span class="he">{f.he}</span><span class="en">{f.name}</span><span class="sub">{f.sub}</span></div>
+          <a class="want" href="#interest" data-poster={f.name}>I'd buy this</a>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  {sedarim.map((s) => (
+    <section>
+      <h2>{s.name} <span class="he">{s.he}</span></h2>
+      <div class="grid">
+        {s.masechtot.map((m) => (
+          <article class="card">
+            <button class="flip" type="button" aria-label={`Show the ${m.name} print`}>
+              <img class="room" src={`/images/shas-art/${m.slug}-room.jpg`} alt={`Tractate ${m.name} poster, framed on a wall`} loading="lazy" />
+              <img class="print" src={`/images/shas-art/${m.slug}-print.jpg`} alt={`Tractate ${m.name} poster`} loading="lazy" />
+            </button>
+            <div class="meta"><span class="he">{m.he}</span><span class="en">{m.name}</span><span class="sub">{m.dafim} dafim</span></div>
+            <a class="want" href="#interest" data-poster={`Tractate ${m.name}`}>I'd buy this</a>
+          </article>
+        ))}
+      </div>
+    </section>
+  ))}
+
+  <section id="interest" class="sa-form-wrap">
+    <h2>I'd like one</h2>
+    <p class="lede">These aren't in a shop yet. Tell me which one and how you'd want it, and I'll write back with a price.</p>
+    <form id="sa-form" class="sa-form" novalidate>
+      <label>Poster
+        <select name="poster">{posters.map((p) => <option value={p}>{p}</option>)}</select>
+      </label>
+      <div class="row">
+        <label>Format
+          <select name="format"><option>Framed poster</option><option>Stretched canvas</option><option>Matte print</option><option>Not sure yet</option></select>
+        </label>
+        <label>Colourway
+          <select name="colourway"><option>Illuminated</option><option>Classic</option><option>Ink &amp; parchment</option><option>Not sure yet</option></select>
+        </label>
+      </div>
+      <div class="row">
+        <label>Your name <input name="name" type="text" maxlength="120" autocomplete="name" /></label>
+        <label>Email <input name="email" type="email" maxlength="200" required autocomplete="email" /></label>
+      </div>
+      <label>Anything else? <textarea name="note" rows="3" maxlength="2000" placeholder="A gift, a size, a different masechet…"></textarea></label>
+      <input class="hp" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
+      <button type="submit">Send</button>
+      <p class="status" role="status"></p>
+    </form>
+  </section>
+</main>
+</Layout>
+
+<style is:global>
+  body:has(.sa) { background: #0c0b09 !important; }
+  .sa { --gold:#c9a257; --text:#e8d4aa; --muted:#a8977a; --line:rgba(201,162,87,.28);
+    max-width: 1180px; margin: 0 auto; padding: 3.5rem 16px 5rem; color: var(--text); font-family: 'Cormorant Garamond', Georgia, serif; }
+  .sa :is(h1, h2, p, span, label, div) { color: inherit; }
+  .sa-head { display: grid; gap: 2rem; align-items: start; }
+  @media (min-width: 860px) { .sa-head { grid-template-columns: 1fr 280px; } }
+  .sa .kicker { font-family: 'Cormorant SC', Georgia, serif; font-size: .75rem; letter-spacing: .32em; text-transform: uppercase; color: var(--gold); }
+  .sa h1 { font-weight: 300; font-size: clamp(2.6rem, 7vw, 4.4rem); line-height: 1; margin: .5rem 0 1rem; }
+  .sa h1 em { color: var(--gold); }
+  .sa .lede { font-size: 1.2rem; line-height: 1.6; color: var(--muted); max-width: 44rem; margin: 0 0 1rem; }
+  .sa .lede a { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+  .sa .btn, .sa .want { display: inline-block; font-family: 'Cormorant SC', Georgia, serif; letter-spacing: .16em; text-transform: uppercase; text-decoration: none; }
+  .sa .btn { background: var(--gold); color: #0c0b09; padding: .7rem 1.3rem; font-size: .8rem; font-weight: 600; margin-top: .4rem; }
+  .sa-trailer { width: 100%; max-width: 280px; aspect-ratio: 9/16; border: 1px solid var(--line); background: #000; justify-self: center; }
+  .sa h2 { font-family: 'Cormorant SC', Georgia, serif; font-weight: 500; font-size: .95rem; letter-spacing: .24em; text-transform: uppercase; color: var(--gold);
+    border-bottom: 1px solid var(--line); padding-bottom: .5rem; margin: 3.2rem 0 1.2rem; }
+  .sa h2 .he { font-family: 'Frank Ruhl Libre', serif; letter-spacing: 0; margin-left: .6rem; text-transform: none; }
+  .sa .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 1.4rem; }
+  .sa .card { display: flex; flex-direction: column; gap: .5rem; }
+  .sa .flip { position: relative; padding: 0; border: 1px solid var(--line); background: #f3f2ef; cursor: pointer; aspect-ratio: 1; overflow: hidden; }
+  .sa .flip img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .3s; }
+  .sa .flip .print { object-fit: contain; background: #f6efdf; opacity: 0; }
+  .sa .flip.on .print { opacity: 1; }
+  .sa .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .6rem; }
+  .sa .meta .he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.15rem; }
+  .sa .meta .en { font-size: 1.1rem; }
+  .sa .meta .sub { width: 100%; font-size: .95rem; color: var(--muted); }
+  .sa .want { align-self: flex-start; font-size: .72rem; color: var(--gold); border: 1px solid var(--gold); padding: .4rem .8rem; }
+  .sa .want:hover { background: var(--gold); color: #0c0b09; }
+  .sa-form-wrap { scroll-margin-top: 80px; }
+  .sa-form { display: grid; gap: 1rem; max-width: 640px; }
+  .sa-form .row { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .sa-form label { display: grid; gap: .35rem; font-family: 'Cormorant SC', Georgia, serif; font-size: .78rem; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+  .sa-form :is(input, select, textarea) { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.1rem; letter-spacing: 0; text-transform: none;
+    background: #faf5ea; color: #261f14; border: 1px solid var(--line); padding: .55rem .7rem; width: 100%; }
+  .sa-form button { justify-self: start; font-family: 'Cormorant SC', Georgia, serif; letter-spacing: .18em; text-transform: uppercase; font-size: .85rem; font-weight: 600;
+    background: var(--gold); color: #0c0b09; border: 0; padding: .75rem 1.6rem; cursor: pointer; }
+  .sa-form button:disabled { opacity: .6; cursor: progress; }
+  .sa-form .hp { position: absolute; left: -9999px; width: 1px; height: 1px; }
+  .sa-form .status { font-size: 1.1rem; min-height: 1.5em; }
+</style>
+
+<script>
+  function init() {
+    const form = document.getElementById('sa-form') as HTMLFormElement | null;
+    if (!form || form.dataset.bound) return;
+    form.dataset.bound = '1';
+    const status = form.querySelector('.status') as HTMLElement;
+    const poster = form.elements.namedItem('poster') as HTMLSelectElement;
+    document.querySelectorAll<HTMLElement>('.flip').forEach((b) => b.addEventListener('click', () => b.classList.toggle('on')));
+    document.querySelectorAll<HTMLAnchorElement>('[data-poster]').forEach((a) => a.addEventListener('click', () => {
+      if (a.dataset.poster) poster.value = a.dataset.poster;
+    }));
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form).entries());
+      const btn = form.querySelector('button') as HTMLButtonElement;
+      btn.disabled = true; status.textContent = 'Sending…';
+      try {
+        const r = await fetch('/api/art-interest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'Something went wrong.');
+        status.textContent = 'Thank you! I’ll write back soon.';
+        form.reset();
+      } catch (err: any) {
+        status.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+  document.addEventListener('astro:page-load', init);
+  init();
+</script>
