@@ -1,0 +1,301 @@
+---
+import Layout from '../layouts/Layout.astro';
+import torah from '../data/painted-torah/torah.json';
+import { OPTIONS, BOOKS } from '../lib/painted-torah.js';
+
+// Every chapter of the Torah, in order, with Jev's art direction and the FLUX painting.
+const order = BOOKS.flatMap(([b, n]) => Array.from({ length: n }, (_, i) => `${b} ${i + 1}`));
+const chapters = order.map((ref) => torah.chapters[ref]).filter((c) => c && c.img);
+const labels = Object.fromEntries(Object.entries(OPTIONS).map(([k, opts]) => [k, Object.fromEntries(Object.entries(opts).map(([o, [l]]) => [o, l]))]));
+const jevCost = ((torah.jevTokens || 0) * 0.042 / 1e6).toFixed(2);
+const fluxSecs = Math.round(chapters.reduce((s, c) => s + (c.secs || 0), 0));
+const nightCount = chapters.filter((c) => c.a.time === 'night').length;
+const divineCount = chapters.filter((c) => c.a.divine >= 0.5).length;
+const he = (t: string) => (t || '').replace(/\{[פס]\}/g, '').trim();
+// `pv` is set when the painting shows Jev's runner-up verse because the first kept turning into lettering.
+const client = chapters.map((c) => ({
+  ref: `${c.book} ${c.ch}`, book: c.book, ch: c.ch, v: c.pv?.v || c.v, jv: c.v, alt: !!c.pv,
+  en: c.pv?.en || c.en, he: he(c.pv?.he || c.he), n: c.n, img: c.img,
+  a: c.a, p: c.p, prompt: c.prompt, ver: c.enVersion,
+}));
+const og = chapters[0]?.img;
+---
+
+<Layout title="The Painted Torah" description="Every chapter of the Torah as a painting. Jev picks the moment and art-directs it; FLUX.2 [klein] 4B paints it." image={og} imageAlt="Genesis 1, painted">
+<main class="pt">
+  <header class="pt-head">
+    <div class="k">Jev × FLUX.2 [klein] 4B</div>
+    <h1>The Painted Torah</h1>
+    <p class="lede">
+      {chapters.length} chapters, {chapters.length} paintings. For each chapter, TypeSafe's Jev model reads every verse and chooses the one a painter
+      would show. It then decides, as typed answers with probabilities, where the scene is, the light, the weather, how to frame it,
+      the palette, the painting tradition, how tense it is and how vast. Code turns those answers into a prompt, and FLUX.2 [klein] 4B paints it.
+      No one writes a prompt by hand.
+    </p>
+    <div class="stats">
+      <span><b>{chapters.length}</b> paintings</span>
+      <span><b>${jevCost}</b> of Jev for all the art direction</span>
+      <span><b>{Math.round(fluxSecs / 60)} min</b> of FLUX painting</span>
+      <span><b>{nightCount}</b> night scenes</span>
+      <span><b>{divineCount}</b> with the divine shown as light or fire</span>
+    </div>
+  </header>
+
+  <section class="mural" aria-label="The whole Torah as one mural">
+    <div class="mural-strip" id="mural">
+      {client.map((c, i) => (
+        <a href={`#${c.ref.toLowerCase().replace(' ', '-')}`} data-i={i} title={`${c.ref}:${c.v}`} style={`background-image:url(${c.img.replace('.jpg', '-t.jpg')})`}></a>
+      ))}
+    </div>
+    <div class="mural-books">
+      {BOOKS.map(([b, n, he]) => <span style={`flex:${chapters.filter((c) => c.book === b).length}`}>{b} <i>{he}</i></span>)}
+    </div>
+  </section>
+
+  <section class="controls" aria-label="Filter the paintings">
+    <div class="seg" id="books">
+      <button class="on" data-book="">All</button>
+      {BOOKS.map(([b]) => <button data-book={b}>{b}</button>)}
+    </div>
+    <div class="sels">
+      {['setting', 'time', 'atmosphere', 'style', 'palette'].map((k) => (
+        <label>{k === 'time' ? 'Light' : k[0].toUpperCase() + k.slice(1)}
+          <select data-f={k}>
+            <option value="">Any</option>
+            {Object.entries(labels[k]).map(([o, l]) => <option value={o}>{l}</option>)}
+          </select>
+        </label>
+      ))}
+      <label>Order
+        <select id="sort">
+          <option value="">Torah order</option>
+          <option value="tension">Most tense first</option>
+          <option value="serene">Most serene first</option>
+          <option value="scale">Most vast first</option>
+          <option value="sure">Jev most sure of the moment</option>
+          <option value="torn">Jev most torn</option>
+        </select>
+      </label>
+      <label class="chk"><input type="checkbox" id="divine"> Divine presence shown</label>
+    </div>
+    <p class="count" id="count"></p>
+  </section>
+
+  <section class="grid" id="grid">
+    {client.map((c, i) => (
+      <a class="card" href={`#${c.ref.toLowerCase().replace(' ', '-')}`} data-i={i}>
+        <img src={c.img.replace('.jpg', '-t.jpg')} alt={`${c.ref}:${c.v}, painted`} loading="lazy" width="480" height="320" />
+        <div class="cap">
+          <b>{c.ref}:{c.v}</b>
+          <span>{labels.style[c.a.style]}</span>
+        </div>
+      </a>
+    ))}
+  </section>
+
+  <section class="how">
+    <h2>How it works</h2>
+    <ol>
+      <li><b>Jev reads the chapter.</b> The chapter's verses go in as state. One request asks eleven questions at once: a Choice over the chapter's own verses (which moment to paint), six Choices of art direction, two Scores (tension, scale) and a Noul (is the divine presence part of the scene). They all picture the same moment, so the answers fit together. That's about a hundredth of a cent per chapter.</li>
+      <li><b>Code writes the prompt.</b> Each answer maps to a fixed phrase. The chosen verse becomes a run of words with its speech dropped, because the image model copies whole sentences into the picture as captions. In the prompt only, God's names become "heaven", which the model reads as sky, so God is never painted as a person. Angels appear only where the verse has one. Every person is modestly robed.</li>
+      <li><b>FLUX.2 [klein] 4B paints it.</b> One 3:2 image per chapter, seeded by book and chapter so every painting can be reproduced. Tesseract then reads each painting, and any with stray lettering is repainted on a new seed. Open any painting to see Jev's probabilities, the runner-up verses and the exact prompt.</li>
+    </ol>
+    <p class="fine">English: {client[0]?.ver || 'Sefaria'}. Hebrew: Sefaria. Paintings are AI-generated and imagine one moment of each chapter. They are not illustrations of halacha or of the commentaries.</p>
+  </section>
+
+  <div class="ov" id="ov" hidden>
+    <div class="ov-in" role="dialog" aria-modal="true" aria-labelledby="ov-ref">
+      <button class="x" id="ov-x" aria-label="Close">✕</button>
+      <button class="nav prev" id="ov-prev" aria-label="Previous chapter">‹</button>
+      <button class="nav next" id="ov-next" aria-label="Next chapter">›</button>
+      <figure><img id="ov-img" alt="" /></figure>
+      <div class="ov-body">
+        <div class="k" id="ov-k"></div>
+        <h2 id="ov-ref"></h2>
+        <p class="he" id="ov-he" dir="rtl" lang="he"></p>
+        <p class="en" id="ov-en"></p>
+        <h3>Jev's art direction</h3>
+        <div class="dir" id="ov-dir"></div>
+        <details><summary>The prompt FLUX received</summary><p id="ov-prompt" class="prompt"></p></details>
+        <a id="ov-mb" class="mb">Read the chapter in the Mega Bible →</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" id="pt-data" set:html={JSON.stringify({ c: client, labels })}></script>
+</main>
+</Layout>
+
+<script>
+const { c: CH, labels: L } = JSON.parse(document.getElementById('pt-data')!.textContent!);
+const $ = (id: string) => document.getElementById(id)!;
+const esc = (s: any) => String(s ?? '').replace(/[&<>"]/g, (x) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[x]!));
+const slug = (ref: string) => ref.toLowerCase().replace(' ', '-');
+const TENSION = ['Serene', 'Gentle', 'Charged', 'Dramatic', 'Terrifying'];
+const SCALE = ['Intimate', 'Family', 'Tribal', 'National', 'Cosmic'];
+const NAMES: Record<string, string> = { setting: 'Setting', time: 'Light', atmosphere: 'Atmosphere', shot: 'Composition', palette: 'Palette', style: 'Tradition' };
+
+const cards = [...document.querySelectorAll<HTMLAnchorElement>('.card')];
+const slivers = [...document.querySelectorAll<HTMLAnchorElement>('#mural a')];
+let book = '';
+let visible: number[] = CH.map((_: any, i: number) => i);
+
+function apply() {
+  const f: Record<string, string> = {};
+  document.querySelectorAll<HTMLSelectElement>('select[data-f]').forEach((s) => { if (s.value) f[s.dataset.f!] = s.value; });
+  const divine = ($('divine') as HTMLInputElement).checked;
+  const sort = ($('sort') as HTMLSelectElement).value;
+  visible = CH.map((_: any, i: number) => i).filter((i: number) => {
+    const c = CH[i];
+    if (book && c.book !== book) return false;
+    if (divine && c.a.divine < 0.5) return false;
+    return Object.entries(f).every(([k, v]) => c.a[k] === v);
+  });
+  const key: Record<string, (c: any) => number> = {
+    tension: (c) => -c.a.tension, serene: (c) => c.a.tension, scale: (c) => -c.a.scale,
+    sure: (c) => -c.p.mc, torn: (c) => c.p.mc,
+  };
+  if (key[sort]) visible.sort((x, y) => key[sort](CH[x]) - key[sort](CH[y]));
+  const grid = $('grid');
+  const set = new Set(visible);
+  cards.forEach((el, i) => { el.hidden = !set.has(i); });
+  visible.forEach((i) => grid.appendChild(cards[i]));
+  slivers.forEach((el, i) => el.classList.toggle('dim', !set.has(i)));
+  $('count').textContent = visible.length === CH.length ? `All ${CH.length} chapters` : `${visible.length} of ${CH.length} chapters`;
+}
+
+document.querySelectorAll<HTMLButtonElement>('#books button').forEach((b) => b.addEventListener('click', () => {
+  book = b.dataset.book || '';
+  document.querySelectorAll('#books button').forEach((x) => x.classList.toggle('on', x === b));
+  apply();
+}));
+document.querySelectorAll('select, #divine').forEach((el) => el.addEventListener('change', apply));
+
+const bars = (probs: Record<string, number>, lab: (k: string) => string) => Object.entries(probs)
+  .map(([k, p]) => `<div class="bar"><span>${esc(lab(k))}</span><i style="width:${Math.round(p * 100)}%"></i><em>${Math.round(p * 100)}%</em></div>`).join('');
+
+let cur = -1;
+function open(i: number, push = true) {
+  const c = CH[i]; if (!c) return;
+  cur = i;
+  ($('ov-img') as HTMLImageElement).src = c.img;
+  ($('ov-img') as HTMLImageElement).alt = `${c.ref}:${c.v}, painted`;
+  $('ov-k').textContent = `${L.style[c.a.style]} · ${L.palette[c.a.palette]}`;
+  $('ov-ref').textContent = `${c.ref}:${c.v}`;
+  $('ov-he').textContent = c.he;
+  $('ov-en').textContent = c.en;
+  const moment = Object.entries(c.p.moment).map(([k, p]: [string, any]) => {
+    const n = +k.slice(1);
+    return `<div class="bar"><span>v. ${n}${n === c.v ? ' ★' : ''}</span><i style="width:${Math.round(p * 100)}%"></i><em>${Math.round(p * 100)}%</em></div>`;
+  }).join('') + (c.alt ? `<p class="sv">★ Painted from Jev's second choice: its first, v. ${c.jv}, kept turning into lettering.</p>` : '');
+  const rows = Object.keys(NAMES).map((k) => `<div class="row"><h4>${NAMES[k]}</h4>${bars(c.p[k], (o) => L[k][o] || o)}</div>`).join('');
+  const lvl = (words: string[], x: number) => words[Math.max(0, Math.min(words.length - 1, Math.round(x)))];
+  $('ov-dir').innerHTML = `
+    <div class="row"><h4>The moment <small>out of ${c.n} verses</small></h4>${moment}</div>
+    ${rows}
+    <div class="row"><h4>Tension</h4><div class="score"><i style="left:${(c.a.tension / 4) * 100}%"></i></div><p class="sv">${lvl(TENSION, c.a.tension)} · ${c.a.tension.toFixed(2)} of 4</p></div>
+    <div class="row"><h4>Scale</h4><div class="score"><i style="left:${(c.a.scale / 4) * 100}%"></i></div><p class="sv">${lvl(SCALE, c.a.scale)} · ${c.a.scale.toFixed(2)} of 4</p></div>
+    <div class="row"><h4>Divine presence shown</h4><div class="bar"><span>${c.a.divine >= 0.5 ? 'Yes' : 'No'}</span><i style="width:${Math.round(c.a.divine * 100)}%"></i><em>${Math.round(c.a.divine * 100)}%</em></div></div>`;
+  $('ov-prompt').textContent = c.prompt;
+  ($('ov-mb') as HTMLAnchorElement).href = `/mega-bible?book=${encodeURIComponent(c.book)}&chapter=${c.ch}`;
+  $('ov').hidden = false;
+  document.body.classList.add('pt-lock');
+  if (push) history.replaceState(null, '', `#${slug(c.ref)}`);
+}
+function close() {
+  $('ov').hidden = true; cur = -1;
+  document.body.classList.remove('pt-lock');
+  history.replaceState(null, '', location.pathname + location.search);
+}
+function step(d: number) {
+  const pos = visible.indexOf(cur);
+  const list = pos >= 0 ? visible : CH.map((_: any, i: number) => i);
+  const at = pos >= 0 ? pos : cur;
+  open(list[(at + d + list.length) % list.length]);
+}
+[...cards, ...slivers].forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); open(+el.dataset.i!); }));
+$('ov-x').addEventListener('click', close);
+$('ov-prev').addEventListener('click', () => step(-1));
+$('ov-next').addEventListener('click', () => step(1));
+$('ov').addEventListener('click', (e) => { if (e.target === $('ov')) close(); });
+document.addEventListener('keydown', (e) => {
+  if ($('ov').hidden) return;
+  if (e.key === 'Escape') close();
+  if (e.key === 'ArrowRight') step(1);
+  if (e.key === 'ArrowLeft') step(-1);
+});
+apply();
+const fromHash = CH.findIndex((c: any) => `#${slug(c.ref)}` === location.hash);
+if (fromHash >= 0) open(fromHash, false);
+</script>
+
+<style is:global>
+  body:has(.pt) { background: #0c0b09 !important; }
+  body.pt-lock { overflow: hidden; }
+  .pt { --gold: #c9a257; --text: #e8d4aa; --muted: #a8977a; --line: rgba(201,162,87,.3);
+    max-width: 1280px; margin: 0 auto; padding: 3rem 16px 5rem; color: var(--text); font-family: 'Cormorant Garamond', Georgia, serif; }
+  .pt :is(h1, h2, h3, h4, p, div, label) { color: inherit; }
+  .pt .k { font-family: 'Cormorant SC', Georgia, serif; font-size: .74rem; letter-spacing: .28em; text-transform: uppercase; color: var(--gold); }
+  .pt h1 { font-weight: 300; font-size: clamp(2.8rem, 8vw, 5rem); margin: .3rem 0 .8rem; line-height: 1; }
+  .pt .lede { font-size: 1.22rem; line-height: 1.55; color: var(--muted); max-width: 52rem; }
+  .pt .stats { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin: 1.2rem 0 2rem; font-size: 1.05rem; color: var(--muted); }
+  .pt .stats b { color: var(--gold); font-weight: 600; }
+  .mural-strip { display: flex; height: clamp(110px, 18vw, 200px); border: 1px solid var(--line); overflow: hidden; }
+  .mural-strip a { flex: 1 1 0; min-width: 0; background-size: cover; background-position: center; transition: flex-grow .25s, opacity .25s, filter .25s; }
+  .mural-strip a:hover { flex-grow: 9; }
+  .mural-strip a.dim { opacity: .15; filter: grayscale(1); }
+  .mural-books { display: flex; font-family: 'Cormorant SC', Georgia, serif; font-size: .78rem; letter-spacing: .12em; color: var(--muted); margin: .35rem 0 2rem; }
+  .mural-books span { border-left: 1px solid var(--line); padding-left: .4rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .mural-books i { font-style: normal; font-family: 'Frank Ruhl Libre', serif; opacity: .8; }
+  .controls { position: sticky; top: 0; z-index: 5; background: rgba(12,11,9,.94); backdrop-filter: blur(6px); padding: .8rem 0; border-bottom: 1px solid var(--line); margin-bottom: 1.4rem; }
+  .seg { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .6rem; }
+  .seg button { background: none; border: 1px solid var(--line); color: var(--text); font: inherit; font-size: 1rem; padding: .2rem .8rem; cursor: pointer; }
+  .seg button.on { background: var(--gold); color: #0c0b09; border-color: var(--gold); }
+  .sels { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; }
+  .sels label { display: flex; flex-direction: column; font-family: 'Cormorant SC', Georgia, serif; font-size: .7rem; letter-spacing: .14em; color: var(--gold); }
+  .sels select { background: #16140f; color: var(--text); border: 1px solid var(--line); font: 1rem 'Cormorant Garamond', Georgia, serif; padding: .15rem .3rem; margin-top: .15rem; }
+  .sels .chk { flex-direction: row; align-items: center; gap: .35rem; font-size: .8rem; }
+  .count { margin: .5rem 0 0; font-size: .95rem; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 1rem; }
+  .card { display: block; text-decoration: none; color: var(--text); border: 1px solid var(--line); background: #110f0b; }
+  .card[hidden] { display: none; }
+  .card img { width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; display: block; }
+  .card .cap { display: flex; justify-content: space-between; gap: .5rem; padding: .4rem .55rem; font-size: 1rem; }
+  .card .cap span { color: var(--muted); font-size: .9rem; text-align: right; }
+  .card:hover { border-color: var(--gold); }
+  .how { margin-top: 3rem; max-width: 52rem; }
+  .how h2 { font-weight: 400; font-size: 2rem; }
+  .how li { font-size: 1.12rem; line-height: 1.55; color: var(--muted); margin-bottom: .7rem; }
+  .how li b { color: var(--text); }
+  .how .fine { font-size: .95rem; color: var(--muted); }
+  .ov { position: fixed; inset: 0; z-index: 1000; background: rgba(5,4,3,.985); overflow-y: auto; padding: 2rem 16px; }
+  .ov[hidden] { display: none; }
+  .ov-in { position: relative; max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 1.6rem; align-items: start; }
+  .ov figure { margin: 0; }
+  .ov figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); }
+  .ov h2 { font-weight: 400; font-size: 2.1rem; margin: .2rem 0 .4rem; }
+  .ov .he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.3rem; line-height: 1.7; margin: .2rem 0 .6rem; }
+  .ov .en { font-size: 1.15rem; line-height: 1.5; color: var(--muted); }
+  .ov h3 { font-family: 'Cormorant SC', Georgia, serif; font-weight: 500; letter-spacing: .16em; font-size: .9rem; color: var(--gold); margin: 1.2rem 0 .4rem; }
+  .dir .row { margin-bottom: .7rem; }
+  .dir h4 { margin: 0 0 .2rem; font-size: .95rem; font-weight: 600; }
+  .dir h4 small { font-weight: 400; color: var(--muted); }
+  .bar { display: grid; grid-template-columns: 7.5rem 1fr 2.6rem; align-items: center; gap: .4rem; font-size: .92rem; margin: .1rem 0; }
+  .bar i { display: block; height: .5rem; background: var(--gold); min-width: 2px; }
+  .bar em { font-style: normal; color: var(--muted); text-align: right; }
+  .score { position: relative; height: .5rem; background: linear-gradient(90deg, #3c5a4a, #c9a257, #8a2a1f); }
+  .score i { position: absolute; top: -.3rem; width: 2px; height: 1.1rem; background: #fff; transform: translateX(-1px); }
+  .sv { margin: .2rem 0 0; font-size: .9rem; color: var(--muted); }
+  .ov details { margin-top: .8rem; font-size: .95rem; }
+  .ov summary { cursor: pointer; color: var(--gold); }
+  .prompt { font-family: ui-monospace, Menlo, monospace; font-size: .78rem; line-height: 1.5; color: var(--muted); white-space: pre-wrap; }
+  .mb { display: inline-block; margin-top: 1rem; color: var(--gold); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .ov .x, .ov .nav { position: fixed; background: rgba(12,11,9,.8); border: 1px solid var(--line); color: var(--text); font-size: 1.6rem; width: 2.6rem; height: 2.6rem; cursor: pointer; z-index: 2; line-height: 1; }
+  .ov .x { top: .8rem; right: .8rem; font-size: 1.1rem; }
+  .ov .prev { left: .6rem; top: 50%; }
+  .ov .next { right: .6rem; top: 50%; }
+  @media (max-width: 820px) {
+    .ov-in { grid-template-columns: 1fr; }
+    .ov .prev, .ov .next { top: auto; bottom: .8rem; }
+  }
+</style>
