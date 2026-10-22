@@ -2,6 +2,8 @@
 import Layout from '../layouts/Layout.astro';
 import structure from '../data/talmud-structure.json';
 import insights from '../data/talmud-insights.json';
+import { PALETTES, MOVE_ORDER, MOVE_LABELS, COLOR_KEY, MIN_SURE, NEW_SUGYA } from '../lib/sugya.js';
+const SUGYA = { PALETTES, MOVE_ORDER, MOVE_LABELS, COLOR_KEY, MIN_SURE, NEW_SUGYA };
 
 const lafMods = import.meta.glob('../data/laf-yomi/*.json', { eager: true });
 const lafByDaf = {};
@@ -101,6 +103,21 @@ a.mtb-badge:hover { filter:brightness(1.12); }
 .mtb-seg[data-move] { border-left-color:var(--mv); }
 .mtb-panel .mtb-seg .mv { color:#fffdf6; background:var(--mv); padding:.1rem .45rem; margin-left:.5rem; letter-spacing:.12em; }
 .mtb-segs-filtered .mtb-seg:not(.hit) { opacity:.28; }
+.mtb-colors { background:#fffdf6; border:1px solid rgba(140,107,46,.35); padding:.8rem 1rem; margin:-.4rem 0 1rem; }
+.mtb-colors label { font-family:'Cormorant Garamond',Georgia,serif; font-size:.98rem; color:#33291a; display:inline-flex; gap:.4rem; align-items:center; }
+.mtb-colors .pal select { font-family:'Cormorant Garamond',Georgia,serif; font-size:1rem; background:#faf5ea; color:#261f14; border:1px solid rgba(140,107,46,.4); padding:.2rem .4rem; }
+.mtb-colors .picks { display:flex; flex-wrap:wrap; gap:.5rem 1rem; margin:.7rem 0; }
+.mtb-colors input[type=color] { width:28px; height:22px; padding:0; border:1px solid rgba(140,107,46,.4); background:none; cursor:pointer; }
+.mtb-colors .reset { cursor:pointer; }
+/* ——— Flow of the argument (masechet / seder / Shas) ——— */
+.mtf-scope { display:flex; border:1px solid rgba(201,162,87,.4); }
+.mtf-scope button { font-family:'Cormorant SC',Georgia,serif; font-size:.68rem; letter-spacing:.16em; text-transform:uppercase; color:#c9a257; background:transparent; border:0; padding:.55rem .9rem; cursor:pointer; }
+.mtf-scope button.on { background:#c9a257; color:#0c0b09; }
+.mtf-frame { position:relative; border:1px solid rgba(201,162,87,.45); background:#faf5ea; }
+.mtf-frame canvas { display:block; width:100%; cursor:pointer; }
+.mtf-tip { position:absolute; pointer-events:none; background:#261f14; color:#faf5ea; font-family:'Cormorant Garamond',Georgia,serif; font-size:.95rem; padding:.3rem .6rem; white-space:nowrap; transform:translate(-50%, -130%); }
+.mtf-stats { display:flex; flex-wrap:wrap; gap:.4rem .9rem; margin-top:.8rem; font-family:'Cormorant Garamond',Georgia,serif; font-size:1rem; color:#8a7a5a; }
+.mtf-stats i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:.35rem; }
 .mtb-panel .mtb-sugya { font-family:'Cormorant SC',Georgia,serif; font-size:.7rem; letter-spacing:.24em; text-transform:uppercase; color:#7c5f24; margin:1.4rem 0 .2rem; padding-top:.6rem; border-top:2px solid rgba(140,107,46,.45); }
 .mtb-panel .mtb-foot { margin-top:1.6rem; font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; color:#5d5142; font-size:.98rem; }
 </style>
@@ -173,6 +190,29 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
       </div>
     </div>
 
+    <div class="section" id="flow">
+      <h2>The flow of the argument</h2>
+      <p class="mtb-intro">Every segment of the Gemara, coloured by the move it makes: question, answer, verse, baraita, dispute, ruling, story. Each column is one daf, read top to bottom, and the gaps are where a new sugya begins. Jev mapped each segment once, ahead of time. Masechtot that haven't been mapped yet show as blank parchment. Tap any column to open that daf above.</p>
+      <div class="mtb-controls mtf-controls">
+        <div class="mtf-scope" role="tablist">
+          <button type="button" data-scope="masechet" class="on">Masechet</button>
+          <button type="button" data-scope="seder">Seder</button>
+          <button type="button" data-scope="shas">Shas</button>
+        </div>
+        <label>Showing
+          <select id="mtf-pick" aria-label="Masechet or seder"></select>
+        </label>
+        <div class="mtb-nav">
+          <button type="button" id="mtf-png">Download PNG ↓</button>
+        </div>
+      </div>
+      <div class="mtf-frame">
+        <canvas id="mtf-canvas"></canvas>
+        <div class="mtf-tip" id="mtf-tip" hidden></div>
+      </div>
+      <div class="mtf-stats" id="mtf-stats"></div>
+    </div>
+
     <div class="section">
       <h2>Laf Yomi — the daily laugh sheet</h2>
       <div class="card">
@@ -196,7 +236,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
   </div>
 </main>
 
-<script define:vars={{ ATTACH, STRUCTURE: structure }}>
+<script define:vars={{ ATTACH, STRUCTURE: structure, SUGYA }}>
   const DQ = /\u05D0[\u0591-\u05C7]*\u05DC[\u0591-\u05C7]*\u05D4[\u0591-\u05C7]*\u05D9[\u0591-\u05C7]*\u05DD/g;
   const dq = (t) => (typeof t === 'string' ? t.replace(DQ, (m) => m.replace('\u05D4', '\u05E7')) : t);
   const $ = (id) => document.getElementById(id);
@@ -329,23 +369,44 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
   }
 
   // ——— Sugya map: Jev labels each segment's move and where a new sugya opens ———
-  // Keys match MOVE in /api/mega-talmud-jev.
-  const MOVES = {
-    mishnah: ['Mishnah', '#5b4a8a'], question: ['Question', '#b5452b'], answer: ['Answer', '#2f7a4f'],
-    verse: ['From a verse', '#2b6a9a'], baraita: ['Baraita', '#7a5a2b'], dispute: ['Dispute', '#a8327a'],
-    ruling: ['Ruling', '#1f5f5f'], story: ['Story', '#c27a12'], explanation: ['Explanation', '#7d7468'],
-  };
+  // Questions, labels and palettes live in src/lib/sugya.js. Colours: a palette plus per-move
+  // overrides, saved in localStorage and shared with /mega-talmud/flow.
+  const { PALETTES, MOVE_ORDER, MOVE_LABELS, COLOR_KEY, MIN_SURE, NEW_SUGYA } = SUGYA;
+  const MOVES = {};
+  let colorPrefs = { palette: 'classic', custom: {} };
+  try { colorPrefs = { ...colorPrefs, ...JSON.parse(localStorage.getItem(COLOR_KEY) || '{}') }; } catch {}
+  function setColors() {
+    const pal = (PALETTES[colorPrefs.palette] || PALETTES.classic).colors;
+    MOVE_ORDER.forEach((k, i) => { MOVES[k] = [MOVE_LABELS[k], colorPrefs.custom[k] || pal[i]]; });
+  }
+  setColors();
   const MAP_API = '/api/mega-talmud-jev';
   const MAP_BATCH = 12;
-  const MIN_SURE = 0.45;   // below this, the label is shown faded in the strip
-  const NEW_SUGYA = 0.5;
   const mapKey = (ref) => `mtb-map:v1:${ref}`;
   const plain = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
   const escH = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const tslug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-  function renderMapButton(ref) {
+  // Masechtot mapped ahead of time by scripts/talmud/sugya-map.mjs.
+  let mappedIndex = null;
+  const masechetMaps = {};
+  async function premapped(title, daf) {
+    try {
+      mappedIndex = mappedIndex || await fetch('/data/sugya-maps/index.json').then((r) => (r.ok ? r.json() : []));
+      if (!mappedIndex.some((m) => m.tractate === title)) return null;
+      const slug = tslug(title);
+      masechetMaps[slug] = masechetMaps[slug] || fetch(`/data/sugya-maps/${slug}.json`).then((r) => r.json());
+      const d = (await masechetMaps[slug]).dafim[daf];
+      return d ? d.s.map(([move, conf, newSugya]) => ({ move, conf, newSugya })) : null;
+    } catch { return null; }
+  }
+
+  let currentMap = null;
+  async function renderMapButton(ref) {
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(mapKey(ref)) || 'null'); } catch {}
+    saved = (await premapped(cur.title, cur.daf)) || saved;
+    if (refOf(cur.title, cur.daf) !== ref) return;
     if (saved) { applyMap(saved); return; }
     els.map.innerHTML = `<button type="button" class="mtb-map-go">🧭 Map the argument with Jev</button>
       <p class="mtb-map-note">Labels every segment (question, answer, verse, baraita, dispute, ruling, story…) and marks where each sugya begins.</p>`;
@@ -392,7 +453,15 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
 
   function applyMap(map) {
     const segs = [...els.segs.querySelectorAll('.mtb-seg')];
-    if (map.length !== segs.length) { localStorage.removeItem(mapKey(refOf(cur.title, cur.daf))); renderMapButton(refOf(cur.title, cur.daf)); return; }
+    if (map.length !== segs.length) {
+      // Sefaria re-segmented this daf since it was mapped: fall back to mapping it live.
+      localStorage.removeItem(mapKey(refOf(cur.title, cur.daf)));
+      els.map.innerHTML = `<button type="button" class="mtb-map-go">🧭 Map the argument with Jev</button>`;
+      const btn = els.map.querySelector('button');
+      btn.addEventListener('click', () => mapDaf(refOf(cur.title, cur.daf), btn));
+      return;
+    }
+    currentMap = map;
     els.segs.querySelectorAll('.mtb-sugya').forEach((h) => h.remove());
     const sugyot = [];
     segs.forEach((s, i) => {
@@ -433,9 +502,33 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
         <span class="flow">${escH(flow(g.moves))}</span></li>`;
     }).join('');
 
+    const flowLink = mappedIndex?.some((m) => m.tractate === cur.title)
+      ? `<a class="mtb-badge" href="#flow">🎨 The flow of all of ${escH(cur.title)}</a>` : '';
+    const palOpts = Object.entries(PALETTES).map(([k, p]) =>
+      `<option value="${k}"${k === colorPrefs.palette ? ' selected' : ''}>${escH(p.name)}</option>`).join('');
+    const pickers = MOVE_ORDER.map((k) =>
+      `<label><input type="color" data-move="${k}" value="${MOVES[k][1]}">${MOVE_LABELS[k]}</label>`).join('');
     els.map.innerHTML = `<div class="mtb-strip">${strip}</div><div class="mtb-moves">${legend}</div>
+      <div class="mtb-badges">${flowLink}<button type="button" class="mtb-badge alt mtb-colors-toggle">🎨 Colours</button></div>
+      <div class="mtb-colors" hidden>
+        <label class="pal">Palette <select>${palOpts}</select></label>
+        <div class="picks">${pickers}</div>
+        <button type="button" class="mtb-badge alt reset">Reset to palette</button>
+      </div>
       <ol class="mtb-outline">${outline}</ol>
       <p class="mtb-map-note">Mapped by Jev, one segment at a time. A “?” or faded block means Jev was unsure. Tap a move to pick out every segment that makes it.</p>`;
+    const panel = els.map.querySelector('.mtb-colors');
+    const saveColors = () => {
+      try { localStorage.setItem(COLOR_KEY, JSON.stringify(colorPrefs)); } catch {}
+      setColors(); applyMap(currentMap); drawFlow();
+      els.map.querySelector('.mtb-colors').hidden = false;
+    };
+    els.map.querySelector('.mtb-colors-toggle').addEventListener('click', () => { panel.hidden = !panel.hidden; });
+    panel.querySelector('select').addEventListener('change', (e) => { colorPrefs = { palette: e.target.value, custom: {} }; saveColors(); });
+    panel.querySelectorAll('input[type=color]').forEach((inp) => inp.addEventListener('change', () => {
+      colorPrefs.custom[inp.dataset.move] = inp.value; saveColors();
+    }));
+    panel.querySelector('.reset').addEventListener('click', () => { colorPrefs.custom = {}; saveColors(); });
     els.map.querySelectorAll('.mtb-move').forEach((b) => b.addEventListener('click', () => {
       const on = !b.classList.contains('on');
       els.map.querySelectorAll('.mtb-move').forEach((x) => x.classList.remove('on'));
@@ -469,7 +562,9 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Sefaria returned ${res.status}`);
       const d = await res.json();
-      const heParts = d.he || [], enParts = d.text || [];
+      // A daf that is only amud a (the last daf of some masechtot) comes back flat, not per amud.
+      const flat = typeof (d.he || [])[0] === 'string';
+      const heParts = flat ? [d.he] : d.he || [], enParts = flat ? [d.text || []] : d.text || [];
       const bySeg = segJokesMap(laf);
       const frag = document.createDocumentFragment();
       const amudim = new Set();
@@ -520,7 +615,191 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
     history.replaceState(null, '', `${location.pathname}?${p.toString()}`);
   }
 
-  els.tr.addEventListener('change', () => { cur.title = els.tr.value; cur.daf = 2; buildDafim(); load(); });
+  // ——— The flow of the argument: masechet / seder / Shas, drawn from the premapped data ———
+  const fl = { canvas: $('mtf-canvas'), tip: $('mtf-tip'), pick: $('mtf-pick'), stats: $('mtf-stats'),
+               scope: 'masechet', masechet: null, seder: null, hits: [] };
+  const SEDARIM = [...new Set(STRUCTURE.map((t) => t.seder))];
+  const PARCH = '#faf5ea', INK = '#261f14', GOLD = '#8c6b2e';
+
+  async function loadMasechet(title) {
+    mappedIndex = mappedIndex || await fetch('/data/sugya-maps/index.json').then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    if (!mappedIndex.some((m) => m.tractate === title)) return null;
+    const slug = tslug(title);
+    masechetMaps[slug] = masechetMaps[slug] || fetch(`/data/sugya-maps/${slug}.json`).then((r) => r.json());
+    return masechetMaps[slug];
+  }
+
+  function buildFlowPicker() {
+    const mapped = new Set((mappedIndex || []).map((m) => m.tractate));
+    if (fl.scope === 'masechet') {
+      fl.pick.innerHTML = STRUCTURE.map((t) => `<option value="${escH(t.title)}">${escH(t.title)}${mapped.has(t.title) ? ' ✓' : ''}</option>`).join('');
+      fl.pick.value = fl.masechet;
+    } else if (fl.scope === 'seder') {
+      fl.pick.innerHTML = SEDARIM.map((s) => `<option value="${escH(s)}">${escH(s)}</option>`).join('');
+      fl.pick.value = fl.seder;
+    }
+    fl.pick.parentElement.style.display = fl.scope === 'shas' ? 'none' : '';
+  }
+
+  let flowToken = 0;
+  async function drawFlow() {
+    if (!fl.canvas) return;
+    const token = ++flowToken;
+    const tractates = fl.scope === 'masechet' ? [tract(fl.masechet)]
+      : fl.scope === 'seder' ? STRUCTURE.filter((t) => t.seder === fl.seder) : STRUCTURE;
+    const maps = await Promise.all(tractates.map((t) => loadMasechet(t.title)));
+    if (token !== flowToken) return;
+    buildFlowPicker();
+
+    const W = fl.canvas.parentElement.clientWidth;
+    const big = fl.scope === 'masechet';
+    const labelW = big ? 0 : Math.min(150, W * 0.22);
+    const pad = 18, headH = 64, footH = 64;
+    const rowH = big ? 420 : fl.scope === 'seder' ? Math.max(48, Math.min(140, 760 / tractates.length)) : 26;
+    const rowGap = big ? 0 : fl.scope === 'seder' ? 10 : 4;
+    const sederGap = fl.scope === 'shas' ? 18 : 0;
+    const dafLabelH = big ? 22 : 0;
+    let H = headH + footH + dafLabelH;
+    tractates.forEach((t, i) => { H += rowH + rowGap + (i && t.seder !== tractates[i - 1].seder ? sederGap : 0); });
+
+    const scale = Math.max(2, window.devicePixelRatio || 1);
+    const c = fl.canvas;
+    c.width = Math.round(W * scale); c.height = Math.round(H * scale);
+    c.style.height = `${H}px`;
+    const g = c.getContext('2d');
+    g.setTransform(scale, 0, 0, scale, 0, 0);
+    g.fillStyle = PARCH; g.fillRect(0, 0, W, H);
+
+    // Title
+    const title = big ? `${tractates[0].title}` : fl.scope === 'seder' ? fl.seder : 'Talmud Bavli';
+    const heTitle = big ? tractates[0].heTitle : fl.scope === 'seder' ? '' : 'תלמוד בבלי';
+    g.fillStyle = INK; g.textBaseline = 'alphabetic';
+    g.font = '400 26px "Cormorant Garamond", Georgia, serif';
+    g.fillText(title, pad, 36);
+    if (heTitle) { g.font = '500 24px "Frank Ruhl Libre", serif'; g.textAlign = 'right'; g.fillText(heTitle, W - pad, 36); g.textAlign = 'left'; }
+    g.font = '600 10px "Cormorant SC", Georgia, serif'; g.fillStyle = GOLD;
+    g.fillText('THE FLOW OF THE ARGUMENT · MAPPED BY JEV', pad, 54);
+
+    const counts = {};
+    let segTotal = 0, dafMapped = 0, dafTotal = 0, sugyot = 0;
+    fl.hits = [];
+    let y = headH;
+    tractates.forEach((t, ti) => {
+      if (ti && t.seder !== tractates[ti - 1].seder) y += sederGap;
+      const data = maps[ti];
+      const x0 = pad + labelW, x1 = W - pad;
+      const dafim = t.lastDaf - 1;
+      const step = (x1 - x0) / dafim;
+      const colGap = step >= 4 ? 1 : 0;
+      if (labelW) {
+        g.fillStyle = data ? INK : 'rgba(38,31,20,.4)';
+        g.font = `${fl.scope === 'shas' ? 13 : 15}px "Cormorant Garamond", Georgia, serif`;
+        g.fillText(t.title, pad, y + Math.min(rowH / 2 + 5, 20));
+        if (fl.scope === 'seder' && rowH >= 40) { g.font = '15px "Frank Ruhl Libre", serif'; g.fillText(t.heTitle || '', pad, y + 38); }
+      }
+      for (let d = 2; d <= t.lastDaf; d++) {
+        dafTotal++;
+        const x = x0 + (d - 2) * step, w = Math.max(0.6, step - colGap);
+        const entry = data && data.dafim[d];
+        if (!entry) { g.fillStyle = 'rgba(140,107,46,.09)'; g.fillRect(x, y, w, rowH); continue; }
+        dafMapped++;
+        const n = entry.s.length, sh = rowH / n;
+        entry.s.forEach(([move, conf, ns], k) => {
+          const mv = MOVES[move];
+          counts[move] = (counts[move] || 0) + 1; segTotal++;
+          g.globalAlpha = conf < MIN_SURE ? 0.45 : 1;
+          g.fillStyle = mv ? mv[1] : '#ccc';
+          g.fillRect(x, y + k * sh, w, sh + 0.3);
+          g.globalAlpha = 1;
+          if (ns >= NEW_SUGYA) {
+            sugyot++;
+            if (k && sh >= 2) { g.fillStyle = PARCH; g.fillRect(x, y + k * sh, w, Math.min(3, Math.max(1, sh * 0.3))); }
+          }
+        });
+        if (big && entry.a && entry.a < n) {   // amud break: a small gold tick on the left edge
+          g.fillStyle = GOLD; g.fillRect(x - 1, y + entry.a * sh - 0.5, 3, 1.5);
+        }
+      }
+      if (big) {
+        g.fillStyle = 'rgba(38,31,20,.6)'; g.font = '11px "Cormorant Garamond", Georgia, serif'; g.textAlign = 'center';
+        for (let d = 2; d <= t.lastDaf; d++) if (d === 2 || d % 5 === 0 || d === t.lastDaf) g.fillText(String(d), x0 + (d - 1.5) * step, y + rowH + 15);
+        g.textAlign = 'left';
+      }
+      fl.hits.push({ t, data, x0, step, y, h: rowH });
+      y += rowH + rowGap;
+    });
+
+    // Legend
+    y += dafLabelH + 18;
+    g.font = '13px "Cormorant Garamond", Georgia, serif';
+    let lx = pad;
+    MOVE_ORDER.forEach((k) => {
+      const label = `${MOVES[k][0]}`;
+      const wTxt = g.measureText(label).width;
+      if (lx + 16 + wTxt > W - pad) { lx = pad; y += 18; }
+      g.fillStyle = MOVES[k][1]; g.fillRect(lx, y - 9, 10, 10);
+      g.fillStyle = INK; g.fillText(label, lx + 14, y);
+      lx += 14 + wTxt + 16;
+    });
+
+    const pct = (k) => (segTotal ? Math.round((100 * (counts[k] || 0)) / segTotal) : 0);
+    fl.stats.innerHTML = `<span>${dafMapped} of ${dafTotal} dafim mapped · ${segTotal.toLocaleString()} segments · ${sugyot.toLocaleString()} sugyot</span>`
+      + (segTotal ? MOVE_ORDER.filter((k) => counts[k]).map((k) => `<span><i style="background:${MOVES[k][1]}"></i>${MOVE_LABELS[k]} ${pct(k)}%</span>`).join('') : '');
+  }
+
+  function flowHit(ev) {
+    const r = fl.canvas.getBoundingClientRect();
+    const x = ev.clientX - r.left, y = ev.clientY - r.top;
+    const row = fl.hits.find((h) => y >= h.y && y < h.y + h.h && x >= h.x0);
+    if (!row) return null;
+    const daf = 2 + Math.floor((x - row.x0) / row.step);
+    if (daf > row.t.lastDaf) return null;
+    const entry = row.data && row.data.dafim[daf];
+    const seg = entry ? Math.min(entry.s.length - 1, Math.floor(((y - row.y) / row.h) * entry.s.length)) : null;
+    return { t: row.t, daf, entry, seg, x, y };
+  }
+  if (fl.canvas) {
+    fl.canvas.addEventListener('mousemove', (ev) => {
+      const h = flowHit(ev);
+      if (!h) { fl.tip.hidden = true; return; }
+      const what = h.entry ? `segment ${h.seg + 1} · ${MOVES[h.entry.s[h.seg][0]]?.[0] || ''}` : 'not mapped yet';
+      fl.tip.textContent = `${h.t.title} ${h.daf} · ${what}`;
+      fl.tip.style.left = `${h.x}px`; fl.tip.style.top = `${h.y}px`; fl.tip.hidden = false;
+    });
+    fl.canvas.addEventListener('mouseleave', () => { fl.tip.hidden = true; });
+    fl.canvas.addEventListener('click', async (ev) => {
+      const h = flowHit(ev);
+      if (!h) return;
+      cur.title = h.t.title; cur.daf = h.daf; els.tr.value = cur.title;
+      buildDafim();
+      $('browser').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      await load();
+      if (h.seg != null) setTimeout(() => $(`mtb-seg-${h.seg}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+    });
+    document.querySelectorAll('.mtf-scope button').forEach((b) => b.addEventListener('click', () => {
+      fl.scope = b.dataset.scope;
+      document.querySelectorAll('.mtf-scope button').forEach((x) => x.classList.toggle('on', x === b));
+      drawFlow();
+    }));
+    fl.pick.addEventListener('change', () => {
+      if (fl.scope === 'masechet') fl.masechet = fl.pick.value; else fl.seder = fl.pick.value;
+      drawFlow();
+    });
+    $('mtf-png').addEventListener('click', () => {
+      const a = document.createElement('a');
+      const name = fl.scope === 'masechet' ? fl.masechet : fl.scope === 'seder' ? fl.seder : 'Shas';
+      a.download = `sugya-flow-${tslug(name)}.png`;
+      a.href = fl.canvas.toDataURL('image/png');
+      a.click();
+    });
+    let rz;
+    window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(drawFlow, 200); });
+  }
+
+  els.tr.addEventListener('change', () => {
+    cur.title = els.tr.value; cur.daf = 2; buildDafim(); load();
+    if (fl.scope === 'masechet') { fl.masechet = cur.title; drawFlow(); }
+  });
   els.daf.addEventListener('change', () => { cur.daf = parseInt(els.daf.value, 10); buildDafim(); load(); });
   els.prev.addEventListener('click', () => { if (cur.daf > 2) { cur.daf--; buildDafim(); load(); } });
   els.next.addEventListener('click', () => { if (cur.daf < tract(cur.title).lastDaf) { cur.daf++; buildDafim(); load(); } });
@@ -528,5 +807,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
   buildTractates();
   buildDafim();
   load();
+  fl.masechet = cur.title; fl.seder = tract(cur.title).seder;
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(drawFlow);
 </script>
 </Layout>
