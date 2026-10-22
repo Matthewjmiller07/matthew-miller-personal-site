@@ -10,7 +10,7 @@ create table if not exists public.siddur_commentary (
   prayer_names  text[] not null default '{}',      -- lowercase leaf names this note follows across services & nusachim, e.g. {'aleinu','alenu'}
   anchor_text   text,                              -- the Hebrew words being commented on
   kind          text not null default 'commentary'
-                check (kind in ('commentary','halacha','history','kavanah','source','language','personal','music')),
+                check (kind in ('commentary','deepdive','halacha','history','kavanah','source','language','personal','music')),
   title         text,
   body          text not null,
   author        text,

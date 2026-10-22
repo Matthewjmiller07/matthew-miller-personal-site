@@ -24,7 +24,7 @@ const PASSCODE = env('MEGA_SIDDUR_PASSWORD') || env('MEGA_BIBLE_PASSWORD');
 const TABLE = 'siddur_commentary';
 const COLUMNS =
   'id,ref,segment,prayer_names,anchor_text,kind,title,body,author,source,source_pages,source_url,tags,sort_order,published,created_at,updated_at';
-const KINDS = new Set(['commentary', 'halacha', 'history', 'kavanah', 'source', 'language', 'personal', 'music']);
+const KINDS = new Set(['commentary', 'deepdive', 'halacha', 'history', 'kavanah', 'source', 'language', 'personal', 'music']);
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
