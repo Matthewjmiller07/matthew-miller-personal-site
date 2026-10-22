@@ -1,0 +1,548 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const examples = [
+  'Why do we read Megillat Esther on Purim?',
+  'The binding of Isaac',
+  'Honoring parents',
+  'Lashon hara',
+  'Why do we light Shabbat candles?',
+];
+---
+
+<Layout
+  title="Source Finder"
+  description="Ask a question and find the sources that matter across the whole library: the parsha, the megillot, Mishnah, Talmud, Midrash, halakhah, the siddur and the site's own shiurim, sorted and sequenced by TypeSafe's Jev model."
+>
+  <main class="sf">
+    <section class="sf-intro">
+      <div class="sf-kicker">Jewish Studies · AI</div>
+      <h1>Source Finder</h1>
+      <p class="sf-lede">
+        Ask a question. <a href="https://typesafe.ai" target="_blank" rel="noopener">TypeSafe</a>'s Jev model decides
+        which shelves of the library hold the key sources, from the parsha and the megillot to Mishnah, Talmud and the
+        siddur. It then judges every passage it finds and lays them out shelf by shelf, or as a study path from the root
+        text to the debate. Each source opens in the site's
+        <a href="/mega">Mega readers</a>.
+      </p>
+
+      <form id="sf-form" class="sf-form" autocomplete="off">
+        <input id="sf-q" name="q" type="text" maxlength="300" required
+          placeholder="e.g. Why do we read Megillat Esther on Purim?" aria-label="Question or topic" />
+        <button id="sf-go" type="submit">Find sources</button>
+      </form>
+      <div class="sf-examples">
+        <span>Try:</span>
+        {examples.map((e) => <button type="button" class="sf-chip" data-q={e}>{e}</button>)}
+      </div>
+
+      <ol id="sf-progress" class="sf-progress" hidden></ol>
+      <p id="sf-error" class="sf-error" hidden></p>
+    </section>
+
+    <section id="sf-results" class="sf-results" hidden>
+      <div class="sf-bar">
+        <div class="sf-tabs" role="tablist">
+          <button type="button" class="sf-tab on" data-view="shelves">By shelf</button>
+          <button type="button" class="sf-tab" data-view="path">Study path</button>
+        </div>
+        <label class="sf-level">Reader:
+          <select id="sf-level">
+            <option value="9">Any level</option>
+            <option value="1.6">Some background</option>
+            <option value="0.8">Newcomer</option>
+          </select>
+        </label>
+      </div>
+      <div id="sf-map" class="sf-map"></div>
+      <div id="sf-body"></div>
+      <details id="sf-debug" class="sf-debug"></details>
+    </section>
+
+    <section class="sf-how">
+      <h2>How it works</h2>
+      <ol>
+        <li><strong>Route.</strong> In a single call, Jev answers one yes/no question per shelf ("would someone studying
+          this find a key primary source here?") and one per fuzzy Sefaria topic match ("is this a main subject of the
+          question?"). Shelves are searched in order of that probability; unlikely shelves are skipped.</li>
+        <li><strong>Gather.</strong> Each chosen shelf is searched on Sefaria with a category filter, the on-subject
+          topics contribute their curated sources, and the site's own <a href="/search">semantic search</a> adds
+          matching moments from shiurim.</li>
+        <li><strong>Judge.</strong> For every passage, Jev rates <em>relevance</em>, whether it is <em>substantive</em>,
+          what <em>role</em> it plays (the root text, a story, its meaning, the practical law, or a debate) and how much
+          <em>background</em> a reader needs.</li>
+        <li><strong>Arrange in code.</strong> Rank = relevance/3 × (0.4 + 0.6 × substantive). Each shelf keeps its best
+          four, at most two per book. The study path orders the same sources root → story → meaning → law → debate, and
+          the reader filter hides passages above your level without asking Jev again.</li>
+      </ol>
+      <p>Jev only judges; every word of every source comes from Sefaria or from the site's transcripts.</p>
+    </section>
+  </main>
+</Layout>
+
+<style is:global>
+  .sf { --accent:#7a3b1d; --soft:#b7794f; --line:rgba(127,127,127,.25); --card:rgba(127,127,127,.06);
+    max-width: 1040px; margin: 0 auto; padding: 48px 16px 80px; }
+  .sf-intro { max-width: 760px; }
+  .sf-kicker { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--soft); font-weight: 600; }
+  .sf h1 { font-size: clamp(32px, 6vw, 48px); font-weight: 800; line-height: 1.1; margin: 8px 0 14px; }
+  .sf-lede { font-size: 18px; line-height: 1.6; opacity: .85; }
+  .sf-lede a, .sf-how a { text-decoration: underline; text-underline-offset: 3px; }
+  .sf-form { display: flex; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
+  .sf-form input { flex: 1 1 320px; min-width: 0; font-size: 17px; padding: 14px 16px; border-radius: 10px;
+    border: 1px solid rgba(127,127,127,.35); background: rgba(127,127,127,.08); color: inherit; }
+  .sf-form input:focus { outline: 2px solid var(--soft); outline-offset: 1px; }
+  .sf-form button { font-size: 16px; font-weight: 600; padding: 14px 22px; border-radius: 10px;
+    background: var(--accent); color: #fff; border: 0; cursor: pointer; }
+  .sf-form button:disabled { opacity: .55; cursor: progress; }
+  .sf-examples { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; font-size: 14px; }
+  .sf-examples span { opacity: .65; }
+  .sf-chip { padding: 5px 12px; border-radius: 99px; border: 1px solid rgba(127,127,127,.35); background: transparent;
+    color: inherit; cursor: pointer; font-size: 13.5px; }
+  .sf-chip:hover { border-color: var(--soft); }
+  .sf-progress { margin: 24px 0 0; padding: 0; list-style: none; font-size: 15px; }
+  .sf-progress li { padding: 3px 0; opacity: .6; }
+  .sf-progress li.active { opacity: 1; }
+  .sf-progress li.done { opacity: .8; }
+  .sf-progress li::before { content: '○'; display: inline-block; width: 1.4em; }
+  .sf-progress li.active::before { content: '◐'; color: var(--soft); }
+  .sf-progress li.done::before { content: '●'; color: var(--soft); }
+  .sf-error { margin-top: 18px; color: #e5484d; }
+
+  .sf-results { margin-top: 40px; }
+  .sf-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  .sf-tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .sf-tab { padding: 8px 16px; background: transparent; border: 0; color: inherit; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .sf-tab.on { background: var(--accent); color: #fff; }
+  .sf-level { font-size: 14px; display: flex; gap: 8px; align-items: center; }
+  .sf-level select { font-size: 14px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: inherit; }
+
+  .sf-map { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 8px; }
+  .sf-map a, .sf-map span { font-size: 12.5px; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); text-decoration: none; }
+  .sf-map a { border-color: var(--soft); }
+  .sf-map span { opacity: .5; }
+  .sf-map b { font-variant-numeric: tabular-nums; margin-left: 4px; font-weight: 600; opacity: .7; }
+
+  .sf-shelf { margin-top: 32px; scroll-margin-top: 80px; }
+  .sf-shelf h2 { font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--soft); font-weight: 700;
+    padding-bottom: 6px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; }
+  .sf-shelf h2 small { letter-spacing: 0; text-transform: none; font-weight: 500; opacity: .7; }
+  .sf-empty { opacity: .6; font-size: 15px; padding: 12px 0; }
+  .sf-step { margin: 28px 0 4px; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--soft); font-weight: 700; }
+  .sf-step span { letter-spacing: 0; text-transform: none; font-weight: 500; opacity: .7; margin-left: 8px; }
+
+  .sf-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-top: 12px; }
+  .sf-card-h { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+  .sf-ref { font-weight: 700; text-decoration: none; border-bottom: 1px solid var(--line); }
+  .sf-ref:hover { border-color: var(--soft); }
+  .sf-heref { font-family: 'Frank Ruhl Libre', serif; opacity: .65; }
+  .sf-tags { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+  .sf-tag { font-size: 11.5px; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--line); white-space: nowrap; }
+  .sf-tag.role { border-color: var(--soft); }
+  .sf-snip { margin-top: 10px; font-size: 15.5px; line-height: 1.6; opacity: .9; }
+  .sf-he { font-family: 'Frank Ruhl Libre', serif; font-size: 19px; line-height: 1.7; text-align: right; margin-top: 10px; }
+  .sf-card details summary { cursor: pointer; font-size: 13px; opacity: .7; margin-top: 8px; }
+  .sf-open { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .sf-open a { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 8px; border: 1px solid var(--soft); text-decoration: none; }
+  .sf-open a:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .sf-debug { margin-top: 40px; font-size: 13px; opacity: .8; }
+  .sf-debug summary { cursor: pointer; }
+  .sf-debug .scroll { overflow-x: auto; }
+  .sf-debug table { border-collapse: collapse; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .sf-debug td, .sf-debug th { text-align: left; padding: 3px 12px 3px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .sf-debug tr.in td { font-weight: 600; }
+
+  .sf-how { max-width: 760px; margin-top: 64px; font-size: 16px; line-height: 1.65; opacity: .9; }
+  .sf-how h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+  .sf-how ol { list-style: decimal; padding-left: 1.3em; display: grid; gap: 10px; margin-bottom: 16px; }
+</style>
+
+<script>
+  import parshaRanges from '../data/parsha-ranges.json';
+  import talmudStructure from '../data/talmud-structure.json';
+
+  const SEFARIA = 'https://www.sefaria.org';
+  const API = '/api/source-finder-jev';
+
+  // Keys match SHELVES in /api/source-finder-jev. `path` is Sefaria's category filter.
+  const SHELVES: Record<string, { name: string; path: string }> = {
+    torah: { name: 'Torah · the parsha', path: 'Tanakh/Torah' },
+    prophets: { name: "Nevi'im · haftarot", path: 'Tanakh/Prophets' },
+    writings: { name: 'Ketuvim · megillot', path: 'Tanakh/Writings' },
+    mishnah: { name: 'Mishnah', path: 'Mishnah' },
+    talmud: { name: 'Talmud', path: 'Talmud/Bavli' },
+    midrash: { name: 'Midrash', path: 'Midrash' },
+    halakhah: { name: 'Halakhah', path: 'Halakhah' },
+    liturgy: { name: 'Siddur & machzor', path: 'Liturgy' },
+  };
+  const SHIURIM = { name: 'From the shiurim on this site' };
+  const MIN_SHELF = 0.4;     // Jev probability a shelf holds a key source
+  const MAX_SHELVES = 5;
+  const PER_SHELF_SEARCH = 8;
+  const TOPIC_REFS = 24;
+  const PER_SHELF_KEEP = 4;
+  const PER_BOOK = 2;
+  const MIN_RELEVANCE = 1.5;
+  const MIN_SUBSTANTIVE = 0.5;
+  const JUDGE_BATCH = 12;
+  const STATE_CHARS = 1500;
+  const SNIP_CHARS = 420;
+  const FULL_CHARS = 3000;
+
+  const ROLES: Record<string, { label: string; step: string; blurb: string }> = {
+    origin: { label: 'Root text', step: '1 · Where it comes from', blurb: 'the verse, mitzvah or practice itself' },
+    story: { label: 'Story', step: '2 · Stories', blurb: 'what people did' },
+    meaning: { label: 'Meaning', step: '3 · What it means', blurb: 'reasons and values' },
+    law: { label: 'Practice', step: '4 · How it is done', blurb: 'the practical law' },
+    debate: { label: 'Debate', step: '5 · The argument', blurb: 'where the sages disagree' },
+  };
+  const MEGILLOT = new Set(['Esther', 'Ruth', 'Song of Songs', 'Lamentations', 'Ecclesiastes']);
+  const TALMUD = new Set(talmudStructure.map((t: { title: string }) => t.title));
+  const STOPWORDS = new Set(`a an and are as at be but by can do does did for from how i if in into is it its me my
+    of on or should so than that the their them then there these they this to was we what when where which who whom
+    why will with would you your about one ones must may might according judaism jewish torah say says said read`.split(/\s+/));
+
+  type Cand = {
+    ref: string; origin: string; shelf?: string; heRef?: string; categories?: string[]; book?: string;
+    he?: string; en?: string; url?: string; clock?: string;
+    relevance?: number; substantive?: number; role?: string; level?: number; rank?: number;
+  };
+
+  // ------------------------------------------------------------ helpers
+  const esc = (s = '') => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+  const clip = (s = '', n: number) => (s.length <= n ? s : s.slice(0, n).replace(/\s+\S*$/, '') + ' …');
+  const para = (s = '') => s.split('\n').filter((l) => l.trim()).map(esc).join('<br>');
+  const sefariaUrl = (ref: string) => `${SEFARIA}/${encodeURIComponent(ref.replace(/ /g, '_')).replace(/%3A/g, ':').replace(/%2C/g, ',')}`;
+  const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const flatten = (t: unknown): string[] => (typeof t === 'string' ? [t] : Array.isArray(t) ? t.flatMap(flatten) : []);
+  const words = (s = '') => s.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+
+  function searchTerms(q: string) {
+    if (/[֐-׿]/.test(q)) return q;
+    const kept = (q.match(/[A-Za-z'\-]+/g) || []).filter((w) => !STOPWORDS.has(w.toLowerCase()));
+    return kept.join(' ') || q;
+  }
+  function cleanText(t: string) {
+    const d = document.createElement('div');
+    d.innerHTML = t.replace(/<sup class="footnote-marker">[\s\S]*?<\/sup>/g, '')
+      .replace(/<i class="footnote">[\s\S]*?<\/i>/g, '').replace(/<br\s*\/?>/g, '\n');
+    return (d.textContent || '').replace(/[ \t]+/g, ' ').trim();
+  }
+  async function getJSON(url: string, init?: RequestInit) {
+    const r = await fetch(url, init);
+    if (!r.ok) throw new Error(`${r.status} ${url}`);
+    return r.json();
+  }
+  async function pool<T, R>(items: T[], n: number, fn: (x: T) => Promise<R>): Promise<R[]> {
+    const out: R[] = new Array(items.length);
+    let i = 0;
+    await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
+      while (i < items.length) { const k = i++; out[k] = await fn(items[k]); }
+    }));
+    return out;
+  }
+  const jev = (body: object) => getJSON(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  function shelfOf(categories: string[] = []) {
+    const path = categories.join('/');
+    for (const [k, s] of Object.entries(SHELVES)) if (path === s.path || path.startsWith(s.path + '/')) return k;
+    return null;
+  }
+
+  // ---------------------------------------------------------- retrieval
+  async function topicNames(q: string) {
+    const terms = searchTerms(q).split(/\s+/).filter(Boolean);
+    const probes = [...new Set([q, terms.join(' '), ...terms.slice(0, -1).map((w, i) => `${w} ${terms[i + 1]}`), ...terms])];
+    const found = new Map<string, string>();
+    const lists = await Promise.all(probes.map((s) =>
+      getJSON(`${SEFARIA}/api/name/${encodeURIComponent(s)}?limit=8`).then((d) => d.completion_objects || []).catch(() => [])));
+    for (const objs of lists) for (const o of objs) if (o.type === 'Topic' && !found.has(o.key)) found.set(o.key, o.title);
+    return found;
+  }
+
+  async function topicRefs(slugs: string[]): Promise<Cand[]> {
+    const per = Math.ceil(TOPIC_REFS / Math.max(slugs.length, 1));
+    const lists = await Promise.all(slugs.map(async (s) => {
+      const d = await getJSON(`${SEFARIA}/api/topics/${s}?with_refs=1`).catch(() => ({ refs: [] }));
+      const w = (x: any) => [Math.max(0, ...Object.values<number>(x.order?.curatedPrimacy || {})), x.order?.pr || 0];
+      return (d.refs || []).filter((x: any) => !x.is_sheet)
+        .sort((a: any, b: any) => { const [a1, a2] = w(a), [b1, b2] = w(b); return b1 - a1 || b2 - a2; })
+        .slice(0, per).map((x: any) => ({ ref: x.ref, origin: `topic:${s}` }));
+    }));
+    return lists.flat();
+  }
+
+  async function searchOnce(query: string, shelf: string): Promise<string[]> {
+    const body = { query, type: 'text', field: 'naive_lemmatizer', slop: 10, size: PER_SHELF_SEARCH * 3,
+      source_proj: true, filters: [SHELVES[shelf].path], filter_fields: ['path'] };
+    try {
+      // No JSON content-type: Sefaria's preflight rejects it, and a simple request needs no preflight.
+      const d = await getJSON(`${SEFARIA}/api/search-wrapper`, { method: 'POST', body: JSON.stringify(body) });
+      return [...new Set<string>(d.hits.hits.map((h: any) => h._source.ref))];
+    } catch { return []; }
+  }
+
+  // All terms together, then adjacent pairs, interleaved so the strictest match leads.
+  async function searchShelf(q: string, shelf: string): Promise<Cand[]> {
+    const t = searchTerms(q).split(/\s+/).filter(Boolean);
+    const queries = [...new Set([t.join(' '), ...t.slice(0, -1).map((w, i) => `${w} ${t[i + 1]}`)])].slice(0, 3);
+    const lists = await Promise.all(queries.map((s) => searchOnce(s, shelf)));
+    const refs = new Set<string>();
+    for (let i = 0; i < Math.max(0, ...lists.map((l) => l.length)) && refs.size < PER_SHELF_SEARCH; i++)
+      for (const l of lists) if (l[i] && refs.size < PER_SHELF_SEARCH) refs.add(l[i]);
+    return [...refs].map((ref) => ({ ref, origin: 'search', shelf }));
+  }
+
+  async function shiurim(q: string): Promise<Cand[]> {
+    try {
+      const d = await getJSON(`/api/search?q=${encodeURIComponent(q)}`);
+      return (d.results || []).slice(0, 6).map((r: any) => ({
+        ref: r.title + (r.clock ? ` · ${r.clock}` : ''), origin: 'site search', shelf: 'shiurim',
+        en: r.text, url: r.url, clock: r.clock, categories: [r.type === 'shiur' ? 'Shiur transcript' : 'Writing on this site'],
+      }));
+    } catch { return []; }
+  }
+
+  async function fetchText(c: Cand) {
+    if (c.shelf === 'shiurim') return true;
+    try {
+      const d = await getJSON(`${SEFARIA}/api/v3/texts/${encodeURIComponent(c.ref)}?version=hebrew&version=english&return_format=text_only`);
+      for (const v of d.versions || []) {
+        const joined = flatten(v.text).filter(Boolean).map(cleanText).join('\n');
+        if (v.language === 'he' && !c.he) c.he = joined;
+        if (v.language === 'en' && !c.en) c.en = joined;
+      }
+      Object.assign(c, { heRef: d.heRef || '', categories: d.categories || [], book: d.indexTitle || d.book || '' });
+      c.shelf = c.shelf || shelfOf(c.categories) || undefined;
+      const stub = !c.categories!.includes('Tanakh') && Math.max(words(c.he), words(c.en)) < 12;
+      return !!c.shelf && !!(c.he || c.en) && !stub;
+    } catch { return false; }
+  }
+
+  // ------------------------------------------------------------ judging
+  async function judge(q: string, cands: Cand[]) {
+    const batches: Cand[][] = [];
+    for (let i = 0; i < cands.length; i += JUDGE_BATCH) batches.push(cands.slice(i, i + JUDGE_BATCH));
+    await pool(batches, 3, async (batch) => {
+      const sources = batch.map((c) => ({ citation: c.ref, genre: (c.categories || []).join(' > '),
+        hebrew: clip(c.he, STATE_CHARS), english: clip(c.en, STATE_CHARS) }));
+      const { results } = await jev({ action: 'judge', question: q, sources });
+      batch.forEach((c, i) => {
+        const r = results[i];
+        if (!r || r.error) return;
+        Object.assign(c, { relevance: r.relevance, substantive: r.substantive, role: r.role, level: r.level });
+        c.rank = (r.relevance / 3) * (0.4 + 0.6 * r.substantive);  // relevance dominates; thin passages sink
+      });
+    });
+  }
+
+  function select(cands: Cand[]) {
+    const keep = new Map<string, Cand[]>(), perBook = new Map<string, number>(), seen = new Set<string>();
+    for (const c of [...cands].sort((a, b) => (b.rank ?? 0) - (a.rank ?? 0))) {
+      if (c.relevance == null || c.relevance < MIN_RELEVANCE || (c.substantive ?? 0) < MIN_SUBSTANTIVE) continue;
+      const list = keep.get(c.shelf!) || [];
+      if (list.length >= PER_SHELF_KEEP) continue;
+      const b = c.book || c.ref;
+      if ((perBook.get(b) || 0) >= PER_BOOK) continue;
+      const fp = (c.he || c.en || '').replace(/[^\p{L}\p{N}]+/gu, '').slice(0, 120);  // same passage in many siddurim
+      if (seen.has(fp)) continue;
+      seen.add(fp); perBook.set(b, (perBook.get(b) || 0) + 1);
+      keep.set(c.shelf!, [...list, c]);
+    }
+    return keep;
+  }
+
+  // ----------------------------------------------------- links into the site
+  function parshaOf(book: string, ch: number, v: number) {
+    const at = ch * 1000 + v;
+    return parshaRanges.find((p: any) => p.book === book && p.from[0] * 1000 + p.from[1] <= at && at <= p.to[0] * 1000 + p.to[1]);
+  }
+
+  function siteLinks(c: Cand): string {
+    const out: [string, string][] = [];
+    if (c.shelf === 'shiurim') out.push([c.url!, c.clock ? `Listen at ${c.clock}` : 'Open']);
+    else if (c.shelf === 'torah' || c.shelf === 'prophets' || c.shelf === 'writings') {
+      const m = c.ref.slice(c.book!.length).match(/^\s*(\d+)(?::(\d+))?/);
+      if (m) {
+        const ch = +m[1], v = +(m[2] || 1);
+        out.push([`/mega-bible?mode=chapter&book=${encodeURIComponent(c.book!)}&chapter=${ch}${m[2] ? `&verse=${v}` : ''}`, `Mega Bible · ${c.book} ${ch}`]);
+        const p = c.shelf === 'torah' && parshaOf(c.book!, ch, v);
+        if (p) out.push([`/mega-bible?mode=parsha&parsha=${encodeURIComponent(p.name)}`, `Parashat ${p.name}`]);
+      }
+    } else if (c.shelf === 'mishnah') {
+      const m = c.ref.match(/^Mishnah (.+?) (\d+)(?::(\d+))?/);
+      if (m) out.push([`/mega-mishnah?t=${slug(m[1])}&p=${m[2]}${m[3] ? `&m=${m[3]}` : ''}`, `Mega Mishnah · ${m[1]} ${m[2]}`]);
+    } else if (c.shelf === 'talmud' && TALMUD.has(c.book!)) {
+      const m = c.ref.slice(c.book!.length).match(/^\s*(\d+)[ab]/);
+      if (m) out.push([`/mega-talmud?tractate=${encodeURIComponent(c.book!)}&daf=${m[1]}`, `Mega Talmud · ${c.book} ${m[1]}`]);
+    }
+    if (c.shelf !== 'shiurim') out.push([sefariaUrl(c.ref), 'Sefaria ↗']);
+    return out.map(([href, t]) => `<a href="${esc(href)}"${href.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}>${esc(t)}</a>`).join('');
+  }
+
+  // ------------------------------------------------------------- render
+  const levelLabel = (l: number) => (l < 0.8 ? 'Newcomer' : l < 1.6 ? 'Some background' : 'Advanced');
+  const relLabel = (s: number) => (s >= 2.5 ? 'Central' : 'Related');
+
+  function card(c: Cand, showShelf: boolean) {
+    const tags = [
+      c.role && ROLES[c.role] ? `<span class="sf-tag role" title="What it adds">${ROLES[c.role].label}</span>` : '',
+      `<span class="sf-tag" title="Background needed (Jev ${c.level!.toFixed(2)}/2)">${levelLabel(c.level!)}</span>`,
+      `<span class="sf-tag" title="Jev relevance ${c.relevance!.toFixed(2)}/3">${relLabel(c.relevance!)}</span>`,
+      showShelf ? `<span class="sf-tag">${esc(shelfName(c))}</span>` : '',
+      c.book && MEGILLOT.has(c.book) ? '<span class="sf-tag">Megillah</span>' : '',
+    ].join('');
+    const en = c.en || '', he = c.he || '';
+    const long = en.length > SNIP_CHARS || !!he;
+    const ref = c.shelf === 'shiurim'
+      ? `<a class="sf-ref" href="${esc(c.url!)}">${esc(c.ref)}</a>`
+      : `<a class="sf-ref" href="${sefariaUrl(c.ref)}" target="_blank" rel="noopener">${esc(c.ref)}</a>`;
+    return `<article class="sf-card" data-level="${c.level}">
+      <div class="sf-card-h">${ref}<span class="sf-heref" dir="rtl">${esc(c.heRef || '')}</span><span class="sf-tags">${tags}</span></div>
+      ${en ? `<div class="sf-snip">${para(clip(en, SNIP_CHARS))}</div>` : `<div class="sf-he" lang="he" dir="rtl">${para(clip(he, SNIP_CHARS))}</div>`}
+      ${long ? `<details><summary>Full text${he ? ' · Hebrew' : ''}</summary>
+        ${en.length > SNIP_CHARS ? `<div class="sf-snip">${para(clip(en, FULL_CHARS))}</div>` : ''}
+        ${he && en ? `<div class="sf-he" lang="he" dir="rtl">${para(clip(he, FULL_CHARS))}</div>` : ''}</details>` : ''}
+      <div class="sf-open">${siteLinks(c)}</div>
+    </article>`;
+  }
+  const shelfName = (c: Cand) => (c.shelf === 'shiurim' ? 'Shiur' : SHELVES[c.shelf!]?.name || '');
+
+  function renderShelves(order: string[], kept: Map<string, Cand[]>, probs: Record<string, number>) {
+    return order.map((k) => {
+      const items = kept.get(k) || [];
+      const name = k === 'shiurim' ? SHIURIM.name : SHELVES[k].name;
+      const note = k === 'shiurim' ? '' : `<small>Jev: ${Math.round(probs[k] * 100)}% likely to hold a key source</small>`;
+      return `<section class="sf-shelf" id="shelf-${k}"><h2><span>${esc(name)}</span>${note}</h2>
+        ${items.length ? items.map((c) => card(c, false)).join('') : '<p class="sf-empty">Nothing here passed Jev\'s relevance check.</p>'}</section>`;
+    }).join('');
+  }
+
+  function renderPath(kept: Map<string, Cand[]>) {
+    const all = [...kept.values()].flat();
+    return Object.entries(ROLES).map(([role, r]) => {
+      const items = all.filter((c) => c.role === role).sort((a, b) => a.level! - b.level! || b.rank! - a.rank!);
+      if (!items.length) return '';
+      return `<h3 class="sf-step">${r.step}<span>${r.blurb}</span></h3>${items.map((c) => card(c, true)).join('')}`;
+    }).join('');
+  }
+
+  function renderDebug(scored: Cand[], kept: Map<string, Cand[]>, topics: string[]) {
+    const chosen = new Set([...kept.values()].flat());
+    const rows = [...scored].sort((a, b) => (b.rank ?? 0) - (a.rank ?? 0)).map((c) =>
+      `<tr class="${chosen.has(c) ? 'in' : ''}"><td>${esc(c.ref)}</td><td>${esc(c.shelf!)}</td><td>${c.relevance!.toFixed(2)}</td>
+       <td>${c.substantive!.toFixed(2)}</td><td>${esc(c.role || '')}</td><td>${c.level!.toFixed(2)}</td><td>${esc(c.origin)}</td></tr>`).join('');
+    return `<summary>How these sources were chosen (${scored.length} judged)</summary>
+      <p>Topics Jev kept: ${esc(topics.join(', ') || 'none')}. Bold rows were selected.</p>
+      <div class="scroll"><table><tr><th>Ref</th><th>Shelf</th><th>Relevance</th><th>Substantive</th><th>Role</th><th>Level</th><th>Found via</th></tr>${rows}</table></div>`;
+  }
+
+  // --------------------------------------------------------------- main
+  function init() {
+    const form = document.getElementById('sf-form') as HTMLFormElement | null;
+    if (!form || form.dataset.bound) return;
+    form.dataset.bound = '1';
+    const input = document.getElementById('sf-q') as HTMLInputElement;
+    const go = document.getElementById('sf-go') as HTMLButtonElement;
+    const progress = document.getElementById('sf-progress')!;
+    const errorEl = document.getElementById('sf-error')!;
+    const results = document.getElementById('sf-results')!;
+    const map = document.getElementById('sf-map')!;
+    const body = document.getElementById('sf-body')!;
+    const debug = document.getElementById('sf-debug')!;
+    const levelSel = document.getElementById('sf-level') as HTMLSelectElement;
+
+    let view = 'shelves';
+    let last: { order: string[]; kept: Map<string, Cand[]>; probs: Record<string, number> } | null = null;
+
+    // Re-rendering only re-arranges Jev's existing judgments; nothing is asked again.
+    const draw = () => {
+      if (!last) return;
+      body.innerHTML = view === 'path' ? renderPath(last.kept) : renderShelves(last.order, last.kept, last.probs);
+      map.hidden = view === 'path';
+      applyLevel();
+    };
+    const applyLevel = () => {
+      const max = +levelSel.value;
+      body.querySelectorAll<HTMLElement>('.sf-card').forEach((el) => { el.hidden = +el.dataset.level! >= max; });
+    };
+    levelSel.addEventListener('change', applyLevel);
+    document.querySelectorAll<HTMLButtonElement>('.sf-tab').forEach((b) => b.addEventListener('click', () => {
+      view = b.dataset.view!;
+      document.querySelectorAll('.sf-tab').forEach((x) => x.classList.toggle('on', x === b));
+      draw();
+    }));
+
+    const steps = ['Looking up topics on Sefaria', 'Routing the question to shelves with Jev', 'Searching the chosen shelves',
+      'Fetching Hebrew and English', 'Judging each source with Jev'];
+    const setStep = (i: number, note = '') => {
+      progress.innerHTML = steps.map((s, k) => `<li class="${k < i ? 'done' : k === i ? 'active' : ''}">${s}${k === i && note ? ` · ${esc(note)}` : ''}</li>`).join('');
+    };
+
+    document.querySelectorAll<HTMLButtonElement>('.sf-chip').forEach((b) =>
+      b.addEventListener('click', () => { input.value = b.dataset.q!; form.requestSubmit(); }));
+
+    const params = new URLSearchParams(location.search);
+    if (params.get('q')) { input.value = params.get('q')!; queueMicrotask(() => form.requestSubmit()); }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = input.value.trim();
+      if (!q) return;
+      history.replaceState(null, '', `?q=${encodeURIComponent(q)}`);
+      go.disabled = true; errorEl.hidden = true; results.hidden = true; progress.hidden = false;
+      try {
+        setStep(0);
+        const [names, siteHits] = await Promise.all([topicNames(q), shiurim(q)]);
+        const slugs = [...names.keys()].slice(0, 30);
+
+        setStep(1, `${names.size} topic matches`);
+        const routed = await jev({ action: 'route', question: q, topics: slugs.map((s) => names.get(s)) });
+        const probs: Record<string, number> = routed.shelves;
+        const ranked = Object.keys(SHELVES).sort((a, b) => probs[b] - probs[a]);
+        let shelves = ranked.filter((k) => probs[k] >= MIN_SHELF).slice(0, MAX_SHELVES);
+        if (!shelves.length) shelves = ranked.slice(0, 3);
+        const topics = slugs.filter((_, i) => routed.topics[i] >= 0.5)
+          .sort((a, b) => routed.topics[slugs.indexOf(b)] - routed.topics[slugs.indexOf(a)]).slice(0, 3);
+
+        setStep(2, shelves.map((k) => SHELVES[k].name).join(', '));
+        const found = await Promise.all([topicRefs(topics), ...shelves.map((k) => searchShelf(q, k))]);
+        const seen = new Map<string, Cand>();
+        for (const c of found.flat()) if (!seen.has(c.ref)) seen.set(c.ref, c);
+
+        setStep(3, `${seen.size} candidates`);
+        let cands = [...seen.values()];
+        const ok = await pool(cands, 8, fetchText);
+        // Topic sources can land on any shelf; keep only the shelves Jev routed to.
+        cands = cands.filter((c, i) => ok[i] && shelves.includes(c.shelf!)).concat(siteHits);
+
+        setStep(4, `${cands.length} sources`);
+        await judge(q, cands);
+        const scored = cands.filter((c) => c.relevance != null);
+        if (!scored.length) throw new Error('No sources could be judged. Please try again.');
+
+        const kept = select(scored);
+        const order = [...shelves, ...(kept.get('shiurim')?.length ? ['shiurim'] : [])];
+        last = { order, kept, probs };
+        map.innerHTML = ranked.map((k) => shelves.includes(k)
+          ? `<a href="#shelf-${k}">${esc(SHELVES[k].name)}<b>${Math.round(probs[k] * 100)}%</b></a>`
+          : `<span title="Skipped: Jev thinks key sources are unlikely here">${esc(SHELVES[k].name)}<b>${Math.round(probs[k] * 100)}%</b></span>`).join('')
+          + (order.includes('shiurim') ? `<a href="#shelf-shiurim">Shiurim</a>` : '');
+        debug.innerHTML = renderDebug(scored, kept, topics.map((s) => names.get(s)!));
+        draw();
+        results.hidden = false; progress.hidden = true;
+        results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (err: any) {
+        progress.hidden = true;
+        errorEl.textContent = `Something went wrong: ${err.message || err}`;
+        errorEl.hidden = false;
+      } finally {
+        go.disabled = false;
+      }
+    });
+  }
+
+  document.addEventListener('astro:page-load', init);
+  init();
+</script>
