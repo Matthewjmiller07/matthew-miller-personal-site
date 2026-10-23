@@ -1,6 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import torah from '../data/painted-torah/torah.json';
+import index from '../data/painted-torah/index.json';
+import season from '../data/phds-on-the-parsha/season-5787.json';
 import { OPTIONS, BOOKS } from '../lib/painted-torah.js';
 
 // Every chapter of the Torah, in order, with Jev's art direction and the FLUX painting.
@@ -13,7 +15,11 @@ const nightCount = chapters.filter((c) => c.a.time === 'night').length;
 const divineCount = chapters.filter((c) => c.a.divine >= 0.5).length;
 const he = (t: string) => (t || '').replace(/\{[פס]\}/g, '').trim();
 // `pv` is set when the painting shows Jev's runner-up verse because the first kept turning into lettering.
+// Each painting's parsha, by the verse it paints (src/data/painted-torah/index.json, written by build.mjs).
+const parshaOfRef = Object.fromEntries(index.map((x) => [`${x.book} ${x.ch}`, x]));
+const parshiyot = season.weeks.map((w) => ({ book: w.ref.split(' ')[0], parsha: w.parsha, hebrew: w.hebrew, slug: index.find((x) => x.parsha === w.parsha)?.slug || '' }));
 const client = chapters.map((c) => ({
+  parsha: parshaOfRef[`${c.book} ${c.ch}`]?.parsha || '', ps: parshaOfRef[`${c.book} ${c.ch}`]?.slug || '',
   ref: `${c.book} ${c.ch}`, book: c.book, ch: c.ch, v: c.pv?.v || c.v, jv: c.v, alt: !!c.pv,
   en: c.pv?.en || c.en, he: he(c.pv?.he || c.he), n: c.n, img: c.img,
   a: c.a, p: c.p, prompt: c.prompt, ver: c.enVersion,
@@ -58,6 +64,16 @@ const og = chapters[0]?.img;
       {BOOKS.map(([b]) => <button data-book={b}>{b}</button>)}
     </div>
     <div class="sels">
+      <label>Parsha
+        <select id="parsha">
+          <option value="">Any</option>
+          {BOOKS.map(([b]) => (
+            <optgroup label={b}>
+              {parshiyot.filter((p) => p.book === b).map((p) => <option value={p.slug}>{p.parsha} · {p.hebrew}</option>)}
+            </optgroup>
+          ))}
+        </select>
+      </label>
       {['setting', 'time', 'atmosphere', 'style', 'palette'].map((k) => (
         <label>{k === 'time' ? 'Light' : k[0].toUpperCase() + k.slice(1)}
           <select data-f={k}>
@@ -87,7 +103,7 @@ const og = chapters[0]?.img;
         <img src={c.img.replace('.jpg', '-t.jpg')} alt={`${c.ref}:${c.v}, painted`} loading="lazy" width="480" height="320" />
         <div class="cap">
           <b>{c.ref}:{c.v}</b>
-          <span>{labels.style[c.a.style]}</span>
+          <span>{c.parsha} · {labels.style[c.a.style]}</span>
         </div>
       </a>
     ))}
@@ -97,7 +113,7 @@ const og = chapters[0]?.img;
     <h2>How it works</h2>
     <ol>
       <li><b>Jev reads the chapter.</b> The chapter's verses go in as state. One request asks eleven questions at once: a Choice over the chapter's own verses (which moment to paint), six Choices of art direction, two Scores (tension, scale) and a Noul (is the divine presence part of the scene). They all picture the same moment, so the answers fit together. That's about a hundredth of a cent per chapter.</li>
-      <li><b>Code writes the prompt.</b> Each answer maps to a fixed phrase. The chosen verse becomes a run of words with its speech dropped, because the image model copies whole sentences into the picture as captions. In the prompt only, God's names become "heaven", which the model reads as sky, so God is never painted as a person. Angels appear only where the verse has one. Every person is modestly robed.</li>
+      <li><b>Code writes the prompt.</b> Each answer maps to a fixed phrase. The chosen verse becomes a run of words with its speech dropped, because the image model copies whole sentences into the picture as captions. In the prompt only, God's names are left out, since any word for the divine made the model paint a figure in the sky. Angels appear only where the verse has one. Every person is modestly robed.</li>
       <li><b>FLUX.2 [klein] 4B paints it.</b> One 3:2 image per chapter, seeded by book and chapter so every painting can be reproduced. Tesseract then reads each painting, and any with stray lettering is repainted on a new seed. Open any painting to see Jev's probabilities, the runner-up verses and the exact prompt.</li>
     </ol>
     <p class="fine">English: {client[0]?.ver || 'Sefaria'}. Hebrew: Sefaria. Paintings are AI-generated and imagine one moment of each chapter. They are not illustrations of halacha or of the commentaries.</p>
@@ -138,6 +154,9 @@ const NAMES: Record<string, string> = { setting: 'Setting', time: 'Light', atmos
 const cards = [...document.querySelectorAll<HTMLAnchorElement>('.card')];
 const slivers = [...document.querySelectorAll<HTMLAnchorElement>('#mural a')];
 let book = '';
+const pSel = $('parsha') as HTMLSelectElement;
+const q = new URLSearchParams(location.search).get('parsha');
+if (q && [...pSel.options].some((o) => o.value === q)) pSel.value = q;
 let visible: number[] = CH.map((_: any, i: number) => i);
 
 function apply() {
@@ -148,6 +167,7 @@ function apply() {
   visible = CH.map((_: any, i: number) => i).filter((i: number) => {
     const c = CH[i];
     if (book && c.book !== book) return false;
+    if (pSel.value && c.ps !== pSel.value) return false;
     if (divine && c.a.divine < 0.5) return false;
     return Object.entries(f).every(([k, v]) => c.a[k] === v);
   });
@@ -167,9 +187,18 @@ function apply() {
 document.querySelectorAll<HTMLButtonElement>('#books button').forEach((b) => b.addEventListener('click', () => {
   book = b.dataset.book || '';
   document.querySelectorAll('#books button').forEach((x) => x.classList.toggle('on', x === b));
+  if (pSel.value) { pSel.value = ''; pSel.dispatchEvent(new Event('change')); }
   apply();
 }));
 document.querySelectorAll('select, #divine').forEach((el) => el.addEventListener('change', apply));
+// ?parsha=<slug> is shareable: /parasha links here with it set.
+pSel.addEventListener('change', () => {
+  if (pSel.value && book) { book = ''; document.querySelectorAll('#books button').forEach((x, i) => x.classList.toggle('on', i === 0)); }
+  const u = new URL(location.href);
+  if (pSel.value) u.searchParams.set('parsha', pSel.value); else u.searchParams.delete('parsha');
+  history.replaceState(null, '', u);
+  apply();
+});
 
 const bars = (probs: Record<string, number>, lab: (k: string) => string) => Object.entries(probs)
   .map(([k, p]) => `<div class="bar"><span>${esc(lab(k))}</span><i style="width:${Math.round(p * 100)}%"></i><em>${Math.round(p * 100)}%</em></div>`).join('');
@@ -180,7 +209,7 @@ function open(i: number, push = true) {
   cur = i;
   ($('ov-img') as HTMLImageElement).src = c.img;
   ($('ov-img') as HTMLImageElement).alt = `${c.ref}:${c.v}, painted`;
-  $('ov-k').textContent = `${L.style[c.a.style]} · ${L.palette[c.a.palette]}`;
+  $('ov-k').textContent = `Parshat ${c.parsha} · ${L.style[c.a.style]} · ${L.palette[c.a.palette]}`;
   $('ov-ref').textContent = `${c.ref}:${c.v}`;
   $('ov-he').textContent = c.he;
   $('ov-en').textContent = c.en;

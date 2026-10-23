@@ -20,7 +20,8 @@ const isExternal = (href: string) => href.startsWith('http');
 // the Levy theses (The History of a Verse) on the other; everything else is
 // the plain resource list.
 const groupLinks = (links: Link[]) => ({
-  resources: links.filter((l) => l.kind !== 'phd' && l.kind !== 'thesis' && l.kind !== 'coin'),
+  resources: links.filter((l) => l.kind !== 'phd' && l.kind !== 'thesis' && l.kind !== 'coin' && l.kind !== 'painting'),
+  paintings: links.filter((l) => l.kind === 'painting'),
   phd: links.filter((l) => l.kind === 'phd'),
   theses: links.filter((l) => l.kind === 'thesis'),
   coins: links.filter((l) => l.kind === 'coin'),
@@ -82,7 +83,7 @@ const coinChip = (c: (typeof bibleCoins)[number]) =>
     <section class="ph-now" id="now" aria-labelledby="ph-now-h">
       <h2 id="ph-now-h" class="ph-h2">This week</h2>
       <div id="ph-now">
-        {thisWeekGrouped.map(({ w, resources, phd, theses, coins }) => (
+        {thisWeekGrouped.map(({ w, resources, phd, theses, coins, paintings }) => (
           <article class="ph-week ph-week-big" data-date={w.date}>
             <div class="ph-week-top">
               <span class="he ph-he">{w.hebrew}</span>
@@ -107,6 +108,13 @@ const coinChip = (c: (typeof bibleCoins)[number]) =>
                 </li>
               ))}
             </ul>
+            {paintings.length > 0 && (
+              <div class="ph-paint">
+                {paintings.map((l) => (
+                  <a href={l.href} title={`${l.label}, painted`}><img src={l.img} alt={`${l.label}, painted`} loading="lazy" width="480" height="320" /><span>{l.label}</span></a>
+                ))}
+              </div>
+            )}
             {phd.length > 0 && (
               <div class="ph-group">
                 <div class="ph-group-label">PhDs on the Parsha</div>
@@ -333,7 +341,7 @@ const coinChip = (c: (typeof bibleCoins)[number]) =>
                 <span class="ph-meta">{w.ref} · {fmt(w.date)}</span>
               </div>
               <ul class="ph-links">
-                {w.links.filter((l) => l.kind !== 'thesis' && l.kind !== 'coin').map((l) => (
+                {w.links.filter((l) => l.kind !== 'thesis' && l.kind !== 'coin' && l.kind !== 'painting').map((l) => (
                   <li>
                     <a class="ph-chip" href={l.href} title={l.note} {...(isExternal(l.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
                       {l.label}
@@ -348,6 +356,13 @@ const coinChip = (c: (typeof bibleCoins)[number]) =>
                   </li>
                 ))}
               </ul>
+              {w.links.some((l) => l.kind === 'painting') && (
+                <div class="ph-paint">
+                  {w.links.filter((l) => l.kind === 'painting').map((l) => (
+                    <a href={l.href} title={`${l.label}, painted`}><img src={l.img} alt={`${l.label}, painted`} loading="lazy" width="480" height="320" /><span>{l.label}</span></a>
+                  ))}
+                </div>
+              )}
               {w.links.some((l) => l.kind === 'thesis') && (
                 <div class="ph-thesis-group">
                   <div class="ph-group-label">The History of a Verse · Levy theses</div>
@@ -621,6 +636,15 @@ const coinChip = (c: (typeof bibleCoins)[number]) =>
     border: 1px solid #54492c; background: #1b1f23; color: #e3c98f !important;
     font-size: .76rem; letter-spacing: .05em; white-space: nowrap; vertical-align: .1em;
   }
+
+  /* ---- The Painted Torah ---- */
+  .ph-paint { display: flex; gap: .45rem; overflow-x: auto; margin: .6rem 0 .2rem; padding-bottom: .2rem; scrollbar-width: thin; }
+  .ph-paint a { flex: none; position: relative; display: block; width: 7.5rem; border: 1px solid #54492c; border-radius: 4px; overflow: hidden; text-decoration: none; }
+  .ph-paint img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; }
+  .ph-paint span { position: absolute; left: 0; right: 0; bottom: 0; padding: .1rem .35rem; font-size: .68rem; color: #f3e6c4; background: linear-gradient(transparent, rgba(0,0,0,.75)); }
+  .ph-paint a:hover { border-color: #e3c98f; }
+  .ph-week-big .ph-paint a { width: 11rem; }
+  .ph-week-big .ph-paint span { font-size: .78rem; }
 
   /* ---- The Bible coins ---- */
   .ph-coin-thumb {

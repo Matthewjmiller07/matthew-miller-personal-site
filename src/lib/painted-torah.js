@@ -175,3 +175,16 @@ export function buildPrompt({ verse, a }) {
 }
 
 export const BOOKS = [['Genesis', 50, 'בראשית'], ['Exodus', 40, 'שמות'], ['Leviticus', 27, 'ויקרא'], ['Numbers', 36, 'במדבר'], ['Deuteronomy', 34, 'דברים']];
+
+// The parsha a painting belongs to, by the verse it actually paints (a chapter can straddle two
+// parshiyot). `weeks` is the season calendar: [{ parsha, hebrew, ref: "Genesis 6:9–11:32" }, ...].
+export const parshaSlug = (s) => s.toLowerCase().replace(/['’]/g, '').replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
+export function parshaOf(weeks, book, ch, v) {
+  const at = ch * 1000 + v;
+  return weeks.find((w) => {
+    const m = w.ref.match(/^(\w+) (\d+):(\d+)[–-](?:(\d+):)?(\d+)$/);
+    if (!m || m[1] !== book) return false;
+    const from = +m[2] * 1000 + +m[3], to = +(m[4] || m[2]) * 1000 + +m[5];
+    return at >= from && at <= to;
+  });
+}

@@ -8,12 +8,14 @@
 
 import fs from 'fs';
 import { execFileSync } from 'child_process';
-import { questions, buildPrompt, BOOKS } from '../../src/lib/painted-torah.js';
+import { questions, buildPrompt, BOOKS, parshaOf, parshaSlug } from '../../src/lib/painted-torah.js';
 
 const TYPESAFE_URL = 'https://api.typesafe.ai/v1/systemone';
 const JEV_PRICE = 0.042 / 1e6;
 const FLUX = 'black-forest-labs/flux-2-klein-4b';
 const OUT = './src/data/painted-torah/torah.json';
+const INDEX = './src/data/painted-torah/index.json';   // slim per-painting index for /parasha and the Mega Bible
+const SEASON = './src/data/phds-on-the-parsha/season-5787.json';
 const IMG = './public/painted-torah';
 const CACHE = './.cache/painted-torah';
 
@@ -36,7 +38,18 @@ fs.mkdirSync('./src/data/painted-torah', { recursive: true });
 fs.mkdirSync(IMG, { recursive: true });
 fs.mkdirSync(CACHE, { recursive: true });
 const data = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : { chapters: {} };
-const save = () => fs.writeFileSync(OUT, JSON.stringify(data) + '\n');
+const weeks = JSON.parse(fs.readFileSync(SEASON, 'utf8')).weeks;
+const save = () => {
+  fs.writeFileSync(OUT, JSON.stringify(data) + '\n');
+  const index = BOOKS.flatMap(([b, n]) => Array.from({ length: n }, (_, i) => data.chapters[`${b} ${i + 1}`]))
+    .filter((c) => c && c.img)
+    .map((c) => {
+      const v = c.pv?.v || c.v;
+      const w = parshaOf(weeks, c.book, c.ch, v);
+      return { book: c.book, ch: c.ch, v, img: c.img, style: c.a.style, parsha: w?.parsha || '', slug: w ? parshaSlug(w.parsha) : '' };
+    });
+  fs.writeFileSync(INDEX, JSON.stringify(index) + '\n');
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const r2 = (x) => Math.round(x * 100) / 100;
 const slug = (ref) => ref.toLowerCase().replace(/\s+/g, '-');

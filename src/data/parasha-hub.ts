@@ -7,6 +7,7 @@ import { sheets as simonSheets } from './uriel-simon-reader';
 import dweck from './dweck-haftara/episodes.json';
 import levyThesesData from './levy-theses.json';
 import coinsData from './boi-bible-coins.json';
+import paintedTorah from './painted-torah/index.json';
 
 const SHEET_FILES = import.meta.glob('./parasha-sheets/*.json', { eager: true, import: 'default' }) as Record<
   string,
@@ -91,7 +92,7 @@ export const dweckShow = dweck.show;
 export const dweckEpisodes = [...dweck.episodes].sort((a, b) => b.date.localeCompare(a.date));
 
 export interface Link {
-  kind: 'simon' | 'dweck' | 'sheet' | 'balashon' | 'book' | 'phd' | 'thesis' | 'coin' | 'mega' | 'shnayim' | 'sefaria';
+  kind: 'simon' | 'dweck' | 'sheet' | 'balashon' | 'book' | 'phd' | 'thesis' | 'coin' | 'mega' | 'shnayim' | 'sefaria' | 'painting';
   label: string;
   href: string;
   note?: string;
@@ -243,6 +244,16 @@ export const weeks: Week[] = season.weeks.map((w: any) => {
     });
   }
 
+  // The Painted Torah: every chapter painted, filed under the parsha of the verse it paints.
+  for (const p of paintedTorah.filter((x) => key(x.parsha) === key(w.parsha))) {
+    links.push({
+      kind: 'painting',
+      label: `${p.book} ${p.ch}:${p.v}`,
+      href: `/painted-torah?parsha=${p.slug}#${p.book.toLowerCase()}-${p.ch}`,
+      img: p.img.replace('.jpg', '-t.jpg'),
+    });
+  }
+
   links.push({ kind: 'mega', label: 'Mega Bible', href: `/mega-bible?book=${book}&chapter=${chapter}` });
 
   const shn = shnayimByKey[SHNAYIM_ALIAS[key(w.parsha)] ?? key(w.parsha)];
@@ -321,6 +332,7 @@ export const tools = [
   { name: 'Parsha Explorer', href: '/parsha-explorer', text: 'Lemmas, parts of speech and word statistics for any parsha or aliyah.' },
   { name: 'Haftarah Explorer', href: '/haftarah-explorer', text: 'Every haftarah across rites: lengths, overlaps and texts.' },
   { name: 'Parsha Art', href: '/parsha-art', text: "This week's parsha from Sefaria's calendar, with its aliyot and an illustration of its iconic scene." },
+  { name: 'The Painted Torah', href: '/painted-torah', text: 'Every chapter of the Torah as a painting, art-directed by Jev; filter by parasha.' },
   { name: 'The Book of Generations', href: '/genealogies', text: 'Every name in the genealogies of Bereshit and Noach, as a family tree and a timeline.' },
   { name: 'Literary Bible', href: '/literary-bible', text: 'The Hebrew Bible with its literary devices colour-coded.' },
   { name: 'Source Sheet Creator', href: '/source-sheet-creator', text: 'Type a topic and get a printable Hebrew–English source sheet.' },

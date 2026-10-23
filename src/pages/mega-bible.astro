@@ -221,6 +221,15 @@ body:has(.mb-page) > footer { display:none!important; }
 }
 
 /* Parasha sheet card + hapax marks */
+.mb-paint { border:1px solid var(--border-hi); padding:.7rem 1rem .8rem; margin:0 0 1.2rem; }
+.mb-paint-head { display:flex; justify-content:space-between; align-items:baseline; gap:1rem; margin-bottom:.5rem; }
+.mb-paint-head a { font-family:var(--sc); font-size:.6rem; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); text-decoration:none; white-space:nowrap; }
+.mb-paint-row { display:flex; gap:.6rem; overflow-x:auto; scrollbar-width:thin; }
+.mb-paint figure { margin:0; flex:none; width:12rem; }
+.mb-paint.one figure { width:100%; max-width:40rem; }
+.mb-paint img { display:block; width:100%; height:auto; aspect-ratio:3 / 2; object-fit:cover; border:1px solid var(--border); }
+.mb-paint figcaption { font-family:var(--display); font-size:.82rem; color:var(--muted); font-style:italic; margin-top:.3rem; }
+.mb-paint figcaption .mb-sheet-hap { font-style:normal; margin-right:.2rem; }
 .mb-sheet {
   display:grid; grid-template-columns:auto 1fr auto; gap:.4rem 1.2rem; align-items:center;
   border:1px solid var(--border-hi); background:linear-gradient(90deg, rgba(201,162,87,.08), transparent 70%);
@@ -1866,6 +1875,43 @@ function buildSheetCard(sh: any): HTMLElement {
       ${(sh.entries || []).length ? `<div><b>${sh.entries.length}</b><span>Biblical → Modern Hebrew notes</span></div>` : ''}
     </div>
     ${haps ? `<div class="mb-sheet-haps"><span class="lbl">Once in Tanakh</span>${haps}</div>` : ''}`;
+  el.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest('.mb-sheet-hap') as HTMLElement | null;
+    if (!b) return;
+    const block = main.querySelector(`.verse-block[data-verse-ref="${CSS.escape(b.dataset.ref || '')}"]`) as HTMLElement | null;
+    if (!block) return;
+    block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    block.classList.remove('mb-flash'); void block.offsetWidth; block.classList.add('mb-flash');
+  });
+  return el;
+}
+
+// ── The Painted Torah ──────────────────────────────────────────────────────
+// One painting per Torah chapter (/painted-torah): Jev chose the verse and art-directed it, FLUX
+// painted it. src/data/painted-torah/index.json is the slim index build.mjs writes.
+import PAINTED from '../data/painted-torah/index.json';
+const PT_STYLE: Record<string, string> = { chiaroscuro: 'Chiaroscuro oil', luminist: 'Luminous landscape', manuscript: 'Jewel-toned oil',
+  fresco: 'Fresco', woodcut: 'Expressionist', watercolor: 'Ink & watercolour', mosaic: 'Mosaic' };
+function paintingsFor(book: string, sc: number, sv: number, ec: number, ev: number) {
+  const a = cv(sc, sv), b = cv(ec, Math.min(ev, 999));
+  return PAINTED.filter((p) => p.book === book && cv(p.ch, p.v) >= a && cv(p.ch, p.v) <= b);
+}
+function buildPaintCard(list: typeof PAINTED): HTMLElement {
+  const el = document.createElement('div');
+  const one = list.length === 1;
+  el.className = `mb-paint${one ? ' one' : ''}`;
+  const href = (p: (typeof PAINTED)[number]) => `/painted-torah?parsha=${p.slug}#${p.book.toLowerCase()}-${p.ch}`;
+  el.innerHTML = `
+    <div class="mb-paint-head">
+      <span class="mb-sheet-kicker">The Painted Torah${one ? ` · Parshat ${escHtml(list[0].parsha)}` : ''}</span>
+      <a href="${one ? escHtml(href(list[0])) : `/painted-torah?parsha=${escHtml(list[0].slug)}`}">${one ? 'Jev’s art direction →' : 'All the paintings →'}</a>
+    </div>
+    <div class="mb-paint-row">${list.map((p) => `
+      <figure>
+        <a href="${escHtml(href(p))}"><img src="${escHtml(one ? p.img : p.img.replace('.jpg', '-t.jpg'))}" alt="${escHtml(`${p.book} ${p.ch}:${p.v}, painted`)}" loading="lazy" width="${one ? 1080 : 480}" height="${one ? 720 : 320}"></a>
+        <figcaption><button type="button" class="mb-sheet-hap" data-ref="${escHtml(`${p.book} ${p.ch}:${p.v}`)}" title="Go to the verse it paints"><small>${p.ch}:${p.v}</small></button> ${escHtml(PT_STYLE[p.style] || p.style)}</figcaption>
+      </figure>`).join('')}
+    </div>`;
   el.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest('.mb-sheet-hap') as HTMLElement | null;
     if (!b) return;
@@ -5157,6 +5203,8 @@ async function renderRange(
 
     const rangeSheets = sheetsFor(book, sc, sv, ec, ev);
     if (!appendMode) rangeSheets.forEach((sh) => main.appendChild(buildSheetCard(sh)));
+    const rangePaint = paintingsFor(book, sc, sv, ec, ev);
+    if (!appendMode && rangePaint.length) main.appendChild(buildPaintCard(rangePaint));
     const rangeGen = genFor(book, sc, sv, ec, ev);
     if (!appendMode && rangeGen.length) main.appendChild(buildGenCard(rangeGen, book, sc, ec));
 
