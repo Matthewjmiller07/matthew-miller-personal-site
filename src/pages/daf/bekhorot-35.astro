@@ -1,0 +1,612 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Quaestor's Dagger — Daf Yomi Game: Bekhorot 35"
+  description="Bekhorot 35: a Roman quaestor slits an old firstborn ram's ear, children tie lambs' tails, a firstborn charges its owner. Stamp the copycats, time your kick, mark the fetus before it emerges, and decide which shepherds and household members may testify."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style>
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .card { background: #12110f; border: 1px solid #33302b; border-radius: 1rem; }
+    .chip { border: 1px solid #4a443b; border-radius: 0.6rem; padding: 0.45rem 0.75rem; font-size: 0.8rem; transition: background .15s, border-color .15s; text-align: left; }
+    .chip:hover:not(:disabled) { background: #211e1a; }
+    .chip[aria-pressed="true"] { background: #2b2116; border-color: #c9894a; }
+    .chip.ok { background: #18261b; border-color: #66a072; }
+    .chip.bad { background: #351b17; border-color: #c4503d; }
+    .chip:disabled { cursor: default; opacity: .92; }
+    .stampbox { position: relative; min-height: 2.2rem; }
+    .stamp { display: inline-block; border: 3px solid currentColor; padding: .15rem .7rem; border-radius: .4rem; transform: rotate(-6deg) scale(1); font-weight: 900; letter-spacing: .18em; font-size: .8rem; animation: thunk .25s ease-out; }
+    @keyframes thunk { from { transform: rotate(-6deg) scale(1.8); opacity: 0; } to { transform: rotate(-6deg) scale(1); opacity: 1; } }
+    .track { position: relative; height: 7rem; border-radius: .8rem; background: linear-gradient(#1b2418, #141a12); overflow: hidden; border: 1px solid #33302b; }
+    .phasebar { height: .5rem; border-radius: 999px; background: #2a2620; overflow: hidden; }
+    .phasebar > div { height: 100%; transition: width .1s linear; }
+    .part { transition: opacity .3s, transform .3s; }
+    .gridcell { border: 1px dashed #4a443b; border-radius: .8rem; padding: .7rem; transition: border-color .2s, background .2s; }
+    .gridcell.ok { border-style: solid; border-color: #66a072; background: #15201a; }
+    .gridcell.bad { border-style: solid; border-color: #c4503d; }
+    .seat { width: 100%; border: 1px solid #4a443b; border-radius: .6rem; padding: .35rem; font-size: .75rem; transition: background .15s, border-color .15s; }
+    .seat[data-v="yes"] { background: #18261b; border-color: #66a072; }
+    .seat[data-v="no"] { background: #351b17; border-color: #c4503d; }
+    @media (prefers-reduced-motion: reduce) {
+      .chip, .part, .gridcell, .seat, .phasebar > div { transition: none; }
+      .stamp { animation: none; }
+    }
+    button:focus-visible, input:focus-visible { outline: 2px solid #c9894a; outline-offset: 2px; }
+  </style>
+
+  <main class="min-h-screen bg-[#0b0a09] !text-[#ebe5da]">
+
+    <!-- HERO -->
+    <div class="border-b border-[#33302b] bg-gradient-to-b from-[#24170f] to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs tracking-[0.22em] !text-[#958a7b]">
+        <a href="/daf" class="transition-colors hover:!text-[#ebe5da]">daf yomi arcade</a>
+        <span class="mx-2 opacity-40">·</span>bekhorot 35<span class="mx-2 opacity-40">·</span>2026-10-23
+      </p>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl !text-[#f4efe6]">The Quaestor's Dagger</h1>
+      <p class="frank mt-3 text-3xl font-light !text-[#c9894a]" dir="rtl" lang="he">כֹּל שֶׁהוּא לְדַעְתּוֹ — אָסוּר</p>
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed !text-[#b7ac9e]">
+        An old firstborn ram with long, shaggy wool. A Roman official with a dagger. Children tying lambs' tails together.
+        A firstborn that charges its owner. A blemish only counts if nobody meant to make it, so who knew, who
+        meant it, and who can be trusted to say so? Six rounds, straight from the daf.
+      </p>
+      <p class="mt-4 text-xs !text-[#958a7b]">Score: <span id="score" class="font-bold !text-[#c9894a]">0</span> / <span id="max">0</span></p>
+    </div>
+
+    <div class="mx-auto max-w-3xl space-y-8 px-4 py-8">
+
+      <!-- ROUND 1 -->
+      <section class="card p-5" aria-labelledby="r1h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#958a7b]">ROUND 1 · 35a:2–5, 8–9</p>
+        <h2 id="r1h" class="frank mb-2 text-2xl font-bold !text-[#f4efe6]">First time, and the copycats</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#b7ac9e]">
+          Four incidents came before the Sages. Stamp each one: may the firstborn now be slaughtered on account of its blemish?
+        </p>
+        <div id="incidents" class="space-y-3"></div>
+        <div id="r1more" class="mt-6 hidden space-y-6"></div>
+      </section>
+
+      <!-- ROUND 2 -->
+      <section class="card p-5" aria-labelledby="r2h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#958a7b]">ROUND 2 · 35a:6–7</p>
+        <h2 id="r2h" class="frank mb-2 text-2xl font-bold !text-[#f4efe6]">What did the bystanders say?</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#b7ac9e]">
+          The quaestor asked “what is this one's story?” Change what the Jews answered him, then rule under Rav Ketina (via Rav Ḥisda) and under Rava.
+        </p>
+        <div class="mb-4 flex flex-wrap gap-2" role="group" aria-label="Bystanders' answer">
+          <button class="chip !text-[#ebe5da]" data-say="0" aria-pressed="true"><span class="frank text-base" lang="he" dir="rtl">אֶלָּא אִם כֵּן הָיָה בּוֹ מוּם</span><br><span class="text-xs !text-[#958a7b]">“…unless it had a blemish”</span></button>
+          <button class="chip !text-[#ebe5da]" data-say="1" aria-pressed="false"><span class="frank text-base" lang="he" dir="rtl">אִם נַעֲשָׂה בּוֹ מוּם</span><br><span class="text-xs !text-[#958a7b]">“…if a blemish was made in it”</span></button>
+        </div>
+        <div class="mb-4 flex items-start gap-3 rounded-xl border border-[#33302b] p-4">
+          <span class="text-3xl" aria-hidden="true">🗡️</span>
+          <p id="bubble" class="text-sm leading-relaxed !text-[#ebe5da]"></p>
+        </div>
+        <div id="r2grid" class="grid gap-3 sm:grid-cols-2"></div>
+        <p id="r2msg" class="mt-3 text-sm leading-relaxed !text-[#b7ac9e]"></p>
+      </section>
+
+      <!-- ROUND 3 -->
+      <section class="card p-5" aria-labelledby="r3h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#958a7b]">ROUND 3 · 35a:10–13</p>
+        <h2 id="r3h" class="frank mb-2 text-2xl font-bold !text-[#f4efe6]">The charging firstborn</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#b7ac9e]">
+          <span class="frank" lang="he" dir="rtl">הָיָה בְּכוֹר רוֹדְפוֹ, בְּעָטוֹ וְעָשָׂה בּוֹ מוּם</span>: his firstborn was chasing him; he kicked it and blemished it.
+          Press <b>Kick</b> once <b>while the ram is charging</b> and once <b>after it has stopped</b>, then rule both kicks under both versions of Rav Pappa.
+        </p>
+        <div class="track mb-2" aria-hidden="true">
+          <svg viewBox="0 0 400 110" class="h-full w-full">
+            <line x1="0" y1="96" x2="400" y2="96" stroke="#2f3a28" stroke-width="2" />
+            <g id="man" transform="translate(340,0)">
+              <circle cx="20" cy="40" r="9" fill="#d9c7a6" />
+              <line x1="20" y1="49" x2="20" y2="74" stroke="#d9c7a6" stroke-width="4" stroke-linecap="round" />
+              <line x1="20" y1="74" x2="12" y2="95" stroke="#d9c7a6" stroke-width="4" stroke-linecap="round" />
+              <line id="kleg" x1="20" y1="74" x2="28" y2="95" stroke="#d9c7a6" stroke-width="4" stroke-linecap="round" />
+              <line x1="20" y1="56" x2="8" y2="66" stroke="#d9c7a6" stroke-width="4" stroke-linecap="round" />
+            </g>
+            <g id="ram" transform="translate(20,0)">
+              <ellipse cx="40" cy="72" rx="34" ry="17" fill="#e8e1d2" />
+              <circle cx="78" cy="62" r="11" fill="#e8e1d2" />
+              <path d="M74 54 q12 -10 14 6 q-6 -4 -10 2" fill="none" stroke="#a8916b" stroke-width="3" />
+              <circle cx="83" cy="60" r="1.6" fill="#222" />
+              <line x1="20" y1="86" x2="20" y2="96" stroke="#bfb6a5" stroke-width="4" />
+              <line x1="58" y1="86" x2="58" y2="96" stroke="#bfb6a5" stroke-width="4" />
+              <text id="blem" x="86" y="52" font-size="14" opacity="0">✳</text>
+            </g>
+          </svg>
+        </div>
+        <div class="mb-1 flex justify-between text-[0.65rem] tracking-widest !text-[#958a7b]"><span id="phaseLbl">PURSUIT</span><span>loop</span></div>
+        <div class="phasebar mb-3"><div id="phaseFill" class="bg-[#c4503d]" style="width:0%"></div></div>
+        <div class="mb-4 flex flex-wrap items-center gap-3">
+          <button id="kickBtn" class="rounded-lg border border-[#c9894a] bg-[#2b2116] px-6 py-2 text-sm font-bold !text-[#f4efe6]">🦶 Kick</button>
+          <span id="kickLog" class="text-xs !text-[#958a7b]">Kicks: none yet.</span>
+        </div>
+        <div id="kickRulings" class="space-y-4"></div>
+      </section>
+
+      <!-- ROUND 4 -->
+      <section class="card p-5" aria-labelledby="r4h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#958a7b]">ROUND 4 · 35a:14–16</p>
+        <h2 id="r4h" class="frank mb-2 text-2xl font-bold !text-[#f4efe6]">Before the air of the world</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#b7ac9e]">
+          Rav Yehuda: one may blemish a firstborn <em>before</em> it emerges into the air of the world, since its sanctity begins only at birth.
+          Scrub the birth forward and tap the part you can still blemish, the first one out, before the head emerges.
+        </p>
+        <div class="mb-3 flex flex-wrap gap-2" role="group" aria-label="Which animal">
+          <button class="chip !text-[#ebe5da]" data-an="kid" aria-pressed="true">🐐 Kid</button>
+          <button class="chip !text-[#ebe5da]" data-an="lamb1" aria-pressed="false">🐑 Lamb (Rava)</button>
+          <button class="chip !text-[#ebe5da]" data-an="lamb2" aria-pressed="false">🐑 Lamb (“some say”)</button>
+        </div>
+        <div class="grid items-center gap-4 sm:grid-cols-[1fr_1.1fr]">
+          <svg viewBox="0 0 200 140" class="w-full rounded-xl border border-[#33302b] bg-[#1a1411]" role="img" aria-label="Emerging newborn">
+            <path d="M0 0 H200 V140 H0 Z M100 20 a42 52 0 1 0 0.1 0 Z" fill="#3a2320" fill-rule="evenodd" />
+            <ellipse cx="100" cy="72" rx="42" ry="52" fill="none" stroke="#6e3d34" stroke-width="3" />
+            <g id="emerge">
+              <ellipse class="part" data-p="ears" cx="70" cy="40" rx="9" ry="20" fill="#e8e1d2" transform="rotate(-20 70 40)" />
+              <ellipse class="part" data-p="ears" cx="130" cy="40" rx="9" ry="20" fill="#e8e1d2" transform="rotate(20 130 40)" />
+              <circle class="part" data-p="head" cx="100" cy="72" r="30" fill="#ddd5c4" />
+              <circle class="part" data-p="head" cx="88" cy="66" r="3" fill="#222" />
+              <circle class="part" data-p="head" cx="112" cy="66" r="3" fill="#222" />
+              <ellipse class="part" data-p="lips" cx="100" cy="94" rx="14" ry="8" fill="#c9a89a" />
+            </g>
+          </svg>
+          <div>
+            <label for="birth" class="text-xs !text-[#958a7b]">Emergence</label>
+            <input id="birth" type="range" min="0" max="100" value="0" class="mb-3 w-full accent-[#c9894a]" />
+            <p id="visible" class="mb-3 text-sm !text-[#b7ac9e]">Nothing is out yet.</p>
+            <div id="partBtns" class="flex flex-wrap gap-2"></div>
+            <p id="r4msg" class="mt-3 text-sm leading-relaxed !text-[#b7ac9e]"></p>
+          </div>
+        </div>
+        <div id="r4more" class="mt-6"></div>
+      </section>
+
+      <!-- ROUND 5 -->
+      <section class="card p-5" aria-labelledby="r5h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#958a7b]">ROUND 5 · 35a:17–35b:4</p>
+        <h2 id="r5h" class="frank mb-2 text-2xl font-bold !text-[#f4efe6]">The shepherds' stand</h2>
+        <p class="mb-2 text-sm leading-relaxed !text-[#b7ac9e]">
+          Mishna: <span class="frank" lang="he" dir="rtl">רוֹעֵי יִשְׂרָאֵל נֶאֱמָנִין, רוֹעִים כֹּהֲנִים אֵינָן נֶאֱמָנִין</span>. “Israelite shepherds” and “priest-shepherds”:
+          Rabbi Yoḥanan and Rabbi Elazar each read the cases differently (the Gemara doesn't say who holds which).
+        </p>
+        <p class="mb-4 text-sm leading-relaxed !text-[#b7ac9e]">Flip the reading. For each witness, stamp credible or not, then pin the motive the Gemara gives.</p>
+        <div class="mb-4 flex flex-wrap gap-2" role="group" aria-label="Reading">
+          <button class="chip !text-[#ebe5da]" data-rd="0" aria-pressed="true">Reading 1 (35a:18–21)</button>
+          <button class="chip !text-[#ebe5da]" data-rd="1" aria-pressed="false">Reading 2 (35a:22–35b:2)</button>
+        </div>
+        <div id="r5grid" class="space-y-3"></div>
+        <div id="r5more" class="mt-6 hidden"></div>
+      </section>
+
+      <!-- ROUND 6 -->
+      <section class="card p-5" aria-labelledby="r6h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#958a7b]">ROUND 6 · 35b:5–16</p>
+        <h2 id="r6h" class="frank mb-2 text-2xl font-bold !text-[#f4efe6]">Who takes the stand?</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#b7ac9e]">
+          A firstborn in a priest's house develops a blemish. Two witnesses must say no one caused it. Seat or turn away each candidate under each view, then check.
+        </p>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[30rem] border-separate border-spacing-1 text-sm">
+            <thead id="r6head"></thead>
+            <tbody id="r6body"></tbody>
+          </table>
+        </div>
+        <button id="r6check" class="mt-3 rounded-lg border border-[#c9894a] px-4 py-2 text-xs font-bold !text-[#c9894a] hover:bg-[#211e1a]">Check the benches</button>
+        <p id="r6msg" class="mt-3 text-sm leading-relaxed !text-[#b7ac9e]"></p>
+        <div id="r6more" class="mt-6 hidden space-y-6"></div>
+      </section>
+
+      <div id="final" class="card hidden p-5 text-center"></div>
+
+      <!-- LEARN -->
+      <section class="card p-5">
+        <h2 class="frank mb-3 text-lg font-bold !text-[#f4efe6]">Learn the real daf</h2>
+        <div class="mb-4 flex flex-wrap gap-2">
+          <a href="https://www.sefaria.org/Bekhorot.35a" target="_blank" rel="noopener" class="rounded-lg border border-[#33302b] px-4 py-2 text-xs font-bold !text-[#c9894a] transition-colors hover:bg-[#211e1a]">Bekhorot 35a on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Bekhorot.35b" target="_blank" rel="noopener" class="rounded-lg border border-[#33302b] px-4 py-2 text-xs font-bold !text-[#c9894a] transition-colors hover:bg-[#211e1a]">Bekhorot 35b on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Mishneh_Torah,_Firstlings" target="_blank" rel="noopener" class="rounded-lg border border-[#33302b] px-4 py-2 text-xs font-bold !text-[#c9894a] transition-colors hover:bg-[#211e1a]">Mishneh Torah, Firstlings ↗</a>
+          <a href="https://www.sefaria.org/Bekhorot.36a" target="_blank" rel="noopener" class="rounded-lg border border-[#33302b] px-4 py-2 text-xs font-bold !text-[#c9894a] transition-colors hover:bg-[#211e1a]">Continue: Bekhorot 36a ↗</a>
+        </div>
+        <p class="mb-2 text-xs !text-[#958a7b]">Top commentaries linked to this daf:</p>
+        <ul class="grid gap-1 text-sm sm:grid-cols-2">
+          <li><a href="https://www.sefaria.org/Rashi_on_Bekhorot.35a" target="_blank" rel="noopener" class="!text-[#c2b7a8] transition-colors hover:!text-[#c9894a]">Rashi (69) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.35a" target="_blank" rel="noopener" class="!text-[#c2b7a8] transition-colors hover:!text-[#c9894a]">Rabbeinu Gershom (45) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.35a" target="_blank" rel="noopener" class="!text-[#c2b7a8] transition-colors hover:!text-[#c9894a]">Steinsaltz (38) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Shulchan_Arukh,_Yoreh_De'ah.313" target="_blank" rel="noopener" class="!text-[#c2b7a8] transition-colors hover:!text-[#c9894a]">Shulchan Arukh, Yoreh De'ah 313–314 ↗</a></li>
+          <li><a href="https://www.sefaria.org/Jastrow" target="_blank" rel="noopener" class="!text-[#c2b7a8] transition-colors hover:!text-[#c9894a]">Jastrow (9): kastor, pigyom, legima ↗</a></li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <script is:inline>
+    (function () {
+      var score = 0, max = 0, done = 0, totalTasks = 0;
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var $ = function (id) { return document.getElementById(id); };
+      function sef(ref) { return '<a class="underline decoration-dotted !text-[#c9894a] hover:!text-[#f4efe6]" target="_blank" rel="noopener" href="https://www.sefaria.org/' + ref.replace(/ /g, '_') + '">' + ref + ' ↗</a>'; }
+      function addMax(n) { max += n; $('max').textContent = max; }
+      function award(n) { score += (n || 1); $('score').textContent = score; }
+      function task() { totalTasks++; }
+      function finish() { done++; checkDone(); }
+      function checkDone() {
+        if (totalTasks && done >= totalTasks) {
+          var f = $('final'); f.classList.remove('hidden');
+          f.innerHTML = '<p class="frank text-2xl font-bold !text-[#f4efe6]">' + score + ' / ' + max + '</p>' +
+            '<p class="mt-2 text-sm !text-[#b7ac9e]">Cliffhanger (35b:16): Rav Pappa asks Abaye. If Rabbi Meir says a suspect may neither judge nor testify, and that one suspected in one matter is suspected for the whole Torah, then priests shouldn’t judge at all. But it is written “by their word shall every controversy and every plague be” (Deut. 21:5)! ' + sef('Bekhorot 36a') + '</p>';
+        }
+      }
+      function mcq(host, prompt, opts, ref, after) {
+        addMax(1); task();
+        var box = document.createElement('div');
+        box.innerHTML = '<p class="mb-2 text-sm !text-[#ebe5da]">' + prompt + '</p><div class="flex flex-col gap-2"></div><p class="mt-2 text-sm leading-relaxed !text-[#b7ac9e]"></p>';
+        var list = box.children[1], msg = box.children[2], first = true;
+        opts.forEach(function (o) {
+          var b = document.createElement('button');
+          b.className = 'chip !text-[#ebe5da]'; b.innerHTML = o.t;
+          b.onclick = function () {
+            if (o.ok) {
+              if (first) award();
+              b.classList.add('ok');
+              Array.prototype.forEach.call(list.children, function (x) { x.disabled = true; });
+              msg.innerHTML = o.why + (ref ? ' ' + sef(ref) : '');
+              finish(); if (after) after();
+            } else {
+              first = false; b.classList.add('bad'); b.disabled = true;
+              msg.innerHTML = o.why || 'Not quite. Try again.';
+            }
+          };
+          list.appendChild(b);
+        });
+        host.appendChild(box);
+        return box;
+      }
+      function stampHtml(ok) {
+        return ok ? '<span class="stamp !text-[#7fbf8a]">PERMITTED</span>' : '<span class="stamp !text-[#e0705c]">PROHIBITED</span>';
+      }
+
+      // ---------- ROUND 1: incidents ----------
+      var incidents = [
+        { icon: '🗡️', t: 'An old firstborn ram, its wool long and shaggy. A Roman quaestor asks what its story is, hears “a firstborn: slaughtered only with a blemish,” takes a dagger and slits its ear.', ok: true, why: 'The Sages permitted it. The Jewish owner didn’t intend the blemish.', ref: 'Bekhorot 35a:2' },
+        { icon: '🗡️', t: 'After the Sages permitted it, the quaestor went and slit the ears of other firstborns.', ok: false, why: 'Now they prohibited them. Once he knew it “works,” the owners were letting it happen.', ref: 'Bekhorot 35a:2' },
+        { icon: '🧒', t: 'Children playing in a field tie lambs’ tails together. One tail tears off, and that lamb is a firstborn.', ok: true, why: 'The Sages permitted it: nobody meant to blemish a firstborn.', ref: 'Bekhorot 35a:3' },
+        { icon: '🧒', t: 'People who saw that ruling went and tied the tails of other firstborns.', ok: false, why: 'Prohibited. “This is the principle: any blemish made with his intent is prohibited; without his intent, permitted.”', ref: 'Bekhorot 35a:3' }
+      ];
+      var r1left = incidents.length;
+      incidents.forEach(function (inc) {
+        addMax(1); task();
+        var c = document.createElement('div');
+        c.className = 'rounded-xl border border-[#33302b] p-4';
+        c.innerHTML = '<p class="mb-3 text-sm leading-relaxed !text-[#ebe5da]"><span class="mr-1">' + inc.icon + '</span>' + inc.t + '</p>' +
+          '<div class="flex flex-wrap items-center gap-2"><button class="chip !text-[#ebe5da]" data-v="1">Permit slaughter</button><button class="chip !text-[#ebe5da]" data-v="0">Prohibit</button><span class="stampbox ml-2"></span></div><p class="mt-2 text-sm !text-[#b7ac9e]"></p>';
+        var btns = c.querySelectorAll('button'), st = c.querySelector('.stampbox'), msg = c.querySelector('p:last-child'), first = true;
+        btns.forEach(function (b) {
+          b.onclick = function () {
+            var v = b.getAttribute('data-v') === '1';
+            if (v === inc.ok) {
+              if (first) award();
+              b.classList.add('ok'); btns.forEach(function (x) { x.disabled = true; });
+              st.innerHTML = stampHtml(inc.ok);
+              msg.innerHTML = inc.why + ' ' + sef(inc.ref);
+              finish();
+              if (--r1left === 0) r1extra();
+            } else { first = false; b.classList.add('bad'); b.disabled = true; msg.textContent = 'The Sages ruled the other way. Ask: did anyone mean it?'; }
+          };
+        });
+        $('incidents').appendChild(c);
+      });
+      function r1extra() {
+        var h = $('r1more'); h.classList.remove('hidden');
+        mcq(h, 'Why does the mishna need <b>both</b> stories? Had it taught only the quaestor, one might think the Sages permitted only there because…', [
+          { t: 'A gentile doesn’t fall into a habit that matters: the prohibition on blemishing doesn’t apply to him. A Jewish child might get into the habit, so even the first time should be forbidden.', ok: true, why: 'Right. So the children’s case is needed. And the reverse: had it taught only the children, one might say a minor is never confused with an adult, but a gentile adult might be confused with a Jewish adult.' },
+          { t: 'A Roman official can’t be refused, so it counts as coercion.', ok: false, why: 'The Gemara’s tzerikhuta is about habit and confusion, not coercion.' },
+          { t: 'A dagger cut is more noticeable than a torn tail.', ok: false, why: 'The kind of blemish isn’t the issue here.' }
+        ], 'Bekhorot 35a:4-5');
+        mcq(h, '“Any blemish made <b>with his intent</b>: prohibited.” What does this extra clause come to include?', [
+          { t: 'Gerama: a blemish he causes indirectly.', ok: true, why: 'An indirect act done with intent still counts as intended.' },
+          { t: 'A blemish that appears on its own.', ok: false, why: 'That needs no principle; it is the normal permitted case.' },
+          { t: 'A blemish caused by the kohen.', ok: false, why: 'Kohanim come up in the next mishna, not here.' }
+        ], 'Bekhorot 35a:8');
+        mcq(h, '“…<b>without his intent</b>: permitted.” And this clause includes:', [
+          { t: 'A gentile who didn’t ask, but learned it from a Jew talking offhandedly (mesi’aḥ lefi tumo), and then blemished it.', ok: true, why: 'The gentile acted deliberately, but no Jew prompted him, so it is permitted.' },
+          { t: 'A blemish made by a Jew who forgot the animal was a firstborn.', ok: false, why: 'Not the case the Gemara brings.' },
+          { t: 'A blemish made while the animal was still a fetus.', ok: false, why: 'That is Rav Yehuda’s separate teaching (Round 4).' }
+        ], 'Bekhorot 35a:9');
+      }
+
+      // ---------- ROUND 2: speech bubble ----------
+      var say = 0;
+      var sayings = [
+        '“It is a firstborn, and it may be slaughtered only <b>if it had a blemish</b>.”',
+        '“It is a firstborn, and it may be slaughtered only <b>if a blemish was made in it</b>.”'
+      ];
+      // answers[say][sage] true=permitted
+      var r2ans = [[true, true], [false, true]];
+      var r2why = [
+        ['Rav Ketina: “had a blemish” describes something that happens on its own. Permitted, and that is the mishna’s case.', 'Rava: both phrasings are passive, so this one is plainly fine. Permitted.'],
+        ['Rav Ketina: “was made in it” points to a human hand. It is as if they told him “go make a blemish in it.” Prohibited.', 'Rava: “was made” is passive too, meaning it happened by itself. What difference does the wording make? Permitted.']
+      ];
+      var sages = ['Rav Ḥisda in the name of Rav Ketina', 'Rava'];
+      var r2state = {}; // key say-sage -> solved
+      function paintR2() {
+        document.querySelectorAll('[data-say]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-say') == say ? 'true' : 'false'); });
+        $('bubble').innerHTML = 'The quaestor asks <span class="frank" lang="he">מָה טִיבוֹ שֶׁל זֶה?</span> They answer: ' + sayings[say];
+        var g = $('r2grid'); g.innerHTML = '';
+        sages.forEach(function (s, si) {
+          var key = say + '-' + si, d = document.createElement('div');
+          d.className = 'gridcell' + (r2state[key] ? ' ok' : '');
+          d.innerHTML = '<p class="mb-2 text-xs tracking-wide !text-[#958a7b]">' + s.toUpperCase() + '</p>';
+          if (r2state[key]) {
+            d.innerHTML += stampHtml(r2ans[say][si]) + '<p class="mt-2 text-xs !text-[#b7ac9e]">' + r2why[say][si] + '</p>';
+          } else {
+            var row = document.createElement('div'); row.className = 'flex gap-2';
+            [true, false].forEach(function (v) {
+              var b = document.createElement('button'); b.className = 'chip !text-[#ebe5da]'; b.textContent = v ? 'Permitted' : 'Prohibited';
+              b.onclick = function () {
+                if (v === r2ans[say][si]) {
+                  if (!r2state[key + 'x']) award();
+                  r2state[key] = true; finish(); paintR2();
+                  $('r2msg').innerHTML = 'Wherever the two disagree is the whole dispute: only the “was made” phrasing. ' + sef('Bekhorot 35a:6-7');
+                } else { r2state[key + 'x'] = true; b.classList.add('bad'); b.disabled = true; }
+              };
+              row.appendChild(b);
+            });
+            d.appendChild(row);
+          }
+          g.appendChild(d);
+        });
+      }
+      addMax(4); for (var i = 0; i < 4; i++) task();
+      document.querySelectorAll('[data-say]').forEach(function (b) { b.onclick = function () { say = +b.getAttribute('data-say'); paintR2(); }; });
+      paintR2();
+
+      // ---------- ROUND 3: kick timing ----------
+      var ram = $('ram'), fill = $('phaseFill'), lbl = $('phaseLbl'), kleg = $('kleg');
+      var t0 = performance.now(), period = reduce ? 9000 : 5200;
+      var kicks = { pursuit: false, after: false };
+      function phaseAt(p) { return p < 0.55 ? 'pursuit' : 'after'; }
+      function frame(now) {
+        var p = ((now - t0) % period) / period, x;
+        if (p < 0.55) x = 20 + (p / 0.55) * 210; // charging toward the man
+        else if (p < 0.65) x = 230 - ((p - 0.55) / 0.1) * 30; // bounced back
+        else x = 200 - ((p - 0.65) / 0.35) * 40; // wandering off, grazing
+        ram.setAttribute('transform', 'translate(' + x + ',' + (p >= 0.65 ? 3 : 0) + ')');
+        fill.style.width = (p * 100) + '%';
+        var ph = phaseAt(p);
+        fill.className = ph === 'pursuit' ? 'bg-[#c4503d]' : 'bg-[#6f8a5c]';
+        lbl.textContent = ph === 'pursuit' ? 'PURSUIT: IT IS CHARGING' : 'AFTER: IT HAS STOPPED';
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+      var kickQs = {
+        pursuit: [
+          { v: 'First version of Rav Pappa', ok: true, why: 'This is the mishna’s own case: he kicked it while it chased him. Permitted.' },
+          { v: '“Some say” version of Rav Pappa', ok: true, why: 'Kicking during the pursuit is obviously permitted under this version too.' }
+        ],
+        after: [
+          { v: 'First version of Rav Pappa', ok: false, why: '“We learned this only when he kicked it during the pursuit, but after the pursuit, no.” We assume he kicked it to make a blemish, not out of anger. (Needed, lest you say it was just anger.)' },
+          { v: '“Some say” version of Rav Pappa', ok: true, why: '“Even after the pursuit, it is permitted. Why? He remembers his distress (צַעֲרֵיהּ הוּא דְּמִדְּכַר).”' }
+        ]
+      };
+      addMax(4); for (var k = 0; k < 4; k++) task();
+      $('kickBtn').onclick = function () {
+        var p = ((performance.now() - t0) % period) / period, ph = phaseAt(p);
+        kleg.setAttribute('x2', '0'); kleg.setAttribute('y2', '84');
+        setTimeout(function () { kleg.setAttribute('x2', '28'); kleg.setAttribute('y2', '95'); }, 250);
+        $('blem').setAttribute('opacity', '1'); setTimeout(function () { $('blem').setAttribute('opacity', '0'); }, 700);
+        if (kicks[ph]) { $('kickLog').textContent = 'You already ruled a kick ' + (ph === 'pursuit' ? 'during' : 'after') + ' the pursuit. Try the other phase.'; return; }
+        kicks[ph] = true;
+        $('kickLog').textContent = 'Kicks: ' + (kicks.pursuit ? '✓ during pursuit ' : '') + (kicks.after ? '✓ after pursuit' : '');
+        var c = document.createElement('div');
+        c.className = 'rounded-xl border border-[#33302b] p-4';
+        c.innerHTML = '<p class="mb-3 text-sm font-bold !text-[#f4efe6]">Kick ' + (ph === 'pursuit' ? 'during the pursuit' : 'after the pursuit') + ': the ear is torn. May he slaughter it?</p>';
+        kickQs[ph].forEach(function (q) {
+          var row = document.createElement('div'); row.className = 'mb-3';
+          row.innerHTML = '<p class="mb-1 text-xs !text-[#958a7b]">' + q.v + '</p><div class="flex gap-2"></div><p class="mt-1 text-xs !text-[#b7ac9e]"></p>';
+          var bx = row.children[1], m = row.children[2], first = true;
+          [true, false].forEach(function (v) {
+            var b = document.createElement('button'); b.className = 'chip !text-[#ebe5da]'; b.textContent = v ? 'Slaughter on it' : 'No';
+            b.onclick = function () {
+              if (v === q.ok) { if (first) award(); b.classList.add('ok'); Array.prototype.forEach.call(bx.children, function (x) { x.disabled = true; }); m.innerHTML = q.why + ' ' + sef(ph === 'pursuit' ? 'Bekhorot 35a:10-11' : 'Bekhorot 35a:11-13'); finish(); }
+              else { first = false; b.classList.add('bad'); b.disabled = true; }
+            };
+            bx.appendChild(b);
+          });
+          c.appendChild(row);
+        });
+        $('kickRulings').appendChild(c);
+      };
+
+      // ---------- ROUND 4: emergence scrubber ----------
+      var animals = {
+        kid: { order: ['ears', 'head', 'lips'], ans: 'ears', why: 'Rava: גַּדְיָא בְּאוּדְנֵיהּ. A kid’s long ears come out before its head, so blemish the ear.' },
+        lamb1: { order: ['lips', 'head', 'ears'], ans: 'lips', why: 'Rava: אִימְּרָא בְּשִׂפְוָותֵיהּ. A lamb’s short ears don’t show before the head, so it has to be the lip.' },
+        lamb2: { order: ['ears', 'head', 'lips'], ans: 'ears', why: 'Some say: a lamb on its ear too. Say it came out temples first (דֶּרֶךְ צְדָעָיו), so its ears show first.' }
+      };
+      var names = { ears: 'Ear', head: 'Head', lips: 'Lip' };
+      var an = 'kid', r4solved = {};
+      addMax(3); for (var j = 0; j < 3; j++) task();
+      function visibleParts() {
+        var v = +$('birth').value, o = animals[an].order;
+        if (v < 15) return [];
+        if (v < 50) return o.slice(0, 1);
+        if (v < 80) return o.slice(0, 2);
+        return o.slice(0, 3);
+      }
+      function paintR4() {
+        document.querySelectorAll('[data-an]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-an') === an ? 'true' : 'false'); });
+        var vis = visibleParts();
+        document.querySelectorAll('#emerge .part').forEach(function (p) {
+          var on = vis.indexOf(p.getAttribute('data-p')) >= 0;
+          p.style.opacity = on ? 1 : 0.06;
+        });
+        $('visible').textContent = vis.length ? 'Out so far: ' + vis.map(function (p) { return names[p]; }).join(', ') + (vis.indexOf('head') >= 0 ? ' (the head is out: it is now a born firstborn).' : '.') : 'Nothing is out yet.';
+        var pb = $('partBtns'); pb.innerHTML = '';
+        ['ears', 'lips'].forEach(function (p) {
+          var b = document.createElement('button'); b.className = 'chip !text-[#ebe5da]';
+          b.textContent = '✂ Blemish the ' + names[p].toLowerCase();
+          var headOut = vis.indexOf('head') >= 0;
+          b.disabled = vis.indexOf(p) < 0 || headOut || !!r4solved[an];
+          b.onclick = function () {
+            if (p === animals[an].ans) {
+              if (!r4solved[an + 'x']) award(); r4solved[an] = true; finish();
+              $('r4msg').innerHTML = animals[an].why + ' ' + sef('Bekhorot 35a:14');
+              paintR4(); r4check();
+            } else { r4solved[an + 'x'] = true; b.classList.add('bad'); $('r4msg').textContent = 'That part isn’t the first one out for this animal under this version.'; }
+          };
+          pb.appendChild(b);
+        });
+        if (r4solved[an]) $('r4msg').innerHTML = animals[an].why + ' ' + sef('Bekhorot 35a:14');
+        else if (vis.indexOf('head') >= 0) $('r4msg').textContent = 'Too late: the head is out, so it is born and holy. Scrub back.';
+        else $('r4msg').textContent = '';
+      }
+      document.querySelectorAll('[data-an]').forEach(function (b) { b.onclick = function () { an = b.getAttribute('data-an'); $('birth').value = 0; paintR4(); }; });
+      $('birth').oninput = paintR4;
+      paintR4();
+      var r4done = false;
+      function r4check() {
+        if (r4done || !(r4solved.kid && r4solved.lamb1 && r4solved.lamb2)) return;
+        r4done = true;
+        mcq($('r4more'), 'Rava: a blemish in the mouth that doesn’t show while it eats but shows when it opens wide and bleats counts as a blemish. What is new in that?', [
+          { t: 'Nothing new. Rav Pappa: Rava is giving the reason for the mishna (39a) that counts extracted inner gums, which show only when it opens wide and bleats.', ok: true, why: 'Exactly. The mishna already said it; Rava explains why.' },
+          { t: 'It reverses the mishna on inner gums.', ok: false, why: 'No. It explains the mishna.' },
+          { t: 'It applies only to a lamb, not a kid.', ok: false, why: 'The Gemara draws no such line.' }
+        ], 'Bekhorot 35a:15-16');
+      }
+
+      // ---------- ROUND 5: reading flip ----------
+      var motives = [
+        'Not suspected of lying for a mouthful (לְגִימָה)',
+        'Lies for a mouthful from his priest employer',
+        '“I toiled with it, he won’t pass me over”',
+        '“He’ll give it to a scholar priest, not me”',
+        'Reciprocity: priests cover for each other'
+      ];
+      var witnesses = [
+        { w: 'Israelite shepherd, employed by a priest', ans: [{ c: true, m: 0 }, { c: false, m: 1 }] },
+        { w: 'Priest shepherd, employed by an Israelite', ans: [{ c: false, m: 2 }, { c: true, m: 3 }] },
+        { w: 'A priest testifying for another priest', ans: [{ c: false, m: 4 }, { c: false, m: 4 }] }
+      ];
+      var rd = 0, r5 = {}, r5count = 0;
+      addMax(6); for (var q = 0; q < 6; q++) task();
+      function paintR5() {
+        document.querySelectorAll('[data-rd]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-rd') == rd ? 'true' : 'false'); });
+        var g = $('r5grid'); g.innerHTML = '';
+        witnesses.forEach(function (w, wi) {
+          var key = rd + '-' + wi, st = r5[key] || (r5[key] = { c: null, m: null, ok: false, miss: false });
+          var a = w.ans[rd], d = document.createElement('div');
+          d.className = 'gridcell' + (st.ok ? ' ok' : '');
+          d.innerHTML = '<p class="mb-2 text-sm font-bold !text-[#f4efe6]">' + w.w + '</p>';
+          if (st.ok) {
+            d.innerHTML += '<span class="stamp ' + (a.c ? '!text-[#7fbf8a]' : '!text-[#e0705c]') + '">' + (a.c ? 'CREDIBLE' : 'NOT CREDIBLE') + '</span><p class="mt-2 text-xs !text-[#b7ac9e]">Motive: ' + motives[a.m] + '</p>';
+          } else {
+            var r1 = document.createElement('div'); r1.className = 'mb-2 flex gap-2';
+            [true, false].forEach(function (v) {
+              var b = document.createElement('button'); b.className = 'chip !text-[#ebe5da]'; b.textContent = v ? 'Credible' : 'Not credible';
+              b.setAttribute('aria-pressed', st.c === v ? 'true' : 'false');
+              b.onclick = function () { st.c = v; tryR5(wi); };
+              r1.appendChild(b);
+            });
+            var r2 = document.createElement('div'); r2.className = 'flex flex-wrap gap-2';
+            motives.forEach(function (m, mi) {
+              var b = document.createElement('button'); b.className = 'chip !text-[#ebe5da] text-xs'; b.textContent = m;
+              b.setAttribute('aria-pressed', st.m === mi ? 'true' : 'false');
+              b.onclick = function () { st.m = mi; tryR5(wi); };
+              r2.appendChild(b);
+            });
+            d.appendChild(r1); d.appendChild(r2);
+            if (st.miss) {
+              var mp = document.createElement('p'); mp.className = 'mt-2 text-xs !text-[#e0705c]';
+              mp.textContent = 'That pairing isn’t how this reading goes. Adjust.'; d.appendChild(mp);
+            }
+          }
+          g.appendChild(d);
+        });
+      }
+      function tryR5(wi) {
+        var key = rd + '-' + wi, st = r5[key], a = witnesses[wi].ans[rd];
+        if (st.c !== null && st.m !== null) {
+          if (st.c === a.c && st.m === a.m) { if (!st.miss) award(); st.ok = true; finish(); r5count++; }
+          else st.miss = true;
+        }
+        paintR5();
+        if (r5count === 6) r5extra();
+      }
+      document.querySelectorAll('[data-rd]').forEach(function (b) { b.onclick = function () { rd = +b.getAttribute('data-rd'); paintR5(); }; });
+      paintR5();
+      var r5shown = false;
+      function r5extra() {
+        if (r5shown) return; r5shown = true;
+        var h = $('r5more'); h.classList.remove('hidden');
+        h.innerHTML = '<p class="mb-4 text-sm leading-relaxed !text-[#b7ac9e]">Notice the flip: the same two employment cases swap verdicts, because each reading finds the motive on a different side. ' + sef('Bekhorot 35a:18') + ' ' + sef('Bekhorot 35b:1') + '</p>';
+        mcq(h, 'Rabbi Meir: “one suspect in the matter may neither judge nor testify about it.” Under <b>Reading 1</b>, the first tanna already disqualifies the priest-shepherd. So what is Rabbi Meir adding?', [
+          { t: 'A priest who isn’t this animal’s shepherd at all, an independent priest from the market. The first tanna accepts him (like Rabbi Yehoshua ben Kefusai’s “two from the marketplace”); Rabbi Meir doesn’t.', ok: true, why: 'Right. Under Reading 2 it’s simpler: the first tanna trusts the priest employed by an Israelite, and Rabbi Meir rejects him.' },
+          { t: 'He disqualifies Israelite shepherds too.', ok: false, why: 'Rabbi Meir speaks about the suspect, the priest.' },
+          { t: 'Nothing. The Gemara leaves it as a question.', ok: false, why: 'The Gemara does answer, with Rabbi Yehoshua ben Kefusai’s baraita.' }
+        ], 'Bekhorot 35b:3-6');
+      }
+
+      // ---------- ROUND 6: bench lineup ----------
+      var views = [
+        { n: 'Rabbi Yehoshua ben Kefusai', s: '“two from the marketplace”' },
+        { n: 'Rabbi Yosei', s: '“even ten, if household, no”' },
+        { n: 'The halakha (per Rabban Shimon ben Gamliel)', s: '35b:15' }
+      ];
+      var cands = [
+        { n: 'An Israelite from the market', a: [1, 1, 1] },
+        { n: 'An unrelated priest from the market', a: [1, 1, 1] },
+        { n: 'The priest’s son', a: [0, 0, 1] },
+        { n: 'The priest’s daughter', a: [0, 0, 1] },
+        { n: 'The priest’s wife', a: [0, 0, 0] }
+      ];
+      var hd = '<tr><th class="p-1 text-left text-xs !text-[#958a7b]">Candidate</th>' + views.map(function (v) { return '<th class="p-1 text-left text-xs !text-[#ebe5da]">' + v.n + '<br><span class="font-normal !text-[#958a7b]">' + v.s + '</span></th>'; }).join('') + '</tr>';
+      $('r6head').innerHTML = hd;
+      cands.forEach(function (c, ci) {
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td class="p-1 text-xs !text-[#ebe5da]">' + c.n + '</td>';
+        views.forEach(function (v, vi) {
+          var td = document.createElement('td'), b = document.createElement('button');
+          b.className = 'seat !text-[#ebe5da]'; b.setAttribute('data-c', ci); b.setAttribute('data-vw', vi); b.setAttribute('data-v', '');
+          b.textContent = '—'; b.setAttribute('aria-label', c.n + ' under ' + v.n);
+          b.onclick = function () {
+            var nv = b.getAttribute('data-v') === 'yes' ? 'no' : 'yes';
+            b.setAttribute('data-v', nv); b.textContent = nv === 'yes' ? 'Testifies' : 'Turned away';
+          };
+          td.appendChild(b); tr.appendChild(td);
+        });
+        $('r6body').appendChild(tr);
+      });
+      addMax(3); task(); var r6tries = 0, r6done = false;
+      $('r6check').onclick = function () {
+        if (r6done) return;
+        var wrong = 0, blank = 0;
+        document.querySelectorAll('.seat').forEach(function (b) {
+          var v = b.getAttribute('data-v'), want = cands[+b.getAttribute('data-c')].a[+b.getAttribute('data-vw')] ? 'yes' : 'no';
+          if (!v) blank++; else if (v !== want) wrong++;
+        });
+        if (blank) { $('r6msg').textContent = blank + ' seat(s) still undecided. Tap each one.'; return; }
+        r6tries++;
+        if (wrong) { $('r6msg').textContent = wrong + ' seat(s) wrong. Look again.'; return; }
+        r6done = true; award(Math.max(1, 4 - r6tries)); finish();
+        $('r6check').disabled = true;
+        $('r6msg').innerHTML = 'Benches set. Rabbi Yehoshua ben Kefusai wants outsiders, and his unqualified “from the marketplace” lets even a priest testify. Rabban Shimon ben Gamliel: even his son and daughter. Rabbi Yosei: even ten household members, no. Rav Naḥman rules like Rabban Shimon ben Gamliel; Rava like Rabbi Yosei. The Gemara’s final halakha: Rabban Shimon ben Gamliel, but specifically son and daughter. Not his wife: <span class="frank" lang="he">אִשְׁתּוֹ כְּגוּפוֹ דָּמֵי</span>, his wife is like himself. ' + sef('Bekhorot 35b:5-6') + ' ' + sef('Bekhorot 35b:13-15');
+        r6extra();
+      };
+      function r6extra() {
+        var h = $('r6more'); h.classList.remove('hidden');
+        mcq(h, 'But Rava himself said: if the priestly owner was standing outside with us, and the firstborn went into the house whole and came out injured, “the household” may testify. How does that square with ruling like Rabbi Yosei?', [
+          { t: 'All the owners (the household) were standing outside; only the shepherd was inside, and he is believed.', ok: true, why: 'And it isn’t obvious: you might suspect the shepherd did it himself. Rava teaches he is trusted.' },
+          { t: 'Rava retracted his ruling.', ok: false, why: 'The Gemara reinterprets the case instead.' },
+          { t: 'Household members are believed only when the priest is outside.', ok: false, why: 'That would contradict Rabbi Yosei. The Gemara puts the household outside too.' }
+        ], 'Bekhorot 35b:14-15');
+        mcq(h, 'A <b>doubtful</b> firstborn in an Israelite’s house gets a blemish. Rav Ketina: two from the market must testify. Rav Naḥman: the Israelite owners themselves may. Which proof does the Gemara accept?', [
+          { t: 'Rabbi Meir (18b) obligates gifts from an animal whose replacements are with a priest, so he lets a doubtful firstborn be eaten. Someone must be able to testify, so Israelites aren’t suspected.', ok: true, why: 'Yes: “only priests are suspected of blemishing; Israelites are not.”' },
+          { t: 'Animal tithe: if Israelites were suspected, no one could testify about a blemished tithe animal under Rabbi Meir.', ok: false, why: 'Rejected: with tithe, the owner is trusted anyway, since he could have blemished his whole flock before it became obligated in tithe.' },
+          { t: 'The children in the field: Israelites are trusted because the Sages trusted them.', ok: false, why: 'Not the proof the Gemara uses.' }
+        ], 'Bekhorot 35b:7-12');
+      }
+    })();
+  </script>
+</Layout>
