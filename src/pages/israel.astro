@@ -11,6 +11,8 @@
 import Layout from '../layouts/Layout.astro';
 import IsraelTracker from '../components/israel/IsraelTracker.tsx';
 import IsraelNumbers from '../components/israel/IsraelNumbers.tsx';
+// Place-name facts from the Academy of the Hebrew Language's settlements quiz and official names list.
+import placeNames from '../data/israel/place-names.json';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -59,6 +61,15 @@ const pageDescription =
         aria-selected="false"
         data-tab="numbers"
         type="button">Israel in numbers</button
+      >
+      <button
+        class="il-ptab"
+        role="tab"
+        id="il-ptab-names"
+        aria-controls="il-panel-names"
+        aria-selected="false"
+        data-tab="names"
+        type="button">Place names</button
       >
     </nav>
 
@@ -316,12 +327,76 @@ const pageDescription =
       </p>
       <IsraelNumbers client:only="react" />
     </section>
+
+    <section
+      class="il-section il-names il-panel"
+      id="il-panel-names"
+      role="tabpanel"
+      aria-labelledby="il-ptab-names"
+      data-panel="names"
+      hidden
+    >
+      <h2 class="il-h2">Place names, by the book</h2>
+      <p class="il-lede">
+        It's officially Kfar Sa<b>va</b>, the moshav down the road is Botsra, and Ra'anana is spelled
+        with a double n. Fun facts about Israel's place names, all from the Academy of the Hebrew
+        Language: its settlements quiz and its official list of how every settlement is spelled.
+      </p>
+      <div class="il-names-filter" role="group" aria-label="Filter place-name facts">
+        <button type="button" class="is-on" data-nf="all">All {placeNames.facts.length}</button>
+        {placeNames.groups.map((g) => (
+          <button type="button" data-nf={g.id}>{g.label}</button>
+        ))}
+        <button type="button" data-nf="near">Near Ra'anana</button>
+      </div>
+      {placeNames.groups.map((g) => (
+        <div class="il-names-group" data-ng={g.id}>
+          <h3 class="il-names-h3">{g.label}</h3>
+          <p class="il-names-blurb">{g.blurb}</p>
+          <ul class="il-names-grid">
+            {placeNames.facts.filter((f) => f.g === g.id).map((f) => (
+              <li class="il-name" data-near={f.near ? '1' : undefined}>
+                <div class="il-name-top">
+                  <span class="il-name-he" lang="he" dir="rtl">{f.he}</span>
+                  <span class="il-name-en">{f.en}</span>
+                </div>
+                <strong class="il-name-head">{f.head}</strong>
+                <p>{f.body}</p>
+                <a class="il-name-src" href={placeNames.sources[f.src as 'quiz' | 'list'].url} target="_blank" rel="noopener">
+                  {f.src === 'quiz' ? 'Academy settlements quiz ↗' : 'Academy names list, 2022 ↗'}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      <p class="il-names-note">
+        Sources: <a href={placeNames.sources.quiz.url} target="_blank" rel="noopener">{placeNames.sources.quiz.title}</a>;
+        <a href={placeNames.sources.list.url} target="_blank" rel="noopener">{placeNames.sources.list.title}</a>.
+        The Academy spells the names; the Government Names Committee chooses them.
+      </p>
+    </section>
   </main>
+
+  <script>
+    // Place names: filter by group, or just the places around Ra'anana.
+    document.querySelectorAll<HTMLButtonElement>('[data-nf]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const f = b.dataset.nf;
+        document.querySelectorAll('[data-nf]').forEach((x) => x.classList.toggle('is-on', x === b));
+        document.querySelectorAll<HTMLElement>('[data-ng]').forEach((g) => {
+          const cards = g.querySelectorAll<HTMLElement>('.il-name');
+          cards.forEach((c) => (c.hidden = f === 'near' && !c.dataset.near));
+          g.hidden = (f !== 'all' && f !== 'near' && g.dataset.ng !== f) || ![...cards].some((c) => !c.hidden);
+        });
+      });
+    });
+  </script>
 
   <script>
     // Page tabs: ?tab=<slug> deep-links a tab; clicking updates the URL in place.
     (function () {
-      var SLUGS = ['log', 'kosher-eats', 'numbers'];
+      var SLUGS = ['log', 'kosher-eats', 'numbers', 'names'];
       function desired() {
         var q = new URLSearchParams(window.location.search).get('tab');
         if (q && SLUGS.indexOf(q) !== -1) return q;
@@ -440,6 +515,7 @@ const pageDescription =
     display: none !important;
   }
   .il-panel.il-eats,
+  .il-panel.il-names,
   .il-panel.il-numbers {
     margin-top: 0;
     padding-top: 0;
@@ -1484,4 +1560,27 @@ const pageDescription =
       padding-left: 0.5rem;
     }
   }
+
+  /* ── Place names (Academy of the Hebrew Language) ──────────────────────── */
+  .il-names-filter { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1.2rem 0 0.4rem; }
+  .il-names-filter button {
+    padding: 0.35rem 0.8rem; border-radius: 999px; border: 1px solid #334155; background: #0f172a;
+    color: #cbd5e1; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  }
+  .il-names-filter button.is-on { background: #38bdf8; border-color: #38bdf8; color: #0b1220; }
+  .il-names-group[hidden], .il-name[hidden] { display: none !important; }
+  .il-names-h3 { font-size: 1.15rem; font-weight: 700; color: #e2e8f0; margin: 1.8rem 0 0.2rem; }
+  .il-names-blurb { color: #94a3b8; font-size: 0.92rem; margin: 0 0 0.9rem; }
+  .il-names-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.8rem; }
+  .il-name { background: #0f172a; border: 1px solid #1e293b; border-radius: 0.75rem; padding: 0.9rem 1rem; display: flex; flex-direction: column; gap: 0.35rem; }
+  .il-name[data-near] { border-color: #0e7490; }
+  .il-name-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+  .il-name-he { font-size: 1.45rem; font-family: 'Frank Ruhl Libre', 'David', 'Times New Roman', serif; color: #f8fafc; line-height: 1.3; }
+  .il-name-en { font-size: 0.78rem; letter-spacing: 0.06em; color: #7dd3fc; font-weight: 600; }
+  .il-name-head { color: #e2e8f0; font-size: 1rem; }
+  .il-name p { color: #94a3b8; font-size: 0.9rem; line-height: 1.55; margin: 0; flex: 1; }
+  .il-name-src { font-size: 0.75rem; color: #64748b; text-decoration: none; }
+  .il-name-src:hover { color: #7dd3fc; }
+  .il-names-note { margin-top: 1.6rem; font-size: 0.8rem; color: #64748b; line-height: 1.5; }
+  .il-names-note a { color: #7dd3fc; }
 </style>
