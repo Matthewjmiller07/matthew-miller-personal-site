@@ -77,6 +77,12 @@ import Layout from '../layouts/Layout.astro';
             <button type="button" id="reset" disabled>Clear</button>
             <button type="button" id="png" disabled>PNG</button>
             <button type="button" id="svg" disabled hidden>SVG</button>
+            <button type="button" id="gif" disabled title="An animated GIF that colors the sheet in, then shows the answer">GIF</button>
+            <select id="printMode" disabled aria-label="What to print">
+              <option value="sheet">Sheet (black &amp; white)</option>
+              <option value="both">Sheet + answer</option>
+              <option value="answer">Answer only</option>
+            </select>
             <button type="button" id="print" class="primary" disabled>Print</button>
           </div>
         </div>
@@ -91,6 +97,11 @@ import Layout from '../layouts/Layout.astro';
         </div>
 
         <div class="palette" id="palette"></div>
+        <img id="printAnswer" class="print-answer" alt="" />
+        <div class="gifout" id="gifOut" hidden>
+          <img id="gifImg" alt="Animated GIF of the sheet being colored in" />
+          <div><a id="gifDl" download="color-by-number.gif">Download GIF</a> <span id="gifSize"></span> <button type="button" class="link" id="gifClose">Close</button></div>
+        </div>
         <p class="hint center" id="playHint" hidden>Pick a color, then tap every space with its number. Spaces for the color you've picked light up.</p>
       </main>
     </div>
@@ -178,6 +189,14 @@ import Layout from '../layouts/Layout.astro';
   .sheet.busy::after { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,.55); }
   .shake { animation: shake .3s; }
   @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+  .actions select { padding: .4rem .3rem; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: .82rem; font-weight: 600; width: auto; }
+  .print-answer { display: none; }
+  .gifout { margin-top: 1rem; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; text-align: center; }
+  .gifout img { max-width: 100%; max-height: 60vh; border: 1px solid var(--line); }
+  .gifout div { margin-top: .5rem; font-size: .88rem; display: flex; gap: .8rem; justify-content: center; align-items: baseline; }
+  .cbn .gifout a { color: var(--accent2) !important; font-weight: 700; }
+  .cbn .gifout span { color: var(--muted) !important; }
+  .cbn .gifout .link { margin: 0; }
   .palette { display: flex; flex-wrap: wrap; gap: 6px; margin-top: .8rem; justify-content: center; }
   .pal { display: flex; align-items: center; gap: .4rem; padding: .3rem .6rem .3rem .3rem; border-radius: 999px; border: 2px solid var(--line); background: var(--card); cursor: pointer; font-size: .8rem; color: var(--ink); }
   .pal i { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: .78rem; border: 1px solid rgba(0,0,0,.2); }
@@ -200,6 +219,11 @@ import Layout from '../layouts/Layout.astro';
     .pal { border: 1px solid #999; padding: 1px 6px 1px 1px; font-size: 9pt; }
     .pal.sel { box-shadow: none; border-color: #999; }
     .pal i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .gifout { display: none !important; }
+    .pm-sheet .pal i { background: #fff !important; color: #000 !important; border: 1px solid #000; }
+    .pm-both .print-answer, .pm-answer .print-answer { display: block; max-width: 100%; max-height: 250mm; margin: 0 auto; }
+    .pm-both .print-answer { break-before: page; }
+    .pm-answer .sheet { display: none !important; }
   }
 </style>
 
@@ -614,7 +638,7 @@ import Layout from '../layouts/Layout.astro';
     $('empty').hidden = true;
     const regions = st.mode === 'regions';
     $<HTMLCanvasElement>('canvas').hidden = !regions; $('dotWrap').hidden = regions; $('svg').hidden = regions;
-    ['reset', 'png', 'svg', 'print'].forEach((b) => ($<HTMLButtonElement>(b).disabled = false));
+    ['reset', 'png', 'svg', 'print', 'printMode', 'gif'].forEach((b) => ($<HTMLButtonElement>(b).disabled = false));
     if (st.sel >= r.palette.length) st.sel = -1;
     regions ? buildRegions() : buildDots();
     renderPalette();
@@ -664,7 +688,7 @@ import Layout from '../layouts/Layout.astro';
   }
 
   function drawRegions(target?: HTMLCanvasElement) {
-    const { W, H, hi, regions } = st.reg, pal = st.result.palette, preview = $<HTMLInputElement>('preview').checked;
+    const { W, H, hi, regions } = st.reg, pal = st.result.palette, preview = st.forcePreview ?? $<HTMLInputElement>('preview').checked;
     const thick = $<HTMLInputElement>('thick').checked;
     const cv = target || $<HTMLCanvasElement>('canvas'), cx = cv.getContext('2d')!;
     const im = cx.createImageData(W, H), o = im.data;
@@ -734,7 +758,7 @@ import Layout from '../layouts/Layout.astro';
   }
 
   function dotSvg(forExport = false) {
-    const { dots, cell, w, h } = st.dot, pal = st.result.palette, preview = $<HTMLInputElement>('preview').checked;
+    const { dots, cell, w, h } = st.dot, pal = st.result.palette, preview = st.forcePreview ?? $<HTMLInputElement>('preview').checked;
     const sq = st.shape === 'square', r = sq ? cell * 0.5 : cell * 0.44, fs = cell * 0.36, thick = $<HTMLInputElement>('thick').checked;
     const sw = (thick ? 0.06 : 0.035) * cell;
     let out = `<svg xmlns="http://www.w3.org/2000/svg" class="dots" viewBox="0 0 ${w.toFixed(1)} ${h.toFixed(1)}" width="${forExport ? w * 4 : w * 2}" height="${forExport ? h * 4 : h * 2}">`;
@@ -818,10 +842,67 @@ import Layout from '../layouts/Layout.astro';
     out.toBlob((b) => b && download(URL.createObjectURL(b), `color-by-number-${st.mode}.png`));
   };
   $('svg').onclick = () => download(URL.createObjectURL(new Blob([dotSvg(true)], { type: 'image/svg+xml' })), 'color-by-number-dots.svg');
-  $('print').onclick = () => {
+  // Print: the black-and-white sheet (key by number and name, no ink-heavy swatches), the sheet with the
+  // colored answer on a second page, or just the answer.
+  $('print').onclick = async () => {
+    const mode = $<HTMLSelectElement>('printMode').value, root = document.querySelector('.cbn')!;
     const keep = st.sel; st.sel = -1; redraw();
-    window.print(); st.sel = keep; redraw();
+    if (mode !== 'sheet') {
+      st.forcePreview = true;
+      $<HTMLImageElement>('printAnswer').src = (await sheetCanvas()).toDataURL('image/png');
+      st.forcePreview = undefined;
+      await $<HTMLImageElement>('printAnswer').decode().catch(() => {});
+    }
+    root.classList.add('pm-' + mode);
+    window.print();
+    root.classList.remove('pm-' + mode); st.sel = keep; redraw();
   };
+  // ---------- GIF: color the sheet in, color by color, then hold on the answer ----------
+  $('gif').onclick = async () => {
+    const btn = $<HTMLButtonElement>('gif'); btn.disabled = true;
+    const regions = st.mode === 'regions', items = regions ? st.reg.regions : st.dot.dots, real: Uint8Array = regions ? st.filled : st.dotFilled;
+    const saved = real.slice(), keepSel = st.sel;
+    try {
+      status('Making the GIF…');
+      const { GIFEncoder, quantize, applyPalette } = await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js');
+      st.sel = -1;
+      const yOf = (it: any) => (regions ? it.labels[0].y : it.y);
+      const order = items.map((_: any, k: number) => k).filter((k: number) => items[k].c !== PAPER)
+        .sort((a: number, b: number) => items[a].c - items[b].c || yOf(items[a]) - yOf(items[b]));
+      const F = Math.min(48, order.length);
+      const small = document.createElement('canvas'), sx = small.getContext('2d', { willReadFrequently: true })!;
+      const frame = async () => {
+        const big = await sheetCanvas(), k = Math.min(1, 640 / Math.max(big.width, big.height));
+        small.width = Math.round(big.width * k); small.height = Math.round(big.height * k);
+        sx.imageSmoothingQuality = 'high'; sx.drawImage(big, 0, 0, small.width, small.height);
+        return sx.getImageData(0, 0, small.width, small.height).data;
+      };
+      const frames: [Uint8ClampedArray, number][] = [];
+      real.fill(0); frames.push([await frame(), 700]);
+      for (let f = 1; f <= F; f++) {
+        const upto = Math.round((f / F) * order.length);
+        for (let i = 0; i < upto; i++) real[order[i]] = 1;
+        frames.push([await frame(), f === F ? 600 : 70]);
+        if (f % 8 === 0) { status(`Making the GIF… ${Math.round((100 * f) / F)}%`); await tick(); }
+      }
+      st.forcePreview = true; frames.push([await frame(), 2600]); st.forcePreview = undefined;
+      // one palette for every frame, from the blank sheet and the answer together
+      const a = frames[0][0], z = frames[frames.length - 1][0], both = new Uint8ClampedArray(a.length + z.length); both.set(a); both.set(z, a.length);
+      const palette = quantize(both, 256), gif = GIFEncoder();
+      frames.forEach(([data, delay], i) => gif.writeFrame(applyPalette(data, palette), small.width, small.height, i ? { delay } : { palette, delay }));
+      gif.finish();
+      const blob = new Blob([gif.bytes()], { type: 'image/gif' }), url = URL.createObjectURL(blob);
+      $<HTMLImageElement>('gifImg').src = url; $<HTMLAnchorElement>('gifDl').href = url;
+      $<HTMLAnchorElement>('gifDl').download = `color-by-number-${st.mode}.gif`;
+      $('gifSize').textContent = `${(blob.size / 1e6).toFixed(1)} MB · ${frames.length} frames`;
+      $('gifOut').hidden = false; $('gifOut').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (e) {
+      console.error(e); status("Couldn't make the GIF.");
+    } finally {
+      real.set(saved); st.forcePreview = undefined; st.sel = keepSel; redraw(); btn.disabled = false;
+    }
+  };
+  $('gifClose').onclick = () => ($('gifOut').hidden = true);
   $('reset').onclick = () => { if (st.filled) st.filled.fill(0); if (st.dotFilled) st.dotFilled.fill(0); redraw(); };
   $('preview').onchange = () => st.result && redraw();
   $('thick').onchange = () => st.result && redraw();
