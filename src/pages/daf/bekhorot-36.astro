@@ -1,0 +1,669 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Is It Not I Who Gave It to You? — Daf Yomi Game: Bekhorot 36"
+  description="Bekhorot 36: who is believed about a firstborn's blemish? Build the better lie the renter could have told, predict the showdown at Yavne, spot where Giddul garbled the teaching, force Rafram's sore eyes open, and seat three synagogue-goers on the bench."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style>
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .card { background: #0f1514; border: 1px solid #26332f; border-radius: 1rem; }
+    .chip { border: 1px solid #3a4a45; border-radius: 0.6rem; padding: 0.45rem 0.75rem; font-size: 0.8rem; transition: background .15s, border-color .15s; text-align: left; }
+    .chip:hover:not(:disabled) { background: #17211f; }
+    .chip[aria-pressed="true"] { background: #2a2414; border-color: #d4a24c; }
+    .chip.ok { background: #14261f; border-color: #5fb3a1; }
+    .chip.bad { background: #331b17; border-color: #c4503d; }
+    .chip:disabled { cursor: default; opacity: .92; }
+    .stamp { display: inline-block; border: 3px solid currentColor; padding: .15rem .7rem; border-radius: .4rem; transform: rotate(-6deg); font-weight: 900; letter-spacing: .18em; font-size: .75rem; animation: thunk .25s ease-out; }
+    @keyframes thunk { from { transform: rotate(-6deg) scale(1.8); opacity: 0; } to { transform: rotate(-6deg) scale(1); opacity: 1; } }
+    .tile { border: 1px solid #3a4a45; border-radius: .5rem; padding: .3rem .6rem; font-size: 1.25rem; transition: background .15s, border-color .15s, transform .2s; }
+    .tile[aria-pressed="true"] { background: #2a2414; border-color: #d4a24c; transform: translateY(-3px); }
+    .tile.ok { background: #14261f; border-color: #5fb3a1; }
+    .node { border: 1px solid #3a4a45; border-radius: 999px; padding: .3rem .7rem; font-size: .75rem; transition: background .3s, border-color .3s; }
+    .node.lit { background: #2a2414; border-color: #d4a24c; }
+    .meter { height: .55rem; border-radius: 999px; background: #1d2725; overflow: hidden; }
+    .meter > div { height: 100%; transition: width .2s linear; }
+    .path { transition: stroke .2s, stroke-width .2s; cursor: pointer; }
+    .seat { width: 100%; border: 1px solid #3a4a45; border-radius: .6rem; padding: .35rem; font-size: .75rem; transition: background .15s, border-color .15s; }
+    .seat[data-v="yes"] { background: #14261f; border-color: #5fb3a1; }
+    .seat[data-v="no"] { background: #331b17; border-color: #c4503d; }
+    .sheep { transition: transform .35s ease-out, opacity .35s; }
+    @media (prefers-reduced-motion: reduce) {
+      .chip, .tile, .node, .meter > div, .path, .seat, .sheep { transition: none; }
+      .stamp { animation: none; }
+    }
+    button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid #d4a24c; outline-offset: 2px; }
+  </style>
+
+  <main class="min-h-screen bg-[#090d0c] !text-[#e6ebe7]">
+
+    <!-- HERO -->
+    <div class="border-b border-[#26332f] bg-gradient-to-b from-[#132420] to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs tracking-[0.22em] !text-[#93a39d]">
+        <a href="/daf" class="transition-colors hover:!text-[#e6ebe7]">daf yomi arcade</a>
+        <span class="mx-2 opacity-40">·</span>bekhorot 36<span class="mx-2 opacity-40">·</span>2026-10-25
+      </p>
+      <svg viewBox="0 0 60 70" class="mx-auto mb-3 h-14 w-12" aria-hidden="true">
+        <path d="M30 3 L56 12 L54 38 C52 54 42 62 30 67 C18 62 8 54 6 38 L4 12 Z" fill="#132420" stroke="#d4a24c" stroke-width="2.5" />
+        <path d="M30 14 L30 56 M16 30 L44 30" stroke="#5fb3a1" stroke-width="2" />
+      </svg>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl !text-[#f2f5f1]">Is It Not I Who Gave It to You?</h1>
+      <p class="frank mt-3 text-3xl font-light !text-[#d4a24c]" dir="rtl" lang="he">לָאו אֲנָא דִּיהֵיבְתֵּיהּ לָךְ?</p>
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed !text-[#adbab5]">
+        A firstborn has a blemish, and the priest who will eat it says it happened by itself. Who is believed,
+        and why? Hearsay, the better lie he could have told, a showdown with the masters of the shields at Yavne,
+        a teaching garbled in transmission, and a Sage who forces his sore eyes open. Eight rounds, straight from the daf.
+      </p>
+      <p class="mt-4 text-xs !text-[#93a39d]">Score: <span id="score" class="font-bold !text-[#d4a24c]">0</span> / <span id="max">0</span></p>
+    </div>
+
+    <div class="mx-auto max-w-3xl space-y-8 px-4 py-8">
+
+      <!-- ROUND 1 -->
+      <section class="card p-5" aria-labelledby="r1h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#93a39d]">ROUND 1 · 36a:2–4</p>
+        <h2 id="r1h" class="frank mb-2 text-2xl font-bold !text-[#f2f5f1]">A witness from a witness's mouth</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#adbab5]">
+          Is hearsay testimony (<span class="frank" lang="he">עֵד מִפִּי עֵד</span>) accepted for a firstborn's blemish? Rav Asi forbids,
+          Rav Ashi permits. Rav Asi quotes the school of Menashe against him. Rav Ashi answers by <b>emending</b> the baraita.
+          Tap the gap to insert his reading.
+        </p>
+        <div class="rounded-xl border border-[#26332f] bg-[#0c1110] p-4 text-center">
+          <p class="frank text-2xl leading-loose !text-[#f2f5f1]" dir="rtl" lang="he">
+            אֵין עֵד מִפִּי עֵד כָּשֵׁר אֶלָּא לְעֵדוּת
+            <button id="gap" class="mx-1 rounded-md border border-dashed border-[#d4a24c] px-3 !text-[#d4a24c]" aria-label="Insert Rav Ashi's emendation">＋</button>
+            הָאִשָּׁה<span id="gapEnd"></span>
+          </p>
+          <p id="gapEn" class="mt-1 text-xs !text-[#93a39d]">“Hearsay is valid only for the testimony of a woman” (that her husband died).</p>
+        </div>
+        <div id="r1opts" class="mt-3 hidden flex-col gap-2"></div>
+        <p id="r1msg" class="mt-2 text-sm leading-relaxed !text-[#adbab5]"></p>
+        <div id="r1more" class="mt-6 hidden space-y-6"></div>
+      </section>
+
+      <!-- ROUND 2 -->
+      <section class="card p-5" aria-labelledby="r2h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#93a39d]">ROUND 2 · 36a:5–11</p>
+        <h2 id="r2h" class="frank mb-2 text-2xl font-bold !text-[#f2f5f1]">The better lie</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#adbab5]">
+          Rabbi Ile'a: a priest brings an animal nobody knew was a firstborn and says “it's a firstborn, and its blemish came with it.” He is believed.
+          Mar bar Rav Ashi objects with a donkey. The owner said: don't take the Nehar Pekod road, it has water; take Neresh, it's dry.
+          The renter took Nehar Pekod, the donkey died, and he came back saying “I went by Nehar Pekod, but there was no water.”
+          <b>Tap the road he could have lied about instead.</b>
+        </p>
+        <svg id="map" viewBox="0 0 400 190" class="w-full rounded-xl border border-[#26332f] bg-[#0c1110]" role="group" aria-label="Map of the two roads">
+          <circle cx="40" cy="95" r="14" fill="#1d2725" stroke="#93a39d" />
+          <text x="40" y="128" text-anchor="middle" font-size="10" fill="#93a39d">owner</text>
+          <circle cx="360" cy="95" r="14" fill="#1d2725" stroke="#93a39d" />
+          <text x="360" y="128" text-anchor="middle" font-size="10" fill="#93a39d">market</text>
+          <path id="pPekod" class="path" d="M54 88 C120 20, 280 20, 346 88" fill="none" stroke="#3a6f86" stroke-width="7" stroke-linecap="round" tabindex="0" role="button" aria-label="Nehar Pekod road" />
+          <path d="M150 42 q8 -6 16 0 t16 0 t16 0 M210 36 q8 -6 16 0 t16 0" fill="none" stroke="#6fb3d0" stroke-width="2" />
+          <text x="200" y="18" text-anchor="middle" font-size="11" fill="#9fd0e2">Nehar Pekod (water)</text>
+          <path id="pNeresh" class="path" d="M54 102 C120 175, 280 175, 346 102" fill="none" stroke="#8a6f3e" stroke-width="7" stroke-linecap="round" tabindex="0" role="button" aria-label="Neresh road" />
+          <text x="200" y="182" text-anchor="middle" font-size="11" fill="#d4b37a">Neresh (dry)</text>
+          <text id="donkey" x="200" y="34" text-anchor="middle" font-size="20" opacity="0">🫏</text>
+        </svg>
+        <p id="r2msg" class="mt-2 text-sm leading-relaxed !text-[#adbab5]"></p>
+        <div id="r2more" class="mt-6 hidden space-y-6"></div>
+      </section>
+
+      <!-- ROUND 3 -->
+      <section class="card p-5" aria-labelledby="r3h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#93a39d]">ROUND 3 · 36a:12–16</p>
+        <h2 id="r3h" class="frank mb-2 text-2xl font-bold !text-[#f2f5f1]">The masters of the shields</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#adbab5]">
+          Rabbi Tzadok, a learned priest, put barley in wicker baskets for his firstborn. While it ate, its lip split.
+          He asks the same question three times: “Didn't we distinguish between a priest who is a <i>ḥaver</i> and one who is an ignoramus?”
+          Predict each answer.
+        </p>
+        <div id="r3steps" class="space-y-5"></div>
+        <div id="r3stand" class="mt-6 hidden rounded-xl border border-[#26332f] bg-[#0c1110] p-4">
+          <p class="mb-2 text-sm !text-[#e6ebe7]">Rabban Gamliel lectures. Rabbi Yehoshua stays on his feet; nobody tells him to sit. Watch the hall.</p>
+          <div class="flex items-end justify-center gap-6 py-3" aria-hidden="true">
+            <div class="text-center"><div class="text-3xl">🧍</div><p class="text-[0.65rem] !text-[#93a39d]">R. Yehoshua</p></div>
+            <div class="text-center"><div class="text-3xl">🗣️</div><p class="text-[0.65rem] !text-[#93a39d]">Rabban Gamliel</p></div>
+            <div class="text-center"><div class="text-3xl">📢</div><p class="text-[0.65rem] !text-[#93a39d]">Ḥutzpit</p></div>
+          </div>
+          <p class="mb-1 text-[0.65rem] tracking-[0.15em] !text-[#93a39d]">MURMURING IN THE HALL</p>
+          <div class="meter"><div id="murmur" style="width:0%;background:#c4503d"></div></div>
+          <button id="stopBtn" class="mt-3 hidden rounded-lg border border-[#c4503d] px-4 py-2 text-xs font-bold !text-[#e0705c] hover:bg-[#1d2725]">“Ḥutzpit, stop!”</button>
+          <p id="r3msg" class="mt-2 text-sm leading-relaxed !text-[#adbab5]"></p>
+        </div>
+      </section>
+
+      <!-- ROUND 4 -->
+      <section class="card p-5" aria-labelledby="r4h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#93a39d]">ROUND 4 · 36a:17–36b:3</p>
+        <h2 id="r4h" class="frank mb-2 text-2xl font-bold !text-[#f2f5f1]">It will come out anyway</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#adbab5]">
+          Rav Yehuda in Rav's name: a priest is believed to say “an Israelite gave me this firstborn with its blemish,” because
+          <span class="frank" lang="he">מִילְּתָא דַּעֲבִידָא לְאִיגַּלּוֹיֵי לָא מְשַׁקְּרִי אִינָשֵׁי</span>:
+          people don't lie about what is likely to come out. Rav Sheizevi tests it against the mishna in Demai (4:5). Rule on each agent.
+        </p>
+        <div id="agents" class="space-y-3"></div>
+        <div id="r4more" class="mt-6 hidden space-y-6"></div>
+      </section>
+
+      <!-- ROUND 5 -->
+      <section class="card p-5" aria-labelledby="r5h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#93a39d]">ROUND 5 · 36b:4–6</p>
+        <h2 id="r5h" class="frank mb-2 text-2xl font-bold !text-[#f2f5f1]">Giddul garbled it</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#adbab5]">
+          Rabbi Yirmeya bar Abba hears Rav Yehuda's teaching and asks: where did Yehuda get that? “I set it in Giddul's mind, and Giddul set it in his own way.”
+          The teaching travelled down the chain and arrived changed. <b>Tap the tiles Giddul corrupted</b>, then restore.
+        </p>
+        <div class="mb-4 flex flex-wrap items-center justify-center gap-2" aria-label="Chain of transmission">
+          <span class="node" id="n0">Rav</span><span class="!text-[#93a39d]">→</span>
+          <span class="node" id="n1">R. Yirmeya bar Abba</span><span class="!text-[#93a39d]">→</span>
+          <span class="node" id="n2">Giddul</span><span class="!text-[#93a39d]">→</span>
+          <span class="node" id="n3">Rav Yehuda</span>
+        </div>
+        <div id="tiles" class="flex flex-wrap justify-center gap-2" dir="rtl" lang="he"></div>
+        <p class="mt-2 text-center text-xs !text-[#93a39d]">What arrived: “A priest is believed to say: an Israelite gave me this firstborn with its blemish.”</p>
+        <div class="mt-3 text-center"><button id="restore" class="rounded-lg border border-[#d4a24c] px-4 py-2 text-xs font-bold !text-[#d4a24c] hover:bg-[#17211f]">Restore the original</button></div>
+        <p id="r5msg" class="mt-2 text-sm leading-relaxed !text-[#adbab5]"></p>
+        <div id="r5more" class="mt-6 hidden space-y-6"></div>
+      </section>
+
+      <!-- ROUND 6 -->
+      <section class="card p-5" aria-labelledby="r6h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#93a39d]">ROUND 6 · 36b:7–8</p>
+        <h2 id="r6h" class="frank mb-2 text-2xl font-bold !text-[#f2f5f1]">Rafram's eyes</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#adbab5]">
+          In Pumbedita, Rafram gave his firstborn calf to a priest <b>unblemished</b>. The priest blemished it. One day Rafram's eyes were sore, and
+          the priest brought it to him for a ruling: “An Israelite gave me this firstborn with its blemish.”
+          <b>Hold the button</b> (or Space) to force your eyes open, and while you can see, tap the two marks you remember on the calf you gave.
+        </p>
+        <div class="grid gap-4 sm:grid-cols-[1fr_12rem]">
+          <svg id="calf" viewBox="0 0 300 200" class="w-full rounded-xl border border-[#26332f] bg-[#1a1f17]" role="group" aria-label="The calf the priest brought">
+            <defs><filter id="blur"><feGaussianBlur id="blurAmt" stdDeviation="9" /></filter></defs>
+            <g filter="url(#blur)">
+              <rect x="0" y="160" width="300" height="40" fill="#2b3320" />
+              <ellipse cx="150" cy="105" rx="80" ry="42" fill="#9a6a3c" />
+              <rect x="88" y="130" width="14" height="45" rx="4" fill="#9a6a3c" />
+              <rect x="112" y="130" width="14" height="45" rx="4" fill="#9a6a3c" />
+              <rect id="sock" x="176" y="130" width="14" height="45" rx="4" fill="#1c140e" />
+              <rect x="200" y="130" width="14" height="45" rx="4" fill="#9a6a3c" />
+              <ellipse cx="238" cy="80" rx="30" ry="24" fill="#9a6a3c" />
+              <path id="ear" d="M228 58 L214 38 L236 52 Z" fill="#7d5530" />
+              <path d="M250 58 L268 40 L256 60 Z" fill="#7d5530" />
+              <path d="M224 46 L219 49" stroke="#c4503d" stroke-width="3" />
+              <polygon id="star" points="238,62 241,70 249,70 243,75 245,83 238,78 231,83 233,75 227,70 235,70" fill="#f3efe6" />
+              <circle cx="250" cy="82" r="3" fill="#111" />
+              <path d="M72 100 q-20 10 -12 40" stroke="#7d5530" stroke-width="5" fill="none" />
+            </g>
+            <rect id="hitStar" x="222" y="58" width="34" height="30" fill="transparent" style="cursor:pointer" />
+            <rect id="hitSock" x="170" y="128" width="26" height="50" fill="transparent" style="cursor:pointer" />
+            <rect id="hitEar" x="208" y="34" width="32" height="24" fill="transparent" style="cursor:pointer" />
+          </svg>
+          <div class="rounded-xl border border-[#26332f] bg-[#0c1110] p-3 text-xs leading-relaxed !text-[#adbab5]">
+            <p class="mb-1 font-bold tracking-[0.15em] !text-[#d4a24c]">YOUR MEMORY</p>
+            <p>The calf I handed over was a firstborn with no blemish at all, a white star on its brow, and one black foreleg.</p>
+            <p class="mt-3 mb-1 font-bold tracking-[0.15em] !text-[#93a39d]">EYE STRAIN</p>
+            <div class="meter"><div id="strain" style="width:0%;background:#d4a24c"></div></div>
+            <p id="found" class="mt-3 !text-[#e6ebe7]">Marks found: 0 / 2</p>
+          </div>
+        </div>
+        <button id="eyeBtn" class="mt-3 w-full select-none rounded-lg border border-[#d4a24c] px-4 py-3 text-sm font-bold !text-[#d4a24c] hover:bg-[#17211f] sm:w-auto">👁 Hold to force my eyes open</button>
+        <p id="r6msg" class="mt-2 text-sm leading-relaxed !text-[#adbab5]"></p>
+        <div id="r6more" class="mt-6 hidden space-y-6"></div>
+      </section>
+
+      <!-- ROUND 7 -->
+      <section class="card p-5" aria-labelledby="r7h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#93a39d]">ROUND 7 · 36b:9–15</p>
+        <h2 id="r7h" class="frank mb-2 text-2xl font-bold !text-[#f2f5f1]">Lopsided eyes, and the tenth through the gate</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#adbab5]">
+          A firstborn with one eye larger than the other comes before Rav Ashi. Nobody knows whether a priest or an Israelite brought it.
+          Rav Yehuda's rule: don't examine an Israelite's firstborn unless a priest is there with him. Seat the priest, or don't.
+        </p>
+        <div id="r7a" class="space-y-3"></div>
+        <div id="r7gate" class="mt-6 hidden">
+          <p class="mb-2 text-sm !text-[#e6ebe7]">Mishna: <b>everyone</b> is believed about blemishes on an animal tithe, even the owner. Count the flock through the gate under the rod.
+            The owner would love his blemished lamb (🐑 with the red mark) to come out tenth. Can he arrange it?</p>
+          <svg viewBox="0 0 400 110" class="w-full rounded-xl border border-[#26332f] bg-[#0c1110]" aria-label="Flock passing through the tithing gate">
+            <rect x="190" y="10" width="8" height="90" fill="#5a4a32" /><rect x="230" y="10" width="8" height="90" fill="#5a4a32" />
+            <rect x="186" y="6" width="56" height="8" fill="#5a4a32" />
+            <g id="flock"></g>
+            <text id="counter" x="214" y="104" text-anchor="middle" font-size="11" fill="#d4a24c">0</text>
+          </svg>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button id="passBtn" class="chip !text-[#e6ebe7]">Let the next one through</button>
+            <button id="pushBtn" class="chip !text-[#e6ebe7]">Push the blemished lamb to be tenth</button>
+          </div>
+          <p id="r7msg" class="mt-2 text-sm leading-relaxed !text-[#adbab5]"></p>
+          <div id="r7more" class="mt-6 hidden space-y-6"></div>
+        </div>
+      </section>
+
+      <!-- ROUND 8 -->
+      <section class="card p-5" aria-labelledby="r8h">
+        <p class="text-[0.65rem] tracking-[0.2em] !text-[#93a39d]">ROUND 8 · 36b:16–22</p>
+        <h2 id="r8h" class="frank mb-2 text-2xl font-bold !text-[#f2f5f1]">Three from the synagogue</h2>
+        <p class="mb-4 text-sm leading-relaxed !text-[#adbab5]">
+          Mishna: a firstborn whose eye was blinded, foreleg severed or hind leg broken may be slaughtered on the word of
+          <span class="frank" lang="he">שְׁלֹשָׁה בְּנֵי הַכְּנֶסֶת</span>, three ordinary synagogue-goers. Rabbi Yosei: even if twenty-three are there, only an expert.
+          The Gemara narrows the first tanna twice (Rava; Rav Yehuda for Rabbi Yirmeya bar Abba). For each case, may the three permit it?
+        </p>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[30rem] text-left text-xs">
+            <thead><tr class="!text-[#93a39d]"><th class="p-2">Case</th><th class="w-28 p-2">First tanna (as narrowed)</th><th class="w-28 p-2">Rabbi Yosei</th></tr></thead>
+            <tbody id="r8body"></tbody>
+          </table>
+        </div>
+        <button id="r8check" class="mt-3 rounded-lg border border-[#d4a24c] px-4 py-2 text-xs font-bold !text-[#d4a24c] hover:bg-[#17211f]">Check the bench</button>
+        <p id="r8msg" class="mt-3 text-sm leading-relaxed !text-[#adbab5]"></p>
+      </section>
+
+      <div id="final" class="card hidden p-5 text-center"></div>
+
+      <!-- LEARN -->
+      <section class="card p-5">
+        <h2 class="frank mb-3 text-lg font-bold !text-[#f2f5f1]">Learn the real daf</h2>
+        <div class="mb-4 flex flex-wrap gap-2">
+          <a href="https://www.sefaria.org/Bekhorot.36a" target="_blank" rel="noopener" class="rounded-lg border border-[#26332f] px-4 py-2 text-xs font-bold !text-[#d4a24c] transition-colors hover:bg-[#17211f]">Bekhorot 36a on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Bekhorot.36b" target="_blank" rel="noopener" class="rounded-lg border border-[#26332f] px-4 py-2 text-xs font-bold !text-[#d4a24c] transition-colors hover:bg-[#17211f]">Bekhorot 36b on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Berakhot.27b" target="_blank" rel="noopener" class="rounded-lg border border-[#26332f] px-4 py-2 text-xs font-bold !text-[#d4a24c] transition-colors hover:bg-[#17211f]">The Yavne story's sequel: Berakhot 27b ↗</a>
+          <a href="https://www.sefaria.org/Bekhorot.37a" target="_blank" rel="noopener" class="rounded-lg border border-[#26332f] px-4 py-2 text-xs font-bold !text-[#d4a24c] transition-colors hover:bg-[#17211f]">Continue: Bekhorot 37a ↗</a>
+        </div>
+        <p class="mb-2 text-xs !text-[#93a39d]">Top works linked to this daf:</p>
+        <ul class="grid gap-1 text-sm sm:grid-cols-2">
+          <li><a href="https://www.sefaria.org/Rashi_on_Bekhorot.36a" target="_blank" rel="noopener" class="!text-[#bfcbc6] transition-colors hover:!text-[#d4a24c]">Rashi (58) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.36a" target="_blank" rel="noopener" class="!text-[#bfcbc6] transition-colors hover:!text-[#d4a24c]">Steinsaltz (43) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.36a" target="_blank" rel="noopener" class="!text-[#bfcbc6] transition-colors hover:!text-[#d4a24c]">Rabbeinu Gershom (35) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Tosafot_on_Bekhorot.36a" target="_blank" rel="noopener" class="!text-[#bfcbc6] transition-colors hover:!text-[#d4a24c]">Tosafot (15) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Tur,_Yoreh_De'ah.314" target="_blank" rel="noopener" class="!text-[#bfcbc6] transition-colors hover:!text-[#d4a24c]">Tur, Yoreh De'ah 314 (13) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Shulchan_Arukh,_Yoreh_De'ah.314" target="_blank" rel="noopener" class="!text-[#bfcbc6] transition-colors hover:!text-[#d4a24c]">Shulchan Arukh, Yoreh De'ah 314 (12) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Mishneh_Torah,_Firstlings.2" target="_blank" rel="noopener" class="!text-[#bfcbc6] transition-colors hover:!text-[#d4a24c]">Mishneh Torah, Firstlings (11) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Mishnah_Bekhorot.4.3" target="_blank" rel="noopener" class="!text-[#bfcbc6] transition-colors hover:!text-[#d4a24c]">Mishnah Bekhorot 4:3–5 ↗</a></li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <script is:inline>
+    (function () {
+      var score = 0, max = 0, done = 0, totalTasks = 0;
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var $ = function (id) { return document.getElementById(id); };
+      function sef(ref) { return '<a class="underline decoration-dotted !text-[#d4a24c] hover:!text-[#f2f5f1]" target="_blank" rel="noopener" href="https://www.sefaria.org/' + ref.replace(/ /g, '_') + '">' + ref + ' ↗</a>'; }
+      function addMax(n) { max += n; $('max').textContent = max; }
+      function award(n) { score += (n || 1); $('score').textContent = score; }
+      function task() { totalTasks++; }
+      function finish() { done++; checkDone(); }
+      function show(id) { var e = $(id); e.classList.remove('hidden'); return e; }
+      function checkDone() {
+        if (totalTasks && done >= totalTasks) {
+          var f = $('final'); f.classList.remove('hidden');
+          f.innerHTML = '<p class="frank text-2xl font-bold !text-[#f2f5f1]">' + score + ' / ' + max + '</p>' +
+            '<p class="mt-2 text-sm !text-[#adbab5]">Cliffhanger (36b:22): Rav Ḥiyya bar Amram says three laymen may permit a firstborn where there is no expert, <i>and</i> three laymen may dissolve a vow where there is no Sage. The first half is already in our mishna. What is the second half adding? ' + sef('Bekhorot 37a') + '</p>';
+        }
+      }
+      function mcq(host, prompt, opts, ref, after) {
+        addMax(1); task();
+        var box = document.createElement('div');
+        box.innerHTML = '<p class="mb-2 text-sm !text-[#e6ebe7]">' + prompt + '</p><div class="flex flex-col gap-2"></div><p class="mt-2 text-sm leading-relaxed !text-[#adbab5]"></p>';
+        var list = box.children[1], msg = box.children[2], first = true;
+        opts.forEach(function (o) {
+          var b = document.createElement('button');
+          b.className = 'chip !text-[#e6ebe7]'; b.innerHTML = o.t;
+          b.onclick = function () {
+            if (o.ok) {
+              if (first) award();
+              b.classList.add('ok');
+              Array.prototype.forEach.call(list.children, function (x) { x.disabled = true; });
+              msg.innerHTML = o.why + (ref ? ' ' + sef(ref) : '');
+              finish(); if (after) after();
+            } else {
+              first = false; b.classList.add('bad'); b.disabled = true;
+              msg.innerHTML = o.why || 'Not quite. Try again.';
+            }
+          };
+          list.appendChild(b);
+        });
+        host.appendChild(box);
+        return box;
+      }
+      function stamp(ok, yes, no) {
+        return ok ? '<span class="stamp !text-[#7fd0bd]">' + (yes || 'BELIEVED') + '</span>' : '<span class="stamp !text-[#e0705c]">' + (no || 'NOT BELIEVED') + '</span>';
+      }
+
+      // ---------- ROUND 1: the emendation ----------
+      addMax(1); task();
+      var r1first = true;
+      $('gap').onclick = function () {
+        var o = show('r1opts'); o.classList.add('flex'); $('gap').disabled = true;
+        [
+          { he: 'שֶׁהָאִשָּׁה כְּשֵׁרָה לָהּ בִּלְבָד', en: '…only for testimony <b>for which a woman is valid</b>', ok: true },
+          { he: 'וְעֵדוּת בְּכוֹר', en: '…only for the testimony of a woman <b>and of a firstborn</b>', ok: false, why: 'Rav Ashi doesn’t bolt on a second exception. He changes what the exception means.' },
+          { he: 'מִדְּרַבָּנַן', en: '…only for the testimony of a woman, <b>by rabbinic law</b>', ok: false, why: 'Not the emendation. The answer is a category, not a source.' }
+        ].forEach(function (op) {
+          var b = document.createElement('button');
+          b.className = 'chip !text-[#e6ebe7]';
+          b.innerHTML = '<span class="frank text-base" dir="rtl" lang="he">' + op.he + '</span><br><span class="!text-[#adbab5]">' + op.en + '</span>';
+          b.onclick = function () {
+            if (!op.ok) { r1first = false; b.classList.add('bad'); b.disabled = true; $('r1msg').textContent = op.why; return; }
+            if (r1first) award();
+            b.classList.add('ok');
+            Array.prototype.forEach.call(o.children, function (x) { x.disabled = true; });
+            $('gap').outerHTML = '<span class="rounded-md bg-[#14261f] px-2 !text-[#7fd0bd]">שֶׁהָאִשָּׁה כְּשֵׁרָה לָהּ</span>';
+            $('gapEn').innerHTML = 'Hearsay is valid only for testimony <b>for which a woman is valid</b>, and a woman is valid to testify about a firstborn’s blemish.';
+            $('r1msg').innerHTML = '<span class="frank" lang="he">תְּנִי: אֶלָּא לְעֵדוּת שֶׁהָאִשָּׁה כְּשֵׁרָה לָהּ בִּלְבָד.</span> The baraita isn’t a list of one case; it marks out a class. ' + sef('Bekhorot 36a:3');
+            finish(); r1more();
+          };
+          o.appendChild(b);
+        });
+      };
+      function r1more() {
+        var h = show('r1more');
+        mcq(h, 'Rav Yeimar accepted hearsay for a firstborn’s blemish. What did Mareimar call him, and what is the halakha?', [
+          { t: '“Yeimar who permits firstborns,” a jab. But the halakha follows Yeimar: hearsay is valid for a firstborn.', ok: true, why: '<span class="frank" lang="he">״יֵימַר שָׁרֵי בּוּכְרָא״</span>. The Gemara concludes <span class="frank" lang="he">וְהִלְכְתָא: עֵד מִפִּי עֵד כָּשֵׁר לְעֵדוּת בְּכוֹר</span>.' },
+          { t: '“Yeimar the lenient,” and the halakha follows Mareimar against hearsay.', ok: false, why: 'The jab is real, but the halakha goes the other way.' },
+          { t: 'Mareimar praised him, and the halakha follows Rav Asi.', ok: false, why: 'It wasn’t praise, and Rav Asi’s view is not the halakha.' }
+        ], 'Bekhorot 36a:4');
+      }
+
+      // ---------- ROUND 2: the better lie ----------
+      addMax(1); task();
+      var r2first = true, r2done = false;
+      function pickRoad(which) {
+        if (r2done) return;
+        if (which === 'pekod') { r2first = false; $('pPekod').setAttribute('stroke', '#c4503d'); $('r2msg').textContent = 'That’s the road he admits to. The point is the claim he didn’t have to make.'; return; }
+        r2done = true; if (r2first) award(); finish();
+        $('pNeresh').setAttribute('stroke', '#d4a24c'); $('pNeresh').setAttribute('stroke-width', '10');
+        var d = $('donkey'); d.setAttribute('opacity', '1');
+        $('r2msg').innerHTML = 'He could have said “I went by Neresh, as you told me.” Rava: so he’s believed, <span class="frank" lang="he">מָה לוֹ לְשַׁקֵּר</span>, why would he lie? (Later Sages call this a <i>miggo</i>.) ' + sef('Bekhorot 36a:9-10');
+        r2more();
+      }
+      $('pPekod').onclick = function () { pickRoad('pekod'); };
+      $('pNeresh').onclick = function () { pickRoad('neresh'); };
+      ['pPekod', 'pNeresh'].forEach(function (id) { $(id).onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(id).onclick(); } }; });
+      function r2more() {
+        var h = show('r2more');
+        mcq(h, 'Abaye disagrees with Rava about the renter. Why?', [
+          { t: 'We don’t say “why would he lie” where there are witnesses: anyone can go check whether Nehar Pekod had water.', ok: true, why: '<span class="frank" lang="he">״מָה לוֹ לְשַׁקֵּר״ בִּמְקוֹם עֵדִים לָא אָמְרִינַן</span>. And priests are known to be suspected, so (says Mar bar Rav Ashi) the priest should lose too.' },
+          { t: 'A renter is always liable for a dead donkey.', ok: false, why: 'Abaye’s point is about the argument, not rental liability.' },
+          { t: 'He could have lied either way, so neither claim counts.', ok: false, why: 'That’s not Abaye’s distinction.' }
+        ], 'Bekhorot 36a:10', function () {
+          mcq(h, 'Back to the priest. What is <b>his</b> “better lie,” the thing he could have done if he really wanted to cheat?', [
+            { t: 'Make a blemish obvious to everyone, and skip the expert. That’s only a plain prohibition, not karet.', ok: true, why: 'He can’t just eat an unexamined firstborn (that’s sacrificial meat outside the courtyard, karet), but he could have made a blatant blemish. He came to the expert with a doubtful one instead. ' },
+            { t: 'Never bring it to an expert and eat it as it is.', ok: false, why: 'That’s karet, and a priest won’t do it. That is exactly why Rabbi Ile’a’s case is not just “the mouth that forbade” of Ketubot 22a.' },
+            { t: 'Say it isn’t a firstborn at all.', ok: false, why: 'He still couldn’t eat it unexamined without risking sacrificial meat outside. That’s the Gemara’s point.' }
+          ], 'Bekhorot 36a:7-8', function () {
+            mcq(h, 'So why does the priest win, when the renter (per Abaye) loses?', [
+              { t: 'Nehar Pekod certainly has water. Here, that the priest blemished it is only a concern, and against a mere concern we do say “why would he lie.”', ok: true, why: 'The Gemara rejects the comparison. Then Rava Zuti reminds Ravina, who was teaching it anonymously: “we learned it in Rabbi Ile’a’s name.” Say it in the name of the one who said it.' },
+              { t: 'Priests are more trusted than renters.', ok: false, why: 'Priests are the ones suspected here.' },
+              { t: 'There are never witnesses about a firstborn.', ok: false, why: 'The distinction is certainty versus concern.' }
+            ], 'Bekhorot 36a:11');
+          });
+        });
+      }
+
+      // ---------- ROUND 3: Yavne ----------
+      var yavne = [
+        { who: 'Rabbi Tzadok asks Rabbi Yehoshua, privately.', opts: [['Yes, we distinguished', true], ['No, we didn’t', false]], why: '“Yes.” You are a learned priest; you’re believed that the lip split by itself.' },
+        { who: 'Rabbi Tzadok asks Rabban Gamliel, the Nasi, at Yavne.', opts: [['Yes, we distinguished', false], ['No, we didn’t', true]], why: '“No.” And when told Rabbi Yehoshua said yes: “Wait until the masters of the shields (<span class="frank" lang="he">בַּעֲלֵי תְרִיסִין</span>) enter the study hall.”' },
+        { who: 'In the full hall, the question is put to everyone. Rabbi Yehoshua answers.', opts: [['Yes, we distinguished', false], ['No, we didn’t', true]], why: '“No.” In front of the Nasi he gives the other answer. Rabban Gamliel: “But they told me in your name: yes! Yehoshua, stand on your feet, and let them testify against you.”' },
+        { who: 'Rabbi Yehoshua stands. Why does he concede?', opts: [['If I were alive and he dead, the living could contradict the dead. Both of us alive: how can the living contradict the living?', true], ['Because the Nasi’s ruling binds him', false], ['Because Rabbi Tzadok is a priest', false]], why: '<span class="frank" lang="he">הֵיאַךְ חַי יָכוֹל לְהַכְחִישׁ אֶת הַחַי?</span>' }
+      ];
+      var yi = 0;
+      function yavneStep() {
+        if (yi >= yavne.length) { standScene(); return; }
+        var s = yavne[yi]; addMax(1); task();
+        var box = document.createElement('div'), first = true;
+        box.innerHTML = '<p class="mb-2 text-sm !text-[#e6ebe7]"><span class="!text-[#d4a24c]">' + (yi + 1) + '.</span> ' + s.who + '</p><div class="flex flex-wrap gap-2"></div><p class="mt-2 text-sm leading-relaxed !text-[#adbab5]"></p>';
+        s.opts.forEach(function (o) {
+          var b = document.createElement('button'); b.className = 'chip !text-[#e6ebe7]'; b.innerHTML = o[0];
+          b.onclick = function () {
+            if (!o[1]) { first = false; b.classList.add('bad'); b.disabled = true; box.children[2].textContent = 'Not what happened. Try again.'; return; }
+            if (first) award(); b.classList.add('ok');
+            Array.prototype.forEach.call(box.children[1].children, function (x) { x.disabled = true; });
+            box.children[2].innerHTML = s.why + ' ' + sef('Bekhorot 36a:12-15');
+            finish(); yi++; yavneStep();
+          };
+          box.children[1].appendChild(b);
+        });
+        $('r3steps').appendChild(box);
+      }
+      function standScene() {
+        show('r3stand'); addMax(1); task();
+        var w = 0, t = setInterval(function () {
+          w += reduce ? 100 : 4; $('murmur').style.width = Math.min(w, 100) + '%';
+          if (w >= 100) { clearInterval(t); show('stopBtn'); $('stopBtn').focus(); }
+        }, 120);
+        $('stopBtn').onclick = function () {
+          award(); finish(); $('stopBtn').disabled = true;
+          $('r3msg').innerHTML = 'The crowd tells Ḥutzpit the meturgeman to stop relaying the lecture, and he stops. Berakhot 27b remembers it: Rabban Gamliel pained Rabbi Yehoshua on Rosh Hashana, and again over firstborns in the incident of Rabbi Tzadok. The third time, over the evening prayer, the Sages removed him as head of the academy. ' + sef('Bekhorot 36a:16') + ' ' + sef('Berakhot 27b');
+        };
+      }
+      yavneStep();
+
+      // ---------- ROUND 4: Demai agents ----------
+      var agents = [
+        { t: 'An untrusted agent is told: “Buy me produce from someone <b>trustworthy</b>” (or “from someone who tithes”). He says he did.', ok: false, why: 'Not believed. He has an easy escape: “in my opinion he was trustworthy.” A subjective judgment isn’t really exposed, so he isn’t afraid to lie.', ref: 'Bekhorot 36a:20-36b:1' },
+        { t: 'The agent is told: “Buy me produce from <b>so-and-so</b>,” a named reliable seller. He says he did.', ok: true, why: 'Believed. Seems to prove Rav. But the Gemara: there the agent has a claimant who named the seller and may check; the priest who volunteers “an Israelite gave it to me” doesn’t fear anyone will ask.', ref: 'Bekhorot 36b:2-3' }
+      ];
+      var agLeft = agents.length;
+      agents.forEach(function (a) {
+        addMax(1); task();
+        var c = document.createElement('div'); c.className = 'rounded-xl border border-[#26332f] p-4';
+        c.innerHTML = '<p class="text-sm !text-[#e6ebe7]">' + a.t + '</p><div class="mt-3 flex flex-wrap items-center gap-2"><button class="chip !text-[#e6ebe7]" data-v="1">Believed</button><button class="chip !text-[#e6ebe7]" data-v="0">Not believed</button><span class="ml-2"></span></div><p class="mt-2 text-sm leading-relaxed !text-[#adbab5]"></p>';
+        var first = true, row = c.children[1];
+        Array.prototype.forEach.call(row.querySelectorAll('button'), function (b) {
+          b.onclick = function () {
+            if ((b.getAttribute('data-v') === '1') !== a.ok) { first = false; b.classList.add('bad'); b.disabled = true; c.children[2].textContent = 'Think about whether the lie could come out.'; return; }
+            if (first) award();
+            row.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+            row.children[2].innerHTML = stamp(a.ok);
+            c.children[2].innerHTML = a.why + ' ' + sef(a.ref);
+            finish(); if (--agLeft === 0) r4more();
+          };
+        });
+        $('agents').appendChild(c);
+      });
+      function r4more() {
+        var h = show('r4more');
+        mcq(h, 'Rav Ashi tries to prove Rav from our mishna: a priest is believed to say “I showed it to an expert and he ruled it blemished.” Why does the Gemara reject the proof?', [
+          { t: 'There, he wouldn’t eat sacrificial meat outside the courtyard without a real ruling (karet). Rav’s case has no such brake: if priests blemish and say “it happened,” they’d also blemish and say “an Israelite gave it to me.”', ok: true, why: 'The mishna may rest on fear of karet, not on “it will come out.”' },
+          { t: 'The expert can always be asked, so it is the same principle.', ok: false, why: 'That’s Rav Ashi’s proof. The Gemara offers a different reason for the mishna.' },
+          { t: 'Experts never rule on firstborns brought by priests.', ok: false, why: 'They do; the mishna is about exactly that.' }
+        ], 'Bekhorot 36a:17-19');
+      }
+
+      // ---------- ROUND 5: Giddul ----------
+      var tilesData = [
+        { he: 'נֶאֱמָן', bad: false },
+        { he: 'הַכֹּהֵן', bad: true, fix: 'יִשְׂרָאֵל' },
+        { he: 'לוֹמַר', bad: false },
+        { he: 'בְּכוֹר זֶה', bad: false },
+        { he: 'נָתַן לִי', bad: true, fix: 'נָתַתִּי' },
+        { he: 'יִשְׂרָאֵל', bad: true, fix: 'לְכֹהֵן' },
+        { he: 'בְּמוּמוֹ', bad: false }
+      ];
+      var nodes = ['n0', 'n1', 'n2', 'n3'];
+      nodes.forEach(function (n, i) { setTimeout(function () { $(n).classList.add('lit'); }, reduce ? 0 : 400 * (i + 1)); });
+      tilesData.forEach(function (t, i) {
+        var b = document.createElement('button'); b.className = 'tile frank !text-[#f2f5f1]'; b.textContent = t.he;
+        b.setAttribute('aria-pressed', 'false'); b.setAttribute('data-i', i);
+        b.onclick = function () { if (!r5done) b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); };
+        $('tiles').appendChild(b);
+      });
+      addMax(3); task(); var r5done = false, r5tries = 0;
+      $('restore').onclick = function () {
+        if (r5done) return;
+        var tiles = $('tiles').children, wrong = 0, missed = 0;
+        tilesData.forEach(function (t, i) { var p = tiles[i].getAttribute('aria-pressed') === 'true'; if (p && !t.bad) wrong++; if (!p && t.bad) missed++; });
+        r5tries++;
+        if (wrong || missed) { $('r5msg').textContent = (wrong ? wrong + ' tile(s) Giddul didn’t touch. ' : '') + (missed ? missed + ' corrupted tile(s) still unmarked. ' : '') + 'Who is speaking, and in which direction did the animal move?'; return; }
+        r5done = true; award(Math.max(1, 4 - r5tries)); finish();
+        $('restore').disabled = true;
+        tilesData.forEach(function (t, i) { if (t.bad) { tiles[i].textContent = t.fix; tiles[i].classList.add('ok'); } tiles[i].setAttribute('aria-pressed', 'false'); tiles[i].disabled = true; });
+        $('n2').classList.remove('lit');
+        $('r5msg').innerHTML = 'Restored: <span class="frank" lang="he">נֶאֱמָן יִשְׂרָאֵל לוֹמַר: בְּכוֹר זֶה נָתַתִּי לְכֹהֵן בְּמוּמוֹ</span>. An <b>Israelite</b> is believed to say “I gave this firstborn to a priest with its blemish.” Giddul swapped who speaks and which way the animal went. ' + sef('Bekhorot 36b:4');
+        r5more();
+      };
+      function r5more() {
+        var h = show('r5more');
+        mcq(h, 'But an Israelite gets nothing from the firstborn. Obviously he’s believed! What does the restored teaching add?', [
+          { t: 'The animal was young when he gave it and has grown since. We trust him to recognize it, and not to mistake another firstborn the priest blemished.', ok: true, why: 'Lest you say he doesn’t really recognize it any more.' },
+          { t: 'That the Israelite may eat it himself.', ok: false, why: 'It’s the priest’s. The question is only whether it may be slaughtered.' },
+          { t: 'That two Israelites are needed.', ok: false, why: 'One is enough.' }
+        ], 'Bekhorot 36b:5', function () {
+          mcq(h, 'Sura teaches Rabbi Yirmeya bar Abba’s version; Pumbedita teaches Rav Yehuda’s. How does the Gemara rule?', [
+            { t: 'Like even the first version: the priest himself is believed that an Israelite gave it blemished.', ok: true, why: '<span class="frank" lang="he">וְהִלְכְתָא אֲפִילּוּ כְּלִישָּׁנָא קַמָּא</span>. Giddul’s “corruption” turns out to be the halakha too.' },
+            { t: 'Only like Sura: only the Israelite is believed.', ok: false, why: 'The Gemara goes further than that.' },
+            { t: 'Neither; it is left unresolved.', ok: false, why: 'There is a ruling.' }
+          ], 'Bekhorot 36b:6');
+        });
+      }
+
+      // ---------- ROUND 6: Rafram's eyes ----------
+      var blur = 9, holding = false, strain = 0, foundSet = {}, r6done = false, r6miss = 0;
+      addMax(2); task();
+      function setBlur(v) { blur = Math.max(0, Math.min(9, v)); $('blurAmt').setAttribute('stdDeviation', blur.toFixed(2)); }
+      setInterval(function () {
+        if (r6done) return;
+        if (holding && strain < 100) { setBlur(blur - (reduce ? 9 : 1.2)); strain = Math.min(100, strain + 3); }
+        else { setBlur(blur + 0.9); strain = Math.max(0, strain - 1.5); if (strain >= 100) holding = false; }
+        if (strain >= 100) { holding = false; $('r6msg').textContent = 'Your eyes water and close. Rest a moment, then try again.'; }
+        $('strain').style.width = strain + '%';
+      }, 60);
+      var eb = $('eyeBtn');
+      function hold(v) { if (!r6done) holding = v && strain < 100; }
+      eb.addEventListener('pointerdown', function (e) { e.preventDefault(); hold(true); });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { eb.addEventListener(ev, function () { hold(false); }); });
+      document.addEventListener('keydown', function (e) { if (e.code === 'Space' && document.activeElement === eb) { e.preventDefault(); hold(true); } });
+      document.addEventListener('keyup', function (e) { if (e.code === 'Space') hold(false); });
+      function spot(key, label) {
+        if (r6done) return;
+        if (blur > 3) { $('r6msg').textContent = 'Too blurry to be sure. Force your eyes open first.'; return; }
+        if (key === 'ear') { r6miss++; $('r6msg').textContent = 'That nicked ear is the new blemish, not something you remember. The calf you gave had none.'; return; }
+        foundSet[key] = 1; var n = Object.keys(foundSet).length;
+        $('found').textContent = 'Marks found: ' + n + ' / 2';
+        $('r6msg').textContent = 'You see it: ' + label + '.';
+        if (n === 2) {
+          r6done = true; holding = false; setBlur(0); award(r6miss ? 1 : 2); finish();
+          eb.disabled = true;
+          $('r6msg').innerHTML = '<span class="frank text-lg" lang="he">אַרְפְּסִינֵיהּ לְעֵינֵיהּ, חַזְיֵיהּ בְּשִׁקְרֵיהּ.</span> He forced his eyes open and recognized it. “<span class="frank" lang="he">לָאו אֲנָא דִּיהֵיבְתֵּיהּ לָךְ?</span> Isn’t it I who gave it to you?” ' + sef('Bekhorot 36b:7');
+          r6more();
+        }
+      }
+      $('hitStar').onclick = function () { spot('star', 'the white star on its brow'); };
+      $('hitSock').onclick = function () { spot('sock', 'the one black foreleg'); };
+      $('hitEar').onclick = function () { spot('ear'); };
+      function r6more() {
+        var h = show('r6more');
+        mcq(h, 'Rafram caught a priest lying with exactly Rav’s claim. Does he stop believing priests who say “an Israelite gave it to me blemished”?', [
+          { t: 'No. Only this priest is brazen. Bringing it to the very man who gave it to him is exceptional chutzpah.', ok: true, why: '<span class="frank" lang="he">הַאי הוּא דַּחֲצִיף, כּוּלֵּי עָלְמָא לָא חֲצִיפִי</span>. One brazen liar doesn’t discredit the rule.' },
+          { t: 'Yes, from then on Pumbedita followed the Sura version.', ok: false, why: 'Rafram was unconcerned. And the halakha follows even the first version.' },
+          { t: 'He disqualified that priest’s family from receiving firstborns.', ok: false, why: 'The Gemara says nothing of the sort.' }
+        ], 'Bekhorot 36b:8');
+      }
+
+      // ---------- ROUND 7: lopsided eyes + gate ----------
+      var r7cases = [
+        { t: 'An Israelite brings his firstborn with a blemish <b>whose status still has to be judged</b>. Must a priest be present?', ok: true, yes: 'PRIEST REQUIRED', no: 'NO PRIEST NEEDED', why: 'Yes (Rav Yehuda). He won’t risk karet by eating it unexamined, so he brings it. But he is suspected about the priest’s property: once it’s ruled fit, he might keep it.', ref: 'Bekhorot 36b:10-11' },
+        { t: 'The firstborn with <b>one eye larger than the other</b> comes to Rav Ashi, perhaps brought by an Israelite. Must a priest be present?', ok: false, yes: 'PRIEST REQUIRED', no: 'NO PRIEST NEEDED', why: 'No. Even an Israelite knows that is a clear blemish. He came only out of respect for the Sage, and someone who doesn’t neglect a Sage’s honor won’t steal from a priest. And a natural blemish like that can’t have been made deliberately.', ref: 'Bekhorot 36b:9-12' }
+      ];
+      var r7left = r7cases.length;
+      r7cases.forEach(function (a) {
+        addMax(1); task();
+        var c = document.createElement('div'); c.className = 'rounded-xl border border-[#26332f] p-4';
+        c.innerHTML = '<p class="text-sm !text-[#e6ebe7]">' + a.t + '</p><div class="mt-3 flex flex-wrap items-center gap-2"><button class="chip !text-[#e6ebe7]" data-v="1">Seat a priest</button><button class="chip !text-[#e6ebe7]" data-v="0">Examine without one</button><span class="ml-2"></span></div><p class="mt-2 text-sm leading-relaxed !text-[#adbab5]"></p>';
+        var first = true, row = c.children[1];
+        row.querySelectorAll('button').forEach(function (b) {
+          b.onclick = function () {
+            if ((b.getAttribute('data-v') === '1') !== a.ok) { first = false; b.classList.add('bad'); b.disabled = true; c.children[2].textContent = 'Ask what the Israelite might be suspected of here.'; return; }
+            if (first) award();
+            row.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+            row.children[2].innerHTML = stamp(a.ok, a.yes, a.no).replace(a.ok ? '#7fd0bd' : '#e0705c', a.ok ? '#d4a24c' : '#7fd0bd');
+            c.children[2].innerHTML = a.why + ' ' + sef(a.ref);
+            finish(); if (--r7left === 0) gate();
+          };
+        });
+        $('r7a').appendChild(c);
+      });
+      var passed = 0, flockEls = [];
+      function gate() {
+        show('r7gate'); addMax(1); task();
+        var g = $('flock'), ns = 'http://www.w3.org/2000/svg';
+        function place() {
+          flockEls.forEach(function (el, i) {
+            var x = i < passed ? 252 + (i * 14) : 172 - (i - passed) * 15;
+            el.style.transform = 'translate(' + x + 'px, 0px)';
+          });
+        }
+        for (var i = 0; i < 12; i++) {
+          var el = document.createElementNS(ns, 'g'); el.setAttribute('class', 'sheep');
+          el.innerHTML = '<text y="62" font-size="18">🐑</text>' + (i === 6 ? '<circle cx="9" cy="40" r="3.5" fill="#c4503d" />' : '');
+          g.appendChild(el); flockEls.push(el);
+        }
+        place();
+        var pushed = false;
+        $('passBtn').onclick = function () {
+          if (passed >= 10) return;
+          passed++; place(); $('counter').textContent = passed;
+          if (passed === 10) {
+            $('passBtn').disabled = true; $('pushBtn').disabled = true;
+            flockEls[9].insertAdjacentHTML('beforeend', '<rect x="-1" y="44" width="20" height="22" rx="4" fill="none" stroke="#d4a24c" stroke-width="2" />');
+            $('counter').textContent = '10: מַעֲשֵׂר';
+            $('r7msg').innerHTML = 'The tenth is marked: tithe. The blemished lamb came out seventh, and nobody chose that. ' + sef('Bekhorot 36b:14');
+            if (!pushed) { award(); } finish(); gateMore();
+          }
+        };
+        $('pushBtn').onclick = function () {
+          if (pushed || passed >= 10) return; pushed = true; $('pushBtn').disabled = true; $('pushBtn').classList.add('bad');
+          $('r7msg').innerHTML = 'Not allowed. <span class="frank" lang="he">״לֹא יְבַקֵּר בֵּין טוֹב לָרַע״</span> (Lev. 27:33): the tenth must come out by itself. He can’t steer the blemished one to the tenth spot. ' + sef('Bekhorot 36b:15');
+        };
+      }
+      function gateMore() {
+        var h = show('r7more');
+        mcq(h, 'So why is the owner believed that his tithe animal’s blemish happened by itself?', [
+          { t: 'Had he wanted, he could have blemished his <b>whole flock</b>, permitted, before leading them through the gate.', ok: true, why: '<span class="frank" lang="he">דְּאִי בָּעֵי שָׁדֵי בֵּיהּ מוּמָא בְּכוּלֵּיהּ עֶדְרֵיהּ</span>. Before tithing, they are his own unconsecrated animals.' },
+          { t: 'He could have blemished just the tenth before it went through.', ok: false, why: 'He doesn’t know which will be tenth, and he can’t arrange it.' },
+          { t: 'Tithe animals can’t be blemished deliberately.', ok: false, why: 'The point is about what he could have done beforehand.' }
+        ], 'Bekhorot 36b:13-15');
+      }
+
+      // ---------- ROUND 8: three from the synagogue ----------
+      var benchCases = [
+        { t: 'Nowadays. The firstborn’s eye is blinded. No expert anywhere nearby.', a: [true, false] },
+        { t: 'Nowadays. Its foreleg is severed. An expert lives in town.', a: [false, false] },
+        { t: 'Outside the Land of Israel, in Temple times. Its hind leg is broken. No expert.', a: [true, false] },
+        { t: 'Nowadays. A blemish that isn’t clear-cut and needs judgment. No expert.', a: [false, false] }
+      ];
+      benchCases.forEach(function (c, ci) {
+        var tr = document.createElement('tr'); tr.className = 'border-t border-[#26332f] align-top';
+        tr.innerHTML = '<td class="p-2 !text-[#e6ebe7]">' + c.t + '</td>';
+        [0, 1].forEach(function (vi) {
+          var td = document.createElement('td'); td.className = 'p-2';
+          var b = document.createElement('button'); b.className = 'seat !text-[#e6ebe7]'; b.textContent = '?';
+          b.setAttribute('data-c', ci); b.setAttribute('data-vw', vi);
+          b.setAttribute('aria-label', (vi ? 'Rabbi Yosei' : 'First tanna') + ', case ' + (ci + 1));
+          b.onclick = function () { if (r8done) return; var nv = b.getAttribute('data-v') === 'yes' ? 'no' : 'yes'; b.setAttribute('data-v', nv); b.textContent = nv === 'yes' ? 'Three permit' : 'Expert only'; };
+          td.appendChild(b); tr.appendChild(td);
+        });
+        $('r8body').appendChild(tr);
+      });
+      addMax(3); task(); var r8tries = 0, r8done = false;
+      $('r8check').onclick = function () {
+        if (r8done) return;
+        var wrong = 0, blank = 0;
+        document.querySelectorAll('.seat').forEach(function (b) {
+          var v = b.getAttribute('data-v'), want = benchCases[+b.getAttribute('data-c')].a[+b.getAttribute('data-vw')] ? 'yes' : 'no';
+          if (!v) blank++; else if (v !== want) wrong++;
+        });
+        if (blank) { $('r8msg').textContent = blank + ' seat(s) still undecided. Tap each one.'; return; }
+        r8tries++;
+        if (wrong) { $('r8msg').textContent = wrong + ' seat(s) wrong. Look again.'; return; }
+        r8done = true; award(Math.max(1, 4 - r8tries)); finish();
+        $('r8check').disabled = true;
+        $('r8msg').innerHTML = 'Bench set. The mishna speaks of nowadays, when a firstborn can’t be offered anyway. Rabbi Yehoshua ben Levi (via Rabbi Simlai and Rabbi Yehuda Nesia, or the reverse) extends it to outside the Land in Temple times. Rava: <b>only clear-cut blemishes</b>; the mishna’s examples aren’t just there to make Rabbi Yosei extreme. Rav Yehuda for Rabbi Yirmeya bar Abba (in Rav’s or Shmuel’s name, he wasn’t sure): <b>only where there is no expert</b>. Rabbi Yosei: always an expert, even with twenty-three present. ' + sef('Bekhorot 36b:16-21');
+      };
+    })();
+  </script>
+</Layout>
