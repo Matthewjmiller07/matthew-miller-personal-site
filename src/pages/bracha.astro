@@ -1,0 +1,318 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const examples = [
+  'Banana',
+  'Apple pie',
+  'Sushi',
+  'Orange juice',
+  'Potato chips',
+  'Granola bar',
+  'Kit Kat',
+  'Dates',
+];
+const tables = [
+  { label: 'Kiddush table', foods: 'Wine, chocolate rugelach, herring, grapes, potato kugel, coke' },
+  { label: 'Movie night', foods: 'Popcorn, peanut M&Ms, pretzels, Pringles, seltzer' },
+  { label: 'Tu BiShvat plate', foods: 'Dates, figs, pomegranate, olives, almonds, carob, strawberries' },
+];
+---
+
+<Layout
+  title="Which Bracha?"
+  description="Type any food, or a whole table of them. TypeSafe's Jev model answers a few factual questions about each one, and the rules of brachot, in code, pick the blessing before and after and the order to say them in."
+>
+  <main class="wb">
+    <section class="wb-intro">
+      <div class="wb-kicker">Jewish Studies · AI</div>
+      <h1>Which Bracha?</h1>
+      <p class="wb-lede">
+        Type a food, or a whole table of them separated by commas.
+        <a href="https://typesafe.ai" target="_blank" rel="noopener">TypeSafe</a>'s Jev model doesn't rule on anything:
+        it answers factual questions (what is this mostly made of? is the fruit still recognizable? is there real grain
+        in it?) and the rules of brachot, written in code, do the rest.
+      </p>
+
+      <form id="wb-form" class="wb-form" autocomplete="off">
+        <input id="wb-q" type="text" maxlength="600" required placeholder="e.g. apple pie, sushi, orange juice"
+          aria-label="Food or foods, separated by commas" />
+        <button id="wb-go" type="submit">Which bracha?</button>
+      </form>
+      <div class="wb-chips">
+        <span>Try:</span>
+        {examples.map((e) => <button type="button" class="wb-chip" data-q={e}>{e}</button>)}
+      </div>
+      <div class="wb-chips">
+        <span>A table:</span>
+        {tables.map((t) => <button type="button" class="wb-chip wb-chip-table" data-q={t.foods}>{t.label}</button>)}
+      </div>
+      <p id="wb-error" class="wb-error" hidden></p>
+    </section>
+
+    <section id="wb-out" class="wb-out" hidden></section>
+
+    <section class="wb-how">
+      <h2>How it works</h2>
+      <ol>
+        <li><strong>Ask.</strong> For each food, Jev answers four questions in one call: what it's mainly made of
+          (bread, other grain food, rice, wine, another drink, tree fruit, produce of the ground, or something else),
+          whether the produce is still in a recognizable form, whether wheat, barley, spelt, rye or oats is a real
+          ingredient rather than a coating or thickener, and whether the fruit is one of the seven species.</li>
+        <li><strong>Rule.</strong> Code applies the rules: bread is Hamotzi; a significant grain ingredient makes it
+          Mezonot; rice is Mezonot with Borei Nefashot after; wine is Hagafen; recognizable tree fruit is Ha'etz and
+          produce of the ground Ha'adama; juiced, pureed or unrecognizable produce and everything else is Shehakol.
+          After: Birkat Hamazon for bread, Al Hamichya / Al Hagefen / Al Ha'etz for grain, wine and the seven species,
+          Borei Nefashot for the rest.</li>
+        <li><strong>Order.</strong> For a table of foods, code sorts the brachot rishonot in the usual order (Mezonot,
+          Hagefen, Ha'etz, Ha'adama, Shehakol) and combines the after-brachot into one Al Hamichya and one Borei Nefashot.</li>
+        <li><strong>Flag.</strong> Jev returns probabilities, so when it's torn (is this granola bar mostly oats or mostly
+          honey?) the page shows the other answer and what bracha it would lead to.</li>
+      </ol>
+      <p class="wb-fine">
+        These are the general rules, as most Ashkenazi guides summarize them. Real cases turn on how much of each
+        ingredient there is, what you're eating it for, whether it's part of a bread meal, and your family's custom,
+        and authorities differ on many common foods. Use this to learn the reasoning, and ask your rav.
+      </p>
+    </section>
+  </main>
+</Layout>
+
+<style is:global>
+  .wb { --accent:#2f6b4f; --accent-soft:rgba(47,107,79,.12); --warn:#a1621b; --rule:rgba(127,127,127,.25);
+    max-width: 1000px; margin: 0 auto; padding: 48px 16px 80px; }
+  .wb-intro { max-width: 760px; }
+  .wb-kicker { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .wb h1 { font-size: clamp(32px, 6vw, 48px); font-weight: 800; line-height: 1.1; margin: 8px 0 14px; }
+  .wb-lede { font-size: 18px; line-height: 1.6; opacity: .85; }
+  .wb-lede a { text-decoration: underline; text-underline-offset: 3px; }
+  .wb-form { display: flex; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
+  .wb-form input { flex: 1 1 320px; min-width: 0; font-size: 17px; padding: 14px 16px; border-radius: 10px;
+    border: 1px solid rgba(127,127,127,.35); background: rgba(127,127,127,.08); color: inherit; }
+  .wb-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .wb-form button { font-size: 16px; font-weight: 600; padding: 14px 22px; border-radius: 10px; border: 0;
+    background: var(--accent); color: #fff; cursor: pointer; }
+  .wb-form button:disabled { opacity: .6; cursor: wait; }
+  .wb-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; font-size: 14px; }
+  .wb-chips span { opacity: .65; }
+  .wb-chip { border: 1px solid var(--rule); background: transparent; color: inherit; border-radius: 999px;
+    padding: 5px 12px; font-size: 14px; cursor: pointer; }
+  .wb-chip:hover { border-color: var(--accent); }
+  .wb-chip-table { background: var(--accent-soft); }
+  .wb-error { color: #c0392b; margin-top: 16px; }
+
+  .wb-out { margin-top: 36px; }
+  .wb-order { border: 1px solid var(--rule); border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;
+    background: var(--accent-soft); }
+  .wb-order h2 { font-size: 18px; margin: 0 0 10px; }
+  .wb-order ol { margin: 0; padding-left: 22px; line-height: 1.7; }
+  .wb-order .wb-he { font-size: 17px; }
+  .wb-order p { margin: 10px 0 0; font-size: 14px; opacity: .8; line-height: 1.5; }
+  .wb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .wb-card { border: 1px solid var(--rule); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .wb-food { font-size: 13px; text-transform: uppercase; letter-spacing: .1em; opacity: .65; font-weight: 600; }
+  .wb-name { font-size: 24px; font-weight: 800; color: var(--accent); line-height: 1.15; }
+  .wb-he { font-family: 'Frank Ruhl Libre', 'SBL Hebrew', 'Times New Roman', serif; direction: rtl; font-size: 19px; line-height: 1.5; }
+  .wb-after { font-size: 14px; border-top: 1px dashed var(--rule); padding-top: 10px; }
+  .wb-after b { font-weight: 700; }
+  .wb-chain { list-style: none; margin: 0; padding: 0; font-size: 13px; display: grid; gap: 6px; }
+  .wb-chain li { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+  .wb-bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--rule); overflow: hidden; }
+  .wb-bar i { display: block; height: 100%; background: var(--accent); }
+  .wb-pct { font-variant-numeric: tabular-nums; opacity: .7; }
+  .wb-alt { font-size: 13px; color: var(--warn); background: rgba(161,98,27,.1); border-radius: 8px; padding: 8px 10px; line-height: 1.45; }
+  .wb-note { font-size: 13px; opacity: .75; line-height: 1.45; }
+  .wb-skel { opacity: .5; font-style: italic; }
+
+  .wb-how { max-width: 760px; margin-top: 56px; line-height: 1.6; }
+  .wb-how h2 { font-size: 22px; }
+  .wb-how li { margin-bottom: 10px; }
+  .wb-fine { font-size: 14px; opacity: .75; }
+</style>
+
+<script>
+  const API = '/api/bracha-jev';
+  const MAX_FOODS = 12;
+  const CLOSE_CALL = 0.2; // runner-up probability at which a different bracha is worth showing
+
+  type Base = 'bread' | 'grain_food' | 'rice' | 'wine' | 'other_drink' | 'tree_fruit' | 'ground_produce' | 'other' | 'not_food';
+  type Judged = {
+    food: string; error?: string;
+    base: { choice: Base; probabilities: Record<string, number>; confidence: number };
+    recognizable: number; grain: number; seven: number;
+  };
+  type Rishona = 'hamotzi' | 'mezonot' | 'hagefen' | 'haetz' | 'haadama' | 'shehakol';
+  type Achrona = 'hamazon' | 'michya' | 'gefen' | 'etz' | 'nefashot';
+
+  const BRACHA = 'בָּרוּךְ אַתָּה ה׳ אֱלֹקֵינוּ מֶלֶךְ הָעוֹלָם';
+  const RISHONA: Record<Rishona, { name: string; he: string }> = {
+    hamotzi: { name: 'Hamotzi', he: 'הַמּוֹצִיא לֶחֶם מִן הָאָרֶץ' },
+    mezonot: { name: 'Borei Minei Mezonot', he: 'בּוֹרֵא מִינֵי מְזוֹנוֹת' },
+    hagefen: { name: 'Borei Pri Hagafen', he: 'בּוֹרֵא פְּרִי הַגָּפֶן' },
+    haetz: { name: "Borei Pri Ha'etz", he: 'בּוֹרֵא פְּרִי הָעֵץ' },
+    haadama: { name: "Borei Pri Ha'adama", he: 'בּוֹרֵא פְּרִי הָאֲדָמָה' },
+    shehakol: { name: 'Shehakol', he: 'שֶׁהַכֹּל נִהְיָה בִּדְבָרוֹ' },
+  };
+  const ACHRONA: Record<Achrona, { name: string; he: string }> = {
+    hamazon: { name: 'Birkat Hamazon', he: 'בִּרְכַּת הַמָּזוֹן' },
+    michya: { name: 'Al Hamichya', he: 'עַל הַמִּחְיָה וְעַל הַכַּלְכָּלָה' },
+    gefen: { name: 'Al Hagefen', he: 'עַל הַגֶּפֶן וְעַל פְּרִי הַגֶּפֶן' },
+    etz: { name: "Al Ha'etz", he: 'עַל הָעֵץ וְעַל פְּרִי הָעֵץ' },
+    nefashot: { name: 'Borei Nefashot', he: 'בּוֹרֵא נְפָשׁוֹת רַבּוֹת' },
+  };
+  const ORDER: Rishona[] = ['hamotzi', 'mezonot', 'hagefen', 'haetz', 'haadama', 'shehakol'];
+  const BASE_LABEL: Record<Base, string> = {
+    bread: 'Bread', grain_food: 'Grain food (not bread)', rice: 'Rice', wine: 'Wine or grape juice',
+    other_drink: 'Another drink', tree_fruit: 'Tree fruit', ground_produce: 'Produce of the ground',
+    other: 'Something else', not_food: 'Not food',
+  };
+
+  type Step = { label: string; p: number };
+  type Ruling = { rishona: Rishona; achrona: Achrona; steps: Step[]; hinge?: { label: string; p: number; flip: Rishona } ; note?: string };
+
+  // The rules of brachot, applied to Jev's answers. `base` is passed in so the runner-up can be ruled too.
+  function rule(j: Judged, base: Base): Ruling | null {
+    const pb = j.base.probabilities[base] ?? 0;
+    const steps: Step[] = [{ label: `Mainly: ${BASE_LABEL[base]}`, p: pb }];
+    const grainStep = { label: 'Real grain ingredient (wheat, barley, spelt, rye, oats)', p: j.grain };
+    const recStep = { label: 'Produce still recognizable', p: j.recognizable };
+    const fruitAchrona = (): Achrona => (base === 'tree_fruit' && j.seven >= 0.5 ? 'etz' : 'nefashot');
+    switch (base) {
+      case 'not_food':
+        return null;
+      case 'bread':
+        return { rishona: 'hamotzi', achrona: 'hamazon', steps,
+          note: 'Hamotzi covers the other foods of the meal; wine, and fruit eaten as dessert, get their own bracha.' };
+      case 'grain_food':
+        return { rishona: 'mezonot', achrona: 'michya', steps,
+          note: 'Eaten as a full meal (kevi\'at se\'udah), a baked grain food like cake, crackers or pizza becomes Hamotzi and Birkat Hamazon.' };
+      case 'rice':
+        return { rishona: 'mezonot', achrona: 'nefashot', steps,
+          note: 'Rice is Mezonot before but not one of the five grains, so after it is Borei Nefashot.' };
+      case 'wine':
+        return { rishona: 'hagefen', achrona: 'gefen', steps };
+      case 'other_drink':
+        return { rishona: 'shehakol', achrona: 'nefashot', steps };
+      case 'tree_fruit':
+      case 'ground_produce': {
+        steps.push(grainStep);
+        if (j.grain >= 0.5) return { rishona: 'mezonot', achrona: 'michya', steps, hinge: hinge(grainStep, () => rule({ ...j, grain: 0 }, base)) };
+        steps.push(recStep);
+        const own: Rishona = base === 'tree_fruit' ? 'haetz' : 'haadama';
+        if (base === 'tree_fruit') steps.push({ label: 'One of the seven species', p: j.seven });
+        if (j.recognizable >= 0.5)
+          return { rishona: own, achrona: fruitAchrona(), steps,
+            hinge: hinge(grainStep, () => rule({ ...j, grain: 1 }, base)) ?? hinge(recStep, () => rule({ ...j, recognizable: 0 }, base)) };
+        return { rishona: 'shehakol', achrona: 'nefashot', steps,
+          hinge: hinge(grainStep, () => rule({ ...j, grain: 1 }, base)) ?? hinge(recStep, () => rule({ ...j, recognizable: 1 }, base)),
+          note: 'Juiced, pureed or processed past recognition, produce loses its own bracha. Poskim differ on smooth purees like applesauce.' };
+      }
+      default: {
+        steps.push(grainStep);
+        if (j.grain >= 0.5) return { rishona: 'mezonot', achrona: 'michya', steps, hinge: hinge(grainStep, () => rule({ ...j, grain: 0 }, base)) };
+        return { rishona: 'shehakol', achrona: 'nefashot', steps, hinge: hinge(grainStep, () => rule({ ...j, grain: 1 }, base)) };
+      }
+    }
+  }
+
+  // A yes/no answer between 30% and 70% that would change the bracha if it went the other way.
+  // `flipped` is lazy: it's only ruled for a close call, so the two rulings can't recurse into each other.
+  function hinge(step: Step, flipped: () => Ruling | null) {
+    if (step.p < 0.3 || step.p > 0.7) return undefined;
+    const f = flipped();
+    return f ? { label: step.label, p: step.p, flip: f.rishona } : undefined;
+  }
+
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+  const pct = (p: number) => `${Math.round(p * 100)}%`;
+
+  function card(j: Judged) {
+    if (j.error) return `<div class="wb-card"><div class="wb-food">${esc(j.food)}</div><p class="wb-error">Jev couldn't be reached: ${esc(j.error)}</p></div>`;
+    const r = rule(j, j.base.choice);
+    if (!r) return `<div class="wb-card"><div class="wb-food">${esc(j.food)}</div><div class="wb-name">No bracha</div>
+      <p class="wb-note">Jev doesn't think that's food (${pct(j.base.probabilities.not_food ?? 0)}).</p></div>`;
+    const alts: string[] = [];
+    const runnerUp = Object.entries(j.base.probabilities)
+      .filter(([b]) => b !== j.base.choice).sort((a, b) => b[1] - a[1])[0];
+    if (runnerUp && runnerUp[1] >= CLOSE_CALL) {
+      const ar = rule(j, runnerUp[0] as Base);
+      if (ar && ar.rishona !== r.rishona)
+        alts.push(`Close call: ${pct(runnerUp[1])} it's ${BASE_LABEL[runnerUp[0] as Base].toLowerCase()}, which would make it <b>${RISHONA[ar.rishona].name}</b>.`);
+    }
+    if (r.hinge && r.hinge.flip !== r.rishona)
+      alts.push(`Close call: "${esc(r.hinge.label.toLowerCase())}" is only ${pct(r.hinge.p)}. The other way, it would be <b>${RISHONA[r.hinge.flip].name}</b>.`);
+    const chain = r.steps.map((s) => `<li><span>${esc(s.label)}</span><span class="wb-pct">${pct(s.p)}</span>
+      <span class="wb-bar"><i style="width:${pct(s.p)}"></i></span></li>`).join('');
+    return `<div class="wb-card">
+      <div class="wb-food">${esc(j.food)}</div>
+      <div class="wb-name">${RISHONA[r.rishona].name}</div>
+      <div class="wb-he">${BRACHA} ${RISHONA[r.rishona].he}</div>
+      <div class="wb-after">After: <b>${ACHRONA[r.achrona].name}</b> <span class="wb-he">${ACHRONA[r.achrona].he}</span></div>
+      ${alts.map((a) => `<div class="wb-alt">${a}</div>`).join('')}
+      <ul class="wb-chain">${chain}</ul>
+      ${r.note ? `<p class="wb-note">${esc(r.note)}</p>` : ''}
+    </div>`;
+  }
+
+  // For several foods: which bracha to say first, and how the after-brachot combine.
+  function order(results: Judged[]) {
+    const ruled = results.filter((j) => !j.error).map((j) => ({ j, r: rule(j, j.base.choice) })).filter((x) => x.r) as { j: Judged; r: Ruling }[];
+    if (ruled.length < 2) return '';
+    const by = (k: Rishona) => ruled.filter((x) => x.r.rishona === k).map((x) => esc(x.j.food));
+    if (ruled.some((x) => x.r.rishona === 'hamotzi')) {
+      return `<div class="wb-order"><h2>With bread on the table</h2>
+        <p>Say <b>Hamotzi</b> first, on the bread (${by('hamotzi').join(', ')}). It covers the foods of the meal, and
+        <b>Birkat Hamazon</b> at the end covers everything. Wine and fruit served for dessert are the usual exceptions
+        that get their own bracha; the cards below show which one.</p></div>`;
+    }
+    const first = ORDER.filter((k) => by(k).length).map((k) =>
+      `<li><b>${RISHONA[k].name}</b> on ${by(k).join(', ')} <span class="wb-he">${RISHONA[k].he}</span></li>`).join('');
+    const mein = (['michya', 'gefen', 'etz'] as Achrona[]).filter((k) => ruled.some((x) => x.r.achrona === k));
+    const meinNames = mein.map((k) => ACHRONA[k].name).join(', ').replace(/, ([^,]*)$/, ' and $1');
+    const meinHe = mein.map((k) => ACHRONA[k].he).join(' וְ');
+    const nefashot = ruled.filter((x) => x.r.achrona === 'nefashot').map((x) => esc(x.j.food));
+    const after = [
+      mein.length ? `<li>One <b>Me'ein Shalosh</b> combining ${meinNames}: <span class="wb-he">${meinHe}</span></li>` : '',
+      nefashot.length ? `<li><b>Borei Nefashot</b> for ${nefashot.join(', ')}</li>` : '',
+    ].join('');
+    return `<div class="wb-order"><h2>In order</h2><ol>${first}</ol>
+      <h2 style="margin-top:16px">After eating</h2><ol>${after}</ol>
+      <p>Brachot go in the usual order: Mezonot, Hagefen, Ha'etz, Ha'adama, Shehakol. Many say a beloved food, or one of
+      the seven species, comes first within the same bracha. Some hold Al Ha'etz also covers other tree fruits.</p></div>`;
+  }
+
+  const form = document.getElementById('wb-form') as HTMLFormElement;
+  const input = document.getElementById('wb-q') as HTMLInputElement;
+  const go = document.getElementById('wb-go') as HTMLButtonElement;
+  const out = document.getElementById('wb-out') as HTMLElement;
+  const errorEl = document.getElementById('wb-error') as HTMLElement;
+
+  async function run(q: string) {
+    const foods = [...new Set(q.split(/[,\n;]+/).map((s) => s.trim()).filter(Boolean))].slice(0, MAX_FOODS);
+    if (!foods.length) return;
+    const url = new URL(location.href);
+    url.searchParams.set('q', foods.join(', '));
+    history.replaceState(null, '', url);
+    errorEl.hidden = true;
+    go.disabled = true;
+    out.hidden = false;
+    out.innerHTML = `<div class="wb-grid">${foods.map((f) => `<div class="wb-card"><div class="wb-food">${esc(f)}</div><p class="wb-skel">Asking Jev…</p></div>`).join('')}</div>`;
+    try {
+      const res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ foods }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      out.innerHTML = order(data.results) + `<div class="wb-grid">${data.results.map(card).join('')}</div>`;
+    } catch (err) {
+      out.hidden = true;
+      errorEl.textContent = `Something went wrong: ${(err as Error).message}`;
+      errorEl.hidden = false;
+    } finally {
+      go.disabled = false;
+    }
+  }
+
+  form.addEventListener('submit', (e) => { e.preventDefault(); run(input.value); });
+  document.querySelectorAll<HTMLButtonElement>('.wb-chip').forEach((b) =>
+    b.addEventListener('click', () => { input.value = b.dataset.q!; run(input.value); }));
+  const initial = new URL(location.href).searchParams.get('q');
+  if (initial) { input.value = initial; run(initial); }
+</script>
