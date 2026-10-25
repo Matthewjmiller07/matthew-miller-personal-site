@@ -29,14 +29,14 @@ const key = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     try {
       const r = await fetch(
-        `${url}/rest/v1/random_facts?select=fact&status=eq.published&order=created_at.desc&limit=20`,
+        `${url}/rest/v1/random_facts?select=id,fact&status=eq.published&order=created_at.desc&limit=20`,
         { headers: { apikey: key } }
       );
       if (!r.ok) return;
       const facts = await r.json();
       if (!facts.length) return;
       const chunk = facts
-        .map((f) => `<a href="/random-facts" class="mx-5 hover:text-[#f4eee1]">${esc(f.fact)}</a><span class="text-[#c9a86a]">✦</span>`)
+        .map((f) => `<a href="/random-facts?id=${f.id}" class="mx-5 hover:text-[#f4eee1]">${esc(f.fact)}</a><span class="text-[#c9a86a]">✦</span>`)
         .join('');
       const half = `<span class="flex items-center">${chunk}</span>`;
       el.querySelector('.rf-home-track').innerHTML = half + half.replace('<span', '<span aria-hidden="true"');

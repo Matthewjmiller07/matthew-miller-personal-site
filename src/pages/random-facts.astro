@@ -7,6 +7,12 @@ import { listFacts } from '../lib/randomfacts';
 export const prerender = false;
 
 const facts = await listFacts();
+
+// ?id=<fact uuid> deep link: shows that one fact on its own.
+// An unknown or missing id just shows the normal newest-first list.
+const focusId = Astro.url.searchParams.get('id');
+const focus = focusId ? facts.find((f) => f.id === focusId) : undefined;
+const shown = focus ? [focus] : facts;
 ---
 
 <Layout
@@ -20,15 +26,20 @@ const facts = await listFacts();
       <p class="mt-4 text-lg text-[#c9c0ad] max-w-2xl">
         Things I've learned or had researched — one running collection, newest first.
       </p>
+      {focus && (
+        <p class="mt-4 text-sm text-[#c9a86a]">
+          Showing one linked fact — <a href="/random-facts" class="underline hover:text-[#f4eee1]">see all facts</a>
+        </p>
+      )}
 
-      {facts.length > 0 && (
+      {!focus && facts.length > 0 && (
         <div class="mt-10 overflow-hidden rounded-xl border border-white/10 bg-white/5">
           <div class="rf-track flex whitespace-nowrap py-3 text-sm font-medium text-[#c9c0ad] select-none">
             {[0, 1].map((n) => (
               <span class="rf-chunk" aria-hidden={n === 1 ? 'true' : undefined}>
                 {facts.map((f) => (
                   <span class="mx-6 inline-flex items-center gap-6">
-                    <span>{f.fact}</span><span class="text-[#c9a86a]">✦</span>
+                    <a href={`/random-facts?id=${f.id}`} class="hover:text-[#f4eee1] hover:underline">{f.fact}</a><span class="text-[#c9a86a]">✦</span>
                   </span>
                 ))}
               </span>
@@ -43,9 +54,14 @@ const facts = await listFacts();
       )}
 
       <div class="mt-12 grid gap-6">
-        {facts.map((f) => (
-          <article class="rounded-xl border border-white/10 bg-white/5 p-6">
-            <p class="text-xl font-semibold leading-relaxed text-[#f4eee1]">{f.fact}</p>
+        {shown.map((f) => (
+          <article
+            id={`fact-${f.id}`}
+            class={focus?.id === f.id
+              ? 'scroll-mt-24 rounded-xl border border-[#c9a86a] bg-[#c9a86a]/10 p-6 ring-1 ring-[#c9a86a]/60'
+              : 'scroll-mt-24 rounded-xl border border-white/10 bg-white/5 p-6'}
+          >
+            <p class="text-xl font-semibold leading-relaxed text-[#f4eee1]"><a href={`/random-facts?id=${f.id}`} class="hover:text-accent hover:underline">{f.fact}</a></p>
             {f.details && <p class="mt-3 leading-relaxed text-[#c9c0ad]">{f.details}</p>}
             <div class="mt-4 flex flex-wrap items-center gap-2">
               {f.tags.map((t) => (
@@ -56,6 +72,9 @@ const facts = await listFacts();
                   Researched by {f.researched_by}
                 </span>
               )}
+              <a href={`/random-facts?id=${f.id}`} class="rounded-full border border-white/15 px-3 py-0.5 text-xs text-[#8a8474] hover:text-accent">
+                Permalink
+              </a>
             </div>
             {f.sources.length > 0 && (
               <p class="mt-3 text-sm text-[#8a8474]">
