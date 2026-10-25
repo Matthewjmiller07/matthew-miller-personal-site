@@ -1,0 +1,234 @@
+---
+// /rav-asher-weiss-booklets — searchable weekly Minchat Asher booklets
+// from Machon Minchat Asher. Full Hebrew text per booklet, hosted PDFs,
+// links back to each booklet's original source. Modeled on the
+// /dayan-fuerst-transcripts page: list view + detail view, hash links.
+// PARTIAL ARCHIVE: the Machon's full run is ~960 booklets; this page holds
+// the 36 recovered so far (5781–5787, with gaps — no 5783 yet). The header
+// says so plainly; more are added as they are found.
+import Layout from '../layouts/Layout.astro';
+
+const pageTitle = 'Rav Asher Weiss — Weekly Booklets';
+---
+
+<Layout title={pageTitle}>
+  <main class="raw-page">
+    <header class="hero">
+      <div class="kicker">Rav Asher Weiss</div>
+      <h1>Weekly Booklets</h1>
+      <p class="sub">
+        The weekly Minchat Asher booklets from Machon Minchat Asher — one per
+        parsha, full Hebrew text, searchable. Click a booklet to read it, or
+        download its PDF. Each booklet links back to its original source.
+      </p>
+      <p class="sub count" id="count"></p>
+      <p class="sub note">
+        A partial archive, honestly labeled: the Machon's full run is about
+        960 booklets, and this page holds the 36 recovered so far, mostly
+        5784–5786. Nothing found yet for 5783, and only one booklet so far
+        for 5781 and for 5787. More will be added as they are found.
+      </p>
+    </header>
+
+    <section id="listView">
+      <div class="controls">
+        <input id="q" type="search" placeholder="Search parsha, title, year…" autocomplete="off" />
+        <label class="inside"><input id="inside" type="checkbox" /> Search inside the texts</label>
+      </div>
+      <div id="rows"></div>
+    </section>
+
+    <section id="detailView" hidden>
+      <a class="back" id="backBtn">← All booklets</a>
+      <h2 id="dTitle"></h2>
+      <div class="meta" id="dMeta"></div>
+      <div class="dlinks" id="dLinks"></div>
+      <div id="dBody"><p>Loading…</p></div>
+    </section>
+
+    <footer class="foot">
+      <p>
+        Booklets by Machon Minchat Asher, publishing Rav Asher Weiss's weekly
+        shiurim · also on the <a href="/rav-asher-weiss">quote-cards page</a>.
+      </p>
+    </footer>
+  </main>
+
+  <script>
+    let items = [];
+    let corpus = null;
+    let corpusLoading = null;
+    const rows = document.getElementById('rows');
+    const q = document.getElementById('q');
+    const inside = document.getElementById('inside');
+    const listView = document.getElementById('listView');
+    const detailView = document.getElementById('detailView');
+
+    function esc(t) {
+      return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function hay(it) {
+      return (it.parsha_he + ' ' + it.parsha_en + ' ' + it.title + ' ' +
+        it.hebrew_year + ' ' + it.civil_year).toLowerCase();
+    }
+    function snippet(text, query) {
+      const i = text.toLowerCase().indexOf(query.toLowerCase());
+      if (i === -1) return '';
+      const s = Math.max(0, i - 60);
+      const e = Math.min(text.length, i + query.length + 100);
+      return (s > 0 ? '…' : '') + text.slice(s, e).replace(/\s+/g, ' ') + (e < text.length ? '…' : '');
+    }
+
+    function renderList() {
+      const f = (q.value || '').trim().toLowerCase();
+      let shown = items;
+      let snips = {};
+      if (f) {
+        if (inside.checked && corpus) {
+          shown = [];
+          for (const c of corpus) {
+            if (c.text.toLowerCase().includes(f)) {
+              const it = items.find((x) => x.id === c.id);
+              if (it) { shown.push(it); snips[it.id] = snippet(c.text, f); }
+            }
+          }
+        } else {
+          shown = items.filter((it) => hay(it).includes(f));
+        }
+      }
+      const totalPages = items.reduce((a, it) => a + (it.pages || 0), 0);
+      document.getElementById('count').textContent =
+        items.length + ' booklets · ' + totalPages + ' pages' +
+        (f ? ' · ' + shown.length + ' match' : '');
+      rows.innerHTML = '';
+      for (const it of shown) {
+        const div = document.createElement('div');
+        div.className = 'row';
+        div.innerHTML =
+          '<div class="row-title"><span dir="rtl" lang="he">' + esc(it.parsha_he) + '</span> · ' + esc(it.parsha_en) + ' ' + it.hebrew_year + '</div>' +
+          '<div class="row-meta">' + esc(it.title) + ' · ' + it.pages + ' pages · ' + esc(it.booklet_no) + '</div>' +
+          (snips[it.id] ? '<div class="row-snip">' + esc(snips[it.id]) + '</div>' : '');
+        div.addEventListener('click', () => show(it.id, f));
+        rows.appendChild(div);
+      }
+      if (!shown.length) rows.innerHTML = '<p class="empty">No matches.</p>';
+    }
+
+    async function ensureCorpus() {
+      if (corpus) return corpus;
+      if (!corpusLoading) {
+        corpusLoading = fetch('/weiss-booklets/all-text.json')
+          .then((r) => r.json()).then((d) => { corpus = d; return d; })
+          .catch(() => { corpus = []; return []; });
+      }
+      return corpusLoading;
+    }
+
+    async function show(id, query) {
+      const it = items.find((x) => String(x.id) === String(id));
+      if (!it) return;
+      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+      listView.hidden = true;
+      detailView.hidden = false;
+      document.getElementById('dTitle').innerHTML =
+        '<span dir="rtl" lang="he">' + esc(it.parsha_he) + '</span> · ' + esc(it.parsha_en) + ' ' + it.hebrew_year;
+      document.getElementById('dMeta').textContent =
+        it.title + ' · ' + it.pages + ' pages · ' + it.booklet_no;
+      const links = document.getElementById('dLinks');
+      links.innerHTML = '';
+      const dl = document.createElement('a');
+      dl.href = it.pdf; dl.textContent = 'Download PDF ↓';
+      links.appendChild(dl);
+      if (it.source) {
+        const src = document.createElement('a');
+        src.href = it.source; src.target = '_blank'; src.rel = 'noopener';
+        src.textContent = 'Original source ↗';
+        links.appendChild(src);
+      } else {
+        const only = document.createElement('span');
+        only.textContent = 'Local copy only — original link not recovered';
+        links.appendChild(only);
+      }
+      const body = document.getElementById('dBody');
+      body.innerHTML = '<p>Loading…</p>';
+      try {
+        const res = await fetch('/weiss-booklets/' + encodeURIComponent(it.id) + '.txt');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const raw = await res.text();
+        const div = document.createElement('div');
+        div.className = 'booktext';
+        div.dir = 'rtl'; div.lang = 'he';
+        if (query && query.length >= 2) {
+          div.innerHTML = esc(raw).split(esc(query)).join('<mark>' + esc(query) + '</mark>');
+        } else {
+          div.textContent = raw;
+        }
+        body.innerHTML = '';
+        body.appendChild(div);
+      } catch (e) {
+        body.innerHTML = '<p>Could not load booklet text.</p>';
+      }
+      window.scrollTo(0, 0);
+    }
+
+    function back() {
+      try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      detailView.hidden = true;
+      listView.hidden = false;
+      window.scrollTo(0, 0);
+    }
+    document.getElementById('backBtn').addEventListener('click', back);
+    q.addEventListener('input', renderList);
+    inside.addEventListener('change', async () => {
+      if (inside.checked) { await ensureCorpus(); }
+      renderList();
+    });
+
+    fetch('/data/weiss-booklets.json')
+      .then((r) => r.json())
+      .then((d) => {
+        items = d.slice().reverse();
+        renderList();
+        const h = location.hash.replace('#', '');
+        if (h) show(decodeURIComponent(h), '');
+      })
+      .catch(() => {
+        rows.innerHTML = '<p class="empty">Could not load the booklet index.</p>';
+      });
+  </script>
+
+  <style>
+    .raw-page { max-width: 860px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    .hero { text-align: center; margin-bottom: 2rem; }
+    .kicker { font-size: 1.1rem; color: #d4a017; margin: 0 0 .4rem; font-weight: 700;
+              text-transform: uppercase; letter-spacing: .12em; }
+    .hero h1 { font-size: 2.2rem; margin: 0 0 .8rem; letter-spacing: -.01em; }
+    .hero .sub { max-width: 640px; margin: .5rem auto; color: #555; line-height: 1.6; }
+    .hero .count { color: #8a7c5f; font-size: .95rem; }
+    .hero .note { font-size: .92rem; color: #8a7c5f; }
+    .controls { margin-bottom: 1.2rem; }
+    .controls input[type="search"] { width: 100%; padding: .7rem 1rem; font-size: 1rem;
+      border: 1px solid #e8e2d4; border-radius: 10px; background: #fff; }
+    .controls .inside { display: block; margin-top: .6rem; color: #555; font-size: .95rem; }
+    .row { background: #fff; border: 1px solid #e8e2d4; border-radius: 10px;
+           padding: .85rem 1.1rem; margin-bottom: .6rem; cursor: pointer;
+           transition: border-color .15s; }
+    .row:hover { border-color: #d4a017; }
+    .row-title { font-weight: 600; color: #1d1a14; line-height: 1.45; }
+    .row-meta { font-size: .85rem; color: #8a7c5f; margin-top: .25rem; }
+    .row-snip { font-size: .88rem; color: #5d5142; margin-top: .4rem; line-height: 1.5; }
+    .empty { color: #8a7c5f; text-align: center; padding: 2rem 0; }
+    .back { color: #8a6d1f; cursor: pointer; text-decoration: none; font-size: .95rem; }
+    .back:hover { text-decoration: underline; }
+    #detailView h2 { font-size: 1.6rem; line-height: 1.35; margin: 1rem 0 .4rem; }
+    .meta { color: #8a7c5f; font-size: .92rem; margin-bottom: .6rem; }
+    .dlinks { display: flex; gap: 1.2rem; margin-bottom: 1.4rem; font-size: .95rem; }
+    .dlinks a { color: #8a6d1f; }
+    .dlinks span { color: #8a7c5f; }
+    .booktext { font-family: 'Frank Ruhl Libre', 'Noto Serif Hebrew', serif;
+      font-size: 1.15rem; line-height: 1.9; color: #2a251c; white-space: pre-wrap; }
+    .booktext mark { background: #f3d98b; }
+    .foot { text-align: center; margin-top: 3rem; color: #777; font-size: .95rem; }
+    .foot a { color: #8a6d1f; }
+  </style>
+</Layout>
