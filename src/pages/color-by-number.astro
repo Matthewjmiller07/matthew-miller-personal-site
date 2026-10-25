@@ -1,0 +1,866 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Color by Number" description="Turn any photo into a color-by-number sheet: real paint-by-number regions or a dot-marker grid, using only the markers you own." image="/painted-torah/exodus-14.jpg">
+  <div class="cbn">
+    <header class="cbn-head">
+      <p class="k">The workshop · printables</p>
+      <h1>Color by Number</h1>
+      <p class="lede">Drop in a photo and get a sheet to color. It's split into regions that follow the picture's edges, or laid out as a grid of dots for dot markers. Every color comes from the box of markers you actually own. Color it here, or print it.</p>
+    </header>
+
+    <div class="cbn-grid">
+      <aside class="panel" id="panel">
+        <section>
+          <label class="drop" id="drop">
+            <input type="file" accept="image/*" id="file" hidden />
+            <span class="drop-t">Choose a photo</span>
+            <span class="drop-s">or drop one here · it never leaves your browser</span>
+          </label>
+          <button class="link" id="sample" type="button">Or try a painting: the Red Sea, from the Painted Torah</button>
+        </section>
+
+        <section>
+          <h3>Style</h3>
+          <div class="seg" role="radiogroup" id="modeSeg">
+            <button data-mode="regions" class="on" type="button">Regions</button>
+            <button data-mode="dots" type="button">Dots</button>
+          </div>
+          <div id="dotOpts" hidden>
+            <label class="row">Dots across <output id="dotsOut">24</output></label>
+            <input type="range" id="dots" min="8" max="64" value="24" />
+            <p class="hint" id="dotHint"></p>
+            <div class="seg small" id="shapeSeg">
+              <button data-shape="circle" class="on" type="button">Circles</button>
+              <button data-shape="hex" type="button">Packed</button>
+              <button data-shape="square" type="button">Squares</button>
+            </div>
+          </div>
+          <div id="regOpts">
+            <label class="row">Detail <output id="detailOut">Medium</output></label>
+            <input type="range" id="detail" min="1" max="3" value="2" />
+            <label class="row">Simplify <output id="simpOut">5</output></label>
+            <input type="range" id="simp" min="1" max="10" value="5" />
+            <p class="hint">Simplify makes regions bigger and fewer. Turn it up for kids, down for detail.</p>
+          </div>
+        </section>
+
+        <section>
+          <h3>Colors</h3>
+          <select id="set"></select>
+          <label class="row">Use at most <output id="kOut">12</output> colors</label>
+          <input type="range" id="k" min="2" max="40" value="12" />
+          <div id="setTools" class="tools">
+            <button type="button" class="link" id="allOn">All on</button>
+            <button type="button" class="link" id="allOff">All off</button>
+            <span class="hint" id="onCount"></span>
+          </div>
+          <div class="chips" id="chips"></div>
+          <p class="hint" id="chipHint">Tap a marker to leave it out. Long-press (or right-click) to change its color to match your box.</p>
+        </section>
+
+        <section>
+          <h3>Options</h3>
+          <label class="check"><input type="checkbox" id="paper" checked /> Leave white as paper</label>
+          <label class="check"><input type="checkbox" id="bg" /> Remove the background (AI)</label>
+          <p class="hint" id="bgHint">Finds the subject with a small segmentation model (MODNet, about 25 MB, downloaded once) and leaves everything behind it blank.</p>
+          <label class="check"><input type="checkbox" id="thick" /> Thick lines for printing</label>
+        </section>
+      </aside>
+
+      <main class="stage">
+        <div class="bar">
+          <div class="status" id="status">Choose a photo to begin.</div>
+          <div class="actions">
+            <label class="check inline"><input type="checkbox" id="preview" /> Show answer</label>
+            <button type="button" id="reset" disabled>Clear</button>
+            <button type="button" id="png" disabled>PNG</button>
+            <button type="button" id="svg" disabled hidden>SVG</button>
+            <button type="button" id="print" class="primary" disabled>Print</button>
+          </div>
+        </div>
+        <div class="progress" id="progressWrap" hidden><div id="progress"></div><span id="progressT"></span></div>
+
+        <div class="sheet" id="sheet">
+          <div class="empty" id="empty">
+            <svg viewBox="0 0 120 90" aria-hidden="true"><path d="M8 80 L40 30 L58 55 L74 38 L112 80 Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="88" cy="20" r="9" fill="none" stroke="currentColor" stroke-width="2"/><text x="44" y="70" font-size="10" fill="currentColor">3</text><text x="78" y="68" font-size="10" fill="currentColor">7</text><text x="85" y="24" font-size="8" fill="currentColor">1</text></svg>
+          </div>
+          <canvas id="canvas" hidden></canvas>
+          <div id="dotWrap" hidden></div>
+        </div>
+
+        <div class="palette" id="palette"></div>
+        <p class="hint center" id="playHint" hidden>Pick a color, then tap every space with its number. Spaces for the color you've picked light up.</p>
+      </main>
+    </div>
+
+    <details class="how">
+      <summary>How it works</summary>
+      <ol>
+        <li><b>Superpixels.</b> The photo is cut into a few thousand small patches with SLIC. Each patch hugs nearby pixels of similar color, so its edges follow the picture's real edges instead of a square grid.</li>
+        <li><b>Your markers.</b> Each patch takes the closest marker in the box (measured in CIELAB, which tracks how different colors look to the eye). If that uses more colors than you allowed, the least-used marker is dropped and its patches move to the next closest, until it fits.</li>
+        <li><b>Regions.</b> Touching patches with the same marker join into one region. Regions too small or too thin to hold a number are merged into the neighbor they share the longest border with.</li>
+        <li><b>Numbers.</b> A distance transform finds the point in each region farthest from its edges, and the number goes there, sized to fit.</li>
+        <li><b>Dots.</b> Each dot takes the color most of the region underneath it has, so a dot sheet and a region sheet of the same photo agree.</li>
+      </ol>
+      <p>The optional background removal runs MODNet in your browser with transformers.js. Nothing is uploaded.</p>
+    </details>
+  </div>
+</Layout>
+
+<style is:global>
+  body:has(.cbn) { background: #1b1813 !important; }
+  .cbn { --ink: #221d17; --muted: #6f655a; --line: #d9cfbf; --card: #fffdf8; --accent: #d63a2f; --accent2: #2f6fd6;
+    max-width: 1320px; margin: 0 auto; padding: 2.2rem 16px 4rem; color: var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  .cbn :is(h1, h2, h3, p, label, div, span, li, summary, b) { color: inherit; }
+  .cbn [hidden] { display: none !important; }
+  .cbn-head h1 { color: #f6efe2 !important; }
+  .cbn .panel :is(label, span, p, h3, li) { color: var(--ink) !important; }
+  .cbn .panel :is(.hint, h3, .drop-s) { color: var(--muted) !important; }
+  .cbn-head .lede { color: #c9bda9 !important; }
+  .cbn .bar .status { color: #c9bda9; }
+  .cbn .hint.center { color: #a89b86; }
+  .cbn .k { font-size: .72rem; letter-spacing: .22em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin: 0; }
+  .cbn h1 { font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: clamp(2.4rem, 7vw, 4.2rem); line-height: 1; margin: .35rem 0 .7rem; }
+  .cbn .lede { max-width: 50rem; font-size: 1.08rem; line-height: 1.55; color: var(--muted); margin: 0 0 1.6rem; }
+  .cbn-grid { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 1.4rem; align-items: start; }
+  @media (max-width: 900px) { .cbn-grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1.1rem; position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow: auto; }
+  @media (max-width: 900px) { .panel { position: static; max-height: none; } }
+  .panel section + section { border-top: 1px solid var(--line); margin-top: 1rem; padding-top: .9rem; }
+  .panel h3 { font-size: .74rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin: 0 0 .6rem; font-weight: 700; }
+  .drop { display: flex; flex-direction: column; align-items: center; gap: .2rem; border: 2px dashed var(--line); border-radius: 12px; padding: 1.1rem .8rem; cursor: pointer; text-align: center; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: #fff6f2; }
+  .drop-t { font-weight: 700; font-size: 1.02rem; }
+  .drop-s { font-size: .8rem; color: var(--muted); }
+  .cbn .link { background: none; border: 0; padding: 0; color: var(--accent2); font-size: .85rem; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; margin-top: .55rem; text-align: left; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: .7rem; }
+  .seg button { flex: 1; padding: .5rem; background: transparent; border: 0; cursor: pointer; font-weight: 600; color: var(--muted); font-size: .92rem; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--ink); color: #fff; }
+  .seg.small button { font-size: .8rem; padding: .35rem; }
+  .cbn .row { display: flex; justify-content: space-between; font-size: .88rem; margin-top: .45rem; font-weight: 600; }
+  .cbn output { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .cbn input[type=range] { width: 100%; accent-color: var(--accent); }
+  .cbn select { width: 100%; padding: .45rem .5rem; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font-size: .9rem; }
+  .cbn .hint { font-size: .78rem; color: var(--muted); line-height: 1.4; margin: .35rem 0 0; }
+  .cbn .hint.center { text-align: center; }
+  .cbn .check { display: flex; gap: .45rem; align-items: center; font-size: .9rem; margin-top: .4rem; cursor: pointer; }
+  .cbn .check.inline { margin: 0; font-size: .85rem; }
+  .tools { display: flex; gap: .8rem; align-items: baseline; margin: .3rem 0 .2rem; }
+  .tools .link { margin-top: .2rem; }
+  .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 5px; margin-top: .4rem; }
+  .chip { aspect-ratio: 1; border-radius: 50%; border: 2px solid rgba(0,0,0,.18); cursor: pointer; position: relative; padding: 0; }
+  .chip.off { opacity: .22; transform: scale(.78); }
+  .chip.used::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--ink); }
+  .chip input { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+  .stage { min-width: 0; }
+  .bar { display: flex; flex-wrap: wrap; gap: .6rem; justify-content: space-between; align-items: center; margin-bottom: .6rem; }
+  .status { font-size: .9rem; color: var(--muted); }
+  .actions { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+  .actions button { padding: .42rem .8rem; border-radius: 8px; border: 1px solid var(--line); background: var(--card); cursor: pointer; font-weight: 600; font-size: .85rem; color: var(--ink); }
+  .actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .actions button:disabled { opacity: .4; cursor: default; }
+  .progress { position: relative; height: 22px; background: #e9e1d3; border-radius: 11px; overflow: hidden; margin-bottom: .6rem; }
+  .progress > div { height: 100%; width: 0; background: linear-gradient(90deg, #f2b632, #d63a2f); transition: width .3s; }
+  .progress span { position: absolute; inset: 0; text-align: center; font-size: .75rem; line-height: 22px; font-weight: 700; }
+  .sheet { background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 10px 30px -18px rgba(60,40,10,.4); padding: 14px; min-height: 360px; display: flex; align-items: center; justify-content: center; position: relative; }
+  .sheet canvas, .sheet svg.dots { max-width: 100%; height: auto; max-height: 78vh; display: block; touch-action: manipulation; cursor: crosshair; }
+  #dotWrap { width: 100%; display: flex; justify-content: center; }
+  .empty { color: #cdbfa8; width: 180px; }
+  .sheet.busy::after { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,.55); }
+  .shake { animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+  .palette { display: flex; flex-wrap: wrap; gap: 6px; margin-top: .8rem; justify-content: center; }
+  .pal { display: flex; align-items: center; gap: .4rem; padding: .3rem .6rem .3rem .3rem; border-radius: 999px; border: 2px solid var(--line); background: var(--card); cursor: pointer; font-size: .8rem; color: var(--ink); }
+  .pal i { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: .78rem; border: 1px solid rgba(0,0,0,.2); }
+  .pal.sel { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); }
+  .pal.done { opacity: .45; text-decoration: line-through; }
+  .pal small { color: var(--muted); }
+  .how { margin-top: 2.2rem; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: .8rem 1.1rem; max-width: 60rem; }
+  .how summary { cursor: pointer; font-weight: 700; }
+  .how li, .how p { font-size: .92rem; line-height: 1.55; color: var(--muted); }
+  .how li b { color: var(--ink); }
+  @media print {
+    @page { margin: 10mm; }
+    body:has(.cbn) { background: #fff !important; padding: 0 !important; }
+    body:has(.cbn) > *:not(:has(.cbn)), .panel, .bar, .progress, .how, .cbn-head, #playHint { display: none !important; }
+    .cbn { padding: 0; max-width: none; }
+    .cbn-grid { display: block; }
+    .sheet { border: 0; box-shadow: none; padding: 0; min-height: 0; }
+    .sheet canvas, .sheet svg.dots { max-height: 235mm; max-width: 100%; }
+    .palette { margin-top: 4mm; gap: 3px; break-inside: avoid; }
+    .pal { border: 1px solid #999; padding: 1px 6px 1px 1px; font-size: 9pt; }
+    .pal.sel { box-shadow: none; border-color: #999; }
+    .pal i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+
+<script>
+  // ---------- marker sets (colors are approximate; every swatch is editable) ----------
+  type Marker = { name: string; hex: string };
+  const m = (s: string): Marker[] => s.trim().split('\n').map((l) => { const [hex, ...n] = l.trim().split(' '); return { hex, name: n.join(' ') }; });
+  const SETS: Record<string, { label: string; markers: Marker[]; k: number }> = {
+    broad40: { label: 'Big box: 40 broad-line markers', k: 14, markers: m(`
+      #ED0A3F Red
+      #C62D42 Brick Red
+      #8E3A59 Maroon
+      #FD3A4A Scarlet
+      #FF5F3D Red Orange
+      #FF8833 Orange
+      #FFAE42 Yellow Orange
+      #F1D651 Goldenrod
+      #FBE870 Yellow
+      #FFF68F Lemon Yellow
+      #C5E384 Yellow Green
+      #8FD14F Lime Green
+      #3AA655 Green
+      #2D7D46 Forest Green
+      #01786F Pine Green
+      #93DFB8 Sea Green
+      #6CDAE7 Turquoise
+      #18A7B5 Teal
+      #8FD8D8 Aqua
+      #76D7EA Sky Blue
+      #02A4D3 Cerulean
+      #1F75FE Blue
+      #1A3E8C Navy Blue
+      #4F69C6 Indigo
+      #6456B7 Blue Violet
+      #8359A3 Violet
+      #5D2E8C Purple
+      #8E3179 Plum
+      #F653A6 Magenta
+      #FF3399 Hot Pink
+      #FFA6C9 Pink
+      #FF91A4 Salmon
+      #FFCBA4 Peach
+      #FA9D5A Tan
+      #D27D46 Raw Sienna
+      #AF593E Brown
+      #6B3E26 Dark Brown
+      #8B8680 Gray
+      #C9C0BB Silver
+      #000000 Black`) },
+    classic10: { label: 'Classic 10 markers', k: 10, markers: m(`
+      #ED0A3F Red
+      #FF8833 Orange
+      #FBE870 Yellow
+      #3AA655 Green
+      #1F75FE Blue
+      #76D7EA Sky Blue
+      #8359A3 Violet
+      #FFA6C9 Pink
+      #AF593E Brown
+      #000000 Black`) },
+    dot8: { label: 'Dot markers (bingo dabbers), 8', k: 8, markers: m(`
+      #E8262D Red
+      #FF8A1F Orange
+      #FFE13B Yellow
+      #2DB34A Green
+      #1E78E0 Blue
+      #8A3FC4 Purple
+      #FF5FA8 Pink
+      #7A4A2A Brown`) },
+    crayon24: { label: 'Crayons, 24', k: 16, markers: m(`
+      #ED0A3F Red
+      #FF5F3D Red Orange
+      #FF8833 Orange
+      #FFAE42 Yellow Orange
+      #FBE870 Yellow
+      #F1E788 Green Yellow
+      #C5E384 Yellow Green
+      #3AA655 Green
+      #18A7B5 Blue Green
+      #1F75FE Blue
+      #4F69C6 Indigo
+      #6456B7 Blue Violet
+      #8359A3 Violet
+      #BB3385 Red Violet
+      #F7468A Violet Red
+      #FFA6C9 Carnation Pink
+      #FFCBA4 Peach
+      #FA9D5A Tan
+      #E2B78F Apricot
+      #AF593E Brown
+      #8B8680 Gray
+      #FFFFFF White
+      #000000 Black
+      #02A4D3 Cerulean`) },
+    auto: { label: 'Any colors (best match for a paint set)', k: 12, markers: [] },
+  };
+
+  // ---------- color math ----------
+  const LIN = new Float32Array(256).map((_, i) => { const c = i / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
+  const fLab = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  function rgbToLab(r: number, g: number, b: number): [number, number, number] {
+    const R = LIN[r], G = LIN[g], B = LIN[b];
+    const x = fLab((R * 0.4124 + G * 0.3576 + B * 0.1805) / 0.95047), y = fLab(R * 0.2126 + G * 0.7152 + B * 0.0722), z = fLab((R * 0.0193 + G * 0.1192 + B * 0.9505) / 1.08883);
+    return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+  }
+  function labToRgb(L: number, a: number, b: number): [number, number, number] {
+    const fy = (L + 16) / 116, fx = fy + a / 500, fz = fy - b / 200;
+    const inv = (t: number) => (t ** 3 > 0.008856 ? t ** 3 : (t - 16 / 116) / 7.787);
+    const X = inv(fx) * 0.95047, Y = inv(fy), Z = inv(fz) * 1.08883;
+    const g = (c: number) => { c = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055; return Math.max(0, Math.min(255, Math.round(c * 255))); };
+    return [g(X * 3.2406 - Y * 1.5372 - Z * 0.4986), g(-X * 0.9689 + Y * 1.8758 + Z * 0.0415), g(X * 0.0557 - Y * 0.204 + Z * 1.057)];
+  }
+  const hexToRgb = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const rgbToHex = (c: number[]) => '#' + c.map((v) => v.toString(16).padStart(2, '0')).join('');
+  const d2 = (p: number[], q: number[]) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2;
+  const isLight = (rgb: number[]) => rgbToLab(rgb[0], rgb[1], rgb[2])[0] > 62;
+  const PAPER = 255; // label for "leave blank"
+
+  // ---------- SLIC superpixels ----------
+  function slic(L: Float32Array, A: Float32Array, B: Float32Array, w: number, h: number, S: number, mC = 10, iters = 8) {
+    const cs: number[][] = [];
+    for (let gy = S / 2; gy < h; gy += S) for (let gx = S / 2; gx < w; gx += S) {
+      // seed each center at the flattest spot in its 3x3 neighborhood
+      let x = Math.floor(gx), y = Math.floor(gy), best = Infinity;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = Math.min(w - 2, Math.max(1, Math.floor(gx) + dx)), yy = Math.min(h - 2, Math.max(1, Math.floor(gy) + dy)), i = yy * w + xx;
+        const g = (L[i + 1] - L[i - 1]) ** 2 + (L[i + w] - L[i - w]) ** 2;
+        if (g < best) { best = g; x = xx; y = yy; }
+      }
+      const i = y * w + x;
+      cs.push([L[i], A[i], B[i], x, y]);
+    }
+    const n = cs.length, lab = new Int32Array(w * h).fill(-1), dist = new Float32Array(w * h), inv = (mC * mC) / (S * S);
+    for (let it = 0; it < iters; it++) {
+      dist.fill(Infinity);
+      for (let k = 0; k < n; k++) {
+        const c = cs[k], x0 = Math.max(0, Math.floor(c[3] - S)), x1 = Math.min(w, Math.ceil(c[3] + S)), y0 = Math.max(0, Math.floor(c[4] - S)), y1 = Math.min(h, Math.ceil(c[4] + S));
+        for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+          const i = y * w + x;
+          const d = (L[i] - c[0]) ** 2 + (A[i] - c[1]) ** 2 + (B[i] - c[2]) ** 2 + ((x - c[3]) ** 2 + (y - c[4]) ** 2) * inv;
+          if (d < dist[i]) { dist[i] = d; lab[i] = k; }
+        }
+      }
+      const s = new Float64Array(n * 6);
+      for (let y = 0, i = 0; y < h; y++) for (let x = 0; x < w; x++, i++) { const k = lab[i] * 6; s[k] += L[i]; s[k + 1] += A[i]; s[k + 2] += B[i]; s[k + 3] += x; s[k + 4] += y; s[k + 5]++; }
+      for (let k = 0; k < n; k++) { const c = s[k * 6 + 5]; if (c) for (let j = 0; j < 5; j++) cs[k][j] = s[k * 6 + j] / c; }
+    }
+    return { lab, n };
+  }
+
+  // ---------- connected regions ----------
+  function components(col: Uint8Array, w: number, h: number) {
+    const reg = new Int32Array(w * h).fill(-1), area: number[] = [], color: number[] = [], stack = new Int32Array(w * h);
+    let n = 0;
+    for (let s = 0; s < w * h; s++) {
+      if (reg[s] >= 0) continue;
+      const c = col[s]; let top = 0, a = 0; stack[top++] = s; reg[s] = n;
+      while (top) {
+        const i = stack[--top]; a++;
+        const x = i % w;
+        if (x > 0 && reg[i - 1] < 0 && col[i - 1] === c) { reg[i - 1] = n; stack[top++] = i - 1; }
+        if (x < w - 1 && reg[i + 1] < 0 && col[i + 1] === c) { reg[i + 1] = n; stack[top++] = i + 1; }
+        if (i >= w && reg[i - w] < 0 && col[i - w] === c) { reg[i - w] = n; stack[top++] = i - w; }
+        if (i < w * (h - 1) && reg[i + w] < 0 && col[i + w] === c) { reg[i + w] = n; stack[top++] = i + w; }
+      }
+      area.push(a); color.push(c); n++;
+    }
+    return { reg, n, area, color };
+  }
+
+  // Distance from each pixel to the nearest edge of its region (chamfer, in pixels).
+  function edgeDistance(reg: Int32Array, w: number, h: number) {
+    const d = new Float32Array(w * h);
+    for (let y = 0, i = 0; y < h; y++) for (let x = 0; x < w; x++, i++) {
+      const r = reg[i];
+      const edge = x === 0 || y === 0 || x === w - 1 || y === h - 1 || reg[i - 1] !== r || reg[i + 1] !== r || reg[i - w] !== r || reg[i + w] !== r;
+      d[i] = edge ? 1 : 1e9;
+    }
+    const D = Math.SQRT2;
+    for (let y = 1; y < h; y++) for (let x = 1; x < w - 1; x++) { const i = y * w + x; d[i] = Math.min(d[i], d[i - 1] + 1, d[i - w] + 1, d[i - w - 1] + D, d[i - w + 1] + D); }
+    for (let y = h - 2; y >= 0; y--) for (let x = w - 2; x > 0; x--) { const i = y * w + x; d[i] = Math.min(d[i], d[i + 1] + 1, d[i + w] + 1, d[i + w + 1] + D, d[i + w - 1] + D); }
+    return d;
+  }
+
+  function modeFilter(col: Uint8Array, w: number, h: number) {
+    const out = col.slice(), cnt = new Uint16Array(256);
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x, c = col[i];
+      if (col[i - 1] === c && col[i + 1] === c && col[i - w] === c && col[i + w] === c) continue;
+      let best = c, bc = 0; const seen: number[] = [];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const v = col[i + dy * w + dx]; if (!cnt[v]) seen.push(v); cnt[v]++; }
+      for (const v of seen) { if (cnt[v] > bc || (cnt[v] === bc && v === c)) { bc = cnt[v]; best = v; } cnt[v] = 0; }
+      if (bc >= 5) out[i] = best;
+    }
+    return out;
+  }
+
+  // Merge regions that are too small or too thin to hold a number into their longest-bordering neighbor.
+  function mergeSmall(col: Uint8Array, w: number, h: number, minArea: number, minThick: number) {
+    for (let pass = 0; pass < 6; pass++) {
+      const { reg, n, area, color } = components(col, w, h);
+      const d = edgeDistance(reg, w, h), maxd = new Float32Array(n);
+      for (let i = 0; i < w * h; i++) if (d[i] > maxd[reg[i]]) maxd[reg[i]] = d[i];
+      const small: number[] = [];
+      for (let r = 0; r < n; r++) if (area[r] < minArea || maxd[r] < minThick) small.push(r);
+      if (!small.length || n < 2) return;
+      small.sort((a, b) => area[a] - area[b]);
+      // pixel lists per region
+      const off = new Int32Array(n + 1); for (let i = 0; i < w * h; i++) off[reg[i] + 1]++;
+      for (let r = 0; r < n; r++) off[r + 1] += off[r];
+      const pos = off.slice(0, n), px = new Int32Array(w * h); for (let i = 0; i < w * h; i++) px[pos[reg[i]]++] = i;
+      const parent = Int32Array.from({ length: n }, (_, i) => i);
+      const find = (r: number): number => { while (parent[r] !== r) r = parent[r] = parent[parent[r]]; return r; };
+      const isSmall = new Uint8Array(n); small.forEach((r) => (isSmall[r] = 1));
+      for (const r of small) {
+        const border = new Map<number, number>();
+        for (let p = off[r]; p < off[r + 1]; p++) {
+          const i = px[p], x = i % w;
+          const nb = [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i >= w ? i - w : -1, i < w * (h - 1) ? i + w : -1];
+          for (const j of nb) if (j >= 0) { const q = find(reg[j]); if (q !== find(r)) border.set(q, (border.get(q) || 0) + 1); }
+        }
+        let best = -1, bv = -1;
+        for (const [q, v] of border) { const score = v + (isSmall[q] ? 0 : 0.5); if (score > bv) { bv = score; best = q; } }
+        if (best >= 0) { parent[find(r)] = best; area[best] += area[r]; }
+      }
+      for (let i = 0; i < w * h; i++) col[i] = color[find(reg[i])];
+    }
+  }
+
+  // ---------- palette choice ----------
+  function kmeans(pts: number[][], wts: number[], k: number) {
+    const cents: number[][] = [pts[wts.indexOf(Math.max(...wts))].slice()];
+    const dmin = pts.map((p) => d2(p, cents[0]));
+    while (cents.length < k) {
+      let tot = 0; for (let i = 0; i < pts.length; i++) tot += dmin[i] * wts[i];
+      let r = Math.random() * tot, j = 0;
+      for (; j < pts.length - 1; j++) { r -= dmin[j] * wts[j]; if (r <= 0) break; }
+      cents.push(pts[j].slice());
+      for (let i = 0; i < pts.length; i++) dmin[i] = Math.min(dmin[i], d2(pts[i], pts[j]));
+    }
+    const asg = new Int32Array(pts.length);
+    for (let it = 0; it < 20; it++) {
+      for (let i = 0; i < pts.length; i++) { let b = 0, bd = Infinity; for (let c = 0; c < k; c++) { const dd = d2(pts[i], cents[c]); if (dd < bd) { bd = dd; b = c; } } asg[i] = b; }
+      const s = cents.map(() => [0, 0, 0, 0]);
+      for (let i = 0; i < pts.length; i++) { const q = s[asg[i]]; q[0] += pts[i][0] * wts[i]; q[1] += pts[i][1] * wts[i]; q[2] += pts[i][2] * wts[i]; q[3] += wts[i]; }
+      s.forEach((q, c) => { if (q[3]) cents[c] = [q[0] / q[3], q[1] / q[3], q[2] / q[3]]; });
+    }
+    return cents;
+  }
+
+  // ---------- state ----------
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  const LS = 'cbn-v1';
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch { return {}; } })();
+  const st: any = {
+    mode: 'regions', shape: 'circle', setKey: saved.setKey || 'broad40',
+    edits: saved.edits || {}, // setKey -> {i: {hex, off}}
+    img: null as HTMLImageElement | null, mask: null as Float32Array | null, maskFor: null as any,
+    result: null as any, sel: -1, filled: null as Uint8Array | null, dotFilled: null as Uint8Array | null,
+  };
+  const persist = () => { try { localStorage.setItem(LS, JSON.stringify({ setKey: st.setKey, edits: st.edits })); } catch {} };
+
+  function currentMarkers(): (Marker & { off: boolean })[] {
+    const e = st.edits[st.setKey] || {};
+    return SETS[st.setKey].markers.map((mk, i) => ({ name: mk.name, hex: e[i]?.hex || mk.hex, off: !!e[i]?.off }));
+  }
+  const NAMES = SETS.broad40.markers.map((mk) => ({ name: mk.name, lab: rgbToLab(...hexToRgb(mk.hex)) }));
+  const nearestName = (rgb: number[]) => { const l = rgbToLab(rgb[0], rgb[1], rgb[2]); let b = NAMES[0], bd = Infinity; for (const n of NAMES) { const dd = d2(l, n.lab); if (dd < bd) { bd = dd; b = n; } } return b.name; };
+
+  // ---------- UI: sets & chips ----------
+  const setSel = $<HTMLSelectElement>('set');
+  for (const [k, v] of Object.entries(SETS)) setSel.add(new Option(v.label, k));
+  setSel.value = st.setKey;
+
+  function renderChips() {
+    const chips = $('chips'); chips.innerHTML = '';
+    const auto = st.setKey === 'auto';
+    $('setTools').hidden = auto; $('chipHint').hidden = auto;
+    const used = new Set<string>((st.result?.palette || []).map((p: any) => p.hex.toLowerCase()));
+    currentMarkers().forEach((mk, i) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip' + (mk.off ? ' off' : '') + (used.has(mk.hex.toLowerCase()) && !mk.off ? ' used' : '');
+      b.style.background = mk.hex; b.title = `${mk.name} ${mk.hex}${mk.off ? ' (left out)' : ''}`;
+      const inp = document.createElement('input'); inp.type = 'color'; inp.value = mk.hex; b.appendChild(inp);
+      const edit = (st.edits[st.setKey] ||= {});
+      let t: any, long = false;
+      b.onclick = () => { if (long) { long = false; return; } edit[i] = { ...edit[i], off: !mk.off }; persist(); renderChips(); schedule(); };
+      b.oncontextmenu = (ev) => { ev.preventDefault(); inp.click(); };
+      b.onpointerdown = (ev) => { if (ev.pointerType !== 'mouse') t = setTimeout(() => { long = true; inp.click(); }, 550); };
+      b.onpointerup = b.onpointerleave = () => clearTimeout(t);
+      inp.onchange = () => { edit[i] = { ...edit[i], hex: inp.value }; persist(); renderChips(); schedule(); };
+      chips.appendChild(b);
+    });
+    const on = currentMarkers().filter((x) => !x.off).length;
+    $('onCount').textContent = auto ? '' : `${on} of ${SETS[st.setKey].markers.length} on`;
+    const k = $<HTMLInputElement>('k');
+    k.max = String(auto ? 30 : Math.max(2, on));
+    if (+k.value > +k.max) k.value = k.max;
+    $('kOut').textContent = k.value;
+  }
+
+  // ---------- pipeline ----------
+  const tick = () => new Promise((r) => setTimeout(r, 0));
+  const status = (s: string) => ($('status').textContent = s);
+  let runId = 0, timer: any;
+  function schedule(delay = 250) { clearTimeout(timer); if (st.img) timer = setTimeout(run, delay); }
+
+  async function getMask(w: number, h: number) {
+    if (st.mask && st.maskFor === `${w}x${h}:${st.img.src.length}:${st.img.src.slice(-40)}`) return st.mask;
+    status('Loading the background model (first time only)…');
+    const url = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6';
+    const T: any = await import(/* @vite-ignore */ url);
+    st.seg ||= await T.pipeline('background-removal', 'Xenova/modnet', { dtype: 'fp32' });
+    status('Finding the subject…');
+    const c = document.createElement('canvas'); c.width = st.img.naturalWidth; c.height = st.img.naturalHeight;
+    c.getContext('2d')!.drawImage(st.img, 0, 0);
+    const out = await st.seg(c.toDataURL('image/jpeg', 0.92));
+    const cut = (Array.isArray(out) ? out[0] : out).toCanvas();
+    const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
+    const mx = mc.getContext('2d')!; mx.drawImage(cut, 0, 0, w, h);
+    const a = mx.getImageData(0, 0, w, h).data, mask = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) mask[i] = a[i * 4 + 3] / 255;
+    st.mask = mask; st.maskFor = `${w}x${h}:${st.img.src.length}:${st.img.src.slice(-40)}`;
+    return mask;
+  }
+
+  async function run() {
+    const id = ++runId, img = st.img as HTMLImageElement;
+    $('sheet').classList.add('busy'); status('Working…'); await tick();
+    const detail = +$<HTMLInputElement>('detail').value, simp = +$<HTMLInputElement>('simp').value;
+    const long = st.mode === 'dots' ? 520 : [0, 420, 620, 860][detail];
+    const sc = long / Math.max(img.naturalWidth, img.naturalHeight);
+    const w = Math.max(40, Math.round(img.naturalWidth * sc)), h = Math.max(40, Math.round(img.naturalHeight * sc));
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const cx = cv.getContext('2d', { willReadFrequently: true })!;
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h); cx.drawImage(img, 0, 0, w, h);
+    const px = cx.getImageData(0, 0, w, h).data;
+    const N = w * h, L = new Float32Array(N), A = new Float32Array(N), B = new Float32Array(N);
+    for (let i = 0; i < N; i++) { const l = rgbToLab(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]); L[i] = l[0]; A[i] = l[1]; B[i] = l[2]; }
+
+    let mask: Float32Array | null = null;
+    if ($<HTMLInputElement>('bg').checked) {
+      try { mask = await getMask(w, h); } catch (e) { console.error(e); status('Background model failed to load; using the whole photo.'); $<HTMLInputElement>('bg').checked = false; }
+      if (id !== runId) return;
+    }
+
+    status('Finding regions…'); await tick();
+    const S = st.mode === 'dots' ? 6 : Math.round(3 + simp * 1.3 + (detail === 3 ? 1 : 0));
+    const { lab: sp, n } = slic(L, A, B, w, h, S);
+    if (id !== runId) return;
+    const sum = new Float64Array(n * 5);
+    for (let i = 0; i < N; i++) { const k = sp[i] * 5; sum[k] += L[i]; sum[k + 1] += A[i]; sum[k + 2] += B[i]; sum[k + 3]++; if (mask) sum[k + 4] += mask[i]; }
+    const pts: number[][] = [], wts: number[] = [], idx: number[] = [];
+    for (let k = 0; k < n; k++) { const c = sum[k * 5 + 3]; if (!c) continue; if (mask && sum[k * 5 + 4] / c < 0.5) continue; pts.push([sum[k * 5] / c, sum[k * 5 + 1] / c, sum[k * 5 + 2] / c]); wts.push(c); idx.push(k); }
+
+    // palette
+    const K = +$<HTMLInputElement>('k').value, paperOn = $<HTMLInputElement>('paper').checked;
+    let cand: { name: string; rgb: number[]; lab: number[]; paper?: boolean }[] = [];
+    if (st.setKey === 'auto') {
+      const cents = pts.length ? kmeans(pts, wts, Math.min(K, pts.length)) : [];
+      cand = cents.map((c) => { const rgb = labToRgb(c[0], c[1], c[2]); return { name: '', rgb, lab: c }; });
+      cand.forEach((c) => (c.name = '≈ ' + nearestName(c.rgb)));
+    } else {
+      cand = currentMarkers().filter((x) => !x.off).map((mk) => { const rgb = hexToRgb(mk.hex); return { name: mk.name, rgb, lab: rgbToLab(rgb[0], rgb[1], rgb[2]) }; });
+    }
+    if (paperOn) cand.push({ name: 'Paper', rgb: [255, 255, 255], lab: [100, 0, 0], paper: true });
+    if (!cand.length) { status('Turn on at least one marker.'); $('sheet').classList.remove('busy'); return; }
+    const near = (p: number[], alive: boolean[]) => { let b = -1, bd = Infinity; for (let c = 0; c < cand.length; c++) if (alive[c]) { const dd = d2(p, cand[c].lab); if (cand[c].paper && dd > 110) continue; if (dd < bd) { bd = dd; b = c; } } return b; };
+    const alive = cand.map(() => true);
+    let asg = pts.map((p) => near(p, alive));
+    if (st.setKey !== 'auto') {
+      for (;;) {
+        const areaBy = cand.map(() => 0); asg.forEach((c, i) => (areaBy[c] += wts[i]));
+        const usedIdx = cand.map((_, c) => c).filter((c) => alive[c] && areaBy[c] > 0 && !cand[c].paper);
+        if (usedIdx.length <= K) { cand.forEach((_, c) => { if (!areaBy[c]) alive[c] = false; }); break; }
+        const drop = usedIdx.reduce((a, b) => (areaBy[a] < areaBy[b] ? a : b));
+        alive[drop] = false; asg = pts.map((p) => near(p, alive));
+      }
+    }
+    // order the palette light to dark-ish by hue for a tidy legend
+    const usedC = [...new Set(asg)].filter((c) => !cand[c].paper);
+    usedC.sort((a, b) => { const la = cand[a].lab, lb = cand[b].lab; return Math.atan2(la[2], la[1]) - Math.atan2(lb[2], lb[1]) || lb[0] - la[0]; });
+    const remap = new Map<number, number>(); usedC.forEach((c, i) => remap.set(c, i));
+    const spCol = new Uint8Array(n).fill(PAPER);
+    idx.forEach((k, i) => { const c = asg[i]; spCol[k] = cand[c].paper ? PAPER : remap.get(c)!; });
+    let col = new Uint8Array(N);
+    for (let i = 0; i < N; i++) col[i] = mask && mask[i] < 0.5 ? PAPER : spCol[sp[i]];
+    col = modeFilter(modeFilter(col, w, h), w, h);
+    let palette = usedC.map((c) => ({ name: cand[c].name, hex: rgbToHex(cand[c].rgb), rgb: cand[c].rgb }));
+
+    if (st.mode === 'regions') {
+      status('Tidying regions…'); await tick();
+      const minArea = Math.round(6 + simp * simp * 4.5) * (detail === 3 ? 1.6 : detail === 1 ? 0.7 : 1);
+      mergeSmall(col, w, h, minArea, 2.2);
+      if (id !== runId) return;
+    }
+    // drop colors that merging left unused, and renumber
+    const seen = new Uint8Array(256); for (let i = 0; i < N; i++) seen[col[i]] = 1;
+    const keep = palette.map((_, i) => i).filter((i) => seen[i]), re = new Uint8Array(256).fill(PAPER);
+    keep.forEach((o, i) => (re[o] = i));
+    for (let i = 0; i < N; i++) col[i] = re[col[i]];
+    palette = keep.map((i) => palette[i]);
+    st.result = { w, h, col, palette };
+    buildSheet();
+    $('sheet').classList.remove('busy');
+    renderChips();
+  }
+
+  // ---------- sheet: regions ----------
+  function buildSheet() {
+    const r = st.result; if (!r) return;
+    $('empty').hidden = true;
+    const regions = st.mode === 'regions';
+    $<HTMLCanvasElement>('canvas').hidden = !regions; $('dotWrap').hidden = regions; $('svg').hidden = regions;
+    ['reset', 'png', 'svg', 'print'].forEach((b) => ($<HTMLButtonElement>(b).disabled = false));
+    if (st.sel >= r.palette.length) st.sel = -1;
+    regions ? buildRegions() : buildDots();
+    renderPalette();
+  }
+
+  function buildRegions() {
+    const { w, h, col } = st.result;
+    const comp = components(col, w, h), d = edgeDistance(comp.reg, w, h);
+    // A region can wind through the picture as many lobes joined by thin necks, so number every lobe:
+    // take the region's local maxima of edge distance, deepest first, and keep each one that's far from the others.
+    const cands: number[][] = [];
+    for (let y = 1, i; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      i = y * w + x; const v = d[i];
+      if (v < 1.9 || comp.color[comp.reg[i]] === PAPER) continue;
+      if (v >= d[i - 1] && v >= d[i + 1] && v >= d[i - w] && v >= d[i + w] && v >= d[i - w - 1] && v >= d[i - w + 1] && v >= d[i + w - 1] && v >= d[i + w + 1]) cands.push([v, x, y, comp.reg[i]]);
+    }
+    cands.sort((a, b) => b[0] - a[0]);
+    const lab: number[][][] = Array.from({ length: comp.n }, () => []);
+    for (const [v, x, y, k] of cands) {
+      if (lab[k].some(([lx, ly, lv]) => (lx - x) ** 2 + (ly - y) ** 2 < (9 + 2 * (lv + v)) ** 2)) continue;
+      lab[k].push([x, y, v]);
+    }
+    // every region gets at least one number, at its deepest point
+    const deep = Array.from({ length: comp.n }, () => [0, 0]);
+    for (let i = 0; i < w * h; i++) { const q = deep[comp.reg[i]]; if (d[i] > q[0]) { q[0] = d[i]; q[1] = i; } }
+    deep.forEach(([v, i], k) => { if (!lab[k].length) lab[k].push([i % w, Math.floor(i / w), v]); });
+    const s = Math.max(2, Math.round(2200 / Math.max(w, h))), W = w * s, H = h * s;
+    // upsample the region map with a bilinear vote so edges come out smooth instead of stair-stepped
+    const hi = new Int32Array(W * H), reg = comp.reg;
+    for (let Y = 0; Y < H; Y++) {
+      const fy = (Y + 0.5) / s - 0.5, y0 = Math.max(0, Math.floor(fy)), y1 = Math.min(h - 1, y0 + 1), wy = Math.min(1, Math.max(0, fy - y0));
+      for (let X = 0; X < W; X++) {
+        const fx = (X + 0.5) / s - 0.5, x0 = Math.max(0, Math.floor(fx)), x1 = Math.min(w - 1, x0 + 1), wx = Math.min(1, Math.max(0, fx - x0));
+        const a = reg[y0 * w + x0], b = reg[y0 * w + x1], c = reg[y1 * w + x0], e = reg[y1 * w + x1];
+        if (a === b && a === c && a === e) { hi[Y * W + X] = a; continue; }
+        const vs = [a, b, c, e], ws = [(1 - wx) * (1 - wy), wx * (1 - wy), (1 - wx) * wy, wx * wy];
+        let best = a, bw = -1;
+        for (let k = 0; k < 4; k++) { let t = 0; for (let j = 0; j < 4; j++) if (vs[j] === vs[k]) t += ws[j]; if (t > bw) { bw = t; best = vs[k]; } }
+        hi[Y * W + X] = best;
+      }
+    }
+    const regionsList = comp.color.map((c, k) => ({ c, labels: lab[k].map(([x, y, v]) => ({ x: (x + 0.5) * s, y: (y + 0.5) * s, r: v * s })) }));
+    st.reg = { s, W, H, hi, regions: regionsList };
+    st.filled = new Uint8Array(comp.n);
+    const cv = $<HTMLCanvasElement>('canvas'); cv.width = W; cv.height = H;
+    drawRegions();
+  }
+
+  function drawRegions(target?: HTMLCanvasElement) {
+    const { W, H, hi, regions } = st.reg, pal = st.result.palette, preview = $<HTMLInputElement>('preview').checked;
+    const thick = $<HTMLInputElement>('thick').checked;
+    const cv = target || $<HTMLCanvasElement>('canvas'), cx = cv.getContext('2d')!;
+    const im = cx.createImageData(W, H), o = im.data;
+    const fillOf = regions.map((r: any, k: number) => {
+      if (r.c === PAPER) return [255, 255, 255];
+      if (preview || st.filled[k]) return pal[r.c].rgb;
+      if (!target && r.c === st.sel) return [255, 244, 196];
+      return [255, 255, 255];
+    });
+    // lines are drawn s/2 px wide so they survive being scaled down to fit the screen
+    const line = thick ? [40, 34, 28] : [110, 102, 94], t = Math.max(1, Math.round(st.reg.s * (thick ? 0.8 : 0.45)));
+    for (let i = 0, Y = 0; Y < H; Y++) for (let X = 0; X < W; X++, i++) {
+      const r = hi[i];
+      let edge = false;
+      for (let k = 1; k <= t && !edge; k++) edge = (X + k < W && hi[i + k] !== r) || (Y + k < H && hi[i + k * W] !== r);
+      const c = edge && !preview ? line : fillOf[r];
+      o[i * 4] = c[0]; o[i * 4 + 1] = c[1]; o[i * 4 + 2] = c[2]; o[i * 4 + 3] = 255;
+    }
+    cx.putImageData(im, 0, 0);
+    if (preview) return;
+    cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillStyle = thick ? '#3a332c' : '#6b625a';
+    regions.forEach((r: any, k: number) => {
+      if (r.c === PAPER || st.filled[k]) return;
+      const t = String(r.c + 1);
+      for (const l of r.labels) {
+        const fs = Math.max(9, Math.min(46, l.r * (t.length > 1 ? 0.95 : 1.25)));
+        cx.font = `600 ${fs}px ui-sans-serif, system-ui, sans-serif`; cx.fillText(t, l.x, l.y + fs * 0.04);
+      }
+    });
+  }
+
+  $<HTMLCanvasElement>('canvas').addEventListener('click', (ev) => {
+    if (!st.reg || $<HTMLInputElement>('preview').checked) return;
+    const cv = ev.currentTarget as HTMLCanvasElement, rc = cv.getBoundingClientRect();
+    const X = Math.floor(((ev.clientX - rc.left) / rc.width) * st.reg.W), Y = Math.floor(((ev.clientY - rc.top) / rc.height) * st.reg.H);
+    const k = st.reg.hi[Y * st.reg.W + X], r = st.reg.regions[k];
+    if (r == null || r.c === PAPER) return;
+    tryFill(k, r.c, st.filled);
+  });
+
+  function tryFill(k: number, c: number, filled: Uint8Array) {
+    if (st.sel < 0) { status('Pick a color below first.'); return; }
+    if (filled[k]) { filled[k] = 0; redraw(); return; }
+    if (c !== st.sel) { status(`That space is ${c + 1}${st.result.palette[c].name ? ' · ' + st.result.palette[c].name : ''}.`); $('sheet').classList.remove('shake'); void $('sheet').offsetWidth; $('sheet').classList.add('shake'); return; }
+    filled[k] = 1; redraw();
+  }
+
+  // ---------- sheet: dots ----------
+  function dotLayout() {
+    const { w, h, col } = st.result, N = +$<HTMLInputElement>('dots').value, shape = st.shape;
+    const cell = w / N, rowH = shape === 'hex' ? cell * 0.866 : cell, rows = Math.floor((h - (shape === 'hex' ? cell - rowH : 0)) / rowH);
+    const dots: { x: number; y: number; c: number }[] = [], rad = cell * 0.45, cnt = new Uint32Array(256);
+    for (let j = 0; j < rows; j++) {
+      const offset = shape === 'hex' && j % 2 ? cell / 2 : 0, cols = shape === 'hex' && j % 2 ? N - 1 : N;
+      for (let i = 0; i < cols; i++) {
+        const x = (i + 0.5) * cell + offset, y = shape === 'hex' ? cell / 2 + j * rowH : (j + 0.5) * cell;
+        cnt.fill(0);
+        for (let yy = Math.floor(y - rad); yy <= y + rad; yy++) for (let xx = Math.floor(x - rad); xx <= x + rad; xx++) {
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h || (xx - x) ** 2 + (yy - y) ** 2 > rad * rad) continue;
+          cnt[col[yy * w + xx]]++;
+        }
+        let best = 0; for (let c = 1; c < 256; c++) if (cnt[c] > cnt[best]) best = c;
+        if (best !== PAPER) dots.push({ x, y, c: best });
+      }
+    }
+    return { dots, cell, w, h: shape === 'hex' ? rows * rowH + (cell - rowH) : rows * cell };
+  }
+
+  function dotSvg(forExport = false) {
+    const { dots, cell, w, h } = st.dot, pal = st.result.palette, preview = $<HTMLInputElement>('preview').checked;
+    const sq = st.shape === 'square', r = sq ? cell * 0.5 : cell * 0.44, fs = cell * 0.36, thick = $<HTMLInputElement>('thick').checked;
+    const sw = (thick ? 0.06 : 0.035) * cell;
+    let out = `<svg xmlns="http://www.w3.org/2000/svg" class="dots" viewBox="0 0 ${w.toFixed(1)} ${h.toFixed(1)}" width="${forExport ? w * 4 : w * 2}" height="${forExport ? h * 4 : h * 2}">`;
+    out += `<rect width="100%" height="100%" fill="#fff"/><g font-family="ui-sans-serif,system-ui,sans-serif" font-weight="600" font-size="${fs.toFixed(2)}" text-anchor="middle">`;
+    dots.forEach((d: any, k: number) => {
+      const on = preview || st.dotFilled[k], fill = on ? pal[d.c].hex : !forExport && d.c === st.sel ? '#fff4c4' : '#fff';
+      const shapeEl = sq ? `<rect x="${(d.x - r).toFixed(2)}" y="${(d.y - r).toFixed(2)}" width="${(2 * r).toFixed(2)}" height="${(2 * r).toFixed(2)}"` : `<circle cx="${d.x.toFixed(2)}" cy="${d.y.toFixed(2)}" r="${r.toFixed(2)}"`;
+      out += `<g data-k="${k}">${shapeEl} fill="${fill}" stroke="${on && preview ? 'none' : thick ? '#3a332c' : '#9a9088'}" stroke-width="${sw.toFixed(2)}"/>`;
+      if (!on) out += `<text x="${d.x.toFixed(2)}" y="${(d.y + fs * 0.36).toFixed(2)}" fill="${thick ? '#3a332c' : '#6b625a'}">${d.c + 1}</text>`;
+      out += '</g>';
+    });
+    return out + '</g></svg>';
+  }
+
+  function buildDots() {
+    st.dot = dotLayout();
+    st.dotFilled = new Uint8Array(st.dot.dots.length);
+    drawDots();
+    const mm = Math.min(190 / st.dot.w, 250 / st.dot.h) * st.dot.cell; // printable area of a letter/A4 page
+    $('dotHint').textContent = `${st.dot.dots.length} dots, about ${mm.toFixed(mm < 10 ? 1 : 0)} mm wide on a printed page. ${mm >= 17 ? 'Big enough for dot markers.' : mm >= 9 ? 'Good for broad markers.' : 'Fine-tip markers.'}`;
+  }
+  function drawDots() { $('dotWrap').innerHTML = dotSvg(); }
+  $('dotWrap').addEventListener('click', (ev) => {
+    if ($<HTMLInputElement>('preview').checked) return;
+    const g = (ev.target as Element).closest('g[data-k]'); if (!g) return;
+    const k = +(g.getAttribute('data-k') as string);
+    tryFill(k, st.dot.dots[k].c, st.dotFilled);
+  });
+
+  // ---------- palette / progress ----------
+  function counts() {
+    const pal = st.result.palette, tot = pal.map(() => 0), done = pal.map(() => 0);
+    const items = st.mode === 'regions' ? st.reg.regions : st.dot.dots, filled = st.mode === 'regions' ? st.filled : st.dotFilled;
+    items.forEach((it: any, k: number) => { if (it.c === PAPER) return; tot[it.c]++; if (filled[k]) done[it.c]++; });
+    return { tot, done };
+  }
+  function renderPalette() {
+    const pal = st.result.palette, { tot, done } = counts(), box = $('palette'); box.innerHTML = '';
+    pal.forEach((p: any, i: number) => {
+      const b = document.createElement('button'); b.type = 'button';
+      b.className = 'pal' + (i === st.sel ? ' sel' : '') + (tot[i] && done[i] === tot[i] ? ' done' : '');
+      b.innerHTML = `<i style="background:${p.hex};color:${isLight(p.rgb) ? '#222' : '#fff'}">${i + 1}</i><span>${p.name || p.hex}</span><small>${tot[i] - done[i]}</small>`;
+      b.onclick = () => { st.sel = st.sel === i ? -1 : i; redraw(); };
+      box.appendChild(b);
+    });
+    const T = tot.reduce((a: number, b: number) => a + b, 0), D = done.reduce((a: number, b: number) => a + b, 0);
+    $('progressWrap').hidden = false;
+    $('progress').style.width = `${T ? (100 * D) / T : 0}%`;
+    $('progressT').textContent = D === T && T ? `Done! All ${T} colored.` : `${D} / ${T} ${st.mode === 'regions' ? 'spaces' : 'dots'}`;
+    $('playHint').hidden = false;
+    status(`${pal.length} colors · ${T} ${st.mode === 'regions' ? 'spaces' : 'dots'} to color`);
+  }
+  function redraw() { st.mode === 'regions' ? drawRegions() : drawDots(); renderPalette(); }
+
+  // ---------- export ----------
+  function legendCanvas(width: number) {
+    const pal = st.result.palette, per = Math.max(1, Math.floor(width / 330)), rowH = 64, rows = Math.ceil(pal.length / per);
+    const c = document.createElement('canvas'); c.width = width; c.height = rows * rowH + 30;
+    const x = c.getContext('2d')!; x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+    pal.forEach((p: any, i: number) => {
+      const cx = (i % per) * (width / per) + 40, cy = Math.floor(i / per) * rowH + 40;
+      x.fillStyle = p.hex; x.beginPath(); x.arc(cx, cy, 24, 0, 7); x.fill(); x.strokeStyle = '#999'; x.lineWidth = 2; x.stroke();
+      x.fillStyle = isLight(p.rgb) ? '#222' : '#fff'; x.font = '700 22px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(String(i + 1), cx, cy + 1);
+      x.fillStyle = '#333'; x.textAlign = 'left'; x.font = '500 22px system-ui, sans-serif'; x.fillText(p.name || p.hex, cx + 38, cy + 1);
+    });
+    return c;
+  }
+  async function sheetCanvas(): Promise<HTMLCanvasElement> {
+    if (st.mode === 'regions') { const c = document.createElement('canvas'); c.width = st.reg.W; c.height = st.reg.H; drawRegions(c); return c; }
+    const svg = dotSvg(true), img = new Image();
+    img.src = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+    await img.decode();
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d')!.drawImage(img, 0, 0);
+    return c;
+  }
+  const download = (href: string, name: string) => { const a = document.createElement('a'); a.href = href; a.download = name; a.click(); };
+  $('png').onclick = async () => {
+    const s = await sheetCanvas(), lg = legendCanvas(s.width), out = document.createElement('canvas');
+    out.width = s.width; out.height = s.height + lg.height + 20;
+    const x = out.getContext('2d')!; x.fillStyle = '#fff'; x.fillRect(0, 0, out.width, out.height); x.drawImage(s, 0, 0); x.drawImage(lg, 0, s.height + 20);
+    out.toBlob((b) => b && download(URL.createObjectURL(b), `color-by-number-${st.mode}.png`));
+  };
+  $('svg').onclick = () => download(URL.createObjectURL(new Blob([dotSvg(true)], { type: 'image/svg+xml' })), 'color-by-number-dots.svg');
+  $('print').onclick = () => {
+    const keep = st.sel; st.sel = -1; redraw();
+    window.print(); st.sel = keep; redraw();
+  };
+  $('reset').onclick = () => { if (st.filled) st.filled.fill(0); if (st.dotFilled) st.dotFilled.fill(0); redraw(); };
+  $('preview').onchange = () => st.result && redraw();
+  $('thick').onchange = () => st.result && redraw();
+
+  // ---------- inputs ----------
+  function loadSrc(src: string) {
+    const img = new Image();
+    img.onload = () => { st.img = img; st.mask = null; st.sel = -1; schedule(0); };
+    img.onerror = () => status("Couldn't read that image.");
+    img.src = src;
+  }
+  const fileIn = $<HTMLInputElement>('file'), drop = $('drop');
+  const takeFile = (f?: File | null) => { if (!f || !f.type.startsWith('image/')) return; const r = new FileReader(); r.onload = () => loadSrc(r.result as string); r.readAsDataURL(f); };
+  fileIn.onchange = () => takeFile(fileIn.files?.[0]);
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); takeFile(e.dataTransfer?.files?.[0]); });
+  window.addEventListener('paste', (e) => { const f = [...(e.clipboardData?.files || [])][0]; if (f) takeFile(f); });
+  $('sample').onclick = () => loadSrc('/painted-torah/exodus-14.jpg');
+
+  document.querySelectorAll<HTMLButtonElement>('#modeSeg button').forEach((b) => (b.onclick = () => {
+    document.querySelectorAll('#modeSeg button').forEach((x) => x.classList.toggle('on', x === b));
+    st.mode = b.dataset.mode; $('dotOpts').hidden = st.mode !== 'dots'; $('regOpts').hidden = st.mode === 'dots';
+    $('playHint').textContent = st.mode === 'dots' ? 'Pick a color, then tap every dot with its number.' : "Pick a color, then tap every space with its number. Spaces for the color you've picked light up.";
+    schedule(0);
+  }));
+  document.querySelectorAll<HTMLButtonElement>('#shapeSeg button').forEach((b) => (b.onclick = () => {
+    document.querySelectorAll('#shapeSeg button').forEach((x) => x.classList.toggle('on', x === b));
+    st.shape = b.dataset.shape; if (st.result && st.mode === 'dots') { buildDots(); renderPalette(); }
+  }));
+  const DETAIL = ['', 'Low', 'Medium', 'High'];
+  $('detail').oninput = () => { $('detailOut').textContent = DETAIL[+$<HTMLInputElement>('detail').value]; schedule(); };
+  $('simp').oninput = () => { $('simpOut').textContent = $<HTMLInputElement>('simp').value; schedule(); };
+  $('k').oninput = () => { $('kOut').textContent = $<HTMLInputElement>('k').value; schedule(); };
+  $('dots').oninput = () => { $('dotsOut').textContent = $<HTMLInputElement>('dots').value; if (st.result && st.mode === 'dots') { buildDots(); renderPalette(); } };
+  $('paper').onchange = () => schedule(0);
+  $('bg').onchange = () => schedule(0);
+  setSel.onchange = () => {
+    st.setKey = setSel.value; persist();
+    $<HTMLInputElement>('k').value = String(SETS[st.setKey].k);
+    renderChips(); schedule(0);
+  };
+  const setAll = (off: boolean) => { const e = (st.edits[st.setKey] ||= {}); SETS[st.setKey].markers.forEach((_, i) => (e[i] = { ...e[i], off })); persist(); renderChips(); schedule(); };
+  $('allOn').onclick = () => setAll(false);
+  $('allOff').onclick = () => setAll(true);
+  $<HTMLInputElement>('k').value = String(SETS[st.setKey].k);
+  renderChips();
+</script>
