@@ -2486,6 +2486,18 @@ async function loadLipsyncVideo(): Promise<Record<string, string>> {
   return videoLipsyncMap!;
 }
 
+// Map of "<Book> <chapter>" → musical chapter video URL
+// (e.g. the 1 Kings 14 song video, horizontal V3).
+let videoMusicMap: Record<string, string> | null = null;
+async function loadMusicVideo(): Promise<Record<string, string>> {
+  if (videoMusicMap) return videoMusicMap;
+  try {
+    const r = await fetch('/data/929-music-video.json');
+    videoMusicMap = await r.json();
+  } catch { videoMusicMap = {}; }
+  return videoMusicMap!;
+}
+
 function fmtAudioTime(s: number): string {
   if (!isFinite(s) || s < 0) return '0:00';
   const m = Math.floor(s / 60);
@@ -2615,6 +2627,20 @@ function buildLipsyncVideoBar(book: string, ch: number): HTMLElement | null {
     `<div class="mb-video-head">` +
       `<span class="mb-audio-label">🎬 Watch</span>` +
       `<span class="mb-audio-sub">Every character speaks their own lines — lip-synced</span>` +
+    `</div>` +
+    `<video controls preload="metadata" playsinline src="${src}"></video>`;
+  return bar;
+}
+
+function buildMusicVideoBar(book: string, ch: number): HTMLElement | null {
+  const src = videoMusicMap?.[`${book} ${ch}`];
+  if (!src) return null;
+  const bar = document.createElement('div');
+  bar.className = 'mb-video-bar';
+  bar.innerHTML =
+    `<div class="mb-video-head">` +
+      `<span class="mb-audio-label">🎵 Music video</span>` +
+      `<span class="mb-audio-sub">The chapter as a song — Jeroboam and Rehoboam</span>` +
     `</div>` +
     `<video controls preload="metadata" playsinline src="${src}"></video>`;
   return bar;
@@ -5188,6 +5214,9 @@ async function renderRange(
       await loadLipsyncVideo();
       const videoBar = buildLipsyncVideoBar(book, sc);
       if (videoBar) main.appendChild(videoBar);
+      await loadMusicVideo();
+      const musicBar = buildMusicVideoBar(book, sc);
+      if (musicBar) main.appendChild(musicBar);
       // ?audio=full|summary deep link: land on the named audio bar and flash it.
       if (pendingAudio) {
         const target = pendingAudio === 'full' ? fullBar
