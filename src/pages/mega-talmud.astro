@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import structure from '../data/talmud-structure.json';
 import insights from '../data/talmud-insights.json';
+import notes from '../data/talmud-notes.json';
 import { PALETTES, MOVE_ORDER, MOVE_LABELS, COLOR_KEY, MIN_SURE, NEW_SUGYA } from '../lib/sugya.js';
 const SUGYA = { PALETTES, MOVE_ORDER, MOVE_LABELS, COLOR_KEY, MIN_SURE, NEW_SUGYA };
 
@@ -14,7 +15,7 @@ for (const mod of Object.values(lafMods)) {
     daf_summary: issue.daf_summary, jokes: issue.jokes,
   };
 }
-const ATTACH = { laf: lafByDaf, insights };
+const ATTACH = { laf: lafByDaf, insights, notes };
 ---
 
 <Layout
@@ -61,6 +62,18 @@ a.mtb-badge:hover { filter:brightness(1.12); }
 .mtb-panel .mtb-jev { display:inline-block; font-family:'Cormorant SC',Georgia,serif; font-size:.62rem; letter-spacing:.12em; background:#8c6b2e; color:#fffdf6; border-radius:999px; padding:.14rem .55rem; margin-left:.5rem; vertical-align:.18em; }
 .mtb-pdfbtn { display:inline-block; font-family:'Cormorant SC',Georgia,serif; font-size:.68rem; letter-spacing:.18em; text-transform:uppercase; color:#fffdf6; background:#8c6b2e; padding:.55rem 1.05rem; text-decoration:none; font-weight:600; }
 .mtb-pdfbtn:hover { filter:brightness(1.12); }
+/* ——— Notes on a sugya (talmud-notes.json) ——— */
+.mtb-note-item { padding:.9rem 0 1.1rem; border-bottom:1px dashed rgba(140,107,46,.25); scroll-margin-top:1.5rem; }
+.mtb-note-item:last-child { border-bottom:none; padding-bottom:.2rem; }
+.mtb-note .stance { font-family:'Cormorant SC',Georgia,serif; font-size:.7rem; letter-spacing:.2em; text-transform:uppercase; color:#7c5f24; margin-bottom:.3rem; }
+.mtb-note .auth { font-family:'Cormorant Garamond',Georgia,serif; font-size:1.02rem; color:#5d5142; margin-bottom:.5rem; }
+.mtb-note .he { font-family:'Frank Ruhl Libre','Noto Serif Hebrew',serif; direction:rtl; text-align:right; font-size:1.15rem; line-height:1.9; margin:0 0 .5rem; color:#2b2415; }
+.mtb-note .en { font-family:'Cormorant Garamond',Georgia,serif; font-size:1.06rem; line-height:1.55; color:#3d3423; margin:0 0 .5rem; }
+.mtb-note .cmt { font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; font-size:1rem; line-height:1.5; color:#5d5142; margin:0 0 .6rem; }
+.mtb-note .links { display:flex; flex-wrap:wrap; gap:.45rem 1.3rem; font-size:.92rem; font-family:'Cormorant Garamond',Georgia,serif; }
+.mtb-note .links a { color:#7c5f24; text-decoration:none; border-bottom:1px solid rgba(140,107,46,.5); }
+.mtb-note .links a:hover { color:#261f14; }
+.mtb-note .seg-label { color:#5d5142; font-size:.88rem; width:100%; }
 .mtb-joke { background:#fffdf6; border:1px solid rgba(140,107,46,.3); padding:1.25rem 1.35rem; margin-bottom:1.05rem; scroll-margin-top:1.5rem; }
 .mtb-joke:target { border-color:#8c6b2e; box-shadow:0 0 0 3px rgba(194,165,88,.35); }
 .mtb-joke .ctx { font-family:'Cormorant SC',Georgia,serif; font-size:.66rem; letter-spacing:.18em; text-transform:uppercase; color:#7c5f24; margin-bottom:.65rem; }
@@ -126,9 +139,10 @@ a.mtb-badge:hover { filter:brightness(1.12); }
 .mtl-layers button { font-family:'Cormorant Garamond',Georgia,serif; font-size:.98rem; color:#8a7a5a; background:transparent; border:1px solid rgba(201,162,87,.25); border-radius:999px; padding:.25rem .8rem; cursor:pointer; text-decoration:line-through; }
 .mtl-layers button[aria-pressed="true"] { color:#e8d4aa; border-color:#c9a257; background:rgba(201,162,87,.12); text-decoration:none; }
 main.hide-flow [data-layer="flow"], main.hide-map [data-layer="map"], main.hide-insight [data-layer="insight"],
-main.hide-laf [data-layer="laf"] { display:none !important; }
+main.hide-laf [data-layer="laf"], main.hide-note [data-layer="note"] { display:none !important; }
 main.hide-map .mtb-seg[data-move] { border-left-color:transparent; }
 main.hide-he .mtb-seg .he, main.hide-en .mtb-seg .en { display:none; }
+main.hide-he .mtb-note .he, main.hide-en .mtb-note .en { display:none; }
 .mtb-panel .mtb-sugya { font-family:'Cormorant SC',Georgia,serif; font-size:.7rem; letter-spacing:.24em; text-transform:uppercase; color:#7c5f24; margin:1.4rem 0 .2rem; padding-top:.6rem; border-top:2px solid rgba(140,107,46,.45); }
 .mtb-panel .mtb-foot { margin-top:1.6rem; font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; color:#5d5142; font-size:.98rem; }
 </style>
@@ -178,6 +192,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
       <button type="button" data-layer="map" aria-pressed="true">🧭 Sugya map</button>
       <button type="button" data-layer="insight" aria-pressed="true">💡 Daily Reader</button>
       <button type="button" data-layer="laf" aria-pressed="true">😂 Laf Yomi</button>
+      <button type="button" data-layer="note" aria-pressed="true">📝 Notes</button>
       <button type="button" data-layer="he" aria-pressed="true">Hebrew</button>
       <button type="button" data-layer="en" aria-pressed="true">English</button>
     </div>
@@ -252,7 +267,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
         <h3>From today's shiurim</h3>
         <p>Key insights from Bornstein, Elefant, Rothstein and more — matched to source sheets, with new sheets proposed where the daf demands one.</p>
       </div>
-      <p class="coming">The Daily Reader's per-daf insights live in the browser above — look for the 💡 on a daf.</p>
+      <p class="coming">The Daily Reader's per-daf insights live in the browser above — look for the 💡 on a daf. Notes on a sugya carry a 📝.</p>
     </div>
   </div>
 </main>
@@ -268,7 +283,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
   const refOf = (title, daf) => `${title} ${daf}`;
   const attachOf = (title, daf) => {
     const r = refOf(title, daf);
-    return { laf: ATTACH.laf[r] || null, ins: ATTACH.insights[r] || null };
+    return { laf: ATTACH.laf[r] || null, ins: ATTACH.insights[r] || null, notes: ATTACH.notes[r] || null };
   };
 
   const params = new URLSearchParams(location.search);
@@ -304,10 +319,10 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
     const t = tract(cur.title);
     els.daf.innerHTML = '';
     for (let d = 2; d <= t.lastDaf; d++) {
-      const { laf, ins } = attachOf(cur.title, d);
+      const { laf, ins, notes } = attachOf(cur.title, d);
       const o = document.createElement('option');
       o.value = d;
-      o.textContent = `${d}${d === t.lastDaf && t.lastAmud === 'a' ? ' (a only)' : ''}${laf ? ' 😂' : ''}${ins ? ' 💡' : ''}`;
+      o.textContent = `${d}${d === t.lastDaf && t.lastAmud === 'a' ? ' (a only)' : ''}${laf ? ' 😂' : ''}${ins ? ' 💡' : ''}${notes ? ' 📝' : ''}`;
       els.daf.appendChild(o);
     }
     els.daf.value = cur.daf;
@@ -319,6 +334,14 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
     const m = {};
     (laf ? laf.jokes : []).forEach((j, i) => {
       (j.seg_refs || []).forEach((n) => { (m[n] = m[n] || []).push(i); });
+    });
+    return m;
+  }
+
+  function segNotesMap(notes) {
+    const m = {};
+    (notes ? notes.notes : []).forEach((nt, i) => {
+      (nt.seg_refs || []).forEach((n) => { (m[n] = m[n] || []).push(i); });
     });
     return m;
   }
@@ -387,6 +410,48 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
       if (lbl) lbl.textContent = j.seg_label;
       els.jokes.appendChild(art);
     });
+  }
+
+  function renderNotes(notes, ref) {
+    if (!notes || !notes.notes || !notes.notes.length) return null;
+    const wrap = document.createElement('aside');
+    wrap.className = 'mtb-insight mtb-note';
+    wrap.id = 'mtb-note-panel';
+    wrap.dataset.layer = 'note';
+    const head = document.createElement('div');
+    head.className = 'mtb-insight-head';
+    head.innerHTML = '<span class="mtb-insight-title">📝 Notes on this sugya</span>';
+    const topic = document.createElement('span');
+    topic.className = 'mtb-insight-date';
+    topic.textContent = notes.topic ? `${notes.topic} · ${ref}` : ref;
+    head.appendChild(topic);
+    wrap.appendChild(head);
+    notes.notes.forEach((nt, i) => {
+      const item = document.createElement('div');
+      item.className = 'mtb-note-item';
+      item.id = `mtb-note-${i + 1}`;
+      item.dataset.layer = 'note';
+      item.innerHTML = `
+        <div class="stance"></div>
+        <div class="auth"></div>
+        <p class="he"></p>
+        <p class="en"></p>
+        <p class="cmt"></p>
+        <div class="links">
+          ${nt.seg_refs && nt.seg_refs.length ? `<a href="#mtb-seg-${nt.seg_refs[0]}">📖 In the daf — ${ref}</a>` : ''}
+          ${nt.sheet ? `<a href="${nt.sheet}">On the source sheet ↗</a>` : ''}
+          ${nt.seg_label ? `<span class="seg-label"></span>` : ''}
+        </div>`;
+      item.querySelector('.stance').textContent = nt.stance || '';
+      item.querySelector('.auth').textContent = `${nt.author || ''} · ${nt.ref || ''}`;
+      item.querySelector('.he').textContent = nt.he_text || '';
+      item.querySelector('.en').textContent = nt.en_text || '';
+      item.querySelector('.cmt').textContent = nt.note || '';
+      const lbl = item.querySelector('.seg-label');
+      if (lbl) lbl.textContent = nt.seg_label;
+      wrap.appendChild(item);
+    });
+    return wrap;
   }
 
   // ——— Sugya map: Jev labels each segment's move and where a new sugya opens ———
@@ -560,7 +625,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
   }
 
   async function load() {
-    const { laf, ins } = attachOf(cur.title, cur.daf);
+    const { laf, ins, notes } = attachOf(cur.title, cur.daf);
     const ref = refOf(cur.title, cur.daf);
     els.status.className = 'mtb-status';
     els.status.textContent = `Loading ${ref}…`;
@@ -569,6 +634,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
     els.head.textContent = ''; els.amud.innerHTML = '';
     const badges = [];
     if (ins) badges.push('<a class="mtb-badge" data-layer="insight" href="#mtb-insight-panel">💡 Daily Reader insight</a>');
+    if (notes) badges.push(`<a class="mtb-badge" data-layer="note" href="#mtb-note-panel">📝 Notes on this sugya — ${notes.notes.length}</a>`);
     if (laf) badges.push(`<a class="mtb-badge" data-layer="laf" href="#mtb-joke-1">😂 Laf Yomi — ${laf.jokes.length} jokes</a>`);
     if (laf && laf.pdf) badges.push(`<a class="mtb-badge alt" data-layer="laf" href="${laf.pdf}">Laf Yomi PDF ↓</a>`);
     els.attach.innerHTML = badges.length ? `<div class="mtb-badges">${badges.join('')}</div>` : '';
@@ -577,6 +643,10 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
       panel.id = 'mtb-insight-panel';
       panel.dataset.layer = 'insight';
       els.attach.appendChild(panel);
+    }
+    if (notes) {
+      const panel = renderNotes(notes, ref);
+      if (panel) els.attach.appendChild(panel);
     }
     renderJokes(laf, ref);
     try {
@@ -588,6 +658,7 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
       const flat = typeof (d.he || [])[0] === 'string';
       const heParts = flat ? [d.he] : d.he || [], enParts = flat ? [d.text || []] : d.text || [];
       const bySeg = segJokesMap(laf);
+      const byNote = segNotesMap(notes);
       const frag = document.createDocumentFragment();
       const amudim = new Set();
       let n = 0;
@@ -602,7 +673,9 @@ a.card:hover { border-color:var(--gold); transform:translateY(-2px); }
           sec.id = `mtb-seg-${n}`;
           sec.dataset.amud = amud;
           const chips = (bySeg[n] || []).map((ji) =>
-            `<a class="mtb-chip" data-layer="laf" href="#mtb-joke-${ji + 1}">😂 Joke ${ji + 1} is on this</a>`).join('');
+            `<a class="mtb-chip" data-layer="laf" href="#mtb-joke-${ji + 1}">😂 Joke ${ji + 1} is on this</a>`).join('')
+            + (byNote[n] || []).map((ni) =>
+            `<a class="mtb-chip" data-layer="note" href="#mtb-note-${ni + 1}">📝 Note ${ni + 1} is on this</a>`).join('');
           sec.innerHTML = `
             <div class="ref">${ref} ${amud} · segment ${n + 1}</div>
             ${chips ? `<div class="chips">${chips}</div>` : ''}
