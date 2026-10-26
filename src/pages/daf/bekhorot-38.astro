@@ -1,0 +1,577 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Sunken or Floating? — Daf Yomi Game: Bekhorot 38"
+  description="Bekhorot 38: lay Beit Hillel's sela over Beit Shammai's drilled hole, paint which parts of a cup become impure, sweep a lens across a firstborn's eye to find the cataract, and schedule the moist-then-dry fodder trial."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .card { background: #11131b; border: 1px solid #262a3a; border-radius: 1rem; }
+    .chip { border: 1px solid #3a3f55; border-radius: 0.6rem; padding: 0.45rem 0.75rem; font-size: 0.8rem; transition: background .15s, border-color .15s; text-align: left; }
+    .chip:hover:not(:disabled) { background: #191c28; }
+    .chip.ok { background: #13261f; border-color: #6cc3a6; }
+    .chip.bad { background: #33191a; border-color: #cc5a48; }
+    .chip:disabled { cursor: default; opacity: .92; }
+    .stamp { display: inline-block; border: 3px solid currentColor; padding: .15rem .7rem; border-radius: .4rem; transform: rotate(-6deg); font-weight: 900; letter-spacing: .16em; font-size: .72rem; animation: thunk .25s ease-out; }
+    @keyframes thunk { from { transform: rotate(-6deg) scale(1.8); opacity: 0; } to { transform: rotate(-6deg) scale(1); opacity: 1; } }
+    .light { display: inline-flex; align-items: center; gap: .4rem; border: 1px solid #3a3f55; border-radius: 999px; padding: .25rem .7rem; font-size: .72rem; }
+    .light i { width: .6rem; height: .6rem; border-radius: 999px; background: #3a3f55; display: inline-block; }
+    .light.on i { background: #6cc3a6; box-shadow: 0 0 8px #6cc3a6; }
+    .light.off i { background: #cc5a48; box-shadow: 0 0 8px #cc5a48; }
+    .zone { cursor: pointer; transition: fill .15s, stroke .15s; }
+    .zone:focus-visible { outline: none; stroke: #e0b54a !important; stroke-width: 3; }
+    .coin { transition: r .5s ease-out, cy .5s ease-out; }
+    .cell { height: 2.4rem; border: 1px solid #3a3f55; font-size: .62rem; transition: background .15s; }
+    .cell[data-v="m"] { background: #1f4a33; border-color: #6cc3a6; }
+    .cell[data-v="d"] { background: #5a4519; border-color: #e0b54a; }
+    .tab { border: 1px solid #3a3f55; border-radius: 999px; padding: .2rem .7rem; font-size: .72rem; }
+    .tab[aria-current="true"] { background: #2a2414; border-color: #e0b54a; }
+    @media (prefers-reduced-motion: reduce) {
+      .chip, .zone, .coin, .cell { transition: none; }
+      .stamp { animation: none; }
+    }
+    button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid #e0b54a; outline-offset: 2px; }
+  </style>
+
+  <main class="min-h-screen bg-[#0a0b10] !text-[#e7e9f0]">
+
+    <!-- HERO -->
+    <div class="border-b border-[#262a3a] bg-gradient-to-b from-[#161a2a] to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs tracking-[0.22em] !text-[#959bb3]">
+        <a href="/daf" class="transition-colors hover:!text-[#e7e9f0]">daf yomi arcade</a>
+        <span class="mx-2 opacity-40">·</span>bekhorot 38<span class="mx-2 opacity-40">·</span>2026-10-26
+      </p>
+      <svg viewBox="0 0 80 44" class="mx-auto mb-3 h-12 w-20" aria-hidden="true">
+        <path d="M4 22 Q40 -6 76 22 Q40 50 4 22 Z" fill="#f1ede2" stroke="#e0b54a" stroke-width="2" />
+        <circle cx="40" cy="22" r="12" fill="#6b4a2a" />
+        <circle cx="40" cy="22" r="7" fill="#0a0b10" />
+        <circle cx="44" cy="18" r="2.4" fill="#f1ede2" opacity=".85" />
+      </svg>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl !text-[#f4f5fa]">Sunken or Floating?</h1>
+      <p class="frank mt-3 text-3xl font-light !text-[#e0b54a]" dir="rtl" lang="he">מְשׁוּקָּע אוֹ צָף</p>
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed !text-[#adb2c7]">
+        A hole in a skull, a cup touched on the outside, a film over a firstborn’s eye, a lamb on a diet of
+        wet grass then hay. The daf measures, paints, peers and waits. Four rounds, straight from the daf.
+      </p>
+      <p class="mt-4 text-xs !text-[#959bb3]">Score: <span id="score" class="font-bold !text-[#e0b54a]">0</span> / <span id="max">0</span></p>
+    </div>
+
+    <div class="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+
+      <!-- ROUND 1 -->
+      <section class="card p-5">
+        <p class="text-xs tracking-[0.2em] !text-[#959bb3]">ROUND 1 · 38A:1–2, 16–20</p>
+        <h2 class="frank mt-1 text-2xl font-bold !text-[#f4f5fa]">The coin and the hole</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#adb2c7]">
+          A skull that is missing a piece no longer imparts impurity in a tent (Oholot 2:3). How big a piece?
+          <b>Beit Shammai</b>: the size of a drilled hole. <b>Beit Hillel</b>: enough that a living person would die, which
+          Shmuel puts at <b>a sela coin</b>. But a mishna about windows (Kelim 17:12) says a drilled hole <i>is</i> a sela.
+          Then where is the argument? For each voice in the Gemara, size the sela against the hole and lay it down.
+          Remember: the bigger the required gap, the stricter the view.
+        </p>
+        <div class="mt-4 flex flex-wrap gap-2" id="r1tabs" role="tablist"></div>
+        <div class="mt-4 grid gap-4 sm:grid-cols-[1fr_1.1fr]">
+          <svg viewBox="0 0 240 180" class="w-full rounded-xl bg-[#0d0f16]" role="img" aria-label="A skull with a drilled hole and a coin to lay over it">
+            <path d="M30 150 C20 60 80 20 120 20 C160 20 220 60 210 150 Z" fill="#d9d0bb" stroke="#8d846f" stroke-width="2" />
+            <path d="M60 140 C70 120 90 118 100 132 M140 132 C150 118 170 120 180 140" stroke="#8d846f" stroke-width="2" fill="none" />
+            <circle id="hole" cx="120" cy="70" r="26" fill="#0a0b10" stroke="#5b5443" stroke-width="2" />
+            <text id="holeLbl" x="120" y="112" text-anchor="middle" font-size="9" fill="#5b5443">Beit Shammai’s hole</text>
+            <circle id="coin" class="coin" cx="120" cy="160" r="26" fill="#c9a24a" fill-opacity=".82" stroke="#f0d68a" stroke-width="2" />
+            <text id="coinLbl" x="120" y="163" text-anchor="middle" font-size="9" fill="#3b2c08" font-weight="700">sela</text>
+          </svg>
+          <div>
+            <p id="r1who" class="text-sm font-bold !text-[#e0b54a]"></p>
+            <p id="r1claim" class="mt-1 text-sm leading-relaxed !text-[#e7e9f0]"></p>
+            <label class="mt-4 block text-xs !text-[#959bb3]" for="coinSize">Beit Hillel’s sela, relative to the hole</label>
+            <input id="coinSize" type="range" min="12" max="40" value="26" class="mt-1 w-full accent-[#e0b54a]" />
+            <div class="flex justify-between text-[10px] !text-[#959bb3]"><span>smaller</span><span>same</span><span>larger</span></div>
+            <button id="layCoin" class="mt-3 rounded-lg border border-[#e0b54a] px-4 py-2 text-xs font-bold !text-[#e0b54a] hover:bg-[#191c28]">Lay the coin</button>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <span id="lDispute" class="light !text-[#e7e9f0]"><i></i>A real dispute</span>
+              <span id="lEduyot" class="light !text-[#e7e9f0]"><i></i>Beit Shammai the stricter</span>
+            </div>
+            <p id="r1msg" class="mt-3 text-sm leading-relaxed !text-[#adb2c7]"></p>
+          </div>
+        </div>
+        <div id="r1more" class="mt-5 hidden"></div>
+      </section>
+
+      <!-- ROUND 2 -->
+      <section id="r2" class="card hidden p-5">
+        <p class="text-xs tracking-[0.2em] !text-[#959bb3]">ROUND 2 · 38A:3–15</p>
+        <h2 class="frank mt-1 text-2xl font-bold !text-[#f4f5fa]">Inside, outside</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#adb2c7]">
+          Rav Taḥlifa’s “as certain as the testimony of Ḥizkiyya, father of Ikkesh” sends the Gemara into vessels.
+          For each case, the red mark shows where the impurity touched. <b>Tap every part that becomes impure</b>, then check.
+          Earthenware is impure only through its interior; vessels purified in a mikveh (wood and the like) are impure
+          through any side by Torah law; and the Sages added a rabbinic impurity from impure liquids.
+        </p>
+        <p id="r2count" class="mt-3 text-xs !text-[#959bb3]"></p>
+        <p id="r2case" class="mt-1 text-sm leading-relaxed !text-[#e7e9f0]"></p>
+        <svg id="vessel" viewBox="0 0 400 230" class="mt-3 w-full rounded-xl bg-[#0d0f16]" role="group" aria-label="Vessel parts: tap to mark impure"></svg>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <button id="r2check" class="rounded-lg border border-[#e0b54a] px-4 py-2 text-xs font-bold !text-[#e0b54a] hover:bg-[#191c28]">Check</button>
+          <button id="r2next" class="hidden rounded-lg border border-[#3a3f55] px-4 py-2 text-xs font-bold !text-[#e7e9f0] hover:bg-[#191c28]">Next vessel →</button>
+          <span id="r2stamp"></span>
+        </div>
+        <p id="r2msg" class="mt-3 text-sm leading-relaxed !text-[#adb2c7]"></p>
+        <div id="r2more" class="mt-5 hidden"></div>
+      </section>
+
+      <!-- ROUND 3 -->
+      <section id="r3" class="card hidden p-5">
+        <p class="text-xs tracking-[0.2em] !text-[#959bb3]">ROUND 3 · 38A:21–38B:9</p>
+        <h2 class="frank mt-1 text-2xl font-bold !text-[#f4f5fa]">The examiner’s lens</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#adb2c7]">
+          Six firstborns come to the expert. Move the lens (drag, or focus the eye and use the arrow keys) until
+          you find what is in the eye, read whether it sits <b>in</b> the eye or <b>floats</b> on it, then rule.
+          Remember Yoshiya of Usha’s mnemonic: <span class="frank !text-[#e0b54a]" lang="he">בַּרְקָא</span>, the disease of white patches floating over the eye.
+        </p>
+        <p id="r3count" class="mt-3 text-xs !text-[#959bb3]"></p>
+        <svg id="eye" viewBox="0 0 400 240" tabindex="0" class="mt-2 w-full cursor-crosshair touch-none rounded-xl bg-[#0d0f16]" role="img" aria-label="A firstborn's eye under a magnifying lens. Use arrow keys to move the lens.">
+          <defs>
+            <filter id="blur"><feGaussianBlur stdDeviation="5" /></filter>
+            <filter id="float"><feDropShadow dx="4" dy="6" stdDeviation="2.5" flood-color="#000" flood-opacity=".75" /></filter>
+            <filter id="sink"><feGaussianBlur stdDeviation="1.6" /></filter>
+            <clipPath id="lensClip"><circle id="lensC" cx="90" cy="70" r="50" /></clipPath>
+          </defs>
+          <g filter="url(#blur)" opacity=".75">
+            <path d="M20 120 Q200 -20 380 120 Q200 260 20 120 Z" fill="#e9e3d3" />
+            <circle cx="200" cy="120" r="72" fill="#6b4a2a" />
+            <circle cx="200" cy="120" r="44" fill="#08080b" />
+          </g>
+          <g clip-path="url(#lensClip)">
+            <path d="M20 120 Q200 -20 380 120 Q200 260 20 120 Z" fill="#f1ede2" />
+            <circle cx="200" cy="120" r="72" fill="#7a5532" />
+            <circle cx="200" cy="120" r="72" fill="none" stroke="#4a2f17" stroke-width="3" />
+            <circle cx="200" cy="120" r="44" fill="#060608" />
+            <g id="feature"></g>
+          </g>
+          <path d="M20 120 Q200 -20 380 120 Q200 260 20 120 Z" fill="none" stroke="#8d846f" stroke-width="3" />
+          <circle id="lensRing" cx="90" cy="70" r="50" fill="none" stroke="#e0b54a" stroke-width="3" />
+          <line id="lensHandle" x1="125" y1="105" x2="150" y2="130" stroke="#e0b54a" stroke-width="6" stroke-linecap="round" />
+        </svg>
+        <p id="r3read" class="mt-2 min-h-[1.5rem] text-sm italic !text-[#959bb3]">Sweep the lens across the eye…</p>
+        <p id="r3case" class="mt-1 text-sm leading-relaxed !text-[#e7e9f0]"></p>
+        <div id="r3btns" class="mt-3 flex flex-wrap items-center gap-2"></div>
+        <p id="r3msg" class="mt-3 text-sm leading-relaxed !text-[#adb2c7]"></p>
+        <button id="r3next" class="mt-2 hidden rounded-lg border border-[#3a3f55] px-4 py-2 text-xs font-bold !text-[#e7e9f0] hover:bg-[#191c28]">Next firstborn →</button>
+        <div id="r3more" class="mt-5 hidden"></div>
+      </section>
+
+      <!-- ROUND 4 -->
+      <section id="r4" class="card hidden p-5">
+        <p class="text-xs tracking-[0.2em] !text-[#959bb3]">ROUND 4 · 38B:10–19</p>
+        <h2 class="frank mt-1 text-2xl font-bold !text-[#f4f5fa]">The fodder trial</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#adb2c7]">
+          Pale spots and streaming tears count as blemishes only if they are <b>constant</b>. For the tears, the test
+          is a cure: feed the animal moist fodder, then dry fodder. If it still weeps, it is permanent.
+        </p>
+        <div id="r4a" class="mt-4 flex flex-col gap-4"></div>
+        <div id="r4cal" class="mt-6 hidden">
+          <p class="text-sm font-bold !text-[#e0b54a]">The calendar</p>
+          <p id="r4calPrompt" class="mt-1 text-sm leading-relaxed !text-[#e7e9f0]"></p>
+          <p class="mt-2 text-xs !text-[#959bb3]">Tap a half-month to cycle: empty → <span class="!text-[#6cc3a6]">moist</span> → <span class="!text-[#e0b54a]">dry</span>.</p>
+          <div id="cal" class="mt-2 grid grid-cols-8 gap-1"></div>
+          <div class="mt-3 flex flex-wrap items-center gap-3">
+            <button id="calCheck" class="rounded-lg border border-[#e0b54a] px-4 py-2 text-xs font-bold !text-[#e0b54a] hover:bg-[#191c28]">Check the calendar</button>
+            <span id="calTally" class="text-xs !text-[#959bb3]"></span>
+          </div>
+          <p id="calMsg" class="mt-3 text-sm leading-relaxed !text-[#adb2c7]"></p>
+        </div>
+        <div id="r4more" class="mt-5 hidden"></div>
+      </section>
+
+      <div id="final" class="card hidden p-5 text-center"></div>
+
+      <!-- LEARN -->
+      <section class="card p-5">
+        <h2 class="frank mb-3 text-lg font-bold !text-[#f4f5fa]">Learn the real daf</h2>
+        <div class="mb-4 flex flex-wrap gap-2">
+          <a href="https://www.sefaria.org/Bekhorot.38a" target="_blank" rel="noopener" class="rounded-lg border border-[#262a3a] px-4 py-2 text-xs font-bold !text-[#e0b54a] transition-colors hover:bg-[#191c28]">Bekhorot 38a on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Bekhorot.38b" target="_blank" rel="noopener" class="rounded-lg border border-[#262a3a] px-4 py-2 text-xs font-bold !text-[#e0b54a] transition-colors hover:bg-[#191c28]">Bekhorot 38b on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Mishnah_Oholot.2.3" target="_blank" rel="noopener" class="rounded-lg border border-[#262a3a] px-4 py-2 text-xs font-bold !text-[#e0b54a] transition-colors hover:bg-[#191c28]">The skull: Oholot 2:3 ↗</a>
+          <a href="https://www.sefaria.org/Mishnah_Kelim.25.6" target="_blank" rel="noopener" class="rounded-lg border border-[#262a3a] px-4 py-2 text-xs font-bold !text-[#e0b54a] transition-colors hover:bg-[#191c28]">The cup: Kelim 25:6 ↗</a>
+          <a href="https://www.sefaria.org/Bekhorot.39a" target="_blank" rel="noopener" class="rounded-lg border border-[#262a3a] px-4 py-2 text-xs font-bold !text-[#e0b54a] transition-colors hover:bg-[#191c28]">Continue: Bekhorot 39a ↗</a>
+        </div>
+        <p class="mb-2 text-xs !text-[#959bb3]">Top works linked to this daf:</p>
+        <ul class="grid gap-1 text-sm sm:grid-cols-2">
+          <li><a href="https://www.sefaria.org/Rashi_on_Bekhorot.38a" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Rashi (77) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.38a" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Rabbeinu Gershom (49) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.38a" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Steinsaltz (40) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rash_MiShantz_on_Mishnah_Kelim.25.6" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Rash MiShantz on Kelim 25:6 (12) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Tosafot_on_Bekhorot.38a" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Tosafot (8) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Mishneh_Torah,_Firstlings.2" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Mishneh Torah, Firstlings 2 ↗</a></li>
+          <li><a href="https://www.sefaria.org/Mishnah_Bekhorot.6.2" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Mishnah Bekhorot 6:2–3 ↗</a></li>
+          <li><a href="https://www.sefaria.org/Mishnah_Eduyot.4" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Eduyot 4: Beit Shammai’s leniencies ↗</a></li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <script is:inline>
+    (function () {
+      var score = 0, max = 0, done = 0, totalTasks = 0;
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var NS = 'http://www.w3.org/2000/svg';
+      var $ = function (id) { return document.getElementById(id); };
+      function sef(ref) { return '<a class="underline decoration-dotted !text-[#e0b54a] hover:!text-[#f4f5fa]" target="_blank" rel="noopener" href="https://www.sefaria.org/' + ref.replace(/ /g, '_') + '">' + ref + ' ↗</a>'; }
+      function addMax(n) { max += n; $('max').textContent = max; }
+      function award(n) { score += (n || 1); $('score').textContent = score; }
+      function task() { totalTasks++; }
+      function finish() { done++; checkDone(); }
+      function show(id) { var e = $(id); e.classList.remove('hidden'); return e; }
+      function stamp(ok, yes, no) {
+        return ok ? '<span class="stamp !text-[#6cc3a6]">' + yes + '</span>' : '<span class="stamp !text-[#cc5a48]">' + no + '</span>';
+      }
+      function checkDone() {
+        if (totalTasks && done >= totalTasks) {
+          var f = $('final'); f.classList.remove('hidden');
+          f.innerHTML = '<p class="frank text-2xl font-bold !text-[#f4f5fa]">' + score + ' / ' + max + '</p>' +
+            '<p class="mt-2 text-sm !text-[#adb2c7]">Cliffhanger (38b:19): Rabbi Yoḥanan, in the name of Rabbi Pineḥas ben Arova, says the animal is fed <b>a fig-bulk</b>. Rava reports a dilemma from the West: a fig-bulk at its first meal each day, or…? ' + sef('Bekhorot 39a') + '</p>';
+        }
+      }
+      function mcq(host, prompt, opts, ref, after) {
+        addMax(1); task();
+        var box = document.createElement('div'); box.className = 'mt-4';
+        box.innerHTML = '<p class="mb-2 text-sm !text-[#e7e9f0]">' + prompt + '</p><div class="flex flex-col gap-2"></div><p class="mt-2 text-sm leading-relaxed !text-[#adb2c7]"></p>';
+        var list = box.children[1], msg = box.children[2], first = true;
+        opts.forEach(function (o) {
+          var b = document.createElement('button');
+          b.className = 'chip !text-[#e7e9f0]'; b.innerHTML = o.t;
+          b.onclick = function () {
+            if (o.ok) {
+              if (first) award();
+              b.classList.add('ok');
+              Array.prototype.forEach.call(list.children, function (x) { x.disabled = true; });
+              msg.innerHTML = o.why + (ref ? ' ' + sef(ref) : '');
+              finish(); if (after) after();
+            } else {
+              first = false; b.classList.add('bad'); b.disabled = true;
+              msg.innerHTML = o.why || 'Not quite. Try again.';
+            }
+          };
+          list.appendChild(b);
+        });
+        host.appendChild(box);
+        return box;
+      }
+      function chain(host, qs, end) {
+        var i = 0;
+        (function next() {
+          if (i >= qs.length) { if (end) end(); return; }
+          var q = qs[i++]; mcq(host, q[0], q[1], q[2], next);
+        })();
+      }
+
+      // ---------- ROUND 1: the coin and the hole ----------
+      // rel: -1 sela smaller than the hole, 0 equal, 1 sela larger. Beit Shammai is stricter when his hole is larger (rel -1).
+      var voices = [
+        { who: 'Rav Ḥisda’s challenge (37b)', claim: 'Beit Shammai’s drilled hole is the large Temple-chamber drill of the window mishna, and that mishna says it equals a sela of Nero. So Hillel’s sela is…', rel: 0, why: 'Exactly the same size. “You have made Beit Shammai and Beit Hillel one and the same.” Rav Taḥlifa falls silent.', ref: 'Bekhorot 37b:20-21' },
+        { who: 'Rav Ḥisda, then Rav Taḥlifa', claim: 'Beit Shammai mean a drilled hole <b>and its obstruction</b>, room for the drill to go in and come out. Rav Taḥlifa: don’t say “perhaps,” say it’s certain. So Hillel’s sela is…', rel: -1, why: 'A touch smaller than Shammai’s hole. Now they disagree, and Beit Shammai require more missing bone before the skull stops being impure: Shammai the stricter, as they should be.', ref: 'Bekhorot 38a:1-2' },
+        { who: 'Rav Pappa, read with Rabbi Meir', claim: 'The window mishna’s sela is a <b>large</b> drill. Beit Shammai’s unspecified drill is smaller. Rabbi Meir (Oholot 2:3): it’s the doctors’ <b>small</b> bone drill. So Hillel’s sela is…', rel: 1, why: 'Larger than Shammai’s hole. A real dispute, but now Beit Shammai are lenient: a smaller gap already ends the impurity. And we only list Beit Shammai’s leniencies where Eduyot lists them; elsewhere they are the strict ones.', ref: 'Bekhorot 38a:16-19' },
+        { who: 'Rav Pappa, read with the Rabbis', claim: 'The Rabbis of Oholot 2:3: Beit Shammai meant the large drill of the Temple chamber, the one the window mishna sizes as a sela. So Hillel’s sela is…', rel: 0, why: 'The same again. Rav Pappa’s answer works only for Rabbi Meir, and the dispute disappears for the Rabbis.', ref: 'Bekhorot 38a:17-18' },
+        { who: 'Rav Naḥman', claim: '<span class="frank" lang="he">סֶלַע נִירוֹנִית שָׁנִינוּ</span>: the window mishna meant the big sela of Nero. An ordinary sela, which is Beit Hillel’s, is smaller than even an ordinary drill. So Hillel’s sela is…', rel: -1, why: 'Smaller than Shammai’s hole, whichever drill you read. Dispute restored, and Beit Shammai are the stricter, even for Rabbi Meir.', ref: 'Bekhorot 38a:20' }
+      ];
+      var vi = 0, r1first = true;
+      voices.forEach(function (v, i) {
+        addMax(1); task();
+        var t = document.createElement('button'); t.className = 'tab !text-[#e7e9f0]'; t.textContent = (i + 1) + '. ' + v.who.split(',')[0].split(' (')[0];
+        t.disabled = i > 0; t.setAttribute('role', 'tab');
+        t.onclick = function () { loadVoice(i); };
+        $('r1tabs').appendChild(t);
+      });
+      function relOf(r) { return r < 23 ? -1 : r > 29 ? 1 : 0; }
+      function setLight(id, on) { var e = $(id); e.classList.remove('on', 'off'); if (on !== null) e.classList.add(on ? 'on' : 'off'); }
+      function loadVoice(i) {
+        vi = i; r1first = true;
+        Array.prototype.forEach.call($('r1tabs').children, function (t, j) { t.setAttribute('aria-current', j === i ? 'true' : 'false'); });
+        $('r1who').textContent = voices[i].who; $('r1claim').innerHTML = voices[i].claim; $('r1msg').innerHTML = '';
+        $('coin').setAttribute('cy', 160); $('coinLbl').setAttribute('y', 163); $('layCoin').disabled = !!voices[i].solved;
+        setLight('lDispute', null); setLight('lEduyot', null);
+        if (voices[i].solved) lay(true);
+      }
+      $('coinSize').oninput = function () { $('coin').setAttribute('r', this.value); };
+      function lay(replay) {
+        var v = voices[vi], r = +$('coinSize').value;
+        if (replay) r = v.rel === 0 ? 26 : v.rel < 0 ? 20 : 34;
+        $('coin').setAttribute('r', r); $('coin').setAttribute('cy', 70); $('coinLbl').setAttribute('y', 73);
+        var rel = relOf(r);
+        if (!replay && rel !== v.rel) {
+          r1first = false;
+          $('r1msg').innerHTML = 'Look again at what this voice says about the size of the drill.';
+          setTimeout(function () { $('coin').setAttribute('cy', 160); $('coinLbl').setAttribute('y', 163); }, reduce ? 0 : 700);
+          return;
+        }
+        setLight('lDispute', v.rel !== 0); setLight('lEduyot', v.rel === 0 ? null : v.rel < 0);
+        $('r1msg').innerHTML = v.why + ' ' + sef(v.ref);
+        if (!replay) {
+          v.solved = true; if (r1first) award(); finish(); $('layCoin').disabled = true;
+          var nt = $('r1tabs').children[vi + 1];
+          if (nt) { nt.disabled = false; $('r1msg').innerHTML += ' <b>Next voice unlocked: tap ' + (vi + 2) + '.</b>'; nt.focus(); }
+          else r1more();
+        }
+      }
+      $('layCoin').onclick = function () { lay(false); };
+      loadVoice(0);
+      function r1more() {
+        var h = show('r1more');
+        mcq(h, 'Rav Taḥlifa’s certainty about “the hole and its obstruction” teaches something about another measure in our mishna (a hole the size of a <i>karshina</i>, bitter vetch). What?', [
+          { t: 'That hole too must let the vetch go <b>in and come out</b>.', ok: true, why: 'Just as a drilled hole is measured with room for the drill to enter and leave, so is the vetch-sized hole.' },
+          { t: 'The vetch is measured exactly, with no allowance.', ok: false, why: 'The derivation runs the other way: the same allowance applies.' },
+          { t: 'The vetch is the same size as a sela.', ok: false, why: 'Nobody says that. The point is how the hole is measured, not its size.' }
+        ], 'Bekhorot 38a:2', function () { show('r2'); r2load(); });
+      }
+
+      // ---------- ROUND 2: inside, outside ----------
+      var CUP = ['in', 'out', 'rim', 'ear', 'yad'], FLAT = ['up', 'down'];
+      var ZN = { in: 'inside', out: 'outside', rim: 'rim', ear: 'ear-handle', yad: 'straight handle', up: 'upper (used) side', down: 'underside' };
+      var vessels = [
+        { shape: 'cup', mat: 'clay', t: 'An <b>earthenware</b> cup. A dead creeping thing (sheretz) touches its <b>outside</b>.', touch: 'out', ans: [], why: 'Nothing. “Every earthen vessel into whose <b>interior</b> any of them falls” (Lev. 11:33): earthenware is defiled only through its inside.', ref: 'Bekhorot 38a:8' },
+        { shape: 'cup', mat: 'clay', t: 'The same <b>earthenware</b> cup. The sheretz is inside it.', touch: 'in', ans: CUP, why: 'All of it. Once the inside is impure, the outside is too (38a:7).', ref: 'Bekhorot 38a:7' },
+        { shape: 'flat', mat: 'clay', t: 'A flat <b>earthenware</b> tray, no receptacle. The sheretz touches its upper side.', touch: 'up', ans: [], why: 'Nothing. An earthenware vessel without a receptacle has no inside, so it can never become impure. That’s why Rabbi Yitzḥak bar Avin says Ḥizkiyya’s testimony must be about mikveh vessels.', ref: 'Bekhorot 38a:4-5' },
+        { shape: 'cup', mat: 'wood', t: 'A <b>wooden</b> cup. The sheretz touches its <b>outside</b>. This is Torah-law impurity.', touch: 'out', ans: CUP, why: 'All of it. The Torah never said a mikveh vessel is defiled only from inside.', ref: 'Bekhorot 38a:8-9' },
+        { shape: 'cup', mat: 'wood', t: 'The <b>wooden</b> cup again. This time <b>impure liquid</b> touches its outside: impurity by rabbinic law only.', touch: 'out', ans: ['out'], why: 'Only the outside. “Its inside, its rim, its ear-handle and its straight handle are pure” (Kelim 25:6). The Sages treated it like earthenware.', ref: 'Bekhorot 38a:9-11' },
+        { shape: 'cup', mat: 'wood', t: 'Impure liquid touches the wooden cup’s <b>inside</b>.', touch: 'in', ans: CUP, why: '“If its inside became impure, it becomes impure in its entirety.”', ref: 'Bekhorot 38a:9' },
+        { shape: 'flat', mat: 'wood', t: 'A flat <b>wooden</b> bench, made for sitting (so a zav’s treading can defile it). Impure liquid touches its <b>underside</b>.', touch: 'down', ans: FLAT, why: 'Both sides. This is Ḥizkiyya’s testimony: a vessel with no receptacle has no distinction of sides.', ref: 'Bekhorot 38a:5, 15' },
+        { shape: 'flat', mat: 'clay', t: 'A flat <b>earthenware</b> slab you could sit on. Impure liquid touches it.', touch: 'down', ans: [], why: 'Nothing. Why didn’t the Sages decree for it, as for the bench? There is no treading impurity for earthenware at all.', ref: 'Bekhorot 38a:15' }
+      ];
+      var v2 = 0, v2first = true, marked = {};
+      function zoneEl(tag, attrs, z) {
+        var e = document.createElementNS(NS, tag);
+        for (var k in attrs) e.setAttribute(k, attrs[k]);
+        if (z) {
+          e.setAttribute('class', 'zone'); e.setAttribute('data-z', z); e.setAttribute('tabindex', '0');
+          e.setAttribute('role', 'button'); e.setAttribute('aria-pressed', 'false'); e.setAttribute('aria-label', ZN[z]);
+          var tog = function () { if (vessels[v2].done) return; marked[z] = !marked[z]; paint(); };
+          e.addEventListener('click', tog);
+          e.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); tog(); } });
+        }
+        $('vessel').appendChild(e); return e;
+      }
+      function label(x, y, s) { var t = zoneEl('text', { x: x, y: y, 'text-anchor': 'middle', 'font-size': 11, fill: '#959bb3', 'pointer-events': 'none' }); t.textContent = s; }
+      function paint() {
+        var v = vessels[v2], base = v.mat === 'clay' ? '#a8603a' : '#8a6a3e', inner = v.mat === 'clay' ? '#6e3c22' : '#5b4426';
+        $('vessel').querySelectorAll('.zone').forEach(function (e) {
+          var z = e.getAttribute('data-z'), on = !!marked[z], stroke = e.getAttribute('data-stroke');
+          e.setAttribute('aria-pressed', on ? 'true' : 'false');
+          if (stroke) { e.setAttribute('stroke', on ? '#cc5a48' : base); }
+          else { e.setAttribute('fill', on ? '#cc5a48' : (z === 'in' || z === 'down' ? inner : base)); e.setAttribute('stroke', on ? '#ff9b8a' : '#2a1a0e'); }
+        });
+      }
+      function r2load() {
+        var v = vessels[v2]; marked = {}; v2first = true;
+        $('vessel').innerHTML = '';
+        $('r2count').textContent = 'Vessel ' + (v2 + 1) + ' of ' + vessels.length + ' · ' + (v.mat === 'clay' ? 'earthenware' : 'wood (purified in a mikveh)');
+        $('r2case').innerHTML = v.t; $('r2msg').innerHTML = ''; $('r2stamp').innerHTML = '';
+        $('r2check').classList.remove('hidden'); $('r2next').classList.add('hidden');
+        var tp;
+        if (v.shape === 'cup') {
+          zoneEl('path', { d: 'M116 60 L136 175 L264 175 L284 60 Z' }, 'in');
+          zoneEl('path', { d: 'M98 60 L120 192 L280 192 L302 60 L284 60 L264 175 L136 175 L116 60 Z' }, 'out');
+          zoneEl('rect', { x: 92, y: 48, width: 30, height: 12, rx: 3 }, 'rim');
+          zoneEl('rect', { x: 278, y: 48, width: 30, height: 12, rx: 3 }, 'rim');
+          var ear = zoneEl('path', { d: 'M298 85 C352 82 352 150 288 152', fill: 'none', 'stroke-width': 13, 'stroke-linecap': 'round', 'pointer-events': 'stroke' }, 'ear'); ear.setAttribute('data-stroke', '1');
+          zoneEl('rect', { x: 28, y: 100, width: 76, height: 13, rx: 4 }, 'yad');
+          label(200, 120, 'inside'); label(200, 210, 'outside'); label(200, 40, 'rim'); label(360, 120, 'ear'); label(66, 92, 'handle');
+          tp = v.touch === 'in' ? [200, 150] : [292, 175];
+        } else {
+          zoneEl('rect', { x: 80, y: 100, width: 240, height: 18, rx: 3 }, 'up');
+          zoneEl('rect', { x: 80, y: 118, width: 240, height: 18, rx: 3 }, 'down');
+          if (v.mat === 'wood') { zoneEl('rect', { x: 100, y: 136, width: 12, height: 50, fill: '#3d2f1c' }); zoneEl('rect', { x: 288, y: 136, width: 12, height: 50, fill: '#3d2f1c' }); }
+          label(200, 90, 'upper side'); label(200, v.mat === 'wood' ? 205 : 160, 'underside');
+          tp = v.touch === 'up' ? [250, 100] : [250, 136];
+        }
+        zoneEl('circle', { cx: tp[0], cy: tp[1], r: 7, fill: '#ff3b2f', stroke: '#fff', 'stroke-width': 2, 'pointer-events': 'none' });
+        paint();
+      }
+      addMax(vessels.length); vessels.forEach(task);
+      $('r2check').onclick = function () {
+        var v = vessels[v2], keys = v.shape === 'cup' ? CUP : FLAT, wrong = 0;
+        keys.forEach(function (k) { if (!!marked[k] !== (v.ans.indexOf(k) >= 0)) wrong++; });
+        if (wrong) { v2first = false; $('r2msg').innerHTML = wrong + ' part(s) wrong. Ask: what is the vessel made of, and what kind of impurity touched it?'; return; }
+        v.done = true; if (v2first) award(); finish();
+        $('r2stamp').innerHTML = stamp(v.ans.length === 0, 'STAYS PURE', v.ans.length === keys.length ? 'ALL IMPURE' : 'OUTSIDE ONLY');
+        $('r2msg').innerHTML = v.why + ' ' + sef(v.ref);
+        $('r2check').classList.add('hidden');
+        if (v2 < vessels.length - 1) $('r2next').classList.remove('hidden'); else r2more();
+      };
+      $('r2next').onclick = function () { v2++; r2load(); };
+      function r2more() {
+        chain(show('r2more'), [
+          ['By Torah law food and liquid don’t defile vessels. Why did the Sages decree that impure liquid does?', [
+            { t: 'So people won’t be lax with a <b>zav’s or zava’s</b> fluids (spittle, urine), which are primary sources and do defile vessels.', ok: true, why: 'The decree guards the real Torah impurity.' },
+            { t: 'Because liquids spread and reach every side.', ok: false, why: 'If that were the logic, the inside would be impure too.' },
+            { t: 'To make mikveh vessels as strict as earthenware.', ok: false, why: 'Earthenware is the model, but it is not the reason.' }
+          ], 'Bekhorot 38a:10'],
+          ['And why did they leave the wooden cup’s inside pure, instead of making the whole cup impure as Torah law would?', [
+            { t: 'As a <b>sign</b> that it is only rabbinic, so no one burns teruma or sacrificial food that touched it.', ok: true, why: 'By Torah law that food is pure and may not be burned. The half-measure tells everyone so.' },
+            { t: 'Because impure liquid can’t reach the inside.', ok: false, why: 'It can. The ruling is a deliberate signal.' },
+            { t: 'To spare the owner a trip to the mikveh.', ok: false, why: 'He immerses either way.' }
+          ], 'Bekhorot 38a:11-12'],
+          ['Then why no sign for the flat bench? Ḥizkiyya makes both its sides impure.', [
+            { t: 'The cup already made the point. Once people know liquid impurity is rabbinic, nobody will burn teruma over the bench.', ok: true, why: 'One sign is enough for the whole category.' },
+            { t: 'A bench is never used for teruma.', ok: false, why: 'Not the Gemara’s answer.' },
+            { t: 'Its impurity is Torah law.', ok: false, why: 'Liquid impurity is rabbinic here too.' }
+          ], 'Bekhorot 38a:12-13'],
+          ['A vessel must be “like a sack,” carried full and empty, to become impure at all. So which flat wooden vessels are susceptible?', [
+            { t: 'Ones made for sitting, susceptible to <b>treading</b> (midras) by a zav, zava or menstruating woman.', ok: true, why: 'That is how a vessel without a receptacle comes to be susceptible.' },
+            { t: 'Any wooden board.', ok: false, why: 'A flat board can’t be carried full, so it isn’t like a sack.' },
+            { t: 'None. Ḥizkiyya meant earthenware after all.', ok: false, why: 'Earthenware without a receptacle never becomes impure.' }
+          ], 'Bekhorot 38a:14-15']
+        ], function () { show('r3'); r3load(); });
+      }
+
+      // ---------- ROUND 3: the lens ----------
+      var eyes = [
+        { at: [200, 120], draw: '<circle cx="200" cy="120" r="20" fill="#2c2d33" opacity=".95" filter="url(#sink)" /><circle cx="200" cy="120" r="20" fill="none" stroke="#000" stroke-width="3" opacity=".6" />', read: 'A <b>black</b> film, <b>sunk into</b> the pupil.', blem: true, why: 'A black cataract that is sunken: a blemish (Yoshiya of Usha).', ref: 'Bekhorot 38b:3' },
+        { at: [215, 110], draw: '<circle cx="215" cy="110" r="18" fill="#34353d" filter="url(#float)" /><ellipse cx="209" cy="104" rx="6" ry="3" fill="#8e909c" opacity=".7" />', read: 'A <b>black</b> film, <b>floating</b> above the pupil, casting a shadow.', blem: false, why: 'A black cataract that floats: not a blemish.', ref: 'Bekhorot 38b:3' },
+        { at: [188, 130], draw: '<circle cx="188" cy="130" r="17" fill="#cfcabc" opacity=".85" filter="url(#sink)" />', read: 'A <b>white</b> patch <b>sunk into</b> the black.', blem: false, why: 'A white cataract that is sunken: not a blemish. White is the reverse of black.', ref: 'Bekhorot 38b:3' },
+        { at: [208, 126], draw: '<circle cx="208" cy="126" r="18" fill="#f2efe6" filter="url(#float)" /><ellipse cx="202" cy="120" rx="6" ry="3" fill="#fff" />', read: 'A <b>white</b> patch <b>floating</b> on the black.', blem: true, why: 'A white cataract that floats: a blemish. Your mnemonic: <span class="frank" lang="he">בַּרְקָא</span>, white patches floating over the eye.', ref: 'Bekhorot 38b:1-3' },
+        { at: [130, 108], sages: true, draw: '<path d="M100 98 C120 102 138 107 154 112" stroke="#14100c" stroke-width="3.5" fill="none" stroke-linecap="round" />', read: 'A <b>black thread</b> running out of the iris into the <b>white</b> of the eye.', blem: [true, false], why: 'Rabbi Meir: a blemish, since <i>tevallul</i> is whatever <span class="frank" lang="he">מְבַלְבֵּל</span>, mixes, through the eye. Rabbi Yosei: not a blemish, “there are no blemishes in the white,” which Rav reads from “their eyes stand forth from <b>fatness</b>” (Ps. 73:7): the white is the eye’s fat, not “his eye.” Our mishna is Rabbi Yosei.', ref: 'Bekhorot 38b:8-9' },
+        { at: [200, 120], snail: true, draw: '<path d="M200 120 m0 0 a4 4 0 1 1 4 4 a9 9 0 1 1 -11 -9 a15 15 0 1 1 20 16" stroke="#c9c2ae" stroke-width="3" fill="none" filter="url(#float)" />', read: 'A spiral growth, <b>shaped like a snail</b> (<span class="frank" lang="he">חִלָּזוֹן</span>), over the pupil.', blem: true, why: 'A permanent blemish: one may slaughter on account of it.', ref: 'Bekhorot 38b:5' }
+      ];
+      var e3 = 0, found = false, lens = [90, 70];
+      addMax(eyes.length); eyes.forEach(task);
+      function moveLens(x, y) {
+        lens = [Math.max(30, Math.min(370, x)), Math.max(20, Math.min(220, y))];
+        $('lensC').setAttribute('cx', lens[0]); $('lensC').setAttribute('cy', lens[1]);
+        $('lensRing').setAttribute('cx', lens[0]); $('lensRing').setAttribute('cy', lens[1]);
+        $('lensHandle').setAttribute('x1', lens[0] + 35); $('lensHandle').setAttribute('y1', lens[1] + 35);
+        $('lensHandle').setAttribute('x2', lens[0] + 60); $('lensHandle').setAttribute('y2', lens[1] + 60);
+        var f = eyes[e3], d = Math.hypot(lens[0] - f.at[0], lens[1] - f.at[1]);
+        if (d < 24 && !found) { found = true; $('r3read').innerHTML = f.read; $('r3read').classList.remove('italic'); buildBtns(); }
+      }
+      var eyeSvg = $('eye'), dragging = false;
+      function svgPt(ev) { var r = eyeSvg.getBoundingClientRect(); return [(ev.clientX - r.left) * 400 / r.width, (ev.clientY - r.top) * 240 / r.height]; }
+      eyeSvg.addEventListener('pointerdown', function (ev) { dragging = true; eyeSvg.setPointerCapture(ev.pointerId); var p = svgPt(ev); moveLens(p[0], p[1]); });
+      eyeSvg.addEventListener('pointermove', function (ev) { if (dragging || ev.pointerType === 'mouse') { var p = svgPt(ev); moveLens(p[0], p[1]); } });
+      eyeSvg.addEventListener('pointerup', function () { dragging = false; });
+      eyeSvg.addEventListener('keydown', function (ev) {
+        var s = 12, m = { ArrowLeft: [-s, 0], ArrowRight: [s, 0], ArrowUp: [0, -s], ArrowDown: [0, s] }[ev.key];
+        if (m) { ev.preventDefault(); moveLens(lens[0] + m[0], lens[1] + m[1]); }
+      });
+      function r3load() {
+        var f = eyes[e3]; found = false;
+        $('feature').innerHTML = f.draw;
+        $('r3count').textContent = 'Firstborn ' + (e3 + 1) + ' of ' + eyes.length;
+        $('r3read').textContent = 'Sweep the lens across the eye…'; $('r3read').classList.add('italic');
+        $('r3case').innerHTML = f.sages ? 'This one is disputed. Rule it for <b>both</b> Tanna’im.' : '';
+        $('r3btns').innerHTML = ''; $('r3msg').innerHTML = ''; $('r3next').classList.add('hidden');
+        moveLens(50, 40);
+      }
+      function buildBtns() {
+        var f = eyes[e3], host = $('r3btns'), first = true;
+        var rows = f.sages ? [['Rabbi Meir', 0], ['Rabbi Yosei', 1]] : [[null, 0]], left = rows.length;
+        rows.forEach(function (row) {
+          var wrap = document.createElement('div'); wrap.className = 'flex w-full flex-wrap items-center gap-2';
+          wrap.innerHTML = (row[0] ? '<span class="w-24 text-xs font-bold !text-[#959bb3]">' + row[0] + '</span>' : '') +
+            '<button class="chip !text-[#e7e9f0]" data-v="1">Blemish: slaughter it</button><button class="chip !text-[#e7e9f0]" data-v="0">Not a blemish</button><span></span>';
+          var want = f.sages ? f.blem[row[1]] : f.blem;
+          wrap.querySelectorAll('button').forEach(function (b) {
+            b.onclick = function () {
+              if ((b.getAttribute('data-v') === '1') !== want) { first = false; b.classList.add('bad'); b.disabled = true; $('r3msg').textContent = 'Check the color, and whether it sits in the eye or floats on it.'; return; }
+              wrap.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+              wrap.lastChild.innerHTML = stamp(want, 'BLEMISH', 'NO BLEMISH');
+              if (--left === 0) {
+                if (first) award(); finish();
+                $('r3msg').innerHTML = f.why + ' ' + sef(f.ref);
+                if (f.snail) snailQs(); else if (e3 < eyes.length - 1) $('r3next').classList.remove('hidden');
+              }
+            };
+          });
+          host.appendChild(wrap);
+        });
+      }
+      $('r3next').onclick = function () { e3++; r3load(); };
+      function snailQs() {
+        chain(show('r3more'), [
+          ['The mishna lists “a snail, a snake.” One blemish or two?', [
+            { t: 'One. Rabbi Shimon ben Yosei Lakonya: “This snail… <b>is the snake</b> the Sages spoke of.”', ok: true, why: 'Rabbi Yoḥanan ben Elazar had never passed before the old man; the one time he did, he heard: <span class="frank" lang="he">שֵׁב בְּנִי, שֵׁב</span>, “Sit, my son, sit, and I’ll teach you one thing.”' },
+            { t: 'Two distinct growths.', ok: false, why: 'That was the side of the dilemma that was rejected.' },
+            { t: 'The Gemara leaves it unresolved.', ok: false, why: 'Come and hear: the elder of Lakonya resolved it.' }
+          ], 'Bekhorot 38b:4-5'],
+          ['The old man then asked his student to permit <i>his own</i> firstborn with that blemish. A Sage can’t rule on his own blemishes. How is this allowed?', [
+            { t: 'A Sage may teach his students, and they may rule for him. And per Rav Huna, his ruling counts because he taught it <b>before</b> the case came up.', ok: true, why: 'Rav Huna: a scholar ruling on something that concerns him is heeded if he said it before the incident. Lakonya had been teaching this all along.' },
+            { t: 'Because it was a clear blemish anyone could see.', ok: false, why: 'The Gemara’s answer is about when he taught it.' },
+            { t: 'It wasn’t allowed; the Gemara rejects the story.', ok: false, why: 'The story stands.' }
+          ], 'Bekhorot 38b:6-7']
+        ], function () { show('r4'); r4start(); });
+      }
+
+      // ---------- ROUND 4: the fodder trial ----------
+      function r4start() {
+        chain($('r4a'), [
+          ['The mishna says constant pale spots are ones that lasted <b>eighty days</b>, and the tears follow the moist-then-dry test. Whose view is it?', [
+            { t: 'Rabbi Yehuda.', ok: true, why: 'Rabbi Meir: pale spots 40 days, tears 80. Rabbi Yehuda: pale spots 80, and the fodder test for tears. Rabbi Ḥananya ben Antigonus adds: examine three times within the eighty.' },
+            { t: 'Rabbi Meir.', ok: false, why: 'Rabbi Meir gives pale spots only forty days.' },
+            { t: 'Rabbi Ḥananya ben Antigonus.', ok: false, why: 'He only adds the three examinations.' }
+          ], 'Bekhorot 38b:10-12'],
+          ['The mishna reads as if rain-fed fodder, moist and dry, that doesn’t heal is “not a blemish.” Rabbi Yehuda mentions only irrigated fodder. How does the Gemara square them?', [
+            { t: 'The mishna is missing words: <b>rain-fed</b> moist then dry, unhealed, <b>is</b> a blemish; irrigated fodder proves nothing; dry before moist proves nothing.', ok: true, why: 'Only rain-watered fodder is a real cure. The order matters too: moist first, then dry.' },
+            { t: 'The mishna isn’t Rabbi Yehuda after all.', ok: false, why: 'The Gemara keeps the attribution and fills in the mishna.' },
+            { t: 'Rain-fed and irrigated fodder are the same.', ok: false, why: 'The whole answer depends on them being different.' }
+          ], 'Bekhorot 38b:13-15']
+        ], function () { show('r4cal'); calStart(); });
+      }
+      var MONTHS = ['Adar', 'Nisan', 'Iyar', 'Sivan', 'Tammuz', 'Av', 'Elul', 'Tishrei'], cells = [], calStep = 0, calFirst = true;
+      function calStart() {
+        MONTHS.forEach(function (m, mi) {
+          var col = document.createElement('div'); col.className = 'flex flex-col gap-1';
+          col.innerHTML = '<span class="text-center text-[10px] !text-[#959bb3]">' + m + '</span>';
+          [0, 1].forEach(function (h) {
+            var c = document.createElement('button'); c.className = 'cell rounded !text-[#e7e9f0]'; c.setAttribute('data-v', '');
+            c.textContent = h ? '2nd ½' : '1st ½'; c.setAttribute('aria-label', m + ', ' + (h ? 'second' : 'first') + ' half: empty');
+            c.onclick = function () {
+              var nv = { '': 'm', m: 'd', d: '' }[c.getAttribute('data-v')]; c.setAttribute('data-v', nv);
+              c.setAttribute('aria-label', m + ', ' + (h ? 'second' : 'first') + ' half: ' + ({ '': 'empty', m: 'moist', d: 'dry' }[nv]));
+              tally();
+            };
+            cells.push(c); col.appendChild(c);
+          });
+          $('cal').appendChild(col);
+        });
+        addMax(2); task(); task();
+        $('r4calPrompt').innerHTML = 'Rabbi Yehuda’s baraita: the moist-then-dry treatment lasts <b>three months</b>. Rav Idi bar Avin, for Rav Yitzḥak bar Ashiyan: “<b>Adar and Nisan</b> are the moist; <b>Elul and Tishrei</b> are the dry.” Paint Rav Yitzḥak’s statement as he said it.';
+        tally();
+      }
+      function tally() {
+        var m = 0, d = 0; cells.forEach(function (c) { var v = c.getAttribute('data-v'); if (v === 'm') m++; if (v === 'd') d++; });
+        $('calTally').textContent = 'moist ' + (m / 2) + ' mo · dry ' + (d / 2) + ' mo · total ' + ((m + d) / 2) + ' months';
+      }
+      function want(step) {
+        var w = cells.map(function () { return ''; });
+        if (step === 0) { [0, 1, 2, 3].forEach(function (i) { w[i] = 'm'; }); [12, 13, 14, 15].forEach(function (i) { w[i] = 'd'; }); }
+        else { [0, 1, 2].forEach(function (i) { w[i] = 'm'; }); [12, 13, 14].forEach(function (i) { w[i] = 'd'; }); }
+        return w;
+      }
+      $('calCheck').onclick = function () {
+        var w = want(calStep), wrong = 0;
+        cells.forEach(function (c, i) { if (c.getAttribute('data-v') !== w[i]) wrong++; });
+        if (wrong) { calFirst = false; $('calMsg').textContent = wrong + ' half-month(s) off.' + (calStep ? ' Keep the order: moist first, then dry, each a month and a half.' : ' Two whole months moist, two whole months dry.'); return; }
+        if (calFirst) award(); finish(); calFirst = true;
+        if (calStep === 0) {
+          calStep = 1;
+          $('calMsg').innerHTML = 'That’s <b>four</b> months, and the baraita said three. <span class="frank" lang="he">וְהָא תַּנְיָא…</span> Contradiction. The Gemara’s fix: “Adar and <b>half</b> of Nisan are the moist; Elul and <b>half</b> of Tishrei are the dry.” ' + sef('Bekhorot 38b:16');
+          $('r4calPrompt').innerHTML = 'Now repaint it the Gemara’s way, so the total is three months.';
+        } else {
+          $('calCheck').disabled = true; cells.forEach(function (c) { c.disabled = true; });
+          $('calMsg').innerHTML = 'Three months: a month and a half of spring grass, a month and a half of end-of-summer hay. ' + sef('Bekhorot 38b:16');
+          r4more();
+        }
+      };
+      function r4more() {
+        mcq(show('r4more'), 'Must the animal eat moist fodder <i>in</i> Adar and dry fodder <i>in</i> Elul? Or may it eat moist fodder in Adar and then last summer’s leftover hay, all in the moist season?', [
+          { t: 'The proof from Rav Yitzḥak’s months is refuted, and the daf doesn’t settle it.', ok: true, why: 'His months may only name <i>which produce</i> to feed: perhaps one feeds Elul–Tishrei hay in Adar–Nisan. The dilemma stays open here.' },
+          { t: 'Rav Yitzḥak proves each fodder must be fed in its own season.', ok: false, why: 'That proof is pushed off: he may mean the produce, not the time of feeding.' },
+          { t: 'Leftover hay is explicitly allowed.', ok: false, why: 'Nobody says so explicitly.' }
+        ], 'Bekhorot 38b:17-18');
+      }
+    })();
+  </script>
+</Layout>
