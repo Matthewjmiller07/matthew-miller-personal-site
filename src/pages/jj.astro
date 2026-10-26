@@ -1,0 +1,208 @@
+---
+// J.J. Kimche's Podcast of Jewish Ideas, each ~3-minute section rated by Jev against the Rambam's
+// thirteen principles. Data comes from scripts/jj/ (transcribe, rate, pick the evidence sentence).
+import Layout from '../layouts/Layout.astro';
+import data from '../data/jj/podcast.json';
+
+const { principles, watch } = data;
+const done = data.episodes.filter((e: any) => !e.pending);
+const pending = data.episodes.filter((e: any) => e.pending);
+const totalSections = done.reduce((n: number, e: any) => n + e.sections.length, 0);
+const flagged = (s: any) => s.h.some((h: number) => h >= watch);
+const perPrinciple = principles.map((_: any, i: number) =>
+  done.reduce((n: number, e: any) => n + e.sections.filter((s: any) => s.h[i] >= watch).length, 0));
+const maxCount = Math.max(1, ...perPrinciple);
+const clock = (t: number) => {
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  return (h ? `${h}:${String(m).padStart(2, '0')}` : `${m}`) + ':' + String(s).padStart(2, '0');
+};
+const level = (r: number) => Math.min(4, Math.round(r));
+const voice: Record<string, string> = {
+  endorse: 'said as the speaker’s own view',
+  report: 'described or quoted, not clearly adopted',
+  rebut: 'raised in order to argue against it',
+  none: 'no clear stance',
+};
+const LEVELS = ['Not relevant', 'Consistent', 'Academic framing', 'Implies doubt', 'Open denial'];
+---
+
+<Layout
+  title="The Podcast of Jewish Ideas, against the Thirteen Principles"
+  description={`Every section of J.J. Kimche's Podcast of Jewish Ideas, rated by Jev against the Rambam's thirteen principles of faith: ${totalSections} sections across ${done.length} episodes so far.`}
+>
+  <div class="jj">
+    <header class="jj-intro">
+      <p class="jj-kicker">The workshop · Torah</p>
+      <h1>The Podcast of Jewish Ideas, against the Thirteen Principles</h1>
+      <p class="jj-lede">
+        J.J. Kimche's <a href="https://www.torahinmotion.org/podcasts">Podcast of Jewish Ideas</a> (Torah in Motion) brings
+        academics on to talk about the Bible, the Talmud, philosophy and Jewish history. I cut every transcript into sections
+        of about three minutes. Then I asked Jev how far each section departs from each of the Rambam's thirteen principles of
+        faith, on a scale from 0 (not relevant) to 4 (openly denies it). That's {totalSections} sections across {done.length} episodes so far.
+      </p>
+      <div class="jj-caveat">
+        <strong>How to read this.</strong> These are a classifier's ratings of the <em>ideas discussed</em>. They are not a
+        ruling on anyone. The podcast's guests often explain what Spinoza, a Bible critic or a medieval thinker held, and Jev
+        can't reliably tell explaining from endorsing. Its guess about the speaker's stance is shown on each card, but treat it
+        loosely. The transcripts are machine-made and have no speaker names, so nothing here says <em>who</em> said a line.
+        Listen to the moment before you draw a conclusion.
+      </div>
+    </header>
+
+    <section class="jj-principles" aria-label="The thirteen principles">
+      <h2>Flags by principle</h2>
+      <p class="jj-sub">How many sections Jev puts at <em>implies doubt</em> or <em>open denial</em>, with at least {Math.round(watch * 100)}% probability. Tap one to filter.</p>
+      <div class="jj-pgrid">
+        <button class="jj-p on" data-p="all" type="button">
+          <span class="jj-pn">All</span><span class="jj-pname">Any principle</span>
+          <span class="jj-pc">{done.reduce((n: number, e: any) => n + e.sections.filter(flagged).length, 0)}</span>
+        </button>
+        {principles.map((p: any, i: number) => (
+          <button class="jj-p" data-p={i} type="button" title={p.text}>
+            <span class="jj-pn">{i + 1}</span><span class="jj-pname">{p.name}</span>
+            <span class="jj-pc">{perPrinciple[i]}</span>
+            <span class="jj-pbar"><i style={`width:${(perPrinciple[i] / maxCount) * 100}%`}></i></span>
+          </button>
+        ))}
+      </div>
+      <div class="jj-legend" aria-label="Rating scale">
+        {LEVELS.map((l, i) => <span><i class={`c${i}`}></i>{i} {l}</span>)}
+      </div>
+    </section>
+
+    <section class="jj-eps">
+      {done.map((e: any) => {
+        const hits = e.sections.filter(flagged);
+        return (
+          <article class="jj-ep" data-hits={JSON.stringify(principles.map((_: any, i: number) => e.sections.filter((s: any) => s.h[i] >= watch).length))}>
+            <header>
+              <h3><a href={e.link}>{e.title.replace(/&amp;/g, '&')}</a></h3>
+              <p class="jj-meta">{e.date} · {Math.round(e.dur / 60)} min · {e.sections.length} sections · {hits.length} flagged · transcript: {e.src === 'feed' ? 'Spreaker' : 'local Whisper'}</p>
+            </header>
+            <div class="jj-heat" role="img" aria-label={`Ratings for each section against the 13 principles`} style={`grid-template-columns: 1.6em repeat(${e.sections.length}, 1fr)`}>
+              {principles.map((_: any, i: number) => (
+                <>
+                  <span class="jj-hl" data-row={i}>{i + 1}</span>
+                  {e.sections.map((s: any) => <i class={`c${level(s.r[i])}`} data-row={i} title={`${clock(s.t)} · #${i + 1} ${principles[i].name}: ${s.r[i]}`}></i>)}
+                </>
+              ))}
+            </div>
+            {hits.length > 0 && (
+              <details>
+                <summary><span class="jj-count">{hits.length}</span> flagged {hits.length === 1 ? 'moment' : 'moments'}</summary>
+                <ol class="jj-hits">
+                  {hits.map((s: any) => (
+                    <li class="jj-hit" data-ps={JSON.stringify(s.h.map((h: number, i: number) => (h >= watch ? i : -1)).filter((i: number) => i >= 0))}>
+                      <div class="jj-hit-top">
+                        <span class="jj-t">{clock(s.t)}</span>
+                        {s.h.map((h: number, i: number) => h >= watch && (
+                          <span class={`jj-chip ${s.r[i] >= 3.5 ? 'c4' : 'c3'}`} title={principles[i].text}>#{i + 1} {principles[i].name} · {s.r[i].toFixed(1)} · {Math.round(h * 100)}%</span>
+                        ))}
+                      </div>
+                      {s.x && <blockquote>“{s.x}”</blockquote>}
+                      <p class="jj-voice">Stance, per Jev: {voice[s.v]}</p>
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            )}
+          </article>
+        );
+      })}
+    </section>
+
+    {pending.length > 0 && (
+      <section class="jj-pending">
+        <h2>Still transcribing</h2>
+        <p class="jj-sub">These {pending.length} episodes have no transcript in the feed, so they're running through Whisper on my own machine. They'll show up here when they're done.</p>
+        <ul>{pending.map((e: any) => <li><a href={e.link}>{e.title.replace(/&amp;/g, '&')}</a></li>)}</ul>
+      </section>
+    )}
+
+    <footer class="jj-foot">
+      <h2>Method</h2>
+      <p>
+        Episodes 76–93 come with transcripts in the <a href={data.feed}>podcast's RSS feed</a>. The rest are transcribed
+        locally with whisper.cpp (base.en). Each transcript is cut into sections of about 450 words. For each section, Jev
+        (<a href="https://typesafe.ai">TypeSafe</a>'s System One model) gets the episode title, its description and the passage,
+        and answers thirteen Score questions, one per principle, on the five-level scale above, plus a Choice about stance. A
+        section is flagged when Jev gives at least {Math.round(watch * 100)}% probability to <em>implies doubt</em> or <em>open denial</em>.
+        The quoted sentence is the one Jev picks, from the section's own sentences, as stating the idea behind the strongest flag.
+        The excerpts are short, so you can find the moment; the full conversations are on the podcast.
+      </p>
+      <p>The principles, as summarized here, follow the Rambam's introduction to Perek Ḥelek (Sanhedrin 10) and the familiar <em>Ani Ma'amin</em> wording.</p>
+    </footer>
+  </div>
+</Layout>
+
+<script>
+  const btns = document.querySelectorAll<HTMLButtonElement>('.jj-p');
+  btns.forEach((b) => b.addEventListener('click', () => {
+    btns.forEach((x) => x.classList.toggle('on', x === b));
+    const p = b.dataset.p === 'all' ? null : Number(b.dataset.p);
+    document.querySelectorAll<HTMLElement>('.jj-ep').forEach((ep) => {
+      const hits: number[] = JSON.parse(ep.dataset.hits!);
+      const n = p === null ? Number(ep.querySelector('.jj-hits')?.children.length ?? 0) : hits[p];
+      ep.hidden = p !== null && n === 0;
+      ep.querySelectorAll('.jj-count').forEach((c) => { c.textContent = String(n); });
+      ep.querySelectorAll<HTMLElement>('[data-row]').forEach((c) => c.classList.toggle('dim', p !== null && Number(c.dataset.row) !== p));
+      ep.querySelectorAll<HTMLElement>('.jj-hit').forEach((h) => { h.hidden = p !== null && !JSON.parse(h.dataset.ps!).includes(p); });
+      const d = ep.querySelector('details');
+      if (d) d.open = p !== null && n > 0;
+    });
+  }));
+</script>
+
+<style is:global>
+  .jj { --accent:#7a3b2e; --accent-soft:rgba(122,59,46,.1); --rule:rgba(127,127,127,.28);
+    --c0:rgba(127,127,127,.12); --c1:#9fc5a8; --c2:#e8cf7a; --c3:#e39a55; --c4:#c2412f;
+    max-width: 1000px; margin: 0 auto; padding: 48px 16px 80px; }
+  .jj [hidden] { display: none !important; }
+  .jj-intro { max-width: 760px; }
+  .jj-kicker { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .jj h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.1; margin: 8px 0 16px; }
+  .jj h2 { font-size: 20px; margin: 0 0 6px; }
+  .jj-lede { font-size: 17px; line-height: 1.6; }
+  .jj-caveat { margin: 18px 0 8px; padding: 14px 16px; border-left: 3px solid var(--accent); background: var(--accent-soft);
+    border-radius: 0 10px 10px 0; font-size: 15px; line-height: 1.55; }
+  .jj-sub { font-size: 14px; opacity: .75; margin: 0 0 14px; }
+  .jj-principles { margin: 40px 0 28px; }
+  .jj-pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .jj-p { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 8px; align-items: baseline; text-align: left;
+    border: 1px solid var(--rule); background: transparent; color: inherit; border-radius: 10px; padding: 10px 12px; cursor: pointer; font: inherit; }
+  .jj-p:hover { border-color: var(--accent); }
+  .jj-p.on { border-color: var(--accent); background: var(--accent-soft); }
+  .jj-pn { font-weight: 800; color: var(--accent); font-size: 13px; }
+  .jj-pname { font-size: 13px; line-height: 1.25; }
+  .jj-pc { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 14px; }
+  .jj-pbar { grid-column: 1 / -1; height: 3px; background: var(--rule); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  .jj-pbar i { display: block; height: 100%; background: var(--c3); }
+  .jj-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 14px; font-size: 12px; opacity: .85; }
+  .jj-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .jj-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .jj .c0 { background: var(--c0); } .jj .c1 { background: var(--c1); } .jj .c2 { background: var(--c2); }
+  .jj .c3 { background: var(--c3); } .jj .c4 { background: var(--c4); color: #fff; }
+  .jj-eps { display: flex; flex-direction: column; gap: 14px; }
+  .jj-ep { border: 1px solid var(--rule); border-radius: 14px; padding: 16px 18px; }
+  .jj-ep h3 { font-size: 17px; margin: 0 0 2px; line-height: 1.3; }
+  .jj-ep h3 a { color: inherit; text-decoration: none; } .jj-ep h3 a:hover { text-decoration: underline; }
+  .jj-meta { font-size: 13px; opacity: .7; margin: 0 0 10px; }
+  .jj-heat { display: grid; gap: 1px; }
+  .jj-heat i { height: 7px; border-radius: 1px; min-width: 0; }
+  .jj-hl { font-size: 8px; line-height: 7px; opacity: .55; font-variant-numeric: tabular-nums; }
+  .jj-heat .dim { opacity: .15; }
+  .jj details { margin-top: 12px; }
+  .jj summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--accent); }
+  .jj-hits { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 10px; }
+  .jj-hit { border-top: 1px dashed var(--rule); padding-top: 10px; }
+  .jj-hit-top { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .jj-t { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; margin-right: 4px; }
+  .jj .jj-chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; color: #1d1d1d !important; }
+  .jj .jj-chip.c4 { color: #fff !important; }
+  .jj blockquote { margin: 8px 0 4px; font-size: 15px; line-height: 1.5; font-style: italic; border: 0; padding: 0; }
+  .jj-voice { font-size: 12px; opacity: .7; margin: 0; }
+  .jj-pending { margin-top: 36px; }
+  .jj-pending ul { columns: 2 280px; font-size: 14px; line-height: 1.6; padding-left: 18px; }
+  .jj-pending a { color: inherit; }
+  .jj-foot { margin-top: 40px; font-size: 14px; line-height: 1.6; opacity: .85; max-width: 760px; }
+</style>
