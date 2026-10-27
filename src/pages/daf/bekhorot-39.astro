@@ -1,0 +1,408 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Outside or Inside? — Daf Yomi Game: Bekhorot 39"
+  description="Bekhorot 39: slide an X-ray across a firstborn's head to find which blemishes show, ask the unanswerable feeding questions, drag a missing kidney along the sacrifice timeline, and mark which blemishes three sages count."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .card { background: #11131b; border: 1px solid #262a3a; border-radius: 1rem; }
+    .chip { border: 1px solid #3a3f55; border-radius: 0.6rem; padding: 0.45rem 0.75rem; font-size: 0.8rem; transition: background .15s, border-color .15s; text-align: left; }
+    .chip:hover:not(:disabled) { background: #191c28; }
+    .chip.ok { background: #13261f; border-color: #6cc3a6; }
+    .chip.bad { background: #33191a; border-color: #cc5a48; }
+    .chip.on { background: #2a2414; border-color: #e0b54a; }
+    .chip:disabled { cursor: default; opacity: .92; }
+    .tgl { border: 1px solid #3a3f55; border-radius: 999px; padding: .3rem .8rem; font-size: .75rem; }
+    .tgl[aria-pressed="true"] { background: #2a2414; border-color: #e0b54a; }
+    .mx { width: 100%; height: 2.6rem; border: 1px solid #3a3f55; border-radius: .5rem; font-size: .7rem; transition: background .15s; }
+    .mx[data-v="1"] { background: #5a1f1a; border-color: #cc5a48; }
+    .mx[data-v="0"] { background: #13261f; border-color: #6cc3a6; }
+    .mx.hit { outline: 2px solid #e0b54a; }
+    #xr { accent-color: #e0b54a; width: 100%; }
+    .tl-slot { flex: 1; min-height: 3.4rem; border: 1px dashed #3a3f55; border-radius: .6rem; font-size: .72rem; padding: .35rem; text-align: center; }
+    .tl-slot.on { border-style: solid; border-color: #e0b54a; background: #2a2414; }
+    .lamp { display: inline-block; width: .7rem; height: .7rem; border-radius: 999px; background: #3a3f55; margin-right: .35rem; }
+    .lamp.g { background: #6cc3a6; box-shadow: 0 0 8px #6cc3a6; }
+    .lamp.y { background: #e0b54a; box-shadow: 0 0 8px #e0b54a; }
+    button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid #e0b54a; outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { .chip, .mx { transition: none; } }
+  </style>
+
+  <main class="min-h-screen bg-[#0a0b10] !text-[#e7e9f0]">
+
+    <div class="border-b border-[#262a3a] bg-gradient-to-b from-[#161a2a] to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs tracking-[0.22em] !text-[#959bb3]">
+        <a href="/daf" class="transition-colors hover:!text-[#e7e9f0]">daf yomi arcade</a>
+        <span class="mx-2 opacity-40">·</span>bekhorot 39<span class="mx-2 opacity-40">·</span>2026-10-27
+      </p>
+      <svg viewBox="0 0 80 50" class="mx-auto mb-3 h-12 w-20" aria-hidden="true">
+        <ellipse cx="34" cy="26" rx="26" ry="16" fill="#d9d0bb" stroke="#e0b54a" stroke-width="2" />
+        <ellipse cx="62" cy="30" rx="13" ry="9" fill="#c9bfa6" stroke="#e0b54a" stroke-width="2" />
+        <circle cx="64" cy="29" r="2" fill="#0a0b10" /><circle cx="70" cy="30" r="1.6" fill="#0a0b10" />
+        <circle cx="28" cy="22" r="2.4" fill="#0a0b10" />
+      </svg>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl !text-[#f4f5fa]">Outside or Inside?</h1>
+      <p class="frank mt-3 text-3xl font-light !text-[#e0b54a]" dir="rtl" lang="he">מוּם גָּלוּי</p>
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed !text-[#adb2c7]">
+        A hole in a nostril, a tooth you can't see, a kidney nobody checked, a testicle that hangs. A blemish
+        counts when you can see it. Four rounds, straight from the daf.
+      </p>
+      <p class="mt-4 text-xs !text-[#959bb3]">Score: <span id="score" class="font-bold !text-[#e0b54a]">0</span> / <span id="max" class="font-bold !text-[#e0b54a]">0</span></p>
+    </div>
+
+    <div class="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+
+      <!-- ROUND 1 -->
+      <section class="card p-5">
+        <p class="text-xs tracking-[0.2em] !text-[#959bb3]">ROUND 1 · 39A:8–14</p>
+        <h2 class="frank mt-1 text-2xl font-bold !text-[#f4f5fa]">The X-ray slider</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#adb2c7]">
+          The mishna adds the nose, lip and gums to the list of blemishes that let a kohen slaughter a firstborn
+          outside the Temple. Each defect below is hidden on one layer of the head. Slide between the
+          <b>outside</b> and the <b>X-ray</b> until you find it, then rule: does it permit slaughter?
+        </p>
+        <div class="mt-4 grid gap-4 sm:grid-cols-[1.1fr_1fr]">
+          <div>
+            <svg viewBox="0 0 260 170" class="w-full rounded-xl bg-[#0d0f16]" role="img" aria-label="Side view of an animal's head with an outer layer and an X-ray layer">
+              <path d="M20 40 C60 10 150 10 190 40 L240 80 C250 110 230 140 190 140 L80 140 C40 140 15 100 20 40 Z" fill="#d9d0bb" stroke="#8d846f" stroke-width="2" id="skin" />
+              <circle cx="80" cy="60" r="7" fill="#0a0b10" />
+              <g id="xrayLayer" opacity="0">
+                <path d="M20 40 C60 10 150 10 190 40 L240 80 C250 110 230 140 190 140 L80 140 C40 140 15 100 20 40 Z" fill="#0d1a26" stroke="#4fa3d1" stroke-width="2" />
+                <path d="M120 112 H235 M120 112 V100 M140 112 V100 M160 112 V100 M180 112 V100" stroke="#bfe3f5" stroke-width="5" stroke-linecap="round" />
+                <path d="M118 126 H215" stroke="#4fa3d1" stroke-width="2" stroke-dasharray="3 4" />
+              </g>
+              <circle id="mark" r="9" cx="0" cy="0" fill="#cc5a48" stroke="#fff" stroke-width="2" opacity="0" />
+            </svg>
+            <label class="mt-3 block text-[11px] !text-[#959bb3]" for="xr">outside ◂ ▸ X-ray</label>
+            <input id="xr" type="range" min="0" max="100" value="0" aria-label="Slide between outside view and X-ray view" />
+          </div>
+          <div>
+            <p id="r1case" class="min-h-[3rem] text-sm leading-relaxed !text-[#e7e9f0]"></p>
+            <div id="r1opts" class="mt-3 flex flex-col gap-2"></div>
+            <p id="r1msg" class="mt-3 text-sm leading-relaxed !text-[#adb2c7]"></p>
+          </div>
+        </div>
+        <div id="r1b" class="mt-5 hidden"></div>
+      </section>
+
+      <!-- ROUND 2 -->
+      <section class="card p-5">
+        <p class="text-xs tracking-[0.2em] !text-[#959bb3]">ROUND 2 · 39A:1–7</p>
+        <h2 class="frank mt-1 text-2xl font-bold !text-[#f4f5fa]">The questions that stand</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#adb2c7]">
+          For the moist-then-dry fodder test the Gemara asks about every circumstance of the feeding. Set the
+          switches. Some settings the Gemara calls <b>certainly effective</b>; the others
+          <b>the question stands</b> (<span class="frank" lang="he">תֵּיקוּ</span>). Flip each one and read the lamp.
+        </p>
+        <div id="r2sw" class="mt-4 grid gap-2 sm:grid-cols-2"></div>
+        <p class="mt-3 text-xs !text-[#959bb3]">Lamp: <span class="lamp g"></span>certainly effective <span class="lamp y ml-3"></span>unresolved</p>
+        <div id="r2q" class="mt-5"></div>
+      </section>
+
+      <!-- ROUND 3 -->
+      <section class="card p-5">
+        <p class="text-xs tracking-[0.2em] !text-[#959bb3]">ROUND 3 · 39A:15–39B:5</p>
+        <h2 class="frank mt-1 text-2xl font-bold !text-[#f4f5fa]">The missing kidney</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#adb2c7]">
+          Rav Aḥadvoi bar Ami asks: does a missing <i>internal</i> limb matter? First fix what he can't be asking.
+        </p>
+        <div id="r3a"></div>
+        <div id="r3b" class="mt-5 hidden">
+          <p class="text-sm leading-relaxed !text-[#adb2c7]">
+            Two baraitot read the verse about “the two kidneys” (Lev. 3:4) differently. Rabbi Yoḥanan reconciles them
+            by <b>when</b> the animal lost its kidney, and the Gemara pushes the line later and later. Drag the
+            missing-kidney marker to a moment and see the ruling. Tap a slot to place it.
+          </p>
+          <div class="mt-4 flex gap-1" id="tl" role="group" aria-label="Timeline of the sacrifice"></div>
+          <p id="tlmsg" class="mt-3 min-h-[3rem] text-sm leading-relaxed !text-[#e7e9f0]"></p>
+          <div id="r3c" class="mt-4"></div>
+        </div>
+      </section>
+
+      <!-- ROUND 4 -->
+      <section class="card p-5">
+        <p class="text-xs tracking-[0.2em] !text-[#959bb3]">ROUND 4 · 39B:6–16</p>
+        <h2 class="frank mt-1 text-2xl font-bold !text-[#f4f5fa]">Stones, pouch and tassel</h2>
+        <p class="mt-2 text-sm leading-relaxed !text-[#adb2c7]">
+          Leviticus 22:24 bars an animal whose stones are <b>bruised, crushed, torn or cut</b>. Mark each cell
+          red where the sage counts it a blemish; green where he doesn't. Tap a cell to cycle. Rabbi Yehuda is stated
+          to include the penis too, as the Gemara reads him.
+        </p>
+        <div class="mt-4 overflow-x-auto">
+          <div class="grid min-w-[30rem] grid-cols-5 gap-1 text-center text-[11px] !text-[#959bb3]" id="mx"></div>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button id="mxCheck" class="chip">Check the grid</button>
+        </div>
+        <p id="mxMsg" class="mt-3 text-sm leading-relaxed !text-[#adb2c7]"></p>
+        <div id="r4b" class="mt-5 hidden"></div>
+        <div id="r4c" class="mt-5 hidden">
+          <h3 class="frank text-lg font-bold !text-[#f4f5fa]">A finger of tassel</h3>
+          <p class="mt-2 text-sm leading-relaxed !text-[#adb2c7]">
+            The mishna's “fingerbreadth” (a quarter of an average handbreadth) is brought for a different law:
+            tzitzit. Choose a school and see how many strings hang and how much hangs beyond the knots.
+          </p>
+          <div class="mt-3 flex gap-2">
+            <button class="tgl" id="bsh" aria-pressed="false">Beit Shammai</button>
+            <button class="tgl" id="bhl" aria-pressed="true">Beit Hillel</button>
+          </div>
+          <svg viewBox="0 0 220 130" class="mt-3 w-full max-w-sm rounded-xl bg-[#0d0f16]" id="tz" role="img" aria-label="Tassel diagram"></svg>
+          <p id="tzmsg" class="mt-2 text-sm !text-[#adb2c7]"></p>
+          <div id="r4d" class="mt-4"></div>
+        </div>
+      </section>
+
+      <div id="final" class="card hidden p-5 text-center"></div>
+
+      <section class="card p-5">
+        <h2 class="frank mb-3 text-lg font-bold !text-[#f4f5fa]">Learn the real daf</h2>
+        <div class="mb-4 flex flex-wrap gap-2">
+          <a href="https://www.sefaria.org/Bekhorot.39a" target="_blank" rel="noopener" class="rounded-lg border border-[#262a3a] px-4 py-2 text-xs font-bold !text-[#e0b54a] transition-colors hover:bg-[#191c28]">Bekhorot 39a on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Bekhorot.39b" target="_blank" rel="noopener" class="rounded-lg border border-[#262a3a] px-4 py-2 text-xs font-bold !text-[#e0b54a] transition-colors hover:bg-[#191c28]">Bekhorot 39b on Sefaria ↗</a>
+          <a href="https://www.sefaria.org/Leviticus.22.24" target="_blank" rel="noopener" class="rounded-lg border border-[#262a3a] px-4 py-2 text-xs font-bold !text-[#e0b54a] transition-colors hover:bg-[#191c28]">The stones: Lev. 22:24 ↗</a>
+          <a href="https://www.sefaria.org/Mishnah_Kelim.17.9" target="_blank" rel="noopener" class="rounded-lg border border-[#262a3a] px-4 py-2 text-xs font-bold !text-[#e0b54a] transition-colors hover:bg-[#191c28]">Kelim 17:9 ↗</a>
+          <a href="https://www.sefaria.org/Bekhorot.40a" target="_blank" rel="noopener" class="rounded-lg border border-[#262a3a] px-4 py-2 text-xs font-bold !text-[#e0b54a] transition-colors hover:bg-[#191c28]">Continue: Bekhorot 40a ↗</a>
+        </div>
+        <p class="mb-2 text-xs !text-[#959bb3]">Top works linked to this daf:</p>
+        <ul class="grid gap-1 text-sm sm:grid-cols-2">
+          <li><a href="https://www.sefaria.org/Rashi_on_Bekhorot.39a" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Rashi (70) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.39a" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Rabbeinu Gershom (46) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.39a" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Steinsaltz (39) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Rashash_on_Bekhorot.39a" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Rashash (10) ↗</a></li>
+          <li><a href="https://www.sefaria.org/Mishnah_Bekhorot.6.5" target="_blank" rel="noopener" class="!text-[#c3c7d8] transition-colors hover:!text-[#e0b54a]">Mishnah Bekhorot 6 ↗</a></li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <script is:inline>
+    (function () {
+      var $ = function (id) { return document.getElementById(id); };
+      var score = 0, maxS = 0, pending = 4;
+      function addMax(n) { maxS += n; $('max').textContent = maxS; }
+      function award() { score++; $('score').textContent = score; }
+      function sef(r) { return '<a class="!text-[#e0b54a] underline" target="_blank" rel="noopener" href="https://www.sefaria.org/' + r.replace(/ /g, '_').replace(/:/g, '.') + '">' + r + '</a>'; }
+      function esc(s) { return s; }
+      function done() { pending--; if (pending <= 0) { var f = $('final'); f.classList.remove('hidden'); f.innerHTML = '<p class="frank text-2xl font-bold !text-[#f4f5fa]">' + score + ' / ' + maxS + '</p><p class="mt-2 text-sm !text-[#adb2c7]">The daf keeps asking: is it visible, is it whole, was it whole when it mattered? Tomorrow: Bekhorot 40.</p>'; } }
+
+      // generic multiple choice, one point per question (first try)
+      function mcq(host, prompt, opts, ref, cb) {
+        addMax(1);
+        var box = document.createElement('div'); box.className = 'mt-3';
+        box.innerHTML = '<p class="text-sm leading-relaxed !text-[#e7e9f0]">' + prompt + '</p>';
+        var list = document.createElement('div'); list.className = 'mt-2 flex flex-col gap-2';
+        var msg = document.createElement('p'); msg.className = 'mt-2 text-sm leading-relaxed !text-[#adb2c7]';
+        var first = true, solved = false;
+        opts.forEach(function (o) {
+          var b = document.createElement('button'); b.className = 'chip !text-[#e7e9f0]'; b.innerHTML = o.t;
+          b.onclick = function () {
+            if (solved) return;
+            if (o.ok) { solved = true; b.classList.add('ok'); if (first) award(); msg.innerHTML = o.why + ' ' + sef(ref); list.querySelectorAll('button').forEach(function (x) { x.disabled = true; }); if (cb) cb(); }
+            else { first = false; b.classList.add('bad'); b.disabled = true; msg.innerHTML = o.why; }
+          };
+          list.appendChild(b);
+        });
+        box.appendChild(list); box.appendChild(msg); host.appendChild(box);
+      }
+
+      // ---------- ROUND 1 ----------
+      var CASES = [
+        { layer: 0, x: 105, y: 78, t: 'The nostrils are pierced one into the other, and the hole shows on the <b>outer</b> side of the nostril.', ok: true, why: 'A blemish: visible on the outside (baraita).', ref: 'Bekhorot 39a:9' },
+        { layer: 1, x: 105, y: 78, t: 'The nostrils are pierced one into the other, but the hole shows only on the <b>inside</b> of the nostril.', ok: false, why: 'Not a blemish: visible only inside (baraita).', ref: 'Bekhorot 39a:9' },
+        { layer: 0, x: 215, y: 105, t: 'The lip is split in the <b>outer, front row</b> that protrudes (Rav Pappa).', ok: true, why: 'Rav Pappa: the mishna means the outer row of the lip.', ref: 'Bekhorot 39a:9' },
+        { layer: 0, x: 195, y: 110, t: 'The <b>external gums</b> are damaged and lacking.', ok: true, why: 'The mishna lists external gums that were damaged and lacking, or scratched.', ref: 'Bekhorot 39a:10' },
+        { layer: 1, x: 160, y: 112, t: 'The <b>inner gums</b> (from the double teeth inward) were damaged or scratched.', ok: false, why: 'A concealed blemish: no slaughter for damage or scratching there. Only extraction counts.', ref: 'Bekhorot 39a:13' },
+        { layer: 1, x: 160, y: 112, t: 'The <b>inner gums</b> were <b>extracted</b>.', ok: true, why: 'The baraita is incomplete: if the inner gums were extracted, one does slaughter for it (as the mishna lists).', ref: 'Bekhorot 39a:13' }
+      ];
+      var ci = 0, answered = false;
+      function layerShow() {
+        var v = +$('xr').value; $('xrayLayer').setAttribute('opacity', (v / 100).toFixed(2));
+        var c = CASES[ci], seen = c.layer === 0 ? v < 40 : v > 60;
+        $('mark').setAttribute('opacity', seen ? 1 : 0);
+      }
+      $('xr').oninput = layerShow;
+      function showCase() {
+        var c = CASES[ci]; answered = false; $('r1msg').textContent = ''; $('xr').value = 0; layerShow();
+        $('mark').setAttribute('cx', c.x); $('mark').setAttribute('cy', c.y);
+        $('r1case').innerHTML = '<span class="text-[11px] !text-[#959bb3]">Case ' + (ci + 1) + ' of ' + CASES.length + '</span><br>' + c.t + (c.layer ? ' <span class="!text-[#959bb3]">(hint: slide to the X-ray)</span>' : '');
+        var o = $('r1opts'); o.innerHTML = '';
+        [['Permits slaughter', true], ['Does not permit', false]].forEach(function (p) {
+          var b = document.createElement('button'); b.className = 'chip !text-[#e7e9f0]'; b.textContent = p[0];
+          b.onclick = function () {
+            if (answered) return; answered = true;
+            var right = p[1] === c.ok; b.classList.add(right ? 'ok' : 'bad'); if (right) award();
+            $('r1msg').innerHTML = (right ? '' : 'Not quite. ') + c.why + ' ' + sef(c.ref);
+            o.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+            var nx = document.createElement('button'); nx.className = 'chip !text-[#e0b54a]'; nx.textContent = ci < CASES.length - 1 ? 'Next case →' : 'On to the sages →';
+            nx.onclick = function () { if (ci < CASES.length - 1) { ci++; showCase(); } else { nx.disabled = true; r1b(); } };
+            o.appendChild(nx);
+          };
+          o.appendChild(b);
+        });
+      }
+      addMax(CASES.length); showCase();
+      function r1b() {
+        var h = $('r1b'); h.classList.remove('hidden');
+        h.innerHTML = '<p class="text-sm leading-relaxed !text-[#adb2c7]">Now the double teeth (the big molars). The first tanna calls them and everything inward <b>concealed</b>. But the Gemara reads the baraita so that the three sages split on the case where the inner gums were <b>extracted</b>.</p>';
+        mcq(h, 'Inner gums extracted: what does each sage say?', [
+          { t: 'First tanna: slaughter the firstborn. Rabbi Yehoshua ben Kefutzai: no slaughter, but the animal is disqualified as an offering. Rabbi Ḥanina ben Antigonus: not even disqualified.', ok: true, why: 'That is the Gemara’s completion of the baraita.' },
+          { t: 'All three: slaughter the firstborn.', ok: false, why: 'Rabbi Yehoshua ben Kefutzai slaughters only for the outer teeth, and Rabbi Ḥanina ben Antigonus ignores the double teeth altogether.' },
+          { t: 'First tanna: no slaughter. Rabbi Ḥanina: slaughter.', ok: false, why: 'Rabbi Ḥanina ben Antigonus is the most lenient about the double teeth: he pays them no attention.' }
+        ], 'Bekhorot 39a:13-14', done);
+      }
+
+      // ---------- ROUND 2 ----------
+      var SW = [
+        { a: 'Before eating', b: 'After eating', good: 0, bad: 'Before eating it works like a medicine taken before a meal. After eating: unresolved.' },
+        { a: 'Before drinking', b: 'After drinking', good: 0, bad: 'Before drinking it works like barley fed before a drink. After: unresolved.' },
+        { a: 'Untied', b: 'Tied', good: 0, bad: 'Untied: certainly effective. Tied: unresolved.' },
+        { a: 'With another animal', b: 'By itself', good: 0, bad: 'With another it is comfortable. Alone: unresolved.' },
+        { a: 'In the field', b: 'In the city', good: 0, bad: 'In the field it is calm. In the city: unresolved.' },
+        { a: 'Field', b: 'Garden next to the city', good: 0, bad: 'Rav Ashi’s extra question about the garden: unresolved.', allUnres: 1 }
+      ];
+      var sws = SW.map(function () { return 0; }), r2seen = {};
+      SW.forEach(function (s, i) {
+        var d = document.createElement('div'); d.className = 'rounded-lg border border-[#262a3a] p-3';
+        d.innerHTML = '<div class="flex gap-2"></div><p class="mt-2 text-xs !text-[#adb2c7]"><span class="lamp g"></span><span class="t">Certainly effective.</span></p>';
+        var row = d.firstChild, t = d.querySelector('.t'), lamp = d.querySelector('.lamp');
+        [s.a, s.b].forEach(function (lab, k) {
+          var b = document.createElement('button'); b.className = 'tgl !text-[#e7e9f0]'; b.textContent = lab; b.setAttribute('aria-pressed', k === 0 ? 'true' : 'false');
+          b.onclick = function () {
+            sws[i] = k; row.querySelectorAll('button').forEach(function (x, j) { x.setAttribute('aria-pressed', j === k ? 'true' : 'false'); });
+            var bad = k === 1; lamp.className = 'lamp ' + (bad ? 'y' : 'g');
+            t.textContent = bad ? 'The question stands (teiku).' : 'Certainly effective.';
+            if (bad && !r2seen[i]) { r2seen[i] = 1; if (Object.keys(r2seen).length === SW.length) r2q(); }
+          };
+          row.appendChild(b);
+        });
+        $('r2sw').appendChild(d);
+      });
+      var r2done = false;
+      function r2q() {
+        if (r2done) return; r2done = true;
+        var h = $('r2q'); h.innerHTML = '<p class="text-sm !text-[#e7e9f0]">Every switch tried. Now two questions on the surrounding sugya:</p>';
+        mcq(h, 'Rav Naḥman bar Yitzḥak on the pale spots that are examined “three times within eighty days.” What does he add?', [
+          { t: 'The three examinations must fall in equal thirds, with an even gap between them.', ok: true, why: 'That is his qualification of Rabbi Ḥananya ben Antigonus.' },
+          { t: 'All three must be done in one week.', ok: false, why: 'The point is the opposite: they are spaced out.' },
+          { t: 'Only two are needed if the first is on the eightieth day.', ok: false, why: 'Three, evenly spread.' }
+        ], 'Bekhorot 39a:4', function () {
+          mcq(h, 'Pineḥas, Mar Shmuel’s brother, asks: if the animal ate the moist-then-dry fodder and was not healed, is it blemished <b>retroactively</b> or only from then on? What turns on it?', [
+            { t: 'Whether benefiting from the redemption money, paid before the three months ended, is misuse of consecrated property: yes if retroactive (the redemption worked), no if only from then on.', ok: true, why: 'And Shmuel quoted “The lame take the prey”: someone unlearned asked what he couldn’t answer.' },
+            { t: 'Whether the animal may be shorn.', ok: false, why: 'The Gemara’s practical difference is about redemption money and me’ila.' },
+            { t: 'Whether the kohen may eat it as a peace offering.', ok: false, why: 'The practical difference is the redemption money.' }
+          ], 'Bekhorot 39a:5-7', done);
+        });
+      }
+
+      // ---------- ROUND 3 ----------
+      mcq($('r3a'), 'With regard to what law could Rav Aḥadvoi be asking about a missing internal limb? (Deut. 15:21 “lameness or blindness” and Lev. 22:22 “blind or broken” are both exposed blemishes.)', [
+        { t: 'Only whether the animal is disqualified from being sacrificed (“it shall be complete to be accepted”).', ok: true, why: 'Slaughtering a firstborn and redeeming other consecrated animals require an exposed blemish, so he isn’t asking about those.' },
+        { t: 'Whether a firstborn may be slaughtered outside the Temple.', ok: false, why: 'Deut. 15:21 requires an exposed blemish, so that isn’t in doubt.' },
+        { t: 'Whether another consecrated animal may be redeemed.', ok: false, why: 'Lev. 22:22 lists exposed blemishes, so that isn’t in doubt either.' }
+      ], 'Bekhorot 39a:15-17', function () { $('r3b').classList.remove('hidden'); initTL(); });
+      var SLOTS = [
+        { n: 'Lost before slaughter', v: 'Disqualified. This is the first baraita (two kidneys, and one is missing).', bad: 1 },
+        { n: 'Lost after slaughter, before the blood is collected', v: 'Still disqualified: Rav, via Rabbi Zeira, derives from “the bull” that the animal must be as it was before slaughter when the blood is collected. Slitting the ear after slaughter and then collecting disqualifies it.', bad: 1 },
+        { n: 'Lost after the blood is collected', v: 'Fit. This is the second baraita. Even though the Paschal verse says “shall be” without blemish, the Gemara reads it to require only the first year at sprinkling, and Rabbi Yehoshua says that as long as an olive-bulk of flesh or fat remains the blood is sprinkled.', bad: 0 }
+      ];
+      function initTL() {
+        var tl = $('tl'); tl.innerHTML = '';
+        SLOTS.forEach(function (s, i) {
+          var b = document.createElement('button'); b.className = 'tl-slot !text-[#e7e9f0]'; b.textContent = (i === 0 ? '① ' : i === 1 ? '② ' : '③ ') + s.n;
+          b.onclick = function () {
+            tl.querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on');
+            $('tlmsg').innerHTML = (s.bad ? '❌ ' : '✅ ') + s.v;
+            tried[i] = 1; if (Object.keys(tried).length === 3 && !r3cDone) r3c();
+          };
+          tl.appendChild(b);
+        });
+      }
+      var tried = {}, r3cDone = false;
+      function r3c() {
+        r3cDone = true;
+        var h = $('r3c');
+        mcq(h, 'The Gemara asks Rava’s question: can an animal be in its first year at slaughter but its second at the collection of the blood? What does Rava conclude?', [
+          { t: 'Hours disqualify in sacrificial animals: age is counted from the exact hour of birth, so an animal that turns a year old between slaughter and collection is disqualified.', ok: true, why: 'That is why the Paschal “first year” requirement is meaningful at the later stages.' },
+          { t: 'Age is counted by the calendar year, so it can never happen.', ok: false, why: 'Rava says the opposite: hours count.' },
+          { t: 'Only the day of birth matters, not the hour.', ok: false, why: '“Hours disqualify.”' }
+        ], 'Bekhorot 39b:5', function () {
+          mcq(h, 'The Gemara tries to find the dispute (is a missing internal limb a lack?) in the baraita on Lev. 22:24. It rejects it. Why?', [
+            { t: 'Rabbi Yosei counts “bruised or crushed” (hidden) as blemishes but not “torn or cut,” so he can’t be a consistent “internal limb counts” or “doesn’t count” opponent. The dispute is about exposed blemishes.', ok: true, why: 'So the three sages dispute what is visibly a blemish, not whether internal lack counts. The matter is left open.' },
+            { t: 'Because Rabbi Yehuda and Rabbi Eliezer ben Ya’akov agree.', ok: false, why: 'They disagree, but the dispute doesn’t fit the internal-limb question.' },
+            { t: 'Because the Torah says nothing about the testicles.', ok: false, why: 'Lev. 22:24 names them.' }
+          ], 'Bekhorot 39b:6-9', done);
+        });
+      }
+
+      // ---------- ROUND 4 ----------
+      var COLS = ['Stones: bruised / crushed', 'Stones: torn / cut', 'Penis: bruised / crushed', 'Penis: torn / cut'];
+      var ROWS = [
+        { n: 'Rabbi Yehuda', w: [1, 1, 1, 1] },
+        { n: 'Rabbi Eliezer ben Ya’akov', w: [0, 0, 1, 1] },
+        { n: 'Rabbi Yosei', w: [1, 0, 1, 1] }
+      ];
+      var cells = [];
+      var mx = $('mx'); mx.appendChild(document.createElement('div'));
+      COLS.forEach(function (c) { var d = document.createElement('div'); d.textContent = c; mx.appendChild(d); });
+      ROWS.forEach(function (r, ri) {
+        var n = document.createElement('div'); n.className = 'flex items-center justify-end pr-2 text-[11px] !text-[#e7e9f0]'; n.textContent = r.n; mx.appendChild(n);
+        COLS.forEach(function (c, ci2) {
+          var b = document.createElement('button'); b.className = 'mx !text-[#e7e9f0]'; b.setAttribute('data-v', ''); b.textContent = '·';
+          b.setAttribute('aria-label', r.n + ', ' + c + ': unset');
+          b.onclick = function () {
+            var nv = { '': '1', '1': '0', '0': '' }[b.getAttribute('data-v')]; b.setAttribute('data-v', nv); b.textContent = nv === '1' ? 'blemish' : nv === '0' ? 'fine' : '·';
+            b.setAttribute('aria-label', r.n + ', ' + c + ': ' + (nv === '1' ? 'blemish' : nv === '0' ? 'not a blemish' : 'unset')); b.classList.remove('hit');
+          };
+          cells.push({ b: b, w: r.w[ci2] }); mx.appendChild(b);
+        });
+      });
+      var mxFirst = true, mxDone = false;
+      $('mxCheck').onclick = function () {
+        if (mxDone) return;
+        var wrong = 0; cells.forEach(function (c) { if (c.b.getAttribute('data-v') !== String(c.w)) { wrong++; c.b.classList.add('hit'); } else c.b.classList.remove('hit'); });
+        if (wrong) { mxFirst = false; $('mxMsg').textContent = wrong + ' cell(s) off (outlined). Yehuda: all. Eliezer ben Ya’akov: only the penis. Yosei: bruised/crushed on both, torn/cut on the penis only.'; return; }
+        mxDone = true; addMax(1); if (mxFirst) award();
+        $('mxMsg').innerHTML = 'That is the baraita as the Gemara amends it ' + sef('Bekhorot 39b:6-7') + '. Why do they split?';
+        $('r4b').classList.remove('hidden');
+        mcq($('r4b'), 'Rabbi Yosei: bruised/crushed stones are a blemish but torn/cut are not. What is his reason?', [
+          { t: 'Bruised or crushed stones are no longer in their normal state, but torn or cut ones are still in the pouch (though they no longer function).', ok: true, why: 'Yehuda sees shrinking and hanging; Eliezer ben Ya’akov says stones sometimes shrink and hang beforehand anyway.' },
+          { t: 'Torn or cut stones are invisible.', ok: false, why: 'The argument is about how they look: still in the pouch.' },
+          { t: 'Because the Torah lists them in the opposite order.', ok: false, why: 'The reason is physical, not about order.' }
+        ], 'Bekhorot 39b:10-11', function () {
+          mcq($('r4b'), 'The mishna lists the pouch (hazoven). Rabbi Elazar: when is it a blemish?', [
+            { t: 'Only if the pouch was damaged, not if it was removed, and not if the male organ itself was damaged.', ok: true, why: 'Rabbi Yosei ben HaMeshullam: a wolf once removed an animal’s pouch in Inbal and it grew back.' },
+            { t: 'Only if it was removed entirely.', ok: false, why: 'The opposite: removal is not the blemish, because it can grow back.' },
+            { t: 'If either the pouch or the organ was damaged.', ok: false, why: 'He excludes damage to the organ.' }
+          ], 'Bekhorot 39b:13', function () { $('r4c').classList.remove('hidden'); tz(0); });
+        });
+      };
+      function tz(hillel) {
+        var strings = hillel ? 6 : 8, fing = hillel ? 3 : 4, svg = $('tz'), s = '<rect x="20" y="10" width="180" height="12" fill="#3a3f55" rx="3"/>';
+        var gap = 160 / (strings - 1);
+        for (var i = 0; i < strings; i++) { var x = 30 + i * gap; s += '<line x1="' + x + '" y1="22" x2="' + x + '" y2="' + (50 + fing * 15) + '" stroke="#e0b54a" stroke-width="2"/>'; }
+        s += '<rect x="30" y="48" width="160" height="6" fill="#4fa3d1" opacity=".5"/>';
+        s += '<text x="110" y="40" text-anchor="middle" fill="#bfe3f5" font-size="9">knots and windings</text>';
+        s += '<text x="110" y="' + (78 + fing * 15) + '" text-anchor="middle" fill="#adb2c7" font-size="10">' + fing + ' fingerbreadths hang</text>';
+        svg.innerHTML = s;
+        $('tzmsg').textContent = (hillel ? 'Beit Hillel: three strings inserted into the hole, so six hang; three fingerbreadths beyond the knots.' : 'Beit Shammai: four strings inserted, so eight hang; four fingerbreadths beyond the knots.');
+        $('bsh').setAttribute('aria-pressed', hillel ? 'false' : 'true'); $('bhl').setAttribute('aria-pressed', hillel ? 'true' : 'false');
+      }
+      $('bsh').onclick = function () { tz(0); seenSchool(); };
+      $('bhl').onclick = function () { tz(1); seenSchool(); };
+      var schoolSeen = 0;
+      function seenSchool() {
+        if (schoolSeen) return; schoolSeen = 1;
+        mcq($('r4d'), 'Rav Huna, son of Rav Yehoshua, says the baraita’s fingerbreadth relates to a measure from another context. Which one does he bring?', [
+          { t: 'The two cubits of the measuring rods (Kelim 17:9). The daf breaks off there; the discussion continues on 40a.', ok: true, why: 'Tomorrow’s daf picks up with the rods.' },
+          { t: 'The ten handbreadths of a partition.', ok: false, why: 'He cites the two cubits, in a mishna in Kelim.' }
+        ], 'Bekhorot 39b:16', done);
+      }
+    })();
+  </script>
+</Layout>
