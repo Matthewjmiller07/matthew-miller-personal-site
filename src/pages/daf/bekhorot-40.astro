@@ -1,0 +1,316 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Ila's Inspection Day — Daf Yomi Game: Bekhorot 40"
+  description="Bekhorot 40: measure with the Temple's two cubit rods, mash a sac and argue with Rabbi Akiva, flip Rav Pappa's 'even if' switches, count the joints of a tail, and pick the three blemishes Ila added at Yavne."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .card { background: #11131b; border: 1px solid #262a3a; border-radius: 1rem; }
+    .chip { border: 1px solid #3a3f55; border-radius: 0.6rem; padding: 0.45rem 0.75rem; font-size: 0.8rem; transition: background .15s, border-color .15s; text-align: left; }
+    .chip:hover:not(:disabled) { background: #191c28; }
+    .chip.ok { background: #13261f; border-color: #6cc3a6; }
+    .chip.bad { background: #33191a; border-color: #cc5a48; }
+    .chip.on { background: #2a2414; border-color: #e0b54a; }
+    .chip:disabled { cursor: default; opacity: .92; }
+    .tgl { border: 1px solid #3a3f55; border-radius: 999px; padding: .3rem .8rem; font-size: .75rem; }
+    .tgl[aria-pressed="true"] { background: #2a2414; border-color: #e0b54a; }
+    .lamp { display: inline-block; width: .7rem; height: .7rem; border-radius: 999px; background: #3a3f55; margin-right: .35rem; }
+    .lamp.g { background: #6cc3a6; box-shadow: 0 0 8px #6cc3a6; }
+    .lamp.r { background: #cc5a48; box-shadow: 0 0 8px #cc5a48; }
+    #joints { accent-color: #e0b54a; width: 100%; }
+    .sac { transition: transform .25s; transform-origin: 50% 0; }
+    .sac.mash { transform: scaleY(.7); }
+    button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid #e0b54a; outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { .chip, .sac { transition: none; } }
+  </style>
+
+  <main class="min-h-screen bg-[#0a0b10] !text-[#e7e9f0]">
+
+    <div class="border-b border-[#262a3a] bg-gradient-to-b from-[#161a2a] to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs tracking-[0.22em] !text-[#959bb3]">
+        <a href="/daf" class="transition-colors hover:!text-[#e7e9f0]">daf yomi arcade</a>
+        <span class="mx-2 opacity-40">·</span>bekhorot 40<span class="mx-2 opacity-40">·</span>2026-10-28
+      </p>
+      <svg viewBox="0 0 80 30" class="mx-auto mb-3 h-10 w-24" aria-hidden="true">
+        <rect x="4" y="6" width="72" height="8" fill="#d9d0bb" stroke="#e0b54a" stroke-width="1.5" />
+        <rect x="4" y="18" width="62" height="8" fill="#c9bfa6" stroke="#e0b54a" stroke-width="1.5" />
+        <g stroke="#0a0b10" stroke-width="1"><line x1="16" y1="6" x2="16" y2="11"/><line x1="28" y1="6" x2="28" y2="11"/><line x1="40" y1="6" x2="40" y2="11"/><line x1="52" y1="6" x2="52" y2="11"/><line x1="64" y1="6" x2="64" y2="11"/></g>
+      </svg>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl !text-[#f4f5fa]">Ila's Inspection Day</h1>
+      <p class="frank mt-3 text-3xl font-light !text-[#e0b54a]" dir="rtl" lang="he">אֶצְבַּע, חוּלְיָא, מוּם</p>
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed !text-[#adb2c7]">
+        A rod half a finger too long, a sac that gives up nothing, a lip that overlaps, a tail with the wrong number of joints.
+        Five rounds, straight from the daf.
+      </p>
+      <p class="mt-4 text-xs !text-[#959bb3]">Score: <span id="score" class="font-bold !text-[#e0b54a]">0</span> / <span id="max" class="font-bold !text-[#e0b54a]">0</span></p>
+    </div>
+
+    <div class="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+
+      <!-- ROUND 1 -->
+      <section class="card p-5" aria-labelledby="h1r">
+        <h2 id="h1r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">1 · The rods of Shushan</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">Moses' cubit is six handbreadths. In the Shushan chamber, over the eastern gate, there were two longer cubit rods <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.40a.1" target="_blank" rel="noopener">(40a:1)</a>. Tap a rod to see how much it exceeds Moses'.</p>
+        <svg id="rods" viewBox="0 0 300 100" class="mb-3 w-full" role="img" aria-label="Three cubit rods compared"></svg>
+        <div class="mb-3 flex flex-wrap gap-2" id="rodBtns"></div>
+        <p id="rodmsg" class="mb-4 min-h-[2.5rem] text-sm !text-[#adb2c7]">Pick a rod.</p>
+        <div id="r1a"></div>
+      </section>
+
+      <!-- ROUND 2 -->
+      <section class="card p-5" aria-labelledby="h2r">
+        <h2 id="h2r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">2 · Mash the sac</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">A firstborn with no testicle or only one may be slaughtered. Rabbi Akiva's test: sit it on its rump and mash the sac; a testicle will end up coming out <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.40a.5" target="_blank" rel="noopener">(40a:5)</a>.</p>
+        <svg id="sacsvg" viewBox="0 0 220 110" class="mx-auto mb-3 w-full max-w-xs" role="img" aria-label="An animal's sac being mashed">
+          <rect x="20" y="8" width="180" height="22" rx="8" fill="#3a3f55" />
+          <text x="110" y="23" text-anchor="middle" fill="#adb2c7" font-size="10">loins</text>
+          <g class="sac" id="sac"><ellipse cx="110" cy="62" rx="38" ry="26" fill="#d9d0bb" stroke="#e0b54a" stroke-width="2" /><ellipse cx="96" cy="60" rx="9" ry="12" fill="#b9ad90" id="t1" /></g>
+          <ellipse cx="123" cy="38" rx="9" ry="8" fill="#cc5a48" id="t2" opacity=".0" />
+        </svg>
+        <div class="mb-3 flex flex-wrap justify-center gap-2">
+          <button id="mash" class="chip !text-[#e7e9f0]">1 · Mash it</button>
+          <button id="slaughter" class="chip !text-[#e7e9f0]" disabled>2 · Slaughter it</button>
+        </div>
+        <p id="sacmsg" class="mb-4 min-h-[2.5rem] text-sm !text-[#adb2c7]">Nothing emerges when you mash it.</p>
+        <div id="r2a" class="hidden"></div>
+        <div id="r2b" class="mt-4 hidden"></div>
+      </section>
+
+      <!-- ROUND 3 -->
+      <section class="card p-5" aria-labelledby="h3r">
+        <h2 id="h3r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">3 · Rav Pappa's "even if" switches</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">Three times Rav Pappa says: don't think the blemish needs the exact picture. Flip the features and read the lamp. Then answer why the lamp lights.</p>
+        <div id="sw" class="mb-4 grid gap-3 sm:grid-cols-3"></div>
+        <div id="r3a"></div>
+      </section>
+
+      <!-- ROUND 4 -->
+      <section class="card p-5" aria-labelledby="h4r">
+        <h2 id="h4r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">4 · Count the joints</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">A tail too short to have three joints is a blemish, but for which animal? Set the animal and the joints. The lamp follows the baraita; Rav Huna's version is crossed out <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.40b.7" target="_blank" rel="noopener">(40b:7-8)</a>.</p>
+        <svg id="tail" viewBox="0 0 300 50" class="mb-2 w-full" role="img" aria-label="A tail with joints"></svg>
+        <div class="mb-3 flex flex-wrap items-center gap-3">
+          <button id="kid" class="tgl !text-[#e7e9f0]" aria-pressed="true">Kid</button>
+          <button id="lamb" class="tgl !text-[#e7e9f0]" aria-pressed="false">Lamb</button>
+          <label class="ml-2 text-xs !text-[#adb2c7]" for="joints">Joints: <span id="jn" class="font-bold !text-[#e0b54a]">1</span></label>
+          <input id="joints" type="range" min="0" max="5" value="1" class="max-w-[12rem]" />
+          <button id="huna" class="tgl !text-[#e7e9f0]" aria-pressed="false">Show Rav Huna</button>
+        </div>
+        <p class="mb-4 text-sm"><span id="tlamp" class="lamp"></span><span id="tmsg" class="!text-[#adb2c7]"></span></p>
+        <div id="r4a"></div>
+      </section>
+
+      <!-- ROUND 5 -->
+      <section class="card p-5" aria-labelledby="h5r">
+        <h2 id="h5r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">5 · What did Ila add at Yavne?</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">The Sages deferred to Ila's list, then he added three blemishes they had never heard, and the next court accepted them <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.40a.16" target="_blank" rel="noopener">(40a:15-16)</a>. Pick the three from this stack of blemishes on the daf.</p>
+        <div id="ila" class="mb-3 grid gap-2 sm:grid-cols-2"></div>
+        <button id="ilaGo" class="chip !text-[#e7e9f0]">Submit my three</button>
+        <p id="ilamsg" class="mt-3 min-h-[1.5rem] text-sm !text-[#adb2c7]"></p>
+        <div id="r5a" class="mt-2"></div>
+      </section>
+
+      <!-- LEARN -->
+      <section class="card p-5" aria-labelledby="hl">
+        <h2 id="hl" class="frank mb-2 text-2xl font-bold !text-[#f4f5fa]">Learn the real daf</h2>
+        <p class="mb-3 text-sm !text-[#adb2c7]">The game only samples it. Read the whole page on Sefaria:</p>
+        <ul class="mb-3 list-disc space-y-1 pl-5 text-sm">
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.40a" target="_blank" rel="noopener">Bekhorot 40a</a> · <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.40b" target="_blank" rel="noopener">Bekhorot 40b</a></li>
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rashi_on_Bekhorot.40a" target="_blank" rel="noopener">Rashi on Bekhorot 40a</a> (the most-linked commentary on this daf)</li>
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.40a" target="_blank" rel="noopener">Rabbeinu Gershom on Bekhorot 40a</a></li>
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rosh_on_Bekhorot.40a" target="_blank" rel="noopener">Rosh on Bekhorot 40a</a></li>
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rashi_on_Bekhorot.40b" target="_blank" rel="noopener">Rashi on Bekhorot 40b</a></li>
+        </ul>
+        <p class="text-xs !text-[#959bb3]">Simplified for play. The daf has more cases than the game shows. <a href="/daf" class="underline">All daf games</a></p>
+      </section>
+    </div>
+  </main>
+
+  <script is:inline>
+    (function () {
+      var $ = function (id) { return document.getElementById(id); };
+      var score = 0, max = 0;
+      function addMax(n) { max += n; $('max').textContent = max; }
+      function award() { score++; $('score').textContent = score; }
+      function sef(r) { return '<a class="underline !text-[#e0b54a]" target="_blank" rel="noopener" href="https://www.sefaria.org/' + r.replace(/ /g, '_').replace(/:/g, '.') + '">(' + r.replace(/^Bekhorot /, '') + ')</a>'; }
+
+      // multiple-choice helper: replaces host content; one point for a first-try answer
+      function mcq(host, q, opts, ref, next) {
+        host.innerHTML = '';
+        host.classList.remove('hidden');
+        addMax(1);
+        var p = document.createElement('p'); p.className = 'mb-2 text-sm font-semibold !text-[#e7e9f0]'; p.textContent = q; host.appendChild(p);
+        var box = document.createElement('div'); box.className = 'flex flex-col gap-2'; host.appendChild(box);
+        var fb = document.createElement('p'); fb.className = 'mt-2 text-sm !text-[#adb2c7]'; fb.setAttribute('aria-live', 'polite'); host.appendChild(fb);
+        var first = true, done = false;
+        opts.forEach(function (o) {
+          var b = document.createElement('button'); b.className = 'chip !text-[#e7e9f0]'; b.textContent = o.t;
+          b.onclick = function () {
+            if (done) return;
+            if (o.ok) {
+              done = true; b.classList.add('ok'); if (first) award();
+              fb.innerHTML = '✅ ' + o.why + ' ' + sef(ref);
+              box.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+              if (next) next();
+            } else { first = false; b.classList.add('bad'); b.disabled = true; fb.innerHTML = '❌ ' + o.why; }
+          };
+          box.appendChild(b);
+        });
+      }
+
+      // ---------- ROUND 1 ----------
+      var RODS = [
+        { n: 'Moses', d: 0, c: '#959bb3', t: 'Moses’ cubit: six handbreadths, the one used for the Tabernacle.' },
+        { n: 'Northeast', d: 0.5, c: '#e0b54a', t: 'Northeast corner: longer than Moses’ by half a fingerbreadth.' },
+        { n: 'Southeast', d: 1, c: '#6cc3a6', t: 'Southeast corner: longer than the northeast rod by another half, so a full fingerbreadth over Moses’.' }
+      ];
+      (function () {
+        var svg = $('rods'), s = '';
+        RODS.forEach(function (r, i) {
+          var w = 240 + r.d * 20;
+          s += '<rect x="20" y="' + (10 + i * 28) + '" width="' + w + '" height="14" rx="3" fill="' + r.c + '" opacity=".85" />';
+          s += '<text x="' + (w + 26) + '" y="' + (21 + i * 28) + '" fill="#adb2c7" font-size="9">' + r.n + '</text>';
+        });
+        svg.innerHTML = s;
+        RODS.forEach(function (r) {
+          var b = document.createElement('button'); b.className = 'chip !text-[#e7e9f0]'; b.textContent = r.n + (r.d ? ' (+' + r.d + ' finger)' : '');
+          b.onclick = function () { $('rodmsg').textContent = r.t; };
+          $('rodBtns').appendChild(b);
+        });
+      })();
+      mcq($('r1a'), 'Why were there two longer rods, and what was the pay rule? Pick the Gemara’s explanation of the purpose.', [
+        { t: 'Artisans took their pay by the small rod and returned the work by the large one, so they would never come to misuse consecrated property.', ok: true, why: 'Measuring pay by the short cubit and the work by the long one built in a margin in the Temple’s favor.' },
+        { t: 'One was for the Tabernacle and one for the Temple.', ok: false, why: 'Moses’ cubit was the Tabernacle’s; both Shushan rods are longer than it.' },
+        { t: 'One was for men and one for women.', ok: false, why: 'The daf gives an economic reason, not a gender split.' }
+      ], 'Bekhorot 40a:2', function () {
+        var h = document.createElement('div'); h.className = 'mt-4'; $('r1a').parentNode.appendChild(h);
+        mcq(h, 'The Gemara asks: why two long rods? Which job got which?', [
+          { t: 'The smaller long rod for silver and gold; the full-fingerbreadth rod for wood and stone construction.', ok: true, why: 'With precious metals even a small difference costs a lot, so the gap there is only half a finger.' },
+          { t: 'The smaller long rod for wood and stone; the larger for silver and gold.', ok: false, why: 'Reverse it: precious metal gets the smaller gap.' },
+          { t: 'Both for gold; one for silver.', ok: false, why: 'The split is precious metal versus construction.' }
+        ], 'Bekhorot 40a:3', function () {
+          var h2 = document.createElement('div'); h2.className = 'mt-4'; h.parentNode.appendChild(h2);
+          mcq(h2, 'Rav Naḥman bar Yitzḥak (some say Rav Huna bar Natan) ties the baraita’s fingerbreadth, a quarter handbreadth, to which case in our mishna?', [
+            { t: 'The blemish where a full fingerbreadth of flesh lies between one joint and the next.', ok: true, why: 'That is the measure meant by “a fingerbreadth” here.' },
+            { t: 'The length of a kid’s tail.', ok: false, why: 'The tail is about joints, not this measure.' }
+          ], 'Bekhorot 40a:4', null);
+        });
+      });
+
+      // ---------- ROUND 2 ----------
+      var mashed = false;
+      $('mash').onclick = function () {
+        $('sac').classList.add('mash'); setTimeout(function () { $('sac').classList.remove('mash'); }, 400);
+        $('sacmsg').textContent = 'You mashed. Nothing came out.'; $('slaughter').disabled = false; mashed = true;
+      };
+      $('slaughter').onclick = function () {
+        if (!mashed) return;
+        $('t2').setAttribute('opacity', '1'); $('slaughter').disabled = true; $('mash').disabled = true;
+        $('sacmsg').innerHTML = 'After slaughter the testicle is found stuck to the loins. Rabbi Akiva permits eating it; Rabbi Yoḥanan ben Nuri forbids it. The baraita sets this at Piran of Beit Menaḥem ' + sef('Bekhorot 40a:8') + '.';
+        mcq($('r2a'), 'Who said “until when will you consume the property of the Jewish people”?', [
+          { t: 'Rabbi Akiva, to Rabbi Yoḥanan ben Nuri, for prohibiting such animals.', ok: true, why: 'Ben Nuri answered: “Until when will you feed Israel” [what he calls neveilot].' },
+          { t: 'Rabbi Yoḥanan ben Nuri, to Rabbi Akiva.', ok: false, why: 'That’s his reply, not the first charge.' }
+        ], 'Bekhorot 40a:9', function () {
+          mcq($('r2b'), 'The Gemara asks: they were properly slaughtered, so why “neveilot”? In the end, what is ben Nuri’s real objection?', [
+            { t: 'To him it is no blemish, so it is an unblemished offering, and Akiva is feeding people sacrificial animals outside the Temple courtyard.', ok: true, why: 'Neveilot and tereifot were both tried and rejected as his meaning.' },
+            { t: 'He calls it a tereifa because the testicle was attached.', ok: false, why: 'The Gemara tries tereifot and rejects it: that prohibition doesn’t apply here.' },
+            { t: 'The slaughter was invalid.', ok: false, why: 'The question itself says they were slaughtered properly.' }
+          ], 'Bekhorot 40a:10', null);
+        });
+      };
+
+      // ---------- ROUND 3 ----------
+      var SW = [
+        { n: 'Hoof', a: 'Round like a donkey’s', b: 'Also split', verdict: function (a, b) { return a; }, msg: 'Rav Pappa: even when round but split too, it is a blemish.' },
+        { n: 'Mouth', a: 'Upper lip overlaps the lower', b: 'Pointed like a pig’s', verdict: function (a, b) { return a; }, msg: 'Rav Pappa: when it overlaps, even if not pointed, it is a blemish.' },
+        { n: 'Kid’s tail', a: 'Curly/round like a pig’s', b: 'Thick like a goat’s', verdict: function (a, b) { return a; }, msg: 'Rav Pappa: if round, even if thick, it is a blemish.' }
+      ];
+      SW.forEach(function (s, i) {
+        var w = document.createElement('div'); w.className = 'rounded-xl border border-[#262a3a] p-3';
+        w.innerHTML = '<p class="mb-2 text-xs font-bold !text-[#e0b54a]">' + s.n + '</p>';
+        var st = { a: false, b: false };
+        var lamp = document.createElement('p'); lamp.className = 'mt-2 text-xs !text-[#adb2c7]'; lamp.innerHTML = '<span class="lamp"></span>fit';
+        ['a', 'b'].forEach(function (k) {
+          var t = document.createElement('button'); t.className = 'tgl mb-1 mr-1 !text-[#e7e9f0]'; t.textContent = s[k]; t.setAttribute('aria-pressed', 'false');
+          t.onclick = function () {
+            st[k] = !st[k]; t.setAttribute('aria-pressed', st[k]);
+            var v = s.verdict(st.a, st.b);
+            lamp.innerHTML = '<span class="lamp ' + (v ? 'r' : 'g') + '"></span>' + (v ? 'blemish. ' : 'no blemish. ') + (st.a ? s.msg : '');
+          };
+          w.appendChild(t);
+        });
+        w.appendChild(lamp); $('sw').appendChild(w);
+      });
+      mcq($('r3a'), 'What do all three of Rav Pappa’s rulings share?', [
+        { t: 'The blemish rests on one defining feature (round / overlapping / curly); the second feature is irrelevant.', ok: true, why: 'He widens each mishna so the one named feature is enough.' },
+        { t: 'Both features must be present.', ok: false, why: 'That’s the reading he rejects: “do not say that it is only when…”.' },
+        { t: 'Only the second feature matters.', ok: false, why: 'The second (split / pointed / thick) is exactly the one that doesn’t.' }
+      ], 'Bekhorot 40a:13', null);
+
+      // ---------- ROUND 4 ----------
+      var animal = 'kid', hunaOn = false;
+      function drawTail() {
+        var n = +$('joints').value, s = '<line x1="10" y1="25" x2="' + (10 + 60 * Math.max(n, 0.4)) + '" y2="25" stroke="#d9d0bb" stroke-width="4" stroke-linecap="round" />';
+        for (var i = 0; i < n; i++) s += '<circle cx="' + (40 + i * 60) + '" cy="25" r="7" fill="#e0b54a" />';
+        $('tail').innerHTML = s; $('jn').textContent = n;
+        var th = { baraita: { kid: 1, lamb: 2 }, huna: { kid: 2, lamb: 3 } }[hunaOn ? 'huna' : 'baraita'][animal];
+        var bl = n <= th;
+        $('tlamp').className = 'lamp ' + (bl ? 'r' : 'g');
+        $('tmsg').innerHTML = (bl ? 'Blemish' : 'Not a blemish') + (hunaOn ? ' (Rav Huna: refuted by the baraita)' : ' (baraita)');
+      }
+      function pick(a) { animal = a; $('kid').setAttribute('aria-pressed', a === 'kid'); $('lamb').setAttribute('aria-pressed', a === 'lamb'); drawTail(); }
+      $('kid').onclick = function () { pick('kid'); }; $('lamb').onclick = function () { pick('lamb'); };
+      $('joints').oninput = drawTail;
+      $('huna').onclick = function () { hunaOn = !hunaOn; $('huna').setAttribute('aria-pressed', hunaOn); drawTail(); };
+      drawTail();
+      mcq($('r4a'), 'Why did Rav Huna state his numbers (kid: two joints blemish, three fine)?', [
+        { t: 'The mishna misled him: because the first clause is about a kid, he assumed the three-joints clause was too, but it is about a lamb.', ok: true, why: 'So the baraita’s numbers: kid, one joint blemish; lamb, two joints blemish.' },
+        { t: 'He had a different baraita.', ok: false, why: 'The baraita refutes him conclusively.' },
+        { t: 'He ruled by the animal’s weight.', ok: false, why: 'Weight doesn’t come into it.' }
+      ], 'Bekhorot 40b:8', null);
+
+      // ---------- ROUND 5 ----------
+      var ILA = [
+        { t: 'An eye round like a human’s', a: 1 },
+        { t: 'A mouth like a pig’s', a: 1 },
+        { t: 'Most of the speech-segment of the tongue removed', a: 1 },
+        { t: 'Lower jaw protruding past the upper (Rabban Gamliel’s incident)', a: 0, w: 'That was brought to the Sages by Rabban Gamliel (and Rabban Shimon ben Gamliel), not added by Ila.' },
+        { t: 'A kid’s ear doubled with its own cartilage', a: 0, w: 'That is in the later mishna: “the Sages said.”' },
+        { t: 'A wart in the eye', a: 0, w: 'That is Rabbi Ḥanina ben Antigonus’ list.' },
+        { t: 'A kid’s tail without three joints', a: 0, w: 'That is Rabbi Ḥananya ben Gamliel’s ruling.' }
+      ];
+      var picked = {};
+      ILA.forEach(function (o, i) {
+        var b = document.createElement('button'); b.className = 'chip !text-[#e7e9f0]'; b.textContent = o.t; b.setAttribute('aria-pressed', 'false');
+        b.onclick = function () {
+          if (b.classList.contains('on')) { b.classList.remove('on'); delete picked[i]; }
+          else if (Object.keys(picked).length < 3) { b.classList.add('on'); picked[i] = 1; }
+          b.setAttribute('aria-pressed', b.classList.contains('on'));
+        };
+        $('ila').appendChild(b);
+      });
+      var ilaDone = false, ilaFirst = true;
+      $('ilaGo').onclick = function () {
+        if (ilaDone) return;
+        var ks = Object.keys(picked);
+        if (ks.length !== 3) { $('ilamsg').textContent = 'Pick exactly three.'; return; }
+        var wrong = ks.filter(function (k) { return !ILA[k].a; });
+        if (wrong.length === 0) { ilaDone = true; addMax(1); if (ilaFirst) award(); $('ilamsg').innerHTML = '✅ Round eye, pig’s mouth, speech-segment of the tongue. The court that followed them accepted each ' + sef('Bekhorot 40a:16') + '.'; $('ilaGo').disabled = true; roundEye();
+        } else { ilaFirst = false; $('ilamsg').textContent = '❌ Not Ila’s: ' + wrong.map(function (k) { return ILA[k].t + ' — ' + ILA[k].w; }).join(' · '); }
+      };
+      function roundEye() {
+        mcq($('r5a'), 'The Gemara objects to the round eye: a mishna (Nidda) says a miscarried animal-shaped fetus is impure “because its eye is round like a person’s.” Rav Yosef’s resolution?', [
+          { t: 'One speaks of the black of the eye, the other of the white.', ok: true, why: 'So the roundness of the black part and the white part are different matters.' },
+          { t: 'One is about a calf and one about a goat.', ok: false, why: 'Rav Yosef’s answer is about the parts of the eye.' },
+          { t: 'One mishna is rejected.', ok: false, why: 'Both stand; he distinguishes them.' }
+        ], 'Bekhorot 40a:20', null);
+      }
+    })();
+  </script>
+</Layout>
