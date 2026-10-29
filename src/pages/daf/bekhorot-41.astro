@@ -1,0 +1,232 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Three Little Words 'From' — Daf Yomi Game: Bekhorot 41"
+  description="Bekhorot 41: run animals through the min sieve of Leviticus 1, sort the three garavs by moisture, see why the Torah needs all three 'from's, and flip Rava's hermaphrodite switch."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .card { background: #11131b; border: 1px solid #262a3a; border-radius: 1rem; }
+    .chip { border: 1px solid #3a3f55; border-radius: 0.6rem; padding: 0.45rem 0.75rem; font-size: 0.8rem; transition: background .15s, border-color .15s; text-align: left; }
+    .chip:hover:not(:disabled) { background: #191c28; }
+    .chip.ok { background: #13261f; border-color: #6cc3a6; }
+    .chip.bad { background: #33191a; border-color: #cc5a48; }
+    .chip:disabled { cursor: default; opacity: .92; }
+    .tgl { border: 1px solid #3a3f55; border-radius: 999px; padding: .35rem .9rem; font-size: .8rem; }
+    .tgl[aria-pressed="true"] { background: #2a2414; border-color: #e0b54a; }
+    .lamp { display: inline-block; width: .7rem; height: .7rem; border-radius: 999px; background: #3a3f55; margin-right: .35rem; }
+    .lamp.g { background: #6cc3a6; box-shadow: 0 0 8px #6cc3a6; }
+    .lamp.r { background: #cc5a48; box-shadow: 0 0 8px #cc5a48; }
+    .belt { transition: transform .5s; }
+    .drop { transition: transform .5s, opacity .5s; }
+    button:focus-visible, [tabindex]:focus-visible { outline: 2px solid #e0b54a; outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { .chip, .belt, .drop { transition: none; } }
+  </style>
+
+  <main class="min-h-screen bg-[#0a0b10] !text-[#e7e9f0]">
+
+    <div class="border-b border-[#262a3a] bg-gradient-to-b from-[#161a2a] to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs tracking-[0.22em] !text-[#959bb3]">
+        <a href="/daf" class="transition-colors hover:!text-[#e7e9f0]">daf yomi arcade</a>
+        <span class="mx-2 opacity-40">·</span>bekhorot 41<span class="mx-2 opacity-40">·</span>2026-10-29
+      </p>
+      <div class="mx-auto mb-3 text-5xl" aria-hidden="true">🕳️</div>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl !text-[#f4f5fa]">Three Little Words "From"</h1>
+      <p class="frank mt-3 text-3xl font-light !text-[#e0b54a]" dir="rtl" lang="he">מִן הַבָּקָר · מִן הַצֹּאן</p>
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed !text-[#adb2c7]">
+        A tiny word, <em>min</em>, does the sorting in Leviticus 1. Run animals through the sieve, tell the three boils apart,
+        and see why the Torah couldn't save a single "from."
+      </p>
+      <p class="mt-4 text-xs !text-[#959bb3]">Score: <span id="score" class="font-bold !text-[#e0b54a]">0</span> / <span id="max" class="font-bold !text-[#e0b54a]">0</span></p>
+    </div>
+
+    <div class="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+
+      <section class="card p-5" aria-labelledby="h1r">
+        <h2 id="h1r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">1 · The min sieve</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">"You shall bring your offering <em>from</em> the cattle, <em>from</em> the herd or <em>from</em> the flock" (Lev. 1:2). Each "from" knocks one kind of animal out <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.41a.15" target="_blank" rel="noopener">(41a:15)</a>. A belt brings each animal: which word catches it?</p>
+        <div id="belt" class="mb-3 rounded-xl border border-[#262a3a] bg-[#0d0f16] p-4 text-center">
+          <div id="beltAnimal" class="belt frank text-xl !text-[#f4f5fa]"></div>
+        </div>
+        <div id="sieveOpts" class="grid gap-2 sm:grid-cols-2"></div>
+        <p id="sieveMsg" class="mt-3 min-h-[1.5rem] text-sm !text-[#adb2c7]" aria-live="polite"></p>
+      </section>
+
+      <section class="card p-5" aria-labelledby="h2r">
+        <h2 id="h2r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">2 · Why three? The "from" that can't be spared</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">Leviticus 1:10 writes "from" three times, excluding the old, the sick and the foul-smelling animal. The Gemara asks why each is needed <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.41a.12" target="_blank" rel="noopener">(41a:12-13)</a>. Imagine fewer words were written. What would you still have thought was allowed?</p>
+        <div id="why"></div>
+      </section>
+
+      <section class="card p-5" aria-labelledby="h3r">
+        <h2 id="h3r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">3 · Garav under the microscope</h2>
+        <p class="mb-3 text-sm !text-[#adb2c7]">The Gemara ends with three kinds of garav, told apart by how dry the boil is on the inside and the outside <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.41a.10" target="_blank" rel="noopener">(41a:10)</a>. Set the toggles to build the one asked for.</p>
+        <p id="boilAsk" class="frank mb-3 text-lg !text-[#e0b54a]"></p>
+        <div class="mb-3 flex flex-wrap items-center gap-3">
+          <span class="text-xs !text-[#959bb3]">Inside:</span>
+          <button class="tgl" id="inT" aria-pressed="false">dry</button>
+          <span class="text-xs !text-[#959bb3]">Outside:</span>
+          <button class="tgl" id="outT" aria-pressed="false">dry</button>
+          <button class="chip" id="boilGo">Check</button>
+        </div>
+        <svg viewBox="0 0 120 60" class="mb-2 h-24 w-48" aria-hidden="true">
+          <path d="M5 50 Q60 -10 115 50 Z" id="boilOut" fill="#7a5b3c" stroke="#e0b54a" stroke-width="2"/>
+          <path d="M30 48 Q60 14 90 48 Z" id="boilIn" fill="#7a5b3c" />
+        </svg>
+        <p id="boilMsg" class="min-h-[1.5rem] text-sm !text-[#adb2c7]" aria-live="polite"></p>
+      </section>
+
+      <section class="card p-5" aria-labelledby="h4r">
+        <h2 id="h4r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">4 · Rava's switch: definite or "if you say"?</h2>
+        <p class="mb-3 text-sm !text-[#adb2c7]">Rava asks why the hermaphrodite may be slaughtered: is it definitely a firstborn male that comes with its blemish, or is the ruling only "if you say it's a firstborn..."? He finds two practical differences <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.41b.2" target="_blank" rel="noopener">(41b:1-2)</a>. Flip the switch.</p>
+        <div class="mb-3 flex gap-2">
+          <button class="tgl" id="defT" aria-pressed="true">Definitely a firstborn</button>
+          <button class="tgl" id="ifT" aria-pressed="false">Only "if you say"</button>
+        </div>
+        <p class="mb-1 text-sm"><span class="lamp" id="lFlog"></span>Flogged for shearing it or working with it? <b id="tFlog"></b></p>
+        <p class="mb-4 text-sm"><span class="lamp" id="lPriest"></span>Can the priest take it from the owner? <b id="tPriest"></b></p>
+        <h3 class="frank mb-2 text-lg font-bold !text-[#f4f5fa]">Who holds what?</h3>
+        <div id="who"></div>
+      </section>
+
+      <section class="card p-5" aria-labelledby="hl">
+        <h2 id="hl" class="frank mb-2 text-2xl font-bold !text-[#f4f5fa]">Learn the real daf</h2>
+        <p class="mb-3 text-sm !text-[#adb2c7]">The game only samples it. Read the whole page on Sefaria:</p>
+        <ul class="mb-3 list-disc space-y-1 pl-5 text-sm">
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.41a" target="_blank" rel="noopener">Bekhorot 41a</a> · <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.41b" target="_blank" rel="noopener">Bekhorot 41b</a></li>
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rashi_on_Bekhorot.41a" target="_blank" rel="noopener">Rashi on Bekhorot 41a</a> (the most-linked commentary on this daf)</li>
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.41a" target="_blank" rel="noopener">Rabbeinu Gershom on Bekhorot 41a</a></li>
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rashi_on_Bekhorot.41b" target="_blank" rel="noopener">Rashi on Bekhorot 41b</a></li>
+        </ul>
+        <p class="text-xs !text-[#959bb3]">Simplified for play. The daf has more cases than the game shows. <a href="/daf" class="underline">All daf games</a></p>
+      </section>
+    </div>
+  </main>
+
+  <script is:inline>
+    (function () {
+      var $ = function (id) { return document.getElementById(id); };
+      var score = 0, max = 0;
+      function addMax(n) { max += n; $('max').textContent = max; }
+      function award() { score++; $('score').textContent = score; }
+      function sef(r) { return '<a class="underline !text-[#e0b54a]" target="_blank" rel="noopener" href="https://www.sefaria.org/' + r.replace(/ /g, '_').replace(/:/g, '.') + '">(' + r + ')</a>'; }
+      function mkChip(txt, cls) { var b = document.createElement('button'); b.className = 'chip ' + (cls || ''); b.textContent = txt; return b; }
+
+      // generic multiple choice into container; opts [{t, ok}]; onDone(correct)
+      function mc(box, opts, onDone) {
+        var done = false;
+        opts.forEach(function (o) {
+          var b = mkChip(o.t);
+          b.addEventListener('click', function () {
+            if (done) return; done = true;
+            Array.prototype.forEach.call(box.children, function (c, i) { c.disabled = true; if (opts[i].ok) c.classList.add('ok'); });
+            if (!o.ok) b.classList.add('bad');
+            onDone(!!o.ok);
+          });
+          box.appendChild(b);
+        });
+      }
+
+      // ROUND 1
+      var cases = [
+        { a: 'An ox that copulated with a person', w: 0 },
+        { a: 'A cow used for bestiality', w: 0 },
+        { a: 'A bull that was worshipped as a god', w: 1 },
+        { a: 'A sheep set aside for idol worship', w: 2 },
+        { a: 'An ox that gored and killed a person', w: 3 }
+      ];
+      var words = ['"from the cattle"', '"from the herd"', '"from the flock"', 'the extra "or"'];
+      var ci = 0;
+      addMax(cases.length);
+      function sieve() {
+        var box = $('sieveOpts'); box.innerHTML = '';
+        if (ci >= cases.length) {
+          $('beltAnimal').textContent = 'All sorted ✓';
+          $('sieveMsg').innerHTML = 'Note: in these cases the animal would normally be stoned, so the verse is needed only where there was one witness, or the owner\'s word alone ' + sef('Bekhorot 41a:16') + '.';
+          return;
+        }
+        $('beltAnimal').textContent = cases[ci].a;
+        $('sieveMsg').textContent = '';
+        mc(box, words.map(function (w, i) { return { t: w, ok: i === cases[ci].w }; }), function (ok) {
+          if (ok) award();
+          $('sieveMsg').textContent = ok ? 'Caught.' : 'The daf assigns it to ' + words[cases[ci].w] + '.';
+          ci++; setTimeout(sieve, 1400);
+        });
+      }
+      sieve();
+
+      // ROUND 2
+      var why = [
+        { q: 'Suppose "from" were written once, and you read it as excluding the OLD animal, which never gets younger. What might you still allow?', o: ['The sick animal, which might recover', 'The foul-smelling animal, as it is not weak', 'The animal with a blemish on its eye'], a: 0 },
+        { q: 'Suppose once, read as excluding the SICK animal, since illness is not natural for animals. What might you still allow?', o: ['The newborn lamb', 'The old animal, since aging is natural to all', 'Nothing'], a: 1 },
+        { q: 'Suppose twice: excluding the weak (old and sick), since one should bring a fat, healthy animal. What is left to doubt?', o: ['The foul-smelling animal, which is not weak', 'The sick animal', 'The old animal'], a: 0 },
+        { q: 'Suppose once, read as excluding the FOUL-SMELLING animal, which is repulsive. What might you still allow?', o: ['Only the foul-smelling animal', 'The old and the sick, which are not repulsive', 'The animal that killed a person'], a: 1 }
+      ];
+      addMax(why.length);
+      why.forEach(function (w, n) {
+        var d = document.createElement('div'); d.className = 'mb-4';
+        var p = document.createElement('p'); p.className = 'mb-2 text-sm'; p.textContent = (n + 1) + '. ' + w.q;
+        var g = document.createElement('div'); g.className = 'grid gap-2';
+        d.appendChild(p); d.appendChild(g); $('why').appendChild(d);
+        mc(g, w.o.map(function (t, i) { return { t: t, ok: i === w.a }; }), function (ok) { if (ok) award(); });
+      });
+      var wn = document.createElement('p'); wn.className = 'text-xs !text-[#959bb3]';
+      wn.innerHTML = 'Hence all three "from"s are needed ' + sef('Bekhorot 41a:13') + '.';
+      $('why').appendChild(wn);
+
+      // ROUND 3
+      var inDry = false, outDry = false;
+      var boils = [
+        { n: 'The garav of the verse about blemishes (it cannot heal; the Torah calls it ḥares in Deuteronomy)', i: true, o: true },
+        { n: 'The garav of the mishna (it heals, so it does not permit slaughter)', i: false, o: false },
+        { n: 'The garav of Egypt (it cannot heal)', i: true, o: false }
+      ];
+      var bi = 0;
+      function paint() {
+        $('inT').setAttribute('aria-pressed', inDry); $('inT').textContent = inDry ? 'dry' : 'moist';
+        $('outT').setAttribute('aria-pressed', outDry); $('outT').textContent = outDry ? 'dry' : 'moist';
+        $('boilIn').setAttribute('fill', inDry ? '#b8a37a' : '#3d6a8a');
+        $('boilOut').setAttribute('fill', outDry ? '#b8a37a' : '#3d6a8a');
+      }
+      function nextBoil() { $('boilAsk').textContent = bi < boils.length ? 'Build: ' + boils[bi].n : 'All three built ✓'; $('boilGo').disabled = bi >= boils.length; }
+      addMax(boils.length);
+      $('inT').addEventListener('click', function () { inDry = !inDry; paint(); });
+      $('outT').addEventListener('click', function () { outDry = !outDry; paint(); });
+      $('boilGo').addEventListener('click', function () {
+        if (bi >= boils.length) return;
+        var b = boils[bi];
+        if (b.i === inDry && b.o === outDry) { award(); $('boilMsg').innerHTML = 'Correct. ' + sef('Bekhorot 41a:10'); bi++; nextBoil(); }
+        else $('boilMsg').textContent = 'Not quite. Think about which kind heals, and what the Egyptian boil "pouring out" suggests about its surface.';
+      });
+      paint(); nextBoil();
+
+      // ROUND 4
+      function setDef(def) {
+        $('defT').setAttribute('aria-pressed', def); $('ifT').setAttribute('aria-pressed', !def);
+        $('lFlog').className = 'lamp ' + (def ? 'r' : 'g'); $('tFlog').textContent = def ? 'Yes, flogged' : 'No: still forbidden, but no lashes';
+        $('lPriest').className = 'lamp ' + (def ? 'r' : 'g'); $('tPriest').textContent = def ? 'Yes' : 'No: the burden of proof is on the claimant';
+      }
+      $('defT').addEventListener('click', function () { setDef(true); });
+      $('ifT').addEventListener('click', function () { setDef(false); });
+      setDef(true);
+      var whoQ = [
+        { q: 'According to the mishna, which view says a hermaphrodite animal has no firstborn status, but is like a non-sacred animal that may be shorn and worked?', o: ['The Rabbis', 'Rabbi Shimon'], a: 0 },
+        { q: 'According to Rav Ḥisda, what do ALL agree about a tumtum (genitals concealed)?', o: ['It is certainly a male', 'It is either male or female, so it is consecrated out of doubt and not slaughtered', 'It is a non-sacred animal'], a: 1 },
+        { q: 'Per the Gemara, why does Abaye say a hermaphrodite\'s female organ is not the blemish "cracked"?', o: ['"Cracked" is like "broken": it applies where there is bone, not flesh', 'Because it is not visible', 'Because the animal is female'], a: 0 }
+      ];
+      addMax(whoQ.length);
+      whoQ.forEach(function (w, n) {
+        var d = document.createElement('div'); d.className = 'mb-4';
+        var p = document.createElement('p'); p.className = 'mb-2 text-sm'; p.textContent = (n + 1) + '. ' + w.q;
+        var g = document.createElement('div'); g.className = 'grid gap-2';
+        d.appendChild(p); d.appendChild(g); $('who').appendChild(d);
+        mc(g, w.o.map(function (t, i) { return { t: t, ok: i === w.a }; }), function (ok) { if (ok) award(); });
+      });
+    })();
+  </script>
+</Layout>
