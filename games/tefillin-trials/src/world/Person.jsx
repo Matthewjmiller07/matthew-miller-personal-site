@@ -61,9 +61,11 @@ export function Person({
         {/* legs */}
         <group ref={legL} position={[-0.13, 0.75, 0]}>
           <mesh position={[0, -0.36, 0]} castShadow><capsuleGeometry args={[0.09, 0.55, 4, 8]} /><meshStandardMaterial color="#14161f" /></mesh>
+          <mesh position={[0, -0.72, 0.05]} castShadow><boxGeometry args={[0.17, 0.09, 0.3]} /><meshStandardMaterial color="#08090d" roughness={0.25} metalness={0.3} /></mesh>
         </group>
         <group ref={legR} position={[0.13, 0.75, 0]}>
           <mesh position={[0, -0.36, 0]} castShadow><capsuleGeometry args={[0.09, 0.55, 4, 8]} /><meshStandardMaterial color="#14161f" /></mesh>
+          <mesh position={[0, -0.72, 0.05]} castShadow><boxGeometry args={[0.17, 0.09, 0.3]} /><meshStandardMaterial color="#08090d" roughness={0.25} metalness={0.3} /></mesh>
         </group>
         <group ref={torso} position={[0, 0.75, 0]}>
           {/* body */}
@@ -71,6 +73,8 @@ export function Person({
             <meshStandardMaterial color={robe} roughness={0.7} />
             {highlight && <Outlines thickness={0.045} color={glow || '#ffd84a'} />}
           </RoundedBox>
+          <mesh position={[0, 0.76, 0.03]}><cylinderGeometry args={[0.12, 0.14, 0.1, 16]} /><meshStandardMaterial color="#f4f1e8" roughness={0.8} /></mesh>
+          <mesh position={[0, 0.42, 0.165]}><boxGeometry args={[0.16, 0.6, 0.02]} /><meshStandardMaterial color="#f4f1e8" roughness={0.8} /></mesh>
           {tallit && (
             <mesh position={[0, 0.52, 0]} castShadow>
               <cylinderGeometry args={[0.36, 0.42, 0.62, 16, 1, true]} />
@@ -97,8 +101,15 @@ export function Person({
         {/* head */}
         <group ref={head} position={[0, 1.62, 0]}>
           <mesh castShadow><sphereGeometry args={[0.2, 20, 20]} /><meshStandardMaterial color={skin} roughness={0.6} /></mesh>
-          <mesh position={[-0.07, 0.03, 0.18]}><sphereGeometry args={[0.025, 8, 8]} /><meshStandardMaterial color="#111" /></mesh>
-          <mesh position={[0.07, 0.03, 0.18]}><sphereGeometry args={[0.025, 8, 8]} /><meshStandardMaterial color="#111" /></mesh>
+          {[-1, 1].map((sx) => (
+            <group key={sx}>
+              <mesh position={[sx * 0.07, 0.03, 0.17]}><sphereGeometry args={[0.033, 10, 10]} /><meshStandardMaterial color="#fafafa" roughness={0.3} /></mesh>
+              <mesh position={[sx * 0.07, 0.03, 0.198]}><sphereGeometry args={[0.018, 8, 8]} /><meshStandardMaterial color="#14110e" roughness={0.2} /></mesh>
+              <mesh position={[sx * 0.07, 0.085, 0.18]} rotation={[0, 0, sx * -0.12]}><boxGeometry args={[0.06, 0.012, 0.02]} /><meshStandardMaterial color={beard || '#2a1c12'} /></mesh>
+              <mesh position={[sx * 0.2, 0, 0]}><sphereGeometry args={[0.04, 8, 8]} /><meshStandardMaterial color={skin} roughness={0.6} /></mesh>
+            </group>
+          ))}
+          <mesh position={[0, -0.01, 0.2]}><sphereGeometry args={[0.03, 8, 8]} /><meshStandardMaterial color={skin} roughness={0.55} /></mesh>
           {beard && (
             <mesh position={[0, -0.16, 0.1]} rotation={[0.2, 0, Math.PI]}><coneGeometry args={[0.16, 0.34, 12]} /><meshStandardMaterial color={beard} roughness={1} /></mesh>
           )}

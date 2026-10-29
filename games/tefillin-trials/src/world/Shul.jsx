@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import * as THREE from 'three';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { MeshReflectorMaterial, Text, Float, Environment, Lightformer, Instances, Instance, Sparkles } from '@react-three/drei';
 
@@ -11,7 +12,50 @@ export const BENCHES = [];
 for (const z of [-16, -12, -8, 8, 12, 16]) for (const x of [-12, -4.5, 4.5, 12]) BENCHES.push([x, z]);
 export const BIMAH = { x: 0, z: 0, half: 2.6 };
 
+// Stained glass: jewel-toned panes with lead lines, used as both colour and emissive map.
+function makeGlassTexture() {
+  const W = 128, H = 320;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const jewels = ['#2b5fc4', '#d9a21b', '#b3263a', '#2a9d8f', '#e8c15a', '#6a3fb5'];
+  const cols = 3, rows = 8;
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) {
+    const mid = (r + k) % 2 === 0;
+    g.fillStyle = mid ? jewels[Math.floor(rnd() * jewels.length)] : '#e9f1ff';
+    g.fillRect((k * W) / cols, (r * H) / rows, W / cols, H / rows);
+    const grad = g.createLinearGradient(0, (r * H) / rows, 0, ((r + 1) * H) / rows);
+    grad.addColorStop(0, 'rgba(255,255,255,.35)'); grad.addColorStop(1, 'rgba(0,0,0,.2)');
+    g.fillStyle = grad; g.fillRect((k * W) / cols, (r * H) / rows, W / cols, H / rows);
+  }
+  g.strokeStyle = '#0e0f16'; g.lineWidth = 5;
+  for (let k = 0; k <= cols; k++) { g.beginPath(); g.moveTo((k * W) / cols, 0); g.lineTo((k * W) / cols, H); g.stroke(); }
+  for (let r = 0; r <= rows; r++) { g.beginPath(); g.moveTo(0, (r * H) / rows); g.lineTo(W, (r * H) / rows); g.stroke(); }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// Soft vertical falloff for light shafts.
+function makeShaftTexture() {
+  const c = document.createElement('canvas');
+  c.width = 4; c.height = 128;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 128);
+  grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.5, 'rgba(255,255,255,.35)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 4, 128);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.ClampToEdgeWrapping;
+  return t;
+}
+
+const SHAFT_ANGLE = 0.95;
+
 export function Shul() {
+  const glass = useMemo(makeGlassTexture, []);
+  const shaft = useMemo(makeShaftTexture, []);
   const windows = useMemo(() => {
     const w = [];
     for (const z of [-18, -9, 0, 9, 18]) { w.push([-HALF_X + 0.05, z, Math.PI / 2]); w.push([HALF_X - 0.05, z, -Math.PI / 2]); }
@@ -75,13 +119,45 @@ export function Shul() {
       ].map(([p, s], i) => (
         <mesh key={i} position={p} receiveShadow><boxGeometry args={s} /><meshStandardMaterial color="#e9dcc4" roughness={0.9} /></mesh>
       ))}
-      {/* Tall windows, glowing (bloom picks them up) */}
+      {/* Wainscot, pilasters and a gilded cornice */}
+      {[-1, 1].map((sx) => (
+        <mesh key={`w${sx}`} position={[sx * (HALF_X - 0.3), 1.2, 0]} receiveShadow castShadow>
+          <boxGeometry args={[0.3, 2.4, HALF_Z * 2]} /><meshStandardMaterial color="#4a2d18" roughness={0.55} metalness={0.1} />
+        </mesh>
+      ))}
+      <mesh position={[0, 1.2, -HALF_Z + 0.3]} receiveShadow><boxGeometry args={[HALF_X * 2, 2.4, 0.3]} /><meshStandardMaterial color="#4a2d18" roughness={0.55} /></mesh>
+      {[-1, 1].map((sx) => [-22, -13.5, -4.5, 4.5, 13.5, 22].map((z) => (
+        <group key={`p${sx}${z}`} position={[sx * (HALF_X - 0.45), 0, z]}>
+          <mesh position={[0, 4.5, 0]} castShadow><boxGeometry args={[0.45, 9, 0.8]} /><meshStandardMaterial color="#efe3c9" roughness={0.8} /></mesh>
+          <mesh position={[0, 2.5, 0]}><boxGeometry args={[0.55, 0.18, 0.95]} /><meshStandardMaterial color="#c9a24a" metalness={0.9} roughness={0.28} /></mesh>
+          <mesh position={[0, 8.7, 0]}><boxGeometry args={[0.6, 0.35, 1]} /><meshStandardMaterial color="#c9a24a" metalness={0.9} roughness={0.28} /></mesh>
+        </group>
+      )))}
+      {[-1, 1].map((sx) => (
+        <mesh key={`c${sx}`} position={[sx * (HALF_X - 0.2), 8.95, 0]}><boxGeometry args={[0.45, 0.22, HALF_Z * 2]} /><meshStandardMaterial color="#c9a24a" metalness={0.9} roughness={0.3} /></mesh>
+      ))}
+
+      {/* Stained-glass windows with leaded frames, and light shafts raking across the shul */}
       {windows.map(([x, z, ry], i) => (
         <group key={i} position={[x, 4.8, z]} rotation-y={ry}>
-          <mesh><planeGeometry args={[2.2, 5]} /><meshStandardMaterial color="#cfe4ff" emissive="#9cc7ff" emissiveIntensity={1.6} toneMapped={false} /></mesh>
+          <mesh><planeGeometry args={[2.2, 5]} /><meshStandardMaterial color="#ffffff" map={glass} emissive="#ffffff" emissiveMap={glass} emissiveIntensity={1.35} toneMapped={false} /></mesh>
           <mesh position={[0, 2.5, 0.01]}><circleGeometry args={[1.1, 24, 0, Math.PI]} /><meshStandardMaterial color="#ffe6a8" emissive="#ffcf6b" emissiveIntensity={1.8} toneMapped={false} /></mesh>
+          <mesh position={[0, 3.6, 0.03]}><ringGeometry args={[0.35, 0.5, 6]} /><meshStandardMaterial color="#3a2410" /></mesh>
+          {[-1.15, 1.15].map((fx) => <mesh key={fx} position={[fx, 1.25, 0.05]}><boxGeometry args={[0.16, 7.4, 0.14]} /><meshStandardMaterial color="#c9a24a" metalness={0.9} roughness={0.3} /></mesh>)}
+          <mesh position={[0, -2.55, 0.05]}><boxGeometry args={[2.5, 0.22, 0.28]} /><meshStandardMaterial color="#efe3c9" roughness={0.8} /></mesh>
+          {/* the shaft: a gradient plane sloping down and into the shul */}
+          <mesh
+            position={[0, -Math.sin(SHAFT_ANGLE) * 8, Math.cos(SHAFT_ANGLE) * 8]}
+            rotation={[Math.PI / 2 + SHAFT_ANGLE, 0, 0]}
+          >
+            <planeGeometry args={[2.6, 16]} />
+            <meshBasicMaterial map={shaft} color="#ffd9a0" transparent opacity={0.16} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} fog={false} />
+          </mesh>
         </group>
       ))}
+      {/* Floor inlay: a gold border and a medallion before the bimah */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.015, 0]}><ringGeometry args={[6.6, 6.8, 64]} /><meshStandardMaterial color="#c9a24a" metalness={0.9} roughness={0.3} /></mesh>
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.015, 0]}><ringGeometry args={[7.3, 7.4, 64]} /><meshStandardMaterial color="#c9a24a" metalness={0.9} roughness={0.3} /></mesh>
 
       {/* Benches, instanced */}
       <Instances limit={BENCHES.length * 2} castShadow receiveShadow>
@@ -112,6 +188,17 @@ export function Shul() {
         <Text font={FONT} position={[0, 0.8, 0.64]} fontSize={0.32} color="#e0b54a" anchorX="center" direction="rtl">
           דַּע לִפְנֵי מִי אַתָּה עוֹמֵד
         </Text>
+        {/* gilded columns, pediment and a spotlight on the curtain */}
+        {[-1, 1].map((sx) => (
+          <group key={sx} position={[sx * 2.7, 0, 0.75]}>
+            <mesh position={[0, 3, 0]} castShadow><cylinderGeometry args={[0.28, 0.32, 6, 20]} /><meshStandardMaterial color="#d8b152" metalness={0.95} roughness={0.28} /></mesh>
+            <mesh position={[0, 0.2, 0]}><boxGeometry args={[0.8, 0.4, 0.8]} /><meshStandardMaterial color="#b88f32" metalness={0.9} roughness={0.3} /></mesh>
+            <mesh position={[0, 6.1, 0]}><boxGeometry args={[0.8, 0.3, 0.8]} /><meshStandardMaterial color="#b88f32" metalness={0.9} roughness={0.3} /></mesh>
+          </group>
+        ))}
+        <mesh position={[0, 6.45, 0.3]} castShadow><boxGeometry args={[6.8, 0.4, 1.6]} /><meshStandardMaterial color="#d8b152" metalness={0.95} roughness={0.28} /></mesh>
+        <mesh position={[0, 7.05, 0.3]} rotation-z={Math.PI / 4} castShadow><boxGeometry args={[0.9, 0.9, 1.2]} /><meshStandardMaterial color="#d8b152" metalness={0.95} roughness={0.28} /></mesh>
+        <spotLight position={[0, 9, 6]} target-position={[0, 3, 0]} angle={0.45} penumbra={0.8} intensity={120} distance={24} color="#ffe0a0" />
         {/* ner tamid */}
         <mesh position={[0, 7.6, 0.9]}><sphereGeometry args={[0.18, 16, 16]} /><meshStandardMaterial color="#ff8a3d" emissive="#ff6a00" emissiveIntensity={4} toneMapped={false} /></mesh>
       </group>
@@ -122,12 +209,16 @@ export function Shul() {
           כָּל זְמַן שֶׁהַתְּפִלִּין בְּרֹאשׁוֹ ... מְפַנֶּה לִבּוֹ בְּדִבְרֵי הָאֱמֶת וְהַצֶּדֶק
         </Text>
       </Float>
+      <Sparkles count={60} scale={[30, 7, 40]} position={[0, 4.5, 0]} size={6} speed={0.12} color="#fff0cf" opacity={0.18} />
       <Sparkles count={120} scale={[34, 8, 44]} position={[0, 5, 0]} size={2.4} speed={0.25} color="#ffe6a8" opacity={0.5} />
 
       {/* Chandeliers */}
       {[[-8, -10], [8, -10], [-8, 10], [8, 10]].map(([x, z], i) => (
         <group key={i} position={[x, 7.4, z]}>
           <mesh><torusGeometry args={[0.9, 0.05, 8, 32]} /><meshStandardMaterial color="#c9a24a" metalness={1} roughness={0.3} /></mesh>
+          <mesh position={[0, 0.6, 0]}><cylinderGeometry args={[0.015, 0.015, 1.2, 6]} /><meshStandardMaterial color="#c9a24a" metalness={1} roughness={0.3} /></mesh>
+          <mesh rotation-x={Math.PI / 2} position={[0, -0.05, 0]}><torusGeometry args={[0.45, 0.03, 8, 24]} /><meshStandardMaterial color="#c9a24a" metalness={1} roughness={0.3} /></mesh>
+          <pointLight position={[0, -0.4, 0]} intensity={9} distance={14} decay={2} color="#ffd9a0" />
           {Array.from({ length: 8 }).map((_, k) => (
             <mesh key={k} position={[Math.cos((k / 8) * Math.PI * 2) * 0.9, 0.15, Math.sin((k / 8) * Math.PI * 2) * 0.9]}>
               <sphereGeometry args={[0.09, 8, 8]} /><meshStandardMaterial color="#fff2c8" emissive="#ffd88a" emissiveIntensity={5} toneMapped={false} />

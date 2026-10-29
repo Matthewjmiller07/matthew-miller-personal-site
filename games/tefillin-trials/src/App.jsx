@@ -2,7 +2,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { KeyboardControls, PerformanceMonitor, Preload } from '@react-three/drei';
-import { EffectComposer, Bloom, Vignette, Noise, ChromaticAberration, Glitch, ToneMapping } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Vignette, Noise, ChromaticAberration, Glitch, ToneMapping, SMAA, DepthOfField, HueSaturation, BrightnessContrast } from '@react-three/postprocessing';
 import { BlendFunction, GlitchMode, ToneMappingMode, ShaderPass } from 'postprocessing';
 import * as THREE from 'three';
 import { Shul } from './world/Shul.jsx';
@@ -83,6 +83,8 @@ function Cinematic() {
 
 function Post({ low }) {
   const glitchAt = useGame((s) => s.glitch);
+  const screen = useGame((s) => s.screen);
+  const cinematic = screen === 'title' || screen === 'results';
   const [glitching, setGlitching] = useState(false);
   const offset = useMemo(() => new THREE.Vector2(0.0006, 0.0006), []);
   const sanitize = useMemo(makeSanitizePass, []);
@@ -99,12 +101,16 @@ function Post({ low }) {
   return (
     <EffectComposer multisampling={0}>
       <primitive object={sanitize} />
-      {!DEBUG.has('nobloom') ? <Bloom mipmapBlur intensity={low ? 0.6 : 1.1} luminanceThreshold={0.9} luminanceSmoothing={0.2} /> : <></>}
+      {!DEBUG.has('nobloom') ? <Bloom mipmapBlur intensity={low ? 0.7 : 1.35} luminanceThreshold={0.85} luminanceSmoothing={0.25} radius={0.85} /> : <></>}
       {!DEBUG.has('noca') ? <ChromaticAberration offset={offset} blendFunction={BlendFunction.NORMAL} /> : <></>}
       {!DEBUG.has('noglitch') ? <Glitch active={glitching} delay={[0, 0]} duration={[0.2, 0.5]} strength={[0.2, 0.5]} mode={GlitchMode.SPORADIC} ratio={0.8} /> : <></>}
-      <Vignette offset={0.25} darkness={0.7} />
+      {cinematic && !low ? <DepthOfField focusDistance={0.02} focalLength={0.04} bokehScale={3.2} height={480} /> : <></>}
+      <Vignette offset={0.2} darkness={0.8} />
       {!DEBUG.has('nonoise') ? <Noise opacity={0.025} blendFunction={BlendFunction.OVERLAY} /> : <></>}
       {!DEBUG.has('notone') ? <ToneMapping mode={ToneMappingMode.AGX} /> : <></>}
+      <HueSaturation saturation={0.18} />
+      <BrightnessContrast contrast={0.1} brightness={0.02} />
+      {!low ? <SMAA /> : <></>}
     </EffectComposer>
   );
 }
