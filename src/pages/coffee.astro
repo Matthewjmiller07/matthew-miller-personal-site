@@ -798,6 +798,17 @@ const sheetPdf = (sh: (typeof sheetSeries)[number], student = false) =>
     if (a && a.getAttribute('href') === location.hash) openTopicFromHash();
   });
 
+  // ?topic=Brachot — Bracha Acharona (or ?topic=bracha-acharona) jumps straight to a
+  // topic: exact match on the topic anchor first, then the closest partial match.
+  function hashFromTopicParam() {
+    const q = new URLSearchParams(location.search).get('topic');
+    if (!q || location.hash) return;
+    const want = topicId(q);
+    const ids = [...document.querySelectorAll('details.kava-topic')].map((d) => d.id);
+    const hit = ids.find((id) => id === want) || ids.find((id) => id.includes(want) || want.includes(id));
+    if (hit) history.replaceState(null, '', `${location.pathname}${location.search}#${hit}`);
+  }
+
   async function init() {
     try {
       const [topics, sources, links, facts, shiurim, authors] = await Promise.all([
@@ -822,6 +833,7 @@ const sheetPdf = (sh: (typeof sheetSeries)[number], student = false) =>
       ['topics-section', 'sources-section', 'facts-section', 'shiurim-section', 'authors-section'].forEach(
         (id) => ($(id).hidden = false)
       );
+      hashFromTopicParam();
       openTopicFromHash();
     } catch (err) {
       console.error('[coffee] load failed:', err);
