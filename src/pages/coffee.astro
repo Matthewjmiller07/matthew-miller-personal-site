@@ -484,6 +484,12 @@ const sheetPdf = (sh: (typeof sheetSeries)[number], student = false) =>
   @media (prefers-reduced-motion: reduce) {
     .kava-section, .kava-steam span, .kava-loading { animation: none; }
   }
+  .kava-copylink {
+    margin-top: 0.9rem; display: block; background: none; border: 1px solid currentColor;
+    border-radius: 999px; padding: 0.25rem 0.8rem; font: inherit; font-size: 0.8rem;
+    opacity: 0.65; cursor: pointer;
+  }
+  .kava-copylink:hover { opacity: 1; }
 </style>
 
 <script>
@@ -589,6 +595,7 @@ const sheetPdf = (sh: (typeof sheetSeries)[number], student = false) =>
           <summary>${esc(topicName)}${entries.length > 1 ? ` <span class="kava-topic-count">${entries.length}</span>` : ''}</summary>
           <div class="kava-topic-body">
             ${body}
+            <button type="button" class="kava-copylink" data-topic="${topicId(topicName).slice(6)}">🔗 Copy link to this question</button>
             <div style="margin-top:0.9rem">${allTags.filter((x) => !['claude-added','claude-enriched'].includes(x)).map(badge).join('')}${hasClaude ? badge('claude-added') : ''}</div>
           </div>
         </details>`;
@@ -776,6 +783,20 @@ const sheetPdf = (sh: (typeof sheetSeries)[number], student = false) =>
       })
       .join('');
   }
+
+  // "Copy link" buttons: share /coffee?topic=<slug>, which deep-links to that question.
+  document.addEventListener('click', async (e) => {
+    const btn = (e.target as HTMLElement).closest('.kava-copylink') as HTMLButtonElement | null;
+    if (!btn) return;
+    const url = `${location.origin}/coffee?topic=${encodeURIComponent(btn.dataset.topic || '')}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      btn.textContent = '✓ Link copied';
+    } catch {
+      prompt('Copy this link:', url);
+    }
+    setTimeout(() => (btn.textContent = '🔗 Copy link to this question'), 2000);
+  });
 
   // Open a topic accordion when navigated to by hash (author chips, shared links),
   // flash it briefly so the eye lands in the right place.
