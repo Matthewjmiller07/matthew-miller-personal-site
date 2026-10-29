@@ -1,0 +1,61 @@
+---
+// Hineni: The Tefillin Trials. A 3D game built as its own Vite app in games/tefillin-trials/
+// (React Three Fiber, drei, Rapier, Yuka, three.quarks, postprocessing) and committed prebuilt
+// to public/games/tefillin-trials/. Rebuild with: cd games/tefillin-trials && npm i && npm run build
+import fs from 'node:fs';
+import path from 'node:path';
+
+const base = '/games/tefillin-trials/';
+let js = '';
+let css: string[] = [];
+try {
+  const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/games/tefillin-trials/.vite/manifest.json'), 'utf8'));
+  const entry = manifest['index.html'];
+  js = base + entry.file;
+  css = (entry.css || []).map((c: string) => base + c);
+} catch {
+  // The game bundle hasn't been built; the page shows a note instead.
+}
+
+const title = 'Hineni: The Tefillin Trials | Matthew Miller';
+const description = 'A 3D game of Hilchot Tefillin, siman 25. Run the Hefsek Gauntlet to your shel rosh without talking, catch the right brachot for Rashi and Rabbeinu Tam, hum (or hush) at the Shabbat table, and collect rulings from 20 poskim walking around the shul.';
+const url = 'https://theothermatthewmiller.com/tefillin-trials';
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={url} />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://theothermatthewmiller.com/og-default.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#07080d" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="canonical" href={url} />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700;900&family=Inter:wght@400;600;800&display=swap" />
+  {css.map((href) => <link rel="stylesheet" href={href} />)}
+  <style is:global>
+    html, body { margin: 0; height: 100%; background: #07080d; overflow: hidden; overscroll-behavior: none; }
+    #tefillin-trials-root { position: fixed; inset: 0; }
+    .tt-home { position: fixed; left: 12px; bottom: calc(env(safe-area-inset-bottom) + 6px); z-index: 30; font: 600 11px Inter, system-ui, sans-serif; color: #a9afc6; text-decoration: none; opacity: .7; }
+    .tt-home:hover { opacity: 1; color: #ffd84a; }
+    .tt-loading { position: fixed; inset: 0; display: grid; place-items: center; color: #e0b54a; font: 900 3rem 'Frank Ruhl Libre', serif; letter-spacing: .1em; }
+    .tt-loading small { display: block; text-align: center; font: 600 .8rem Inter, sans-serif; color: #a9afc6; letter-spacing: .2em; margin-top: .6rem; }
+    @media (pointer: coarse) { .tt-home { display: none; } }
+  </style>
+</head>
+<body>
+  <div id="tefillin-trials-root">
+    <div class="tt-loading"><div lang="he" dir="rtl">הִנֵּנִי<small>LOADING THE SHUL…</small></div></div>
+  </div>
+  <a class="tt-home" href="/projects#games">← theothermatthewmiller.com</a>
+  {js ? <script type="module" src={js}></script> : <p style="color:#fff;text-align:center;margin-top:40vh">The game bundle isn’t built yet.</p>}
+</body>
+</html>
