@@ -71,15 +71,25 @@ if typ != "OK":
     sys.exit(f"IMAP search failed: {data}")
 uids = data[0].split()
 
+# The search is a loose keyword match: it also catches GitHub's own "Run failed: Likutei
+# Peshatim calendar" notifications, which would otherwise be parsed as issues. Real issues
+# have a subject that starts with "Likutei Peshatim" (checked on the headers below).
+SUBJECT_RE = re.compile(r"^\s*(re:\s*|fwd?:\s*)?Likutei Peshatim\b", re.I)
+
 candidates = []  # (internal_ts, id, uid)
 if uids:
-    typ, meta = imap.uid("FETCH", b",".join(uids), "(X-GM-MSGID INTERNALDATE)")
+    typ, meta = imap.uid("FETCH", b",".join(uids), "(X-GM-MSGID INTERNALDATE BODY.PEEK[HEADER.FIELDS (SUBJECT)])")
     for item in meta:
-        line = item.decode() if isinstance(item, bytes) else item[0].decode()
+        if not isinstance(item, tuple):
+            continue
+        line = item[0].decode()
         m_id = re.search(r"X-GM-MSGID (\d+)", line)
         m_uid = re.search(r"UID (\d+)", line)
         m_date = re.search(r'INTERNALDATE "([^"]+)"', line)
         if not (m_id and m_uid and m_date):
+            continue
+        subject = str(email.message_from_bytes(item[1], policy=email.policy.default)["Subject"] or "")
+        if not SUBJECT_RE.match(subject):
             continue
         gmail_id = format(int(m_id.group(1)), "x")
         if gmail_id in processed_ids:
