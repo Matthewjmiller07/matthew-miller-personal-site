@@ -1,0 +1,163 @@
+---
+import Layout from '../layouts/Layout.astro';
+import chapter from '../data/mega-maimonides/issurei-biah-9.json';
+
+// Seeded chapter: Hilchot Issurei Biah 9, from the Daily Reader of 28 October 2026.
+// Text (Hebrew + English) is Sefaria's, as shipped in that reader. Notes are pinned
+// to the halachah they explain. More chapters follow the same JSON shape.
+const books = [
+  { name: 'Madda', he: 'מדע', live: false },
+  { name: 'Ahavah', he: 'אהבה', live: false },
+  { name: 'Zmanim', he: 'זמנים', live: false },
+  { name: 'Nashim', he: 'נשים', live: false },
+  { name: 'Kedushah', he: 'קדושה', live: true },
+  { name: 'Haflaah', he: 'הפלאה', live: false },
+  { name: 'Zeraim', he: 'זרעים', live: false },
+  { name: 'Avodah', he: 'עבודה', live: false },
+  { name: 'Korbanot', he: 'קרבנות', live: false },
+  { name: 'Taharah', he: 'טהרה', live: false },
+  { name: 'Nezikin', he: 'נזיקין', live: false },
+  { name: 'Kinyan', he: 'קנין', live: false },
+  { name: 'Mishpatim', he: 'משפטים', live: false },
+  { name: 'Shoftim', he: 'שופטים', live: false },
+];
+---
+
+<Layout
+  title="Mega Maimonides"
+  description="The Mishneh Torah in one reader, seeded with Hilchot Issurei Biah 9 — Hebrew and English from Sefaria, with notes pinned to the halachah they explain."
+>
+<style is:global>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Cormorant+SC:wght@400;500;600&family=Frank+Ruhl+Libre:wght@400;500;700&display=swap');
+body:has(.mmd-page) { background:#0c0b09 !important; }
+</style>
+
+<style>
+.mmd-page {
+  --bg:#0c0b09; --surface:#141210; --surface2:#1c1a15;
+  --border:rgba(201,162,87,.15); --border-hi:rgba(201,162,87,.4);
+  --text:#e8d4aa; --muted:#8a7a5a; --gold:#c9a257;
+  --heb:'Frank Ruhl Libre','Noto Serif Hebrew',serif;
+  --display:'Cormorant Garamond',Georgia,serif;
+  --sc:'Cormorant SC',Georgia,serif;
+  background:var(--bg); color:var(--text); min-height:100vh;
+  padding:3rem 1rem 5rem;
+}
+.wrap { max-width:860px; margin:0 auto; }
+.kicker { font-family:var(--sc); font-size:.72rem; letter-spacing:.34em; color:var(--gold); text-transform:uppercase; }
+h1 { font-family:var(--display); font-weight:300; font-size:clamp(2.4rem, 6vw, 4rem); line-height:1.05; margin:.6rem 0 .5rem; }
+h1 .he { font-family:var(--heb); color:var(--gold); font-size:.85em; }
+.lede { font-family:var(--display); font-size:1.2rem; line-height:1.55; color:var(--muted); max-width:44rem; margin:0 0 1.4rem; }
+.seed { border-left:3px solid var(--gold); background:rgba(201,162,87,.07); padding:.7rem .9rem; font-family:var(--display); font-size:1.02rem; line-height:1.5; color:var(--text); margin:0 0 1.6rem; }
+.seed b { font-family:var(--sc); letter-spacing:.08em; }
+.books { display:flex; flex-wrap:wrap; gap:.4rem; margin:0 0 1.6rem; padding:0; list-style:none; }
+.books li { border:1px solid var(--border-hi); padding:.35rem .7rem; font-family:var(--display); font-size:.95rem; color:var(--muted); }
+.books li .he { font-family:var(--heb); color:var(--gold); margin-left:.4rem; }
+.books li.live { border-color:var(--gold); color:var(--text); }
+.books li.live a { color:inherit; text-decoration:none; }
+.langbar { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; margin:0 0 1.4rem; }
+.langbar button { background:var(--surface); border:1px solid var(--border-hi); color:var(--text); padding:.4rem .9rem; cursor:pointer; font-family:var(--sc); letter-spacing:.14em; font-size:.68rem; text-transform:uppercase; }
+.langbar button.on { background:var(--gold); color:var(--bg); border-color:var(--gold); }
+.langbar a { color:var(--gold); font-family:var(--display); font-size:.95rem; margin-left:auto; }
+.mmd-page[data-lang="he"] .en { display:none; }
+.mmd-page[data-lang="en"] .he { display:none; }
+.hal { padding:1rem .6rem 1.2rem 2.4rem; border-top:1px solid var(--border); position:relative; scroll-margin-top:5rem; }
+.hal:target { background:rgba(201,162,87,.08); }
+.hnum { position:absolute; left:.3rem; top:1.2rem; font-family:var(--sc); font-size:.7rem; letter-spacing:.1em; color:var(--gold); }
+.he { font-family:var(--heb); font-size:1.45rem; line-height:1.85; direction:rtl; text-align:right; color:var(--text); }
+.en { font-family:var(--display); font-size:1.05rem; line-height:1.55; color:var(--muted); margin-top:.4rem; }
+.note { border:1px solid var(--border-hi); border-left:4px solid var(--gold); background:var(--surface); padding:1rem 1.2rem; margin:1rem 0 0; }
+.note h3 { font-family:var(--sc); font-size:.72rem; letter-spacing:.22em; text-transform:uppercase; color:var(--gold); margin:0 0 .5rem; font-weight:500; }
+.note p { font-family:var(--display); font-size:1.05rem; line-height:1.55; color:var(--text); margin:.4rem 0; }
+.note .heq { font-family:var(--heb); font-size:1.2rem; line-height:1.8; direction:rtl; text-align:right; color:var(--gold); margin:.5rem 0; }
+.note ul { font-family:var(--display); font-size:1.02rem; line-height:1.5; color:var(--text); margin:.4rem 0; padding-left:1.2rem; }
+.note a { color:var(--gold); }
+.note .src { font-size:.9rem; color:var(--muted); font-style:italic; }
+.chapter-foot { margin-top:2rem; border-top:1px solid var(--border-hi); padding-top:1rem; font-family:var(--display); font-size:1rem; color:var(--muted); line-height:1.5; }
+.chapter-foot a { color:var(--gold); }
+</style>
+
+<main class="mmd-page" data-lang="both" id="mmd">
+  <div class="wrap">
+    <div class="kicker">Mega · Maimonides</div>
+    <h1>Mega Maimonides <span class="he">משנה תורה</span></h1>
+    <p class="lede">The Mishneh Torah, chapter by chapter, in Hebrew and English — with notes pinned to the halachah they explain, the way the other Mega readers pin theirs to the verse, the mishnah, and the daf.</p>
+
+    <p class="seed"><b>Seeded, not finished.</b> One chapter is live so far: {chapter.ref} — {chapter.chapter === 9 ? 'the chapter on stains, sensation, and retroactivity' : ''}. The other thirteen books are listed below and marked as they arrive, starting with the chapters the Daily Reader's Rambam Yomi track ships.</p>
+
+    <ul class="books">
+      {books.map((b) => (
+        <li class={b.live ? 'live' : ''}>
+          {b.live ? <a href="#issurei-biah-9">{b.name}<span class="he">{b.he}</span></a> : <>{b.name}<span class="he">{b.he}</span></>}
+        </li>
+      ))}
+    </ul>
+
+    <div class="langbar">
+      <button data-lang-btn="both" class="on">Hebrew + English</button>
+      <button data-lang-btn="he">Hebrew only</button>
+      <button data-lang-btn="en">English only</button>
+      <a href={chapter.sefaria_url} target="_blank" rel="noopener">Chapter on Sefaria →</a>
+    </div>
+
+    <section id="issurei-biah-9">
+      <div class="kicker">{chapter.book} · {chapter.section}</div>
+      <h1 style="font-size:2.2rem;">{chapter.ref} <span class="he">{chapter.ref_he}</span></h1>
+      <p class="lede" style="font-size:1.05rem;">{chapter.source}. Text: Sefaria.</p>
+
+      {chapter.halachot.map((h) => (
+        <article class="hal" id={`halacha-${h.n}`}>
+          <span class="hnum">{h.n}</span>
+          <div class="he">{h.he}</div>
+          <div class="en">{h.en}</div>
+
+          {h.n === 5 && (
+            <aside class="note">
+              <h3>Note · Who counts as a zakenah?</h3>
+              <p class="heq">זְקֵנָה כָּל שֶׁעָבְרוּ עָלֶיהָ תִּשְׁעִים יוֹם סָמוּךְ לְזִקְנָתָהּ. וְאֵי זוֹ הִיא זְקֵנָה כָּל שֶׁקּוֹרְאִין לָהּ זְקֵנָה וְאֵינָהּ מַקְפֶּדֶת.</p>
+              <p>“The term ‘elderly woman’ refers to a woman who did not menstruate for 90 days near her old age. When is she considered elderly? When she is called an old woman [by others] and she does not protest.”</p>
+              <p>The definition here is not a fixed age. It is two conditions together: ninety days without menstruation near old age, and social recognition — people call her zakenah, and she does not object. The legal consequence, in this chapter, is narrow: like a pregnant or nursing woman, her stain is treated like a sighting, and it does not defile retroactively (halachot 4–5).</p>
+              <p>Do not collapse this into the other zaken definitions. Kiddushin 32b's zaken is zeh shekanah chochmah, one who has acquired wisdom; Bava Metzia 30's zaken ve'eino lefi kvodo is about dignity in returning a lost object. This one is a niddah category, defined by body and by what people call her.</p>
+              <p class="src">Source: Daily Reader, 28 October 2026 — Rambam Yomi, Issurei Biah 9:5.</p>
+            </aside>
+          )}
+
+          {h.n === 37 && (
+            <aside class="note">
+              <h3>Note · The seven cleaning agents, in order</h3>
+              <p class="heq">וְאֵלּוּ הֵן הַשִּׁבְעָה סַמָּנִים עַל סִדְרָן. רֹק תָּפֵל. וּלְעִיסַת גְּרִיסִין שֶׁל פּוֹל. וּמֵי רַגְלַיִם שֶׁהֶחֱמִיצוּ. וּבֹרִית. וְנֶתֶר. וְקִימוֹנְיָא. וְאַשְׁלָג.</p>
+              <p>In order, from halachah 37:</p>
+              <ul>
+                <li><b>רֹק תָּפֵל</b> — saliva of one who has not eaten (defined in halachah 38: from the night, slept the second half of the night, before eating, and without much speech in the first three hours of the day)</li>
+                <li><b>לְעִיסַת גְּרִיסִין שֶׁל פּוֹל</b> — chewed bean gruel, chewed until well mixed with saliva</li>
+                <li><b>מֵי רַגְלַיִם שֶׁהֶחֱמִיצוּ</b> — urine that has soured, three days old or more</li>
+                <li><b>בֹּרִית</b> — lye / soapwort</li>
+                <li><b>נֶתֶר</b> — natron</li>
+                <li><b>קִימוֹנְיָא</b> — Cimolian earth, not cumin (see below)</li>
+                <li><b>אַשְׁלָג</b> — potash, not modern bleach (see below)</li>
+              </ul>
+              <p>Procedure matters as much as the list: rub three times with each agent, passing back and forth with each rub. Out of order, or all at once, counts for nothing. If the later ones were used first, they count as the first ones in order, and the rest are then applied after them until all seven have run in order.</p>
+              <p>Why run them at all? Halachah 36: a stain on a garment with nothing to attribute it to does not defile until it is proven to be blood. If it is doubtful whether it is blood or red dye, run the seven agents in order. If it fades or weakens, it is a bloodstain; if it stands as it was, it is dye.</p>
+              <p><b>On the two hard words.</b> קִימוֹנְיָא is <a href="https://en.wikipedia.org/wiki/Cimolian_earth" target="_blank" rel="noopener">Cimolian earth</a> — Greek κιμωλία, from the island of Kimolos, a clay used in the ancient world for bleaching and washing clothes. Cumin is a different word, כמון. The identification is disputed: Maimonides himself identified kimonia as a plant-derived alkaline substance, while other commentators identify it with Cimolian earth. אַשְׁלָג is potash, an alkaline salt — the ancestor of bleaching agents, not the modern product.</p>
+              <p><b>And not economica.</b> Modern Israeli bleach is called אקונומיקה, but not from קִימוֹנְיָא. It is a 1940s Jerusalem brand name, trademarked in 1945, from English “economic” — thrifty household management — which then became the generic word for bleach. The resemblance is a coincidence; the two bleaching traditions are two thousand years apart.</p>
+              <p class="src">Source: Daily Reader, 28 October 2026 — Rambam Yomi, Issurei Biah 9:36–38.</p>
+            </aside>
+          )}
+        </article>
+      ))}
+    </section>
+
+    <p class="chapter-foot">Chapter text: <a href={chapter.sefaria_url} target="_blank" rel="noopener">Sefaria, {chapter.ref}</a>. Next chapters to be added follow this page's data shape — one JSON file per chapter under <code>src/data/mega-maimonides/</code>, with notes pinned by halachah number.</p>
+  </div>
+</main>
+
+<script>
+  const page = document.getElementById('mmd');
+  document.querySelectorAll('[data-lang-btn]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      page.dataset.lang = btn.dataset.langBtn;
+      document.querySelectorAll('[data-lang-btn]').forEach((b) => b.classList.toggle('on', b === btn));
+    });
+  });
+</script>
+</Layout>
