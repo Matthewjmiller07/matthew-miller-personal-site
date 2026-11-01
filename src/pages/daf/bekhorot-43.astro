@@ -1,0 +1,289 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Knock Out a Verse — Daf Yomi Game: Bekhorot 43"
+  description="Bekhorot 43: pull one of three blemish verses (priest, offering, firstborn) and see which refutation brings the derivation down, name the five odd head shapes, paint the kere'aḥ's hair row, and sort priests by how they are disqualified."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .card { background: #11131b; border: 1px solid #262a3a; border-radius: 1rem; }
+    .chip { border: 1px solid #3a3f55; border-radius: 0.6rem; padding: 0.45rem 0.75rem; font-size: 0.8rem; transition: background .15s, border-color .15s; text-align: left; }
+    .chip:hover:not(:disabled) { background: #191c28; }
+    .chip.ok { background: #13261f; border-color: #6cc3a6; }
+    .chip.bad { background: #33191a; border-color: #cc5a48; }
+    .chip.sel { background: #2a2414; border-color: #e0b54a; }
+    .chip:disabled { cursor: default; opacity: .92; }
+    .tgl { border: 1px solid #3a3f55; border-radius: 999px; padding: .35rem .9rem; font-size: .8rem; }
+    .tgl[aria-pressed="true"] { background: #2a2414; border-color: #e0b54a; }
+    .lamp { display: inline-block; width: .7rem; height: .7rem; border-radius: 999px; background: #3a3f55; margin-right: .35rem; }
+    .lamp.g { background: #6cc3a6; box-shadow: 0 0 8px #6cc3a6; }
+    .lamp.r { background: #cc5a48; box-shadow: 0 0 8px #cc5a48; }
+    .lamp.y { background: #e0b54a; box-shadow: 0 0 8px #e0b54a; }
+    .quote { background: #0d0f16; border-inline-start: 3px solid #3a3f55; padding: .6rem .85rem; border-radius: .4rem; font-size: .9rem; line-height: 1.6; }
+    .pillar { transition: opacity .4s, transform .4s; }
+    .pillar.gone { opacity: .25; transform: translateY(8px); }
+    .hairzone { cursor: pointer; }
+    button:focus-visible, [tabindex]:focus-visible { outline: 2px solid #e0b54a; outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { .chip, .pillar { transition: none; } }
+  </style>
+
+  <main class="min-h-screen bg-[#0a0b10] !text-[#e7e9f0]">
+
+    <div class="border-b border-[#262a3a] bg-gradient-to-b from-[#161a2a] to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs tracking-[0.22em] !text-[#959bb3]">
+        <a href="/daf" class="transition-colors hover:!text-[#e7e9f0]">daf yomi arcade</a>
+        <span class="mx-2 opacity-40">·</span>bekhorot 43<span class="mx-2 opacity-40">·</span>2026-11-01
+      </p>
+      <div class="mx-auto mb-3 text-5xl" aria-hidden="true">🏛️</div>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl !text-[#f4f5fa]">Knock Out a Verse</h1>
+      <p class="frank mt-3 text-3xl font-light !text-[#e0b54a]" dir="rtl" lang="he">לֹא יִהְיֶה שָׁוֶה בִּבְנֵי אַהֲרֹן</p>
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed !text-[#adb2c7]">
+        The Torah lists blemishes for a priest, for an offering and for a firstborn. Why all three? Pull a verse out and see which refutation
+        brings the derivation down. Then read a priest's head, paint a hair row, and sort who is disqualified by what.
+      </p>
+      <p class="mt-4 text-xs !text-[#959bb3]">Score: <span id="score" class="font-bold !text-[#e0b54a]">0</span> / <span id="max" class="font-bold !text-[#e0b54a]">0</span></p>
+    </div>
+
+    <div class="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+
+      <section class="card p-5" aria-labelledby="h1r">
+        <h2 id="h1r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">1 · Pull a pillar</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">Rava asks why the Torah writes that blemishes disqualify a priest, a sacrificial animal and a firstborn <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.43a.15" target="_blank" rel="noopener">(43a:15-21)</a>. Choose one verse to remove. Then pick the refutation that stops the other two from teaching it.</p>
+        <div id="pillars" class="mb-4 grid grid-cols-3 gap-2 text-center"></div>
+        <div id="pillarQ" class="hidden">
+          <p id="pillarPrompt" class="mb-2 text-sm !text-[#e7e9f0]"></p>
+          <div id="pillarOpts" class="flex flex-col gap-2"></div>
+          <p id="pillarFb" class="mt-3 text-sm !text-[#adb2c7]" aria-live="polite"></p>
+        </div>
+        <p id="pillarDone" class="mt-3 text-sm !text-[#adb2c7]"></p>
+      </section>
+
+      <section class="card p-5" aria-labelledby="h2r">
+        <h2 id="h2r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">2 · Read the head</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">The mishna lists five head shapes that disqualify a priest <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.43a.4" target="_blank" rel="noopener">(43a:4)</a>, explained at <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.43b.3" target="_blank" rel="noopener">43b:3-4</a>. Name each silhouette.</p>
+        <div id="heads" class="flex flex-col gap-5"></div>
+      </section>
+
+      <section class="card p-5" aria-labelledby="h3r">
+        <h2 id="h3r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">3 · The row of hair</h2>
+        <p class="mb-3 text-sm !text-[#adb2c7]">A <em>kere'aḥ</em> lacks a row of hair from ear to ear. Rava narrows it <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.43b.6" target="_blank" rel="noopener">(43b:6)</a>. Tap the front and back hair rows to grow or remove them, then read the verdict under each of the two versions of Rava's statement.</p>
+        <div class="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
+          <svg id="hairSvg" viewBox="0 0 200 150" class="w-56 shrink-0" role="img" aria-label="Head from above: front row and back row of hair">
+            <ellipse cx="100" cy="75" rx="62" ry="68" fill="#1b1f2e" stroke="#3a3f55" stroke-width="2"/>
+            <text x="100" y="12" text-anchor="middle" font-size="9" fill="#959bb3">front</text>
+            <text x="100" y="148" text-anchor="middle" font-size="9" fill="#959bb3">back</text>
+            <path id="hairFront" class="hairzone" tabindex="0" role="button" aria-pressed="false" aria-label="Toggle front hair row" d="M48 52 Q100 -2 152 52" fill="none" stroke-width="14" stroke-linecap="round"/>
+            <path id="hairBack" class="hairzone" tabindex="0" role="button" aria-pressed="false" aria-label="Toggle back hair row" d="M48 102 Q100 156 152 102" fill="none" stroke-width="14" stroke-linecap="round"/>
+          </svg>
+          <div class="w-full">
+            <div class="mb-3 flex gap-2">
+              <button id="ver1" class="tgl" aria-pressed="true">Version 1: on "kere'aḥ is disqualified"</button>
+              <button id="ver2" class="tgl" aria-pressed="false">Version 2: on "if he has a row, fit"</button>
+            </div>
+            <p class="text-sm"><span id="hairLamp" class="lamp"></span><span id="hairVerdict" class="font-bold">Tap a row</span></p>
+            <p id="hairWhy" class="quote mt-2 !text-[#adb2c7]"></p>
+            <button id="hairCheck" class="chip mt-3">Check all four hair patterns</button>
+            <p id="hairFb" class="mt-2 text-sm !text-[#adb2c7]" aria-live="polite"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card p-5" aria-labelledby="h4r">
+        <h2 id="h4r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">4 · Three tiers of disqualified</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">Rabbi Yoḥanan derives the extra head-shape disqualifications from "equal among the seed of Aaron" <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.43a.22" target="_blank" rel="noopener">(43a:22)</a>. The Gemara separates three tiers by two tests: does his service become profaned, and does he transgress a Torah prohibition <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.43b.1" target="_blank" rel="noopener">(43b:1-2)</a>. Assign each priest to a tier.</p>
+        <div class="mb-3 grid gap-1 text-xs !text-[#959bb3]">
+          <div><b class="!text-[#e0b54a]">A · Full blemish</b> — service profaned, Torah prohibition</div>
+          <div><b class="!text-[#e0b54a]">B · Not equal among Aaron's sons</b> — service not profaned, Torah prohibition</div>
+          <div><b class="!text-[#e0b54a]">C · Appearance of a blemish</b> — rabbinic only</div>
+        </div>
+        <div id="tiers" class="flex flex-col gap-3"></div>
+        <p id="tierFb" class="mt-3 text-sm !text-[#adb2c7]" aria-live="polite"></p>
+      </section>
+
+      <section class="card p-5" aria-labelledby="h5r">
+        <h2 id="h5r" class="frank mb-2 text-2xl font-bold !text-[#f4f5fa]">Learn the real daf</h2>
+        <p class="mb-3 text-sm !text-[#adb2c7]">The amud closes with the gibben: Rabbi Dosa's drooping eyebrows, and Rabbi Ḥanina ben Antigonus's "two spines", which Rav reads as a crooked spine for Shimi bar Ḥiyya <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.43b.13" target="_blank" rel="noopener">(43b:13-16)</a>. It then reaches the ḥarum, where Rabbi Yosei says only one who can paint both eyes at once qualifies <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.43b.17" target="_blank" rel="noopener">(43b:17-18)</a>.</p>
+        <ul class="list-disc space-y-1 ps-5 text-sm !text-[#adb2c7]">
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.43a" target="_blank" rel="noopener">Bekhorot 43a</a> · <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.43b" target="_blank" rel="noopener">Bekhorot 43b</a></li>
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rashi_on_Bekhorot.43a" target="_blank" rel="noopener">Rashi on Bekhorot 43a</a> · <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rashi_on_Bekhorot.43b" target="_blank" rel="noopener">43b</a></li>
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.43a" target="_blank" rel="noopener">Rabbeinu Gershom on Bekhorot 43a</a></li>
+        </ul>
+      </section>
+    </div>
+
+    <script is:inline>
+      var score = 0, max = 0;
+      function bump(ok, worth) { max += worth; if (ok) score += worth; document.getElementById('score').textContent = score; document.getElementById('max').textContent = max; }
+      function $(id) { return document.getElementById(id); }
+      function sef(r) { return ' <a class="underline !text-[#e0b54a]" target="_blank" rel="noopener" href="https://www.sefaria.org/' + r.replace(/ /g, '_').replace(/:/g, '.') + '">(' + r + ')</a>'; }
+
+      /* ---------- 1 · pillars ---------- */
+      var P = {
+        person: { name: 'Priest', em: '🧎', verse: 'Lev. 21:17–23' },
+        offering: { name: 'Sacrificial animal', em: '🐑', verse: 'Lev. 22:20–25' },
+        first: { name: 'Firstborn animal', em: '🐂', verse: 'Deut. 15:21' }
+      };
+      var Q = {
+        person: {
+          ref: 'Bekhorot 43a:21',
+          prompt: 'Without the priest verse, why can\'t the firstborn and the offering teach that a priest is disqualified?',
+          opts: [
+            ['They themselves are sacrificed on the altar, and a person is not.', true],
+            ['Their sanctity is automatic from the womb.', false],
+            ['A person is included in the performance of mitzvot.', false]
+          ]
+        },
+        offering: {
+          ref: 'Bekhorot 43a:20',
+          prompt: 'Without the offering verse, why can\'t the priest and the firstborn teach that a sacrificial animal is disqualified?',
+          opts: [
+            ['Their sanctity is automatic (a priest by birth, a firstborn from the womb), while offerings are consecrated by their owners.', true],
+            ['There are many types of offerings but only one firstborn.', false],
+            ['A priest is a person, and persons are included in mitzvot.', false]
+          ]
+        },
+        first: {
+          ref: 'Bekhorot 43a:19',
+          prompt: 'Without the firstborn verse, why can\'t the priest and the offering teach that a firstborn is disqualified?',
+          opts: [
+            ['Their sanctity is greater (a person is included in mitzvot, there are many types of offerings), and their halakhot apply to non-firstborns too.', true],
+            ['A firstborn is sacrificed on the altar and they are not.', false],
+            ['A firstborn is consecrated by its owner.', false]
+          ]
+        }
+      };
+      var removed = {};
+      function drawPillars() {
+        $('pillars').innerHTML = Object.keys(P).map(function (k) {
+          var gone = removed[k];
+          return '<button class="chip pillar ' + (gone ? 'gone ok' : '') + ' text-center" data-k="' + k + '" ' + (gone ? 'disabled' : '') + '><div class="text-3xl">' + P[k].em + '</div><div class="font-bold">' + P[k].name + '</div><div class="text-xs !text-[#959bb3]">' + P[k].verse + '</div></button>';
+        }).join('');
+        $('pillars').querySelectorAll('button').forEach(function (b) { b.onclick = function () { askPillar(b.dataset.k); }; });
+      }
+      function askPillar(k) {
+        var q = Q[k];
+        $('pillarQ').classList.remove('hidden');
+        $('pillarPrompt').textContent = q.prompt;
+        $('pillarFb').innerHTML = '';
+        var order = [0, 1, 2].sort(function () { return Math.random() - .5; });
+        $('pillarOpts').innerHTML = order.map(function (i) { return '<button class="chip" data-i="' + i + '">' + q.opts[i][0] + '</button>'; }).join('');
+        $('pillarOpts').querySelectorAll('button').forEach(function (b) {
+          b.onclick = function () {
+            var good = q.opts[+b.dataset.i][1];
+            $('pillarOpts').querySelectorAll('button').forEach(function (x) { x.disabled = true; if (q.opts[+x.dataset.i][1]) x.classList.add('ok'); });
+            if (!good) b.classList.add('bad');
+            bump(good, 1);
+            $('pillarFb').innerHTML = (good ? 'Right.' : 'Not quite; the green one is the Gemara\'s answer.') + ' Remove it and the other two cannot rebuild it, so all three verses are needed' + sef(q.ref) + '.';
+            if (good) { removed[k] = true; drawPillars(); }
+            if (Object.keys(removed).length === 3) $('pillarDone').innerHTML = 'All three pillars stand, each one needed. The Gemara also asks whether one could be derived from the other two and rejects that every way' + sef('Bekhorot 43a:19') + '.';
+          };
+        });
+      }
+      drawPillars();
+
+      /* ---------- 2 · heads ---------- */
+      var HEADS = [
+        { ans: 'kilon', ref: 'Bekhorot 43b:3', hint: 'Shaped like the cover of a barrel: narrow above, wide below.', path: 'M100 8 L148 120 Q100 140 52 120 Z' },
+        { ans: 'turnip', ref: 'Bekhorot 43b:3', hint: 'Like the top of a turnip: wide above, narrow below.', path: 'M52 30 Q100 -5 148 30 Q140 80 110 128 L90 128 Q60 80 52 30 Z' },
+        { ans: 'makkavan', ref: 'Bekhorot 43b:4', hint: 'Like a hammer: the forehead protrudes.', path: 'M40 40 Q40 18 70 18 L130 18 Q150 40 130 70 L130 125 Q100 135 80 125 L80 70 Q50 70 40 40 Z' },
+        { ans: 'shakut', ref: 'Bekhorot 43b:4', hint: 'A depression in the front of the head.', path: 'M60 20 Q100 -5 140 20 Q150 60 135 125 Q100 140 65 125 Q50 60 78 55 Q64 40 60 20 Z' },
+        { ans: 'sekifat', ref: 'Bekhorot 43b:4', hint: 'A piece looks to be missing from the back of the head (shakil pisa).', path: 'M55 25 Q100 -5 145 25 Q155 70 135 125 Q100 140 65 125 L90 90 L70 60 Q60 45 55 25 Z' }
+      ];
+      var NAMES = { kilon: 'Pointed (kilon)', turnip: 'Turnip-like', makkavan: 'Hammer-like (makkavan)', shakut: 'Indented (shakut)', sekifat: 'Back protrudes / missing piece (sekifat)' };
+      $('heads').innerHTML = HEADS.map(function (h, n) {
+        return '<div class="flex flex-col items-center gap-3 sm:flex-row" data-n="' + n + '">' +
+          '<svg viewBox="0 0 200 150" class="w-36 shrink-0" role="img" aria-label="Head silhouette ' + (n + 1) + '"><path d="' + h.path + '" fill="#1b1f2e" stroke="#e0b54a" stroke-width="2.5"/></svg>' +
+          '<div class="w-full"><div class="flex flex-wrap gap-2">' +
+          Object.keys(NAMES).map(function (k) { return '<button class="chip" data-k="' + k + '">' + NAMES[k] + '</button>'; }).join('') +
+          '</div><p class="fb mt-2 text-sm !text-[#adb2c7]" aria-live="polite"></p></div></div>';
+      }).join('');
+      $('heads').querySelectorAll('[data-n]').forEach(function (row) {
+        var h = HEADS[+row.dataset.n];
+        row.querySelectorAll('button').forEach(function (b) {
+          b.onclick = function () {
+            var ok = b.dataset.k === h.ans;
+            row.querySelectorAll('button').forEach(function (x) { x.disabled = true; if (x.dataset.k === h.ans) x.classList.add('ok'); });
+            if (!ok) b.classList.add('bad');
+            bump(ok, 1);
+            row.querySelector('.fb').innerHTML = (ok ? 'Yes. ' : 'That is ' + NAMES[h.ans] + '. ') + h.hint + sef(h.ref);
+          };
+        });
+      });
+
+      /* ---------- 3 · hair row ---------- */
+      var front = false, back = false, ver = 1;
+      function hairVerdict(f, b, v) {
+        // Version 1: Rava on "kere'ah is disqualified": disqualified only if no row in back but row in front; row front+back fit; back-only fit (older men).
+        // Version 2: Rava on "if he has a row, fit": fit only if row in back and none in front; front+back disqualified; front-only or none disqualified.
+        if (v === 1) {
+          if (f && !b) return [false, 'Row in front but none in back: this is the case Rava says disqualifies.'];
+          if (f && b) return [true, 'Rows in front and back: fit.'];
+          if (!f && b) return [true, 'Back only is fit, all the more so, as it is typical of older men.'];
+          return [null, 'No hair at all: not addressed by this version of Rava; the mishna\'s kere\'aḥ (no row ear to ear) applies, so a bald priest is disqualified.'];
+        }
+        if (!f && b) return [true, 'A row in back but none in front: fit.'];
+        if (f && b) return [false, 'Rows in both front and back: disqualified.'];
+        return [false, 'Row in front only, or no hair at all: disqualified, all the more so.'];
+      }
+      function paintHair() {
+        $('hairFront').setAttribute('stroke', front ? '#e0b54a' : '#2a2f44');
+        $('hairBack').setAttribute('stroke', back ? '#e0b54a' : '#2a2f44');
+        $('hairFront').setAttribute('aria-pressed', front); $('hairBack').setAttribute('aria-pressed', back);
+        var r = hairVerdict(front, back, ver);
+        $('hairLamp').className = 'lamp ' + (r[0] === true ? 'g' : r[0] === false ? 'r' : 'y');
+        $('hairVerdict').textContent = r[0] === true ? 'Fit for service' : r[0] === false ? 'Disqualified' : 'Disqualified (no row)';
+        $('hairWhy').innerHTML = r[1] + sef('Bekhorot 43b:' + (ver === 1 ? '6' : '7'));
+      }
+      function tog(which) { if (which === 'f') front = !front; else back = !back; paintHair(); }
+      [['hairFront', 'f'], ['hairBack', 'b']].forEach(function (p) {
+        $(p[0]).onclick = function () { tog(p[1]); };
+        $(p[0]).onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(p[1]); } };
+      });
+      [1, 2].forEach(function (n) {
+        $('ver' + n).onclick = function () { ver = n; $('ver1').setAttribute('aria-pressed', n === 1); $('ver2').setAttribute('aria-pressed', n === 2); paintHair(); };
+      });
+      var hairChecked = false;
+      $('hairCheck').onclick = function () {
+        if (hairChecked) return; hairChecked = true; $('hairCheck').disabled = true;
+        // The two versions agree that front+back differs, so show the contrast.
+        var ok = hairVerdict(true, true, 1)[0] === true && hairVerdict(true, true, 2)[0] === false;
+        bump(ok, 1);
+        $('hairFb').innerHTML = 'The versions disagree exactly where it counts: with rows in <b>both</b> front and back, Version 1 says fit and Version 2 says disqualified. They agree that a front-only row disqualifies and a back-only row is fit' + sef('Bekhorot 43b:6') + sef('Bekhorot 43b:7') + '.';
+      };
+      paintHair();
+
+      /* ---------- 4 · tiers ---------- */
+      var TIERS = [
+        { name: 'A priest with a full blemish (like a cataract or a wart), who performs a rite', t: 'A', why: 'He profanes the service, as the verse says "that he not profane My Sanctuaries".', ref: 'Bekhorot 43b:1' },
+        { name: 'A priest with a pointed head', t: 'B', why: 'He is not "equal among the seed of Aaron". His service is not profaned, but he transgresses the positive mitzva.', ref: 'Bekhorot 43b:2' },
+        { name: 'A priest whose eyelashes have fallen out', t: 'C', why: 'Disqualified only by the appearance of a blemish, a rabbinic decree.', ref: 'Bekhorot 43b:17' },
+        { name: 'A bald priest, per Rabbi Yoḥanan', t: 'B', why: 'Rabbi Yoḥanan: disqualified by Torah law as not equal among the seed of Aaron, against the baraita (Rabbi Yehuda) that says fit by Torah law.', ref: 'Bekhorot 43b:9' },
+        { name: 'A dwarf priest, per Rabbi Yoḥanan', t: 'B', why: 'Rabbi Yoḥanan teaches that he too is disqualified by Torah law, not only for appearance.', ref: 'Bekhorot 43b:9' }
+      ];
+      $('tiers').innerHTML = TIERS.map(function (c, i) {
+        return '<div data-i="' + i + '"><p class="mb-1 text-sm font-bold">' + c.name + '</p><div class="flex gap-2">' +
+          ['A', 'B', 'C'].map(function (t) { return '<button class="chip" data-t="' + t + '">Tier ' + t + '</button>'; }).join('') +
+          '</div><p class="fb mt-1 text-sm !text-[#adb2c7]" aria-live="polite"></p></div>';
+      }).join('');
+      var tiersDone = 0;
+      $('tiers').querySelectorAll('[data-i]').forEach(function (row) {
+        var c = TIERS[+row.dataset.i];
+        row.querySelectorAll('button').forEach(function (b) {
+          b.onclick = function () {
+            var ok = b.dataset.t === c.t;
+            row.querySelectorAll('button').forEach(function (x) { x.disabled = true; if (x.dataset.t === c.t) x.classList.add('ok'); });
+            if (!ok) b.classList.add('bad');
+            bump(ok, 1);
+            row.querySelector('.fb').innerHTML = (ok ? 'Yes. ' : 'It is tier ' + c.t + '. ') + c.why + sef(c.ref);
+            if (++tiersDone === TIERS.length) $('tierFb').textContent = 'Final score: ' + score + ' of ' + max + '.';
+          };
+        });
+      });
+    </script>
+  </main>
+</Layout>
