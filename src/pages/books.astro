@@ -1,0 +1,411 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { listBooks, previewUrl, type Book } from '../lib/books';
+
+// Rendered on request so books added through /api/books show up immediately.
+export const prerender = false;
+const books = await listBooks();
+
+const counts = {
+  all: books.length,
+  shelf: books.filter((b) => b.status === 'shelf').length,
+  digital: books.filter((b) => b.status === 'digital').length,
+  gone: books.filter((b) => b.status === 'gone').length,
+};
+const withCopy = books.filter((b) => b.digital_url || b.pdf_url).length;
+
+const statusLabel = { shelf: 'On the shelf', digital: 'Digital only', gone: 'Given away' } as const;
+const sourceLabel = { archive: 'archive.org', hebrewbooks: 'HebrewBooks', pdf: 'PDF', other: 'Link' } as const;
+
+const HEBREW = /[֐-׿]/;
+const isHe = (s?: string | null) => !!s && HEBREW.test(s);
+const searchText = (b: Book) =>
+  [b.title, b.title_he, b.author, b.year, b.language, b.notes, ...(b.tags ?? [])].filter(Boolean).join(' ').toLowerCase();
+// Spine colour for books without a cover, stable per title.
+const hue = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+---
+
+<Layout title="Books" description="Every book on my shelves, and the ones that left the house but live on as a scan on archive.org or HebrewBooks.org.">
+  <main class="shelf-page">
+    <header class="hero">
+      <p class="kicker">The library</p>
+      <h1>Books</h1>
+      <p class="lede">
+        Every book on my shelves, and the ones I gave away and kept as a scan: a PDF or a reader on
+        archive.org or HebrewBooks.org.
+      </p>
+      <dl class="stats">
+        <div><dt>{counts.all}</dt><dd>books</dd></div>
+        <div><dt>{counts.shelf}</dt><dd>on the shelf</dd></div>
+        <div><dt>{counts.digital}</dt><dd>digital only</dd></div>
+        <div><dt>{withCopy}</dt><dd>readable online</dd></div>
+      </dl>
+    </header>
+
+    <div class="toolbar">
+      <div class="chips" role="tablist" aria-label="Filter books">
+        <button class="chip on" data-filter="all">All <span>{counts.all}</span></button>
+        <button class="chip" data-filter="shelf">On the shelf <span>{counts.shelf}</span></button>
+        <button class="chip" data-filter="digital">Digital only <span>{counts.digital}</span></button>
+        <button class="chip" data-filter="gone">Given away <span>{counts.gone}</span></button>
+      </div>
+      <input id="book-search" type="search" placeholder="Search title, author, notes…" aria-label="Search books" />
+    </div>
+
+    {books.length === 0 && <p class="empty">The shelf is empty so far.</p>}
+    <p class="empty" id="no-results" hidden>No books match.</p>
+
+    <ul class="grid" id="book-grid">
+      {books.map((b) => {
+        const preview = previewUrl(b);
+        const he = isHe(b.title);
+        return (
+          <li class="book" data-status={b.status} data-text={searchText(b)} data-book={JSON.stringify(b)}>
+            <div class="cover" style={`--h:${hue(b.title)}`}>
+              {b.cover_url ? (
+                <img src={b.cover_url} alt="" loading="lazy" onerror="this.remove()" />
+              ) : null}
+              <span class="spine-title" dir={he ? 'rtl' : 'auto'} lang={he ? 'he' : undefined}>{b.title}</span>
+              <span class={`badge ${b.status}`}>{statusLabel[b.status]}</span>
+            </div>
+            <div class="meta">
+              <h2 dir={he ? 'rtl' : 'auto'} lang={he ? 'he' : undefined}>{b.title}</h2>
+              {b.title_he && b.title_he !== b.title && <p class="he" dir="rtl" lang="he">{b.title_he}</p>}
+              {(b.author || b.year) && (
+                <p class="by" dir="auto">{[b.author, b.year].filter(Boolean).join(' · ')}</p>
+              )}
+              {b.notes && <p class="notes" dir="auto">{b.notes}</p>}
+              {(preview || b.pdf_url || b.digital_url) && (
+                <div class="actions">
+                  {preview && (
+                    <button class="btn primary" data-preview={preview} data-title={b.title} data-open={b.digital_url ?? b.pdf_url}>Preview</button>
+                  )}
+                  {b.pdf_url && <a class="btn" href={b.pdf_url} target="_blank" rel="noopener">PDF</a>}
+                  {b.digital_url && b.digital_url !== b.pdf_url && (
+                    <a class="btn" href={b.digital_url} target="_blank" rel="noopener">{sourceLabel[b.digital_source ?? 'other']} ↗</a>
+                  )}
+                </div>
+              )}
+              <button class="edit-btn" data-edit hidden>Edit</button>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+
+    <section class="manage" id="manage">
+      <details id="manage-details">
+        <summary>Add a book</summary>
+        <form id="book-form" autocomplete="off">
+          <input type="hidden" name="id" />
+          <label class="wide">
+            Link or ISBN
+            <span class="row">
+              <input name="link" placeholder="https://hebrewbooks.org/2101 · archive.org/details/… · a .pdf · 978…" />
+              <button type="button" class="btn" id="lookup">Look up</button>
+            </span>
+            <small>archive.org and HebrewBooks.org links fill in the title, author, PDF and preview. An ISBN looks the book up on Open Library.</small>
+          </label>
+          <p class="msg" id="lookup-msg" aria-live="polite"></p>
+          <label>Title <input name="title" dir="auto" required /></label>
+          <label>Hebrew title <input name="title_he" dir="rtl" lang="he" /></label>
+          <label>Author <input name="author" dir="auto" /></label>
+          <label>Year <input name="year" dir="auto" /></label>
+          <label>
+            Status
+            <select name="status">
+              <option value="shelf">On the shelf</option>
+              <option value="digital">Digital only (gave away the physical copy)</option>
+              <option value="gone">Given away (no digital copy)</option>
+            </select>
+          </label>
+          <label>Left the house on <input name="parted_on" type="date" /></label>
+          <label class="wide">Notes <textarea name="notes" rows="2" dir="auto"></textarea></label>
+          <label>Tags <input name="tags" placeholder="comma, separated" /></label>
+          <label>Language <input name="language" /></label>
+          <details class="wide more">
+            <summary>Links</summary>
+            <div class="links">
+              <label>Source
+                <select name="digital_source">
+                  <option value="">None</option>
+                  <option value="archive">archive.org</option>
+                  <option value="hebrewbooks">HebrewBooks</option>
+                  <option value="pdf">PDF</option>
+                  <option value="other">Other link</option>
+                </select>
+              </label>
+              <label>Source id <input name="digital_id" /></label>
+              <label>Page link <input name="digital_url" type="url" /></label>
+              <label>PDF link <input name="pdf_url" type="url" /></label>
+              <label>Cover image <input name="cover_url" type="url" /></label>
+              <label>ISBN <input name="isbn" /></label>
+            </div>
+          </details>
+          <label>Passcode <input name="password" type="password" autocomplete="current-password" /></label>
+          <div class="wide row end">
+            <button type="button" class="btn danger" id="delete" hidden>Delete</button>
+            <button type="button" class="btn" id="reset">Clear</button>
+            <button type="submit" class="btn primary">Save book</button>
+          </div>
+          <p class="msg" id="save-msg" aria-live="polite"></p>
+        </form>
+      </details>
+    </section>
+
+    <dialog id="preview">
+      <div class="dlg-head">
+        <strong id="preview-title"></strong>
+        <a id="preview-open" target="_blank" rel="noopener">Open in new tab ↗</a>
+        <button id="preview-close" aria-label="Close">✕</button>
+      </div>
+      <iframe id="preview-frame" title="Book preview" allowfullscreen></iframe>
+    </dialog>
+  </main>
+</Layout>
+
+<style>
+  .shelf-page {
+    --paper: #f7f2e8;
+    --ink: #2b2118;
+    --muted: #7a6a58;
+    --card: #fffdf8;
+    --line: #e4d9c6;
+    --accent: #8a3b12;
+    --accent-ink: #fff;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 3rem 1rem 5rem;
+  }
+  :global(.dark) .shelf-page {
+    --paper: #17130f;
+    --ink: #efe6d8;
+    --muted: #a8977f;
+    --card: #221c16;
+    --line: #3a3027;
+    --accent: #e08a4f;
+    --accent-ink: #1a120b;
+  }
+  .shelf-page > * { max-width: 72rem; margin-inline: auto; }
+  .hero { text-align: center; margin-bottom: 2rem; }
+  .kicker { text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.75rem; color: var(--accent); font-weight: 600; }
+  h1 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(2.5rem, 6vw, 4rem); line-height: 1.1; margin: 0.25rem 0 0.75rem; }
+  .lede { max-width: 38rem; margin: 0 auto; color: var(--muted); font-size: 1.05rem; }
+  .stats { display: flex; justify-content: center; flex-wrap: wrap; gap: 2rem; margin-top: 1.75rem; }
+  .stats div { display: flex; flex-direction: column; align-items: center; }
+  .stats dt { font-family: Georgia, serif; font-size: 2rem; font-weight: 700; }
+  .stats dd { margin: 0; font-size: 0.8rem; color: var(--muted); }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .chip { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 0.4rem 0.9rem; border-radius: 999px; font-size: 0.875rem; cursor: pointer; }
+  .chip span { color: var(--muted); margin-left: 0.25rem; }
+  .chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .chip.on span { color: inherit; opacity: 0.7; }
+  #book-search { flex: 1 1 14rem; max-width: 22rem; padding: 0.5rem 0.9rem; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+
+  .grid { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 1.75rem 1.25rem; }
+  .book { display: flex; flex-direction: column; }
+  .book[hidden] { display: none; }
+  .cover { position: relative; aspect-ratio: 2 / 3; border-radius: 3px 8px 8px 3px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 1rem;
+    background: linear-gradient(90deg, hsl(var(--h) 35% 22%) 0 7%, hsl(var(--h) 38% 32%) 7% 9%, hsl(var(--h) 40% 28%) 9%);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.15), 0 8px 20px -8px rgb(0 0 0 / 0.35); }
+  .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .spine-title { color: #f3e6c8; font-family: Georgia, serif; text-align: center; font-size: 1.05rem; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
+    border-block: 1px solid rgb(243 230 200 / 0.4); padding: 0.6rem 0.2rem; }
+  .badge { position: absolute; top: 0.5rem; right: 0.5rem; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.04em; padding: 0.15rem 0.5rem; border-radius: 999px; background: rgb(255 255 255 / 0.9); color: #2b2118; }
+  .badge.digital { background: #1f6f5c; color: #fff; }
+  .badge.gone { background: #6b6259; color: #fff; }
+  .badge.shelf { display: none; }
+  .meta { padding-top: 0.7rem; display: flex; flex-direction: column; gap: 0.2rem; flex: 1; }
+  .meta h2 { font-family: Georgia, serif; font-size: 1rem; line-height: 1.3; font-weight: 700; margin: 0; }
+  .meta .he { font-size: 0.95rem; margin: 0; }
+  .by { color: var(--muted); font-size: 0.85rem; margin: 0; }
+  .notes { font-size: 0.8rem; color: var(--muted); margin: 0.2rem 0 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+  .btn { display: inline-flex; align-items: center; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 6px; padding: 0.3rem 0.65rem; font-size: 0.8rem; cursor: pointer; text-decoration: none; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.danger { color: #b42318; border-color: #b42318; }
+  .edit-btn { align-self: flex-start; margin-top: 0.4rem; background: none; border: 0; color: var(--accent); font-size: 0.75rem; cursor: pointer; padding: 0; }
+  .empty { text-align: center; color: var(--muted); padding: 2rem; }
+
+  .manage { margin-top: 3.5rem; }
+  .manage > details > summary { cursor: pointer; font-family: Georgia, serif; font-size: 1.25rem; font-weight: 700; }
+  #book-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.9rem 1.25rem; margin-top: 1rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+  #book-form label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+  #book-form input, #book-form select, #book-form textarea { font: inherit; font-weight: 400; font-size: 0.95rem; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 0.45rem 0.6rem; width: 100%; }
+  #book-form small { font-weight: 400; }
+  .wide { grid-column: 1 / -1; }
+  .row { display: flex; gap: 0.5rem; align-items: center; }
+  .row.end { justify-content: flex-end; }
+  .more summary { cursor: pointer; font-size: 0.85rem; color: var(--muted); }
+  .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0.9rem 1.25rem; margin-top: 0.75rem; }
+  .msg { grid-column: 1 / -1; margin: 0; font-size: 0.85rem; color: var(--muted); min-height: 1em; }
+  .msg.err { color: #b42318; }
+
+  dialog { width: min(64rem, 100vw - 2rem); height: min(52rem, 100vh - 2rem); padding: 0; border: 0; border-radius: 12px; background: var(--card); color: var(--ink); display: none; flex-direction: column; overflow: hidden; }
+  dialog[open] { display: flex; }
+  dialog::backdrop { background: rgb(20 14 8 / 0.6); }
+  .dlg-head { display: flex; gap: 1rem; align-items: center; padding: 0.6rem 1rem; border-bottom: 1px solid var(--line); }
+  .dlg-head strong { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dlg-head a { color: var(--accent); font-size: 0.85rem; }
+  .dlg-head button { background: none; border: 0; color: var(--ink); font-size: 1.1rem; cursor: pointer; }
+  #preview-frame { flex: 1; width: 100%; border: 0; background: #fff; }
+
+  @media (max-width: 480px) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem 0.9rem; }
+    .stats { gap: 1.25rem; }
+  }
+</style>
+
+<script>
+  const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector(sel) as T;
+  const grid = $('#book-grid');
+  const cards = [...document.querySelectorAll<HTMLElement>('.book')];
+  const chips = [...document.querySelectorAll<HTMLButtonElement>('.chip')];
+  const search = $<HTMLInputElement>('#book-search');
+  let filter = 'all';
+
+  function apply() {
+    const q = search.value.trim().toLowerCase();
+    let shown = 0;
+    for (const c of cards) {
+      const hit = (filter === 'all' || c.dataset.status === filter) && (!q || (c.dataset.text || '').includes(q));
+      c.hidden = !hit;
+      if (hit) shown++;
+    }
+    $('#no-results').hidden = shown > 0 || cards.length === 0;
+  }
+  chips.forEach((chip) =>
+    chip.addEventListener('click', () => {
+      filter = chip.dataset.filter || 'all';
+      chips.forEach((c) => c.classList.toggle('on', c === chip));
+      apply();
+    }),
+  );
+  search.addEventListener('input', apply);
+
+  // ---- Preview ------------------------------------------------------------
+  const dlg = $<HTMLDialogElement>('#preview');
+  const frame = $<HTMLIFrameElement>('#preview-frame');
+  grid?.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-preview]');
+    if (!btn) return;
+    frame.src = btn.dataset.preview!;
+    $('#preview-title').textContent = btn.dataset.title || '';
+    $<HTMLAnchorElement>('#preview-open').href = btn.dataset.open || btn.dataset.preview!;
+    dlg.showModal();
+  });
+  const closePreview = () => {
+    dlg.close();
+  };
+  $('#preview-close').addEventListener('click', closePreview);
+  dlg.addEventListener('click', (e) => e.target === dlg && closePreview());
+  dlg.addEventListener('close', () => (frame.src = 'about:blank'));
+
+  // ---- Add / edit ---------------------------------------------------------
+  const form = $<HTMLFormElement>('#book-form');
+  const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement;
+  const lookupMsg = $('#lookup-msg');
+  const saveMsg = $('#save-msg');
+  const say = (el: HTMLElement, text: string, err = false) => {
+    el.textContent = text;
+    el.classList.toggle('err', err);
+  };
+  const FIELDS = ['title', 'title_he', 'author', 'year', 'language', 'isbn', 'status', 'digital_source', 'digital_id', 'digital_url', 'pdf_url', 'cover_url', 'notes', 'parted_on'];
+
+  try {
+    const saved = localStorage.getItem('books-passcode');
+    if (saved) {
+      field('password').value = saved;
+      document.querySelectorAll<HTMLElement>('[data-edit]').forEach((b) => (b.hidden = false));
+    }
+  } catch {}
+
+  function fill(data: Record<string, any>, overwrite = false) {
+    for (const k of FIELDS) {
+      const el = field(k);
+      if (!el || data[k] == null) continue;
+      if (overwrite || !el.value || (k === 'status' && el.value === 'shelf')) el.value = String(data[k]);
+    }
+    if (Array.isArray(data.tags) && (overwrite || !field('tags').value)) field('tags').value = data.tags.join(', ');
+  }
+
+  // Pasting a link from a digital source means the physical copy is (or is about to be) gone.
+  async function lookup() {
+    const link = field('link').value.trim();
+    if (!link) return;
+    say(lookupMsg, 'Looking it up…');
+    try {
+      const res = await fetch(`/api/books?resolve=${encodeURIComponent(link)}`);
+      const data = await res.json();
+      if (!res.ok) return say(lookupMsg, data.error || 'Lookup failed.', true);
+      fill(data);
+      if (data.digital_source && field('status').value === 'shelf' && !field('id').value) field('status').value = 'digital';
+      say(lookupMsg, data.warning || `Found: ${data.title || 'details filled in'}.`, !!data.warning);
+    } catch {
+      say(lookupMsg, 'Lookup failed; check your connection.', true);
+    }
+  }
+  $('#lookup').addEventListener('click', lookup);
+  field('link').addEventListener('paste', () => setTimeout(lookup, 0));
+
+  function reset() {
+    form.reset();
+    field('id').value = '';
+    try { field('password').value = localStorage.getItem('books-passcode') || ''; } catch {}
+    $('#delete').hidden = true;
+    $('#manage-details').querySelector('summary')!.textContent = 'Add a book';
+    say(lookupMsg, '');
+  }
+  $('#reset').addEventListener('click', reset);
+
+  grid?.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('[data-edit]');
+    if (!btn) return;
+    const book = JSON.parse(btn.closest<HTMLElement>('.book')!.dataset.book!);
+    reset();
+    field('id').value = book.id;
+    fill(book, true);
+    $('#delete').hidden = false;
+    const details = $<HTMLDetailsElement>('#manage-details');
+    details.open = true;
+    details.querySelector('summary')!.textContent = `Edit “${book.title}”`;
+    details.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  async function send(body: Record<string, any>) {
+    const password = field('password').value;
+    const res = await fetch('/api/books', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${password}` },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) try { localStorage.setItem('books-passcode', password); } catch {}
+    return { ok: res.ok, data };
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body: Record<string, any> = {};
+    for (const k of [...FIELDS, 'id', 'tags']) body[k] = field(k).value;
+    if (!body.id) delete body.id;
+    if (field('link').value.trim()) body.link = field('link').value.trim();
+    say(saveMsg, 'Saving…');
+    const { ok, data } = await send(body);
+    if (!ok) return say(saveMsg, data.error || 'Couldn’t save.', true);
+    say(saveMsg, `Saved “${data.book.title}”. Reloading…`);
+    setTimeout(() => location.reload(), 600);
+  });
+
+  $('#delete').addEventListener('click', async () => {
+    const id = field('id').value;
+    if (!id || !confirm(`Delete “${field('title').value}” from the shelf?`)) return;
+    const { ok, data } = await send({ id, delete: true });
+    if (!ok) return say(saveMsg, data.error || 'Couldn’t delete.', true);
+    location.reload();
+  });
+</script>
