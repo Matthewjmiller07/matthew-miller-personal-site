@@ -29,6 +29,7 @@ const spMock = [
     .filter((m) => m.item),
   ...(snapshot.mock_categories || []).map((c) => ({
     qty: c.qty,
+    qtys: c.qtys || null,
     item: { name: c.label },
     perStore: c.gtins,
     category: c.id,
@@ -41,11 +42,19 @@ const spTotals = snapshot.totals;
 const spCheapestId = spStores
   .filter((s) => (snapshot.totals[s.id]?.missing?.length ?? 99) === 0)
   .sort((a, b) => snapshot.totals[a.id].total - snapshot.totals[b.id].total)[0]?.id;
+// Cheapest cell in a row: compare line totals (price × that store's
+// quantity), not unit prices — the tuna line is 2×120g cans everywhere
+// but 1×240g at Carrefour.
+const spLineTotal = (m, i) => {
+  const p = spRowPrice(m, i);
+  if (p === null) return null;
+  return p * (m.qtys ? m.qtys[i] : m.qty);
+};
 const spCheapestIdx = (m) => {
   let best = -1;
   spStores.forEach((_, i) => {
-    const p = spRowPrice(m, i);
-    if (p !== null && (best === -1 || p < spRowPrice(m, best))) best = i;
+    const t = spLineTotal(m, i);
+    if (t !== null && (best === -1 || t < spLineTotal(m, best))) best = i;
   });
   return best;
 };
@@ -462,6 +471,7 @@ const pageDescription =
             <div class={`sp-total${s.id === spCheapestId ? ' sp-cheapest-store' : ''}${missing ? ' sp-partial' : ''}`}>
               <strong>{s.label}</strong>
               <span class="sp-total-price">₪{t?.total.toFixed(2)}</span>
+              {s.note && <span class="sp-total-note">{s.note}</span>}
               {s.id === spCheapestId && <span class="sp-badge">Cheapest</span>}
               {missing > 0 ? (
                 <span class="sp-total-note">only {spMock.length - missing} of {spMock.length} items — partial total, not directly comparable</span>
@@ -515,14 +525,15 @@ const pageDescription =
             {spMock.map((m) => (
               <tr>
                 <td lang="he" dir="rtl">{m.item.name}</td>
-                <td>{m.qty}</td>
+                <td>{m.qtys ? [...new Set(m.qtys)].join(' / ') : m.qty}</td>
                 {spStores.map((_, i) => {
                   const p = spRowPrice(m, i);
+                  const q = m.qtys ? m.qtys[i] : m.qty;
                   return p === null ? (
                     <td class="sp-missing">—</td>
                   ) : (
                     <td class={i === spCheapestIdx(m) ? 'sp-cheapest' : ''}>
-                      ₪{(p * m.qty).toFixed(2)}
+                      ₪{(p * q).toFixed(2)}
                     </td>
                   );
                 })}
@@ -547,7 +558,14 @@ const pageDescription =
         * Osher Ad's Kfar Saba branch — the nearest one; Osher Ad has no Ra'anana branch —
         carries only {spMock.length - (spTotals['osher-031']?.missing?.length ?? 0)} of the
         {spMock.length} mock items, so its total is a partial total. Items a store doesn't
-        carry are left out of that store's total, never priced at zero. Snapshot date{' '}
+        carry are left out of that store's total, never priced at zero. Four more lines
+        work like eggs — grated cheese, sliced bread, a second butter and Starkist tuna
+        are each chain's standard pack of the same item, because Carrefour doesn't carry
+        the exact barcodes (Noam grated cheese at Carrefour and Osher Ad, Daganit bread
+        and Roshen butter at Carrefour; tuna is 2×120g cans everywhere but 1×240g can at
+        Carrefour, so the quantity column shows 2 / 1). Carrefour's prices are refreshed
+        by hand, since its portal blocks automatic downloads — its column is dated.
+        Snapshot date{' '}
         {spDate}. Source: {snapshot.source}
       </p>
 
@@ -723,7 +741,7 @@ const pageDescription =
         return Object.keys(cart).map(function (g) {
           if (g.indexOf('cat:') === 0) {
             var cat = ((snap && snap.mock_categories) || []).filter(function (c) { return c.id === g.slice(4); })[0];
-            return { cat: g.slice(4), qty: cart[g], item: cat ? { name: cat.label } : null, perStore: cat ? cat.gtins : null };
+            return { cat: g.slice(4), qty: cart[g], baseQty: cat ? cat.qty : 1, qtys: cat ? (cat.qtys || null) : null, item: cat ? { name: cat.label } : null, perStore: cat ? cat.gtins : null };
           }
           return { gtin: g, qty: cart[g], item: catalog[g] || null };
         });
@@ -737,6 +755,13 @@ const pageDescription =
         }
         return ci.item ? (snap.prices[ci.gtin] || [])[i] : null;
       }
+      function effQty(ci, i) {
+        // Per-store quantity for a cart line. Category lines with
+        // per-store quantities (tuna: 2×120g cans, 1×240g at Carrefour)
+        // scale with the line's quantity, in units of the base amount.
+        if (!ci.qtys) return ci.qty;
+        return ci.qtys[i] * (ci.qty / (ci.baseQty || 1));
+      }
       function storeTotals() {
         // Per-store totals for the current cart; items a store doesn't carry
         // are excluded from that store's total (never priced at zero).
@@ -745,7 +770,7 @@ const pageDescription =
           cartItems().forEach(function (ci) {
             var p = itemPrice(ci, i);
             if (p === null || p === undefined) missing += 1;
-            else { total += p * ci.qty; n += 1; }
+            else { total += p * effQty(ci, i); n += 1; }
           });
           return { total: total, n: n, missing: missing };
         });
@@ -778,6 +803,7 @@ const pageDescription =
             var note = t.missing
               ? 'only ' + t.n + ' of ' + items.length + ' items — partial total, not directly comparable'
               : 'all ' + items.length + ' items';
+            if (s.note) note += ' — ' + s.note;
             return '<div class="' + cls + '"><strong>' + esc(s.label) + '</strong>' +
               '<span class="sp-total-price">' + money(t.total) + '</span>' +
               (i === cheapestIdx ? '<span class="sp-badge">Cheapest</span>' : '') +
@@ -831,18 +857,24 @@ const pageDescription =
           }
           tbody.innerHTML = items.map(function (ci) {
             var key = ci.cat ? 'cat:' + ci.cat : ci.gtin;
+            var qtyCell = ci.qty;
+            if (ci.qtys) {
+              var eff = snap.stores.map(function (s, i) { return effQty(ci, i); });
+              var distinct = eff.filter(function (v, idx, a) { return a.indexOf(v) === idx; });
+              qtyCell = distinct.join(' / ');
+            }
             var row = '<tr><td lang="he" dir="rtl">' +
-              (ci.item ? esc(ci.item.name) : 'Unknown product ' + esc(key)) + '</td><td>' + ci.qty + '</td>';
+              (ci.item ? esc(ci.item.name) : 'Unknown product ' + esc(key)) + '</td><td>' + qtyCell + '</td>';
             var best = -1;
             snap.stores.forEach(function (s, i) {
               var p = itemPrice(ci, i);
-              if (p !== null && p !== undefined && (best === -1 || p < itemPrice(ci, best))) best = i;
+              if (p !== null && p !== undefined && (best === -1 || p * effQty(ci, i) < itemPrice(ci, best) * effQty(ci, best))) best = i;
             });
             snap.stores.forEach(function (s, i) {
               var p = itemPrice(ci, i);
               row += p === null || p === undefined
                 ? '<td class="sp-missing">—</td>'
-                : '<td class="' + (i === best ? 'sp-cheapest' : '') + '">' + money(p * ci.qty) + '</td>';
+                : '<td class="' + (i === best ? 'sp-cheapest' : '') + '">' + money(p * effQty(ci, i)) + '</td>';
             });
             if (hasShuk) {
               var sm = shukMatch(ci);
