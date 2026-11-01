@@ -21,20 +21,31 @@ import shukData from '../../public/data/supermarket-prices/shuk.json';
 
 const spCatalog = new Map(snapshot.catalog.map((c) => [c.gtin, c]));
 const spStores = snapshot.stores;
-const spMock = snapshot.mock_basket
-  .map((m) => ({ ...m, item: spCatalog.get(m.gtin) }))
-  .filter((m) => m.item);
+// Category lines (eggs): one item per store from that store's own pack,
+// rendered as a single row with per-store GTINs.
+const spMock = [
+  ...snapshot.mock_basket
+    .map((m) => ({ ...m, item: spCatalog.get(m.gtin) }))
+    .filter((m) => m.item),
+  ...(snapshot.mock_categories || []).map((c) => ({
+    qty: c.qty,
+    item: { name: c.label },
+    perStore: c.gtins,
+    category: c.id,
+  })),
+];
 const spPrice = (gtin, i) => snapshot.prices[gtin]?.[i] ?? null;
+const spRowPrice = (m, i) => spPrice(m.perStore ? m.perStore[i] : m.gtin, i);
 const spTotals = snapshot.totals;
 // Cheapest complete basket: only stores carrying every mock item count.
 const spCheapestId = spStores
   .filter((s) => (snapshot.totals[s.id]?.missing?.length ?? 99) === 0)
   .sort((a, b) => snapshot.totals[a.id].total - snapshot.totals[b.id].total)[0]?.id;
-const spCheapestIdx = (gtin) => {
+const spCheapestIdx = (m) => {
   let best = -1;
   spStores.forEach((_, i) => {
-    const p = spPrice(gtin, i);
-    if (p !== null && (best === -1 || p < spPrice(gtin, best))) best = i;
+    const p = spRowPrice(m, i);
+    if (p !== null && (best === -1 || p < spRowPrice(m, best))) best = i;
   });
   return best;
 };
@@ -434,6 +445,15 @@ const pageDescription =
         A realistic demo shop with real prices from {spDate}. Shelf prices; sale prices
         (promos) are not applied yet. The cheapest complete basket is highlighted.
       </p>
+      <p class="il-lede">
+        Eggs are in the basket as a category line, not a single barcode: regular eggs are
+        price-controlled in Israel, so each chain's standard 12-pack L is compared instead
+        of one shared barcode — Osher Ad carries no standard 12-pack L, so it stays
+        partial on this line. The legal maximum for 12 L rose to ₪14.54 on 1 Nov 2026;
+        the files pulled that morning still showed the pre-increase prices, and the daily
+        snapshot picks the new ones up as the chains publish them. A near-zero spread on
+        eggs is the control doing its job, not a data error.
+      </p>
       <div class="sp-totals" id="sp-totals">
         {spStores.map((s, i) => {
           const t = spTotals[s.id];
@@ -497,11 +517,11 @@ const pageDescription =
                 <td lang="he" dir="rtl">{m.item.name}</td>
                 <td>{m.qty}</td>
                 {spStores.map((_, i) => {
-                  const p = spPrice(m.gtin, i);
+                  const p = spRowPrice(m, i);
                   return p === null ? (
                     <td class="sp-missing">—</td>
                   ) : (
-                    <td class={i === spCheapestIdx(m.gtin) ? 'sp-cheapest' : ''}>
+                    <td class={i === spCheapestIdx(m) ? 'sp-cheapest' : ''}>
                       ₪{(p * m.qty).toFixed(2)}
                     </td>
                   );
@@ -679,6 +699,13 @@ const pageDescription =
         if (!raw) return out;
         raw.split(',').forEach(function (part) {
           var kv = part.split(':');
+          if (kv[0] === 'cat' && kv[1]) {
+            // Category line (eggs): cat:<id>:<qty>; unknown ids are pruned
+            // once the snapshot loads.
+            var qc = parseInt(kv[2] || '1', 10);
+            if (qc > 0) out['cat:' + kv[1]] = Math.min(qc, 99);
+            return;
+          }
           var q = parseInt(kv[1] || '1', 10);
           if (/^\d{8,14}$/.test(kv[0] || '') && q > 0) out[kv[0]] = Math.min(q, 99);
         });
@@ -694,8 +721,21 @@ const pageDescription =
       }
       function cartItems() {
         return Object.keys(cart).map(function (g) {
+          if (g.indexOf('cat:') === 0) {
+            var cat = ((snap && snap.mock_categories) || []).filter(function (c) { return c.id === g.slice(4); })[0];
+            return { cat: g.slice(4), qty: cart[g], item: cat ? { name: cat.label } : null, perStore: cat ? cat.gtins : null };
+          }
           return { gtin: g, qty: cart[g], item: catalog[g] || null };
         });
+      }
+      function itemPrice(ci, i) {
+        // Per-store price for one cart item; a category line resolves
+        // through that store's own GTIN, a plain item through its GTIN.
+        if (ci.perStore) {
+          var g = ci.perStore[i];
+          return g ? (snap.prices[g] || [])[i] : null;
+        }
+        return ci.item ? (snap.prices[ci.gtin] || [])[i] : null;
       }
       function storeTotals() {
         // Per-store totals for the current cart; items a store doesn't carry
@@ -703,7 +743,7 @@ const pageDescription =
         return snap.stores.map(function (s, i) {
           var total = 0, n = 0, missing = 0;
           cartItems().forEach(function (ci) {
-            var p = ci.item ? (snap.prices[ci.gtin] || [])[i] : null;
+            var p = itemPrice(ci, i);
             if (p === null || p === undefined) missing += 1;
             else { total += p * ci.qty; n += 1; }
           });
@@ -749,12 +789,13 @@ const pageDescription =
         var cartEl = $('sp-cart');
         if (cartEl) {
           cartEl.innerHTML = items.map(function (ci) {
-            var name = ci.item ? esc(ci.item.name) : 'Unknown product ' + esc(ci.gtin) + ' (not in this week’s snapshot)';
+            var key = ci.cat ? 'cat:' + ci.cat : ci.gtin;
+            var name = ci.item ? esc(ci.item.name) : 'Unknown product ' + esc(key) + ' (not in this week’s snapshot)';
             return '<li><span lang="he" dir="rtl">' + name + '</span>' +
-              '<span class="sp-qty"><button type="button" data-dec="' + ci.gtin + '" aria-label="One fewer">−</button>' +
+              '<span class="sp-qty"><button type="button" data-dec="' + key + '" aria-label="One fewer">−</button>' +
               '<span>' + ci.qty + '</span>' +
-              '<button type="button" data-inc="' + ci.gtin + '" aria-label="One more">+</button></span>' +
-              '<button type="button" class="sp-remove" data-del="' + ci.gtin + '" aria-label="Remove">×</button></li>';
+              '<button type="button" data-inc="' + key + '" aria-label="One more">+</button></span>' +
+              '<button type="button" class="sp-remove" data-del="' + key + '" aria-label="Remove">×</button></li>';
           }).join('') || '<li class="sp-empty">Your cart is empty — search above, or load the mock basket.</li>';
           cartEl.querySelectorAll('[data-inc]').forEach(function (b) {
             b.addEventListener('click', function () { cart[b.dataset.inc] = Math.min(99, (cart[b.dataset.inc] || 0) + 1); syncUrl(); render(); });
@@ -789,15 +830,16 @@ const pageDescription =
             }
           }
           tbody.innerHTML = items.map(function (ci) {
+            var key = ci.cat ? 'cat:' + ci.cat : ci.gtin;
             var row = '<tr><td lang="he" dir="rtl">' +
-              (ci.item ? esc(ci.item.name) : 'Unknown product ' + esc(ci.gtin)) + '</td><td>' + ci.qty + '</td>';
+              (ci.item ? esc(ci.item.name) : 'Unknown product ' + esc(key)) + '</td><td>' + ci.qty + '</td>';
             var best = -1;
             snap.stores.forEach(function (s, i) {
-              var p = ci.item ? (snap.prices[ci.gtin] || [])[i] : null;
-              if (p !== null && p !== undefined && (best === -1 || p < (snap.prices[ci.gtin] || [])[best])) best = i;
+              var p = itemPrice(ci, i);
+              if (p !== null && p !== undefined && (best === -1 || p < itemPrice(ci, best))) best = i;
             });
             snap.stores.forEach(function (s, i) {
-              var p = ci.item ? (snap.prices[ci.gtin] || [])[i] : null;
+              var p = itemPrice(ci, i);
               row += p === null || p === undefined
                 ? '<td class="sp-missing">—</td>'
                 : '<td class="' + (i === best ? 'sp-cheapest' : '') + '">' + money(p * ci.qty) + '</td>';
@@ -880,10 +922,15 @@ const pageDescription =
           snap = res[0];
           shuk = (res[1] && res[1].items) || [];
           snap.catalog.forEach(function (c) { catalog[c.gtin] = c; });
+          // Drop category keys the snapshot no longer knows (stale URLs).
+          Object.keys(cart).forEach(function (k) {
+            if (k.indexOf('cat:') === 0 && !(snap.mock_categories || []).some(function (c) { return 'cat:' + c.id === k; })) delete cart[k];
+          });
           // Default cart = the mock basket, unless the URL carried a cart
           // or the user already touched the cart.
           if (!Object.keys(cart).length && !userTouched && !Object.keys(parseCartParam()).length) {
             snap.mock_basket.forEach(function (m) { cart[m.gtin] = m.qty; });
+            (snap.mock_categories || []).forEach(function (c) { cart['cat:' + c.id] = c.qty; });
           }
           if (status) status.textContent = 'Snapshot ' + snap.date + ' · ' + snap.catalog.length.toLocaleString('en-US') + ' products across ' + snap.stores.length + ' stores. Shelf prices; promos not yet applied.';
           render();
@@ -907,6 +954,7 @@ const pageDescription =
           load().then(function () {
             cart = {};
             snap.mock_basket.forEach(function (m) { cart[m.gtin] = m.qty; });
+            (snap.mock_categories || []).forEach(function (c) { cart['cat:' + c.id] = c.qty; });
             syncUrl(); render();
           });
         });
