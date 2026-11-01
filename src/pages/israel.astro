@@ -13,6 +13,32 @@ import IsraelTracker from '../components/israel/IsraelTracker.tsx';
 import IsraelNumbers from '../components/israel/IsraelNumbers.tsx';
 // Place-name facts from the Academy of the Hebrew Language's settlements quiz and official names list.
 import placeNames from '../data/israel/place-names.json';
+// Supermarket prices: week-1 snapshot (Nov 1, 2026) from the chains'
+// price-transparency files under the Food Law, via israeli-prices.
+// The same file is fetched client-side by the cart builder.
+import snapshot from '../../public/data/supermarket-prices/snapshot.json';
+import shukData from '../../public/data/supermarket-prices/shuk.json';
+
+const spCatalog = new Map(snapshot.catalog.map((c) => [c.gtin, c]));
+const spStores = snapshot.stores;
+const spMock = snapshot.mock_basket
+  .map((m) => ({ ...m, item: spCatalog.get(m.gtin) }))
+  .filter((m) => m.item);
+const spPrice = (gtin, i) => snapshot.prices[gtin]?.[i] ?? null;
+const spTotals = snapshot.totals;
+// Cheapest complete basket: only stores carrying every mock item count.
+const spCheapestId = spStores
+  .filter((s) => (snapshot.totals[s.id]?.missing?.length ?? 99) === 0)
+  .sort((a, b) => snapshot.totals[a.id].total - snapshot.totals[b.id].total)[0]?.id;
+const spCheapestIdx = (gtin) => {
+  let best = -1;
+  spStores.forEach((_, i) => {
+    const p = spPrice(gtin, i);
+    if (p !== null && (best === -1 || p < spPrice(gtin, best))) best = i;
+  });
+  return best;
+};
+const spDate = snapshot.date;
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -70,6 +96,15 @@ const pageDescription =
         aria-selected="false"
         data-tab="names"
         type="button">Place names</button
+      >
+      <button
+        class="il-ptab"
+        role="tab"
+        id="il-ptab-prices"
+        aria-controls="il-panel-prices"
+        aria-selected="false"
+        data-tab="prices"
+        type="button">Supermarket prices</button
       >
     </nav>
 
@@ -377,6 +412,148 @@ const pageDescription =
         The Academy spells the names; the Government Names Committee chooses them.
       </p>
     </section>
+
+    <section
+      class="il-section il-prices il-panel"
+      id="il-panel-prices"
+      role="tabpanel"
+      aria-labelledby="il-ptab-prices"
+      data-panel="prices"
+      hidden
+    >
+      <h2 class="il-h2">Supermarket prices — Ra'anana</h2>
+      <p class="il-lede">
+        The same weekly shop, priced at every supermarket in town. Prices come from the
+        chains' own price-transparency files under the Food Law — the files they must
+        publish daily — pulled 1 Nov 2026. The series starts today and a new snapshot
+        lands every morning, so the totals below will grow into a price history.
+      </p>
+
+      <h3 class="sp-h3">The mock basket — one family shop, {spMock.length} items</h3>
+      <p class="il-lede">
+        A realistic demo shop with real prices from {spDate}. Shelf prices; sale prices
+        (promos) are not applied yet. The cheapest complete basket is highlighted.
+      </p>
+      <div class="sp-totals" id="sp-totals">
+        {spStores.map((s, i) => {
+          const t = spTotals[s.id];
+          const missing = t?.missing?.length ?? 0;
+          return (
+            <div class={`sp-total${s.id === spCheapestId ? ' sp-cheapest-store' : ''}${missing ? ' sp-partial' : ''}`}>
+              <strong>{s.label}</strong>
+              <span class="sp-total-price">₪{t?.total.toFixed(2)}</span>
+              {s.id === spCheapestId && <span class="sp-badge">Cheapest</span>}
+              {missing > 0 ? (
+                <span class="sp-total-note">only {spMock.length - missing} of {spMock.length} items — partial total, not directly comparable</span>
+              ) : (
+                <span class="sp-total-note">all {spMock.length} items</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <h3 class="sp-h3">Build your own cart</h3>
+      <p class="il-lede">
+        Type a product — in Hebrew or in English (“eggs”, “milk”, “bread”) — add it with a
+        quantity, and see which store's cart is cheaper. Your cart lives in the page
+        address, so the link is shareable: send it to someone and they see the same cart.
+      </p>
+      <div class="sp-builder">
+        <div class="sp-search-row">
+          <input
+            id="sp-search"
+            class="sp-search"
+            type="search"
+            lang="he"
+            dir="rtl"
+            placeholder="חפשו מוצר… eggs, milk, bread — גם באנגלית"
+            autocomplete="off"
+            aria-label="Search products"
+          />
+          <button id="sp-mock" class="sp-btn" type="button">Load the mock basket</button>
+          <button id="sp-clear" class="sp-btn sp-btn-ghost" type="button">Clear cart</button>
+          <button id="sp-copy" class="sp-btn sp-btn-ghost" type="button">Copy share link</button>
+        </div>
+        <p class="sp-status" id="sp-status">Loading the price snapshot…</p>
+        <ul class="sp-results" id="sp-results"></ul>
+        <ul class="sp-cart" id="sp-cart"></ul>
+      </div>
+
+      <div class="sp-table-wrap">
+        <table class="sp-table" id="sp-table">
+          <thead>
+            <tr>
+              <th scope="col">Item</th>
+              <th scope="col">Qty</th>
+              {spStores.map((s) => (
+                <th scope="col">{s.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody id="sp-tbody">
+            {spMock.map((m) => (
+              <tr>
+                <td lang="he" dir="rtl">{m.item.name}</td>
+                <td>{m.qty}</td>
+                {spStores.map((_, i) => {
+                  const p = spPrice(m.gtin, i);
+                  return p === null ? (
+                    <td class="sp-missing">—</td>
+                  ) : (
+                    <td class={i === spCheapestIdx(m.gtin) ? 'sp-cheapest' : ''}>
+                      ₪{(p * m.qty).toFixed(2)}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row">Total</th>
+              <td></td>
+              {spStores.map((s) => (
+                <td class={s.id === spCheapestId ? 'sp-cheapest' : ''}>
+                  ₪{spTotals[s.id]?.total.toFixed(2)}
+                  {spTotals[s.id]?.missing?.length ? ' *' : ''}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p class="sp-note">
+        * Osher Ad's Kfar Saba branch — the nearest one; Osher Ad has no Ra'anana branch —
+        carries only {spMock.length - (spTotals['osher-031']?.missing?.length ?? 0)} of the
+        {spMock.length} mock items, so its total is a partial total. Items a store doesn't
+        carry are left out of that store's total, never priced at zero. Snapshot date{' '}
+        {spDate}. Source: {snapshot.source}
+      </p>
+
+      <div class="sp-shuk" id="sp-shuk">
+        <h3 class="sp-h3">Shuk Ra'anana — manual prices</h3>
+        {shukData.items.length === 0 ? (
+          <p class="il-lede">
+            The shuk isn't covered by the price-transparency law — that covers chains with
+            three or more branches — so there is no automatic feed for it and no shuk prices
+            are recorded yet. Prices here are entered by hand after a market visit, produce
+            only (fruit and veg — the shuk doesn't sell packaged staples). Once the first
+            prices are recorded, a Shuk column appears in the table above for matching
+            items, with a produce-only subtotal kept separate from the full-basket totals.
+          </p>
+        ) : (
+          <ul>
+            {shukData.items.map((it) => (
+              <li lang="he" dir="rtl">
+                {it.name} — ₪{it.price} / {it.unit === 'kg' ? 'ק״ג' : 'יחידה'} (recorded{' '}
+                {it.recorded})
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   </main>
 
   <script>
@@ -396,11 +573,14 @@ const pageDescription =
 
   <script>
     // Page tabs: ?tab=<slug> deep-links a tab; clicking updates the URL in place.
+    // A ?cart= parameter opens the prices tab (unless ?tab= says otherwise).
     (function () {
-      var SLUGS = ['log', 'kosher-eats', 'numbers', 'names'];
+      var SLUGS = ['log', 'kosher-eats', 'numbers', 'names', 'prices'];
       function desired() {
-        var q = new URLSearchParams(window.location.search).get('tab');
+        var params = new URLSearchParams(window.location.search);
+        var q = params.get('tab');
         if (q && SLUGS.indexOf(q) !== -1) return q;
+        if (params.get('cart')) return 'prices';
         var h = window.location.hash.replace('#', '');
         if (SLUGS.indexOf(h) !== -1) return h;
         return 'log';
@@ -451,6 +631,305 @@ const pageDescription =
         activate(desired(), false);
       });
       activate(desired(), false);
+    })();
+  </script>
+
+  <script>
+    // Supermarket prices: cart builder. The snapshot (catalog + per-store
+    // prices) is fetched lazily the first time the tab opens or a ?cart=
+    // parameter is present; the mock basket table is rendered statically
+    // at build time, so the page is useful before the fetch lands.
+    (function () {
+      var DATA_URL = '/data/supermarket-prices/snapshot.json';
+      var SHUK_URL = '/data/supermarket-prices/shuk.json';
+      var ALIASES = {
+        eggs: 'ביצים', egg: 'ביצים', milk: 'חלב', bread: 'לחם', cheese: 'גבינה',
+        chicken: 'עוף', beef: 'בשר', rice: 'אורז', pasta: 'פסטה', spaghetti: 'ספגטי',
+        flour: 'קמח', sugar: 'סוכר', oil: 'שמן', coffee: 'קפה', chocolate: 'שוקולד',
+        'toilet paper': 'נייר טואלט', detergent: 'כביסה', soap: 'סבון',
+        shampoo: 'שמפו', diapers: 'חיתולים', butter: 'חמאה', tuna: 'טונה',
+        hummus: 'חומוס', tahini: 'טחינה', yogurt: 'יוגורט', water: 'מים',
+        juice: 'מיץ', tea: 'תה', cornflakes: 'קורנפלקס', toothpaste: 'משחת שיניים',
+        tomato: 'עגבניות', tomatoes: 'עגבניות', cucumber: 'מלפפון', cucumbers: 'מלפפון',
+        potato: 'תפוחי אדמה', potatoes: 'תפוחי אדמה', onion: 'בצל', onions: 'בצל',
+        banana: 'בננה', bananas: 'בננה', apple: 'תפוח', orange: 'תפוז',
+        carrot: 'גזר', lemon: 'לימון', avocado: 'אבוקדו', corn: 'תירס',
+        ketchup: 'קטשופ', mayonnaise: 'מיונז', mayo: 'מיונז', cream: 'שמנת',
+        cottage: "קוטג'", salt: 'מלח', honey: 'דבש', jam: 'ריבה', cereal: 'דגנים',
+        oats: 'שיבולת שועל', oatmeal: 'שיבולת שועל', nuts: 'אגוזים',
+        almonds: 'שקדים', dates: 'תמרים', fish: 'דג', salmon: 'סלמון',
+      };
+      var snap = null;
+      var shuk = [];
+      var catalog = {};
+      var cart = {}; // gtin -> qty
+      var loading = null;
+      var userTouched = false; // set once the user adds / clears, so the
+      // mock preset never refills a cart they emptied on purpose.
+
+      var $ = function (id) { return document.getElementById(id); };
+      function money(n) { return '₪' + n.toFixed(2); }
+      function esc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      function parseCartParam() {
+        var raw = new URLSearchParams(window.location.search).get('cart');
+        var out = {};
+        if (!raw) return out;
+        raw.split(',').forEach(function (part) {
+          var kv = part.split(':');
+          var q = parseInt(kv[1] || '1', 10);
+          if (/^\d{8,14}$/.test(kv[0] || '') && q > 0) out[kv[0]] = Math.min(q, 99);
+        });
+        return out;
+      }
+      function syncUrl() {
+        var url = new URL(window.location.href);
+        var parts = Object.keys(cart).map(function (g) { return g + ':' + cart[g]; });
+        if (parts.length) url.searchParams.set('cart', parts.join(','));
+        else url.searchParams.delete('cart');
+        url.searchParams.set('tab', 'prices');
+        window.history.replaceState({ tab: 'prices' }, '', url);
+      }
+      function cartItems() {
+        return Object.keys(cart).map(function (g) {
+          return { gtin: g, qty: cart[g], item: catalog[g] || null };
+        });
+      }
+      function storeTotals() {
+        // Per-store totals for the current cart; items a store doesn't carry
+        // are excluded from that store's total (never priced at zero).
+        return snap.stores.map(function (s, i) {
+          var total = 0, n = 0, missing = 0;
+          cartItems().forEach(function (ci) {
+            var p = ci.item ? (snap.prices[ci.gtin] || [])[i] : null;
+            if (p === null || p === undefined) missing += 1;
+            else { total += p * ci.qty; n += 1; }
+          });
+          return { total: total, n: n, missing: missing };
+        });
+      }
+      function shukMatch(ci) {
+        if (!ci.item) return null;
+        for (var k = 0; k < shuk.length; k++) {
+          var m = shuk[k].match || shuk[k].name;
+          if (m && ci.item.name.indexOf(m) !== -1) return shuk[k];
+        }
+        return null;
+      }
+
+      function render() {
+        if (!snap) return;
+        var items = cartItems();
+        var totals = storeTotals();
+        var complete = totals
+          .map(function (t, i) { return { i: i, t: t }; })
+          .filter(function (x) { return x.t.missing === 0 && x.t.n > 0; })
+          .sort(function (a, b) { return a.t.total - b.t.total; });
+        var cheapestIdx = complete.length ? complete[0].i : -1;
+
+        // Totals cards.
+        var totalsEl = $('sp-totals');
+        if (totalsEl) {
+          totalsEl.innerHTML = snap.stores.map(function (s, i) {
+            var t = totals[i];
+            var cls = 'sp-total' + (i === cheapestIdx ? ' sp-cheapest-store' : '') + (t.missing ? ' sp-partial' : '');
+            var note = t.missing
+              ? 'only ' + t.n + ' of ' + items.length + ' items — partial total, not directly comparable'
+              : 'all ' + items.length + ' items';
+            return '<div class="' + cls + '"><strong>' + esc(s.label) + '</strong>' +
+              '<span class="sp-total-price">' + money(t.total) + '</span>' +
+              (i === cheapestIdx ? '<span class="sp-badge">Cheapest</span>' : '') +
+              '<span class="sp-total-note">' + note + '</span></div>';
+          }).join('');
+        }
+
+        // Cart list with quantity steppers.
+        var cartEl = $('sp-cart');
+        if (cartEl) {
+          cartEl.innerHTML = items.map(function (ci) {
+            var name = ci.item ? esc(ci.item.name) : 'Unknown product ' + esc(ci.gtin) + ' (not in this week’s snapshot)';
+            return '<li><span lang="he" dir="rtl">' + name + '</span>' +
+              '<span class="sp-qty"><button type="button" data-dec="' + ci.gtin + '" aria-label="One fewer">−</button>' +
+              '<span>' + ci.qty + '</span>' +
+              '<button type="button" data-inc="' + ci.gtin + '" aria-label="One more">+</button></span>' +
+              '<button type="button" class="sp-remove" data-del="' + ci.gtin + '" aria-label="Remove">×</button></li>';
+          }).join('') || '<li class="sp-empty">Your cart is empty — search above, or load the mock basket.</li>';
+          cartEl.querySelectorAll('[data-inc]').forEach(function (b) {
+            b.addEventListener('click', function () { cart[b.dataset.inc] = Math.min(99, (cart[b.dataset.inc] || 0) + 1); syncUrl(); render(); });
+          });
+          cartEl.querySelectorAll('[data-dec]').forEach(function (b) {
+            b.addEventListener('click', function () {
+              var g = b.dataset.dec;
+              cart[g] = (cart[g] || 1) - 1;
+              if (cart[g] <= 0) delete cart[g];
+              syncUrl(); render();
+            });
+          });
+          cartEl.querySelectorAll('[data-del]').forEach(function (b) {
+            b.addEventListener('click', function () { delete cart[b.dataset.del]; syncUrl(); render(); });
+          });
+        }
+
+        // Per-item table.
+        var tbody = $('sp-tbody');
+        var table = $('sp-table');
+        if (tbody && table) {
+          var hasShuk = shuk.length > 0;
+          var headRow = table.querySelector('thead tr');
+          if (headRow) {
+            var heads = headRow.querySelectorAll('th');
+            var hasShukHead = heads.length === snap.stores.length + 3;
+            if (hasShuk && !hasShukHead) {
+              var th = document.createElement('th');
+              th.scope = 'col';
+              th.textContent = 'Shuk Ra’anana (manual)';
+              headRow.appendChild(th);
+            }
+          }
+          tbody.innerHTML = items.map(function (ci) {
+            var row = '<tr><td lang="he" dir="rtl">' +
+              (ci.item ? esc(ci.item.name) : 'Unknown product ' + esc(ci.gtin)) + '</td><td>' + ci.qty + '</td>';
+            var best = -1;
+            snap.stores.forEach(function (s, i) {
+              var p = ci.item ? (snap.prices[ci.gtin] || [])[i] : null;
+              if (p !== null && p !== undefined && (best === -1 || p < (snap.prices[ci.gtin] || [])[best])) best = i;
+            });
+            snap.stores.forEach(function (s, i) {
+              var p = ci.item ? (snap.prices[ci.gtin] || [])[i] : null;
+              row += p === null || p === undefined
+                ? '<td class="sp-missing">—</td>'
+                : '<td class="' + (i === best ? 'sp-cheapest' : '') + '">' + money(p * ci.qty) + '</td>';
+            });
+            if (hasShuk) {
+              var sm = shukMatch(ci);
+              row += sm ? '<td>' + money(sm.price) + ' / ' + (sm.unit === 'kg' ? 'ק״ג' : 'יחידה') + '</td>' : '<td class="sp-missing">—</td>';
+            }
+            return row + '</tr>';
+          }).join('');
+          var foot = table.querySelector('tfoot tr');
+          if (foot) {
+            var cells = '<th scope="row">Total</th><td></td>' + totals.map(function (t, i) {
+              return '<td class="' + (i === cheapestIdx ? 'sp-cheapest' : '') + '">' + money(t.total) + (t.missing ? ' *' : '') + '</td>';
+            }).join('');
+            if (hasShuk) {
+              // Produce-only subtotal: shuk prices are per kg (or per item);
+              // only count cart items sold by the kilogram in 1 kg units,
+              // so a 500 g pack is never charged a full kilo's shuk price.
+              var sub = 0, counted = 0;
+              items.forEach(function (ci) {
+                var sm = shukMatch(ci);
+                if (sm && ci.item && sm.unit === 'kg' && ci.item.unit === 'קילוגרם' && Number(ci.item.quantity) === 1) {
+                  sub += sm.price * ci.qty; counted += 1;
+                }
+              });
+              cells += '<td>' + (counted ? money(sub) + ' †' : '—') + '</td>';
+            }
+            foot.innerHTML = cells;
+          }
+        }
+      }
+
+      function search(q) {
+        var resEl = $('sp-results');
+        if (!snap || !resEl) return;
+        q = (q || '').trim();
+        if (q.length < 2) { resEl.innerHTML = ''; return; }
+        var he = q;
+        if (/[a-z]/i.test(q)) {
+          var key = q.toLowerCase();
+          he = ALIASES[key] || '';
+          if (!he) {
+            var prefix = Object.keys(ALIASES).find(function (k) { return key.indexOf(k) === 0; });
+            he = prefix ? ALIASES[prefix] : '';
+          }
+        }
+        if (!he) { resEl.innerHTML = '<li class="sp-empty">No match for “' + esc(q) + '” — try the Hebrew name.</li>'; return; }
+        var hits = snap.catalog.filter(function (c) { return c.name.indexOf(he) !== -1; }).slice(0, 8);
+        if (!hits.length) { resEl.innerHTML = '<li class="sp-empty">Nothing found for “' + esc(q) + '”.</li>'; return; }
+        resEl.innerHTML = hits.map(function (c) {
+          var prices = snap.prices[c.gtin] || [];
+          var min = Math.min.apply(null, prices.filter(function (p) { return p !== null; }));
+          return '<li><button type="button" data-add="' + c.gtin + '">' +
+            '<span lang="he" dir="rtl">' + esc(c.name) + '</span>' +
+            (c.manufacturer ? ' <span class="sp-mfr">' + esc(c.manufacturer) + '</span>' : '') +
+            (isFinite(min) ? ' <span class="sp-from">from ' + money(min) + '</span>' : '') +
+            ' <span class="sp-add">+ Add</span></button></li>';
+        }).join('');
+        resEl.querySelectorAll('[data-add]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var g = b.dataset.add;
+            userTouched = true;
+            cart[g] = (cart[g] || 0) + 1;
+            syncUrl(); render();
+            var input = $('sp-search');
+            if (input) { input.value = ''; input.focus(); }
+            resEl.innerHTML = '';
+          });
+        });
+      }
+
+      function load() {
+        if (loading) return loading;
+        var status = $('sp-status');
+        loading = Promise.all([
+          fetch(DATA_URL).then(function (r) { if (!r.ok) throw new Error('snapshot ' + r.status); return r.json(); }),
+          fetch(SHUK_URL).then(function (r) { return r.ok ? r.json() : { items: [] }; }).catch(function () { return { items: [] }; }),
+        ]).then(function (res) {
+          snap = res[0];
+          shuk = (res[1] && res[1].items) || [];
+          snap.catalog.forEach(function (c) { catalog[c.gtin] = c; });
+          // Default cart = the mock basket, unless the URL carried a cart
+          // or the user already touched the cart.
+          if (!Object.keys(cart).length && !userTouched && !Object.keys(parseCartParam()).length) {
+            snap.mock_basket.forEach(function (m) { cart[m.gtin] = m.qty; });
+          }
+          if (status) status.textContent = 'Snapshot ' + snap.date + ' · ' + snap.catalog.length.toLocaleString('en-US') + ' products across ' + snap.stores.length + ' stores. Shelf prices; promos not yet applied.';
+          render();
+        }).catch(function (e) {
+          if (status) status.textContent = 'Could not load the price snapshot (' + e.message + ') — the mock basket above is still there.';
+        });
+        return loading;
+      }
+
+      function init() {
+        var input = $('sp-search');
+        if (!input) return;
+        var initial = parseCartParam();
+        if (Object.keys(initial).length) cart = initial;
+        else if (snap) cart = {};
+        input.addEventListener('input', function () { load().then(function () { search(input.value); }); });
+        input.addEventListener('focus', function () { load(); });
+        var mockBtn = $('sp-mock');
+        if (mockBtn) mockBtn.addEventListener('click', function () {
+          userTouched = true;
+          load().then(function () {
+            cart = {};
+            snap.mock_basket.forEach(function (m) { cart[m.gtin] = m.qty; });
+            syncUrl(); render();
+          });
+        });
+        var clearBtn = $('sp-clear');
+        if (clearBtn) clearBtn.addEventListener('click', function () { userTouched = true; cart = {}; syncUrl(); render(); });
+        var copyBtn = $('sp-copy');
+        if (copyBtn) copyBtn.addEventListener('click', function () {
+          syncUrl();
+          var done = function () { copyBtn.textContent = 'Link copied'; setTimeout(function () { copyBtn.textContent = 'Copy share link'; }, 2000); };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(window.location.href).then(done, done);
+          else done();
+        });
+        // If the URL carries a cart, load now so it renders; otherwise
+        // load lazily on first activation of the prices tab — the static
+        // mock table above is already there until then.
+        if (Object.keys(initial).length) { load(); }
+        else {
+          var tab = document.querySelector('[data-tab="prices"]');
+          if (tab) tab.addEventListener('click', function () { load(); }, { once: true });
+        }
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+      else init();
     })();
   </script>
 </Layout>
@@ -603,6 +1082,234 @@ const pageDescription =
     font-size: 1.15rem;
     font-weight: 700;
     color: #cbd5e1;
+  }
+
+  /* ── Supermarket prices ────────────────────────────────────────────────── */
+  .il-panel.il-prices {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+  .sp-h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #cbd5e1;
+    margin-top: 0.5rem;
+  }
+  .sp-totals {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 0.75rem;
+  }
+  .sp-total {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.75rem;
+    background: #0b1220;
+  }
+  .sp-total strong {
+    font-size: 0.92rem;
+    color: #e2e8f0;
+  }
+  .sp-total-price {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #e2e8f0;
+  }
+  .sp-total-note {
+    font-size: 0.8rem;
+    color: #64748b;
+  }
+  .sp-total.sp-cheapest-store {
+    border-color: #4ade80;
+  }
+  .sp-total.sp-cheapest-store .sp-total-price {
+    color: #4ade80;
+  }
+  .sp-total.sp-partial .sp-total-price {
+    color: #94a3b8;
+  }
+  .sp-badge {
+    display: inline-block;
+    align-self: flex-start;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #052e16;
+    background: #4ade80;
+    border-radius: 999px;
+    padding: 0.1rem 0.55rem;
+  }
+  .sp-builder {
+    padding: 1.1rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.9rem;
+    background: #0b1220;
+  }
+  .sp-search-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .sp-search {
+    flex: 1 1 16rem;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #334155;
+    border-radius: 0.6rem;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-size: 1rem;
+  }
+  .sp-search::placeholder {
+    color: #64748b;
+  }
+  .sp-btn {
+    padding: 0.55rem 0.9rem;
+    border: 1px solid #38bdf8;
+    border-radius: 0.6rem;
+    background: #38bdf8;
+    color: #082f49;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .sp-btn-ghost {
+    background: none;
+    color: #7dd3fc;
+    border-color: #334155;
+  }
+  .sp-status {
+    margin: 0.6rem 0 0;
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+  .sp-results,
+  .sp-cart {
+    list-style: none;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .sp-results button {
+    width: 100%;
+    text-align: right;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.55rem;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  .sp-results button:hover {
+    border-color: #38bdf8;
+  }
+  .sp-mfr {
+    color: #64748b;
+    font-size: 0.85rem;
+  }
+  .sp-from {
+    color: #94a3b8;
+    font-size: 0.85rem;
+  }
+  .sp-add {
+    color: #4ade80;
+    font-weight: 700;
+  }
+  .sp-cart li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.55rem;
+    background: #0f172a;
+  }
+  .sp-cart li > span:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+  .sp-qty {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .sp-qty button {
+    width: 1.7rem;
+    height: 1.7rem;
+    border: 1px solid #334155;
+    border-radius: 0.45rem;
+    background: #0b1220;
+    color: #e2e8f0;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .sp-remove {
+    border: none;
+    background: none;
+    color: #f87171;
+    font-size: 1.15rem;
+    cursor: pointer;
+  }
+  .sp-empty {
+    color: #64748b;
+    font-size: 0.9rem;
+    border: none !important;
+    background: none !important;
+    padding-left: 0 !important;
+  }
+  .sp-table-wrap {
+    overflow-x: auto;
+  }
+  .sp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  .sp-table th,
+  .sp-table td {
+    padding: 0.45rem 0.55rem;
+    border-bottom: 1px solid #1e293b;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .sp-table th:first-child,
+  .sp-table td:first-child {
+    text-align: right;
+    white-space: normal;
+    min-width: 11rem;
+  }
+  .sp-table thead th {
+    color: #94a3b8;
+    font-size: 0.85rem;
+  }
+  .sp-table tfoot th,
+  .sp-table tfoot td {
+    font-weight: 800;
+    border-bottom: none;
+  }
+  .sp-cheapest {
+    color: #4ade80;
+    font-weight: 700;
+  }
+  .sp-missing {
+    color: #475569;
+  }
+  .sp-note {
+    font-size: 0.85rem;
+    color: #64748b;
+    line-height: 1.6;
+  }
+  .sp-shuk {
+    padding: 1.1rem;
+    border: 1px dashed #334155;
+    border-radius: 0.9rem;
   }
 
   /* ── Forms ───────────────────────────────────────────────────────────────── */
