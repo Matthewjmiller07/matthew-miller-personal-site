@@ -7,13 +7,13 @@ tags: next-issue, draft
 
 **Subject:** The Workshop: A shul where everyone wants you to talk, a coloring sheet from any photo, and the bracha on Pringles
 
-**Preheader:** A 3D tefillin game, Color by Number that uses only the markers you own, Which Bracha?, and a podcast graded against the Rambam's thirteen principles.
+**Preheader:** A 3D tefillin game, Color by Number that uses only the markers you own, Which Bracha?, and a tie for every parsha.
 
 ---
 
 Shalom friends,
 
-This week brought a 3D game about not talking, a coloring page you can make from any photo, a bracha calculator that tells you when it's unsure, and a podcast graded against the Rambam. Here's what shipped.
+This week brought a 3D game about not talking, a coloring page you can make from any photo, and a bracha calculator that tells you when it's unsure. Here's what shipped.
 
 ## 🏆 Headliner: Hineni: The Tefillin Trials
 
@@ -41,12 +41,6 @@ Type any food, or a whole Kiddush table, and get the bracha before and after in 
 
 [Try your Kiddush →](https://theothermatthewmiller.com/bracha)
 
-## 🎙️ A podcast vs. the Thirteen Principles
-
-Every three-minute section of J.J. Kimche's Podcast of Jewish Ideas (Torah in Motion), 429 sections across 22 episodes so far, rated by Jev against each of the Rambam's thirteen principles, from "not relevant" to "open denial", and drawn as a heat strip per episode with a timestamp and the sentence behind each flag. Jev flags 125 sections. Torah from Heaven (#8, 61 flags) and the Torah being unchanging (#9, 50) light up far more than anything about God (single digits), which is what an academic Bible-and-history podcast sounds like. Jev also guesses whether the speaker holds an idea or is explaining Spinoza, and the page says plainly that it often can't tell.
-
-[See the heat strips →](https://theothermatthewmiller.com/jj)
-
 ## ⚡ Also this week
 
 - **Place names, by the book.** [45 facts](https://theothermatthewmiller.com/israel?tab=names) from the Academy of the Hebrew Language: it's Kfar SaVA, Kiryat Mal'akhi is a tribute to Los Angeles, and Ra'anana officially has a double n.
@@ -56,7 +50,7 @@ Every three-minute section of J.J. Kimche's Podcast of Jewish Ideas (Torah in Mo
 - **Coffee deep links.** Send someone [straight to one halacha](https://theothermatthewmiller.com/coffee?topic=bracha-acharona) on the coffee page.
 - **Five more daf games** for Bekhorot 39–43, ending with [Knock Out a Verse](https://theothermatthewmiller.com/daf/bekhorot-43).
 
-**Numbers:** 3 Tefillin Trials modes · 20 poskim in the shul · 429 podcast sections rated · 59% grain (Pringles)
+**Numbers:** 3 Tefillin Trials modes · 20 poskim in the shul · 54 parsha ties · 59% grain (Pringles)
 
 Reply and tell me what to build next, or what bracha you'd make on Pringles. I really do read every reply.
 
