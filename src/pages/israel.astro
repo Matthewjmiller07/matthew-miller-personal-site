@@ -72,7 +72,7 @@ const pageDescription =
   <main class="il-page">
     <header class="il-hero">
       <p class="il-kicker">רעננה · ארץ ישראל</p>
-      <h1>Our Israel, logged</h1>
+      <h1 id="il-title">Our Israel, logged</h1>
       <p class="il-lede">
         Fifty-eight shuls within walking distance of home, three meals a Shabbat plus the
         kiddush and the dessert, and a country small enough to drive across on a Tuesday.
@@ -82,13 +82,14 @@ const pageDescription =
 
     <nav class="il-ptabs" role="tablist" aria-label="Israel page sections">
       <button
-        class="il-ptab is-active"
+        class="il-ptab"
         role="tab"
         id="il-ptab-log"
         aria-controls="il-panel-log"
-        aria-selected="true"
+        aria-selected="false"
         data-tab="log"
-        type="button">The log</button
+        type="button"
+        hidden>The log</button
       >
       <button
         class="il-ptab"
@@ -118,11 +119,11 @@ const pageDescription =
         type="button">Place names</button
       >
       <button
-        class="il-ptab"
+        class="il-ptab is-active"
         role="tab"
         id="il-ptab-prices"
         aria-controls="il-panel-prices"
-        aria-selected="false"
+        aria-selected="true"
         data-tab="prices"
         type="button">Supermarket prices</button
       >
@@ -134,6 +135,7 @@ const pageDescription =
       role="tabpanel"
       aria-labelledby="il-ptab-log"
       data-panel="log"
+      hidden
     >
       {
         supabaseUrl && supabaseAnonKey ? (
@@ -439,7 +441,6 @@ const pageDescription =
       role="tabpanel"
       aria-labelledby="il-ptab-prices"
       data-panel="prices"
-      hidden
     >
       <h2 class="il-h2">Supermarket prices — Ra'anana</h2>
       <p class="il-lede">
@@ -621,7 +622,9 @@ const pageDescription =
         if (params.get('cart')) return 'prices';
         var h = window.location.hash.replace('#', '');
         if (SLUGS.indexOf(h) !== -1) return h;
-        return 'log';
+        // Default is the public prices tab; the log tab is hidden (see the
+        // Easter egg below) and opens only via ?tab=log / #log or the title.
+        return 'prices';
       }
       var igLoaded = false;
       function loadEmbeds() {
@@ -662,13 +665,32 @@ const pageDescription =
       }
       document.querySelectorAll('[data-tab]').forEach(function (b) {
         b.addEventListener('click', function () {
-          activate(b.getAttribute('data-tab') || 'log', true);
+          activate(b.getAttribute('data-tab') || 'prices', true);
         });
       });
       window.addEventListener('popstate', function () {
         activate(desired(), false);
       });
       activate(desired(), false);
+      // Easter egg: the log tab (minyanim + visits) is hidden from the tab
+      // bar. Triple-tap the page title to reveal it and open it; the
+      // ?tab=log deep link keeps working too.
+      (function () {
+        var title = document.getElementById('il-title');
+        var logBtn = document.getElementById('il-ptab-log');
+        if (!title || !logBtn) return;
+        var taps = 0, timer = null;
+        title.addEventListener('click', function () {
+          taps += 1;
+          if (timer) window.clearTimeout(timer);
+          timer = window.setTimeout(function () { taps = 0; }, 1500);
+          if (taps >= 3) {
+            taps = 0;
+            logBtn.removeAttribute('hidden');
+            activate('log', true);
+          }
+        });
+      })();
     })();
   </script>
 
@@ -1072,6 +1094,9 @@ const pageDescription =
     border-bottom-color: #38bdf8;
   }
   .il-panel[hidden] {
+    display: none !important;
+  }
+  .il-ptab[hidden] {
     display: none !important;
   }
   .il-panel.il-eats,
