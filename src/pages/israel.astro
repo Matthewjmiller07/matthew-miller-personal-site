@@ -484,6 +484,35 @@ const pageDescription =
         })}
       </div>
 
+      <h3 class="sp-h3">Scan a barcode</h3>
+      <p class="il-lede">
+        Point your phone at a product barcode to see its price at every supermarket in
+        town. The camera only reads the code — nothing is photographed or uploaded.
+        No camera? Type the barcode number instead.
+      </p>
+      <div class="sp-scan" id="sp-scan">
+        <div class="sp-scan-row">
+          <button id="sp-scan-btn" class="sp-btn" type="button">📷 Scan a barcode</button>
+          <input
+            id="sp-scan-input"
+            class="sp-search sp-scan-input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="Or type the barcode number…"
+            aria-label="Barcode number"
+          />
+          <button id="sp-scan-lookup" class="sp-btn sp-btn-ghost" type="button">Look up</button>
+        </div>
+        <div class="sp-viewfinder" id="sp-viewfinder" hidden>
+          <video id="sp-video" playsinline muted></video>
+          <div class="sp-scan-frame" aria-hidden="true"></div>
+          <button id="sp-scan-close" class="sp-btn sp-btn-ghost" type="button">Stop camera</button>
+        </div>
+        <p class="sp-status" id="sp-scan-status" aria-live="polite"></p>
+        <div id="sp-scan-result" aria-live="polite"></div>
+      </div>
+
       <h3 class="sp-h3">Build your own cart</h3>
       <p class="il-lede">
         Type a product — in Hebrew or in English (“eggs”, “milk”, “bread”) — add it with a
@@ -1029,6 +1058,247 @@ const pageDescription =
           var tab = document.querySelector('[data-tab="prices"]');
           if (tab) tab.addEventListener('click', function () { load(); }, { once: true });
         }
+        initScan();
+      }
+
+      // Barcode scanner: native BarcodeDetector when available (Chrome on
+      // Android covers EAN-13/UPC-A, the formats on Israeli products),
+      // ZXing (@zxing/library UMD, loaded lazily from unpkg) otherwise.
+      // Reuses the snapshot already loaded by the cart builder — no
+      // second fetch. The camera is stopped the moment a code is found,
+      // when the user closes it, or when the tab/page is left.
+      var scanStream = null;
+      var scanRaf = null; // native detection loop handle (timeout id)
+      var scanReader = null; // ZXing reader, when used
+      var scanOpen = false;
+      var catalogStripped = null;
+      var ZXING_URL = 'https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js';
+
+      function stripZeros(s) { return (s || '').replace(/^0+/, '') || '0'; }
+      function digitsOnly(s) { return (s || '').replace(/\D/g, ''); }
+      function findProduct(code) {
+        // The catalog stores GTIN-14-padded codes (07290010945306); a
+        // scanned EAN-13 (7290010945306) or UPC-A (12 digits) is the same
+        // product with fewer leading zeros. Exact match first, then a
+        // leading-zero-insensitive match.
+        code = digitsOnly(code);
+        if (!code) return null;
+        if (catalog[code]) return catalog[code];
+        if (!catalogStripped) {
+          catalogStripped = {};
+          Object.keys(catalog).forEach(function (g) {
+            var k = stripZeros(g);
+            if (!catalogStripped[k]) catalogStripped[k] = catalog[g];
+          });
+        }
+        return catalogStripped[stripZeros(code)] || null;
+      }
+
+      function setScanStatus(msg) { var s = $('sp-scan-status'); if (s) s.textContent = msg; }
+
+      function renderScanResult(code, item) {
+        var el = $('sp-scan-result');
+        if (!el) return;
+        if (!item) {
+          el.innerHTML = '<div class="sp-scan-result"><p class="sp-empty">Barcode ' + esc(code) +
+            ' isn\u2019t in this week\u2019s snapshot — no tracked store carries it.</p>' +
+            '<p><button type="button" class="sp-btn sp-btn-ghost" id="sp-scan-try-name">Search by name instead</button></p></div>';
+          var b = $('sp-scan-try-name');
+          if (b) b.addEventListener('click', function () { var inp = $('sp-search'); if (inp) inp.focus(); });
+          return;
+        }
+        var prices = snap.prices[item.gtin] || [];
+        var min = null;
+        prices.forEach(function (p) { if (p !== null && p !== undefined && (min === null || p < min)) min = p; });
+        var rows = snap.stores.map(function (s, i) {
+          var p = prices[i];
+          var cls = (p !== null && p !== undefined && p === min) ? ' class="sp-cheapest"'
+            : (p === null || p === undefined ? ' class="sp-missing"' : '');
+          var cell = (p === null || p === undefined) ? 'not carried'
+            : money(p) + (p === min ? ' <span class="sp-badge">Cheapest</span>' : '');
+          return '<li' + cls + '><span>' + esc(s.label) + '</span><span>' + cell + '</span></li>';
+        }).join('');
+        el.innerHTML = '<div class="sp-scan-result">' +
+          '<p class="sp-scan-name" lang="he" dir="rtl">' + esc(item.name) + '</p>' +
+          '<p class="sp-scan-meta">' + (item.manufacturer ? esc(item.manufacturer) + ' · ' : '') +
+          'barcode ' + esc(code) + '</p>' +
+          '<ul class="sp-scan-prices">' + rows + '</ul>' +
+          '<button type="button" class="sp-btn" data-scan-add="' + item.gtin + '">+ Add to cart</button></div>';
+        el.querySelector('[data-scan-add]').addEventListener('click', function () {
+          userTouched = true;
+          cart[item.gtin] = (cart[item.gtin] || 0) + 1;
+          syncUrl(); render();
+          this.textContent = 'Added ✓';
+          var self = this;
+          setTimeout(function () { self.textContent = '+ Add to cart'; }, 2000);
+        });
+      }
+
+      function lookupBarcode(raw) {
+        var code = digitsOnly(raw);
+        if (!code) { setScanStatus('That doesn\u2019t look like a barcode number — digits only.'); return; }
+        load().then(function () {
+          if (!snap) {
+            var el = $('sp-scan-result');
+            if (el) el.innerHTML = '<p class="sp-empty">The price snapshot didn\u2019t load, so there\u2019s nothing to look the barcode up in. Check your connection and try again.</p>';
+            return;
+          }
+          renderScanResult(code, findProduct(code));
+        });
+      }
+
+      function showViewfinder(show) {
+        var vf = $('sp-viewfinder');
+        if (vf) vf.hidden = !show;
+        var btn = $('sp-scan-btn');
+        if (btn) btn.textContent = show ? 'Scanning…' : '📷 Scan a barcode';
+      }
+
+      function stopScan() {
+        scanOpen = false;
+        if (scanRaf !== null) { clearTimeout(scanRaf); scanRaf = null; }
+        if (scanReader) { try { scanReader.reset(); } catch (e) {} scanReader = null; }
+        if (scanStream) { scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; }
+        var video = $('sp-video');
+        if (video) {
+          try { video.pause(); } catch (e) {}
+          video.removeAttribute('src');
+          video.srcObject = null;
+          try { video.load(); } catch (e) {}
+        }
+        showViewfinder(false);
+      }
+
+      function cameraError(e) {
+        var name = (e && e.name) || '';
+        if (name === 'NotAllowedError' || name === 'SecurityError') setScanStatus('Camera permission denied — type the barcode number instead.');
+        else if (name === 'NotFoundError' || name === 'OverconstrainedError') setScanStatus('No camera found on this device — type the barcode number instead.');
+        else setScanStatus('Couldn\u2019t open the camera' + (e && e.message ? ' (' + e.message + ')' : '') + ' — type the barcode number instead.');
+        var inp = $('sp-scan-input'); if (inp) inp.focus();
+      }
+
+      function nativeLoop(detector, video) {
+        if (!scanOpen) return;
+        if (video.readyState >= 2) {
+          detector.detect(video).then(function (codes) {
+            if (!scanOpen) return;
+            if (codes && codes.length) {
+              var raw = codes[0].rawValue;
+              stopScan();
+              lookupBarcode(raw);
+              return;
+            }
+            scanRaf = setTimeout(function () { nativeLoop(detector, video); }, 250);
+          }).catch(function () {
+            if (scanOpen) scanRaf = setTimeout(function () { nativeLoop(detector, video); }, 500);
+          });
+        } else {
+          scanRaf = setTimeout(function () { nativeLoop(detector, video); }, 250);
+        }
+      }
+
+      function startNative() {
+        var video = $('sp-video');
+        var detector;
+        try {
+          detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'] });
+        } catch (e) {
+          try { detector = new window.BarcodeDetector(); } catch (e2) { startZxing(); return; }
+        }
+        scanOpen = true;
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }).then(function (stream) {
+          if (!scanOpen) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+          scanStream = stream;
+          video.srcObject = stream;
+          var played = video.play();
+          if (played && played.then) return played;
+        }).then(function () {
+          if (scanOpen) nativeLoop(detector, video);
+        }).catch(function (e) {
+          if (!scanOpen) return;
+          stopScan();
+          cameraError(e);
+        });
+      }
+
+      function loadZxing() {
+        if (window.ZXing && window.ZXing.BrowserMultiFormatReader) return Promise.resolve();
+        if (loadZxing.promise) return loadZxing.promise;
+        loadZxing.promise = new Promise(function (resolve, reject) {
+          var s = document.createElement('script');
+          s.src = ZXING_URL;
+          s.async = true;
+          s.onload = function () { resolve(); };
+          s.onerror = function () { reject(new Error('zxing script failed to load')); };
+          document.head.appendChild(s);
+        });
+        return loadZxing.promise;
+      }
+
+      function startZxing() {
+        var video = $('sp-video');
+        setScanStatus('Loading the barcode reader…');
+        scanOpen = true;
+        loadZxing().then(function () {
+          if (!scanOpen) return;
+          if (!window.ZXing || !window.ZXing.BrowserMultiFormatReader) throw new Error('zxing unavailable');
+          var reader = new window.ZXing.BrowserMultiFormatReader();
+          scanReader = reader;
+          // ZXing manages its own camera stream here (facingMode:
+          // environment = rear camera); reset() in stopScan() stops it.
+          // The error argument is routine (no code in frame) — ignore it.
+          reader.decodeFromConstraints({ video: { facingMode: 'environment' } }, video, function (result, err) {
+            if (!scanOpen) return;
+            if (result) {
+              var raw = result.getText();
+              stopScan();
+              lookupBarcode(raw);
+            }
+          });
+        }).catch(function () {
+          if (!scanOpen) return;
+          stopScan();
+          setScanStatus('The barcode reader couldn\u2019t load — type the barcode number instead.');
+          var inp = $('sp-scan-input'); if (inp) inp.focus();
+        });
+      }
+
+      function startScan() {
+        if (scanOpen) { stopScan(); setScanStatus(''); return; }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setScanStatus('This browser can\u2019t open the camera — type the barcode number instead.');
+          var inp = $('sp-scan-input'); if (inp) inp.focus();
+          return;
+        }
+        load().then(function () {
+          if (!snap) { setScanStatus('The price snapshot didn\u2019t load yet — check your connection, then try again.'); return; }
+          showViewfinder(true);
+          setScanStatus('Point the camera at a barcode…');
+          if ('BarcodeDetector' in window) startNative();
+          else startZxing();
+        });
+      }
+
+      function initScan() {
+        var btn = $('sp-scan-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          if (scanOpen) { stopScan(); setScanStatus(''); return; }
+          startScan();
+        });
+        var input = $('sp-scan-input');
+        var lookupBtn = $('sp-scan-lookup');
+        var doLookup = function () { lookupBarcode(input ? input.value : ''); };
+        if (lookupBtn) lookupBtn.addEventListener('click', doLookup);
+        if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doLookup(); } });
+        var closeBtn = $('sp-scan-close');
+        if (closeBtn) closeBtn.addEventListener('click', function () { stopScan(); setScanStatus(''); });
+        // Never leave the camera running: stop when the page is hidden
+        // or when another tab on this page is opened.
+        document.addEventListener('visibilitychange', function () { if (document.hidden) stopScan(); });
+        document.querySelectorAll('[data-tab]').forEach(function (b) {
+          b.addEventListener('click', function () { if (b.getAttribute('data-tab') !== 'prices') stopScan(); });
+        });
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
       else init();
@@ -1415,6 +1685,88 @@ const pageDescription =
     padding: 1.1rem;
     border: 1px dashed #334155;
     border-radius: 0.9rem;
+  }
+  .sp-scan {
+    padding: 1.1rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.9rem;
+    background: #0b1220;
+    margin-bottom: 1.5rem;
+  }
+  .sp-scan-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .sp-scan-input {
+    flex: 1 1 12rem;
+  }
+  .sp-viewfinder {
+    position: relative;
+    margin-top: 0.9rem;
+    max-width: 26rem;
+  }
+  .sp-viewfinder[hidden] {
+    display: none !important;
+  }
+  .sp-viewfinder video {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 0.6rem;
+    background: #000;
+  }
+  .sp-scan-frame {
+    position: absolute;
+    left: 50%;
+    top: 42%;
+    width: 72%;
+    height: 30%;
+    transform: translate(-50%, -50%);
+    border: 2px solid #38bdf8;
+    border-radius: 0.5rem;
+    pointer-events: none;
+  }
+  .sp-viewfinder .sp-btn {
+    margin-top: 0.6rem;
+  }
+  .sp-scan-result {
+    margin-top: 0.9rem;
+    padding: 0.9rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.6rem;
+    background: #0f172a;
+  }
+  .sp-scan-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0 0 0.15rem;
+  }
+  .sp-scan-meta {
+    margin: 0 0 0.6rem;
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+  .sp-scan-prices {
+    list-style: none;
+    margin: 0 0 0.8rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .sp-scan-prices li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.35rem 0.1rem;
+    border-bottom: 1px solid #1e293b;
+    font-size: 0.95rem;
+  }
+  .sp-scan-prices li:last-child {
+    border-bottom: none;
   }
 
   /* ── Forms ───────────────────────────────────────────────────────────────── */
