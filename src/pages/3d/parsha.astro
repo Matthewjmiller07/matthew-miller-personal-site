@@ -1,0 +1,246 @@
+---
+// A 3D-printable toy for every parsha, each built on one peshat of Shadal. Models and files come from
+// scripts/3d-designs/parsha/build.py; card images from render.mjs.
+import Layout from '../../layouts/Layout.astro';
+import data from '../../../public/3d/parsha/kits.json';
+
+const DIR = '/3d/parsha';
+const kits = data.kits;
+const BOOKS = [
+    ['Genesis', 'Bereshit', 'בראשית'],
+    ['Exodus', 'Shemot', 'שמות'],
+    ['Leviticus', 'Vayikra', 'ויקרא'],
+    ['Numbers', 'Bamidbar', 'במדבר'],
+    ['Deuteronomy', 'Devarim', 'דברים'],
+];
+const books = BOOKS.map(([key, en, he]) => ({ key, en, he, kits: kits.filter((k) => k.book === key) }));
+const fmt = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} m` : `${min} m`);
+const totalPieces = kits.reduce((n, k) => n + k.pieces, 0);
+const totalGrams = Math.round(kits.reduce((n, k) => n + k.grams, 0));
+const first = kits[0];
+---
+
+<Layout
+    title="A toy for every parsha, after Shadal · 3D-printable"
+    description="Fifty-four small snap-together toys, one for each parsha, each built on a peshat of Shadal (Shmuel David Luzzatto). Turn them in 3D, read the comment they come from, and download a 3MF plate and STLs for a Bambu A1 mini."
+    image={`${DIR}/${first.slug}/${first.slug}.webp`}
+>
+    <main class="max-w-6xl mx-auto px-4 py-8 text-gray-100">
+        <p class="text-sm mb-4"><a href="/3d" class="text-amber-300 hover:underline">← 3D</a></p>
+        <header class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold">A toy for every parsha</h1>
+            <p class="mt-1 text-2xl text-amber-300" dir="rtl" lang="he">צַעֲצוּעַ לְכָל פָּרָשָׁה, עַל פִּי שַׁדַ״ל</p>
+            <p class="mt-3 text-gray-300 max-w-3xl">
+                Shmuel David Luzzatto (Shadal, 1800–1865) wrote a commentary on the Torah that keeps asking what the words plainly mean:
+                what a word is, what the verse pictures, why the Torah says it this way. Each toy here takes one of those comments, one per parsha, and turns it into something you can hold.
+                The firmament is a beaten plate holding up the upper waters. The fire in the thorn bush leaps between the thorns without catching them. The Urim and Tumim are twenty-two letter tiles, from alef (“ur”) to tav (“tam”).
+            </p>
+            <p class="mt-2 text-gray-300 max-w-3xl">
+                Like the <a href="/3d/plagues" class="text-amber-300 hover:underline">Ten Plagues</a>, each toy stands on a 40&nbsp;mm stage with the parsha’s name sunk into the top and its number under it, and prints on a Bambu A1 mini with no supports.
+                Flat figures stand in slots, round pieces sit on pegs, and a few parts join with little pins.
+            </p>
+            <p class="mt-2 text-sm text-gray-400">{kits.length} toys · {totalPieces} pieces in all · about {totalGrams} g of PLA for the whole Torah.</p>
+        </header>
+
+        <section class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-10">
+            <div class="lg:col-span-3">
+                <div class="rounded-xl overflow-hidden border border-gray-700 bg-gray-900">
+                    <div id="ps-viewer" class="w-full relative" style="height: 480px;">
+                        <img id="ps-fallback" src={`${DIR}/${first.slug}/${first.slug}.webp`} alt="" class="absolute inset-0 w-full h-full object-contain" />
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3 p-3 border-t border-gray-700 text-sm">
+                        <button id="ps-prev" type="button" class="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600" aria-label="Previous parsha">‹</button>
+                        <button id="ps-next" type="button" class="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600" aria-label="Next parsha">›</button>
+                        <label for="ps-explode" class="text-gray-300">Pull apart</label>
+                        <input id="ps-explode" type="range" min="0" max="1" step="0.01" value="0" class="flex-1 min-w-[8rem] accent-amber-500" />
+                        <button id="ps-spin" type="button" class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600" aria-pressed="true">Spin</button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Drag to orbit, scroll to zoom. Slide to see how the pieces go together.</p>
+            </div>
+            <aside id="ps-info" class="lg:col-span-2 rounded-xl border border-gray-700 bg-gray-900/60 p-5 lg:max-h-[560px] lg:overflow-y-auto"></aside>
+        </section>
+
+        {books.map((b) => (
+            <section class="mb-10">
+                <h2 class="text-2xl font-bold mb-3 flex items-baseline gap-3">
+                    <span>{b.en}</span>
+                    <span class="text-amber-300 text-xl" dir="rtl" lang="he">{b.he}</span>
+                </h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    {b.kits.map((k) => (
+                        <a href={`#${k.slug}`} id={k.slug} data-pick={k.slug} class="scroll-mt-24 group relative rounded-lg overflow-hidden border border-gray-700 hover:border-amber-400 bg-gray-900 flex flex-col">
+                            <img src={`${DIR}/${k.slug}/${k.files.img}`} alt={`${k.en}: ${k.idea}`} width="720" height="720" loading="lazy" class="w-full aspect-square object-cover" />
+                            <span class="absolute top-1.5 left-2 text-xs text-gray-300 drop-shadow" dir="rtl" lang="he">{k.numeral}</span>
+                            <span class="block text-center px-1.5 py-1.5 border-t border-gray-800 flex-1">
+                                <span class="block text-xl font-bold text-amber-300 leading-tight" dir="rtl" lang="he">{k.he}</span>
+                                <span class="block text-[11px] text-gray-300">{k.en} · {k.verse.replace(/^\S+ /, '')}</span>
+                                <span class="block text-[11px] text-gray-500 leading-snug mt-0.5">{k.idea}</span>
+                            </span>
+                        </a>
+                    ))}
+                </div>
+            </section>
+        ))}
+
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold mb-3">Printing them</h2>
+            <div class="grid md:grid-cols-3 gap-4 text-sm text-gray-300">
+                <div class="rounded-xl border border-gray-700 bg-gray-900/60 p-4">
+                    <h3 class="font-semibold text-gray-100 mb-1">Settings</h3>
+                    <p>PLA, 0.4 nozzle, 0.2&nbsp;mm layers, 15% infill, <strong>no supports</strong>. Every part is already turned onto its print face. Open the plate 3MF and slice: it is laid out for the A1 mini’s 180&nbsp;mm bed.</p>
+                </div>
+                <div class="rounded-xl border border-gray-700 bg-gray-900/60 p-4">
+                    <h3 class="font-semibold text-gray-100 mb-1">Colours</h3>
+                    <p>The 3MF has a colour on each part, so with an AMS you match them to your spools. Without one, print a colour at a time from the STLs. A few details are second colours on the same part (the rain under the firmament, the stones on the choshen, the flame on the lamp), or paint them.</p>
+                </div>
+                <div class="rounded-xl border border-gray-700 bg-gray-900/60 p-4">
+                    <h3 class="font-semibold text-gray-100 mb-1">Fit</h3>
+                    <p>Pins are Ø3&nbsp;mm in Ø3.3 holes and slots have 0.15&nbsp;mm each side, the same as the Ten Plagues: a firm push fit on a tuned A1 mini. Two-piece bushes, trees and flames slot together at right angles. Don’t rescale a kit, or the pins stop fitting.</p>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3">Times and grams are rough estimates at Bambu default speeds; the slicer has the final word. Shadal’s commentary is quoted from the Padua first editions on <a href="https://www.sefaria.org/Shadal_on_Genesis" class="underline hover:text-gray-300">Sefaria</a>; the English summaries are mine.</p>
+        </section>
+    </main>
+
+    <script type="application/json" id="ps-data" set:html={JSON.stringify({ dir: DIR, kits })} />
+
+    <script is:inline type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/+esm';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js/+esm';
+        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js/+esm';
+        import { RoomEnvironment } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js/+esm';
+
+        const { dir, kits } = JSON.parse(document.getElementById('ps-data').textContent);
+        const bySlug = Object.fromEntries(kits.map((k) => [k.slug, k]));
+        const host = document.getElementById('ps-viewer');
+        const info = document.getElementById('ps-info');
+        const slider = document.getElementById('ps-explode');
+        const spinBtn = document.getElementById('ps-spin');
+        const fmt = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} m` : `${m} m`);
+        const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111318);
+        scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+        const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+        sun.position.set(-40, 80, 60);
+        scene.add(sun);
+        const camera = new THREE.PerspectiveCamera(35, 1, 1, 2000);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.2;
+
+        function resize() {
+            const w = host.clientWidth, h = host.clientHeight;
+            renderer.setSize(w, h);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+        }
+
+        const loader = new GLTFLoader();
+        const cache = {};
+        let current = null;
+        let currentSlug = null;
+
+        function explodeVector(kit, nodeName) {
+            const part = kit.parts.find((p) => p.name === nodeName.split('--')[0]);
+            return part ? new THREE.Vector3(...part.explode) : new THREE.Vector3();
+        }
+
+        function applyExplode() {
+            if (!current) return;
+            const t = Number(slider.value);
+            const e = t * t * (3 - 2 * t);
+            for (const [obj, home, v] of current.moves) obj.position.copy(home).addScaledVector(v, e);
+        }
+
+        function showInfo(kit) {
+            const swatch = (hex) => `<span class="inline-block w-3.5 h-3.5 rounded border border-gray-600 align-middle" style="background:${hex}"></span>`;
+            const rows = kit.parts.map((p, n) => {
+                const extra = p.inlays.map((i) => ` + ${swatch(i.hex)} ${esc(i.name)}`).join('');
+                const qty = p.qty > 1 && !p.label.includes('×') ? ` ×${p.qty}` : '';
+                return `<li class="flex gap-2"><span class="text-gray-500 w-5 text-right shrink-0">${n + 1}</span><span>${swatch(p.hex)} ${esc(p.label)}${qty}${extra}</span></li>`;
+            }).join('');
+            info.innerHTML = `
+                <p class="text-xs text-gray-500">Parsha ${kit.number} of 54 · ${esc(kit.verse)}</p>
+                <h2 class="text-4xl font-bold text-amber-300 leading-tight mt-1" dir="rtl" lang="he">${esc(kit.he)}</h2>
+                <p class="text-lg text-gray-300">${esc(kit.en)}</p>
+                <p class="mt-2 font-semibold">${esc(kit.idea)}</p>
+                <blockquote class="mt-3 border-r-2 border-amber-500 pr-3 text-gray-200 text-lg leading-relaxed" dir="rtl" lang="he">${esc(kit.quote)}</blockquote>
+                <p class="text-xs mt-1"><a href="${kit.sefaria}" class="text-amber-300 hover:underline" target="_blank" rel="noopener">${esc(kit.ref)} on Sefaria ↗</a></p>
+                <p class="text-sm text-gray-300 mt-3">${esc(kit.story)}</p>
+                <h3 class="font-semibold mt-4 mb-1 text-sm">Pieces</h3>
+                <ol class="text-sm text-gray-300 space-y-1">${rows}</ol>
+                <dl class="grid grid-cols-2 gap-y-1 text-sm mt-4">
+                    <dt class="text-gray-400">Pieces</dt><dd class="text-right font-mono">${kit.pieces}</dd>
+                    <dt class="text-gray-400">Filament</dt><dd class="text-right font-mono">≈ ${kit.grams} g · ${kit.metres} m</dd>
+                    <dt class="text-gray-400">Print time</dt><dd class="text-right font-mono">≈ ${fmt(kit.minutes)}</dd>
+                </dl>
+                <div class="flex flex-wrap gap-2 mt-4 text-sm">
+                    <a href="${dir}/${kit.slug}/${kit.files.plate}" download class="px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-medium">⬇️ Plate (3MF)</a>
+                    <a href="${dir}/${kit.slug}/${kit.files.zip}" download class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600">STLs (zip)</a>
+                </div>`;
+            info.scrollTop = 0;
+        }
+
+        function show(slug) {
+            const kit = bySlug[slug];
+            if (!kit) return;
+            currentSlug = slug;
+            showInfo(kit);
+            document.querySelectorAll('[data-pick]').forEach((el) => el.classList.toggle('border-amber-400', el.dataset.pick === slug));
+            const use = (gltf) => {
+                if (currentSlug !== slug) return;
+                if (current) scene.remove(current.root);
+                const root = gltf.scene;
+                const moves = [];
+                root.traverse((o) => { if (o.isMesh) moves.push([o, o.position.clone(), explodeVector(kit, o.name)]); });
+                current = { root, moves };
+                scene.add(root);
+                const box = new THREE.Box3().setFromObject(root);
+                const c = box.getCenter(new THREE.Vector3());
+                const r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 22);
+                controls.target.copy(c);
+                camera.position.copy(c).add(new THREE.Vector3(-0.45, 0.55, 1).normalize().multiplyScalar(r * 2.9));
+                camera.near = r / 20;
+                camera.far = r * 40;
+                camera.updateProjectionMatrix();
+                applyExplode();
+            };
+            if (cache[slug]) use(cache[slug]);
+            else loader.load(`${dir}/${slug}/${kit.files.glb}`, (g) => { cache[slug] = g; use(g); });
+        }
+
+        function step(d) {
+            const i = kits.findIndex((k) => k.slug === currentSlug);
+            const k = kits[(i + d + kits.length) % kits.length];
+            history.replaceState(null, '', `#${k.slug}`);
+            show(k.slug);
+        }
+
+        host.appendChild(renderer.domElement);
+        document.getElementById('ps-fallback').remove();
+        resize();
+        addEventListener('resize', resize);
+        slider.addEventListener('input', applyExplode);
+        spinBtn.addEventListener('click', () => {
+            controls.autoRotate = !controls.autoRotate;
+            spinBtn.setAttribute('aria-pressed', String(controls.autoRotate));
+        });
+        document.getElementById('ps-prev').addEventListener('click', () => step(-1));
+        document.getElementById('ps-next').addEventListener('click', () => step(1));
+        document.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            history.replaceState(null, '', `#${el.dataset.pick}`);
+            show(el.dataset.pick);
+            host.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }));
+        show(bySlug[location.hash.slice(1)] ? location.hash.slice(1) : kits[0].slug);
+        renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+    </script>
+</Layout>
