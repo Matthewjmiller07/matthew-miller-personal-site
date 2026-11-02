@@ -6,14 +6,19 @@ import data from '../../../public/3d/plagues/kits.json';
 
 const DIR = '/3d/plagues';
 const kits = data.kits;
+// a plague with more than one reading (arov, choshech) gets one kit per opinion
+const groups = [...new Set(kits.map((k) => k.number))].map((n) => kits.filter((k) => k.number === n));
+const plain = (he: string) => he.replace(/[\u0591-\u05C7]/g, '');
+const groupEn = (g: typeof kits) => ({ 4: 'Arov, the mixture', 9: 'Darkness' } as Record<number, string>)[g[0].number] ?? g[0].en;
 const fmt = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} m` : `${min} m`);
-const totalPieces = kits.reduce((n, k) => n + k.pieces, 0);
-const totalGrams = Math.round(kits.reduce((n, k) => n + k.grams, 0));
+const firsts = groups.map((g) => g[0]);
+const totalPieces = firsts.reduce((n, k) => n + k.pieces, 0);
+const totalGrams = Math.round(firsts.reduce((n, k) => n + k.grams, 0));
 ---
 
 <Layout
-    title="The Ten Plagues: 3D-printable toys"
-    description="Ten snap-together toys, one for each of the plagues in Exodus, made to print on a Bambu A1 mini: pegs, slots and pins, no supports, with a 3MF plate and STLs for each."
+    title="The Ten Plagues · עשר מכות: 3D-printable toys"
+    description="Snap-together toys for each of the ten plagues in Exodus, with a kit for each reading where the commentators disagree, made to print on a Bambu A1 mini: pegs, slots and pins, no supports, with a 3MF plate and STLs for each."
     image={`${DIR}/hail/hail.webp`}
 >
     <main class="max-w-6xl mx-auto px-4 py-8 text-gray-100">
@@ -26,15 +31,20 @@ const totalGrams = Math.round(kits.reduce((n, k) => n + k.grams, 0));
                 Each one stands on a 40&nbsp;mm stage with the plague's name sunk into the top and its number under it.
                 They print on a Bambu A1 mini with no supports, one plate per plague, and go together with pegs, slots and little pins.
             </p>
-            <p class="mt-2 text-sm text-gray-400">{kits.length} toys · {totalPieces} pieces · about {totalGrams} g of PLA for the whole set.</p>
+            <p class="mt-2 text-gray-300 max-w-3xl">Where the commentators disagree about what a plague was, there's a toy for each reading: arov as wild animals or as hornets and mosquitoes, and choshech as darkness over the land or, with the Torah Temimah, a film over the eye.</p>
+            <p class="mt-2 text-sm text-gray-400">{groups.length} plagues · {kits.length} toys · a set of ten is {totalPieces} pieces and about {totalGrams} g of PLA.</p>
         </header>
 
-        <div class="grid grid-cols-5 gap-2 mb-10">
-            {kits.map((k) => (
-                <a href={`#${k.slug}`} data-pick={k.slug} class="group relative rounded-lg overflow-hidden border border-gray-700 hover:border-amber-400">
-                    <img src={`${DIR}/${k.slug}/${k.slug}.webp`} alt={`${k.en}: the printed toy`} width="720" height="720" loading="lazy" class="w-full aspect-square object-cover" />
-                    <span class="absolute top-1 right-1.5 text-amber-300 text-sm md:text-lg font-bold drop-shadow" dir="rtl" lang="he">{k.numeral}</span>
-                    <span class="absolute bottom-0 inset-x-0 bg-black/60 text-[10px] md:text-xs text-center py-0.5">{k.en}</span>
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-10">
+            {groups.map((g) => (
+                <a href={`#${g[0].slug}`} data-pick={g[0].slug} class="group relative rounded-lg overflow-hidden border border-gray-700 hover:border-amber-400 bg-gray-900">
+                    <img src={`${DIR}/${g[0].slug}/${g[0].slug}.webp`} alt={`${plain(g[0].he)}: the printed toy`} width="720" height="720" loading="lazy" class="w-full aspect-square object-cover" />
+                    <span class="absolute top-1.5 left-2 text-xs text-gray-300 drop-shadow">{g[0].number}</span>
+                    {g.length > 1 && <span class="absolute top-1.5 right-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-600 text-white">{g.length} views</span>}
+                    <span class="block text-center py-1.5 border-t border-gray-800">
+                        <span class="block text-2xl md:text-3xl font-bold text-amber-300 leading-tight" dir="rtl" lang="he">{g[0].he}</span>
+                        <span class="block text-[11px] text-gray-400">{groupEn(g)}</span>
+                    </span>
                 </a>
             ))}
         </div>
@@ -78,25 +88,33 @@ const totalGrams = Math.round(kits.reduce((n, k) => n + k.grams, 0));
         <section>
             <h2 class="text-2xl font-bold mb-3">All ten</h2>
             <div class="space-y-4">
-                {kits.map((k) => (
-                    <article id={k.slug} class="scroll-mt-20 grid sm:grid-cols-[160px_1fr] gap-4 rounded-xl border border-gray-700 bg-gray-900/60 p-4">
-                        <img src={`${DIR}/${k.slug}/${k.slug}.webp`} alt="" width="160" height="160" loading="lazy" class="w-40 h-40 rounded-lg object-cover" />
-                        <div>
-                            <div class="flex flex-wrap items-baseline gap-x-3">
-                                <h3 class="text-xl font-semibold">{k.number}. {k.en}</h3>
-                                <span class="text-amber-300 text-lg" dir="rtl" lang="he">{k.he}</span>
-                                <span class="text-xs text-gray-500">{k.verse}</span>
-                            </div>
-                            <p class="text-sm text-gray-300 mt-1">{k.story}</p>
-                            <p class="text-xs text-gray-400 mt-2">
-                                {k.parts.map((p, n) => `${p.label}${p.qty > 1 && !p.label.includes('×') ? ` ×${p.qty}` : ''}`).join(' · ')}
-                            </p>
-                            <div class="flex flex-wrap items-center gap-2 mt-3 text-sm">
-                                <a href={`${DIR}/${k.slug}/${k.files.plate}`} download class="px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-medium">⬇️ Plate (3MF)</a>
-                                <a href={`${DIR}/${k.slug}/${k.files.zip}`} download class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600">STLs (zip)</a>
-                                <button type="button" data-pick={k.slug} class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600">View in 3D ↑</button>
-                                <span class="text-gray-400 text-xs">{k.pieces} pieces · ≈ {k.grams} g · ≈ {fmt(k.minutes)}</span>
-                            </div>
+                {groups.map((g) => (
+                    <article class="rounded-xl border border-gray-700 bg-gray-900/60 p-4">
+                        <header class="flex flex-wrap items-baseline gap-x-3 mb-3">
+                            <span class="text-gray-500">{g[0].number}.</span>
+                            <h3 class="text-3xl font-bold text-amber-300" dir="rtl" lang="he">{g[0].he}</h3>
+                            <span class="text-lg text-gray-300">{groupEn(g)}</span>
+                            <span class="text-xs text-gray-500">{g[0].verse}</span>
+                        </header>
+                        <div class="space-y-4">
+                            {g.map((k) => (
+                                <div id={k.slug} class="scroll-mt-20 grid sm:grid-cols-[160px_1fr] gap-4">
+                                    <img src={`${DIR}/${k.slug}/${k.slug}.webp`} alt="" width="160" height="160" loading="lazy" class="w-40 h-40 rounded-lg object-cover" />
+                                    <div>
+                                        {k.opinion && <p class="font-semibold">{k.opinion} <span class="text-xs font-normal text-gray-400">· {k.source}</span></p>}
+                                        <p class="text-sm text-gray-300 mt-1">{k.story}</p>
+                                        <p class="text-xs text-gray-400 mt-2">
+                                            {k.parts.map((p) => `${p.label}${p.qty > 1 && !p.label.includes('×') ? ` ×${p.qty}` : ''}`).join(' · ')}
+                                        </p>
+                                        <div class="flex flex-wrap items-center gap-2 mt-3 text-sm">
+                                            <a href={`${DIR}/${k.slug}/${k.files.plate}`} download class="px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-medium">⬇️ Plate (3MF)</a>
+                                            <a href={`${DIR}/${k.slug}/${k.files.zip}`} download class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600">STLs (zip)</a>
+                                            <button type="button" data-pick={k.slug} class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600">View in 3D ↑</button>
+                                            <span class="text-gray-400 text-xs">{k.pieces} pieces · ≈ {k.grams} g · ≈ {fmt(k.minutes)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </article>
                 ))}
@@ -167,12 +185,15 @@ const totalGrams = Math.round(kits.reduce((n, k) => n + k.grams, 0));
                 const qty = p.qty > 1 && !p.label.includes('×') ? ` ×${p.qty}` : '';
                 return `<li class="flex gap-2"><span class="text-gray-500 w-4 text-right shrink-0">${n + 1}</span><span>${swatch(p.hex)} ${esc(p.label)}${qty}${extra}</span></li>`;
             }).join('');
+            const siblings = kits.filter((k) => k.number === kit.number);
+            const tabs = siblings.length > 1 ? `<div class="flex flex-wrap gap-2 mt-3" role="tablist">${siblings.map((k) => `
+                <button type="button" data-pick="${k.slug}" role="tab" aria-selected="${k.slug === kit.slug}" class="text-left px-3 py-1.5 rounded-lg border text-sm ${k.slug === kit.slug ? 'border-amber-400 bg-amber-600/20' : 'border-gray-700 hover:border-gray-500'}">
+                    <span class="block font-medium">${esc(k.opinion)}</span><span class="block text-[11px] text-gray-400">${esc(k.source)}</span></button>`).join('')}</div>` : '';
             info.innerHTML = `
-                <div class="flex items-baseline justify-between gap-2">
-                    <h2 class="text-2xl font-semibold">${kit.number}. ${esc(kit.en)}</h2>
-                    <span class="text-2xl text-amber-300" dir="rtl" lang="he">${esc(kit.he)}</span>
-                </div>
-                <p class="text-xs text-gray-500">${esc(kit.verse)}</p>
+                <p class="text-xs text-gray-500">${kit.number} of 10 · ${esc(kit.verse)}</p>
+                <h2 class="text-5xl font-bold text-amber-300 leading-tight mt-1" dir="rtl" lang="he">${esc(kit.he)}</h2>
+                <p class="text-lg text-gray-300">${esc(kit.en)}</p>
+                ${tabs}
                 <p class="text-sm text-gray-300 mt-3">${esc(kit.story)}</p>
                 <h3 class="font-semibold mt-4 mb-1 text-sm">Pieces, in the order they go together</h3>
                 <ol class="text-sm text-gray-300 space-y-1">${rows}</ol>
@@ -191,7 +212,8 @@ const totalGrams = Math.round(kits.reduce((n, k) => n + k.grams, 0));
             const kit = bySlug[slug];
             if (!kit) return;
             showInfo(kit);
-            document.querySelectorAll('[data-pick]').forEach((el) => el.classList.toggle('border-amber-400', el.dataset.pick === slug));
+            info.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => show(el.dataset.pick)));
+            document.querySelectorAll('[data-pick]').forEach((el) => el.classList.toggle('border-amber-400', bySlug[el.dataset.pick]?.number === kit.number));
             const use = (gltf) => {
                 if (current) scene.remove(current.root);
                 const root = gltf.scene;

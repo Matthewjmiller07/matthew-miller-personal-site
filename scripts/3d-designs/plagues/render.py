@@ -35,8 +35,8 @@ def render(slug):
                 b = m.node_tree.nodes.get('Principled BSDF')
                 if b and m.blend_method == 'BLEND' or (b and b.inputs['Alpha'].default_value < 1):
                     b.inputs['Alpha'].default_value = 1.0
-                    b.inputs['Transmission Weight'].default_value = 0.85
-                    b.inputs['Roughness'].default_value = 0.15
+                    b.inputs['Transmission Weight'].default_value = 0.15 if m.name.startswith('milk') else 0.85
+                    b.inputs['Roughness'].default_value = 0.65 if m.name.startswith('milk') else 0.15
     pts = [o.matrix_world @ Vector(c) for o in meshes for c in o.bound_box]
     lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
     hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))

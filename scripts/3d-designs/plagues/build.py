@@ -51,7 +51,7 @@ FILAMENT = {
     'red': '#B3121C', 'blood': '#8E0D16', 'wood': '#8A5A2B', 'green': '#4E9A3A', 'lily': '#2F6B3A',
     'grey': '#8C8C8C', 'dark': '#2B2B2B', 'black': '#151515', 'tan': '#C99A52', 'brown': '#6B4423',
     'orange': '#F07F1A', 'yellow': '#FFD23F', 'white': '#F4F1E8', 'ice': '#BFE6FF', 'clear': '#DDEEF6',
-    'gold': '#E2B33C', 'pink': '#E89AA6', 'clay': '#C0663B', 'olive': '#7C8C3A', 'navy': '#1B2A5E',
+    'milk': '#E9EEF0', 'gold': '#E2B33C', 'pink': '#E89AA6', 'clay': '#C0663B', 'olive': '#7C8C3A', 'navy': '#1B2A5E',
 }
 
 
@@ -602,6 +602,89 @@ def kit_locusts(i):
     ]
 
 
+def kit_insects(i):
+    # Arov as R' Nechemia reads it (Shemot Rabbah 11:3): kinds of hornets and mosquitoes. A hornet
+    # built in layers like the locust, and three mosquitoes hovering on stalks.
+    legs2d = U(*[L([(2.4, y), (7.6, y + d), (9.6, y + d - 3.4)], 1.2) for y, d in ((4.6, 1.6), (2.6, -0.6), (0.8, -2.6))],
+               L([(1.0, 9.6), (2.6, 12.6), (5.2, 13.6)], 0.9))
+    sting = Polygon([(-1.0, -15.4), (0, -19.2), (1.0, -15.4)])
+    legs2d = U(mirror_x(legs2d), E(0, 3, 3.6, 4.6), E(0, -8.4, 4.0, 7.4), sting)
+    hx, hy, ang = -1.0, -0.5, 200
+    place = lambda m: m.rotate((0, 0, ang)).translate((hx, hy, 0))
+    bz = TOP + 1.6
+    legs = extrude(legs2d.difference(C(0, 3, HOLE_R)), 1.6, 0)
+    legs = union(legs, peg((0, -8.4, 1.6), h=2.0, r=1.2))
+    thorax = above(below(ell(4.2, 4.6, 4.4, (0, 3, -0.4)), 3.4), 0)
+    head = above(ell(3.4, 3.0, 3.2, (0, 8.0, -0.2)), 0)
+    head = union(head, *[ell(1.4, 1.8, 1.8, (x * 2.4, 8.4, 1.2), seg=20) for x in (-1, 1)])
+    thorax = union(thorax, head, peg((0, 3, 3.4), h=1.0, r=1.0)) - hole((0, 3, 0), 3.2, '-z')
+    abdomen = above(ell(5.0, 8.0, 4.8, (0, -8.4, -0.4)), 0)
+    for k in range(3):
+        abdomen = abdomen - (cyl(1.1, 20, at=(0, 0, -0.55)).rotate((90, 0, 0)).translate((0, -5.0 - 3.2 * k + 0.55, 0))
+                             - ell(4.3, 7.3, 4.1, (0, -8.4, -0.4)))
+    abdomen = abdomen - hole((0, -8.4, 0), 2.2, '-z', r=1.35)
+    wing = lambda x, y, rx, ry, a: E(x, y, rx, ry, a)
+    wings2d = mirror_x(U(wing(6.4, 5.2, 6.6, 2.4, 22), wing(5.4, 1.8, 4.6, 1.8, 8)))
+    wings2d = U(wings2d, C(0, 3, 2.6)).difference(C(0, 3, 1.15))
+    wings = extrude(wings2d, 1.0, 3.4)
+    mos2d = U(E(0, 0, 0.9, 4.2), C(0, 4.6, 1.1), L([(0, 5.2), (0, 8.6)], 0.8),
+              mirror_x(U(E(2.6, 0.6, 2.8, 1.1, 18), *[L([(0.6, y), (4.2, y + d), (6.6, y + d - 2.6)], 0.8)
+                                                       for y, d in ((1.6, 1.4), (0.2, -0.4), (-1.2, -2.6))])))
+    mos2d = mos2d.difference(C(0, 0.2, 0.75))
+    rods, mozzies, holes = [], [], []
+    for k, (x, y, h, a) in enumerate(((11.5, 10.0, 24.0, 30), (-11.5, 11.0, 18.0, -50), (1.0, 15.5, 28.0, 120))):
+        rod = union(cyl(2.6, 1.15, at=(x, y, TOP - 2.6)), cyl(h, 1.3, 1.1, at=(x, y, TOP)),
+                    cyl(1.0, 0.6, at=(x, y, TOP + h)))
+        rods.append(rod)
+        holes.append(cyl(2.61, 1.15 + FIT, at=(x, y, TOP - 2.6)))
+        mozzies.append(extrude(mos2d, 1.0, 0).translate((0, -0.2, 0)).rotate((0, 0, a)).translate((x, y, TOP + h)))
+    base = stage('ערוב', i, cut=holes, add=[peg((hx + 3 * math.sin(math.radians(-ang)), hy + 3 * math.cos(math.radians(ang)), TOP), h=4.6)])
+    return [
+        P('stage', 'Stage', base, 'stage'),
+        P('legs', 'Legs & sting', place(legs.translate((0, 0, TOP))), 'black', (0, 0, 8)),
+        P('thorax', 'Head & thorax', place(thorax.translate((0, 0, bz))), 'black', (0, 0, 18)),
+        P('abdomen', 'Striped abdomen', place(abdomen.translate((0, 0, bz))), 'yellow', (0, 6, 18)),
+        P('wings', 'Wings', place(wings.translate((0, 0, bz))), 'clear', (0, 0, 30)),
+        *[P(f'stalk-{k + 1}', 'Stalk', r, 'clear', (0, 0, 4)) for k, r in enumerate(rods)],
+        *[P(f'mosquito-{k + 1}', 'Mosquito', m, 'dark', (0, 0, 16)) for k, m in enumerate(mozzies)],
+    ]
+
+
+def kit_darkness_eye(i):
+    # Torah Temimah on 10:21: "had I not feared saying something very new", the darkness was not in
+    # the air but in their eyes, a film stretched over the pupil, which could be felt by hand and was
+    # the thickness of a dinar. An eye with iris and pupil, the film that presses on over them, and a
+    # dinar beside it.
+    to_world = lambda m: m.rotate((90, 0, 0)).translate((0, 6.0, TOP + 12.6))  # local +z faces you
+    front = 8.4
+    eye = below(above(sph(13, (0, 0, -3), seg=96), 0), front)
+    eye = union(eye, cube(8, 4.6, 4, (0, -13.3, 0)))
+    eye = eye - cyl(1.41, 5.0 + FIT, at=(0, 0, front - 1.4))
+    for k in range(5):  # a few veins scored into the white
+        a = math.radians(200 + k * 33)
+        vein = L([(7.2 * math.cos(a), 7.2 * math.sin(a)), (9.4 * math.cos(a + 0.12), 9.4 * math.sin(a + 0.12)),
+                  (11.2 * math.cos(a - 0.05), 11.2 * math.sin(a - 0.05))], 0.6)
+        eye = eye - (extrude(vein, 14, 0) - sph(12.6, (0, 0, -3), seg=96))
+    iris = cyl(1.4, 5.0, at=(0, 0, front - 1.4)) - cyl(1.5, 1.9 + FIT, at=(0, 0, front - 1.45))
+    for k in range(16):
+        iris = iris - cube(2.0, 0.5, 0.31, (3.5, 0, front - 0.3)).rotate((0, 0, k * 22.5))
+    pupil = union(cyl(1.4, 1.9, at=(0, 0, front - 1.4)), peg((0, 0, front), h=1.0, r=1.1))
+    film = cyl(1.2, 6.2, at=(0, 0, front)) - cyl(1.06, 1.1 + FIT, at=(0, 0, front - 0.01))
+    coin_at = (11.0, -6.5)
+    dinar = cyl(1.2, 4.2, at=(*coin_at, TOP - 0.4)) - (cyl(0.31, 3.7, at=(*coin_at, TOP + 0.5)) - cyl(0.4, 3.2, at=(*coin_at, TOP + 0.45)))
+    dinar = union(dinar, cyl(0.3, 1.4, at=(*coin_at, TOP + 0.8)))
+    base = stage('חושך', i, cut=[cube(8 + 2 * FIT, 4 + 2 * FIT, 3.01, (0, 6.0 - 2.0, TOP - 3.0)),
+                                 cyl(0.41, 4.2 + FIT, at=(*coin_at, TOP - 0.4))])
+    return [
+        P('stage', 'Stage', base, 'stage'),
+        P('eye', 'Eye', to_world(eye), 'white', (0, 6, 4), rot=(-90, 0, 0)),
+        P('iris', 'Iris', to_world(iris), 'brown', (0, -10, 0), rot=(-90, 0, 0)),
+        P('pupil', 'Pupil', to_world(pupil), 'black', (0, -16, 0), rot=(-90, 0, 0)),
+        P('film', 'The film (תבלול)', to_world(film), 'milk', (0, -24, 0), rot=(-90, 0, 0)),
+        P('dinar', 'Dinar', dinar, 'gold', (4, -4, 10)),
+    ]
+
+
 def cloud_shape(at):
     puffs = [(0, 0, 4.2), (4.6, 1, 3.6), (-4.4, -0.6, 3.4), (2.2, -3.2, 3.2), (-2, 3.4, 3.4), (0.8, 0.5, 4.8)]
     return above(union(*[sph(r, (x, y, 3.4 + (r - 2.6) * 0.8), seg=28) for x, y, r in puffs]), 0).translate(at)
@@ -693,25 +776,33 @@ def kit_firstborn(i):
 
 
 KITS = [
-    dict(slug='blood', he='דָּם', en='Blood', verse='Shemot 7:20', fn=kit_blood,
+    dict(group=1, slug='blood', he='דָּם', en='Blood', verse='Shemot 7:20', fn=kit_blood,
          story='Moshe lifts the staff over the Nile and the water turns to blood. A red river drops into a channel across the stage, two dead fish float on it, and the staff stands at the bank.'),
-    dict(slug='frogs', he='צְפַרְדֵּעַ', en='Frogs', verse='Shemot 8:2', fn=kit_frogs,
+    dict(group=2, slug='frogs', he='צְפַרְדֵּעַ', en='Frogs', verse='Shemot 8:2', fn=kit_frogs,
          story='“The frog came up”: the verse says one frog, and Rashi brings the midrash that it was a single frog, and when they struck it, it split into swarms. A big frog on a lily pad, with a little one already split off.'),
-    dict(slug='lice', he='כִּנִּים', en='Lice', verse='Shemot 8:12–15', fn=kit_lice,
+    dict(group=3, slug='lice', he='כִּנִּים', en='Lice', verse='Shemot 8:12–15', fn=kit_lice,
          story='Aharon strikes the dust and it becomes lice. The magicians cannot copy it and admit “it is the finger of God.” A louse big enough to see, under a magnifying glass, on a dusty stage.'),
-    dict(slug='wild-beasts', he='עָרוֹב', en='Wild beasts', verse='Shemot 8:17', fn=kit_wild_beasts,
+    dict(group=4, slug='wild-beasts', he='עָרוֹב', en='Wild beasts', verse='Shemot 8:17', fn=kit_wild_beasts,
+         opinion='Wild animals', source='R’ Yehuda in Shemot Rabbah 11:3; Rashi',
          story='Arov, a mixture: Rashi lists lions, wolves, leopards, snakes and scorpions. A lion, a bear and a wolf stand in sockets, and a scorpion scuttles in front.'),
-    dict(slug='pestilence', he='דֶּבֶר', en='Pestilence', verse='Shemot 9:6', fn=kit_pestilence,
+    dict(group=4, slug='insects', he='עָרוֹב', en='Hornets & mosquitoes', verse='Shemot 8:17', fn=kit_insects,
+         opinion='Hornets and mosquitoes', source='R’ Nechemia in Shemot Rabbah 11:3',
+         story='R’ Nechemia says arov was “kinds of hornets and mosquitoes” (מִינֵי צְרָעִין וְיַתּוּשִׁין). The midrash leans to R’ Yehuda’s wild animals: the verse says not one was left, because Pharaoh would have profited from their hides, and hornets have no hides. A hornet built in layers, with three mosquitoes hovering on stalks.'),
+    dict(group=5, slug='pestilence', he='דֶּבֶר', en='Pestilence', verse='Shemot 9:6', fn=kit_pestilence,
          story='The plague on the livestock, which killed the cattle of Egypt and did not touch a single animal belonging to Israel. A cow built the Kinder way: body, four legs that plug in, a head on a pin.'),
-    dict(slug='boils', he='שְׁחִין', en='Boils', verse='Shemot 9:8–10', fn=kit_boils,
+    dict(group=6, slug='boils', he='שְׁחִין', en='Boils', verse='Shemot 9:8–10', fn=kit_boils,
          story='Moshe takes handfuls of soot from a kiln and throws it at the sky, and it settles as boils on man and beast. A kiln with a glowing fire door, and the cloud of soot rising off the chimney.'),
-    dict(slug='hail', he='בָּרָד', en='Hail', verse='Shemot 9:24', fn=kit_hail,
+    dict(group=7, slug='hail', he='בָּרָד', en='Hail', verse='Shemot 9:24', fn=kit_hail,
          story='Hail with fire flashing inside it: Rashi calls it a miracle inside a miracle, fire and water making peace to do God’s will. The big hailstone closes around a flame; print it in clear and the fire shows through.'),
-    dict(slug='locusts', he='אַרְבֶּה', en='Locusts', verse='Shemot 10:5', fn=kit_locusts,
+    dict(group=8, slug='locusts', he='אַרְבֶּה', en='Locusts', verse='Shemot 10:5', fn=kit_locusts,
          story='Locusts so thick they covered the eye of the land and ate everything the hail left. A locust in three layers, legs, body and wings, on a ring of eaten wheat stubble.'),
-    dict(slug='darkness', he='חֹשֶׁךְ', en='Darkness', verse='Shemot 10:21–23', fn=kit_darkness,
+    dict(group=9, slug='darkness', he='חֹשֶׁךְ', en='Darkness', verse='Shemot 10:21–23', fn=kit_darkness,
+         opinion='Darkness over the land', source='The plain reading; Rashi',
          story='A darkness you could feel, “but all the children of Israel had light in their dwellings.” A black Egyptian house under a black cloud, and an Israelite house with a lit window and an oil lamp burning.'),
-    dict(slug='firstborn', he='מַכַּת בְּכוֹרוֹת', en='Firstborn', verse='Shemot 12:7, 12:22–23', fn=kit_firstborn,
+    dict(group=9, slug='darkness-eye', he='חֹשֶׁךְ', en='Darkness in the eye', verse='Shemot 10:21', fn=kit_darkness_eye,
+         opinion='A film over the eye', source='Torah Temimah, Shemot 10:21',
+         story='The midrash says the darkness could be felt and was “the thickness of a dinar”, and a three-day night seems to break the promise that day and night will not cease. So the Torah Temimah suggests, “had I not been afraid to invent something very new”, that the darkness was not in the air but in their eyes: a film (תְּבַלּוּל) stretched over the pupil, which you could feel with your hand and was as thick as a dinar. An eye with its iris and pupil, the film that presses on over them and pulls off, and a dinar for the thickness.'),
+    dict(group=10, slug='firstborn', he='מַכַּת בְּכוֹרוֹת', en='Firstborn', verse='Shemot 12:7, 12:22–23', fn=kit_firstborn,
          story='Told through what saved Israel that night: the blood of the Pesach lamb on the two doorposts and the lintel, put there with a bundle of hyssop dipped in the basin, and a door shut until morning.'),
 ]
 
@@ -806,7 +897,7 @@ def yup(mesh):
 def material(colour):
     hexs = FILAMENT[colour].lstrip('#')
     rgb = [int(hexs[k:k + 2], 16) / 255 for k in (0, 2, 4)]
-    alpha = 0.55 if colour in ('ice', 'clear') else 1.0
+    alpha = {'ice': 0.55, 'clear': 0.55, 'milk': 0.85}.get(colour, 1.0)
     return trimesh.visual.material.PBRMaterial(
         name=colour, baseColorFactor=rgb + [alpha], metallicFactor=0.0, roughnessFactor=0.55,
         alphaMode='BLEND' if alpha < 1 else 'OPAQUE', doubleSided=False)
@@ -819,6 +910,7 @@ def build_kit(idx, kit):
     for f in out.glob('*'):
         if f.suffix in ('.stl', '.3mf', '.glb', '.zip'):  # keep the rendered card image
             f.unlink()
+    idx = kit['group'] - 1
     parts = kit['fn'](idx)
     scene = trimesh.Scene()
     plate, meta_parts, total_g = [], [], 0.0
@@ -877,6 +969,7 @@ def build_kit(idx, kit):
     minutes = round(6 + total_g / 9.0 * 60 * 0.55 + layers * 0.05 + len(plate) * 1.5)
     return dict(
         slug=slug, he=kit['he'], en=kit['en'], verse=kit['verse'], story=kit['story'], number=idx + 1,
+        opinion=kit.get('opinion'), source=kit.get('source'),
         numeral=NUMERALS[idx], parts=meta_parts, pieces=len(plate), grams=round(total_g, 1),
         metres=round(total_g / G_PER_M, 1), minutes=minutes, colours=[dict(name=c, hex=FILAMENT[c]) for c in colours],
         files=dict(plate=f'{slug}-plate.3mf', zip=f'{slug}-stl.zip', glb=f'{slug}.glb'),
