@@ -192,24 +192,77 @@ async function resolveHebrewBooks(req: string): Promise<BookDetails> {
   }
   if (!html) return { ...base, title: `HebrewBooks #${req}`, warning: 'Couldn’t reach HebrewBooks for the title; fill it in by hand.' };
 
-  const meta = (name: string) =>
-    html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${name}["'][^>]+content=["']([^"']*)["']`, 'i'))?.[1] ??
-    html.match(new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']${name}["']`, 'i'))?.[1];
-  // Their <title> reads "HebrewBooks.org Sefer Detail: <title> -- <author>".
-  const raw = decodeEntities(meta('og:title') || html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '')
-    .replace(/\s+/g, ' ')
-    .replace(/^.*?Sefer Detail:\s*/i, '')
-    .replace(/^HebrewBooks(?:\.org)?\s*[-:|]\s*/i, '')
-    .trim();
-  const [title, author] = raw.split(/\s+--\s+/);
-  const year = html.match(/(?:Year|שנה)\s*:?\s*<[^>]*>\s*([^<]{2,30})</i)?.[1]?.trim();
+  const d = parseHebrewBooksPage(html);
   return {
     ...base,
-    ...titleFields(title || `HebrewBooks #${req}`),
-    author: author?.trim() || null,
-    year: year ? decodeEntities(year) : null,
-    warning: title ? undefined : 'Couldn’t read the title from HebrewBooks; fill it in by hand.',
+    title: d.title || `HebrewBooks #${req}`,
+    title_he: d.title_he,
+    author: d.author,
+    year: d.year,
+    notes: d.notes,
+    warning: d.title ? undefined : 'Couldn’t read the title from HebrewBooks; fill it in by hand.',
   };
+}
+
+/**
+ * Read a HebrewBooks.org sefer page. The page is a table of labelled fields:
+ *   כותר <Hebrew title> · מחבר <Hebrew author> · Title <English title> · Author <English author>
+ *   מקום דפוס / Pub. Place · שנת דפוס <Hebrew year> · Pub. Date <civil year> · Pages דפים <n>
+ * The page <title> ("<title> - <author>") is the fallback.
+ */
+export function parseHebrewBooksPage(html: string) {
+  const lines = decodeEntities(
+    html
+      .replace(/<(script|style)[\s\S]*?<\/\1>/gi, '')
+      .replace(/<[^>]+>/g, '\n'),
+  )
+    .split('\n')
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  // A label is either alone on its line (value on the next line) or followed by the value.
+  const field = (...labels: string[]) => {
+    for (let i = 0; i < lines.length; i++) {
+      for (const label of labels) {
+        if (lines[i] === label) {
+          const next = lines[i + 1];
+          if (next && !/^(כותר|מחבר|Title|Author|מקום דפוס|שנת דפוס|Pub\. Place|Pub\. Date)$/.test(next)) return next;
+        } else if (lines[i].startsWith(label + ' ') || lines[i].startsWith(label + '\t')) {
+          return lines[i].slice(label.length).trim();
+        }
+      }
+    }
+    return null;
+  };
+
+  const he = field('כותר');
+  const heAuthor = field('מחבר');
+  const en = field('Title');
+  const enAuthor = field('Author');
+  const place = field('Pub. Place') || field('מקום דפוס');
+  const heYear = field('שנת דפוס');
+  const civil = field('Pub. Date')?.match(/\d{4}/)?.[0] ?? null;
+  const pages = field('Pages דפים', 'Pages', 'דפים')?.match(/\d+/)?.[0] ?? null;
+
+  let title = en || he;
+  let author = enAuthor && heAuthor ? `${enAuthor} (${heAuthor})` : enAuthor || heAuthor;
+  if (!title) {
+    const raw = decodeEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '')
+      .replace(/\s+/g, ' ')
+      .replace(/^.*?Sefer Detail:\s*/i, '')
+      .replace(/^HebrewBooks(?:\.org)?\s*[-:|]\s*/i, '')
+      .trim();
+    const parts = raw.split(/\s+-{1,2}\s+/);
+    if (parts.length > 1 && !author) author = parts.pop()!; // last part is the author
+    title = parts.join(' - ') || null;
+  }
+  // "ארשת שפתינו - חלק א" → the English title gets ", vol. 1" style suffix from חלק.
+  const part = he?.match(/חלק\s+([א-י])['׳]?\s*$/)?.[1];
+  if (en && part) title = `${en}, vol. ${'אבגדהוזחטי'.indexOf(part) + 1}`;
+
+  const notes = [place && (heYear || civil) ? `${place}, ${[heYear, civil && `(${civil})`].filter(Boolean).join(' ')}.` : place, pages && `${pages} pages.`]
+    .filter(Boolean)
+    .join(' ') || null;
+  return { title: title || null, title_he: he && he !== title ? he : null, author: author || null, year: civil || heYear, notes };
 }
 
 async function resolveIsbn(isbn: string): Promise<BookDetails> {
