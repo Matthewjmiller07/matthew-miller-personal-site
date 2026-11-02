@@ -1,0 +1,248 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Six Fingers, 248 Bones — Daf Yomi Game: Bekhorot 45"
+  description="Bekhorot 45: run the extra-finger clinic (bone? in the row?), tip the bone-count scale to 125, match the house hinges, doors and key to Rabbis Elazar, Yehoshua and Akiva, and repaint the kushi, giḥor and lavkan."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .card { background: #11131b; border: 1px solid #262a3a; border-radius: 1rem; }
+    .chip { border: 1px solid #3a3f55; border-radius: 0.6rem; padding: 0.45rem 0.75rem; font-size: 0.8rem; transition: background .15s, border-color .15s; text-align: left; }
+    .chip:hover:not(:disabled) { background: #191c28; }
+    .chip.ok { background: #13261f; border-color: #6cc3a6; }
+    .chip.bad { background: #33191a; border-color: #cc5a48; }
+    .chip.sel { background: #2a2414; border-color: #e0b54a; }
+    .chip:disabled { cursor: default; opacity: .92; }
+    .tgl { border: 1px solid #3a3f55; border-radius: 999px; padding: .35rem .9rem; font-size: .8rem; }
+    .tgl[aria-pressed="true"] { background: #2a2414; border-color: #e0b54a; }
+    .lamp { display: inline-block; width: .7rem; height: .7rem; border-radius: 999px; background: #3a3f55; margin-right: .35rem; }
+    .lamp.g { background: #6cc3a6; box-shadow: 0 0 8px #6cc3a6; }
+    .lamp.r { background: #cc5a48; box-shadow: 0 0 8px #cc5a48; }
+    .lamp.y { background: #e0b54a; box-shadow: 0 0 8px #e0b54a; }
+    .quote { background: #0d0f16; border-inline-start: 3px solid #3a3f55; padding: .6rem .85rem; border-radius: .4rem; font-size: .9rem; line-height: 1.6; }
+    .digit { transition: opacity .3s; }
+    input[type=range] { accent-color: #e0b54a; width: 100%; }
+    button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid #e0b54a; outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { .chip, .digit { transition: none; } }
+  </style>
+
+  <main class="min-h-screen bg-[#0a0b10] !text-[#e7e9f0]">
+
+    <div class="border-b border-[#262a3a] bg-gradient-to-b from-[#161a2a] to-transparent px-4 pt-10 pb-8 text-center">
+      <p class="mb-3 text-xs tracking-[0.22em] !text-[#959bb3]">
+        <a href="/daf" class="transition-colors hover:!text-[#e7e9f0]">daf yomi arcade</a>
+        <span class="mx-2 opacity-40">·</span>bekhorot 45<span class="mx-2 opacity-40">·</span>2026-11-02
+      </p>
+      <div class="mx-auto mb-3 text-5xl" aria-hidden="true">🖐️</div>
+      <h1 class="frank text-4xl font-black tracking-tight sm:text-5xl !text-[#f4f5fa]">Six Fingers, 248 Bones</h1>
+      <p class="frank mt-3 text-3xl font-light !text-[#e0b54a]" dir="rtl" lang="he">עֲשָׂרָה וְאַרְבָּעָה וְעֶשְׂרִים מִסְפָּר</p>
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed !text-[#adb2c7]">
+        An extra finger raises two questions: can a priest serve, and does the cut-off finger make a corpse impure? Run the clinic,
+        tip the bone-count scale, match the house to the woman, and repaint the skin colors the Gemara swaps.
+      </p>
+      <p class="mt-4 text-xs !text-[#959bb3]">Score: <span id="score" class="font-bold !text-[#e0b54a]">0</span> / <span id="max" class="font-bold !text-[#e0b54a]">0</span></p>
+    </div>
+
+    <div class="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+
+      <section class="card p-5" aria-labelledby="h1r">
+        <h2 id="h1r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">1 · The extra-finger clinic</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">A hand has a sixth finger. The mishna says that once it is cut off, a bone inside keeps the priest disqualified <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45a.8" target="_blank" rel="noopener">(45a:8)</a>. Rabbi Yoḥanan limits that to a finger counted in the row along the back of the hand. The same finger, cut from a corpse, has its own impurity ladder <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45a.9" target="_blank" rel="noopener">(45a:9-10)</a>. Set the two switches, then predict before you peek.</p>
+        <svg viewBox="0 0 300 130" class="mx-auto mb-3 w-full max-w-sm" role="img" aria-label="A hand with five fingers and a sixth that can be set in the row or off to the side">
+          <rect x="60" y="70" width="170" height="50" rx="14" fill="#2a2f45" stroke="#3a3f55"/>
+          <g id="fingers" fill="#c9a98a" stroke="#6b5a49"></g>
+          <rect id="sixth" class="digit" x="0" y="0" width="22" height="55" rx="10" fill="#e0b54a" stroke="#8a6d1f"/>
+          <circle id="boneDot" cx="0" cy="0" r="5" fill="#f4f5fa" class="digit"/>
+        </svg>
+        <div class="mb-4 flex flex-wrap gap-2">
+          <button id="swBone" class="tgl" aria-pressed="true" type="button">Contains a bone</button>
+          <button id="swRow" class="tgl" aria-pressed="true" type="button">Counted in the row on the back of the hand</button>
+        </div>
+        <p class="mb-2 text-sm font-semibold !text-[#f4f5fa]">Predict: after it is cut, this priest is&hellip;</p>
+        <div class="mb-3 flex gap-2"><button class="chip" data-p="dq" type="button">Disqualified</button><button class="chip" data-p="fit" type="button">Fit to serve</button></div>
+        <div class="quote" aria-live="polite">
+          <p><span id="lServe" class="lamp"></span><span id="tServe">Make your prediction.</span></p>
+          <p class="mt-1"><span id="lCarry" class="lamp"></span><span id="tCarry"></span></p>
+          <p class="mt-1"><span id="lTent" class="lamp"></span><span id="tTent"></span></p>
+        </div>
+        <p class="mt-2 text-xs !text-[#959bb3]">Impurity lamps follow Rav's version of the corpse ruling, as Rabbi Yoḥanan limits it. Rabbi Yoḥanan himself calls the ruling "like prophecy": it has no neat reason <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45a.11" target="_blank" rel="noopener">(45a:11)</a>.</p>
+      </section>
+
+      <section class="card p-5" aria-labelledby="h2r">
+        <h2 id="h2r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">2 · The bone-count scale</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">A corpse with a majority of its bones is impure in a tent, even with no flesh. The baraita fixes the number at 125 <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45a.15" target="_blank" rel="noopener">(45a:15)</a>. Drag the slider to test it.</p>
+        <label for="bones" class="mb-1 block text-sm !text-[#adb2c7]">Bones gathered: <span id="boneN" class="font-bold !text-[#e0b54a]">248</span></label>
+        <input id="bones" type="range" min="0" max="290" value="248" />
+        <div class="relative mt-1 h-3 rounded bg-[#262a3a]" aria-hidden="true"><div id="barFill" class="h-3 rounded bg-[#e0b54a]" style="width:0%"></div><div class="absolute top-0 h-3 w-0.5 bg-[#f4f5fa]" style="left:43.1%"></div></div>
+        <p class="mt-1 text-xs !text-[#959bb3]">White tick = 125</p>
+        <p class="mt-3 text-sm"><span id="lBones" class="lamp"></span><span id="tBones"></span></p>
+        <div class="mt-3 flex flex-wrap gap-2" id="presets"></div>
+        <p class="mt-5 mb-2 text-sm font-semibold !text-[#f4f5fa]">Ravina: "Obviously 125 is a majority of 248, so why teach the number?" Rava's answer <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45a.16" target="_blank" rel="noopener">(45a:16)</a>:</p>
+        <div id="q2" class="flex flex-col gap-2"></div>
+        <p id="q2fb" class="mt-2 text-sm !text-[#adb2c7]" aria-live="polite"></p>
+      </section>
+
+      <section class="card p-5" aria-labelledby="h3r">
+        <h2 id="h3r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">3 · Hinges, doors and a key</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">Shmuel explains why Rabbi Yishmael's students counted 252 limbs in a woman: two hinges and two doors added to 248 <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45a.17" target="_blank" rel="noopener">(45a:17)</a>. Three sages find the house in the woman, each with a verse <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45a.18" target="_blank" rel="noopener">(45a:18-19)</a>. Match them.</p>
+        <div id="q3" class="flex flex-col gap-4"></div>
+        <p id="q3fb" class="mt-3 text-sm !text-[#adb2c7]" aria-live="polite"></p>
+        <p class="mt-5 mb-2 text-sm font-semibold !text-[#f4f5fa]">Rav says none of these limbs makes a tent impure. His verse <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45a.20" target="_blank" rel="noopener">(45a:20)</a>:</p>
+        <div id="q3b" class="flex flex-col gap-2"></div>
+        <p id="q3bfb" class="mt-2 text-sm !text-[#adb2c7]" aria-live="polite"></p>
+      </section>
+
+      <section class="card p-5" aria-labelledby="h4r">
+        <h2 id="h4r" class="frank mb-1 text-2xl font-bold !text-[#f4f5fa]">4 · The repainted skin tones</h2>
+        <p class="mb-4 text-sm !text-[#adb2c7]">The mishna disqualifies the <em>kushi</em>, the <em>giḥor</em> and the <em>lavkan</em> <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45b.5" target="_blank" rel="noopener">(45b:5)</a>. The Gemara's first assignment of colors fails, because a man once asked who wanted a <em>lukiyani</em> lamb and the lamb was white <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45b.6" target="_blank" rel="noopener">(45b:6)</a>. Tap each term to cycle its skin color, then check.</p>
+        <div id="swatches" class="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3"></div>
+        <button id="checkColors" class="chip sel" type="button">Check my colors</button>
+        <p id="colorFb" class="mt-3 text-sm !text-[#adb2c7]" aria-live="polite"></p>
+        <p class="mt-5 mb-2 text-sm font-semibold !text-[#f4f5fa]">Rav Zevid taught the <em>kipe'aḥ</em> is extremely tall. Rabbi Abbahu praises God for destroying the tall Amorites. Rav Pappa's reconciliation <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45b.7" target="_blank" rel="noopener">(45b:7)</a>:</p>
+        <div id="q4" class="flex flex-col gap-2"></div>
+        <p id="q4fb" class="mt-2 text-sm !text-[#adb2c7]" aria-live="polite"></p>
+      </section>
+
+      <section class="card p-5" aria-labelledby="h5r">
+        <h2 id="h5r" class="frank mb-2 text-2xl font-bold !text-[#f4f5fa]">Learn the real daf</h2>
+        <p class="mb-3 text-sm !text-[#adb2c7]">The game skips Rabbi Yitzḥak's reading of the twenty-four-digit champion from Gath, which is where Rabbi Yehuda and the Rabbis split on whether an extra finger is a blemish <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45b.1" target="_blank" rel="noopener">(45b:1-3)</a>. It also skips the ambidextrous priest <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45b.4" target="_blank" rel="noopener">(45b:4)</a>, the drunk priest <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45b.9" target="_blank" rel="noopener">(45b:9-10)</a>, and the new mishna on a priest who married a forbidden wife <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45b.16" target="_blank" rel="noopener">(45b:16-19)</a>.</p>
+        <ul class="list-disc space-y-1 ps-5 text-sm !text-[#adb2c7]">
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45a" target="_blank" rel="noopener">Bekhorot 45a</a> · <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Bekhorot.45b" target="_blank" rel="noopener">Bekhorot 45b</a></li>
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rashi_on_Bekhorot.45a" target="_blank" rel="noopener">Rashi on Bekhorot 45a</a> · <a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rashi_on_Bekhorot.45b" target="_blank" rel="noopener">45b</a></li>
+          <li><a class="underline !text-[#e0b54a]" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.45a" target="_blank" rel="noopener">Rabbeinu Gershom on Bekhorot 45a</a></li>
+        </ul>
+      </section>
+    </div>
+
+    <script is:inline>
+      var score = 0, max = 0;
+      function bump(ok, worth) { max += worth; if (ok) score += worth; document.getElementById('score').textContent = score; document.getElementById('max').textContent = max; }
+      function $(id) { return document.getElementById(id); }
+      function el(t, c, h) { var e = document.createElement(t); if (c) e.className = c; if (h) e.innerHTML = h; return e; }
+
+      // ---- 1 · clinic
+      var hasBone = true, inRow = true, predicted = null, scored1 = false;
+      (function () {
+        var g = $('fingers'), xs = [66, 98, 130, 162, 194];
+        xs.forEach(function (x, i) { var r = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); r.setAttribute('x', x); r.setAttribute('y', 18 + (i === 2 ? 0 : i === 0 || i === 4 ? 22 : 8)); r.setAttribute('width', 24); r.setAttribute('height', 56); r.setAttribute('rx', 10); g.appendChild(r); });
+      })();
+      function drawSixth() {
+        var s = $('sixth'), d = $('boneDot');
+        var x = inRow ? 226 : 236, y = inRow ? 40 : 82;
+        s.setAttribute('x', x); s.setAttribute('y', y); s.setAttribute('height', inRow ? 40 : 34);
+        d.setAttribute('cx', x + 11); d.setAttribute('cy', y + 18); d.style.opacity = hasBone ? 1 : 0;
+      }
+      function lamp(id, cls) { $(id).className = 'lamp' + (cls ? ' ' + cls : ''); }
+      function verdict() {
+        var dq = hasBone && inRow;
+        return { dq: dq, tent: hasBone && inRow, contact: hasBone };
+      }
+      function show1() {
+        drawSixth();
+        $('swBone').setAttribute('aria-pressed', hasBone); $('swRow').setAttribute('aria-pressed', inRow);
+        if (!predicted) return;
+        var v = verdict();
+        lamp('lServe', v.dq ? 'r' : 'g');
+        $('tServe').textContent = v.dq ? 'Disqualified: a bone-bearing extra digit in the row counts as a missing limb even after cutting.' : (hasBone ? 'Fit: not counted in the row, so Rabbi Yoḥanan does not treat it as a limb.' : 'Fit: no bone, so cutting it leaves nothing behind.');
+        lamp('lCarry', v.contact ? 'y' : '');
+        $('tCarry').textContent = v.contact ? 'Cut from a corpse: imparts impurity by contact and carrying.' : 'No bone: the corpse ruling in the daf does not apply to it.';
+        lamp('lTent', v.tent ? 'r' : '');
+        $('tTent').textContent = v.tent ? 'Counted in the row: also impure in a tent, like a limb of a corpse.' : (hasBone ? 'Not counted in the row: no tent impurity.' : 'No tent impurity.');
+      }
+      $('swBone').onclick = function () { hasBone = !hasBone; show1(); };
+      $('swRow').onclick = function () { inRow = !inRow; show1(); };
+      document.querySelectorAll('[data-p]').forEach(function (b) {
+        b.onclick = function () {
+          var first = !predicted; predicted = b.dataset.p;
+          var ok = (predicted === 'dq') === verdict().dq;
+          if (first || !scored1) { bump(ok, 1); scored1 = true; }
+          document.querySelectorAll('[data-p]').forEach(function (x) { x.classList.remove('sel'); });
+          b.classList.add('sel'); show1();
+        };
+      });
+      show1();
+
+      // ---- 2 · bone scale
+      var bs = $('bones');
+      function show2() {
+        var n = +bs.value; $('boneN').textContent = n; $('barFill').style.width = (n / 290 * 100) + '%';
+        var on = n >= 125; lamp('lBones', on ? 'r' : '');
+        $('tBones').textContent = on ? 'At least 125: these bones impart impurity in a tent, even with no flesh.' : 'Under 125: not a majority of the bones, so no tent impurity from the count.';
+      }
+      bs.oninput = show2; show2();
+      [['A full skeleton', 248], ['A short corpse, only 200', 200], ['A corpse with extras, 281', 281], ['Rabbi Yishmael’s woman, 252', 252]].forEach(function (p) {
+        var b = el('button', 'chip', p[0]); b.type = 'button'; b.onclick = function () { bs.value = p[1]; show2(); }; $('presets').appendChild(b);
+      });
+      function quiz(boxId, fbId, opts, right, why, worth) {
+        var box = $(boxId), done = false;
+        opts.forEach(function (o, i) {
+          var b = el('button', 'chip', o); b.type = 'button';
+          b.onclick = function () {
+            if (done) return; done = true;
+            var ok = i === right; bump(ok, worth || 1);
+            Array.prototype.forEach.call(box.children, function (c, j) { c.disabled = true; if (j === right) c.classList.add('ok'); else if (j === i) c.classList.add('bad'); });
+            $(fbId).textContent = (ok ? 'Correct. ' : 'Not quite. ') + why;
+          };
+          box.appendChild(b);
+        });
+      }
+      quiz('q2', 'q2fb', ['The count is 125 even if this particular corpse is missing bones (200) or has extras (281): follow most people, who have 248.', 'A corpse needs at least 248 bones, and 125 is only the minimum for the skull.', 'The number applies only to a corpse with all its flesh intact.'], 0, 'Whether 125 is a majority or a minority of that corpse, the number itself imparts impurity, because we follow the majority of people.');
+
+      // ---- 3 · house
+      var houses = [
+        { s: 'Rabbi Elazar', a: 'Hinges (tzirim)', v: 'I Samuel 4:19, “her pains [tzireha] came suddenly upon her”' },
+        { s: 'Rabbi Yehoshua', a: 'Doors', v: 'Job 3:10, “it did not shut the doors of my womb”' },
+        { s: 'Rabbi Akiva', a: 'A key', v: 'Genesis 30:22, “and He opened her womb”' }
+      ];
+      var parts = houses.map(function (h) { return h.a; });
+      var picked3 = {}, scored3 = 0;
+      houses.forEach(function (h, i) {
+        var row = el('div', '', '<p class="mb-1 text-sm !text-[#f4f5fa]"><strong>' + h.s + '</strong> says a woman has&hellip;</p>');
+        var wrap = el('div', 'flex flex-wrap gap-2'); row.appendChild(wrap);
+        parts.slice().sort(function (a, b) { return a.length - b.length; }).forEach(function (p) {
+          var b = el('button', 'chip', p); b.type = 'button';
+          b.onclick = function () {
+            if (picked3[i] != null) return; picked3[i] = p;
+            var ok = p === h.a; bump(ok, 1); scored3++;
+            Array.prototype.forEach.call(wrap.children, function (c) { c.disabled = true; if (c.textContent === h.a) c.classList.add('ok'); else if (c === b) c.classList.add('bad'); });
+            row.appendChild(el('p', 'mt-1 text-xs !text-[#959bb3]', 'Verse: ' + h.v));
+            if (scored3 === 3) $('q3fb').textContent = 'Two hinges and two doors make 252, but Rabbi Akiva’s key would make 253. The Gemara answers that the small key dissolved in the boiling water.';
+          };
+          wrap.appendChild(b);
+        });
+        $('q3').appendChild(row);
+      });
+      quiz('q3b', 'q3bfb', ['“When a person dies in a tent”: only what is the same in every person, male and female, makes a tent impure.', '“You shall not bring an abomination into your house.”', '“And he shall be unclean until the evening.”'], 0, 'Abaye objects that men have hinges too (Isaiah 21:3, Daniel 10:16). The answer: those are hinges of flesh, with no bone, and not limbs.');
+
+      // ---- 4 · colors
+      var colors = [['Extremely black', '#1c1c1f'], ['Extremely red', '#b5483a'], ['Extremely white', '#ece6d8']];
+      var terms = [{ n: 'Kushi', right: 0 }, { n: 'Giḥor', right: 1 }, { n: 'Lavkan', right: 2 }];
+      var cur = [2, 0, 1], done4 = false;
+      function paint4() {
+        $('swatches').innerHTML = '';
+        terms.forEach(function (t, i) {
+          var b = el('button', 'chip', ''); b.type = 'button'; b.className = 'chip flex items-center gap-3 !p-3';
+          b.setAttribute('aria-label', t.n + ': ' + colors[cur[i]][0]);
+          b.innerHTML = '<span class="inline-block h-9 w-9 shrink-0 rounded-full border border-[#3a3f55]" style="background:' + colors[cur[i]][1] + '"></span><span><strong class="!text-[#f4f5fa]">' + t.n + '</strong><br><span class="text-xs !text-[#959bb3]">' + colors[cur[i]][0] + '</span></span>';
+          b.onclick = function () { if (done4) return; cur[i] = (cur[i] + 1) % 3; paint4(); };
+          $('swatches').appendChild(b);
+        });
+      }
+      paint4();
+      $('checkColors').onclick = function () {
+        if (done4) return; done4 = true;
+        var n = 0; terms.forEach(function (t, i) { if (cur[i] === t.right) n++; });
+        bump(n === 3, 2);
+        $('colorFb').textContent = (n === 3 ? 'Right. ' : 'Not this time. ') + 'The Gemara’s final assignment: kushi is extremely black, giḥor extremely red (“Giḥia red”), and lavkan extremely white, like the lukiyani lamb.';
+        terms.forEach(function (t, i) { cur[i] = t.right; }); paint4();
+        Array.prototype.forEach.call($('swatches').children, function (c) { c.disabled = true; });
+      };
+      quiz('q4', 'q4fb', ['The mishna means a man who is long, emaciated and ugly, not one tall with a healthy build.', 'Rabbi Abbahu is speaking only of the Amorites, so the mishna’s tall man is truly disqualified.', 'A tall priest may serve only when standing next to a short one.'], 0, 'A tall, well-built man is no blemish, which fits Rabbi Abbahu’s praise of God for felling the cedar-tall Amorites.');
+    </script>
+  </main>
+</Layout>
