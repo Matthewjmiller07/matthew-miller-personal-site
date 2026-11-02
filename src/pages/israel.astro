@@ -29,6 +29,7 @@ const spMock = [
     .filter((m) => m.item),
   ...(snapshot.mock_categories || []).map((c) => ({
     qty: c.qty,
+    qtys: c.qtys || null,
     item: { name: c.label },
     perStore: c.gtins,
     category: c.id,
@@ -41,11 +42,19 @@ const spTotals = snapshot.totals;
 const spCheapestId = spStores
   .filter((s) => (snapshot.totals[s.id]?.missing?.length ?? 99) === 0)
   .sort((a, b) => snapshot.totals[a.id].total - snapshot.totals[b.id].total)[0]?.id;
+// Cheapest cell in a row: compare line totals (price × that store's
+// quantity), not unit prices — the tuna line is 2×120g cans everywhere
+// but 1×240g at Carrefour.
+const spLineTotal = (m, i) => {
+  const p = spRowPrice(m, i);
+  if (p === null) return null;
+  return p * (m.qtys ? m.qtys[i] : m.qty);
+};
 const spCheapestIdx = (m) => {
   let best = -1;
   spStores.forEach((_, i) => {
-    const p = spRowPrice(m, i);
-    if (p !== null && (best === -1 || p < spRowPrice(m, best))) best = i;
+    const t = spLineTotal(m, i);
+    if (t !== null && (best === -1 || t < spLineTotal(m, best))) best = i;
   });
   return best;
 };
@@ -63,7 +72,7 @@ const pageDescription =
   <main class="il-page">
     <header class="il-hero">
       <p class="il-kicker">רעננה · ארץ ישראל</p>
-      <h1>Our Israel, logged</h1>
+      <h1 id="il-title">Our Israel, logged</h1>
       <p class="il-lede">
         Fifty-eight shuls within walking distance of home, three meals a Shabbat plus the
         kiddush and the dessert, and a country small enough to drive across on a Tuesday.
@@ -73,13 +82,14 @@ const pageDescription =
 
     <nav class="il-ptabs" role="tablist" aria-label="Israel page sections">
       <button
-        class="il-ptab is-active"
+        class="il-ptab"
         role="tab"
         id="il-ptab-log"
         aria-controls="il-panel-log"
-        aria-selected="true"
+        aria-selected="false"
         data-tab="log"
-        type="button">The log</button
+        type="button"
+        hidden>The log</button
       >
       <button
         class="il-ptab"
@@ -109,11 +119,11 @@ const pageDescription =
         type="button">Place names</button
       >
       <button
-        class="il-ptab"
+        class="il-ptab is-active"
         role="tab"
         id="il-ptab-prices"
         aria-controls="il-panel-prices"
-        aria-selected="false"
+        aria-selected="true"
         data-tab="prices"
         type="button">Supermarket prices</button
       >
@@ -125,6 +135,7 @@ const pageDescription =
       role="tabpanel"
       aria-labelledby="il-ptab-log"
       data-panel="log"
+      hidden
     >
       {
         supabaseUrl && supabaseAnonKey ? (
@@ -430,7 +441,6 @@ const pageDescription =
       role="tabpanel"
       aria-labelledby="il-ptab-prices"
       data-panel="prices"
-      hidden
     >
       <h2 class="il-h2">Supermarket prices — Ra'anana</h2>
       <p class="il-lede">
@@ -462,6 +472,7 @@ const pageDescription =
             <div class={`sp-total${s.id === spCheapestId ? ' sp-cheapest-store' : ''}${missing ? ' sp-partial' : ''}`}>
               <strong>{s.label}</strong>
               <span class="sp-total-price">₪{t?.total.toFixed(2)}</span>
+              {s.note && <span class="sp-total-note">{s.note}</span>}
               {s.id === spCheapestId && <span class="sp-badge">Cheapest</span>}
               {missing > 0 ? (
                 <span class="sp-total-note">only {spMock.length - missing} of {spMock.length} items — partial total, not directly comparable</span>
@@ -471,6 +482,35 @@ const pageDescription =
             </div>
           );
         })}
+      </div>
+
+      <h3 class="sp-h3">Scan a barcode</h3>
+      <p class="il-lede">
+        Point your phone at a product barcode to see its price at every supermarket in
+        town. The camera only reads the code — nothing is photographed or uploaded.
+        No camera? Type the barcode number instead.
+      </p>
+      <div class="sp-scan" id="sp-scan">
+        <div class="sp-scan-row">
+          <button id="sp-scan-btn" class="sp-btn" type="button">📷 Scan a barcode</button>
+          <input
+            id="sp-scan-input"
+            class="sp-search sp-scan-input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="Or type the barcode number…"
+            aria-label="Barcode number"
+          />
+          <button id="sp-scan-lookup" class="sp-btn sp-btn-ghost" type="button">Look up</button>
+        </div>
+        <div class="sp-viewfinder" id="sp-viewfinder" hidden>
+          <video id="sp-video" playsinline muted></video>
+          <div class="sp-scan-frame" aria-hidden="true"></div>
+          <button id="sp-scan-close" class="sp-btn sp-btn-ghost" type="button">Stop camera</button>
+        </div>
+        <p class="sp-status" id="sp-scan-status" aria-live="polite"></p>
+        <div id="sp-scan-result" aria-live="polite"></div>
       </div>
 
       <h3 class="sp-h3">Build your own cart</h3>
@@ -515,14 +555,15 @@ const pageDescription =
             {spMock.map((m) => (
               <tr>
                 <td lang="he" dir="rtl">{m.item.name}</td>
-                <td>{m.qty}</td>
+                <td>{m.qtys ? [...new Set(m.qtys)].join(' / ') : m.qty}</td>
                 {spStores.map((_, i) => {
                   const p = spRowPrice(m, i);
+                  const q = m.qtys ? m.qtys[i] : m.qty;
                   return p === null ? (
                     <td class="sp-missing">—</td>
                   ) : (
                     <td class={i === spCheapestIdx(m) ? 'sp-cheapest' : ''}>
-                      ₪{(p * m.qty).toFixed(2)}
+                      ₪{(p * q).toFixed(2)}
                     </td>
                   );
                 })}
@@ -547,7 +588,14 @@ const pageDescription =
         * Osher Ad's Kfar Saba branch — the nearest one; Osher Ad has no Ra'anana branch —
         carries only {spMock.length - (spTotals['osher-031']?.missing?.length ?? 0)} of the
         {spMock.length} mock items, so its total is a partial total. Items a store doesn't
-        carry are left out of that store's total, never priced at zero. Snapshot date{' '}
+        carry are left out of that store's total, never priced at zero. Four more lines
+        work like eggs — grated cheese, sliced bread, a second butter and Starkist tuna
+        are each chain's standard pack of the same item, because Carrefour doesn't carry
+        the exact barcodes (Noam grated cheese at Carrefour and Osher Ad, Daganit bread
+        and Roshen butter at Carrefour; tuna is 2×120g cans everywhere but 1×240g can at
+        Carrefour, so the quantity column shows 2 / 1). Carrefour's prices are refreshed
+        by hand, since its portal blocks automatic downloads — its column is dated.
+        Snapshot date{' '}
         {spDate}. Source: {snapshot.source}
       </p>
 
@@ -603,7 +651,9 @@ const pageDescription =
         if (params.get('cart')) return 'prices';
         var h = window.location.hash.replace('#', '');
         if (SLUGS.indexOf(h) !== -1) return h;
-        return 'log';
+        // Default is the public prices tab; the log tab is hidden (see the
+        // Easter egg below) and opens only via ?tab=log / #log or the title.
+        return 'prices';
       }
       var igLoaded = false;
       function loadEmbeds() {
@@ -644,13 +694,32 @@ const pageDescription =
       }
       document.querySelectorAll('[data-tab]').forEach(function (b) {
         b.addEventListener('click', function () {
-          activate(b.getAttribute('data-tab') || 'log', true);
+          activate(b.getAttribute('data-tab') || 'prices', true);
         });
       });
       window.addEventListener('popstate', function () {
         activate(desired(), false);
       });
       activate(desired(), false);
+      // Easter egg: the log tab (minyanim + visits) is hidden from the tab
+      // bar. Triple-tap the page title to reveal it and open it; the
+      // ?tab=log deep link keeps working too.
+      (function () {
+        var title = document.getElementById('il-title');
+        var logBtn = document.getElementById('il-ptab-log');
+        if (!title || !logBtn) return;
+        var taps = 0, timer = null;
+        title.addEventListener('click', function () {
+          taps += 1;
+          if (timer) window.clearTimeout(timer);
+          timer = window.setTimeout(function () { taps = 0; }, 1500);
+          if (taps >= 3) {
+            taps = 0;
+            logBtn.removeAttribute('hidden');
+            activate('log', true);
+          }
+        });
+      })();
     })();
   </script>
 
@@ -723,7 +792,7 @@ const pageDescription =
         return Object.keys(cart).map(function (g) {
           if (g.indexOf('cat:') === 0) {
             var cat = ((snap && snap.mock_categories) || []).filter(function (c) { return c.id === g.slice(4); })[0];
-            return { cat: g.slice(4), qty: cart[g], item: cat ? { name: cat.label } : null, perStore: cat ? cat.gtins : null };
+            return { cat: g.slice(4), qty: cart[g], baseQty: cat ? cat.qty : 1, qtys: cat ? (cat.qtys || null) : null, item: cat ? { name: cat.label } : null, perStore: cat ? cat.gtins : null };
           }
           return { gtin: g, qty: cart[g], item: catalog[g] || null };
         });
@@ -737,6 +806,13 @@ const pageDescription =
         }
         return ci.item ? (snap.prices[ci.gtin] || [])[i] : null;
       }
+      function effQty(ci, i) {
+        // Per-store quantity for a cart line. Category lines with
+        // per-store quantities (tuna: 2×120g cans, 1×240g at Carrefour)
+        // scale with the line's quantity, in units of the base amount.
+        if (!ci.qtys) return ci.qty;
+        return ci.qtys[i] * (ci.qty / (ci.baseQty || 1));
+      }
       function storeTotals() {
         // Per-store totals for the current cart; items a store doesn't carry
         // are excluded from that store's total (never priced at zero).
@@ -745,7 +821,7 @@ const pageDescription =
           cartItems().forEach(function (ci) {
             var p = itemPrice(ci, i);
             if (p === null || p === undefined) missing += 1;
-            else { total += p * ci.qty; n += 1; }
+            else { total += p * effQty(ci, i); n += 1; }
           });
           return { total: total, n: n, missing: missing };
         });
@@ -778,6 +854,7 @@ const pageDescription =
             var note = t.missing
               ? 'only ' + t.n + ' of ' + items.length + ' items — partial total, not directly comparable'
               : 'all ' + items.length + ' items';
+            if (s.note) note += ' — ' + s.note;
             return '<div class="' + cls + '"><strong>' + esc(s.label) + '</strong>' +
               '<span class="sp-total-price">' + money(t.total) + '</span>' +
               (i === cheapestIdx ? '<span class="sp-badge">Cheapest</span>' : '') +
@@ -831,18 +908,24 @@ const pageDescription =
           }
           tbody.innerHTML = items.map(function (ci) {
             var key = ci.cat ? 'cat:' + ci.cat : ci.gtin;
+            var qtyCell = ci.qty;
+            if (ci.qtys) {
+              var eff = snap.stores.map(function (s, i) { return effQty(ci, i); });
+              var distinct = eff.filter(function (v, idx, a) { return a.indexOf(v) === idx; });
+              qtyCell = distinct.join(' / ');
+            }
             var row = '<tr><td lang="he" dir="rtl">' +
-              (ci.item ? esc(ci.item.name) : 'Unknown product ' + esc(key)) + '</td><td>' + ci.qty + '</td>';
+              (ci.item ? esc(ci.item.name) : 'Unknown product ' + esc(key)) + '</td><td>' + qtyCell + '</td>';
             var best = -1;
             snap.stores.forEach(function (s, i) {
               var p = itemPrice(ci, i);
-              if (p !== null && p !== undefined && (best === -1 || p < itemPrice(ci, best))) best = i;
+              if (p !== null && p !== undefined && (best === -1 || p * effQty(ci, i) < itemPrice(ci, best) * effQty(ci, best))) best = i;
             });
             snap.stores.forEach(function (s, i) {
               var p = itemPrice(ci, i);
               row += p === null || p === undefined
                 ? '<td class="sp-missing">—</td>'
-                : '<td class="' + (i === best ? 'sp-cheapest' : '') + '">' + money(p * ci.qty) + '</td>';
+                : '<td class="' + (i === best ? 'sp-cheapest' : '') + '">' + money(p * effQty(ci, i)) + '</td>';
             });
             if (hasShuk) {
               var sm = shukMatch(ci);
@@ -975,6 +1058,247 @@ const pageDescription =
           var tab = document.querySelector('[data-tab="prices"]');
           if (tab) tab.addEventListener('click', function () { load(); }, { once: true });
         }
+        initScan();
+      }
+
+      // Barcode scanner: native BarcodeDetector when available (Chrome on
+      // Android covers EAN-13/UPC-A, the formats on Israeli products),
+      // ZXing (@zxing/library UMD, loaded lazily from unpkg) otherwise.
+      // Reuses the snapshot already loaded by the cart builder — no
+      // second fetch. The camera is stopped the moment a code is found,
+      // when the user closes it, or when the tab/page is left.
+      var scanStream = null;
+      var scanRaf = null; // native detection loop handle (timeout id)
+      var scanReader = null; // ZXing reader, when used
+      var scanOpen = false;
+      var catalogStripped = null;
+      var ZXING_URL = 'https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js';
+
+      function stripZeros(s) { return (s || '').replace(/^0+/, '') || '0'; }
+      function digitsOnly(s) { return (s || '').replace(/\D/g, ''); }
+      function findProduct(code) {
+        // The catalog stores GTIN-14-padded codes (07290010945306); a
+        // scanned EAN-13 (7290010945306) or UPC-A (12 digits) is the same
+        // product with fewer leading zeros. Exact match first, then a
+        // leading-zero-insensitive match.
+        code = digitsOnly(code);
+        if (!code) return null;
+        if (catalog[code]) return catalog[code];
+        if (!catalogStripped) {
+          catalogStripped = {};
+          Object.keys(catalog).forEach(function (g) {
+            var k = stripZeros(g);
+            if (!catalogStripped[k]) catalogStripped[k] = catalog[g];
+          });
+        }
+        return catalogStripped[stripZeros(code)] || null;
+      }
+
+      function setScanStatus(msg) { var s = $('sp-scan-status'); if (s) s.textContent = msg; }
+
+      function renderScanResult(code, item) {
+        var el = $('sp-scan-result');
+        if (!el) return;
+        if (!item) {
+          el.innerHTML = '<div class="sp-scan-result"><p class="sp-empty">Barcode ' + esc(code) +
+            ' isn\u2019t in this week\u2019s snapshot — no tracked store carries it.</p>' +
+            '<p><button type="button" class="sp-btn sp-btn-ghost" id="sp-scan-try-name">Search by name instead</button></p></div>';
+          var b = $('sp-scan-try-name');
+          if (b) b.addEventListener('click', function () { var inp = $('sp-search'); if (inp) inp.focus(); });
+          return;
+        }
+        var prices = snap.prices[item.gtin] || [];
+        var min = null;
+        prices.forEach(function (p) { if (p !== null && p !== undefined && (min === null || p < min)) min = p; });
+        var rows = snap.stores.map(function (s, i) {
+          var p = prices[i];
+          var cls = (p !== null && p !== undefined && p === min) ? ' class="sp-cheapest"'
+            : (p === null || p === undefined ? ' class="sp-missing"' : '');
+          var cell = (p === null || p === undefined) ? 'not carried'
+            : money(p) + (p === min ? ' <span class="sp-badge">Cheapest</span>' : '');
+          return '<li' + cls + '><span>' + esc(s.label) + '</span><span>' + cell + '</span></li>';
+        }).join('');
+        el.innerHTML = '<div class="sp-scan-result">' +
+          '<p class="sp-scan-name" lang="he" dir="rtl">' + esc(item.name) + '</p>' +
+          '<p class="sp-scan-meta">' + (item.manufacturer ? esc(item.manufacturer) + ' · ' : '') +
+          'barcode ' + esc(code) + '</p>' +
+          '<ul class="sp-scan-prices">' + rows + '</ul>' +
+          '<button type="button" class="sp-btn" data-scan-add="' + item.gtin + '">+ Add to cart</button></div>';
+        el.querySelector('[data-scan-add]').addEventListener('click', function () {
+          userTouched = true;
+          cart[item.gtin] = (cart[item.gtin] || 0) + 1;
+          syncUrl(); render();
+          this.textContent = 'Added ✓';
+          var self = this;
+          setTimeout(function () { self.textContent = '+ Add to cart'; }, 2000);
+        });
+      }
+
+      function lookupBarcode(raw) {
+        var code = digitsOnly(raw);
+        if (!code) { setScanStatus('That doesn\u2019t look like a barcode number — digits only.'); return; }
+        load().then(function () {
+          if (!snap) {
+            var el = $('sp-scan-result');
+            if (el) el.innerHTML = '<p class="sp-empty">The price snapshot didn\u2019t load, so there\u2019s nothing to look the barcode up in. Check your connection and try again.</p>';
+            return;
+          }
+          renderScanResult(code, findProduct(code));
+        });
+      }
+
+      function showViewfinder(show) {
+        var vf = $('sp-viewfinder');
+        if (vf) vf.hidden = !show;
+        var btn = $('sp-scan-btn');
+        if (btn) btn.textContent = show ? 'Scanning…' : '📷 Scan a barcode';
+      }
+
+      function stopScan() {
+        scanOpen = false;
+        if (scanRaf !== null) { clearTimeout(scanRaf); scanRaf = null; }
+        if (scanReader) { try { scanReader.reset(); } catch (e) {} scanReader = null; }
+        if (scanStream) { scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; }
+        var video = $('sp-video');
+        if (video) {
+          try { video.pause(); } catch (e) {}
+          video.removeAttribute('src');
+          video.srcObject = null;
+          try { video.load(); } catch (e) {}
+        }
+        showViewfinder(false);
+      }
+
+      function cameraError(e) {
+        var name = (e && e.name) || '';
+        if (name === 'NotAllowedError' || name === 'SecurityError') setScanStatus('Camera permission denied — type the barcode number instead.');
+        else if (name === 'NotFoundError' || name === 'OverconstrainedError') setScanStatus('No camera found on this device — type the barcode number instead.');
+        else setScanStatus('Couldn\u2019t open the camera' + (e && e.message ? ' (' + e.message + ')' : '') + ' — type the barcode number instead.');
+        var inp = $('sp-scan-input'); if (inp) inp.focus();
+      }
+
+      function nativeLoop(detector, video) {
+        if (!scanOpen) return;
+        if (video.readyState >= 2) {
+          detector.detect(video).then(function (codes) {
+            if (!scanOpen) return;
+            if (codes && codes.length) {
+              var raw = codes[0].rawValue;
+              stopScan();
+              lookupBarcode(raw);
+              return;
+            }
+            scanRaf = setTimeout(function () { nativeLoop(detector, video); }, 250);
+          }).catch(function () {
+            if (scanOpen) scanRaf = setTimeout(function () { nativeLoop(detector, video); }, 500);
+          });
+        } else {
+          scanRaf = setTimeout(function () { nativeLoop(detector, video); }, 250);
+        }
+      }
+
+      function startNative() {
+        var video = $('sp-video');
+        var detector;
+        try {
+          detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'] });
+        } catch (e) {
+          try { detector = new window.BarcodeDetector(); } catch (e2) { startZxing(); return; }
+        }
+        scanOpen = true;
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }).then(function (stream) {
+          if (!scanOpen) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+          scanStream = stream;
+          video.srcObject = stream;
+          var played = video.play();
+          if (played && played.then) return played;
+        }).then(function () {
+          if (scanOpen) nativeLoop(detector, video);
+        }).catch(function (e) {
+          if (!scanOpen) return;
+          stopScan();
+          cameraError(e);
+        });
+      }
+
+      function loadZxing() {
+        if (window.ZXing && window.ZXing.BrowserMultiFormatReader) return Promise.resolve();
+        if (loadZxing.promise) return loadZxing.promise;
+        loadZxing.promise = new Promise(function (resolve, reject) {
+          var s = document.createElement('script');
+          s.src = ZXING_URL;
+          s.async = true;
+          s.onload = function () { resolve(); };
+          s.onerror = function () { reject(new Error('zxing script failed to load')); };
+          document.head.appendChild(s);
+        });
+        return loadZxing.promise;
+      }
+
+      function startZxing() {
+        var video = $('sp-video');
+        setScanStatus('Loading the barcode reader…');
+        scanOpen = true;
+        loadZxing().then(function () {
+          if (!scanOpen) return;
+          if (!window.ZXing || !window.ZXing.BrowserMultiFormatReader) throw new Error('zxing unavailable');
+          var reader = new window.ZXing.BrowserMultiFormatReader();
+          scanReader = reader;
+          // ZXing manages its own camera stream here (facingMode:
+          // environment = rear camera); reset() in stopScan() stops it.
+          // The error argument is routine (no code in frame) — ignore it.
+          reader.decodeFromConstraints({ video: { facingMode: 'environment' } }, video, function (result, err) {
+            if (!scanOpen) return;
+            if (result) {
+              var raw = result.getText();
+              stopScan();
+              lookupBarcode(raw);
+            }
+          });
+        }).catch(function () {
+          if (!scanOpen) return;
+          stopScan();
+          setScanStatus('The barcode reader couldn\u2019t load — type the barcode number instead.');
+          var inp = $('sp-scan-input'); if (inp) inp.focus();
+        });
+      }
+
+      function startScan() {
+        if (scanOpen) { stopScan(); setScanStatus(''); return; }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setScanStatus('This browser can\u2019t open the camera — type the barcode number instead.');
+          var inp = $('sp-scan-input'); if (inp) inp.focus();
+          return;
+        }
+        load().then(function () {
+          if (!snap) { setScanStatus('The price snapshot didn\u2019t load yet — check your connection, then try again.'); return; }
+          showViewfinder(true);
+          setScanStatus('Point the camera at a barcode…');
+          if ('BarcodeDetector' in window) startNative();
+          else startZxing();
+        });
+      }
+
+      function initScan() {
+        var btn = $('sp-scan-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          if (scanOpen) { stopScan(); setScanStatus(''); return; }
+          startScan();
+        });
+        var input = $('sp-scan-input');
+        var lookupBtn = $('sp-scan-lookup');
+        var doLookup = function () { lookupBarcode(input ? input.value : ''); };
+        if (lookupBtn) lookupBtn.addEventListener('click', doLookup);
+        if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doLookup(); } });
+        var closeBtn = $('sp-scan-close');
+        if (closeBtn) closeBtn.addEventListener('click', function () { stopScan(); setScanStatus(''); });
+        // Never leave the camera running: stop when the page is hidden
+        // or when another tab on this page is opened.
+        document.addEventListener('visibilitychange', function () { if (document.hidden) stopScan(); });
+        document.querySelectorAll('[data-tab]').forEach(function (b) {
+          b.addEventListener('click', function () { if (b.getAttribute('data-tab') !== 'prices') stopScan(); });
+        });
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
       else init();
@@ -1040,6 +1364,9 @@ const pageDescription =
     border-bottom-color: #38bdf8;
   }
   .il-panel[hidden] {
+    display: none !important;
+  }
+  .il-ptab[hidden] {
     display: none !important;
   }
   .il-panel.il-eats,
@@ -1358,6 +1685,88 @@ const pageDescription =
     padding: 1.1rem;
     border: 1px dashed #334155;
     border-radius: 0.9rem;
+  }
+  .sp-scan {
+    padding: 1.1rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.9rem;
+    background: #0b1220;
+    margin-bottom: 1.5rem;
+  }
+  .sp-scan-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .sp-scan-input {
+    flex: 1 1 12rem;
+  }
+  .sp-viewfinder {
+    position: relative;
+    margin-top: 0.9rem;
+    max-width: 26rem;
+  }
+  .sp-viewfinder[hidden] {
+    display: none !important;
+  }
+  .sp-viewfinder video {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 0.6rem;
+    background: #000;
+  }
+  .sp-scan-frame {
+    position: absolute;
+    left: 50%;
+    top: 42%;
+    width: 72%;
+    height: 30%;
+    transform: translate(-50%, -50%);
+    border: 2px solid #38bdf8;
+    border-radius: 0.5rem;
+    pointer-events: none;
+  }
+  .sp-viewfinder .sp-btn {
+    margin-top: 0.6rem;
+  }
+  .sp-scan-result {
+    margin-top: 0.9rem;
+    padding: 0.9rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.6rem;
+    background: #0f172a;
+  }
+  .sp-scan-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0 0 0.15rem;
+  }
+  .sp-scan-meta {
+    margin: 0 0 0.6rem;
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+  .sp-scan-prices {
+    list-style: none;
+    margin: 0 0 0.8rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .sp-scan-prices li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.35rem 0.1rem;
+    border-bottom: 1px solid #1e293b;
+    font-size: 0.95rem;
+  }
+  .sp-scan-prices li:last-child {
+    border-bottom: none;
   }
 
   /* ── Forms ───────────────────────────────────────────────────────────────── */
