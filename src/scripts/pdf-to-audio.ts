@@ -29,7 +29,11 @@ function getLamejs(): {
   ) => { encodeBuffer: (pcm: Int16Array) => Int8Array; flush: () => Int8Array };
 } {
   const g = (globalThis as unknown as { lamejs?: unknown }).lamejs;
-  if (!g || typeof g !== 'object' || !('Mp3Encoder' in (g as Record<string, unknown>))) {
+  // NOTE: the vendored bundle's lamejs is a FUNCTION with Mp3Encoder attached
+  // (lamejs.Mp3Encoder = ...), not a plain object — typeof is 'function'.
+  // The old check demanded 'object' and rejected it, so encoding could never
+  // run in the browser even though the script loaded fine.
+  if (!g || (typeof g !== 'object' && typeof g !== 'function') || !('Mp3Encoder' in (g as Record<string, unknown>))) {
     throw new Error('MP3 encoder (lamejs) failed to load — reload the page.');
   }
   return g as {
