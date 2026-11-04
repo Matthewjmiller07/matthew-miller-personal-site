@@ -23,6 +23,16 @@
   [headers.values]
     Content-Type = "text/markdown; charset=utf-8"
 
+# pdf-to-audio runs Kokoro TTS in the browser. ONNX Runtime only uses multiple
+# WASM threads when the page is cross-origin isolated; without these headers it
+# falls back to 1 thread and a 2-page chapter takes many minutes. credentialless
+# (not require-corp) so the Hugging Face model fetch keeps working.
+[[headers]]
+  for = "/pdf-to-audio"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "credentialless"
+
 [[redirects]]
   from = "/parsha"
   to = "/parasha"
