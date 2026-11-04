@@ -1,5 +1,8 @@
-// pdf-to-audio Worker: accepts MP3 uploads into R2, serves tokenized RSS feeds.
+// pdf-to-audio Worker: speech synthesis, MP3 uploads into R2, tokenized RSS feeds.
 // Routes:
+//   POST /tts               — Bearer <UPLOAD_TOKEN>, JSON { text }. Runs Kokoro on a Replicate
+//                             GPU (about 1 cent per 30 minutes of audio). Returns { url }, a
+//                             short-lived WAV the browser fetches directly.
 //   POST /upload            — Bearer <UPLOAD_TOKEN>, headers X-Feed-Token + X-Filename,
 //                             body = MP3 bytes. Stores <token>/<filename>. Returns { feedUrl, audioUrl }.
 //   GET  /feed/<token>.xml  — RSS 2.0 listing every MP3 under <token>/, with enclosures.
@@ -9,6 +12,45 @@
 function rssEscape(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+// Bearer-token API with no cookies, so any origin may call it (including Deploy Previews).
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Feed-Token, X-Filename, X-Duration-Seconds',
+  'Access-Control-Max-Age': '86400',
+};
+
+const KOKORO_VERSION = 'f559560eb822dc509045f3921a1921234918b91739db4bf3daab2169b71c7a13';
+const KOKORO_VOICE = 'af_bella';
+const MAX_TTS_CHARS = 4000;
+
+async function synthesize(text, env) {
+  const headers = {
+    Authorization: `Bearer ${env.REPLICATE_API_TOKEN}`,
+    'Content-Type': 'application/json',
+  };
+  const created = await fetch('https://api.replicate.com/v1/predictions', {
+    method: 'POST',
+    headers: { ...headers, Prefer: 'wait=30' },
+    body: JSON.stringify({ version: KOKORO_VERSION, input: { text, voice: KOKORO_VOICE, speed: 1 } }),
+  });
+  if (!created.ok) {
+    return Response.json({ error: `Replicate returned ${created.status}` }, {
+      status: created.status === 429 ? 429 : 502,
+    });
+  }
+  let prediction = await created.json();
+  // A cold start can outlast the wait above. Keep polling; the browser retries past this.
+  for (let i = 0; i < 30 && ['starting', 'processing'].includes(prediction.status); i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    prediction = await (await fetch(prediction.urls.get, { headers })).json();
+  }
+  if (prediction.status !== 'succeeded' || !prediction.output) {
+    return Response.json({ error: prediction.error || `Prediction ${prediction.status}` }, { status: 502 });
+  }
+  return Response.json({ url: prediction.output });
 }
 
 function feedXml(origin, token, objects) {
@@ -32,7 +74,7 @@ function feedXml(origin, token, objects) {
 <channel>
   <title>PDF to Audio — private feed</title>
   <link>${rssEscape(origin)}/pdf-to-audio</link>
-  <description>Chapters converted to audio in the browser with Kokoro TTS. Private feed: anyone with this URL can listen.</description>
+  <description>Chapters converted to audio with Kokoro TTS. Private feed: anyone with this URL can listen.</description>
   <language>en</language>
 ${items}
 </channel>
@@ -40,10 +82,22 @@ ${items}
 `;
 }
 
-export default {
-  async fetch(request, env) {
+async function route(request, env) {
     const url = new URL(request.url);
     const origin = url.origin;
+
+    // --- Speech ---
+    if (url.pathname === '/tts' && request.method === 'POST') {
+      const auth = request.headers.get('Authorization') || '';
+      if (!env.UPLOAD_TOKEN || auth !== `Bearer ${env.UPLOAD_TOKEN}`) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      const { text } = await request.json().catch(() => ({}));
+      if (typeof text !== 'string' || !text.trim() || text.length > MAX_TTS_CHARS) {
+        return new Response('Bad text', { status: 400 });
+      }
+      return synthesize(text, env);
+    }
 
     // --- Upload ---
     if (url.pathname === '/upload' && request.method === 'POST') {
@@ -101,8 +155,17 @@ export default {
       return new Response(object.body, { headers, status: object.range ? 206 : 200 });
     }
 
-    return new Response('pdf-to-audio worker. POST /upload, GET /feed/<token>.xml, GET /audio/<token>/<file>.', {
+    return new Response('pdf-to-audio worker. POST /tts, POST /upload, GET /feed/<token>.xml, GET /audio/<token>/<file>.', {
       status: 404,
     });
+}
+
+export default {
+  async fetch(request, env) {
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+    const res = await route(request, env);
+    const out = new Response(res.body, res);
+    for (const [k, v] of Object.entries(CORS)) out.headers.set(k, v);
+    return out;
   },
 };

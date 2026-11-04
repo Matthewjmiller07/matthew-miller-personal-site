@@ -1,7 +1,7 @@
 // PDF to Audio — all client-side logic.
-// Pipeline: pdf.js extraction -> sentence chunking -> Kokoro TTS (af_heart, in-browser)
-// -> lamejs MP3 encode -> optional upload to Cloudflare R2 + tokenized RSS feed.
-// Nothing leaves the device until the user presses "Upload & get feed link".
+// Pipeline: pdf.js extraction -> sentence chunking -> Kokoro TTS on a GPU (parallel requests
+// through the pdf-to-audio Worker) -> lamejs MP3 encode in a Web Worker -> optional upload to
+// Cloudflare R2 + tokenized RSS feed. The PDF stays on the device; the text is sent to be spoken.
 
 // ---------------------------------------------------------------------------
 // CONFIG — the one place that knows about the server side. Flip uploadEnabled
@@ -16,47 +16,21 @@ export const PDF_AUDIO_CONFIG = {
 
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { KokoroTTS } from 'kokoro-js';
-
-// lamejs is NOT imported: its CJS entry is broken (ReferenceError: MPEGMode is not
-// defined) and its bundle only works as a window global. The page loads the vendored
-// /public/lame.all.js as a classic script; this accessor reads the global.
-function getLamejs(): {
-  Mp3Encoder: new (
-    channels: number,
-    sampleRate: number,
-    kbps: number,
-  ) => { encodeBuffer: (pcm: Int16Array) => Int8Array; flush: () => Int8Array };
-} {
-  const g = (globalThis as unknown as { lamejs?: unknown }).lamejs;
-  // NOTE: the vendored bundle's lamejs is a FUNCTION with Mp3Encoder attached
-  // (lamejs.Mp3Encoder = ...), not a plain object — typeof is 'function'.
-  // The old check demanded 'object' and rejected it, so encoding could never
-  // run in the browser even though the script loaded fine.
-  if (!g || (typeof g !== 'object' && typeof g !== 'function') || !('Mp3Encoder' in (g as Record<string, unknown>))) {
-    throw new Error('MP3 encoder (lamejs) failed to load — reload the page.');
-  }
-  return g as {
-    Mp3Encoder: new (
-      channels: number,
-      sampleRate: number,
-      kbps: number,
-    ) => { encodeBuffer: (pcm: Int16Array) => Int8Array; flush: () => Int8Array };
-  };
-}
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const SAMPLE_RATE = 24000; // Kokoro-82M native sample rate (mono)
-const MAX_CHUNK_CHARS = 350; // sentence-based chunks; keeps the tab responsive
+const MAX_CHUNK_CHARS = 1200; // sentence-based chunks; the Worker accepts up to 4,000
+const CONCURRENCY = 12; // sections in progress at once; each has its own MP3 encoder
+const GAP_SAMPLES = SAMPLE_RATE / 5; // 200 ms of silence after each section
 
 let extractedText = '';
 let mp3Blob: Blob | null = null;
 let mp3DurationSec = 0;
 let mp3Filename = 'chapter.mp3';
-let tts: Awaited<ReturnType<typeof KokoroTTS.from_pretrained>> | null = null;
 let cancelled = false;
+let stopRequests: AbortController | null = null;
 
 // --- helpers ---------------------------------------------------------------
 
@@ -85,10 +59,24 @@ function feedToken(): string {
   }
   return t;
 }
+const KEY_STORAGE = 'pdf-audio-key';
+function storedKey(): string {
+  try {
+    return localStorage.getItem(KEY_STORAGE) ?? '';
+  } catch {
+    return '';
+  }
+}
+function rememberKey(key: string) {
+  try {
+    localStorage.setItem(KEY_STORAGE, key);
+  } catch {
+    // Private window: the key just has to be pasted again next time.
+  }
+}
 function uploadKey(): string {
-  const m = location.hash.match(/[#&]key=([^&]+)/);
-  if (m) return decodeURIComponent(m[1]);
-  return ($('upload-key') as HTMLInputElement).value.trim();
+  // init() copies a #key= from the link into the field.
+  return ($('upload-key') as HTMLInputElement).value.trim() || storedKey();
 }
 
 // --- 1. extraction ---------------------------------------------------------
@@ -128,7 +116,8 @@ async function extractPdf(file: File): Promise<string> {
 function chunkSentences(text: string): string[] {
   const sentences = text
     .replace(/\s+/g, ' ')
-    .match(/[^.!?…]+[.!?…]+["')\]]*\s*/g) ?? [text];
+    // The last alternative keeps trailing text that has no final punctuation.
+    .match(/[^.!?…]+[.!?…]+["')\]]*\s*|[^.!?…]+$/g) ?? [text];
   const chunks: string[] = [];
   let cur = '';
   for (const s of sentences) {
@@ -153,88 +142,147 @@ function chunkSentences(text: string): string[] {
 
 // --- 3. TTS ----------------------------------------------------------------
 
-// WASM + q8 (~88 MB) everywhere. The WebGPU fp32 model (~311 MB) killed the
-// renderer on phones (OOM) AND on desktop (Chrome "Aw, Snap!" error 5 at the
-// first inference — the GPU path dies after loading, so a try/catch around
-// session creation can't save it). q8 runs on every device; same voice.
-async function loadTts(onProgress: (pct: number, label: string) => void) {
-  if (tts) return tts;
-  const progress_callback = (p: { status: string; progress?: number; file?: string }) => {
-    if (typeof p.progress === 'number') onProgress(p.progress, p.file ?? p.status);
-  };
-  tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
-    dtype: 'q8',
-    device: 'wasm',
-    progress_callback,
+class AuthError extends Error {}
+
+function pcmFromWav(wav: ArrayBuffer): Int16Array {
+  const view = new DataView(wav);
+  if (view.getUint32(0) !== 0x52494646) throw new Error('Speech service returned something other than audio.');
+  if (view.getUint32(24, true) !== SAMPLE_RATE) throw new Error('Unexpected audio sample rate.');
+  let pos = 12;
+  while (pos + 8 <= view.byteLength) {
+    const size = view.getUint32(pos + 4, true);
+    if (view.getUint32(pos) === 0x64617461) {
+      const end = Math.min(pos + 8 + size, view.byteLength);
+      return new Int16Array(wav.slice(pos + 8, end - ((end - pos - 8) % 2)));
+    }
+    pos += 8 + size + (size % 2);
+  }
+  throw new Error('Audio had no data section.');
+}
+
+async function speakOnce(text: string, key: string, signal: AbortSignal): Promise<Int16Array> {
+  const res = await fetch(`${PDF_AUDIO_CONFIG.workerUrl}/tts`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+    signal,
   });
-  return tts;
+  if (res.status === 401) throw new AuthError('That key was not accepted.');
+  if (!res.ok) throw new Error(`Speech service error (HTTP ${res.status}).`);
+  const { url } = (await res.json()) as { url: string };
+  const audio = await fetch(url, { signal });
+  if (!audio.ok) throw new Error(`Could not fetch audio (HTTP ${audio.status}).`);
+  return pcmFromWav(await audio.arrayBuffer());
 }
 
-function floatToInt16(floats: Float32Array): Int16Array {
-  const out = new Int16Array(floats.length);
-  for (let i = 0; i < floats.length; i++) {
-    const v = Math.max(-1, Math.min(1, floats[i]));
-    out[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
+async function speak(text: string, key: string, signal: AbortSignal): Promise<Int16Array> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await speakOnce(text, key, signal);
+    } catch (err) {
+      if (signal.aborted || err instanceof AuthError || attempt >= 3) throw err;
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
+    }
   }
+}
+
+// One encoder per runner, off the main thread: encoding is CPU-heavy (about 40x realtime per
+// core) and would otherwise cap the whole pipeline and freeze the page.
+function startEncoder() {
+  const worker = new Worker('/pdf-audio-encoder.js');
+  return {
+    encode: (pcm: Int16Array) =>
+      new Promise<Uint8Array>((resolve, reject) => {
+        worker.onmessage = ({ data }) => resolve(data);
+        worker.onerror = (e) => reject(new Error(e.message || 'MP3 encoder failed to load.'));
+        worker.postMessage(pcm, [pcm.buffer]);
+      }),
+    stop: () => worker.terminate(),
+  };
+}
+
+function withGap(pcm: Int16Array): Int16Array {
+  const out = new Int16Array(pcm.length + GAP_SAMPLES);
+  out.set(pcm);
   return out;
-}
-
-// Stream-encode: feed each chunk's PCM to the MP3 encoder as it is generated,
-// instead of holding the whole chapter's audio in memory (a 30-minute chapter
-// is ~170 MB of Float32 — enough to crash a phone tab on its own).
-function encodeChunk(
-  encoder: { encodeBuffer: (pcm: Int16Array) => Int8Array },
-  floats: Float32Array,
-  parts: Uint8Array[],
-) {
-  const int16 = floatToInt16(floats);
-  const BLOCK = 1152;
-  for (let i = 0; i < int16.length; i += BLOCK) {
-    const encoded = encoder.encodeBuffer(int16.subarray(i, i + BLOCK));
-    if (encoded.length) parts.push(new Uint8Array(encoded));
-  }
 }
 
 async function synthesize(
   text: string,
-): Promise<{ blob: Blob; durationSec: number; stopped: boolean; chunksDone: number }> {
+  key: string,
+): Promise<{ blob: Blob; durationSec: number; chunksDone: number; failure: string; authFailed: boolean }> {
   const chunks = chunkSentences(text);
-  const engine = await loadTts((pct) => {
-    setBar('model-bar', pct);
-    setText('model-status', `Loading voice model… ${Math.round(pct)}%`);
-  });
-  setBar('model-bar', 100);
-  setText('model-status', 'Voice model loaded (cached in your browser for next time).');
+  const started = performance.now();
+  const sections: ({ mp3: Uint8Array; samples: number } | undefined)[] = new Array(chunks.length);
+  stopRequests = new AbortController();
+  const { signal } = stopRequests;
+  let next = 0;
+  let finished = 0;
+  let failure: unknown = null;
 
-  const encoder = new (getLamejs().Mp3Encoder)(1, SAMPLE_RATE, 96);
+  const progress = () => {
+    setBar('synth-bar', (finished / chunks.length) * 100);
+    const elapsed = performance.now() - started;
+    const left = finished ? Math.ceil(((elapsed / finished) * (chunks.length - finished)) / 1000) : 0;
+    setText(
+      'synth-status',
+      `Finished ${finished} of ${chunks.length} sections${left ? `, about ${left}s left` : ''}…`,
+    );
+  };
+
+  const runner = async () => {
+    const encoder = startEncoder();
+    try {
+      while (next < chunks.length && !cancelled && !failure) {
+        const i = next++;
+        const pcm = withGap(await speak(chunks[i], key, signal));
+        const samples = pcm.length;
+        sections[i] = { mp3: await encoder.encode(pcm), samples };
+        finished++;
+        progress();
+      }
+    } catch (err) {
+      if (!cancelled && !failure) {
+        failure = err;
+        stopRequests?.abort(); // No point finishing audio past a gap.
+      }
+    } finally {
+      encoder.stop();
+    }
+  };
+
+  progress();
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, chunks.length) }, runner));
+
+  // Keep everything up to the first missing section: audio must never silently skip a passage.
   const parts: Uint8Array[] = [];
-  let total = 0;
+  let samples = 0;
   let done = 0;
-  for (let i = 0; i < chunks.length; i++) {
-    if (cancelled) break;
-    setBar('synth-bar', (i / chunks.length) * 100);
-    setText('synth-status', `Speaking chunk ${i + 1} of ${chunks.length}…`);
-    const audio = await engine.generate(chunks[i], { voice: 'af_heart' });
-    const data = audio.audio as Float32Array;
-    encodeChunk(encoder, data, parts);
-    total += data.length;
+  for (const section of sections) {
+    if (!section) break;
+    parts.push(section.mp3);
+    samples += section.samples;
     done++;
-    await new Promise((r) => setTimeout(r, 0));
   }
-  const flushed = encoder.flush();
-  if (flushed.length) parts.push(new Uint8Array(flushed));
+
+  const message = failure instanceof Error ? failure.message : failure ? String(failure) : '';
   setBar('synth-bar', (done / chunks.length) * 100);
-  if (cancelled) {
-    setText('synth-status', `Stopped after ${done} of ${chunks.length} chunks — partial audio below.`);
+  if (done === chunks.length) {
+    setText('synth-status', `Done in ${((performance.now() - started) / 1000).toFixed(0)}s.`);
+  } else if (done === 0) {
+    setText('synth-status', message || 'Stopped before any audio was finished.');
   } else {
-    setBar('synth-bar', 100);
-    setText('synth-status', `Done — ${chunks.length} chunks.`);
+    setText(
+      'synth-status',
+      `Stopped after ${done} of ${chunks.length} sections${message ? `: ${message}` : '.'} Partial audio below.`,
+    );
   }
   return {
     blob: new Blob(parts as BlobPart[], { type: 'audio/mpeg' }),
-    durationSec: total / SAMPLE_RATE,
-    stopped: cancelled,
+    durationSec: samples / SAMPLE_RATE,
     chunksDone: done,
+    failure: message,
+    authFailed: failure instanceof AuthError,
   };
 }
 
@@ -269,7 +317,7 @@ function buildFeedXml(feedTitle: string, episodes: Episode[]): string {
 <channel>
   <title>${rssEscape(feedTitle)}</title>
   <link>${rssEscape(PDF_AUDIO_CONFIG.workerUrl)}/pdf-to-audio</link>
-  <description>Chapters converted to audio in the browser with Kokoro TTS. Private feed: anyone with this URL can listen.</description>
+  <description>Chapters converted to audio with Kokoro TTS. Private feed: anyone with this URL can listen.</description>
   <language>en</language>
 ${items}
 </channel>
@@ -304,6 +352,10 @@ function handleFile(file: File | undefined | null) {
   extractPdf(file)
     .then((text) => {
       extractedText = text;
+      if (!text) {
+        setText('extract-status', 'This PDF has no selectable text (it may be a scan), so there is nothing to read aloud.');
+        return;
+      }
       ($('extracted-text') as HTMLTextAreaElement).value = text;
       setText(
         'extract-stats',
@@ -333,15 +385,13 @@ function init() {
   });
   input.addEventListener('change', () => handleFile(input.files?.[0]));
 
-  // Pre-fill the upload key from the URL hash (#key=...), if present.
+  // Pre-fill the access key from the URL hash (#key=...), if present.
   const m = location.hash.match(/[#&]key=([^&]+)/);
   if (m) ($('upload-key') as HTMLInputElement).value = decodeURIComponent(m[1]);
 
-  // If the key arrived in the link, the key field stays out of the way.
-  if (uploadKey()) {
-    $('key-block')?.classList.add('hidden');
-    $('key-note')?.classList.remove('hidden');
-  }
+  // A key from the link is remembered on this device; the field stays out of the way.
+  if (m) rememberKey(decodeURIComponent(m[1]));
+  if (uploadKey()) $('key-block').classList.add('hidden');
 
   // Feed section visibility depends on the config flag.
   if (!PDF_AUDIO_CONFIG.uploadEnabled) {
@@ -359,21 +409,34 @@ function init() {
       btn.disabled = false;
       return;
     }
+    const key = uploadKey();
+    if (!key) {
+      setText('synth-status', 'Paste your access key first (it came with the link to this page).');
+      btn.disabled = false;
+      return;
+    }
     cancelled = false;
     stopBtn.classList.remove('hidden');
     stopBtn.disabled = false;
     stopBtn.onclick = () => {
       cancelled = true;
       stopBtn.disabled = true;
-      setText('synth-status', 'Stopping after this chunk…');
+      stopRequests?.abort();
     };
     try {
-      setText('synth-status', 'Starting…');
-      const { blob, durationSec, stopped, chunksDone } = await synthesize(text);
-      if (stopped && chunksDone === 0) {
-        setText('synth-status', 'Stopped before the first chunk finished — nothing to play yet.');
-        return;
+      const { blob, durationSec, chunksDone, authFailed } = await synthesize(text, key);
+      if (authFailed) {
+        // Don't keep offering a bad key on the next visit.
+        try {
+          localStorage.removeItem(KEY_STORAGE);
+        } catch {
+          // Nothing stored, then.
+        }
+        ($('upload-key') as HTMLInputElement).value = '';
+        $('key-block').classList.remove('hidden');
       }
+      if (chunksDone === 0) return;
+      rememberKey(key);
       mp3Blob = blob;
       mp3DurationSec = durationSec;
       const url = URL.createObjectURL(blob);
@@ -401,7 +464,7 @@ function init() {
     const btn = $('upload-btn') as HTMLButtonElement;
     const key = uploadKey();
     if (!key) {
-      setText('upload-status', 'Paste the upload key first (it came with the link to this page).');
+      setText('upload-status', 'Paste your access key first (it came with the link to this page).');
       return;
     }
     if (!mp3Blob) return;
@@ -421,7 +484,7 @@ function init() {
         body: mp3Blob,
       });
       if (!res.ok) {
-        setText('upload-status', `Upload failed (HTTP ${res.status}) — check the key and try again.`);
+        setText('upload-status', `Upload failed (HTTP ${res.status}) — check the access key and try again.`);
         return;
       }
       const data = (await res.json()) as { feedUrl: string };

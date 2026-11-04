@@ -1,7 +1,8 @@
 ---
 // PDF to Audio — prototype. Unlisted personal tool: upload a textbook-chapter PDF,
-// extract the text and synthesize speech in the browser (Kokoro TTS, voice af_heart),
-// encode an MP3 in the browser, and optionally publish it to a private podcast feed.
+// extract the text in the browser, synthesize speech on a GPU through the pdf-to-audio Worker
+// (Kokoro TTS, voice af_bella), encode an MP3 in the browser, and optionally publish it to a
+// private podcast feed.
 // No nav link, noindex, excluded from the sitemap (see astro.config.mjs).
 // Audio NEVER touches Netlify: MP3s live in Cloudflare R2 via the pdf-to-audio Worker.
 import Layout from '../layouts/Layout.astro';
@@ -9,7 +10,7 @@ import Layout from '../layouts/Layout.astro';
 
 <Layout
   title="PDF to Audio"
-  description="Turn a textbook chapter PDF into private podcast audio — entirely in your browser."
+  description="Turn a textbook chapter PDF into private podcast audio in seconds."
 >
   <meta name="robots" content="noindex, nofollow" slot="head" />
   <main class="mx-auto max-w-3xl px-4 py-10">
@@ -17,16 +18,16 @@ import Layout from '../layouts/Layout.astro';
     <h1 class="mt-2 text-3xl font-bold">PDF to Audio</h1>
     <p class="mt-3 text-lg text-stone-600">
       Drop in a textbook chapter as a PDF, get audio you can listen to anywhere.
-      Everything happens on your device until you choose to publish.
+      A 30-minute chapter takes about a minute.
     </p>
 
     <details class="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
       <summary class="cursor-pointer font-semibold">Before you start — three things to know</summary>
       <ul class="mt-2 list-disc pl-5 space-y-1">
         <li>
-          <strong>First run downloads a voice model (~90&nbsp;MB).</strong> It is
-          cached in your browser afterwards, so later chapters start fast. Synthesis
-          itself runs locally.
+          <strong>The text is sent out to be spoken.</strong> Your PDF stays on your
+          device, but the text you approve goes through a speech service (Replicate)
+          to become audio. Don't convert anything confidential.
         </li>
         <li>
           <strong>PDF extraction is messy.</strong> Columns, running headers, footnotes
@@ -48,7 +49,7 @@ import Layout from '../layouts/Layout.astro';
         class="mt-3 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 p-6 text-center dark:border-stone-600 dark:bg-stone-800"
       >
         <p class="font-medium">Drop a PDF here, or click to choose one</p>
-        <p class="mt-1 text-sm text-stone-500">Your file never leaves your device at this step.</p>
+        <p class="mt-1 text-sm text-stone-500">Your file never leaves your device.</p>
         <input id="file-input" type="file" accept="application/pdf,.pdf" class="hidden" />
       </div>
       <p id="file-info" class="mt-2 text-sm text-stone-600"></p>
@@ -75,12 +76,18 @@ import Layout from '../layouts/Layout.astro';
     <section id="tts-section" class="mt-8 hidden">
       <h2 class="text-xl font-semibold">3 · Make the audio</h2>
       <div class="mt-3">
-        <div class="h-2 w-full rounded bg-stone-200"><div id="model-bar" class="h-2 rounded bg-sky-600" style="width:0%"></div></div>
-        <p id="model-status" class="mt-1 text-sm text-stone-600">Voice model not loaded yet.</p>
-      </div>
-      <div class="mt-3">
         <div class="h-2 w-full rounded bg-stone-200"><div id="synth-bar" class="h-2 rounded bg-emerald-600" style="width:0%"></div></div>
         <p id="synth-status" class="mt-1 text-sm text-stone-600">Not started.</p>
+      </div>
+      <div id="key-block" class="mt-4">
+        <label class="block text-sm font-medium" for="upload-key">Access key</label>
+        <input
+          id="upload-key"
+          type="password"
+          autocomplete="off"
+          placeholder="Paste the key from the link you were sent"
+          class="mt-1 w-full rounded-lg border border-stone-300 bg-white p-2.5 text-sm text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
+        />
       </div>
       <button
         id="synthesize-btn"
@@ -118,17 +125,6 @@ import Layout from '../layouts/Layout.astro';
         <p class="mt-2 text-sm text-stone-600">
           One feed collects the whole book — the link stays the same for later chapters.
         </p>
-        <p id="key-note" class="mt-2 hidden text-xs text-stone-500">Your upload key came with the page link — nothing to paste.</p>
-        <div id="key-block">
-          <label class="mt-3 block text-sm font-medium" for="upload-key">Upload key</label>
-          <input
-            id="upload-key"
-            type="password"
-            autocomplete="off"
-            placeholder="Paste the key from the link you were sent"
-            class="mt-1 w-full rounded-lg border border-stone-300 bg-white p-2.5 text-sm text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
-          />
-        </div>
         <button
           id="upload-btn"
           class="mt-3 rounded-lg bg-stone-900 px-5 py-2.5 font-medium text-white disabled:opacity-50"
@@ -176,18 +172,15 @@ import Layout from '../layouts/Layout.astro';
     <details class="mt-10 border-t border-stone-200 pt-6 text-sm text-stone-500">
       <summary class="cursor-pointer font-medium text-stone-600">How it works</summary>
       <p class="mt-2">
-        pdf.js extracts the text, Kokoro-82M (voice af_heart) synthesizes it, lamejs
-        encodes MP3 — all in your browser. Publishing stores the MP3 in Cloudflare R2
-        (free tier, no egress fees) and serves the feed from a Cloudflare Worker. No
-        audio ever touches this site's host. Long chapters are synthesized in short
-        sentence-based chunks so the tab stays responsive.
+        pdf.js extracts the text in your browser. Kokoro-82M (voice af_bella) speaks it
+        on a GPU, a dozen passages at a time, for about a cent per 30 minutes of audio.
+        lamejs encodes the MP3 in your browser. Publishing stores the MP3 in Cloudflare
+        R2 (free tier, no egress fees) and serves the feed from a Cloudflare Worker. No
+        audio ever touches this site's host.
       </p>
     </details>
   </main>
 
-  <!-- lamejs as a classic script: its CJS entry is broken (MPEGMode scoping), the
-       vendored bundle in /public only works as a window.lamejs global. -->
-  <script is:inline src="/lame.all.js"></script>
   <script>
     import '../scripts/pdf-to-audio.ts';
   </script>
