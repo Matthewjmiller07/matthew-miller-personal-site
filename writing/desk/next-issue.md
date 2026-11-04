@@ -15,3 +15,5 @@ Running list for the next Workshop. Add builds, links and angles as they happen.
 - **Books** (`/books`): my library online. Every book on the shelf, plus the ones I'm giving away
   and keeping only as a scan. Paste an archive.org or HebrewBooks.org link and it fills in the
   title, author and PDF, with a preview you can read on the page. First one out the door: Areshes Shefoseinu (Los Angeles, 1942).
+
+- **Taking apart a printer** (`/3d/printer-teardown`): I got an old HP Photosmart C6180 all-in-one without a power cord, so I'm taking it apart instead. The page has a 3D model that comes apart one step at a time, in the order you'd do the real teardown, and you can click any part to see what it does. The surprise for me was that there are no stepper motors in it. The carriage and the paper both run on cheap DC motors, and a clear strip and a clear disc printed with fine lines tell the printer exactly where they are. It also explains why an idle printer still uses up ink: it goes into a felt pad.
