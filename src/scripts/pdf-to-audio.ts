@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 export const PDF_AUDIO_CONFIG = {
   workerUrl: 'https://pdf-to-audio.parasha.workers.dev',
-  uploadEnabled: false,
+  uploadEnabled: true,
 };
 
 import * as pdfjsLib from 'pdfjs-dist';
