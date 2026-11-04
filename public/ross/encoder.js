@@ -1,4 +1,4 @@
-// MP3 encoder for /pdf-to-audio, in a Web Worker so encoding never blocks the page.
+// MP3 encoder for /ross, in a Web Worker so encoding never blocks the page.
 // Each message is one section: Int16Array PCM in, a complete MP3 stream out. MP3 streams
 // can simply be concatenated, so sections can be encoded in parallel on several workers.
 importScripts('/lame.all.js');

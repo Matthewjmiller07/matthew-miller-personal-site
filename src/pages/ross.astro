@@ -1,0 +1,235 @@
+---
+// Ross Reads It: hand over a PDF, a link, a photo of a page or some text; get audio and private
+// podcast feeds. Client logic in src/scripts/ross.ts, server side in workers/rossreadsit.
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Ross Reads It"
+  description="Give Ross a PDF, a link or a photo of a page. He reads it to you in your podcast app."
+  image="/ross/og.png"
+  imageAlt="Ross Reads It: your reading, in your podcast app."
+>
+  <Fragment slot="head">
+    <link rel="icon" type="image/svg+xml" href="/ross/mark.svg" />
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap" rel="stylesheet" />
+  </Fragment>
+
+  <main class="ross">
+    <header class="ross-head">
+      <h1 aria-label="Ross reads it"><span class="ross-word">RoSS</span> <span class="ross-reads">reads it</span></h1>
+      <svg id="ross-mark" class="ross-mark" viewBox="0 0 100 100" aria-hidden="true">
+        <g fill="none" stroke="#ffc92e" stroke-width="11" stroke-linecap="round">
+          <path class="arc-1" d="M30 37a35 35 0 0 1 35 35" />
+          <path class="arc-2" d="M30 16a56 56 0 0 1 56 56" />
+        </g>
+        <circle cx="30" cy="72" r="16" fill="#ffc92e" />
+        <g fill="#fffdf4" stroke="#10133f" stroke-width="2.6">
+          <circle cx="23.5" cy="71" r="5.6" />
+          <circle cx="36.5" cy="71" r="5.6" />
+        </g>
+        <path d="M29 70.5q1-1 2 0" fill="none" stroke="#10133f" stroke-width="2.6" stroke-linecap="round" />
+        <circle cx="24.5" cy="71.4" r="1.7" fill="#10133f" />
+        <circle cx="37.5" cy="71.4" r="1.7" fill="#10133f" />
+      </svg>
+      <p class="ross-lede">Give Ross a PDF, a link or a photo of a page. He reads it to you in your podcast app.</p>
+    </header>
+
+    <section class="ross-sheet" aria-label="What should Ross read?">
+      <div id="start">
+        <label for="input" class="ross-title">What should Ross read?</label>
+        <textarea id="input" rows="3" placeholder="Paste a link or some text"></textarea>
+        <div class="ross-row">
+          <button id="go" class="ross-btn">Read this</button>
+          <button id="choose" class="ross-btn ross-quiet">Choose a file</button>
+          <input id="file" type="file" hidden multiple accept="application/pdf,.pdf,image/*,text/plain,.txt,.md" />
+        </div>
+        <p class="ross-small">Or drop a PDF or photos anywhere on this sheet.</p>
+        <p id="start-status" class="ross-status" role="status"></p>
+      </div>
+
+      <div id="review" hidden>
+        <label for="title" class="ross-title">Ross will read this</label>
+        <input id="title" type="text" aria-label="Episode title" />
+        <textarea id="text" rows="9" aria-label="Text Ross will read"></textarea>
+        <p id="review-note" class="ross-small"></p>
+        <form id="email-form" class="ross-email" hidden>
+          <label for="email">Leave your email and Ross reads up to 30 minutes a day.</label>
+          <div class="ross-row">
+            <input id="email" type="email" required autocomplete="email" placeholder="you@example.com" />
+            <button class="ross-btn ross-quiet">Save email</button>
+          </div>
+          <p class="ross-small">Used only for news about Ross. No login, nothing to confirm.</p>
+        </form>
+        <div class="ross-row">
+          <button id="read" class="ross-btn">Read it to me</button>
+          <button id="stop" class="ross-btn ross-quiet" hidden>Stop</button>
+          <button id="restart" class="ross-link">Start over</button>
+        </div>
+        <div id="bar-wrap" class="ross-bar" hidden><div id="bar"></div></div>
+        <p id="read-status" class="ross-status" role="status"></p>
+      </div>
+
+      <div id="done" hidden>
+        <h2 id="done-title" class="ross-title"></h2>
+        <audio id="player" controls></audio>
+        <p id="done-note" class="ross-small"></p>
+        <div class="ross-row">
+          <label for="feed-pick" class="ross-sr">Feed</label>
+          <select id="feed-pick"></select>
+          <button id="add" class="ross-btn">Add to feed</button>
+          <a id="download" class="ross-link" download>Download MP3</a>
+        </div>
+        <p id="add-status" class="ross-status" role="status"></p>
+        <button id="another" class="ross-link">Give Ross something else</button>
+      </div>
+    </section>
+
+    <section class="ross-feeds" aria-labelledby="feeds-h">
+      <h2 id="feeds-h">Your feeds</h2>
+      <p class="ross-feeds-lede">Each feed is its own show in your podcast app. Keep one per book, class or mood.</p>
+      <div id="feeds"></div>
+      <form id="new-feed" class="ross-row">
+        <label for="new-feed-name" class="ross-sr">New feed name</label>
+        <input id="new-feed-name" type="text" maxlength="80" placeholder="Name a new feed" />
+        <button class="ross-btn ross-yellow">Add feed</button>
+      </form>
+      <p id="feeds-status" class="ross-status" role="status"></p>
+    </section>
+
+    <footer class="ross-foot">
+      <p>Free for about 5 minutes of audio a day, or 30 with an email. When everyone's daily share runs out, Ross is back tomorrow. He reads English only for now.</p>
+      <p>PDFs and photos are read on your device, and web pages are fetched for you. The text you approve goes to Replicate, which runs the voice, so don't give Ross anything confidential. Your feeds are private by obscurity: anyone with a feed link can listen. Only add what you have the right to listen to.</p>
+      <p><button id="copy-link" class="ross-link ross-on-blue">Copy my link for another device</button> <span id="copy-link-status" role="status"></span></p>
+    </footer>
+  </main>
+
+  <script>
+    import '../scripts/ross.ts';
+  </script>
+</Layout>
+
+<style is:global>
+  .ross {
+    --blue: #1b2bd8;
+    --deep: #10133f;
+    --sun: #ffc92e;
+    --paper: #fffdf4;
+    --line: #d9d6c3;
+    --alert: #b3261e;
+    background: var(--blue);
+    color: var(--paper);
+    font-family: 'Atkinson Hyperlegible', system-ui, sans-serif;
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    padding: clamp(1.5rem, 5vw, 4rem) clamp(1rem, 5vw, 4rem) 4rem;
+    overflow-x: clip;
+    margin-inline: -0.5rem; /* full bleed: cancels the site's body padding (p-2 md:p-5) */
+  }
+  @media (min-width: 768px) {
+    .ross { margin-inline: -1.25rem; }
+  }
+  /* The site's global CSS colors p, li, span and div directly, so color doesn't inherit here. */
+  .ross :is(h1, h2, p, li, span, div, label, summary) { color: inherit; }
+  .ross-sheet, .ross-feed { color: var(--deep); }
+  .ross > * { max-width: 46rem; margin-inline: auto; }
+  .ross [hidden] { display: none !important; }
+  .ross h1, .ross h2, .ross-title { font-family: 'Bricolage Grotesque', system-ui, sans-serif; }
+  .ross-head { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 0 1rem; }
+  .ross h1 { margin: 0; line-height: 0.82; font-weight: 800; letter-spacing: -0.04em; }
+  .ross .ross-word { color: var(--sun); }
+  .ross-word { display: block; font-size: clamp(5.5rem, 24vw, 12.5rem); }
+  .ross-reads { display: block; font-size: clamp(1.9rem, 8vw, 4.2rem); font-weight: 500; letter-spacing: -0.02em; line-height: 1.1; }
+  .ross-mark { width: clamp(5rem, 20vw, 10rem); height: auto; margin-bottom: 0.4rem; }
+  .ross-lede { grid-column: 1 / -1; font-size: clamp(1.15rem, 3vw, 1.45rem); line-height: 1.35; margin: 1.25rem 0 0; max-width: 34ch; }
+
+  .ross-sheet {
+    position: relative;
+    margin-top: 2rem;
+    background: var(--paper);
+    color: var(--deep);
+    padding: clamp(1.25rem, 4vw, 2.25rem);
+    padding-right: clamp(1.25rem, 6vw, 3.25rem);
+    clip-path: polygon(0 0, calc(100% - 3rem) 0, 100% 3rem, 100% 100%, 0 100%);
+    transition: background-color 120ms;
+  }
+  .ross-sheet::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 3rem;
+    height: 3rem;
+    background: linear-gradient(to bottom left, transparent 50%, var(--sun) 50%);
+  }
+  .ross-sheet.is-over { background: #fff3c2; }
+  .ross-title { display: block; margin: 0 0 0.75rem; font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; max-width: calc(100% - 2rem); overflow-wrap: anywhere; }
+  .ross textarea, .ross input[type='text'], .ross input[type='email'], .ross select {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    color: var(--deep);
+    background: #fff;
+    border: 2px solid var(--deep);
+    border-radius: 0;
+    padding: 0.7rem 0.8rem;
+  }
+  .ross textarea { display: block; resize: vertical; }
+  #title { margin-bottom: 0.6rem; font-weight: 700; }
+  .ross-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 0.75rem; margin-top: 0.9rem; }
+  .ross-row input, .ross-row select { flex: 1 1 12rem; width: auto; }
+  .ross-btn {
+    font: inherit;
+    font-weight: 700;
+    color: var(--paper);
+    background: var(--blue);
+    border: 2px solid var(--blue);
+    padding: 0.65rem 1.15rem;
+    cursor: pointer;
+  }
+  .ross-btn:hover { background: var(--deep); border-color: var(--deep); }
+  .ross-btn:disabled { opacity: 0.5; cursor: default; }
+  .ross-quiet { background: transparent; color: var(--deep); border-color: var(--deep); }
+  .ross-quiet:hover { color: var(--paper); }
+  .ross-yellow { background: var(--sun); border-color: var(--sun); color: var(--deep); }
+  .ross-yellow:hover { background: var(--paper); border-color: var(--paper); color: var(--deep); }
+  .ross-link { font: inherit; color: var(--blue); background: none; border: 0; padding: 0.25rem 0; text-decoration: underline; text-underline-offset: 0.2em; cursor: pointer; }
+  .ross-on-blue { color: var(--paper); }
+  .ross-small { margin: 0.6rem 0 0; font-size: 0.95rem; }
+  .ross-status { margin: 0.7rem 0 0; font-weight: 700; min-height: 1.5em; }
+  .ross .ross-status.is-bad { color: var(--alert); }
+  .ross .ross-feeds > .ross-status.is-bad { color: var(--sun); }
+  .ross-email { margin-top: 1rem; padding: 0.9rem 1rem; background: var(--sun); }
+  .ross-email label { font-weight: 700; }
+  .ross-email .ross-small { margin-top: 0.5rem; }
+  .ross-bar { height: 0.6rem; margin-top: 1rem; background: var(--line); }
+  .ross-bar > div { height: 100%; width: 0; background: var(--blue); transition: width 200ms; }
+  .ross audio { width: 100%; margin-top: 0.25rem; }
+  .ross-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .ross :focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; box-shadow: 0 0 0 2px var(--deep); }
+
+  .ross-feeds { margin-top: 3.5rem; }
+  .ross-feeds h2 { margin: 0; font-size: clamp(2.25rem, 7vw, 3.5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+  .ross .ross-feeds h2 { color: var(--sun); }
+  .ross-feeds-lede { margin: 0.6rem 0 1.25rem; }
+  .ross-feed { background: var(--paper); color: var(--deep); padding: 1rem 1.15rem; margin-bottom: 0.75rem; }
+  .ross-feed-top { display: flex; align-items: center; gap: 0.75rem; }
+  .ross input.ross-feed-name { flex: 1; min-width: 0; font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-size: 1.35rem; font-weight: 800; letter-spacing: -0.01em; padding: 0.1rem 0.25rem; margin-left: -0.25rem; background: transparent; border: 2px solid transparent; }
+  .ross input.ross-feed-name:hover, .ross input.ross-feed-name:focus { border-color: var(--deep); background: #fff; }
+  .ross-subs { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; margin-top: 0.4rem; }
+  .ross-eps { margin-top: 0.6rem; font-size: 0.95rem; }
+  .ross-eps summary { cursor: pointer; }
+  .ross-eps ul { list-style: none; margin: 0.4rem 0 0; padding: 0; }
+  .ross-eps li { display: flex; gap: 0.75rem; justify-content: space-between; align-items: baseline; padding: 0.35rem 0; border-top: 1px solid var(--line); }
+  .ross-eps li span { min-width: 0; overflow-wrap: anywhere; }
+  .ross-foot { margin-top: 3rem; font-size: 0.95rem; }
+  .ross-foot p { margin: 0 0 0.75rem; max-width: 65ch; }
+
+  #ross-mark.is-reading .arc-1 { animation: ross-voice 1.1s infinite; }
+  #ross-mark.is-reading .arc-2 { animation: ross-voice 1.1s 0.2s infinite; }
+  @keyframes ross-voice { 50% { opacity: 0.2; } }
+  @media (prefers-reduced-motion: reduce) {
+    #ross-mark.is-reading .arc-1, #ross-mark.is-reading .arc-2 { animation: none; }
+    .ross-sheet, .ross-bar > div { transition: none; }
+  }
+</style>

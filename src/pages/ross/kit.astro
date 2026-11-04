@@ -1,0 +1,73 @@
+---
+// Marketing kit for Ross Reads It. Unlisted: not in the sitemap, noindex.
+import Layout from '../../layouts/Layout.astro';
+
+const url = 'https://theothermatthewmiller.com/ross';
+const whatsapp = `Made a thing. Give Ross a PDF, a link or a photo of a page, and he reads it to you in your podcast app. Free to try: ${url}`;
+const linkedin = `I have a long list of chapters and articles I'm definitely going to read. What I actually do on a walk is listen to podcasts.
+
+So I made Ross. You give him a PDF, a link or a photo of a page, and he reads it to you in your podcast app. Each feed is its own show, so you can keep one per book or class.
+
+Half an hour of audio takes about a minute to make, because a GPU does the reading instead of your browser. That part costs real money, so it's free for about 5 minutes a day, and 30 if you leave an email. No account, no app to install.
+
+English only for now. What would you hand him first?
+
+${url}`;
+const assets = [
+  { file: 'whatsapp-status.mp4', label: 'WhatsApp status video, 23 seconds, narrated by Ross', video: true },
+  { file: 'whatsapp-status.png', label: 'WhatsApp status image, 1080 x 1920' },
+  { file: 'linkedin-square.png', label: 'LinkedIn square, 1200 x 1200' },
+  { file: 'linkedin-wide.png', label: 'LinkedIn wide, 1200 x 627' },
+  { file: 'cover.png', label: 'Logo and podcast cover, 1400 x 1400' },
+  { file: 'mark.svg', label: 'Icon, SVG' },
+];
+const posts = [
+  { id: 'whatsapp', title: 'WhatsApp status', text: whatsapp },
+  { id: 'linkedin', title: 'LinkedIn post', text: linkedin },
+];
+---
+
+<Layout title="Ross Reads It kit" description="Images, video and post copy for Ross Reads It.">
+  <meta name="robots" content="noindex, nofollow" slot="head" />
+  <main class="kit">
+    <h1>Ross Reads It kit</h1>
+    <p>Everything for telling people about <a href="/ross">Ross</a>. Handle to claim everywhere: @rossreadsit.</p>
+    {posts.map((post) => (
+      <section>
+        <h2>{post.title}</h2>
+        <pre id={post.id}>{post.text}</pre>
+        <button data-copy={post.id}>Copy text</button>
+      </section>
+    ))}
+    <h2>Images and video</h2>
+    <div class="grid">
+      {assets.map((a) => (
+        <figure>
+          {a.video ? <video src={`/ross/${a.file}`} controls preload="metadata" /> : <img src={`/ross/${a.file}`} alt={a.label} loading="lazy" />}
+          <figcaption>{a.label} <a href={`/ross/${a.file}`} download>Download</a></figcaption>
+        </figure>
+      ))}
+    </div>
+  </main>
+  <script>
+    document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(document.getElementById(button.dataset.copy!)?.textContent ?? '');
+        button.textContent = 'Copied';
+        setTimeout(() => (button.textContent = 'Copy text'), 1500);
+      });
+    });
+  </script>
+</Layout>
+
+<style is:global>
+  .kit { max-width: 60rem; margin: 2rem auto; padding: 0 1rem 4rem; }
+  .kit h1 { font-size: 2.25rem; font-weight: 800; }
+  .kit h2 { font-size: 1.4rem; font-weight: 700; margin: 2rem 0 0.6rem; }
+  .kit a { text-decoration: underline; }
+  .kit pre { white-space: pre-wrap; font: inherit; padding: 1rem; border: 1px solid currentColor; max-width: 65ch; }
+  .kit button { margin-top: 0.6rem; padding: 0.5rem 1rem; font-weight: 700; color: #fffdf4; background: #1b2bd8; }
+  .kit .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1.25rem; }
+  .kit img, .kit video { width: 100%; height: auto; display: block; background: #1b2bd8; }
+  .kit figcaption { margin-top: 0.4rem; font-size: 0.9rem; }
+</style>
