@@ -104,9 +104,11 @@ async function extractPdf(file: File): Promise<string> {
   for (let n = 1; n <= doc.numPages; n++) {
     const page = await doc.getPage(n);
     const tc = await page.getTextContent();
-    const text = (tc.items as { str?: string }[])
-      .map((i) => i.str ?? '')
-      .join(' ');
+    // hasEOL preserves line breaks (paragraph structure survives into the preview
+    // the user edits); a naive join(" ") flattens everything into one wall of text.
+    const text = (tc.items as { str?: string; hasEOL?: boolean }[])
+      .map((i) => (i.str ?? '') + (i.hasEOL ? '\n' : ' '))
+      .join('');
     parts.push(text);
     setBar('extract-bar', (n / doc.numPages) * 100);
     setText('extract-status', `Reading page ${n} of ${doc.numPages}…`);
