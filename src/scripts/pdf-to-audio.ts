@@ -152,37 +152,15 @@ function chunkSentences(text: string): string[] {
 
 // --- 3. TTS ----------------------------------------------------------------
 
-// Phones crash on the WebGPU fp32 model (~311 MB download + GPU memory):
-// Android Chrome HAS WebGPU, so the old code tried it first and the tab died
-// before the WASM fallback could run. Go straight to WASM + q8 (~88 MB) on
-// phones and low-memory devices; desktops keep WebGPU fp32.
-function preferWebGpu(): boolean {
-  if (typeof navigator === 'undefined' || !('gpu' in navigator)) return false;
-  if (window.matchMedia?.('(pointer: coarse)').matches) return false;
-  const mem = (navigator as { deviceMemory?: number }).deviceMemory;
-  if (typeof mem === 'number' && mem < 8) return false;
-  return true;
-}
-
+// WASM + q8 (~88 MB) everywhere. The WebGPU fp32 model (~311 MB) killed the
+// renderer on phones (OOM) AND on desktop (Chrome "Aw, Snap!" error 5 at the
+// first inference — the GPU path dies after loading, so a try/catch around
+// session creation can't save it). q8 runs on every device; same voice.
 async function loadTts(onProgress: (pct: number, label: string) => void) {
   if (tts) return tts;
   const progress_callback = (p: { status: string; progress?: number; file?: string }) => {
     if (typeof p.progress === 'number') onProgress(p.progress, p.file ?? p.status);
   };
-  if (preferWebGpu()) {
-    try {
-      // WebGPU + fp32 is the README-recommended combo (~311 MB first download).
-      tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
-        dtype: 'fp32',
-        device: 'webgpu',
-        progress_callback,
-      });
-      return tts;
-    } catch {
-      // WebGPU unavailable (or blocked) — fall through to WASM + q8.
-      onProgress(0, 'WebGPU unavailable, falling back to WASM…');
-    }
-  }
   tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
     dtype: 'q8',
     device: 'wasm',
