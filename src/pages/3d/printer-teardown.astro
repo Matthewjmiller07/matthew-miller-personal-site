@@ -1,0 +1,571 @@
+---
+// Teardown of an HP Photosmart C6180-series all-in-one (mine is a C6183 that came without a cord).
+// The 3D model is built in the browser from boxes and cylinders below, so it's a schematic with
+// approximate proportions, not HP CAD. Each part has a teardown step; the guide drives the viewer.
+// Card image: public/3d/printer-teardown/printer.webp (a screenshot of this viewer).
+import Layout from '../../layouts/Layout.astro';
+
+const DIR = '/3d/printer-teardown';
+
+// step 0 = still in the machine at the end. "out" is the direction the part flies when pulled apart (cm).
+const parts = [
+    { id: 'lid', step: 2, name: 'Lid and document feeder', out: [0, 22, -4],
+      does: 'The lid holds the 50-sheet automatic document feeder (ADF), which pulls originals across a strip of the scanner glass one sheet at a time so the scan bar can stay still.',
+      look: 'A rubber pick roller and a separation pad: the roller grabs the top sheet and the pad holds back the one under it. A small motor and a gear train drive it, and a plastic flag tells the board when paper is loaded.' },
+    { id: 'glass', step: 5, name: 'Scanner glass', out: [0, 15, 8],
+      does: 'Flat glass the original lies on, face down. The narrow strip at the left is where the document feeder slides pages past.',
+      look: 'Calibration strip: a white (and sometimes black) band at one edge. The scan bar reads it before every scan to even out the lamp and sensor.' },
+    { id: 'scanbar', step: 5, name: 'Scan bar', out: [-6, 13, 10],
+      does: 'One line of light and one line of sensor pixels. A small motor and belt drag it down the page, and the scanner stacks the lines into an image.',
+      look: 'The light pipe and lens array along its length, the flat cable that rolls and unrolls as it moves, and the rod it slides on.' },
+    { id: 'scanbed', step: 6, name: 'Scanner unit', out: [0, 9, -2],
+      does: 'The whole scanner sits on the print engine like a lid. It lifts on a hinge so you can reach the ink.',
+      look: 'Its own motor and belt, separate from the printer. Two flat cables run down to the main board.' },
+    { id: 'panel', step: 4, name: 'Control panel and screen', out: [0, 4, 14],
+      does: 'The buttons, the 2.4-inch colour screen and the memory-card slots beside them, on their own little board.',
+      look: 'Buttons are often carbon pads on a rubber sheet pressing onto gold contacts. The screen connects with a fragile ribbon: flip the latch before you pull.' },
+    { id: 'trays', step: 3, name: 'Paper trays', out: [0, -2, 18],
+      does: 'Main tray for 100 sheets, a photo tray for 10×15 cm paper above it, and the output tray on top.',
+      look: 'The photo tray is moved in and out of the paper path by the printer itself, using the same motor that feeds paper.' },
+    { id: 'rear', step: 3, name: 'Rear access door', out: [0, 0, -16],
+      does: 'Comes off to clear jams. The optional two-sided printing unit goes in this slot instead of the plain door.',
+      look: 'The rollers on the inside face are idlers: they only press paper against driven rollers.' },
+    { id: 'shell', step: 7, name: 'Outer shell', out: [0, 0, 0], spread: true,
+      does: 'Cosmetic plastic. It carries almost no load: the metal frame inside does that.',
+      look: 'Torx screws plus hidden clips. The clips are the usual reason a panel won\'t budge, so feel along the seams before you lever.' },
+    { id: 'cartridges', step: 1, name: 'Six ink cartridges (HP 02)', out: [0, 16, 6],
+      does: 'Black, cyan, magenta, yellow, light cyan and light magenta. On this printer they are only ink tanks: there are no nozzles on them.',
+      look: 'A chip on each one reports the ink level. The light inks let pale photo areas get dots that aren\'t visible as dots.' },
+    { id: 'printhead', step: 1, name: 'Printhead', out: [0, 10, 12],
+      does: 'Where the printing happens. Thousands of nozzles, each with a tiny resistor behind it; a pulse of current boils a thin layer of ink and the bubble shoots out a drop of a few picolitres.',
+      look: 'Under a magnifier the nozzle plate shows rows of holes. Don\'t touch the plate or the copper contacts.' },
+    { id: 'carriage', step: 9, name: 'Carriage', out: [-4, 8, 10],
+      does: 'Carries the printhead and inks back and forth across the page, up to dozens of times a second.',
+      look: 'An optical sensor on its back straddles the encoder strip, and a wide flex cable carries power and data to the head.' },
+    { id: 'rod', step: 9, name: 'Carriage rod', out: [0, 6, -10],
+      does: 'A smooth, ground steel rod the carriage slides on.',
+      look: 'Worth keeping: straight, hard and smooth, for a camera slider or a linear-motion project.' },
+    { id: 'encoder', step: 9, name: 'Encoder strip', out: [0, 12, -12],
+      does: 'Clear plastic film printed with hundreds of fine black lines per inch. As the carriage passes, the sensor counts lines, so the printer knows where the head is to a fraction of a millimetre and when to fire.',
+      look: 'Hold it up to the light. It hangs from a spring at one end to keep it taut. Ink mist on it is a classic cause of carriage errors.' },
+    { id: 'drive', step: 9, name: 'Carriage motor and belt', out: [10, 4, -10],
+      does: 'A plain DC motor, not a stepper, with a toothed belt to the carriage. The encoder strip does the counting.',
+      look: 'A spring on the idler pulley keeps the belt tight. Motor, belt and pulleys are all reusable.' },
+    { id: 'service', step: 10, name: 'Service station', out: [14, 6, 6],
+      does: 'Where the head parks. Rubber caps seal the nozzles so they don\'t dry out, a wiper cleans the plate, and the head "spits" ink into it to clear blocked nozzles.',
+      look: 'Every spit and cleaning cycle ends up in the felt below. That spent ink is why a printer uses ink even when it hardly prints.' },
+    { id: 'absorber', step: 10, name: 'Ink absorber felt', out: [12, -4, -8],
+      does: 'A felt pad soaked with years of waste ink.',
+      look: 'Messy and permanent: bag it in a zip bag straight away and wear gloves.' },
+    { id: 'board', step: 8, name: 'Main board and Wi-Fi card', out: [-14, 2, 0],
+      does: 'The printer\'s computer: a main chip from HP, memory, motor drivers, and the USB and Ethernet sockets. The Wi-Fi is a separate small card.',
+      look: 'Read the chip markings and look them up. The motor driver chips sit near the motor connectors with heatsinking copper around them.' },
+    { id: 'psu', step: 8, name: 'Power module', out: [8, 0, -16],
+      does: 'Turns mains AC into the low-voltage DC the printer runs on. On this series it is a sealed brick that slides into the back.',
+      look: 'Read the label for its part number and output (32 V on this family), but don\'t open it: the capacitors inside can hold a charge.' },
+    { id: 'paper', step: 11, name: 'Paper path', out: [0, -4, 12],
+      does: 'A pick roller takes one sheet off the tray, the rubber-coated feed roller moves it forward one band at a time, and star wheels at the exit hold the wet print down without smudging it.',
+      look: 'The clear disc on the end of the feed roller is a second encoder, so paper moves in steps as exact as the carriage\'s.' },
+    { id: 'paperdrive', step: 11, name: 'Paper motor and gears', out: [-10, -2, -4],
+      does: 'One DC motor runs the pick roller, the feed roller, the photo tray and the service station, switched between them by a gear train and clutches.',
+      look: 'This is the clever part of the machine: watch which gear engages as you turn the motor shaft by hand.' },
+    { id: 'chassis', step: 0, name: 'Frame and base', out: [0, 0, 0],
+      does: 'Stamped steel and plastic that hold everything square. The rod, the paper path and the head must stay parallel to within a hair.',
+      look: 'What\'s left at the end. The steel side plates are good stock for brackets.' },
+];
+
+const steps = [
+    { title: 'Before you start', parts: [],
+      text: [
+          'It has no cord, so it\'s already unplugged. Keep it that way for the whole job.',
+          'Work over newspaper with gloves on. There\'s ink in the head, the service station and the felt under it.',
+          'Photograph every connector before you unplug it and every layer before you take it off. Put each step\'s screws in a labelled cup or a zip bag.',
+          'You need a Phillips #1 and #2, Torx T10 and T15, a plastic spudger or an old bank card, small pliers and tweezers.',
+      ] },
+    { title: 'Inks and printhead', parts: ['cartridges', 'printhead'],
+      text: [
+          'Lift the scanner unit up on its hinge to open the ink area. With no power, the carriage may be parked over the service station on the right.',
+          'Press each cartridge tab and pull it out. Then lift the grey latch on the carriage and lift the printhead straight up.',
+          'Look at the nozzle plate under a magnifier, then put the head in a bag. If it won\'t come out because the carriage is locked in its park position, leave it and do it at step 9.',
+      ] },
+    { title: 'Lid and document feeder', parts: ['lid'],
+      text: [
+          'Open the lid all the way up. Lids like this usually lift straight off their hinges at the top of their swing.',
+          'Its cable runs to the scanner unit: unplug it gently and note which way it went in.',
+          'Turn the feeder over and find the pick roller and the separation pad.',
+      ] },
+    { title: 'Trays and rear door', parts: ['trays', 'rear'],
+      text: [
+          'Pull the main tray out. The photo and output trays slide out or unclip once it\'s gone.',
+          'Squeeze the tabs on the rear access door and pull it off.',
+      ] },
+    { title: 'Control panel', parts: ['panel'],
+      text: [
+          'Pry the panel\'s bezel up from the bottom edge with the spudger. Expect clips, then a few small screws under it.',
+          'Flip up the latch on the screen\'s ribbon cable before you slide it out. These ribbons tear easily.',
+      ] },
+    { title: 'Scanner glass and scan bar', parts: ['glass', 'scanbar'],
+      text: [
+          'The glass is held by the bezel around it. Take out the screws under the lid hinges and lift the bezel, then lift the glass by its edges.',
+          'Now you can see the scan bar on its rod, its belt and its small motor. Slide it by hand and watch the flat cable fold.',
+      ] },
+    { title: 'Scanner unit off', parts: ['scanbed'],
+      text: [
+          'Unplug the scanner\'s flat cables from the main board (flip the latches first). Take out its hinge screws and lift the whole scanner unit off the print engine.',
+          'The printer underneath is now open from the top, like an engine bay.',
+      ] },
+    { title: 'Outer shell', parts: ['shell'],
+      text: [
+          'Take the side panels off: Torx screws at the back and underneath, then clips along the seams. Work the spudger along a seam until each clip pops.',
+          'The front bezel comes off last.',
+      ] },
+    { title: 'Electronics', parts: ['board', 'psu'],
+      text: [
+          'Photograph the main board, then unplug every cable. Flat cables have a latch that flips up or slides out; round cables pull by the plug, never the wires.',
+          'Unscrew the board and the Wi-Fi card. The power module slides out of the back.',
+          'Don\'t open the power module. It\'s a sealed mains supply and its capacitors can hold a charge.',
+      ] },
+    { title: 'Carriage, rod, belt and encoder', parts: ['carriage', 'rod', 'encoder', 'drive'],
+      text: [
+          'Unhook the encoder strip at its spring end and slide it out. Hold it up to a light to see the lines.',
+          'Push the belt idler against its spring to slacken the belt, and slip the belt off.',
+          'Undo the rod\'s clips or screws at the side frames and slide the rod out through the carriage. Then lift the carriage out with its flex cable, and unscrew the carriage motor.',
+      ] },
+    { title: 'Service station and ink felt', parts: ['service', 'absorber'],
+      text: [
+          'The service station unscrews from the right side frame. Look at the caps and the wiper.',
+          'Lift the felt straight into a zip bag. This is the messiest step.',
+      ] },
+    { title: 'Paper path and gears', parts: ['paper', 'paperdrive'],
+      text: [
+          'Before you take the gear train apart, turn the paper motor by hand and watch which rollers turn and when.',
+          'Remove the gear cover on the left side frame, photograph the gears, then take out the motor, the encoder disc, the feed roller and the pick roller.',
+      ] },
+    { title: 'What\'s left', parts: [],
+      text: [
+          'The frame and base. Sort the parts: motors, belts, pulleys, rods, springs, gears and screws into a parts box; ink parts and the felt into the bin.',
+          'Take the board, power module and screen to an electronics recycling point.',
+      ] },
+];
+
+const ideas = [
+    ['How the drops are made', 'A thermal inkjet head heats a resistor behind each nozzle for a few millionths of a second. The ink touching it boils, and the bubble pushes out one drop. Thousands of nozzles fire thousands of times a second.'],
+    ['How it knows where it is', 'Not with stepper motors. Both moving parts, the carriage and the paper, run on cheap DC motors, and each one has an optical encoder (the strip and the disc) counting fine lines as it moves.'],
+    ['Why it uses ink when idle', 'The service station keeps the nozzles alive by capping, wiping and "spitting". All of that ink goes into the felt, which is why an unused printer still empties its cartridges.'],
+    ['How the scanner sees', 'The scanner only ever sees one line. A strip of light and a strip of sensors move down the page, and the image is built up line by line, much like the print head builds a page band by band.'],
+];
+
+const salvage = [
+    ['Keep', 'DC motors (two or three), the steel carriage rod, timing belt and pulleys, springs, the gear train, screws, the encoder strip and its sensor.'],
+    ['Maybe', 'The screen (hard to drive without its board), rubber rollers, and small optical sensors (the paper flags use the same slotted sensor you can buy for an Arduino).'],
+    ['Recycle', 'Main board, Wi-Fi card, power module, scanner. Take them to an e-waste point.'],
+    ['Bin', 'The ink felt, the service station, and any cartridges, bagged.'],
+];
+---
+
+<Layout
+    title="Taking apart a printer · HP Photosmart C6180"
+    description="A teardown guide to an old HP Photosmart C6180 all-in-one, with a 3D model you can pull apart part by part: the printhead and inks, the encoder strip, the service station, the paper path and the scanner."
+    image={`${DIR}/printer.webp`}
+>
+    <main class="max-w-6xl mx-auto px-4 py-8 text-gray-100">
+        <p class="text-sm mb-4"><a href="/3d" class="text-amber-300 hover:underline">← 3D</a></p>
+        <header class="mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold">Taking apart a printer</h1>
+            <p class="mt-1 text-lg text-amber-300">HP Photosmart C6183 (C6180 series)</p>
+            <p class="mt-3 text-gray-300 max-w-3xl">
+                I picked up one of these all-in-ones without a power cord, so instead of printing with it I'm taking it apart to see how a printer works.
+                It came out around 2006, takes six HP 02 inks into a separate printhead, and has a flatbed scanner, a document feeder, Wi-Fi and Ethernet.
+                The model below pulls apart in the order you'd take the real one apart. Step through the guide or click any part.
+            </p>
+            <p class="mt-2 text-sm text-gray-400">The model is built from simple shapes with approximate proportions, not from HP drawings. Your unit's screws and clips may be in different places, so photograph as you go.</p>
+        </header>
+
+        <section class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-12">
+            <div class="lg:col-span-3 lg:sticky lg:top-4 self-start">
+                <div class="rounded-xl overflow-hidden border border-gray-700 bg-gray-900">
+                    <div id="pt-viewer" class="w-full relative touch-none" style="height: 460px;">
+                        <noscript><img src={`${DIR}/printer.webp`} alt="A 3D model of the printer, pulled apart" class="w-full h-full object-contain" /></noscript>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3 p-3 border-t border-gray-700 text-sm">
+                        <label for="pt-explode" class="text-gray-300">Pull apart</label>
+                        <input id="pt-explode" type="range" min="0" max="1" step="0.01" value="0" class="flex-1 min-w-[8rem] accent-amber-500" />
+                        <button id="pt-spin" class="px-3 py-1 rounded border border-gray-600 hover:border-amber-400">Pause spin</button>
+                    </div>
+                    <div id="pt-info" class="p-4 border-t border-gray-700 min-h-[8rem]" aria-live="polite">
+                        <p class="text-gray-400 text-sm">Click a part to see what it does and what to look for.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-2xl font-bold">The teardown</h2>
+                    <div class="flex gap-2 text-sm">
+                        <button id="pt-prev" class="px-3 py-1 rounded border border-gray-600 hover:border-amber-400" aria-label="Previous step">←</button>
+                        <button id="pt-next" class="px-3 py-1 rounded border border-gray-600 hover:border-amber-400" aria-label="Next step">→</button>
+                    </div>
+                </div>
+                <ol class="space-y-2" id="pt-steps">
+                    {steps.map((s, i) => (
+                        <li>
+                            <button data-step={i} class="pt-step w-full text-left rounded-lg border border-gray-700 bg-gray-900/60 p-3 hover:border-amber-400">
+                                <span class="text-xs text-gray-400">Step {i}</span>
+                                <span class="block font-semibold">{s.title}</span>
+                                <span class="pt-body hidden">
+                                    <ul class="mt-2 space-y-1.5 text-sm text-gray-300 list-disc pl-4">
+                                        {s.text.map((t) => <li>{t}</li>)}
+                                    </ul>
+                                    {s.parts.length > 0 && (
+                                        <span class="mt-2 block text-xs text-amber-300">Comes out: {s.parts.map((id) => parts.find((p) => p.id === id)!.name).join(' · ')}</span>
+                                    )}
+                                </span>
+                            </button>
+                        </li>
+                    ))}
+                </ol>
+            </div>
+        </section>
+
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold mb-4">What you learn from it</h2>
+            <div class="grid sm:grid-cols-2 gap-4">
+                {ideas.map(([h, t]) => (
+                    <div class="rounded-xl border border-gray-700 bg-gray-900/60 p-4">
+                        <h3 class="font-semibold text-amber-300">{h}</h3>
+                        <p class="mt-1 text-sm text-gray-300">{t}</p>
+                    </div>
+                ))}
+            </div>
+        </section>
+
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold mb-4">What to keep</h2>
+            <dl class="grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                {salvage.map(([h, t]) => (
+                    <div><dt class="font-semibold">{h}</dt><dd class="text-gray-300">{t}</dd></div>
+                ))}
+            </dl>
+        </section>
+
+        <section class="mb-12 rounded-xl border border-gray-700 bg-gray-900/60 p-5">
+            <h2 class="text-xl font-bold mb-2">Should you get it running first?</h2>
+            <p class="text-sm text-gray-300 max-w-3xl">
+                Seeing it move before you take it apart teaches a lot: the carriage homing, the service station wiping, the scan bar sweeping.
+                If the power module is still in the back, all you need is a mains cord that fits its socket. Resellers list the module for this series as
+                HP 0957-2105 (32 V), with 0957-2259, 0957-2271 and 0957-2230 as substitutes, but check the label on yours.
+                Printing is another matter: HP stopped making 02 cartridges around 2020, and the ones still sold are mostly remanufactured or third-party.
+                For a teardown, you don't need any ink.
+            </p>
+        </section>
+    </main>
+
+    <script type="application/json" id="pt-data" set:html={JSON.stringify({ parts, steps: steps.map((s) => s.parts) })} />
+
+    <script is:inline type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/+esm';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js/+esm';
+        import { RoundedBoxGeometry } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/geometries/RoundedBoxGeometry.js/+esm';
+        import { RoomEnvironment } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js/+esm';
+
+        const { parts, steps } = JSON.parse(document.getElementById('pt-data').textContent);
+        const byId = Object.fromEntries(parts.map((p) => [p.id, p]));
+        const host = document.getElementById('pt-viewer');
+        const info = document.getElementById('pt-info');
+        const slider = document.getElementById('pt-explode');
+        const spinBtn = document.getElementById('pt-spin');
+        const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        host.appendChild(renderer.domElement);
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111318);
+        scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+        const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+        sun.position.set(-40, 80, 60);
+        scene.add(sun, new THREE.HemisphereLight(0xdde6ff, 0x202024, 0.6));
+        const camera = new THREE.PerspectiveCamera(35, 1, 1, 2000);
+        camera.position.set(70, 62, 95);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 12, 0);
+        controls.enableDamping = true;
+        controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+        controls.autoRotateSpeed = 0.8;
+        controls.minDistance = 40;
+        controls.maxDistance = 260;
+        spinBtn.textContent = controls.autoRotate ? 'Pause spin' : 'Spin';
+
+        // ---------- materials ----------
+        const M = {};
+        const mat = (name, color, o = {}) => (M[name] ??= new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0, ...o }));
+        mat('shell', 0x2a2d33, { roughness: 0.5 });
+        mat('lidtop', 0x8d939c, { roughness: 0.35, metalness: 0.3 });
+        mat('silver', 0xb9bdc4, { roughness: 0.35, metalness: 0.2 });
+        mat('dark', 0x1b1c20, { roughness: 0.6 });
+        mat('grey', 0x6b7079);
+        mat('light', 0xd6d8dc, { roughness: 0.45 });
+        mat('steel', 0xc8ccd2, { metalness: 0.9, roughness: 0.25 });
+        mat('rubber', 0x101010, { roughness: 0.9 });
+        mat('glass', 0x9fc6e0, { transparent: true, opacity: 0.35, roughness: 0.05, metalness: 0.1 });
+        mat('film', 0xdfe8ee, { transparent: true, opacity: 0.55, roughness: 0.2, side: THREE.DoubleSide });
+        mat('pcb', 0x1f6b3a, { roughness: 0.6 });
+        mat('chip', 0x16171a, { roughness: 0.4 });
+        mat('copper', 0xc88a4a, { metalness: 0.8, roughness: 0.35 });
+        mat('felt', 0x2a1f2e, { roughness: 1 });
+        mat('screen', 0x1d4f8a, { emissive: 0x1a4a90, emissiveIntensity: 0.7, roughness: 0.2 });
+        mat('brass', 0xb5925a, { metalness: 0.6, roughness: 0.4 });
+        mat('white', 0xeeeeee, { roughness: 0.5 });
+        const inks = { K: 0x111111, C: 0x00a6e0, M: 0xd81b7a, Y: 0xf2d000, LC: 0x7fd3f0, LM: 0xf29ac8 };
+
+        // ---------- building blocks (cm; x = width, y = up, z = toward you) ----------
+        const groups = {};
+        for (const p of parts) {
+            const g = new THREE.Group();
+            g.userData.id = p.id;
+            groups[p.id] = g;
+            scene.add(g);
+        }
+        function put(id, mesh, [x, y, z], rot) {
+            mesh.position.set(x, y, z);
+            if (rot) mesh.rotation.set(...rot);
+            mesh.castShadow = true;
+            mesh.userData.id = id;
+            // each mesh gets its own material copy so a part can glow and fade on its own
+            mesh.material = mesh.material.clone();
+            mesh.userData.base = { emissive: mesh.material.emissive.getHex(), ei: mesh.material.emissiveIntensity, op: mesh.material.opacity, tr: mesh.material.transparent };
+            groups[id].add(mesh);
+            return mesh;
+        }
+        const box = (id, [w, h, d], m, pos, rot, r = 0) =>
+            put(id, new THREE.Mesh(r ? new RoundedBoxGeometry(w, h, d, 3, r) : new THREE.BoxGeometry(w, h, d), M[m]), pos, rot);
+        // cylinder along an axis: 'x' | 'y' | 'z'
+        const cyl = (id, r, len, m, pos, axis = 'x', seg = 32) => {
+            const rot = axis === 'x' ? [0, 0, Math.PI / 2] : axis === 'z' ? [Math.PI / 2, 0, 0] : undefined;
+            return put(id, new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, seg), M[m]), pos, rot);
+        };
+
+        // frame and base
+        box('chassis', [44, 2.5, 38], 'dark', [0, 1.25, 0], null, 0.6);
+        box('chassis', [1, 10, 30], 'steel', [-21, 7.5, -2]);
+        box('chassis', [1, 10, 30], 'steel', [21, 7.5, -2]);
+        box('chassis', [40, 6, 0.6], 'steel', [0, 6, -13]);
+        for (const x of [-18, 18]) for (const z of [-16, 16]) cyl('chassis', 1.2, 0.6, 'rubber', [x, -0.1, z], 'y', 16);
+
+        // outer shell: sides, back strip and front bezel, so the inside stays visible
+        const shell = [
+            [[1.6, 12, 39], [-22.6, 8, 0], [-1, 0, 0]],
+            [[1.6, 12, 39], [22.6, 8, 0], [1, 0, 0]],
+            [[44, 12, 1.4], [0, 8, -19.6], [0, 0, -1]],
+            [[44, 3, 1.4], [0, 12.6, 19.6], [0, 0, 1]],
+        ];
+        for (const [size, pos, dir] of shell) {
+            const m = box('shell', size, 'shell', pos, null, 0.5);
+            m.userData.out = dir;
+        }
+
+        // paper trays (main, photo, output)
+        box('trays', [30, 2.6, 20], 'grey', [0, 4.3, 12], null, 0.4);
+        box('trays', [30, 0.6, 2], 'shell', [0, 5.4, 22.5], null, 0.2);
+        box('trays', [16, 0.8, 10], 'light', [0, 6.6, 9]);
+        box('trays', [28, 0.5, 16], 'grey', [0, 8.3, 16], [-0.08, 0, 0]);
+        box('trays', [0.4, 4, 18], 'light', [-12, 6, 12]);
+
+        // rear access door
+        box('rear', [22, 8, 1.2], 'shell', [0, 7, -20.8], null, 0.4);
+        cyl('rear', 0.7, 18, 'rubber', [0, 7, -20], 'x');
+
+        // paper path
+        cyl('paper', 0.9, 34, 'rubber', [0, 5.6, 4], 'x');
+        cyl('paper', 0.35, 38, 'steel', [0, 5.6, 4], 'x');
+        cyl('paper', 1.8, 0.15, 'film', [-18.5, 5.6, 4], 'x', 48);
+        cyl('paper', 0.3, 34, 'steel', [0, 6.8, 8.5], 'x');
+        for (let i = 0; i < 8; i++) cyl('paper', 0.7, 0.15, 'silver', [-14 + i * 4, 6.8, 8.5], 'x', 10);
+        cyl('paper', 1.6, 3.5, 'rubber', [-4, 4.8, -6], 'x');
+        cyl('paper', 1.6, 3.5, 'rubber', [6, 4.8, -6], 'x');
+        cyl('paper', 0.3, 20, 'steel', [1, 4.8, -6], 'x');
+
+        // paper motor and gear train, on the left frame
+        cyl('paperdrive', 1.7, 4.5, 'silver', [-17.5, 4.8, -4], 'x');
+        cyl('paperdrive', 0.5, 1, 'brass', [-20.2, 4.8, -4], 'x');
+        [[3.2, 5.6, 2], [2.2, 4.2, -1], [2.6, 7.8, -6], [1.6, 9.5, -9]].forEach(([r, y, z]) => {
+            cyl('paperdrive', r, 0.6, 'white', [-20.4, y, z], 'x', 24);
+        });
+
+        // service station and the felt under it
+        box('service', [8, 3.4, 7], 'grey', [15.5, 6.5, -1], null, 0.3);
+        for (let i = 0; i < 3; i++) box('service', [1.6, 0.4, 4], 'rubber', [13 + i * 2.5, 8.4, -1]);
+        box('service', [6, 1.2, 0.3], 'rubber', [15.5, 8.8, 2.4]);
+        box('absorber', [14, 1.2, 12], 'felt', [11, 3.1, -9]);
+
+        // carriage drive: rod, belt, motor, encoder strip
+        cyl('rod', 0.45, 40, 'steel', [0, 10.5, -3], 'x');
+        box('drive', [36, 0.7, 0.25], 'rubber', [0, 9.2, -5.2]);
+        box('drive', [36, 0.7, 0.25], 'rubber', [0, 9.2, -6.4]);
+        cyl('drive', 0.9, 1.4, 'silver', [-18.5, 9.2, -5.8], 'y');
+        cyl('drive', 0.9, 1.4, 'silver', [18.5, 9.2, -5.8], 'y');
+        cyl('drive', 1.5, 3.4, 'silver', [18.5, 6.6, -5.8], 'y');
+        put('encoder', new THREE.Mesh(new THREE.PlaneGeometry(40, 0.8), M.film), [0, 12.4, -4.6]);
+
+        // carriage, printhead and inks (parked on the left so the service station shows)
+        const cx = -5;
+        box('carriage', [10, 5, 8], 'light', [cx, 10.8, 0], null, 0.5);
+        box('carriage', [4, 1.6, 1], 'dark', [cx, 12.4, -4.4]);
+        box('carriage', [9, 0.15, 6], 'copper', [cx + 4, 8.6, -6.5], [0, 0, -0.5]);
+        box('printhead', [8, 1.8, 5.6], 'dark', [cx, 7.6, 0.4], null, 0.2);
+        box('printhead', [6.5, 0.12, 2], 'silver', [cx, 6.66, 0.4]);
+        Object.values(inks).forEach((c, i) => {
+            const m = box('cartridges', [1.15, 4.4, 5.6], 'grey', [cx - 3.6 + i * 1.44, 14.6, 0.4], null, 0.15);
+            m.material.color.setHex(c);
+            m.userData.base.color = c;
+        });
+
+        // main board on the left wall, Wi-Fi card, power module out the back
+        box('board', [0.25, 9, 22], 'pcb', [-20.2, 8.4, -2]);
+        [[3, 3, -6, 'chip'], [1.4, 2, -1.5, 'chip'], [1.4, 2, 1, 'chip'], [2.4, 1.6, 5, 'chip'], [1.6, 3.2, -11, 'silver']].forEach(([h, d, z, m]) => {
+            box('board', [0.6, h, d], m, [-19.8, 8.4, z]);
+        });
+        box('board', [0.8, 1.2, 1.6], 'silver', [-20.2, 4.8, -12.4]);
+        box('board', [0.2, 3, 5], 'pcb', [-19.7, 10.4, 7]);
+        box('psu', [12, 4.6, 7], 'dark', [13, 5.5, -18], null, 0.5);
+        box('psu', [2.6, 1.6, 0.4], 'rubber', [13, 5.5, -21.6]);
+        box('psu', [6, 2.2, 0.05], 'white', [13, 7.81, -18], [-Math.PI / 2, 0, 0]);
+
+        // scanner unit: tub with a rim, its own motor, rail and belt
+        box('scanbed', [44, 1, 36], 'shell', [0, 14.6, -1], null, 0.4);
+        box('scanbed', [44, 4.4, 1.4], 'shell', [0, 17.2, 16.3], null, 0.4);
+        box('scanbed', [44, 4.4, 1.4], 'shell', [0, 17.2, -18.3], null, 0.4);
+        box('scanbed', [1.4, 4.4, 36], 'shell', [-21.3, 17.2, -1], null, 0.4);
+        box('scanbed', [1.4, 4.4, 36], 'shell', [21.3, 17.2, -1], null, 0.4);
+        cyl('scanbed', 0.3, 36, 'steel', [0, 15.6, -10], 'x');
+        cyl('scanbed', 1, 2.2, 'silver', [17, 16, 12], 'y');
+        box('scanbed', [34, 0.3, 0.2], 'rubber', [0, 15.6, 12.4]);
+
+        box('scanbar', [2.4, 2.2, 31], 'light', [-8, 16.5, -1], null, 0.3);
+        box('scanbar', [0.5, 0.2, 29], 'screen', [-8, 17.65, -1]);
+        box('scanbar', [6, 0.1, 3.5], 'copper', [-4, 15.25, 8]);
+
+        box('glass', [36, 0.35, 28], 'glass', [1.5, 19.5, -1]);
+        box('glass', [36, 0.36, 0.8], 'white', [1.5, 19.52, -14.6]);
+        box('glass', [4, 0.35, 28], 'glass', [-18, 19.5, -1]);
+
+        // lid with the document feeder on top
+        box('lid', [44, 1.4, 36], 'lidtop', [0, 20.6, -1], null, 0.5);
+        box('lid', [15, 4, 34], 'lidtop', [-14.5, 23.2, -1], null, 1);
+        box('lid', [12, 0.4, 20], 'grey', [-1, 24.2, -3], [0, 0, 0.18]);
+        cyl('lid', 1, 3, 'rubber', [-17, 22.4, -1], 'z');
+        box('lid', [4, 0.3, 6], 'rubber', [-12.5, 21.3, -1]);
+
+        // control panel, tilted toward you, with the screen and buttons
+        const tilt = [0.5, 0, 0];
+        box('panel', [30, 1.2, 6], 'shell', [0, 14.4, 20.4], tilt, 0.4);
+        box('panel', [5.2, 0.2, 4], 'screen', [-6, 15.08, 20.1], tilt);
+        [[3, 0], [6, 0], [9, 0], [12, 0], [3, 2.2], [6, 2.2]].forEach(([x, dz]) => {
+            cyl('panel', 0.6, 0.4, 'light', [x - 2, 15.2 - dz * 0.2, 19.1 + dz * 0.6], 'y', 16).rotation.x = 0.5;
+        });
+        box('panel', [4, 0.3, 1], 'rubber', [9, 13.6, 22.4]);
+
+        // ---------- pull-apart and steps ----------
+        for (const p of parts) groups[p.id].userData.out = new THREE.Vector3(...p.out);
+        let explode = 0, step = -1, picked = null;
+        const shown = new Set(parts.map((p) => p.id)); // parts still in the machine
+        const anim = Object.fromEntries(parts.map((p) => [p.id, { t: 0, f: 1 }])); // t = pulled out, f = visible
+
+        function setStep(i) {
+            step = i;
+            const now = new Set(steps[i] ?? []);
+            shown.clear();
+            for (const p of parts) {
+                // a part is gone once its step is past; it's pulled out during its own step
+                if (!(p.step && p.step < i)) shown.add(p.id);
+            }
+            document.querySelectorAll('.pt-step').forEach((b) => {
+                const on = Number(b.dataset.step) === i;
+                b.classList.toggle('border-amber-400', on);
+                b.querySelector('.pt-body').classList.toggle('hidden', !on);
+            });
+            if (now.size) showInfo([...now][0]);
+            else if (i === 0) info.innerHTML = '<p class="text-gray-400 text-sm">Step through the guide: each step pulls its parts out of the model and hides the ones already removed.</p>';
+        }
+
+        function showInfo(id) {
+            const p = byId[id];
+            picked = id;
+            info.innerHTML = `<h3 class="font-semibold text-amber-300">${esc(p.name)}</h3>
+                <p class="mt-1 text-sm text-gray-300">${esc(p.does)}</p>
+                <p class="mt-2 text-sm text-gray-400"><span class="text-gray-200">Look for:</span> ${esc(p.look)}</p>
+                ${p.step ? `<p class="mt-2 text-xs text-gray-500">Comes out in step ${p.step}.</p>` : ''}`;
+        }
+
+        document.querySelectorAll('.pt-step').forEach((b) => b.addEventListener('click', () => setStep(Number(b.dataset.step))));
+        document.getElementById('pt-prev').addEventListener('click', () => setStep(Math.max(0, step - 1)));
+        document.getElementById('pt-next').addEventListener('click', () => setStep(Math.min(steps.length - 1, step + 1)));
+        slider.addEventListener('input', () => { explode = Number(slider.value); });
+        spinBtn.addEventListener('click', () => {
+            controls.autoRotate = !controls.autoRotate;
+            spinBtn.textContent = controls.autoRotate ? 'Pause spin' : 'Spin';
+        });
+
+        // click to identify (ignores drags)
+        const ray = new THREE.Raycaster();
+        let down = null;
+        renderer.domElement.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
+        renderer.domElement.addEventListener('pointerup', (e) => {
+            if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+            const r = renderer.domElement.getBoundingClientRect();
+            ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+            const hit = ray.intersectObjects(scene.children, true).find((h) => h.object.visible && h.object.material.opacity > 0.3 && h.object.userData.id);
+            if (hit) showInfo(hit.object.userData.id);
+        });
+
+        function resize() {
+            const w = host.clientWidth, h = host.clientHeight;
+            renderer.setSize(w, h);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+        }
+        addEventListener('resize', resize);
+        resize();
+
+        const clock = new THREE.Clock();
+        renderer.setAnimationLoop(() => {
+            const dt = Math.min(clock.getDelta(), 0.05), time = clock.elapsedTime;
+            const cur = new Set(steps[step] ?? []);
+            for (const p of parts) {
+                const a = anim[p.id], g = groups[p.id];
+                const target = cur.has(p.id) ? 1 : explode;
+                a.t += (target - a.t) * Math.min(1, dt * 5);
+                a.f += ((shown.has(p.id) ? 1 : 0) - a.f) * Math.min(1, dt * 5);
+                if (p.id === 'shell') {
+                    // the shell's panels each fly outward on their own
+                    g.children.forEach((m) => {
+                        const [x, y, z] = m.userData.out;
+                        m.userData.home ??= m.position.toArray();
+                        m.position.set(...m.userData.home);
+                        m.position.x += x * 12 * a.t; m.position.y += y * 12 * a.t; m.position.z += z * 12 * a.t;
+                    });
+                } else {
+                    g.position.copy(g.userData.out).multiplyScalar(a.t);
+                }
+                g.visible = a.f > 0.02;
+                const glow = (cur.has(p.id) || picked === p.id) ? 0.25 + 0.15 * Math.sin(time * 4) : 0;
+                g.children.forEach((m) => {
+                    const b = m.userData.base;
+                    m.material.transparent = b.tr || a.f < 0.99;
+                    m.material.opacity = b.op * a.f;
+                    m.material.emissive.setHex(glow ? 0xf59e0b : b.emissive);
+                    m.material.emissiveIntensity = glow || b.ei;
+                });
+            }
+            controls.update();
+            renderer.render(scene, camera);
+        });
+
+        // ?explode=0.6&step=3&still for the card screenshot
+        const q = new URLSearchParams(location.search);
+        if (q.has('explode')) { explode = Number(q.get('explode')); slider.value = explode; }
+        if (q.has('still')) { controls.autoRotate = false; spinBtn.textContent = 'Spin'; }
+        setStep(q.has('step') ? Number(q.get('step')) : 0);
+    </script>
+</Layout>
