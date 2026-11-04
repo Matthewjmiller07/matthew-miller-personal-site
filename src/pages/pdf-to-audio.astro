@@ -1,0 +1,177 @@
+---
+// PDF to Audio — prototype. Unlisted personal tool: upload a textbook-chapter PDF,
+// extract the text in the browser, synthesize speech on a GPU through the pdf-to-audio Worker
+// (Kokoro TTS, voice af_bella), encode an MP3 in the browser, and optionally publish it to a
+// private podcast feed.
+// No nav link, noindex, excluded from the sitemap (see astro.config.mjs).
+// Audio NEVER touches Netlify: MP3s live in Cloudflare R2 via the pdf-to-audio Worker.
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="PDF to Audio"
+  description="Turn a textbook chapter PDF into private podcast audio in seconds."
+>
+  <meta name="robots" content="noindex, nofollow" slot="head" />
+  <main class="mx-auto max-w-3xl px-4 py-10">
+    <p class="text-sm font-semibold tracking-widest text-amber-700 uppercase">Prototype · unlisted</p>
+    <h1 class="mt-2 text-3xl font-bold">PDF to Audio</h1>
+    <p class="mt-3 text-lg text-stone-600">
+      Drop in a textbook chapter as a PDF, get audio you can listen to anywhere.
+      A 30-minute chapter takes about a minute.
+    </p>
+
+    <details class="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+      <summary class="cursor-pointer font-semibold">Before you start — three things to know</summary>
+      <ul class="mt-2 list-disc pl-5 space-y-1">
+        <li>
+          <strong>The text is sent out to be spoken.</strong> Your PDF stays on your
+          device, but the text you approve goes through a speech service (Replicate)
+          to become audio. Don't convert anything confidential.
+        </li>
+        <li>
+          <strong>PDF extraction is messy.</strong> Columns, running headers, footnotes
+          and page numbers can end up read aloud. Skim the extracted text before you
+          synthesize.
+        </li>
+        <li>
+          <strong>The feed is private by obscurity, not by password.</strong> Anyone
+          with the feed link can listen. Keep it to yourself — and only convert material
+          you have the right to listen to (your own textbooks, public-domain works).
+        </li>
+      </ul>
+    </details>
+
+    <section class="mt-8">
+      <h2 class="text-xl font-semibold">1 · Drop your PDF</h2>
+      <div
+        id="dropzone"
+        class="mt-3 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 p-6 text-center dark:border-stone-600 dark:bg-stone-800"
+      >
+        <p class="font-medium">Drop a PDF here, or click to choose one</p>
+        <p class="mt-1 text-sm text-stone-500">Your file never leaves your device.</p>
+        <input id="file-input" type="file" accept="application/pdf,.pdf" class="hidden" />
+      </div>
+      <p id="file-info" class="mt-2 text-sm text-stone-600"></p>
+    </section>
+
+    <section id="extract-section" class="mt-8 hidden">
+      <h2 class="text-xl font-semibold">2 · Check the text</h2>
+      <div class="mt-3">
+        <div class="h-2 w-full rounded bg-stone-200"><div id="extract-bar" class="h-2 rounded bg-emerald-600" style="width:0%"></div></div>
+        <p id="extract-status" class="mt-1 text-sm text-stone-600">Waiting…</p>
+      </div>
+      <p class="mt-3 text-sm text-stone-600">
+        <span id="extract-stats"></span>
+      </p>
+      <textarea
+        id="extracted-text"
+        rows="10"
+        class="mt-2 w-full rounded-lg border border-stone-300 bg-white p-3 font-mono text-sm text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
+        placeholder="Extracted text will appear here — edit it before synthesizing (delete headers, footnotes, garbled lines)."
+      ></textarea>
+      <p class="mt-1 text-xs text-stone-500">What you see here is exactly what will be read aloud.</p>
+    </section>
+
+    <section id="tts-section" class="mt-8 hidden">
+      <h2 class="text-xl font-semibold">3 · Make the audio</h2>
+      <div class="mt-3">
+        <div class="h-2 w-full rounded bg-stone-200"><div id="synth-bar" class="h-2 rounded bg-emerald-600" style="width:0%"></div></div>
+        <p id="synth-status" class="mt-1 text-sm text-stone-600">Not started.</p>
+      </div>
+      <button
+        id="synthesize-btn"
+        class="mt-4 rounded-lg bg-stone-900 px-5 py-2.5 font-medium text-white disabled:opacity-50"
+      >
+        Make the audio
+      </button>
+      <button
+        id="stop-btn"
+        class="ml-2 mt-4 hidden rounded-lg border border-stone-300 bg-white px-5 py-2.5 font-medium text-stone-700 disabled:opacity-50 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
+      >
+        Stop
+      </button>
+      <p class="mt-2 text-xs text-stone-500">
+        You can stop any time; finished audio is kept.
+      </p>
+    </section>
+
+    <section id="audio-section" class="mt-8 hidden">
+      <h2 class="text-xl font-semibold">4 · Listen</h2>
+      <audio id="player" controls class="mt-3 w-full"></audio>
+      <p id="audio-stats" class="mt-2 text-sm text-stone-600"></p>
+      <div class="mt-4 flex flex-wrap gap-3">
+        <a
+          id="download-mp3"
+          class="rounded-lg bg-emerald-700 px-5 py-2.5 font-medium text-white"
+          download
+        >Download MP3</a>
+      </div>
+    </section>
+
+    <section id="feed-section" class="mt-8 hidden">
+      <h2 class="text-xl font-semibold">5 · Add to your podcast app</h2>
+      <div id="upload-live">
+        <p class="mt-2 text-sm text-stone-600">
+          One feed collects the whole book — the link stays the same for later chapters.
+        </p>
+        <button
+          id="upload-btn"
+          class="mt-3 rounded-lg bg-stone-900 px-5 py-2.5 font-medium text-white disabled:opacity-50"
+        >
+          Add this chapter to my podcast feed
+        </button>
+        <p id="upload-status" class="mt-2 text-sm text-stone-600"></p>
+        <div id="feed-result" class="mt-3 hidden rounded-lg border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950">
+          <p class="text-sm font-semibold text-emerald-900">Your podcast feed</p>
+          <p class="mt-1 break-all font-mono text-sm" id="feed-url"></p>
+          <div class="mt-3 flex flex-wrap gap-3">
+            <button id="copy-feed" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white">Copy feed link</button>
+          </div>
+          <details class="mt-3 text-sm">
+            <summary class="cursor-pointer font-medium">How do I subscribe?</summary>
+            <ul class="mt-2 list-disc pl-5 space-y-1 text-stone-600">
+              <li><strong>Apple Podcasts:</strong> Library → ⋯ → Add a Show by URL, then paste the link.</li>
+              <li><strong>Overcast:</strong> + → Add URL, then paste the link.</li>
+              <li><strong>Any other app:</strong> look for "Add by URL" and paste the link.</li>
+            </ul>
+            <p class="mt-2 text-xs text-stone-500">Keep the link private — anyone with it can listen.</p>
+          </details>
+          <details class="mt-2 text-sm">
+            <summary class="cursor-pointer font-medium">Feed options</summary>
+            <div class="mt-2">
+              <button id="new-feed" class="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium dark:border-stone-600 dark:bg-stone-800">Start a new feed</button>
+              <p class="mt-1 text-xs text-stone-500">Starts a fresh feed with a new link. Your current feed keeps working.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+      <div id="upload-stub" class="hidden">
+        <p class="mt-2 text-sm text-stone-600">
+          Uploads are not connected yet on this build (Cloudflare R2 is not wired up).
+          The MP3 download above works fully. You can also download a feed file below —
+          its episode links point at the future feed location, so it will start working
+          once uploads are switched on.
+        </p>
+        <button id="download-feed" class="mt-3 rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium">
+          Download feed XML
+        </button>
+      </div>
+    </section>
+
+    <details class="mt-10 border-t border-stone-200 pt-6 text-sm text-stone-500">
+      <summary class="cursor-pointer font-medium text-stone-600">How it works</summary>
+      <p class="mt-2">
+        pdf.js extracts the text in your browser. Kokoro-82M (voice af_bella) speaks it
+        on a GPU, a dozen passages at a time, for about a cent per 30 minutes of audio.
+        lamejs encodes the MP3 in your browser. Publishing stores the MP3 in Cloudflare
+        R2 (free tier, no egress fees) and serves the feed from a Cloudflare Worker. No
+        audio ever touches this site's host.
+      </p>
+    </details>
+  </main>
+
+  <script>
+    import '../scripts/pdf-to-audio.ts';
+  </script>
+</Layout>
