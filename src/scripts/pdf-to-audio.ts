@@ -148,27 +148,42 @@ function chunkSentences(text: string): string[] {
 
 // --- 3. TTS ----------------------------------------------------------------
 
+// Phones crash on the WebGPU fp32 model (~311 MB download + GPU memory):
+// Android Chrome HAS WebGPU, so the old code tried it first and the tab died
+// before the WASM fallback could run. Go straight to WASM + q8 (~88 MB) on
+// phones and low-memory devices; desktops keep WebGPU fp32.
+function preferWebGpu(): boolean {
+  if (typeof navigator === 'undefined' || !('gpu' in navigator)) return false;
+  if (window.matchMedia?.('(pointer: coarse)').matches) return false;
+  const mem = (navigator as { deviceMemory?: number }).deviceMemory;
+  if (typeof mem === 'number' && mem < 8) return false;
+  return true;
+}
+
 async function loadTts(onProgress: (pct: number, label: string) => void) {
   if (tts) return tts;
-  const opts: Record<string, unknown> = {
-    // WebGPU + fp32 is the README-recommended combo (~311 MB first download).
-    dtype: 'fp32',
-    device: 'webgpu',
-    progress_callback: (p: { status: string; progress?: number; file?: string }) => {
-      if (typeof p.progress === 'number') onProgress(p.progress, p.file ?? p.status);
-    },
+  const progress_callback = (p: { status: string; progress?: number; file?: string }) => {
+    if (typeof p.progress === 'number') onProgress(p.progress, p.file ?? p.status);
   };
-  try {
-    tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', opts);
-  } catch (e) {
-    // WebGPU unavailable (or blocked) — fall back to WASM + q8 (~88 MB).
-    onProgress(0, 'WebGPU unavailable, falling back to WASM…');
-    tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
-      ...opts,
-      dtype: 'q8',
-      device: 'wasm',
-    });
+  if (preferWebGpu()) {
+    try {
+      // WebGPU + fp32 is the README-recommended combo (~311 MB first download).
+      tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
+        dtype: 'fp32',
+        device: 'webgpu',
+        progress_callback,
+      });
+      return tts;
+    } catch {
+      // WebGPU unavailable (or blocked) — fall through to WASM + q8.
+      onProgress(0, 'WebGPU unavailable, falling back to WASM…');
+    }
   }
+  tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
+    dtype: 'q8',
+    device: 'wasm',
+    progress_callback,
+  });
   return tts;
 }
 
@@ -181,19 +196,20 @@ function floatToInt16(floats: Float32Array): Int16Array {
   return out;
 }
 
-function encodeMp3(pcm: Float32Array): Blob {
-  const encoder = new (getLamejs().Mp3Encoder)(1, SAMPLE_RATE, 96);
-  const int16 = floatToInt16(pcm);
-  const parts: Uint8Array[] = [];
+// Stream-encode: feed each chunk's PCM to the MP3 encoder as it is generated,
+// instead of holding the whole chapter's audio in memory (a 30-minute chapter
+// is ~170 MB of Float32 — enough to crash a phone tab on its own).
+function encodeChunk(
+  encoder: { encodeBuffer: (pcm: Int16Array) => Int8Array },
+  floats: Float32Array,
+  parts: Uint8Array[],
+) {
+  const int16 = floatToInt16(floats);
   const BLOCK = 1152;
   for (let i = 0; i < int16.length; i += BLOCK) {
-    const chunk = int16.subarray(i, i + BLOCK);
-    const encoded = encoder.encodeBuffer(chunk);
+    const encoded = encoder.encodeBuffer(int16.subarray(i, i + BLOCK));
     if (encoded.length) parts.push(new Uint8Array(encoded));
   }
-  const flushed = encoder.flush();
-  if (flushed.length) parts.push(new Uint8Array(flushed));
-  return new Blob(parts as BlobPart[], { type: 'audio/mpeg' });
 }
 
 async function synthesize(text: string): Promise<{ blob: Blob; durationSec: number }> {
@@ -205,26 +221,23 @@ async function synthesize(text: string): Promise<{ blob: Blob; durationSec: numb
   setBar('model-bar', 100);
   setText('model-status', 'Voice model loaded (cached in your browser for next time).');
 
-  const pieces: Float32Array[] = [];
+  const encoder = new (getLamejs().Mp3Encoder)(1, SAMPLE_RATE, 96);
+  const parts: Uint8Array[] = [];
   let total = 0;
   for (let i = 0; i < chunks.length; i++) {
     setBar('synth-bar', (i / chunks.length) * 100);
     setText('synth-status', `Speaking chunk ${i + 1} of ${chunks.length}…`);
     const audio = await engine.generate(chunks[i], { voice: 'af_heart' });
     const data = audio.audio as Float32Array;
-    pieces.push(data);
+    encodeChunk(encoder, data, parts);
     total += data.length;
     await new Promise((r) => setTimeout(r, 0));
   }
-  const pcm = new Float32Array(total);
-  let off = 0;
-  for (const p of pieces) {
-    pcm.set(p, off);
-    off += p.length;
-  }
+  const flushed = encoder.flush();
+  if (flushed.length) parts.push(new Uint8Array(flushed));
   setBar('synth-bar', 100);
   setText('synth-status', `Done — ${chunks.length} chunks.`);
-  return { blob: encodeMp3(pcm), durationSec: total / SAMPLE_RATE };
+  return { blob: new Blob(parts as BlobPart[], { type: 'audio/mpeg' }), durationSec: total / SAMPLE_RATE };
 }
 
 // --- 4. feed ---------------------------------------------------------------
