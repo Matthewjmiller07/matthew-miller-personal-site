@@ -56,6 +56,7 @@ let mp3Blob: Blob | null = null;
 let mp3DurationSec = 0;
 let mp3Filename = 'chapter.mp3';
 let tts: Awaited<ReturnType<typeof KokoroTTS.from_pretrained>> | null = null;
+let cancelled = false;
 
 // --- helpers ---------------------------------------------------------------
 
@@ -194,11 +195,13 @@ function encodeChunk(
   }
 }
 
-async function synthesize(text: string): Promise<{ blob: Blob; durationSec: number }> {
+async function synthesize(
+  text: string,
+): Promise<{ blob: Blob; durationSec: number; stopped: boolean; chunksDone: number }> {
   const chunks = chunkSentences(text);
-  const engine = await loadTts((pct, label) => {
+  const engine = await loadTts((pct) => {
     setBar('model-bar', pct);
-    setText('model-status', `Loading voice model… ${Math.round(pct)}% ${label}`);
+    setText('model-status', `Loading voice model… ${Math.round(pct)}%`);
   });
   setBar('model-bar', 100);
   setText('model-status', 'Voice model loaded (cached in your browser for next time).');
@@ -206,20 +209,33 @@ async function synthesize(text: string): Promise<{ blob: Blob; durationSec: numb
   const encoder = new (getLamejs().Mp3Encoder)(1, SAMPLE_RATE, 96);
   const parts: Uint8Array[] = [];
   let total = 0;
+  let done = 0;
   for (let i = 0; i < chunks.length; i++) {
+    if (cancelled) break;
     setBar('synth-bar', (i / chunks.length) * 100);
     setText('synth-status', `Speaking chunk ${i + 1} of ${chunks.length}…`);
     const audio = await engine.generate(chunks[i], { voice: 'af_heart' });
     const data = audio.audio as Float32Array;
     encodeChunk(encoder, data, parts);
     total += data.length;
+    done++;
     await new Promise((r) => setTimeout(r, 0));
   }
   const flushed = encoder.flush();
   if (flushed.length) parts.push(new Uint8Array(flushed));
-  setBar('synth-bar', 100);
-  setText('synth-status', `Done — ${chunks.length} chunks.`);
-  return { blob: new Blob(parts as BlobPart[], { type: 'audio/mpeg' }), durationSec: total / SAMPLE_RATE };
+  setBar('synth-bar', (done / chunks.length) * 100);
+  if (cancelled) {
+    setText('synth-status', `Stopped after ${done} of ${chunks.length} chunks — partial audio below.`);
+  } else {
+    setBar('synth-bar', 100);
+    setText('synth-status', `Done — ${chunks.length} chunks.`);
+  }
+  return {
+    blob: new Blob(parts as BlobPart[], { type: 'audio/mpeg' }),
+    durationSec: total / SAMPLE_RATE,
+    stopped: cancelled,
+    chunksDone: done,
+  };
 }
 
 // --- 4. feed ---------------------------------------------------------------
@@ -321,6 +337,12 @@ function init() {
   const m = location.hash.match(/[#&]key=([^&]+)/);
   if (m) ($('upload-key') as HTMLInputElement).value = decodeURIComponent(m[1]);
 
+  // If the key arrived in the link, the key field stays out of the way.
+  if (uploadKey()) {
+    $('key-block')?.classList.add('hidden');
+    $('key-note')?.classList.remove('hidden');
+  }
+
   // Feed section visibility depends on the config flag.
   if (!PDF_AUDIO_CONFIG.uploadEnabled) {
     $('upload-live').classList.add('hidden');
@@ -329,6 +351,7 @@ function init() {
 
   ($('synthesize-btn') as HTMLButtonElement).addEventListener('click', async () => {
     const btn = $('synthesize-btn') as HTMLButtonElement;
+    const stopBtn = $('stop-btn') as HTMLButtonElement;
     btn.disabled = true;
     const text = ($('extracted-text') as HTMLTextAreaElement).value.trim();
     if (!text) {
@@ -336,9 +359,21 @@ function init() {
       btn.disabled = false;
       return;
     }
+    cancelled = false;
+    stopBtn.classList.remove('hidden');
+    stopBtn.disabled = false;
+    stopBtn.onclick = () => {
+      cancelled = true;
+      stopBtn.disabled = true;
+      setText('synth-status', 'Stopping after this chunk…');
+    };
     try {
       setText('synth-status', 'Starting…');
-      const { blob, durationSec } = await synthesize(text);
+      const { blob, durationSec, stopped, chunksDone } = await synthesize(text);
+      if (stopped && chunksDone === 0) {
+        setText('synth-status', 'Stopped before the first chunk finished — nothing to play yet.');
+        return;
+      }
       mp3Blob = blob;
       mp3DurationSec = durationSec;
       const url = URL.createObjectURL(blob);
@@ -358,6 +393,7 @@ function init() {
       setText('synth-status', `Synthesis failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       btn.disabled = false;
+      stopBtn.classList.add('hidden');
     }
   });
 

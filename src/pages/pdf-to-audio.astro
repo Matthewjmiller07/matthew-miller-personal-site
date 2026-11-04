@@ -16,14 +16,12 @@ import Layout from '../layouts/Layout.astro';
     <p class="text-sm font-semibold tracking-widest text-amber-700 uppercase">Prototype · unlisted</p>
     <h1 class="mt-2 text-3xl font-bold">PDF to Audio</h1>
     <p class="mt-3 text-lg text-stone-600">
-      Drop in a textbook chapter as a PDF. The text is extracted and the speech is
-      synthesized <strong>on your device</strong> — nothing is sent to a server until
-      you choose to publish the MP3. Then you get a private podcast-feed link you can
-      paste into any podcast app and listen offline (in the pool, say).
+      Drop in a textbook chapter as a PDF, get audio you can listen to anywhere.
+      Everything happens on your device until you choose to publish.
     </p>
 
-    <div class="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-      <p class="font-semibold">Before you start — three honest caveats</p>
+    <details class="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+      <summary class="cursor-pointer font-semibold">Before you start — three things to know</summary>
       <ul class="mt-2 list-disc pl-5 space-y-1">
         <li>
           <strong>First run downloads a voice model (~90&nbsp;MB).</strong> It is
@@ -41,23 +39,23 @@ import Layout from '../layouts/Layout.astro';
           you have the right to listen to (your own textbooks, public-domain works).
         </li>
       </ul>
-    </div>
+    </details>
 
     <section class="mt-8">
-      <h2 class="text-xl font-semibold">1 · Choose a PDF</h2>
+      <h2 class="text-xl font-semibold">1 · Drop your PDF</h2>
       <div
         id="dropzone"
         class="mt-3 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 p-6 text-center dark:border-stone-600 dark:bg-stone-800"
       >
         <p class="font-medium">Drop a PDF here, or click to choose one</p>
-        <p class="mt-1 text-sm text-stone-500">Textbook chapters work best. Your file never leaves your device at this step.</p>
+        <p class="mt-1 text-sm text-stone-500">Your file never leaves your device at this step.</p>
         <input id="file-input" type="file" accept="application/pdf,.pdf" class="hidden" />
       </div>
       <p id="file-info" class="mt-2 text-sm text-stone-600"></p>
     </section>
 
     <section id="extract-section" class="mt-8 hidden">
-      <h2 class="text-xl font-semibold">2 · Extracted text</h2>
+      <h2 class="text-xl font-semibold">2 · Check the text</h2>
       <div class="mt-3">
         <div class="h-2 w-full rounded bg-stone-200"><div id="extract-bar" class="h-2 rounded bg-emerald-600" style="width:0%"></div></div>
         <p id="extract-status" class="mt-1 text-sm text-stone-600">Waiting…</p>
@@ -71,11 +69,11 @@ import Layout from '../layouts/Layout.astro';
         class="mt-2 w-full rounded-lg border border-stone-300 bg-white p-3 font-mono text-sm text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
         placeholder="Extracted text will appear here — edit it before synthesizing (delete headers, footnotes, garbled lines)."
       ></textarea>
-      <p class="mt-1 text-xs text-stone-500">Edit the text freely: what you see here is exactly what will be read aloud.</p>
+      <p class="mt-1 text-xs text-stone-500">What you see here is exactly what will be read aloud.</p>
     </section>
 
     <section id="tts-section" class="mt-8 hidden">
-      <h2 class="text-xl font-semibold">3 · Synthesize (voice: af_heart)</h2>
+      <h2 class="text-xl font-semibold">3 · Make the audio</h2>
       <div class="mt-3">
         <div class="h-2 w-full rounded bg-stone-200"><div id="model-bar" class="h-2 rounded bg-sky-600" style="width:0%"></div></div>
         <p id="model-status" class="mt-1 text-sm text-stone-600">Voice model not loaded yet.</p>
@@ -88,16 +86,21 @@ import Layout from '../layouts/Layout.astro';
         id="synthesize-btn"
         class="mt-4 rounded-lg bg-stone-900 px-5 py-2.5 font-medium text-white disabled:opacity-50"
       >
-        Synthesize chapter
+        Make the audio
+      </button>
+      <button
+        id="stop-btn"
+        class="ml-2 mt-4 hidden rounded-lg border border-stone-300 bg-white px-5 py-2.5 font-medium text-stone-700 disabled:opacity-50 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
+      >
+        Stop
       </button>
       <p class="mt-2 text-xs text-stone-500">
-        Long chapters are synthesized in short sentence-based chunks so the tab stays
-        responsive. You can stop any time; finished chunks are kept.
+        You can stop any time; finished audio is kept.
       </p>
     </section>
 
     <section id="audio-section" class="mt-8 hidden">
-      <h2 class="text-xl font-semibold">4 · Your audio</h2>
+      <h2 class="text-xl font-semibold">4 · Listen</h2>
       <audio id="player" controls class="mt-3 w-full"></audio>
       <p id="audio-stats" class="mt-2 text-sm text-stone-600"></p>
       <div class="mt-4 flex flex-wrap gap-3">
@@ -110,39 +113,51 @@ import Layout from '../layouts/Layout.astro';
     </section>
 
     <section id="feed-section" class="mt-8 hidden">
-      <h2 class="text-xl font-semibold">5 · Private podcast feed</h2>
+      <h2 class="text-xl font-semibold">5 · Add to your podcast app</h2>
       <div id="upload-live">
         <p class="mt-2 text-sm text-stone-600">
-          Uploading publishes this MP3 to a private feed. The feed URL is a random
-          token — it stays the same for later chapters, so one feed collects the whole book.
+          One feed collects the whole book — the link stays the same for later chapters.
         </p>
-        <label class="mt-3 block text-sm font-medium" for="upload-key">Upload key</label>
-        <input
-          id="upload-key"
-          type="password"
-          autocomplete="off"
-          placeholder="Paste the key from the link you were sent"
-          class="mt-1 w-full rounded-lg border border-stone-300 bg-white p-2.5 text-sm text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
-        />
-        <p class="mt-1 text-xs text-stone-500">
-          The key can also come in the page link itself (<code>#key=…</code>). It is
-          only ever sent to the upload endpoint, never stored on this site.
-        </p>
+        <p id="key-note" class="mt-2 hidden text-xs text-stone-500">Your upload key came with the page link — nothing to paste.</p>
+        <div id="key-block">
+          <label class="mt-3 block text-sm font-medium" for="upload-key">Upload key</label>
+          <input
+            id="upload-key"
+            type="password"
+            autocomplete="off"
+            placeholder="Paste the key from the link you were sent"
+            class="mt-1 w-full rounded-lg border border-stone-300 bg-white p-2.5 text-sm text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100"
+          />
+        </div>
         <button
           id="upload-btn"
           class="mt-3 rounded-lg bg-stone-900 px-5 py-2.5 font-medium text-white disabled:opacity-50"
         >
-          Upload &amp; get feed link
+          Add this chapter to my podcast feed
         </button>
         <p id="upload-status" class="mt-2 text-sm text-stone-600"></p>
         <div id="feed-result" class="mt-3 hidden rounded-lg border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950">
-          <p class="text-sm font-semibold text-emerald-900">Your private feed</p>
+          <p class="text-sm font-semibold text-emerald-900">Your podcast feed</p>
           <p class="mt-1 break-all font-mono text-sm" id="feed-url"></p>
           <div class="mt-3 flex flex-wrap gap-3">
-            <button id="copy-feed" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white">Copy feed URL</button>
-            <button id="new-feed" class="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium">Start a new feed</button>
+            <button id="copy-feed" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white">Copy feed link</button>
           </div>
-          <p class="mt-2 text-xs text-stone-600">Paste this URL into your podcast app (Add by URL / Add a Show by URL). Keep it private — anyone with it can listen.</p>
+          <details class="mt-3 text-sm">
+            <summary class="cursor-pointer font-medium">How do I subscribe?</summary>
+            <ul class="mt-2 list-disc pl-5 space-y-1 text-stone-600">
+              <li><strong>Apple Podcasts:</strong> Library → ⋯ → Add a Show by URL, then paste the link.</li>
+              <li><strong>Overcast:</strong> + → Add URL, then paste the link.</li>
+              <li><strong>Any other app:</strong> look for "Add by URL" and paste the link.</li>
+            </ul>
+            <p class="mt-2 text-xs text-stone-500">Keep the link private — anyone with it can listen.</p>
+          </details>
+          <details class="mt-2 text-sm">
+            <summary class="cursor-pointer font-medium">Feed options</summary>
+            <div class="mt-2">
+              <button id="new-feed" class="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium dark:border-stone-600 dark:bg-stone-800">Start a new feed</button>
+              <p class="mt-1 text-xs text-stone-500">Starts a fresh feed with a new link. Your current feed keeps working.</p>
+            </div>
+          </details>
         </div>
       </div>
       <div id="upload-stub" class="hidden">
@@ -158,14 +173,16 @@ import Layout from '../layouts/Layout.astro';
       </div>
     </section>
 
-    <section class="mt-10 border-t border-stone-200 pt-6 text-sm text-stone-500">
-      <p>
-        How it works: pdf.js extracts the text, Kokoro-82M (voice af_heart) synthesizes
-        it, lamejs encodes MP3 — all in your browser. Publishing stores the MP3 in
-        Cloudflare R2 (free tier, no egress fees) and serves the feed from a Cloudflare
-        Worker. No audio ever touches this site's host.
+    <details class="mt-10 border-t border-stone-200 pt-6 text-sm text-stone-500">
+      <summary class="cursor-pointer font-medium text-stone-600">How it works</summary>
+      <p class="mt-2">
+        pdf.js extracts the text, Kokoro-82M (voice af_heart) synthesizes it, lamejs
+        encodes MP3 — all in your browser. Publishing stores the MP3 in Cloudflare R2
+        (free tier, no egress fees) and serves the feed from a Cloudflare Worker. No
+        audio ever touches this site's host. Long chapters are synthesized in short
+        sentence-based chunks so the tab stays responsive.
       </p>
-    </section>
+    </details>
   </main>
 
   <!-- lamejs as a classic script: its CJS entry is broken (MPEGMode scoping), the
