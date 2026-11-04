@@ -281,8 +281,8 @@ add('lot', 'Lot', 'לוֹט', N, 'Genesis 11:27-31', 'shem', 'haran', names=['ל
 add('sarai', 'Sarai', 'שָׂרָי', N, 'Genesis 11:29-31', 'shem', None, 'F', names=['שרי'], wiki='Sarah',
     note='“Sarai was infertile.” Becomes Sarah (שרה, 65,000+ Israeli girls).', spouse='abram',
     caveat='שרי is also read Sheri: not every one of these babies is a Sarai.')
-add('milcah', 'Milcah', 'מִלְכָּה', N, 'Genesis 11:29', 'shem', 'haran', 'F', names=['מלכה', 'מילכה'], wiki='Milcah',
-    note='Daughter of Haran, wife of Nahor. Malka: almost 20,000 Israeli girls.', spouse='nahor-2')
+add('milcah', 'Milcah', 'מִלְכָּה', N, 'Genesis 11:29', 'shem', 'haran', 'F', names=['מילכה'], wiki='Milcah',
+    note='Daughter of Haran, wife of Nahor. Malka (מלכה, same consonants, about 20,000 Israeli girls) is a different name, so it is not counted.', spouse='nahor-2')
 add('iscah', 'Iscah', 'יִסְכָּה', N, 'Genesis 11:29', 'shem', 'haran', 'F', names=['יסכה'], wiki='Iscah',
     note='Mentioned once. Rashi identifies her with Sarai. Yiska: 3,500 Israeli girls.')
 
@@ -720,7 +720,7 @@ NOT_SAME = {
     'heth': 'חיית חיות', 'elam': 'עלם', 'asshur': 'אשר אושר אשיר', 'lud': 'לויד',
     'aram': 'אורם ארים אירם אורים', 'hul': 'חיל', 'eber': 'עביר עבור עבייר', 'peleg': 'פולג',
     'uzal': 'אזל איזל', 'obal': 'עיבל', 'reu': 'רעי רע', 'serug': 'שריג שורוג', 'abram': 'אבירם אברום',
-    'haran': 'הרון', 'sarai': 'שיר שירי שריי שר שיריי שורי', 'milcah': 'מליכה מלכיה', 'hagar': 'היגר הייגר',
+    'haran': 'הרון', 'sarai': 'שיר שירי שריי שר שיריי שורי', 'milcah': 'מלכה מליכה מלכיה', 'hagar': 'היגר הייגר',
     'reumah': 'ראמה ראמיה', 'buz': 'בז', 'hazo': 'חזי', 'bethuel': 'בתאל', 'laban': 'לבון',
     'medan': 'מידן מדיין מדין מידין', 'midian': 'מידן מדיין מידין מדן', 'ephah': 'עופה עפיה', 'epher': 'עופר',
     'nebaioth': 'נבות', 'dumah': 'דימה דומיה', 'massa': 'משי', 'tema': 'תומא', 'leah': 'ליאה לאיה לואה',
