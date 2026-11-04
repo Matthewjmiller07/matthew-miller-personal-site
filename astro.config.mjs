@@ -19,7 +19,8 @@ export default defineConfig({
         !page.includes('/parasha-books') &&
         !page.includes('/dweck-sukkot-picks') &&
         !page.includes('/desk') &&
-        !page.includes('/everything'),
+        !page.includes('/everything') &&
+        !page.includes('/pdf-to-audio'),
     })
   ],
   vite: {
