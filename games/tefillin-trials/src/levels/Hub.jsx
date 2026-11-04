@@ -102,6 +102,7 @@ export function Hub() {
       <Portal position={[-12, 0, 20.5]} color="#ff5a4a" title="The Hefsek Gauntlet" he="הֶפְסֵק" stars={stars.gauntlet || 0} onEnter={() => go('gauntlet')} />
       <Portal position={[12, 0, 20.5]} color="#5fb3ff" title="Bracha Catch" he="רַשִׁ״י · רַבֵּנוּ תָּם" stars={stars.catch || 0} onEnter={() => go('catch')} />
       <Portal position={[-12, 0, -20]} color="#7ad1a8" title="Hum or Hush" he="נִגּוּן" stars={stars.table || 0} onEnter={() => go('table')} />
+      <Portal position={[12, 0, -20]} color="#ffb347" title="World 2 · The Tefillin Stand" he="יָד כֵּהָה" stars={stars.stand || 0} onEnter={() => go('stand')} />
     </>
   );
 }

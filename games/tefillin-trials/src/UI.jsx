@@ -5,7 +5,7 @@ import { RAMBAM, HINENI, WHO_SAID, RANKS } from './content.js';
 import { TOKENS } from './levels/BrachaCatch.jsx';
 import { sfx } from './audio.js';
 
-const LEVEL_NAMES = { gauntlet: 'The Hefsek Gauntlet', catch: 'Bracha Catch', table: 'Hum or Hush' };
+const LEVEL_NAMES = { gauntlet: 'The Hefsek Gauntlet', catch: 'Bracha Catch', table: 'Hum or Hush', stand: 'World 2 · The Tefillin Stand' };
 
 export function UI() {
   const screen = useGame((s) => s.screen);
@@ -17,6 +17,7 @@ export function UI() {
       {screen === 'gauntlet' && <GauntletHud />}
       {screen === 'catch' && <CatchHud />}
       {screen === 'table' && <TableHud />}
+      {screen === 'stand' && <StandHud />}
       {screen === 'results' && <Results />}
       <Reaction />
       <Prompt />
@@ -35,7 +36,7 @@ function Title() {
   return (
     <div className="tt-title">
       <div className="tt-title-card">
-        <div className="tt-kicker">Hilchot Tefillin · Siman 25 · a 3D game</div>
+        <div className="tt-kicker">Hilchot Tefillin · Simanim 25–27 · a 3D game · now with World 2</div>
         <h1 className="tt-logo"><span lang="he" dir="rtl">הִנֵּנִי</span><small>HINENI · The Tefillin Trials</small></h1>
         <p className="tt-rambam" lang="he" dir="rtl">{RAMBAM.he}</p>
         <p className="tt-rambam-en">{RAMBAM.en} <i>({RAMBAM.ref})</i></p>
@@ -50,7 +51,7 @@ function Title() {
           <button aria-pressed={minhag === 'sefard'} onClick={() => setMinhag('sefard')}>Sefardim · one bracha</button>
         </div>
         <button className="tt-play" onClick={start}>Enter the shul ▸</button>
-        <p className="tt-controls">WASD / arrows to move · Shift to run · E to talk/act · Space: Do Not Disturb pulse · H to hum · 1–3 to choose. On a phone: joystick and buttons.</p>
+        <p className="tt-controls">WASD / arrows to move · Shift to run · E to talk/act · Space: Do Not Disturb pulse · H to hum · B to bless · 1–3 to choose. On a phone: joystick and buttons.</p>
       </div>
     </div>
   );
@@ -86,11 +87,11 @@ function TopBar() {
 function HubHud() {
   const sayings = useGame((s) => s.sayings);
   const stars = useGame((s) => s.stars);
-  const total = (stars.gauntlet || 0) + (stars.catch || 0) + (stars.table || 0);
+  const total = (stars.gauntlet || 0) + (stars.catch || 0) + (stars.table || 0) + (stars.stand || 0);
   return (
     <div className="tt-objective">
       <b>The shul</b> · Walk up to the poskim and press E to hear their ruling ({sayings.length}/{WHO_SAID.length}).
-      Step into a glowing ring to play: <span style={{ color: '#ff8a7a' }}>The Hefsek Gauntlet</span>, <span style={{ color: '#5fb3ff' }}>Bracha Catch</span>, <span style={{ color: '#7ad1a8' }}>Hum or Hush</span>. ★ {total}/9
+      Step into a glowing ring to play: <span style={{ color: '#ff8a7a' }}>The Hefsek Gauntlet</span>, <span style={{ color: '#5fb3ff' }}>Bracha Catch</span>, <span style={{ color: '#7ad1a8' }}>Hum or Hush</span>, and new: <span style={{ color: '#ffb347' }}>World 2 · The Tefillin Stand</span> (back right). ★ {total}/12
     </div>
   );
 }
@@ -179,6 +180,33 @@ function TableHud() {
         <div className="tt-score">♪ {hud.notes || 0}</div>
         {hud.eatLeft != null && <div className="tt-timer">Eat! {hud.eatLeft.toFixed(1)}s</div>}
       </div>
+    </>
+  );
+}
+
+function StandHud() {
+  const hud = useGame((s) => s.hud);
+  return (
+    <>
+      <div className="tt-objective">{hud.objective}</div>
+      <div className="tt-stats">
+        <Hearts n={hud.lives ?? 3} />
+        <div className="tt-score">Served {hud.served || 0}/{hud.total || 0}</div>
+        <div className="tt-score">{hud.score || 0} pts</div>
+      </div>
+      {(hud.stage === 'place' || hud.stage === 'bless') && (
+        <div className="tt-ritual tt-arm">
+          <div className="tt-ritual-title">{hud.stage === 'place' ? 'Set the bayit on the muscle' : 'Tightening the knot… say the bracha!'}</div>
+          <div className="tt-ritual-btns tt-arm-btns">
+            <button className={hud.stage === 'bless' ? 'done' : ''} onClick={() => fire('action')}><kbd>E</kbd>Set it down here</button>
+            <button onClick={() => fire('bless')}>
+              <kbd>B</kbd><span lang="he">לְהָנִיחַ תְּפִלִּין</span>
+              <span className="tt-tight"><span style={{ width: `${(hud.tight || 0) * 100}%`, background: hud.tight > 0.7 ? '#ff5a4a' : undefined }} /></span>
+            </button>
+          </div>
+          <div className="tt-arm-legend"><span style={{ color: '#3cc45a' }}>■ everyone</span><span style={{ color: '#a6e35a' }}>■ the Gra only</span><span style={{ color: '#ff4a4a' }}>■ not the mitzvah</span></div>
+        </div>
+      )}
     </>
   );
 }
@@ -272,6 +300,7 @@ function TouchControls() {
       <div className="tt-touch-btns">
         <button onTouchStart={(e) => { e.preventDefault(); fire('action'); }}>E</button>
         {screen === 'gauntlet' && <button onTouchStart={(e) => { e.preventDefault(); fire('pulse'); }}>⚡</button>}
+        {screen === 'stand' && <button onTouchStart={(e) => { e.preventDefault(); fire('bless'); }}>B</button>}
         {screen === 'table' && (
           <button onTouchStart={(e) => { e.preventDefault(); touch.hum = true; }} onTouchEnd={() => { touch.hum = false; }}>♪</button>
         )}

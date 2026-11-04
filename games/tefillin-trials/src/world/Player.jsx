@@ -13,6 +13,7 @@ export const player = {
   vel: new THREE.Vector3(),
   body: null,
   frozen: false,
+  camOverride: false,
   speedMul: 1,
   facing: 0,
   motion: { speed: 0 },
@@ -66,7 +67,7 @@ export function Player({ start = [0, 1, 18], yad = true, rosh = false }) {
       visual.current.rotation.y = player.facing;
     }
 
-    if (player.cinematic) return;
+    if (player.cinematic || player.camOverride) return;
     // Third-person follow camera with a little shake on hits.
     const shake = useGame.getState().shake > performance.now() ? 0.25 : 0;
     camTarget.set(t.x, t.y + 11, t.z + 12);

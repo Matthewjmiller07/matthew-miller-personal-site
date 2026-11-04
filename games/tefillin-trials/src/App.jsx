@@ -10,6 +10,8 @@ import { Hub } from './levels/Hub.jsx';
 import { Gauntlet } from './levels/Gauntlet.jsx';
 import { BrachaCatch } from './levels/BrachaCatch.jsx';
 import { ShabbosTable } from './levels/ShabbosTable.jsx';
+import { TefillinStand } from './levels/TefillinStand.jsx';
+import { Street } from './world/Street.jsx';
 import { UI } from './UI.jsx';
 import { useGame } from './store.js';
 import { FX, fxRef } from './fx.js';
@@ -120,7 +122,14 @@ function Level() {
   if (screen === 'gauntlet') return <Gauntlet />;
   if (screen === 'catch') return <BrachaCatch />;
   if (screen === 'table') return <ShabbosTable />;
+  if (screen === 'stand') return <TefillinStand />;
   return <Hub />;
+}
+
+// World 1 is the shul; World 2 (the tefillin stand) is out on the street.
+function World() {
+  const screen = useGame((s) => s.screen);
+  return screen === 'stand' ? <Street /> : <Shul />;
 }
 
 export default function App() {
@@ -138,7 +147,7 @@ export default function App() {
         <PerformanceMonitor flipflops={1} onDecline={() => setLow(true)} />
         <Suspense fallback={null}>
           <Physics key={levelKey} gravity={[0, -20, 0]} timeStep="vary">
-            <Shul />
+            <World />
             <Level />
           </Physics>
           {!DEBUG.has('nofx') && <Particles />}

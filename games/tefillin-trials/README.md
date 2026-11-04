@@ -1,10 +1,12 @@
 # Hineni: The Tefillin Trials
 
-3D game for Hilchot Tefillin, siman 25, served at `/tefillin-trials`. It's a standalone Vite app
+3D game for Hilchot Tefillin, simanim 25–27, served at `/tefillin-trials`. It's a standalone Vite app
 so it can use current three/R3F without touching the site's pinned three@0.155 and React 19 setup.
 
 - `src/content.js`: every ruling, line and source (SCP chabura #3, sheet #36-57, and the shiur).
-- `src/levels/`: Hub (poskim to talk to), Gauntlet, BrachaCatch, ShabbosTable.
+- `src/levels/`: Hub (poskim to talk to), Gauntlet, BrachaCatch, ShabbosTable, and World 2's
+  TefillinStand (out on `src/world/Street.jsx`: which arm, where on the muscle, when to bless;
+  SCP chabura #4, sheet #52-75).
 - Stack: @react-three/fiber, drei (KeyboardControls, Text, Html, Trail, Float, Sparkles, Outlines,
   MeshReflectorMaterial, Environment/Lightformer, Instances, PerformanceMonitor), @react-three/rapier
   (player, kinematic NPCs, sensors, flying phones and brachot), yuka (pursuit/flee/wander/arrive,

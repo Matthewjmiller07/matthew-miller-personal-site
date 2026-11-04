@@ -338,3 +338,179 @@ export const RANKS = [
   [800, 'Siman 25 master'],
   [1300, 'Locked in. Hineni.'],
 ];
+
+// ── World 2 · Yad Keha: the tefillin stand (SCP chabura #4, siman 25-27, sheet #52-75) ──
+
+// The four zones of the upper arm from the sheet's picture (#62), shoulder (-3) to elbow (+3).
+// rank: 3 = everyone agrees, 2 = kosher by the Gra only, 0 = not the mitzvah.
+export const ARM_ZONES = [
+  { id: '1', from: -3, to: -1.75, rank: 0, color: '#ff4a4a', say: 'Out of bounds, up by the shoulder: that’s before the muscle starts. Not “yadcha”, the gova shebayad (Menachot 37a, #59). Not the mitzvah.' },
+  { id: '2', from: -1.75, to: 0.15, rank: 2, color: '#a6e35a', say: 'The upper half of the muscle. Rabbeinu Tam (Tosafot, #59) and the Gra (#61): anywhere the muscle rises is kosher. But the Smak (Beit Yosef, #60), the Shulchan Aruch and the Rema want the half nearer the elbow, and the Yechave Daat (#64) says follow them. Aim lower. (If a pair is too big to fit there, the Mishnah Berurah says better a bit higher, kosher by the Gra, than down by the elbow. Better still: buy smaller tefillin.)' },
+  { id: '3', from: 0.15, to: 2.15, rank: 3, color: '#3cc45a', say: 'The lower half of the muscle, toward the elbow: kosher by everyone (#62, dark green).' },
+  { id: '4', from: 2.15, to: 3, rank: 0, color: '#ff4a4a', say: 'Out of bounds, down by the elbow, where the muscle doesn’t rise. Tefila LeMoshe (#63): you should fit about two of your own fingers between the bayit and the elbow. Not the mitzvah.' },
+];
+
+const PERSON = (robe, kippah, extra = {}) => ({ robe, kippah, skin: '#e8c39e', ...extra });
+
+// The morning queue: customers (you choose the arm, place it, time the bracha) and shailos.
+export const STAND_QUEUE = [
+  {
+    kind: 'customer', name: 'Moshe the commuter', look: PERSON('#2b3a55', '#111', { beard: '#3a2a1a' }), tutorial: true, speed: 1.8, knot: 3.2,
+    line: 'I’m right-handed, running for the 8:15 bus. Quick!',
+    arm: {
+      side: 'left',
+      options: [
+        { t: 'Left arm: his weaker hand, “yad keha”', ok: true },
+        { t: 'Right arm: his strong hand', why: '“Yadcha” is written “yadkha”, yad keha, the weak hand (Menachot 37a, #58).' },
+        { t: 'Whichever is closer to the table', why: 'The Torah picked the arm: “yadcha”, the weak hand (#58).' },
+      ],
+      why: 'Menachot 37a (#58): “yadcha” is spelled with a hei, “yad keha”, the weaker hand. Also “ukshartem ... uchtavtam”: you tie with the hand you write with, so it goes on the other one.',
+    },
+    rosh: {
+      line: 'Wait, why is the bracha “lehaniach” and not “likshor”? The pasuk says “ukshartem”!',
+      options: [
+        { t: 'The mitzvah is for them to rest on you all day, not just a moment of tying', ok: true },
+        { t: 'Because Chazal didn’t like the word likshor' },
+        { t: 'Because the knots are already tied at the factory' },
+      ],
+      why: 'Kaf HaChaim 25:46 (#55): “likshor” would sound like one tie on the arm and head and you’re done. “Lehaniach” says they should stay on you. The Mishnah Berurah: with a kamatz, leha-niach, “to set and leave”, not lehaniach with a patach.',
+      lesson: 'Lehaniach, not likshor: the mitzvah is that the tefillin rest on you, every moment they’re on (Kaf HaChaim, #55).',
+    },
+    thanks: 'Shema Yisrael… and I’ll make the bus!',
+  },
+  {
+    kind: 'customer', name: 'Lefty Levi', look: PERSON('#5a2e2e', '#e0b54a'), speed: 2.3,
+    line: 'I do everything with my left hand. Writing, eating, throwing.',
+    arm: {
+      side: 'right',
+      options: [
+        { t: 'Right arm: for him that’s the weak hand', ok: true },
+        { t: 'Left arm, like everyone else', why: 'Menachot 37a (#68): an itter puts them on his right, which is his “left”.' },
+        { t: 'Both arms, to be safe', why: 'Not for a full lefty: his right is his yad keha (#68).' },
+      ],
+      why: 'Menachot 37a (#68): “manich tefillin bimino shehu smolo”. A lefty’s right hand is his weaker hand.',
+    },
+    thanks: 'My right arm finally gets something to do!',
+  },
+  {
+    kind: 'customer', name: 'Avi the ambidextrous', look: PERSON('#2e5d4b', '#fff', { beard: '#5a3a22' }), speed: 2.6,
+    line: 'I’m equally good with both hands. Goalie and pitcher.',
+    arm: {
+      side: 'left',
+      options: [
+        { t: 'Left arm, like everyone', ok: true },
+        { t: 'Right arm', why: 'Menachot 37a (#68): “shoalet bishtei yadav”, someone who rules both hands, puts it on his left like everyone.' },
+        { t: 'He’s exempt: he has no weak hand', why: 'No. Abaye (#68): he puts it on the left.' },
+      ],
+      why: 'Menachot 37a (#68): “bishoalet bishtei yadav”, both hands equal, puts it on his left, since for him the right is like everyone’s right.',
+    },
+    thanks: 'Left it is. Both hands are happy.',
+  },
+  {
+    kind: 'shaila', title: 'A quick shaila from your kid', who: 'Your kid',
+    line: '“Abba, look at that man! His shel yad is on the muscle, but it’s sticking straight out sideways. Is he yotzei?”',
+    options: [
+      { t: 'Yes, he’s yotzei. Tilting it toward the heart is how it should be done, but it isn’t me’akev', ok: true },
+      { t: 'No: if it doesn’t face the heart he isn’t yotzei' },
+      { t: 'Tell him loudly in front of everyone that he isn’t yotzei' },
+    ],
+    why: 'Shulchan Aruch 27:1 tilts it toward the heart. The Daat Noteh (#66) was asked if that’s me’akev: “לא שמענו שמעכב”. And if you do correct someone, come with the fix, gently, not just the problem.',
+    lesson: 'Tilt the shel yad toward the heart; if it sticks out, he’s still yotzei (Daat Noteh, #66).',
+  },
+  {
+    kind: 'customer', name: 'Yoni the artist', look: PERSON('#3a2e5a', '#2c5aa0'), speed: 2.8,
+    line: 'I write with my left hand, but I do everything else with my right.',
+    arm: {
+      side: 'right',
+      options: [
+        { t: 'Right arm with a bracha (the writing hand decides), then after davening the left without a bracha', ok: true },
+        { t: 'Left arm only: his work hand is his right', why: 'The Shulchan Aruch and the Rema go by the writing hand (#69, #71).' },
+        { t: 'Right arm only, and that’s it', why: 'Halacha Berura (#71): many poskim go by the work hand, so after davening put them on the left too, without a bracha.' },
+      ],
+      why: 'Beit Yosef (#69): “ukshartem ... uchtavtam”, the tying hand is the writing hand. So his left is his “right”, and the tefillin go on his right arm (Shulchan Aruch and Rema). Halacha Berura (#71): many say the work hand decides, so after davening put them on the other arm without a bracha. (The Aruch HaShulchan, #70, follows yad keha: the weak hand.)',
+      after: 'After davening, he’ll put them on his left arm too, without a bracha (Halacha Berura, #71).',
+    },
+    thanks: 'Two arms, one bracha. I can live with that.',
+  },
+  {
+    kind: 'shaila', title: 'The bar mitzvah boy', who: 'Bar mitzvah boy',
+    line: '“Help! In the middle of davening my shel yad slipped down my arm, and my shel rosh is still on. Do I take off the shel rosh first?”',
+    options: [
+      { t: 'No. Leave the shel rosh on and quickly put the shel yad back in its place', ok: true },
+      { t: 'Yes: “vehayu letotafot” means the shel rosh can never be on without the shel yad' },
+      { t: 'Take everything off and start again with new brachot' },
+    ],
+    why: 'Menachot 36a (#54): put on the shel yad first, take off the shel rosh first, because “as long as they’re between your eyes, there should be two.” But the Mishnah Berurah (siman 25, as the shiur read it): if the shel yad moved from its place, or you put the shel rosh on first by mistake, you don’t take off the shel rosh. Just put on the shel yad right away. (If you only picked up the shel rosh first, put it down and take the shel yad: not like a tallit.)',
+    lesson: 'Shel yad slipped mid-davening? Don’t take off the shel rosh; put the shel yad right back (Mishnah Berurah 25).',
+  },
+  {
+    kind: 'customer', name: 'Sgt. Eitan', look: PERSON('#4a5a32', '#111', { beard: '#2a1c12' }),
+    line: 'I’m right-handed. I lost my whole left arm in Gaza.',
+    arm: {
+      side: 'none',
+      options: [
+        { t: 'He’s exempt from the shel yad, but he still puts on the shel rosh', ok: true },
+        { t: 'Put the shel yad on his right arm instead', why: 'His right is his strong hand. The Torah said yad keha, and he has none (Aruch HaShulchan 27:6-7, #72).' },
+        { t: 'He’s exempt from tefillin altogether', why: 'The shel yad and shel rosh are two mitzvot; one doesn’t hold back the other. He puts on the shel rosh.' },
+      ],
+      why: 'Menachot 37a: “ein lo zroa, patur.” The Aruch HaShulchan (#72) explains: “le’ot al yadcha” needs a yad keha, and he has none. The shel rosh is a separate mitzvah, so he still puts that on. (The IDF rabbinate even built a stand that holds the bayit so amputees can wrap it with their stump.)',
+      after: 'No shel yad for him: but the shel rosh is its own mitzvah.',
+    },
+    thanks: 'Hineni. Thank you, brother.',
+  },
+  {
+    kind: 'customer', name: 'Sgt. Dovid', look: PERSON('#4a5a32', '#c0392b'), speed: 3.0, knot: 2.2,
+    line: 'I was right-handed. I lost my right hand, and now I do everything with my left.',
+    arm: {
+      side: 'right',
+      options: [
+        { t: 'On his right arm: his left is now his main hand, so the right is his yad keha', ok: true },
+        { t: 'Left arm, as he always did', why: 'Halichot Shlomo (#74): once his main work is done with the left, it counts as his right.' },
+        { t: 'He’s exempt', why: 'He still has an arm with the muscle (the kiborret); only the hand is gone (#74, #75).' },
+      ],
+      why: 'Halichot Shlomo (#74), Rav Shlomo Zalman: if only the hand was cut off, he still has two arms, and since he now works with his left, that counts as his right, so the tefillin go on the right arm. (If the whole right arm is gone, only the weak left is left.) Halacha Berura (#75): like an itter; and if he can, put them on the left again without a bracha. Shevet HaLevi (#73): a hand that became weak is the yad keha.',
+      after: 'If he can, he’ll put them on his left arm after davening too, without a bracha (Halacha Berura, #75).',
+    },
+    thanks: 'Like an itter now. Am Yisrael chai.',
+  },
+  {
+    kind: 'shaila', title: 'Two pairs at once?', who: 'Reb Shimon',
+    line: '“My tefillin are tiny. Can I wear Rashi and Rabbeinu Tam together, both at the same time?”',
+    options: [
+      { t: 'Yes, if they’re small enough that both sit in the right place: no more than 8 cm together', ok: true },
+      { t: 'Never: it’s bal tosif' },
+      { t: 'Yes, put one pair on the muscle and the other on the forearm' },
+    ],
+    why: 'Halichot Olam (#65): you can daven with both pairs at once, so you read Shema and daven with kosher tefillin whether the halacha follows Rashi or Rabbeinu Tam. But they have to be very small, so both are in the place the halacha requires: together no more than 8 cm.',
+    lesson: 'Rashi and Rabbeinu Tam together: only if both fit the right place, under 8 cm (Halichot Olam, #65).',
+  },
+  {
+    kind: 'shaila', title: 'Before misheyakir', who: 'The early commuter',
+    line: '“I put my tefillin on at 5:30, before misheyakir. Now it’s the zman and I’m making both brachot. May I talk between lehaniach and al mitzvat?”',
+    options: [
+      { t: 'Yes: both are already on, so lehaniach already covered them; talking can’t cause a new bracha', ok: true },
+      { t: 'No: never talk between the two brachot' },
+      { t: 'He shouldn’t make any bracha now, since they’re already on' },
+    ],
+    why: 'Every moment the tefillin are on is the mitzvah, so if you put them on early (or forgot the bracha) you bless once they’re on. Tehila LeDavid (#57): in that case you may pause between the brachot, since lehaniach already went on both and a pause won’t cause another bracha.',
+    lesson: 'Forgot the bracha, or put them on before the zman? Bless while they’re on: every second is a mitzvah (#57).',
+  },
+  {
+    kind: 'shaila', title: 'Closing up: your kid’s shoes', who: 'Your kid',
+    line: '“Abba, I’m a lefty like Levi. Which shoe do I put on first, and which do I tie first?”',
+    options: [
+      { t: 'Put on the right shoe first, then the left; then tie the right first, because your tefillin go on your right arm', ok: true },
+      { t: 'Right shoe on first, then tie the left first, like everyone' },
+      { t: 'It doesn’t matter which shoe' },
+    ],
+    why: 'Shulchan Aruch siman 2 (as the shiur ended): everyone puts on the right shoe first, but ties the left first, because that’s the arm the tefillin are tied on. The Mishnah Berurah: a lefty, whose tefillin go on his right arm, ties the right shoe first.',
+    lesson: 'Shoes: right on first; tie first on the tefillin arm. A lefty ties the right first (Mishnah Berurah, siman 2).',
+  },
+];
+
+export const STAND_LESSONS = [
+  'Like basketball: if any part of the bayit touches the line, it’s out. The whole bayit must sit on the lower half of the muscle (Yechave Daat, #64).',
+  'Shel yad first, then shel rosh: “vehayu letotafot”, whenever they’re between your eyes there are two (Menachot 36a, #54).',
+  'The bracha comes after placing it on the arm and before tightening: “over la’asiyatan” (Menachot 36a, #56).',
+  'The kiborret: the lower half of the muscle by all opinions (#60-#64).',
+];
