@@ -59,26 +59,6 @@ function feedToken(): string {
   }
   return t;
 }
-const KEY_STORAGE = 'pdf-audio-key';
-function storedKey(): string {
-  try {
-    return localStorage.getItem(KEY_STORAGE) ?? '';
-  } catch {
-    return '';
-  }
-}
-function rememberKey(key: string) {
-  try {
-    localStorage.setItem(KEY_STORAGE, key);
-  } catch {
-    // Private window: the key just has to be pasted again next time.
-  }
-}
-function uploadKey(): string {
-  // init() copies a #key= from the link into the field.
-  return ($('upload-key') as HTMLInputElement).value.trim() || storedKey();
-}
-
 // --- 1. extraction ---------------------------------------------------------
 
 function cleanExtracted(raw: string): string {
@@ -142,7 +122,7 @@ function chunkSentences(text: string): string[] {
 
 // --- 3. TTS ----------------------------------------------------------------
 
-class AuthError extends Error {}
+class FinalError extends Error {} // Retrying won't help.
 
 function pcmFromWav(wav: ArrayBuffer): Int16Array {
   const view = new DataView(wav);
@@ -160,14 +140,15 @@ function pcmFromWav(wav: ArrayBuffer): Int16Array {
   throw new Error('Audio had no data section.');
 }
 
-async function speakOnce(text: string, key: string, signal: AbortSignal): Promise<Int16Array> {
+async function speakOnce(text: string, signal: AbortSignal): Promise<Int16Array> {
   const res = await fetch(`${PDF_AUDIO_CONFIG.workerUrl}/tts`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
     signal,
   });
-  if (res.status === 401) throw new AuthError('That key was not accepted.');
+  if (res.status === 402) throw new FinalError("Today's limit is used up. Try again tomorrow.");
+  if (res.status === 403) throw new FinalError('This page is not allowed to use the speech service.');
   if (!res.ok) throw new Error(`Speech service error (HTTP ${res.status}).`);
   const { url } = (await res.json()) as { url: string };
   const audio = await fetch(url, { signal });
@@ -175,12 +156,12 @@ async function speakOnce(text: string, key: string, signal: AbortSignal): Promis
   return pcmFromWav(await audio.arrayBuffer());
 }
 
-async function speak(text: string, key: string, signal: AbortSignal): Promise<Int16Array> {
+async function speak(text: string, signal: AbortSignal): Promise<Int16Array> {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await speakOnce(text, key, signal);
+      return await speakOnce(text, signal);
     } catch (err) {
-      if (signal.aborted || err instanceof AuthError || attempt >= 3) throw err;
+      if (signal.aborted || err instanceof FinalError || attempt >= 3) throw err;
       await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
     }
   }
@@ -209,8 +190,7 @@ function withGap(pcm: Int16Array): Int16Array {
 
 async function synthesize(
   text: string,
-  key: string,
-): Promise<{ blob: Blob; durationSec: number; chunksDone: number; failure: string; authFailed: boolean }> {
+): Promise<{ blob: Blob; durationSec: number; chunksDone: number }> {
   const chunks = chunkSentences(text);
   const started = performance.now();
   const sections: ({ mp3: Uint8Array; samples: number } | undefined)[] = new Array(chunks.length);
@@ -235,7 +215,7 @@ async function synthesize(
     try {
       while (next < chunks.length && !cancelled && !failure) {
         const i = next++;
-        const pcm = withGap(await speak(chunks[i], key, signal));
+        const pcm = withGap(await speak(chunks[i], signal));
         const samples = pcm.length;
         sections[i] = { mp3: await encoder.encode(pcm), samples };
         finished++;
@@ -281,8 +261,6 @@ async function synthesize(
     blob: new Blob(parts as BlobPart[], { type: 'audio/mpeg' }),
     durationSec: samples / SAMPLE_RATE,
     chunksDone: done,
-    failure: message,
-    authFailed: failure instanceof AuthError,
   };
 }
 
@@ -385,14 +363,6 @@ function init() {
   });
   input.addEventListener('change', () => handleFile(input.files?.[0]));
 
-  // Pre-fill the access key from the URL hash (#key=...), if present.
-  const m = location.hash.match(/[#&]key=([^&]+)/);
-  if (m) ($('upload-key') as HTMLInputElement).value = decodeURIComponent(m[1]);
-
-  // A key from the link is remembered on this device; the field stays out of the way.
-  if (m) rememberKey(decodeURIComponent(m[1]));
-  if (uploadKey()) $('key-block').classList.add('hidden');
-
   // Feed section visibility depends on the config flag.
   if (!PDF_AUDIO_CONFIG.uploadEnabled) {
     $('upload-live').classList.add('hidden');
@@ -409,12 +379,6 @@ function init() {
       btn.disabled = false;
       return;
     }
-    const key = uploadKey();
-    if (!key) {
-      setText('synth-status', 'Paste your access key first (it came with the link to this page).');
-      btn.disabled = false;
-      return;
-    }
     cancelled = false;
     stopBtn.classList.remove('hidden');
     stopBtn.disabled = false;
@@ -424,19 +388,8 @@ function init() {
       stopRequests?.abort();
     };
     try {
-      const { blob, durationSec, chunksDone, authFailed } = await synthesize(text, key);
-      if (authFailed) {
-        // Don't keep offering a bad key on the next visit.
-        try {
-          localStorage.removeItem(KEY_STORAGE);
-        } catch {
-          // Nothing stored, then.
-        }
-        ($('upload-key') as HTMLInputElement).value = '';
-        $('key-block').classList.remove('hidden');
-      }
+      const { blob, durationSec, chunksDone } = await synthesize(text);
       if (chunksDone === 0) return;
-      rememberKey(key);
       mp3Blob = blob;
       mp3DurationSec = durationSec;
       const url = URL.createObjectURL(blob);
@@ -462,11 +415,6 @@ function init() {
 
   ($('upload-btn') as HTMLButtonElement).addEventListener('click', async () => {
     const btn = $('upload-btn') as HTMLButtonElement;
-    const key = uploadKey();
-    if (!key) {
-      setText('upload-status', 'Paste your access key first (it came with the link to this page).');
-      return;
-    }
     if (!mp3Blob) return;
     btn.disabled = true;
     setText('upload-status', 'Uploading MP3…');
@@ -475,7 +423,6 @@ function init() {
       const res = await fetch(`${PDF_AUDIO_CONFIG.workerUrl}/upload`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${key}`,
           'X-Feed-Token': token,
           'X-Filename': mp3Filename,
           'X-Duration-Seconds': String(Math.round(mp3DurationSec)),
@@ -484,7 +431,7 @@ function init() {
         body: mp3Blob,
       });
       if (!res.ok) {
-        setText('upload-status', `Upload failed (HTTP ${res.status}) — check the access key and try again.`);
+        setText('upload-status', `Upload failed (HTTP ${res.status}). Try again.`);
         return;
       }
       const data = (await res.json()) as { feedUrl: string };

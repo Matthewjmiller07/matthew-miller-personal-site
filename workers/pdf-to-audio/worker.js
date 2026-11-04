@@ -1,9 +1,9 @@
 // pdf-to-audio Worker: speech synthesis, MP3 uploads into R2, tokenized RSS feeds.
 // Routes:
-//   POST /tts               — Bearer <UPLOAD_TOKEN>, JSON { text }. Runs Kokoro on a Replicate
+//   POST /tts               — JSON { text }. Runs Kokoro on a Replicate
 //                             GPU (about 1 cent per 30 minutes of audio). Returns { url }, a
 //                             short-lived WAV the browser fetches directly.
-//   POST /upload            — Bearer <UPLOAD_TOKEN>, headers X-Feed-Token + X-Filename,
+//   POST /upload            — headers X-Feed-Token + X-Filename,
 //                             body = MP3 bytes. Stores <token>/<filename>. Returns { feedUrl, audioUrl }.
 //   GET  /feed/<token>.xml  — RSS 2.0 listing every MP3 under <token>/, with enclosures.
 //   GET  /audio/<token>/<file> — the MP3 itself, with Range support (R2 native).
@@ -14,11 +14,30 @@ function rssEscape(s) {
     .replace(/"/g, '&quot;');
 }
 
-// Bearer-token API with no cookies, so any origin may call it (including Deploy Previews).
+// No key to manage: writes are limited to the site's own pages (and Deploy Previews, localhost)
+// and to a daily budget. The Origin header can be faked outside a browser, so the budget is what
+// actually bounds the bill. At about 1 cent per 25k characters, the speech cap is about 40 cents a day.
+const ALLOWED_ORIGIN = /^(https:\/\/theothermatthewmiller\.com|https:\/\/[a-z0-9-]+--[a-z0-9-]+\.netlify\.app|http:\/\/localhost:\d+)$/;
+const DAILY_TTS_CHARS = 1_000_000;
+const DAILY_UPLOAD_BYTES = 1024 * 1024 * 1024;
+
+// R2 allows about one write per second per key, so busy counters are written on a sample of
+// requests, scaled up to match. Approximate is fine for a spending guard.
+async function withinBudget(env, kind, amount, limit, sampleRate = 1) {
+  const key = `_budget/${new Date().toISOString().slice(0, 10)}-${kind}`;
+  const stored = await env.AUDIO.get(key);
+  const used = stored ? Number(await stored.text()) : 0;
+  if (used + amount > limit) return false;
+  if (Math.random() < sampleRate) {
+    await env.AUDIO.put(key, String(used + amount / sampleRate)).catch(() => {});
+  }
+  return true;
+}
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Feed-Token, X-Filename, X-Duration-Seconds',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Feed-Token, X-Filename, X-Duration-Seconds',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -88,22 +107,23 @@ async function route(request, env) {
 
     // --- Speech ---
     if (url.pathname === '/tts' && request.method === 'POST') {
-      const auth = request.headers.get('Authorization') || '';
-      if (!env.UPLOAD_TOKEN || auth !== `Bearer ${env.UPLOAD_TOKEN}`) {
-        return new Response('Unauthorized', { status: 401 });
+      if (!ALLOWED_ORIGIN.test(request.headers.get('Origin') || '')) {
+        return new Response('Forbidden', { status: 403 });
       }
       const { text } = await request.json().catch(() => ({}));
       if (typeof text !== 'string' || !text.trim() || text.length > MAX_TTS_CHARS) {
         return new Response('Bad text', { status: 400 });
+      }
+      if (!(await withinBudget(env, 'tts', text.length, DAILY_TTS_CHARS, 0.1))) {
+        return new Response('Daily limit reached', { status: 402 });
       }
       return synthesize(text, env);
     }
 
     // --- Upload ---
     if (url.pathname === '/upload' && request.method === 'POST') {
-      const auth = request.headers.get('Authorization') || '';
-      if (!env.UPLOAD_TOKEN || auth !== `Bearer ${env.UPLOAD_TOKEN}`) {
-        return new Response('Unauthorized', { status: 401 });
+      if (!ALLOWED_ORIGIN.test(request.headers.get('Origin') || '')) {
+        return new Response('Forbidden', { status: 403 });
       }
       const token = request.headers.get('X-Feed-Token') || '';
       const filename = request.headers.get('X-Filename') || '';
@@ -117,6 +137,9 @@ async function route(request, env) {
       const body = await request.arrayBuffer();
       if (body.byteLength === 0 || body.byteLength > 200 * 1024 * 1024) {
         return new Response('Bad MP3 size', { status: 400 });
+      }
+      if (!(await withinBudget(env, 'upload', body.byteLength, DAILY_UPLOAD_BYTES))) {
+        return new Response('Daily limit reached', { status: 402 });
       }
       const key = `${token}/${filename}`;
       await env.AUDIO.put(key, body, {
