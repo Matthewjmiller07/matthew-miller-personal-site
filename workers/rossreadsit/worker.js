@@ -6,10 +6,9 @@
 const CHARS_FREE = 4_500; // per person per day, about 5 minutes of audio
 const CHARS_WITH_EMAIL = 27_500; // about 30 minutes
 const CHARS_ALL = 125_000; // everyone together per day
-// Hebrew uses a different voice at about 1.5 cents per minute of audio, some 40x the English one.
-const HE_CHARS_PERSON = 600; // about a minute per person per day
-const HE_CHARS_ALL = 2_000; // about 5 cents for everyone together
-const HE_CHARS_OWNER = 10_000; // about 18 minutes, or 25 cents
+// Hebrew uses Google's WaveNet voice: 4M characters free a month, then $4 per 1M. This cap applies to
+// everyone, the owner included, and 31 days of it stays inside the free tier.
+const HE_CHARS_ALL = 125_000;
 const UPLOAD_PER_PERSON = 100 * 1024 * 1024;
 const UPLOAD_ALL = 300 * 1024 * 1024;
 const FETCHES_PER_PERSON = 60;
@@ -21,9 +20,8 @@ const SITE = 'https://theothermatthewmiller.com';
 const COVER = `${SITE}/ross/cover.png`;
 const KOKORO_VERSION = 'f559560eb822dc509045f3921a1921234918b91739db4bf3daab2169b71c7a13';
 const KOKORO_VOICE = 'am_michael';
-const GEMINI_MODEL = 'google/gemini-3.8-flash-tts';
-const GEMINI_VOICE = 'Charon';
-const GEMINI_STYLE = 'Read this aloud clearly and steadily, like an audiobook narrator.';
+const HEBREW_VOICE = 'he-IL-Wavenet-B';
+const GOOGLE_MAX_BYTES = 5_000; // the most Google accepts in one request
 
 // The Origin header can be faked outside a browser, so the caps are what really bound the bill.
 const ALLOWED_ORIGIN = /^(https:\/\/theothermatthewmiller\.com|https:\/\/[a-z0-9-]+--[a-z0-9-]+\.netlify\.app|http:\/\/localhost:\d+)$/;
@@ -104,10 +102,9 @@ function isHebrew(text) {
 
 async function speechCounters(user, request, env, hebrew = false) {
   const kind = hebrew ? 'he' : 'tts';
-  const limit = hebrew ? (user.daily_limit ? HE_CHARS_OWNER : HE_CHARS_PERSON) : personalLimit(user);
-  const mine = [`${kind}:${user.library}`, limit];
-  if (user.daily_limit) return [mine];
-  return [[`${kind}:all`, hebrew ? HE_CHARS_ALL : CHARS_ALL], [`${kind}:${await ipSubject(request, env)}`, limit], mine];
+  const mine = [`${kind}:${user.library}`, personalLimit(user)];
+  if (user.daily_limit) return hebrew ? [mine, [`${kind}:all`, HE_CHARS_ALL]] : [mine];
+  return [[`${kind}:all`, hebrew ? HE_CHARS_ALL : CHARS_ALL], [`${kind}:${await ipSubject(request, env)}`, personalLimit(user)], mine];
 }
 
 async function remainingChars(user, request, env, hebrew = false) {
@@ -166,15 +163,28 @@ async function libraryView(user, request, env, origin) {
 
 // --- Speech ---
 
-async function synthesize(text, hebrew, env) {
+// Returns the WAV itself, at the same sample rate as Kokoro.
+async function synthesizeHebrew(text, env) {
+  const res = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
+    method: 'POST',
+    headers: { 'X-Goog-Api-Key': env.GOOGLE_TTS_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      input: { text },
+      voice: { languageCode: 'he-IL', name: HEBREW_VOICE },
+      audioConfig: { audioEncoding: 'LINEAR16', sampleRateHertz: 24_000 },
+    }),
+  });
+  if (!res.ok) throw new Error(`Google returned ${res.status}`);
+  const { audioContent } = await res.json();
+  return Uint8Array.from(atob(audioContent), (c) => c.charCodeAt(0));
+}
+
+async function synthesize(text, env) {
   const headers = { Authorization: `Bearer ${env.REPLICATE_API_TOKEN}`, 'Content-Type': 'application/json' };
-  const [endpoint, body] = hebrew
-    ? [`models/${GEMINI_MODEL}/predictions`, { input: { text, voice: GEMINI_VOICE, style: GEMINI_STYLE, output_format: 'wav' } }]
-    : ['predictions', { version: KOKORO_VERSION, input: { text, voice: KOKORO_VOICE, speed: 1 } }];
-  const created = await fetch(`https://api.replicate.com/v1/${endpoint}`, {
+  const created = await fetch('https://api.replicate.com/v1/predictions', {
     method: 'POST',
     headers: { ...headers, Prefer: 'wait=30' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ version: KOKORO_VERSION, input: { text, voice: KOKORO_VOICE, speed: 1 } }),
   });
   if (!created.ok) throw new Error(`Replicate returned ${created.status}`);
   let prediction = await created.json();
@@ -305,11 +315,13 @@ async function route(request, env) {
     const { text } = await request.json().catch(() => ({}));
     if (typeof text !== 'string' || !text.trim() || text.length > MAX_TTS_CHARS) return fail('Bad text', 400);
     const hebrew = isHebrew(text);
+    if (hebrew && new TextEncoder().encode(text).length > GOOGLE_MAX_BYTES) return fail('Bad text', 400);
     const counters = await speechCounters(user, request, env, hebrew);
     const over = await reserve(env, counters, text.length);
     if (over) return json({ error: 'limit', everyone: over.endsWith(':all') }, 402);
     try {
-      return json({ url: await synthesize(text, hebrew, env) });
+      if (hebrew) return new Response(await synthesizeHebrew(text, env), { headers: { 'Content-Type': 'audio/wav' } });
+      return json({ url: await synthesize(text, env) });
     } catch (err) {
       await refund(env, counters, text.length);
       return fail(String(err.message || err), 502);
