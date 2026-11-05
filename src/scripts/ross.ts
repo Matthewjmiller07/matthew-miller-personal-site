@@ -20,7 +20,7 @@ const LIBRARY_KEY = 'ross-library';
 const OLD_FEED_KEY = 'pdf-audio-feed-token'; // from when this tool was PDF to Audio
 
 interface Episode { id: number; title: string; duration: number | null; created: string }
-interface Feed { token: string; title: string; feedUrl: string; episodes: Episode[] }
+interface Feed { token: string; title: string; feedUrl: string; coverUrl: string; coverTitle: string | null; episodes: Episode[] }
 interface Me { hasEmail: boolean; charsLeft: number; hebrewCharsLeft: number; sharedLeft: number; freeChars: number; emailChars: number; feeds: Feed[] }
 interface Chapter { title: string; text: string }
 
@@ -91,6 +91,7 @@ async function apiJson(path: string, method: string, body?: unknown): Promise<Me
 function setMe(next: Me) {
   me = next;
   renderFeeds();
+  void syncCovers();
   if (!$('review').hidden) updateAllowance();
   if (!$('book').hidden) updateBook();
 }
@@ -764,6 +765,162 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLEl
   return node;
 }
 
+// --- Cover art: Ross and the feed's title, drawn here so Hebrew is shaped by the browser ---
+
+const COVER_SIZE = 1400; // the smallest Apple Podcasts accepts
+const COVER_MARGIN = 110;
+const COVER_FONT = '"Bricolage Grotesque", "Heebo", system-ui, sans-serif';
+
+// Lay the title out as big as it fits above Ross, breaking mid-word only when a word can't fit.
+function fitTitle(ctx: CanvasRenderingContext2D, title: string, width: number, height: number) {
+  const LINE = 1.04;
+  for (let size = 230; size >= 48; size -= 6) {
+    ctx.font = `800 ${size}px ${COVER_FONT}`;
+    const fits = (s: string) => ctx.measureText(s).width <= width;
+    const words = title.split(/\s+/).flatMap((word) => {
+      if (fits(word) || size > 48) return [word];
+      const pieces: string[] = [];
+      let cur = '';
+      for (const ch of word) {
+        if (!fits(cur + ch)) {
+          pieces.push(cur);
+          cur = '';
+        }
+        cur += ch;
+      }
+      return [...pieces, cur];
+    });
+    if (!words.every(fits)) continue;
+    const lines: string[] = [];
+    for (const word of words) {
+      const last = lines[lines.length - 1];
+      if (last !== undefined && fits(`${last} ${word}`)) lines[lines.length - 1] = `${last} ${word}`;
+      else lines.push(word);
+    }
+    if (lines.length * size * LINE <= height) return { lines, size, step: size * LINE };
+  }
+  ctx.font = `800 48px ${COVER_FONT}`;
+  return { lines: [title], size: 48, step: 50 };
+}
+
+async function drawCover(title: string): Promise<Blob> {
+  await Promise.all([
+    document.fonts.load(`800 100px "Bricolage Grotesque"`, 'Ross'),
+    document.fonts.load(`800 100px "Heebo"`, 'א'),
+  ]).catch(() => undefined); // A missing font falls back to the system's.
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = COVER_SIZE;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#1b2bd8';
+  ctx.fillRect(0, 0, COVER_SIZE, COVER_SIZE);
+
+  // Ross, from public/ross/mark.svg, in its 100-unit square.
+  ctx.save();
+  ctx.translate(COVER_MARGIN - 60, COVER_SIZE - 400);
+  ctx.scale(4, 4);
+  ctx.strokeStyle = '#ffc92e';
+  ctx.lineWidth = 11;
+  ctx.lineCap = 'round';
+  ctx.stroke(new Path2D('M30 37a35 35 0 0 1 35 35'));
+  ctx.stroke(new Path2D('M30 16a56 56 0 0 1 56 56'));
+  ctx.fillStyle = '#ffc92e';
+  ctx.fill(new Path2D('M46 72a16 16 0 1 1-32 0a16 16 0 1 1 32 0'));
+  ctx.lineWidth = 2.6;
+  ctx.strokeStyle = '#10133f';
+  for (const x of [23.5, 36.5]) {
+    const eye = new Path2D();
+    eye.arc(x, 71, 5.6, 0, Math.PI * 2);
+    ctx.fillStyle = '#fffdf4';
+    ctx.fill(eye);
+    ctx.stroke(eye);
+    ctx.fillStyle = '#10133f';
+    ctx.beginPath();
+    ctx.arc(x + 1, 71.4, 1.7, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.stroke(new Path2D('M29 70.5q1-1 2 0'));
+  ctx.restore();
+
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#fffdf4';
+  ctx.font = `800 76px ${COVER_FONT}`;
+  ctx.textAlign = 'right';
+  ctx.fillText('Ross reads it', COVER_SIZE - COVER_MARGIN, COVER_SIZE - 130);
+
+  const rtl = languageOf(title) === 'he';
+  ctx.direction = rtl ? 'rtl' : 'ltr';
+  ctx.textAlign = rtl ? 'right' : 'left';
+  ctx.fillStyle = '#ffc92e';
+  const { lines, size, step } = fitTitle(ctx, title, COVER_SIZE - COVER_MARGIN * 2, COVER_SIZE - COVER_MARGIN - 470);
+  ctx.font = `800 ${size}px ${COVER_FONT}`;
+  lines.forEach((line, i) => ctx.fillText(line, rtl ? COVER_SIZE - COVER_MARGIN : COVER_MARGIN, COVER_MARGIN + size * 0.85 + i * step));
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('No cover'))), 'image/png');
+  });
+}
+
+// Every new visitor has an empty "My reading", so that one waits until it holds something.
+const wantsCover = (feed: Feed) => feed.coverTitle !== feed.title && (feed.episodes.length > 0 || feed.title !== 'My reading');
+const coverTried = new Map<string, string>();
+let coversRunning = false;
+
+async function syncCovers() {
+  if (coversRunning) return;
+  coversRunning = true;
+  try {
+    for (;;) {
+      const feed = me?.feeds.find((f) => wantsCover(f) && coverTried.get(f.token) !== f.title);
+      if (!feed) return;
+      const { token, title } = feed;
+      coverTried.set(token, title);
+      try {
+        const res = await api(`/feeds/${token}/cover`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'image/png', 'X-Cover-Title': encodeURIComponent(title) },
+          body: await drawCover(title),
+        });
+        if (!res.ok) continue;
+        const cover = (await res.json()) as Pick<Feed, 'coverUrl' | 'coverTitle'>;
+        const current = me?.feeds.find((f) => f.token === token);
+        if (current) Object.assign(current, cover);
+        document.querySelector<HTMLImageElement>(`img[data-cover="${token}"]`)?.setAttribute('src', cover.coverUrl);
+      } catch {
+        // The feed keeps its current art, and the next visit tries again.
+      }
+    }
+  } finally {
+    coversRunning = false;
+  }
+}
+
+// Saving a title doesn't redraw the list, so the cursor stays wherever the person moved it next.
+function titleInput(className: string, label: string, value: string, maxLength: number, path: string) {
+  const input = el('input', { className, type: 'text', value, maxLength, ariaLabel: label, dir: 'auto' });
+  let saved = value;
+  input.addEventListener('change', async () => {
+    const title = input.value.trim();
+    if (!title) {
+      input.value = saved;
+      return;
+    }
+    try {
+      me = await apiJson(path, 'PATCH', { title });
+      saved = title;
+      fillFeedPicker();
+      if (!$('book').hidden) updateBook();
+      status('feeds-status', 'Saved. Podcast apps show the change the next time they refresh.');
+      void syncCovers();
+    } catch (err) {
+      input.value = saved;
+      status('feeds-status', err instanceof Error ? err.message : String(err), true);
+    }
+  });
+  return input;
+}
+
+const openEpisodeLists = new Set<string>();
+
 function renderFeeds() {
   fillFeedPicker();
   const say = (s: string, bad = false) => status('feeds-status', s, bad);
@@ -772,11 +929,9 @@ function renderFeeds() {
   $('feeds').replaceChildren(
     ...(me?.feeds ?? []).map((feed) => {
       const host = feed.feedUrl.replace(/^https?:\/\//, '');
-      const name = el('input', { className: 'ross-feed-name', type: 'text', value: feed.title, maxLength: 80, ariaLabel: 'Feed name' });
-      name.addEventListener('change', () => {
-        if (name.value.trim()) act(() => apiJson(`/feeds/${feed.token}`, 'PATCH', { title: name.value }));
-        else name.value = feed.title;
-      });
+      const name = titleInput('ross-feed-name', 'Feed name', feed.title, 80, `/feeds/${feed.token}`);
+      const cover = el('img', { className: 'ross-feed-cover', src: feed.coverUrl, alt: '', width: 72, height: 72 });
+      cover.dataset.cover = feed.token;
       const copy = el('button', { className: 'ross-link', type: 'button', textContent: 'Copy link' });
       copy.addEventListener('click', async () => {
         await navigator.clipboard.writeText(feed.feedUrl);
@@ -808,17 +963,21 @@ function renderFeeds() {
         ...feed.episodes.map((episode) => {
           const del = el('button', { className: 'ross-link', type: 'button', textContent: 'Delete' });
           del.addEventListener('click', () => act(() => apiJson(`/episodes/${episode.id}`, 'DELETE')));
-          return el('li', {}, el('span', { textContent: episode.title }), del);
+          return el('li', {}, titleInput('ross-ep-name', 'Episode title', episode.title, 200, `/episodes/${episode.id}`), del);
         }),
       );
       const episodes = el(
         'details',
-        { className: 'ross-eps' },
+        { className: 'ross-eps', open: openEpisodeLists.has(feed.token) },
         el('summary', { textContent: count ? `${count} ${count === 1 ? 'episode' : 'episodes'}` : 'No episodes yet' }),
         list,
         remove,
       );
-      return el('article', { className: 'ross-feed' }, el('div', { className: 'ross-feed-top' }, name), subs, episodes);
+      episodes.addEventListener('toggle', () => {
+        if (episodes.open) openEpisodeLists.add(feed.token);
+        else openEpisodeLists.delete(feed.token);
+      });
+      return el('article', { className: 'ross-feed' }, el('div', { className: 'ross-feed-top' }, cover, name), subs, episodes);
     }),
   );
 }
