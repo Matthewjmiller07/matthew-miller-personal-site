@@ -693,7 +693,7 @@ function updateBook() {
   const left = allowanceFor(language);
   $('email-form-book').hidden = !(language === 'en' && !me.hasEmail && me.sharedLeft > 0 && total > left);
   const read = $<HTMLButtonElement>('read-book');
-  read.textContent = `Read ${picked.length} ${picked.length === 1 ? 'chapter' : 'chapters'}`;
+  read.textContent = `Read ${picked.length} ${picked.length === 1 ? 'episode' : 'episodes'}`;
   read.disabled = bookRunning || picked.length === 0 || language === 'other';
   const hours = minutes(total, language) / 60;
   const size = hours >= 1 ? `about ${hours.toFixed(1)} hours` : `about ${mins(total, language)}`;
@@ -709,7 +709,7 @@ function showBook(list: Chapter[]) {
   $('book-title').textContent = `Ross split this into ${list.length} episodes`;
   $('chapter-list').replaceChildren(
     ...list.map((chapter, i) => {
-      const box = el('input', { type: 'checkbox', value: String(i), checked: !SKIP_BY_DEFAULT.test(chapter.title) && chapter.title !== 'Front matter' && chapter.text.length >= MIN_EPISODE_CHARS });
+      const box = el('input', { type: 'checkbox', value: String(i), checked: !SKIP_BY_DEFAULT.test(chapter.title) && chapter.title !== 'Front matter' && !/\b(front|back) cover\b/i.test(chapter.title) && chapter.text.length >= MIN_EPISODE_CHARS });
       box.addEventListener('change', updateBook);
       return el(
         'li',
@@ -798,7 +798,7 @@ async function readBook() {
       updateBook();
       await apiJson('/me', 'GET').then(setMe);
     }
-    if (finished === picked.length) say(`Done. All ${finished} chapters are in your feed. Subscribe below if you haven't yet.`);
+    if (finished === picked.length) say(`Done. ${finished === 1 ? 'The episode is' : `All ${finished} episodes are`} in your feed. Subscribe below if you haven't yet.`);
     else if (cancelled) say(`Stopped. ${finished} ${finished === 1 ? 'chapter is' : 'chapters are'} in your feed.`);
   } catch (err) {
     say(err instanceof Error ? err.message : String(err), true);
