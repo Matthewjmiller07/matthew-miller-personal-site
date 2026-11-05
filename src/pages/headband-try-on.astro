@@ -1,0 +1,518 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Headband Try-On (test)" description="A free, in-browser virtual try-on for headbands: your camera or a selfie, face landmarks, and a headband photo laid across your hairline.">
+  <main class="min-h-screen bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 py-8 px-4">
+    <div class="max-w-6xl mx-auto">
+      <header class="mb-6">
+        <p class="text-xs uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400">Test page</p>
+        <h1 class="text-3xl md:text-4xl font-serif mt-1">Headband try-on</h1>
+        <p class="mt-2 max-w-2xl text-stone-600 dark:text-stone-300">
+          Pick a headband, turn on your camera (or upload a selfie), and it sits on your hairline and follows your head.
+          Everything runs in your browser: nothing is uploaded and it costs nothing to run.
+          Headbands from <a id="brand-link" class="underline" href="https://www.eleanorvonweisl.com/category/all-products" target="_blank" rel="noopener">Eleanor von Weisl</a>.
+        </p>
+      </header>
+
+      <div class="grid lg:grid-cols-[1fr_340px] gap-6">
+        <!-- Stage -->
+        <section>
+          <div id="stage-wrap" class="relative rounded-2xl overflow-hidden bg-stone-200 dark:bg-stone-800 aspect-[4/3] flex items-center justify-center">
+            <canvas id="stage" class="w-full h-full object-contain hidden"></canvas>
+            <div id="placeholder" class="text-center p-6">
+              <p class="text-lg mb-4">See it on you</p>
+              <div class="flex flex-wrap gap-3 justify-center">
+                <button id="btn-camera" class="px-4 py-2 rounded-full bg-stone-900 text-white dark:bg-white dark:text-stone-900">Use camera</button>
+                <label class="px-4 py-2 rounded-full border border-stone-400 cursor-pointer">Upload a selfie
+                  <input id="selfie-input" type="file" accept="image/*" class="hidden" />
+                </label>
+              </div>
+            </div>
+            <div id="status" class="absolute bottom-3 left-3 text-xs px-2 py-1 rounded bg-black/60 text-white hidden"></div>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-3 text-sm">
+            <button id="btn-camera2" class="px-3 py-1.5 rounded-full border border-stone-400">Camera</button>
+            <label class="px-3 py-1.5 rounded-full border border-stone-400 cursor-pointer">Selfie
+              <input id="selfie-input2" type="file" accept="image/*" class="hidden" />
+            </label>
+            <button id="btn-snap" class="px-3 py-1.5 rounded-full border border-stone-400">Save photo</button>
+            <label class="px-3 py-1.5 flex items-center gap-2"><input id="chk-debug" type="checkbox" /> Show landmarks</label>
+          </div>
+
+          <!-- Fit -->
+          <div class="mt-5 grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <label class="block">Size <input id="fit-size" type="range" min="0.7" max="1.6" step="0.01" value="1.2" class="w-full" /></label>
+            <label class="block">Height on head <input id="fit-lift" type="range" min="-0.25" max="0.4" step="0.005" value="0.12" class="w-full" /></label>
+            <label class="block">Thickness <input id="fit-thick" type="range" min="0.5" max="1.8" step="0.01" value="1" class="w-full" /></label>
+            <label class="block">Wrap (curve) <input id="fit-curve" type="range" min="0" max="0.8" step="0.01" value="0.38" class="w-full" /></label>
+            <label class="block">Tilt <input id="fit-tilt" type="range" min="-20" max="20" step="0.5" value="0" class="w-full" /></label>
+            <label class="block">Shift sideways <input id="fit-shift" type="range" min="-0.3" max="0.3" step="0.005" value="0" class="w-full" /></label>
+          </div>
+          <p class="mt-2 text-xs text-stone-500">Fit settings are remembered per headband.</p>
+        </section>
+
+        <!-- Catalog + prep -->
+        <aside>
+          <h2 class="font-serif text-xl mb-2">Headbands</h2>
+          <div id="catalog" class="grid grid-cols-3 gap-2"></div>
+          <p id="catalog-empty" class="hidden text-sm text-stone-500 mt-2">
+            The catalog hasn't been pulled from her site yet. Add a headband below: save a product photo from her site and upload it, or paste its image address.
+          </p>
+
+          <div class="mt-4 space-y-2 text-sm">
+            <label class="block px-3 py-2 rounded-lg border border-dashed border-stone-400 cursor-pointer text-center">+ Upload a headband photo
+              <input id="band-input" type="file" accept="image/*" class="hidden" />
+            </label>
+            <form id="band-url-form" class="flex gap-2">
+              <input id="band-url" type="url" placeholder="…or paste an image URL" class="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-stone-300 bg-white dark:bg-stone-800 dark:border-stone-600" />
+              <button class="px-3 py-1.5 rounded-lg border border-stone-400">Add</button>
+            </form>
+            <div class="flex items-center gap-2">
+              <span>Plain band</span>
+              <input id="plain-color" type="color" value="#1c1c1c" class="h-8 w-10 rounded" />
+              <button id="btn-plain" class="px-3 py-1.5 rounded-lg border border-stone-400">Try</button>
+            </div>
+          </div>
+
+          <div id="prep" class="mt-5 hidden">
+            <h3 class="font-serif text-lg" id="prep-title">Prep</h3>
+            <a id="prep-link" class="text-sm underline hidden" target="_blank" rel="noopener">View on her site</a>
+            <div class="mt-2 rounded-lg overflow-hidden checker">
+              <canvas id="prep-preview" class="w-full h-auto block"></canvas>
+            </div>
+            <p class="text-xs text-stone-500 mt-1">Crop to just the band, then clear the background so only the fabric is left.</p>
+            <div class="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <label>Crop top <input id="crop-t" type="range" min="0" max="0.9" step="0.005" value="0" class="w-full" /></label>
+              <label>Crop bottom <input id="crop-b" type="range" min="0" max="0.9" step="0.005" value="0" class="w-full" /></label>
+              <label>Crop left <input id="crop-l" type="range" min="0" max="0.45" step="0.005" value="0" class="w-full" /></label>
+              <label>Crop right <input id="crop-r" type="range" min="0" max="0.45" step="0.005" value="0" class="w-full" /></label>
+              <label class="col-span-2">Clear background <input id="bg-tol" type="range" min="0" max="120" step="1" value="40" class="w-full" /></label>
+            </div>
+            <p id="prep-note" class="text-xs text-amber-700 dark:text-amber-400 mt-1 hidden"></p>
+          </div>
+        </aside>
+      </div>
+
+      <section class="mt-10 max-w-3xl text-sm text-stone-600 dark:text-stone-300 space-y-2">
+        <h2 class="font-serif text-xl text-stone-900 dark:text-stone-100">How it works</h2>
+        <p>Google's MediaPipe Face Landmarker finds 478 points on your face, 30 times a second, on your own device. The page uses four of them: the top of the forehead, the two sides of the face and the outer corners of the eyes. From those it gets where your hairline is, how wide your head is and how it's tilted.</p>
+        <p>The headband photo is cropped, its background cleared by flood-filling from the edges, and then drawn in thin vertical strips, with the ends dropped a little so it wraps around the head instead of sitting flat like a sticker.</p>
+        <p>It's a 2D overlay, so it won't hide behind hair or turn with your head in full 3D. For a test of whether a colour or width suits someone, that's enough, and it's free: no server, no API calls.</p>
+      </section>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .checker {
+    background-color: #fff;
+    background-image: linear-gradient(45deg, #ddd 25%, transparent 25%), linear-gradient(-45deg, #ddd 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #ddd 75%), linear-gradient(-45deg, transparent 75%, #ddd 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  }
+  .swatch[aria-pressed='true'] { outline: 2px solid currentColor; outline-offset: 2px; }
+</style>
+
+<script>
+  const MP_VERSION = '0.10.14';
+  const MP_BUNDLE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/vision_bundle.mjs`;
+  const MP_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/wasm`;
+  const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+  const CATALOG_URL = '/data/headbands/evw.json';
+
+  // Landmark indices (MediaPipe face mesh).
+  const LM = { top: 10, chin: 152, left: 234, right: 454, eyeA: 33, eyeB: 263 };
+
+  const $ = (id) => document.getElementById(id);
+  const stage = $('stage');
+  const ctx = stage.getContext('2d');
+
+  // ——— Face landmarker (lazy, one per running mode) ———
+  const landmarkers = {};
+  function landmarker(mode) {
+    if (!landmarkers[mode]) {
+      landmarkers[mode] = import(/* @vite-ignore */ MP_BUNDLE).then(async ({ FilesetResolver, FaceLandmarker }) => {
+        const fileset = await FilesetResolver.forVisionTasks(MP_WASM);
+        const opts = (delegate) => ({ baseOptions: { modelAssetPath: MP_MODEL, delegate }, runningMode: mode, numFaces: 1 });
+        try { return await FaceLandmarker.createFromOptions(fileset, opts('GPU')); }
+        catch { return FaceLandmarker.createFromOptions(fileset, opts('CPU')); }
+      }).catch((e) => { delete landmarkers[mode]; throw e; });
+    }
+    return landmarkers[mode];
+  }
+
+  function status(msg) {
+    const el = $('status');
+    el.textContent = msg || '';
+    el.classList.toggle('hidden', !msg);
+  }
+
+  // ——— Headband state ———
+  const DEFAULT_FIT = { size: 1.2, lift: 0.12, thick: 1, curve: 0.38, tilt: 0, shift: 0 };
+  const DEFAULT_PREP = { t: 0, b: 0, l: 0, r: 0, tol: 40 };
+  const bands = []; // {id, name, url, price, currency, img, tainted, prep, fit, texture, plain}
+  let current = null;
+
+  function loadImage(src, cors = true) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      if (cors) img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+  async function loadAny(src) {
+    try { return { img: await loadImage(src, true), tainted: false }; }
+    catch { return { img: await loadImage(src, false), tainted: true }; }
+  }
+
+  // Crop, clear the background by flood fill from the border, trim to what's left.
+  function buildTexture(band) {
+    if (band.plain) return band.texture;
+    const { img, prep } = band;
+    const W = img.naturalWidth, H = img.naturalHeight;
+    const sx = Math.round(W * prep.l), sy = Math.round(H * prep.t);
+    const sw = Math.max(4, Math.round(W * (1 - prep.l - prep.r))), sh = Math.max(4, Math.round(H * (1 - prep.t - prep.b)));
+    const scale = Math.min(1, 900 / sw);
+    const c = document.createElement('canvas');
+    c.width = Math.round(sw * scale); c.height = Math.round(sh * scale);
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    band.note = '';
+    if (band.tainted) {
+      band.note = "That site doesn't allow the image to be edited here, so the background can't be cleared. Save the photo and upload it instead.";
+      return c;
+    }
+    if (prep.tol > 0) clearBackground(g, c.width, c.height, prep.tol);
+    return trim(c) || c;
+  }
+
+  function clearBackground(g, w, h, tol) {
+    const id = g.getImageData(0, 0, w, h);
+    const d = id.data;
+    const seen = new Uint8Array(w * h);
+    const stack = [];
+    const t2 = tol * tol * 3;
+    // Seed from every border pixel; each fill compares to its own seed colour, so a gradient backdrop still clears.
+    const seed = (x, y) => { const i = y * w + x; if (!seen[i]) stack.push(i, i); };
+    for (let x = 0; x < w; x++) { seed(x, 0); seed(x, h - 1); }
+    for (let y = 0; y < h; y++) { seed(0, y); seed(w - 1, y); }
+    while (stack.length) {
+      const ref = stack.pop(), i = stack.pop();
+      if (seen[i]) continue;
+      const p = i * 4, q = ref * 4;
+      const dr = d[p] - d[q], dg = d[p + 1] - d[q + 1], db = d[p + 2] - d[q + 2];
+      if (dr * dr + dg * dg + db * db > t2) continue;
+      seen[i] = 1;
+      d[p + 3] = 0;
+      const x = i % w, y = (i / w) | 0;
+      if (x > 0) stack.push(i - 1, ref);
+      if (x < w - 1) stack.push(i + 1, ref);
+      if (y > 0) stack.push(i - w, ref);
+      if (y < h - 1) stack.push(i + w, ref);
+    }
+    // Soften the cut edge: any kept pixel touching a cleared one goes half transparent.
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      if (!seen[i] && (seen[i - 1] || seen[i + 1] || seen[i - w] || seen[i + w])) d[i * 4 + 3] = 140;
+    }
+    g.putImageData(id, 0, 0);
+  }
+
+  function trim(c) {
+    const g = c.getContext('2d');
+    const { data } = g.getImageData(0, 0, c.width, c.height);
+    let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+    for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+      if (data[(y * c.width + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 < 0) return null;
+    const out = document.createElement('canvas');
+    out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
+    out.getContext('2d').drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+    return out;
+  }
+
+  // A generic fabric band with a twist knot, for trying a colour without a photo.
+  function plainTexture(hex) {
+    const c = document.createElement('canvas');
+    c.width = 900; c.height = 200;
+    const g = c.getContext('2d');
+    const band = g.createLinearGradient(0, 30, 0, 170);
+    band.addColorStop(0, shade(hex, -0.25)); band.addColorStop(0.35, shade(hex, 0.12));
+    band.addColorStop(0.7, hex); band.addColorStop(1, shade(hex, -0.35));
+    g.fillStyle = band;
+    g.beginPath();
+    g.moveTo(10, 70); g.quadraticCurveTo(450, 20, 890, 70);
+    g.lineTo(890, 140); g.quadraticCurveTo(450, 175, 10, 140); g.closePath(); g.fill();
+    // Knot in the middle.
+    const k = g.createRadialGradient(440, 85, 10, 450, 100, 95);
+    k.addColorStop(0, shade(hex, 0.25)); k.addColorStop(0.6, hex); k.addColorStop(1, shade(hex, -0.4));
+    g.fillStyle = k;
+    g.beginPath(); g.ellipse(450, 100, 92, 92, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = shade(hex, -0.45); g.lineWidth = 4;
+    for (const off of [-30, 0, 30]) { g.beginPath(); g.moveTo(390 + off, 30); g.quadraticCurveTo(450 + off * 0.6, 100, 400 + off, 175); g.stroke(); }
+    return c;
+  }
+  function shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    const f = (v) => Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt)));
+    return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+  }
+
+  // ——— Catalog UI ———
+  function addBand(b, select = true) {
+    b.id = b.id || 'b' + Math.random().toString(36).slice(2, 8);
+    b.prep = { ...DEFAULT_PREP, ...(b.prep || {}) };
+    b.fit = { ...DEFAULT_FIT, ...(b.fit || {}) };
+    b.texture = buildTexture(b);
+    bands.push(b);
+    const btn = document.createElement('button');
+    btn.className = 'swatch rounded-lg overflow-hidden border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 text-left';
+    btn.dataset.id = b.id;
+    const thumb = b.plain ? b.texture.toDataURL() : b.img.src;
+    btn.innerHTML = `<div class="aspect-square bg-stone-100 flex items-center justify-center overflow-hidden"><img alt="" class="w-full h-full object-cover" /></div>
+      <div class="px-1.5 py-1 text-[11px] leading-tight"><div class="truncate"></div><div class="text-stone-500"></div></div>`;
+    btn.querySelector('img').src = thumb;
+    btn.querySelector('.truncate').textContent = b.name;
+    btn.querySelector('.text-stone-500').textContent = b.price ? `${b.currency === 'ILS' ? '₪' : ''}${b.price}` : (b.plain ? 'generic' : 'yours');
+    btn.addEventListener('click', () => select_(b));
+    $('catalog').appendChild(btn);
+    $('catalog-empty').classList.add('hidden');
+    if (select) select_(b);
+  }
+
+  function select_(b) {
+    current = b;
+    for (const el of document.querySelectorAll('.swatch')) el.setAttribute('aria-pressed', String(el.dataset.id === b.id));
+    for (const k of Object.keys(DEFAULT_FIT)) $('fit-' + k).value = b.fit[k];
+    $('prep').classList.toggle('hidden', !!b.plain);
+    if (!b.plain) {
+      $('prep-title').textContent = b.name;
+      const link = $('prep-link');
+      link.classList.toggle('hidden', !b.url);
+      if (b.url) link.href = b.url;
+      for (const k of ['t', 'b', 'l', 'r']) $('crop-' + k).value = b.prep[k];
+      $('bg-tol').value = b.prep.tol;
+      showPrep();
+    }
+    if (mode === 'photo') renderPhoto();
+  }
+
+  function showPrep() {
+    const c = $('prep-preview');
+    const t = current.texture;
+    c.width = t.width; c.height = t.height;
+    c.getContext('2d').drawImage(t, 0, 0);
+    const note = $('prep-note');
+    note.textContent = current.note || '';
+    note.classList.toggle('hidden', !current.note);
+  }
+
+  let prepTimer = 0;
+  for (const k of ['t', 'b', 'l', 'r']) $('crop-' + k).addEventListener('input', (e) => { current.prep[k] = +e.target.value; rebuild(); });
+  $('bg-tol').addEventListener('input', (e) => { current.prep.tol = +e.target.value; rebuild(); });
+  function rebuild() {
+    clearTimeout(prepTimer);
+    prepTimer = setTimeout(() => { current.texture = buildTexture(current); showPrep(); if (mode === 'photo') renderPhoto(); }, 60);
+  }
+  for (const k of Object.keys(DEFAULT_FIT)) $('fit-' + k).addEventListener('input', (e) => {
+    if (!current) return;
+    current.fit[k] = +e.target.value;
+    if (mode === 'photo') renderPhoto();
+  });
+
+  $('band-input').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const { img } = await loadAny(URL.createObjectURL(f));
+    addBand({ name: f.name.replace(/\.[^.]+$/, '').slice(0, 40), img, tainted: false });
+    e.target.value = '';
+  });
+  $('band-url-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const url = $('band-url').value.trim(); if (!url) return;
+    try {
+      const { img, tainted } = await loadAny(url);
+      addBand({ name: decodeURIComponent(url.split('/').pop().split(/[?~]/)[0]).slice(0, 40) || 'Headband', img, tainted });
+      $('band-url').value = '';
+    } catch { alert("Couldn't load that image. Try saving it and uploading it instead."); }
+  });
+  $('btn-plain').addEventListener('click', () => {
+    const hex = $('plain-color').value;
+    addBand({ name: 'Plain ' + hex, plain: true, texture: plainTexture(hex), fit: { thick: 1.1 } });
+  });
+
+  async function loadCatalog() {
+    try {
+      const data = await (await fetch(CATALOG_URL)).json();
+      if (data.source) $('brand-link').href = data.source;
+      const list = data.products || [];
+      if (!list.length) $('catalog-empty').classList.remove('hidden');
+      let first = true;
+      for (const p of list) {
+        try {
+          const { img, tainted } = await loadAny(p.image);
+          addBand({ id: p.slug, name: p.name, url: p.url, price: p.price, currency: p.currency, img, tainted, prep: p.crop, fit: p.fit }, first);
+          first = false;
+        } catch { /* skip a missing photo */ }
+      }
+    } catch { $('catalog-empty').classList.remove('hidden'); }
+    if (!bands.length) addBand({ name: 'Plain black', plain: true, texture: plainTexture('#1c1c1c'), fit: { thick: 1.1 } });
+  }
+
+  // ——— Placement ———
+  const smooth = { cx: 0, cy: 0, w: 0, a: 0, ready: false };
+
+  function placement(lms, W, H, mirror) {
+    const P = (i) => ({ x: (mirror ? 1 - lms[i].x : lms[i].x) * W, y: lms[i].y * H });
+    const top = P(LM.top), chin = P(LM.chin), L = P(LM.left), R = P(LM.right);
+    let a = P(LM.eyeA), b = P(LM.eyeB);
+    if (b.x < a.x) [a, b] = [b, a];
+    const f = current.fit;
+    const ang = Math.atan2(b.y - a.y, b.x - a.x) + (f.tilt * Math.PI) / 180;
+    const up = { x: Math.sin(ang), y: -Math.cos(ang) };
+    const right = { x: Math.cos(ang), y: Math.sin(ang) };
+    const faceW = Math.hypot(R.x - L.x, R.y - L.y);
+    const faceH = Math.hypot(chin.x - top.x, chin.y - top.y);
+    return {
+      cx: top.x + up.x * f.lift * faceH + right.x * f.shift * faceW,
+      cy: top.y + up.y * f.lift * faceH + right.y * f.shift * faceW,
+      w: faceW * f.size,
+      a: ang,
+      pts: [top, chin, L, R, a, b],
+    };
+  }
+
+  function drawBand(g, p) {
+    const t = current.texture;
+    if (!t || !t.width) return;
+    const f = current.fit;
+    const bw = p.w, bh = (bw * t.height) / t.width * f.thick;
+    const N = 48;
+    g.save();
+    g.translate(p.cx, p.cy);
+    g.rotate(p.a);
+    for (let i = 0; i < N; i++) {
+      const u = (i + 0.5) / N * 2 - 1;
+      const dy = f.curve * bh * u * u;           // ends drop to wrap the head
+      const squeeze = 1 - 0.22 * f.curve * u * u; // and foreshorten a little
+      const sx = (i / N) * t.width, sw = t.width / N;
+      const x0 = Math.sin(((i / N) * 2 - 1) * Math.PI / 2 * (0.6 + f.curve * 0.5)) / Math.sin(Math.PI / 2 * (0.6 + f.curve * 0.5));
+      const x1 = Math.sin((((i + 1) / N) * 2 - 1) * Math.PI / 2 * (0.6 + f.curve * 0.5)) / Math.sin(Math.PI / 2 * (0.6 + f.curve * 0.5));
+      const dx = (x0 * bw) / 2, dw = ((x1 - x0) * bw) / 2 + 0.6;
+      g.drawImage(t, sx, 0, sw, t.height, dx, -bh / 2 + dy + (bh * (1 - squeeze)) / 2, dw, bh * squeeze);
+    }
+    g.restore();
+  }
+
+  function drawDebug(g, p) {
+    g.fillStyle = '#22d3ee';
+    for (const q of p.pts) { g.beginPath(); g.arc(q.x, q.y, 4, 0, Math.PI * 2); g.fill(); }
+  }
+
+  // ——— Camera mode ———
+  let mode = null; // 'camera' | 'photo'
+  let video = null, stream = null, rafId = 0, photo = null, photoLms = null;
+
+  function showStage() {
+    $('placeholder').classList.add('hidden');
+    stage.classList.remove('hidden');
+  }
+
+  async function startCamera() {
+    stopCamera();
+    try {
+      status('Starting camera…');
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false });
+    } catch {
+      status(''); alert('No camera access. You can upload a selfie instead.'); return;
+    }
+    video = document.createElement('video');
+    video.playsInline = true; video.muted = true; video.srcObject = stream;
+    await video.play();
+    stage.width = video.videoWidth; stage.height = video.videoHeight;
+    mode = 'camera'; smooth.ready = false;
+    showStage();
+    status('Loading face model…');
+    const lm = await landmarker('VIDEO');
+    status('');
+    let last = -1;
+    const loop = () => {
+      if (mode !== 'camera') return;
+      rafId = requestAnimationFrame(loop);
+      if (video.currentTime === last) return;
+      last = video.currentTime;
+      const W = stage.width, H = stage.height;
+      ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1); ctx.drawImage(video, 0, 0, W, H); ctx.restore();
+      const res = lm.detectForVideo(video, performance.now());
+      const lms = res.faceLandmarks && res.faceLandmarks[0];
+      if (!lms || !current) { smooth.ready = false; return; }
+      const p = placement(lms, W, H, true);
+      const k = smooth.ready ? 0.45 : 1;
+      smooth.cx += (p.cx - smooth.cx) * k; smooth.cy += (p.cy - smooth.cy) * k;
+      smooth.w += (p.w - smooth.w) * k; smooth.a += (p.a - smooth.a) * k;
+      smooth.ready = true;
+      drawBand(ctx, { ...p, cx: smooth.cx, cy: smooth.cy, w: smooth.w, a: smooth.a });
+      if ($('chk-debug').checked) drawDebug(ctx, p);
+    };
+    loop();
+  }
+
+  function stopCamera() {
+    cancelAnimationFrame(rafId);
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+  }
+
+  // ——— Photo mode ———
+  async function startPhoto(file) {
+    stopCamera();
+    mode = 'photo';
+    const { img } = await loadAny(URL.createObjectURL(file));
+    const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    stage.width = Math.round(img.naturalWidth * scale); stage.height = Math.round(img.naturalHeight * scale);
+    photo = img; photoLms = null;
+    showStage();
+    renderPhoto();
+    status('Finding your face…');
+    try {
+      const lm = await landmarker('IMAGE');
+      const res = lm.detect(img);
+      photoLms = res.faceLandmarks && res.faceLandmarks[0];
+      status(photoLms ? '' : 'No face found. Try a straight-on photo with your forehead showing.');
+    } catch { status('Face model failed to load.'); }
+    renderPhoto();
+  }
+
+  function renderPhoto() {
+    if (!photo) return;
+    ctx.drawImage(photo, 0, 0, stage.width, stage.height);
+    if (!photoLms || !current) return;
+    const p = placement(photoLms, stage.width, stage.height, false);
+    drawBand(ctx, p);
+    if ($('chk-debug').checked) drawDebug(ctx, p);
+  }
+  $('chk-debug').addEventListener('change', () => mode === 'photo' && renderPhoto());
+
+  for (const id of ['btn-camera', 'btn-camera2']) $(id).addEventListener('click', startCamera);
+  for (const id of ['selfie-input', 'selfie-input2']) $(id).addEventListener('change', (e) => { const f = e.target.files[0]; if (f) startPhoto(f); e.target.value = ''; });
+
+  $('btn-snap').addEventListener('click', () => {
+    if (!mode) return;
+    try {
+      stage.toBlob((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `headband-${(current && current.id) || 'try-on'}.png`;
+        a.click();
+      }, 'image/png');
+    } catch {
+      alert("This headband came from a link that blocks saving. Upload the photo instead and you'll be able to save.");
+    }
+  });
+
+  loadCatalog();
+</script>
