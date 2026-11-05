@@ -18,7 +18,10 @@ Peshat-based picture books where the kids explore the weekly parasha. Pages live
 
 ## Adding a parasha
 
-1. Add a book to `books.mjs` (pages anchored to refs; peshat only; no depictions of Hashem).
+1. Add a book to `books.mjs` (pages anchored to refs; peshat only; no depictions of Hashem). From Vayera on, the kids travel
+   by the **Parsha Box**: page 1 opens the box on the Shabbat table and it carries them in; the last page brings them home.
+   Spell out who's in each scene ("just the three sisters", adults "in a dark head cloth", "seen from a distance"): FLUX
+   tends to clone a sister, or to give an adult seen from behind the big sister's hair and bow.
 2. `node scripts/parasha-books/fetch-sefaria.mjs`
 3. `REPLICATE_API_TOKEN=… node scripts/parasha-books/generate.mjs --book <slug>` — FLUX.2 [klein] 9B pages
    (conditioned on `public/parasha-books/cast/sisters-modest.jpg`), MiniMax Speech voiceover, MiniMax Music backtrack.
