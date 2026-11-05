@@ -457,7 +457,7 @@ export const books = [
     tagline: '[[{Group} ride|{BIG} rides]] the Parsha Box to Avraham\'s tent — and [[watch|watches]] a promise come true.',
     color: '#d99a3a',
     cover:
-      'a large carved olive-wood box with its lid wide open on a hill above a big desert tent under great oak trees, warm golden light pouring out of the box, the three sisters leaning out over its edge looking down in wonder, three travelers walking up the road toward the tent in the distance',
+      'a large carved olive-wood box with its lid wide open on a hill, warm golden light pouring out of it, inside the box just the three sisters together — the big girl, the curly-haired toddler and the baby — leaning over its edge looking down in wonder at a big desert tent under great oak trees far below, where three tiny grown-up travelers walk up the road',
     trailer: [
       'It was the heat of the day. And three strangers were standing by the tent.',
       'Water. Bread. A calf, tender and good. Avraham ran.',
@@ -484,7 +484,7 @@ export const books = [
         question: 'Where did Avraham stand while his guests ate?',
         answer: 'Beside them, under the tree (18:8).',
         scene:
-          'three robed travelers seated in the shade of a great oak tree beside a desert tent, low table with round flat cakes, bowls of butter and milk, an old bearded man standing beside them serving, figures seen from a distance; in the foreground the three sisters crouching behind a stone wall watching, the baby holding a crumb of cake',
+          "three bearded grown men in travelers' robes and head cloths seated in the shade of a great oak beside a desert tent, a low table with round flat cakes and bowls of butter and milk, a white-bearded old man standing beside them serving, all seen from a distance; in the foreground just the three sisters crouching behind a low stone wall watching, the baby holding a crumb of cake",
       },
       {
         ref: 'Genesis 18:9-14',
@@ -502,7 +502,7 @@ export const books = [
         question: 'What was the smallest number Avraham asked about?',
         answer: 'Ten — "I will not destroy, for the sake of the ten" (18:32).',
         scene:
-          'an old bearded man in a brown robe standing alone on a high rocky ridge at sunset looking down over a wide hazy plain with a distant walled city, a soft beam of golden light from the sky; the three sisters sitting in the open carved wooden box on the ridge behind him, the toddler counting on her fingers',
+          'an old bearded man in a brown robe standing alone on a high rocky ridge at sunset looking down over a wide hazy plain with a distant walled city, a soft beam of golden light from the sky; behind him on the ridge the open carved wooden box with just the three sisters inside — the big girl, the toddler counting on her fingers, and the baby',
       },
       {
         ref: 'Genesis 19:15-17; Genesis 19:24-26',
@@ -511,7 +511,7 @@ export const books = [
         question: 'What did the angels tell Lot not to do?',
         answer: 'Not to look behind him and not to stop anywhere in the plain (19:17).',
         scene:
-          'early dawn in a wide plain, four tiny robed figures far away hurrying along a road toward dark mountains, a distant orange glow on the horizon behind them; in the foreground the three sisters safe inside the open carved wooden box on a high ridge, facing us, holding hands and looking toward the mountains',
+          'early dawn in a wide plain, four tiny robed grown-up figures far away hurrying along a road toward dark mountains, a distant orange glow on the horizon behind them; in the foreground the open carved wooden box on a high ridge with just the big girl, the toddler and the baby sitting inside it holding hands, facing us',
       },
       {
         ref: 'Genesis 21:1-7',
@@ -520,7 +520,7 @@ export const books = [
         question: 'How old was Avraham when Yitzchak was born?',
         answer: 'One hundred years old (21:5).',
         scene:
-          'a joyful scene outside a big festive desert tent hung with colorful woven cloths, an elderly couple seen from behind in the tent doorway, oil lamps and flowers; the three sisters in front laughing together, the baby giggling in her big sister\'s arms',
+          'a joyful scene outside a big festive desert tent hung with colorful woven cloths, oil lamps and flowers, an elderly white-haired couple seen from behind in the tent doorway; in front just the big girl holding the giggling baby, and the toddler laughing beside them',
       },
       {
         ref: 'Genesis 21:14-19',
@@ -556,7 +556,7 @@ export const books = [
         question: 'What did Yitzchak ask his father?',
         answer: '"Here is the fire and the wood, but where is the lamb for the offering?" (22:7).',
         scene:
-          'a rocky mountain path at golden hour, an old bearded man and a young man in simple robes walking side by side away from us up toward a distant mountaintop, the young man carrying a bundle of wood, the old man holding a small clay fire pot; the three sisters watching quietly from behind a boulder, facing us',
+          'a rocky mountain path at golden hour, two grown men — a white-bearded old man and a bearded young man — walking side by side away from us toward a distant mountaintop, the young man carrying a bundle of wood on his back, the old man holding a small clay fire pot; beside the path the big girl, the toddler and the baby watching quietly from behind a boulder',
       },
       {
         ref: 'Genesis 22:9-14',
@@ -574,7 +574,7 @@ export const books = [
         question: 'What two things did the angel compare Avraham\'s offspring to?',
         answer: 'The stars of the sky and the sand on the seashore (22:17).',
         scene:
-          'back home at a cozy Shabbat table at night with candles and challah, a small carved olive-wood box on the table with its lid closing and a last glow of golden light and tiny stars drifting out of it, the three sisters around it, the toddler yawning, the baby asleep in her big sister\'s lap',
+          'back home at night: just the three sisters at a cozy Shabbat table with two candles and challah, a small carved olive-wood box on the table closing its lid with tiny golden stars drifting out of it, the toddler yawning, the baby asleep in the big girl\'s lap, no grown-ups',
       },
     ],
   },
@@ -625,7 +625,7 @@ export const books = [
         question: 'How much did Avraham pay for the field?',
         answer: 'Four hundred shekels of silver (23:16).',
         scene:
-          'an ancient balance scale piled with shining silver pieces on a stone ledge at a town gate, robed elders watching from a distance, a green field with trees and a dark cave opening in a hillside beyond; the toddler trying to count the silver pieces on her fingers, the older girl holding the baby',
+          'a stone ledge at an ancient town gate with an old balance scale piled with shining silver pieces, robed old men watching from a distance, a green field with trees and a dark cave in a hillside beyond; just the three sisters in front: the toddler counting the silver on her fingers, the big girl holding the baby on her hip',
       },
       {
         ref: 'Genesis 24:1-4',
@@ -634,7 +634,7 @@ export const books = [
         question: 'Where did Avraham send his servant to find a wife for Yitzchak?',
         answer: 'To his land and his birthplace (24:4).',
         scene:
-          'inside a large lamp-lit goat-hair tent, a very old white-bearded man seated on cushions speaking seriously to a gray-bearded servant who stands with his hand on his heart, seen from a distance; the three sisters peeking in through the open tent flap, facing us',
+          'inside a large lamp-lit goat-hair tent, a very old white-bearded man seated on cushions speaking seriously to a gray-bearded servant standing with his hand on his heart, both in the middle of the tent; at the open tent flap in the corner just the three sisters peeking in, facing us',
       },
       {
         ref: 'Genesis 24:10-14',
@@ -679,7 +679,7 @@ export const books = [
         question: 'What did Rivka answer when they asked her?',
         answer: '"I will go" — elech (24:58).',
         scene:
-          'inside a lamp-lit ancient house, a young woman in a modest blue robe and head scarf seen from behind standing tall before her seated family, an open chest of gold jewelry and folded fine cloth on the floor, figures in the middle distance; the three sisters sitting on cushions nearby, facing us, listening intently',
+          'inside a lamp-lit ancient house, a grown young woman in a modest blue robe and head scarf seen from behind facing her seated grown-up family, an open chest of gold jewelry and folded fine cloth on the floor; on one cushion at the side just the three sisters sitting together listening — the big girl, the toddler and the baby',
       },
       {
         ref: 'Genesis 24:59-61',
@@ -766,7 +766,7 @@ export const books = [
         question: 'What did Esav sell to Yaakov for the stew?',
         answer: 'His birthright (25:33).',
         scene:
-          'beside a tent a calm young man stirring a bubbling clay pot of red lentil stew over a small fire, a tired rugged young man with a bow flopping down beside him reaching for a bowl, bread on a cloth, seen from a little distance; the three sisters nearby, the toddler shaking her head, the baby sniffing the steam',
+          'beside a tent a calm bearded young man in a plain robe stirring a big bubbling clay pot of red lentil stew over a small fire, and a tired, rugged red-haired young man with a bow on his back flopping down next to him reaching for a bowl, bread on a cloth; to one side just the three sisters watching, the toddler shaking her head, the baby sniffing the steam',
       },
       {
         ref: 'Genesis 26:1-5',
@@ -775,7 +775,7 @@ export const books = [
         question: 'Where did Hashem tell Yitzchak not to go?',
         answer: 'Down to Egypt (26:2).',
         scene:
-          'a dry cracked landscape at night under a sky full of brilliant stars, a man in a robe seen from behind standing at the edge of a tent camp in a soft beam of golden light looking up; the three sisters sitting in the open carved wooden box on a rock nearby pointing up at the stars',
+          'a dry cracked land at night under brilliant stars, a bearded grown man in a robe seen from behind standing at the edge of a tent camp in a soft beam of golden light from the sky; nearby on a rock the open carved wooden box with just the three sisters inside pointing up at the stars',
       },
       {
         ref: 'Genesis 26:12-14',
@@ -820,7 +820,7 @@ export const books = [
         question: 'Why was Yaakov worried about his father touching him?',
         answer: 'Because Esav was a hairy man and Yaakov was smooth (27:11).',
         scene:
-          'inside a lamp-lit tent, a woman in a blue robe and head scarf seen from behind wrapping fuzzy goat skin around the hands of a nervous young man in a fine red robe, a steaming clay pot nearby, two little goats at the tent door; the three sisters watching, the toddler patting her own arm, the baby petting a goat',
+          'inside a lamp-lit tent, a grown woman in a dark blue robe and blue head scarf, seen from behind, wrapping fuzzy goat skin around the hands of a nervous bearded young man in a fine red robe, a steaming clay pot nearby, two little goats at the tent door; just the three sisters watching from the side, the toddler patting her own arm, the baby petting a goat',
       },
       {
         ref: 'Genesis 27:18-29',
@@ -838,7 +838,7 @@ export const books = [
         question: 'Where did Yitzchak send Yaakov?',
         answer: 'To Paddan Aram, to the house of Betuel, to marry from the daughters of Lavan (28:2).',
         scene:
-          'back home at a cozy Shabbat table at night with candles and challah, a small carved olive-wood box on the table with its lid closing and a last golden glow showing a tiny traveler on a long road at sunset inside the light, the three sisters around it, the older girl closing a book, the toddler yawning, the baby asleep',
+          'back home at night: just the three sisters at a cozy Shabbat table with candles and challah, a small carved olive-wood box closing its lid with a last golden glow inside it showing a tiny traveler on a long road, the big girl closing a book, the toddler yawning, the baby asleep on the big girl\'s lap, no grown-ups',
       },
     ],
   },
