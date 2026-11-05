@@ -13,6 +13,12 @@ wrangler secret put IP_SALT   # any long random string
 wrangler deploy
 ```
 
+## Hebrew
+
+Text that is more than a fifth Hebrew letters goes to Gemini TTS on Replicate instead of Kokoro, at
+about 1.5 cents per minute of audio. It has its own counters per day: 600 characters per person (about a
+minute), 2,000 for everyone (about 5 cents), and 10,000 for the owner (about 18 minutes, 25 cents).
+
 ## Limits
 
 In `worker.js`. Per day: 4,500 characters per person (about 5 minutes), 27,500 once they leave
