@@ -774,11 +774,12 @@ const COVER_FONT = '"Bricolage Grotesque", "Heebo", system-ui, sans-serif';
 // Lay the title out as big as it fits above Ross, breaking mid-word only when a word can't fit.
 function fitTitle(ctx: CanvasRenderingContext2D, title: string, width: number, height: number) {
   const LINE = 1.04;
-  for (let size = 230; size >= 48; size -= 6) {
+  const SMALLEST = 74;
+  for (let size = 230; size >= SMALLEST; size -= 6) {
     ctx.font = `800 ${size}px ${COVER_FONT}`;
     const fits = (s: string) => ctx.measureText(s).width <= width;
     const words = title.split(/\s+/).flatMap((word) => {
-      if (fits(word) || size > 48) return [word];
+      if (fits(word) || size > SMALLEST) return [word];
       const pieces: string[] = [];
       let cur = '';
       for (const ch of word) {
@@ -799,8 +800,7 @@ function fitTitle(ctx: CanvasRenderingContext2D, title: string, width: number, h
     }
     if (lines.length * size * LINE <= height) return { lines, size, step: size * LINE };
   }
-  ctx.font = `800 48px ${COVER_FONT}`;
-  return { lines: [title], size: 48, step: 50 };
+  return { lines: [title], size: SMALLEST, step: SMALLEST * LINE };
 }
 
 async function drawCover(title: string): Promise<Blob> {
@@ -929,7 +929,7 @@ function renderFeeds() {
   $('feeds').replaceChildren(
     ...(me?.feeds ?? []).map((feed) => {
       const host = feed.feedUrl.replace(/^https?:\/\//, '');
-      const name = titleInput('ross-feed-name', 'Feed name', feed.title, 80, `/feeds/${feed.token}`);
+      const name = titleInput('ross-feed-name', 'Feed name', feed.title, 150, `/feeds/${feed.token}`);
       const cover = el('img', { className: 'ross-feed-cover', src: feed.coverUrl, alt: '', width: 72, height: 72 });
       cover.dataset.cover = feed.token;
       const copy = el('button', { className: 'ross-link', type: 'button', textContent: 'Copy link' });

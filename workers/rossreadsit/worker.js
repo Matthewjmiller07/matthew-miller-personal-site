@@ -364,7 +364,7 @@ async function route(request, env) {
 
   if (path === '/feeds' && method === 'POST') {
     const { title } = await request.json().catch(() => ({}));
-    const name = String(title || '').trim().slice(0, 80);
+    const name = String(title || '').trim().slice(0, 150);
     if (!name) return fail('Give the feed a name.', 400);
     const { n } = await env.DB.prepare('SELECT COUNT(*) AS n FROM feeds WHERE library = ?').bind(user.library).first();
     if (n >= MAX_FEEDS) return fail(`${MAX_FEEDS} feeds is the most you can have.`, 400);
@@ -385,7 +385,7 @@ async function route(request, env) {
     }
     let shown;
     try {
-      shown = decodeURIComponent(request.headers.get('X-Cover-Title') || '').slice(0, 80);
+      shown = decodeURIComponent(request.headers.get('X-Cover-Title') || '').slice(0, 150);
     } catch {
       return fail('Bad title', 400);
     }
@@ -402,7 +402,7 @@ async function route(request, env) {
     if (!feed) return fail('Feed not found', 404);
     if (method === 'PATCH') {
       const { title } = await request.json().catch(() => ({}));
-      const name = String(title || '').trim().slice(0, 80);
+      const name = String(title || '').trim().slice(0, 150);
       if (!name) return fail('Give the feed a name.', 400);
       await env.DB.prepare('UPDATE feeds SET title = ? WHERE token = ?').bind(name, feed.token).run();
       return json(await libraryView(user, request, env, origin));
