@@ -444,6 +444,404 @@ export const books = [
       },
     ],
   },
+  // From Vayera on, the kids travel by the Parsha Box: a small carved box on the Shabbat table that opens,
+  // grows big enough to climb into, and carries them to watch the parasha happen in front of them.
+  {
+    slug: 'vayera',
+    // Trailer: which pages play under each voiceover line (0 = cover, 'title' = title card).
+    trailerShots: [[1], [2], [3], [5], [6, 7], [10, 11], [12, 'title']],
+    parasha: 'Vayera',
+    hebrew: 'וַיֵּרָא',
+    range: 'Genesis 18:1–22:24',
+    title: 'Three Guests and a Boy Named Laughter',
+    tagline: '[[{Group} ride|{BIG} rides]] the Parsha Box to Avraham\'s tent — and [[watch|watches]] a promise come true.',
+    color: '#d99a3a',
+    cover:
+      'a large carved olive-wood box with its lid wide open on a hill, warm golden light pouring out of it, inside the box just the three sisters together — the big girl, the curly-haired toddler and the baby — leaning over its edge looking down in wonder at a big desert tent under great oak trees far below, where three tiny grown-up travelers walk up the road',
+    trailer: [
+      'It was the heat of the day. And three strangers were standing by the tent.',
+      'Water. Bread. A calf, tender and good. Avraham ran.',
+      'Next year, Sarah will have a son. And Sarah… laughed.',
+      'Fire over Sedom. Do not look back.',
+      'A baby named Laughter. A well in the wilderness.',
+      'Avraham. Here I am. And the two of them walked on together.',
+      '[[{Group}|{BIG}]]. One Parsha Box. Parashat Vayera.',
+    ],
+    pages: [
+      {
+        ref: 'Genesis 18:1-5',
+        title: 'Into the Parsha Box',
+        story: `Every Friday night, the Parsha Box sat on the Shabbat table: a little carved wooden box with a lid that opened only when you were ready to listen. Tonight it was warm to the touch. {BIG} lifted the lid — and the box grew and grew until it was big enough for [[all of them|her]] to climb inside. Whoosh! When the box stopped, it was perched on a hill above a big tent by the oaks of Mamre. It was the heat of the day, and Avraham was sitting at the door of his tent. He lifted his eyes and saw three men standing nearby — and he ran to greet them and bowed. "Please," he said, "let a little water be brought to wash your feet, and rest under the tree, and I'll bring a piece of bread." {MID} whispered, "He ran! In this heat!"`,
+        question: 'What did Avraham offer the three men first?',
+        answer: 'A little water to wash their feet, rest under the tree, and a piece of bread (18:4-5).',
+        scene:
+          'a large carved olive-wood box with its lid open resting on a sunny hilltop, the three sisters peeking over its edge; below in the middle distance a big goat-hair tent under great oak trees in the shimmering midday heat, an old bearded man in a brown robe hurrying toward three robed travelers standing on the path, all small and far away',
+      },
+      {
+        ref: 'Genesis 18:6-8',
+        title: 'A Feast in a Hurry',
+        story: `"A piece of bread" turned into a feast! Avraham hurried into the tent to Sarah: "Quick — three se'ahs of fine flour! Knead it and make cakes." Then he ran to the herd and picked a calf, tender and good, and gave it to a young man, who hurried to make it ready. Avraham brought butter and milk and the meat and set it all in front of his guests, and he stood beside them under the tree while they ate. {MID} counted: "Hurry, run, quick, hurry!" {BABY} grabbed a crumb of cake. {BIG} laughed. "He said a little bread — and then he did a lot."`,
+        question: 'Where did Avraham stand while his guests ate?',
+        answer: 'Beside them, under the tree (18:8).',
+        scene:
+          "three bearded grown men in travelers' robes and head cloths seated in the shade of a great oak beside a desert tent, a low table with round flat cakes and bowls of butter and milk, a white-bearded old man standing beside them serving, all seen from a distance; in the foreground just the three sisters crouching behind a low stone wall watching, the baby holding a crumb of cake",
+      },
+      {
+        ref: 'Genesis 18:9-14',
+        title: 'Sarah Laughs',
+        story: `The guests asked, "Where is Sarah, your wife?" "Right here, in the tent," said Avraham. Then one said: "I will surely come back to you at this time next year — and Sarah your wife will have a son!" Sarah was listening at the door of the tent, behind him. Avraham and Sarah were old, very old. And Sarah laughed inside herself. {MID} giggled too. Then Hashem said to Avraham: "Why did Sarah laugh? Is anything too wondrous for Hashem?" {BIG} read that line twice. "Nothing is too wondrous," she said softly.`,
+        question: 'What question did Hashem ask about Sarah\'s laughing?',
+        answer: '"Is anything too wondrous for Hashem?" (18:14).',
+        scene:
+          'the doorway of a large goat-hair tent with the woven curtain half drawn, an elderly woman in a long dark robe and head covering standing just inside in shadow with her hand over her mouth, seen from a distance; the three sisters sitting on a woven rug nearby, the toddler giggling behind her hands',
+      },
+      {
+        ref: 'Genesis 18:23-32',
+        title: 'What If There Are Ten?',
+        story: `The men looked out toward Sedom, and Avraham walked with them to send them on their way. Hashem told Avraham how wicked Sedom was. Then Avraham came close and asked: "Will You sweep away the righteous with the wicked? What if there are fifty righteous people in the city? Shall the Judge of all the earth not do justice?" Hashem said: for fifty, I will spare the whole place. "And forty-five?" asked Avraham. "Forty? Thirty? Twenty?" {MID} counted down on her fingers. "Ten?" And Hashem said: for the sake of the ten, I will not destroy it. {BIG} let out her breath. "He kept asking," she said, "for people he didn't even know."`,
+        question: 'What was the smallest number Avraham asked about?',
+        answer: 'Ten — "I will not destroy, for the sake of the ten" (18:32).',
+        scene:
+          'on a high rocky ridge at sunset, an old man with a long white beard and a dark brown head cloth, seen in profile, looking down over a wide hazy plain with a distant walled city, a soft beam of golden light from the sky; next to him the open carved wooden box with the three sisters sitting inside, the toddler counting on her fingers',
+      },
+      {
+        ref: 'Genesis 19:15-17; Genesis 19:24-26',
+        title: 'Don\'t Look Back',
+        story: `When dawn came, the angels hurried Lot: "Get up! Take your wife and your two daughters and go!" Lot lingered — so the men grabbed his hand, and his wife's hand, and his daughters' hands, because Hashem had pity on him, and they brought them out of the city. "Run for your life," they said. "Don't look behind you, and don't stop anywhere in the plain. Run to the mountain!" Then Hashem rained sulfur and fire on Sedom and Amorah. But Lot's wife looked back — and she became a pillar of salt. [[The {sisters} held on to the edge of the Parsha Box and did not look back either.|{BIG} held on to the edge of the Parsha Box and did not look back either.]]`,
+        question: 'What did the angels tell Lot not to do?',
+        answer: 'Not to look behind him and not to stop anywhere in the plain (19:17).',
+        scene:
+          'early dawn in a wide plain, four tiny robed grown-up figures far away hurrying along a road toward dark mountains, a distant orange glow on the horizon behind them; in the foreground the open carved wooden box on a high ridge with just the big girl, the toddler and the baby sitting inside it holding hands, facing us',
+      },
+      {
+        ref: 'Genesis 21:1-7',
+        title: 'A Baby Named Laughter',
+        story: `Then Hashem remembered Sarah, just as He had said. Sarah had a son for Avraham in his old age, at the very time God had promised. Avraham named him Yitzchak, and when the baby was eight days old, Avraham gave him a brit milah, just as God commanded. Avraham was one hundred years old! Sarah said: "God has made laughter for me — everyone who hears will laugh with me." And [[they all did|she did]]. {MID} laughed. {BABY} laughed so hard she hiccupped. "Yitzchak," said {BIG}, "means he will laugh."`,
+        question: 'How old was Avraham when Yitzchak was born?',
+        answer: 'One hundred years old (21:5).',
+        scene:
+          'a big festive desert tent hung with colorful woven cloths, oil lamps and flowers, far back in its doorway a tiny elderly white-haired couple in dark robes; in the front the three sisters sitting in a row on a woven rug laughing together, the baby giggling',
+      },
+      {
+        ref: 'Genesis 21:14-19',
+        title: 'A Well in the Wilderness',
+        story: `Avraham got up early, took bread and a skin of water and put it on Hagar's shoulder, and sent her away with her son, Yishmael. She wandered in the wilderness of Be'er Sheva. Then the water in the skin ran out. Hagar sat down far away and cried. But God heard the voice of the boy, and an angel of God called to Hagar from the sky: "What is wrong, Hagar? Don't be afraid — God has heard the boy's voice. Get up and lift him." Then God opened her eyes, and she saw a well of water! She filled the skin and gave the boy a drink. {MID} let out a big breath. "God heard him," said {BIG}. "Just like his name."`,
+        question: 'What did Hagar see when God opened her eyes?',
+        answer: 'A well of water (21:19).',
+        scene:
+          'a vast sunlit desert wilderness with a few dry bushes, a stone well with clear water glinting, a grown woman in a dark cloak and head scarf seen from behind kneeling by the well filling a leather water skin, a soft beam of light from the sky; the three sisters standing nearby with wide happy eyes',
+      },
+      {
+        ref: 'Genesis 21:27-33',
+        title: 'Seven Lambs and a Tree',
+        story: `Avimelech, the king of Gerar, came to make a covenant with Avraham. Avraham gave him sheep and cattle, and the two of them made a covenant. Then Avraham set seven ewe lambs apart. "Take these seven lambs from me," he said, "as a witness that I dug this well." That is why the place is called Be'er Sheva — because there the two of them swore. {MID} counted the lambs: "One, two, three… seven!" Then Avraham planted a tamarisk tree, an eshel, in Be'er Sheva, and called there in the name of Hashem, God of the world. {BABY} patted the little tree.`,
+        question: 'Why did Avraham give Avimelech seven ewe lambs?',
+        answer: 'As a witness that Avraham dug the well (21:30).',
+        scene:
+          'a stone well in a dry sunny landscape, two robed grown men far apart shaking hands in the middle distance, seven fluffy white lambs standing in a row near the well, a young tamarisk sapling freshly planted; the toddler counting the lambs on her fingers, the older girl kneeling beside the baby who pats the little tree',
+      },
+      {
+        ref: 'Genesis 22:1-3',
+        title: 'Here I Am',
+        story: `After these things, God tested Avraham. "Avraham!" He called. "Hineni — here I am," said Avraham. Then God said: "Take your son, your only one, whom you love — Yitzchak — and go to the land of Moriyah, and bring him up there as an offering on one of the mountains that I will tell you." {MID} grabbed her sister's hand. "Is it going to be okay?" {BIG} looked at the next line. "Keep watching," she said. Avraham got up early in the morning, saddled his donkey, took two young men and Yitzchak, split the wood, and set out.`,
+        question: 'What did Avraham answer when God called him?',
+        answer: '"Hineni — here I am" (22:1).',
+        scene:
+          'pale blue early morning outside a desert tent, a white-bearded old man in a brown robe saddling a donkey loaded with a bundle of split wood, a young man and two servants beside him, all seen from a distance; the three sisters sitting in the open carved wooden box nearby, the toddler holding her big sister\'s hand',
+      },
+      {
+        ref: 'Genesis 22:4-8',
+        title: 'The Two of Them Together',
+        story: `On the third day, Avraham lifted his eyes and saw the place from far away. "Stay here with the donkey," he told the young men. "The boy and I will go up there, bow down, and come back to you." Avraham put the wood on Yitzchak, and he took the fire, and the two of them walked on together. Then Yitzchak said, "My father!" "Here I am, my son." "Here is the fire and the wood — but where is the lamb for the offering?" Avraham said: "God will see to the lamb, my son." {BIG} read the last words very quietly: "And the two of them walked on together."`,
+        question: 'What did Yitzchak ask his father?',
+        answer: '"Here is the fire and the wood, but where is the lamb for the offering?" (22:7).',
+        scene:
+          'a rocky mountain path at golden hour, two grown men — a white-bearded old man and a bearded young man — walking side by side away from us toward a distant mountaintop, the young man carrying a bundle of wood on his back, the old man holding a small clay fire pot; beside the path the big girl, the toddler and the baby watching quietly from behind a boulder',
+      },
+      {
+        ref: 'Genesis 22:9-14',
+        title: 'A Ram in the Thicket',
+        story: `They came to the place God had told him, and Avraham built the altar there and laid out the wood. {MID} could hardly breathe. Then an angel of Hashem called to him from the sky: "Avraham! Avraham!" "Here I am." "Do not put your hand on the boy, and do nothing to him — for now I know that you fear God." Avraham lifted his eyes — and there was a ram, caught in the thicket by its horns! Avraham brought the ram as an offering instead of his son. He named the place "Hashem Yir'eh" — Hashem will see. {BABY} pointed at the ram and said, "Baa!"`,
+        question: 'Where was the ram caught?',
+        answer: 'In the thicket, by its horns (22:13).',
+        scene:
+          'a sunlit mountaintop with a simple stone altar and stacked wood in the middle distance, a woolly ram with big curled horns tangled in a thorny thicket in the foreground, a bright beam of light from the sky, an old man and a young man standing far away; the three sisters nearby, the baby pointing at the ram',
+      },
+      {
+        ref: 'Genesis 22:15-18; Genesis 22:20-23',
+        title: 'Stars, Sand — and Rivka',
+        story: `The angel of Hashem called again: "Because you did this, I will bless you, and make your offspring as many as the stars of the sky and the sand on the seashore — because you listened to My voice." Then Avraham heard news from far away: his brother Nachor had a big family now, and Nachor's son Betuel had a daughter named Rivka. {BIG} smiled at the name. [[The {sisters} climbed|{BIG} climbed]] back into the Parsha Box, and whoosh — [[they were|she was]] home at the Shabbat table, and the box was small again. "Next week," said {BIG}, "we meet Rivka."`,
+        question: 'What two things did the angel compare Avraham\'s offspring to?',
+        answer: 'The stars of the sky and the sand on the seashore (22:17).',
+        scene:
+          'back home at night: just the three sisters at a cozy Shabbat table with two candles and challah, a small carved olive-wood box on the table closing its lid with tiny golden stars drifting out of it, the toddler yawning, the baby asleep in the big girl\'s lap, no grown-ups',
+      },
+    ],
+  },
+  {
+    slug: 'chayei-sarah',
+    // Trailer: which pages play under each voiceover line (0 = cover, 'title' = title card).
+    trailerShots: [[1], [4], [5], [6, 7], [9], [10, 11], [12, 'title']],
+    parasha: 'Chayei Sarah',
+    hebrew: 'חַיֵּי שָׂרָה',
+    range: 'Genesis 23:1–25:18',
+    title: 'Ten Camels and a Girl at the Well',
+    tagline: '[[{Group} ride|{BIG} rides]] the Parsha Box to the well — and [[meet|meets]] Rivka.',
+    color: '#c48a5a',
+    cover:
+      'a large carved olive-wood box with its lid open on a sandy rise at sunset above a stone well outside an ancient town, ten kneeling camels around the well, golden light pouring out of the box, the three sisters leaning over its edge looking down excitedly',
+    trailer: [
+      'One hundred and twenty-seven years. The life of Sarah.',
+      'A servant. A promise. Go to my land, and find a wife for my son.',
+      'Ten camels. One well. And a prayer at evening.',
+      'Drink — and I will water your camels too.',
+      'Will you go with this man? I will go.',
+      'A veil. A tent. And Yitzchak loved her.',
+      '[[{Group}|{BIG}]]. One Parsha Box. Parashat Chayei Sarah.',
+    ],
+    pages: [
+      {
+        ref: 'Genesis 23:1-2',
+        title: 'The Life of Sarah',
+        story: `On Friday night, the Parsha Box on the Shabbat table opened slowly, all by itself, as if it knew this week would start quietly. [[The {sisters} climbed|{BIG} climbed]] in, the box grew, and whoosh — it set down on a hill in Chevron. {BIG} read: the life of Sarah was one hundred and twenty-seven years. Sarah died in Kiryat Arba, which is Chevron, in the land of Canaan. And Avraham came to mourn for Sarah and to cry for her. {MID} leaned against her sister. {BABY} was very still. "We saw her laugh last week," {MID} whispered.`,
+        question: 'How long was the life of Sarah?',
+        answer: 'One hundred and twenty-seven years (23:1).',
+        scene:
+          'a large carved olive-wood box with its lid open resting on a quiet green hill at soft gray dawn, the three sisters sitting inside it close together, facing us; far below in the valley a large tent among olive trees and an old man seen from behind sitting alone at its doorway',
+      },
+      {
+        ref: 'Genesis 23:3-11',
+        title: 'A Cave at the End of the Field',
+        story: `Avraham got up and spoke to the people of Chet, the people who lived there. "I am a stranger and a resident among you," he said. "Give me a place to bury." They answered: "You are a prince of God among us!" Avraham bowed to them and asked for one thing: the Cave of Machpelah, at the end of the field of a man named Efron. Efron said, "I give you the field, and I give you the cave in it." {MID} said, "That's nice!" {BIG} turned the page. "Wait and see what Avraham says."`,
+        question: 'What did Avraham call himself when he spoke to the people of Chet?',
+        answer: '"A stranger and a resident among you" (23:4).',
+        scene:
+          'a group of robed elders sitting at the stone gate of an ancient town, an old bearded man in a brown robe bowing respectfully before them, all seen from a distance; the three sisters standing by an old stone wall in the foreground watching',
+      },
+      {
+        ref: 'Genesis 23:12-20',
+        title: 'Four Hundred Shekels',
+        story: `Avraham did not want it as a gift. "I will pay the price of the field," he said. "Take it from me." Efron said: "Land worth four hundred shekels of silver — what is that between you and me?" So Avraham weighed out four hundred shekels of silver, in front of everyone. {MID} tried to count the shining pieces and got lost at twelve. The field and the cave and all the trees around its border became Avraham's. And Avraham buried Sarah there, in the Cave of Machpelah, near Mamre — that is Chevron.`,
+        question: 'How much did Avraham pay for the field?',
+        answer: 'Four hundred shekels of silver (23:16).',
+        scene:
+          'a stone ledge at an ancient town gate with an old balance scale piled with shining silver pieces, robed old men watching from a distance, a green field with trees and a dark cave in a hillside beyond; just the three sisters in front: the toddler counting the silver on her fingers, the big girl holding the baby on her hip',
+      },
+      {
+        ref: 'Genesis 24:1-4',
+        title: 'A Job for the Servant',
+        story: `Avraham was old now, and Hashem had blessed him in everything. He called his servant — the oldest one in his house, who was in charge of everything he had. "Swear to me by Hashem," said Avraham, "that you will not take a wife for my son from the daughters of Canaan, where I live. Go to my land and my birthplace, and take a wife for my son, for Yitzchak." {MID} asked, "How will he know which one?" {BIG} shrugged and smiled. "Neither does he," she said. "Yet."`,
+        question: 'Where did Avraham send his servant to find a wife for Yitzchak?',
+        answer: 'To his land and his birthplace (24:4).',
+        scene:
+          'inside a big lamp-lit tent, in the middle distance a very old white-bearded man in a dark head cloth seated on cushions, talking to a gray-bearded servant in a traveling cloak who stands before him with his hand on his heart; in the front corner the three sisters sitting in a row on a rug, listening',
+      },
+      {
+        ref: 'Genesis 24:10-14',
+        title: 'Ten Camels and a Prayer',
+        story: `The servant took ten of his master's camels, loaded with good things, and traveled all the way to Aram Naharayim, to the city of Nachor. [[The {sisters} rode|{BIG} rode]] along in the Parsha Box. In the evening, the servant made the camels kneel outside the city by the well — the time when the women came out to draw water. Then he prayed: "Hashem, God of my master Avraham, let it happen for me today. The girl I ask, 'Please tip your jar so I can drink,' who says, 'Drink — and I'll water your camels too' — let her be the one." {MID} whispered, "Ten camels drink a LOT."`,
+        question: 'What did the servant ask Hashem for at the well?',
+        answer: 'That the girl who would say "Drink, and I will water your camels too" be the one for Yitzchak (24:14).',
+        scene:
+          'ten camels kneeling around an old stone well outside an ancient walled town at golden evening, a gray-bearded servant in traveling robes standing with his face turned up toward the sky in prayer, seen from a distance; the three sisters sitting in the open carved wooden box on a sandy rise nearby, the toddler counting camels',
+      },
+      {
+        ref: 'Genesis 24:15-20',
+        title: 'Drink — and Your Camels Too!',
+        story: `Before he had even finished praying — there came Rivka, the daughter of Betuel, with her jar on her shoulder! She went down to the spring, filled her jar, and came up. The servant ran to her: "Please let me sip a little water from your jar." "Drink, my lord," she said, and quickly lowered her jar and gave him a drink. Then she said, "I'll draw water for your camels too, until they've finished drinking." She emptied her jar into the trough and ran back to the well again and again, for all his camels. {MID} counted every trip. {BABY} clapped. "She said the exact words!" said {BIG}.`,
+        question: 'What did Rivka say after she gave the servant a drink?',
+        answer: '"I will draw for your camels too, until they finish drinking" (24:19).',
+        scene:
+          'a young woman in a long modest blue robe and head scarf, seen from behind, pouring water from a big clay jar into a long stone trough at an ancient well, a row of thirsty camels drinking, a gray-bearded servant watching amazed in the background, warm evening light; the three sisters nearby, the baby clapping',
+      },
+      {
+        ref: 'Genesis 24:21-27',
+        title: 'A Gold Ring and Two Bracelets',
+        story: `The man stood quietly, watching her, to know whether Hashem had made his journey succeed. When the camels finished drinking, he took out a gold nose ring weighing half a shekel and two gold bracelets weighing ten shekels. "Whose daughter are you?" he asked. "Is there room in your father's house for us to stay?" "I am the daughter of Betuel, the son of Milkah and Nachor," she said. "We have plenty of straw and food, and a place to stay." Then the man bowed down and blessed Hashem, who had not left His kindness and truth for his master. "Betuel!" said {BIG}. "That's Avraham's family!"`,
+        question: 'Whose daughter was Rivka?',
+        answer: 'Betuel\'s — the son of Milkah and Nachor, Avraham\'s brother (24:24).',
+        scene:
+          'close view of a weathered hand holding out a small gold ring and two shining gold bracelets in the warm sunset light beside an ancient stone well, camels resting behind; the three sisters leaning in to look at the gold, eyes wide',
+      },
+      {
+        ref: 'Genesis 24:28-33',
+        title: 'Not Until I Tell',
+        story: `Rivka ran and told everyone at her mother's house. Her brother Lavan saw the ring and the bracelets and ran out to the man at the spring. "Come in, blessed of Hashem!" said Lavan. "Why are you standing outside? I've made the house ready, and a place for the camels." The camels were unloaded and given straw and food, and there was water to wash the travelers' feet. Then food was put in front of the servant — but he said, "I will not eat until I have said what I came to say." {MID}'s tummy rumbled. "I would eat first," she said.`,
+        question: 'Why didn\'t the servant eat right away?',
+        answer: 'He would not eat until he had told them why he came (24:33).',
+        scene:
+          'the courtyard of an ancient mud-brick house at dusk, camels being unloaded, bundles of straw, a clay basin of water, a gray-bearded servant seated at a low table of food holding up his hand politely, a young man in a striped robe beside him, all seen from a distance; the three sisters sitting on a bench by the wall, the toddler holding her tummy',
+      },
+      {
+        ref: 'Genesis 24:50-58',
+        title: 'I Will Go',
+        story: `The servant told them everything — the promise, the prayer, the well. Lavan and Betuel answered: "This came from Hashem! Here is Rivka — take her and go." The servant bowed to the ground to Hashem, and brought out silver and gold jewelry and clothing for Rivka, and gifts for her brother and her mother. In the morning her family said, "Let her stay with us a few days — maybe ten." But the servant wanted to go. So they said, "Let's call the girl and ask her." "Will you go with this man?" And Rivka said: "I will go." {BIG} read it again: "Elech." Just one word.`,
+        question: 'What did Rivka answer when they asked her?',
+        answer: '"I will go" — elech (24:58).',
+        scene:
+          'inside a lamp-lit ancient house, a grown young woman in a modest blue robe and head scarf seen from behind facing her seated grown-up family, an open chest of gold jewelry and folded fine cloth on the floor; on one cushion at the side just the three sisters sitting together listening — the big girl, the toddler and the baby',
+      },
+      {
+        ref: 'Genesis 24:59-61',
+        title: 'Thousands of Ten-Thousands',
+        story: `So they sent Rivka off with her nurse, and with the servant and his men. And they blessed Rivka: "Our sister, may you become thousands of ten-thousands!" Then Rivka and her maids got up, rode on the camels, and followed the man. [[The {sisters} rode|{BIG} rode]] right behind them in the Parsha Box. {MID} waved goodbye to Rivka's family. {BABY} bounced with every camel step. "Thousands of ten-thousands," said {MID}. "Is that more than eleven?"`,
+        question: 'What blessing did Rivka\'s family give her?',
+        answer: '"Our sister, may you become thousands of ten-thousands" (24:60).',
+        scene:
+          'a camel caravan setting out at sunrise from an ancient mud-brick town, young women in modest robes and head scarves riding on the camels seen from behind, a family waving in the distance; in the foreground the three sisters riding in the open carved wooden box following the caravan, the toddler waving, the baby bouncing',
+      },
+      {
+        ref: 'Genesis 24:62-67',
+        title: 'Yitzchak in the Field',
+        story: `Yitzchak was living in the Negev. Toward evening he went out to the field to pray and think, and he lifted his eyes — and saw camels coming! Rivka lifted her eyes and saw Yitzchak, and she got down from the camel. "Who is that man walking in the field toward us?" she asked. "That is my master," said the servant. So she took her veil and covered herself. The servant told Yitzchak everything that had happened. Yitzchak brought Rivka into the tent of Sarah his mother, and she became his wife, and he loved her. And Yitzchak was comforted after his mother. {MID} sighed happily.`,
+        question: 'Into whose tent did Yitzchak bring Rivka?',
+        answer: 'The tent of Sarah his mother (24:67).',
+        scene:
+          'a wide golden field at sunset, a young man in a simple robe walking alone in the middle distance, far away a camel caravan arriving and a veiled young woman in blue stepping down from a camel, all small; the three sisters sitting in tall grass in the foreground, the toddler sighing happily with her chin in her hands',
+      },
+      {
+        ref: 'Genesis 25:7-11',
+        title: 'Yitzchak and Yishmael',
+        story: `Avraham lived one hundred and seventy-five years, a good long life. His sons, Yitzchak and Yishmael, buried him in the Cave of Machpelah — the field Avraham had bought — next to Sarah. After that, God blessed Yitzchak, his son. {BIG} closed the Chumash. [[The {sisters} climbed|{BIG} climbed]] back into the Parsha Box, and whoosh — [[they were|she was]] home at the Shabbat table, and the box was small again. {MID} rubbed her eyes. "Next week," said {BIG}, "Rivka has twins!"`,
+        question: 'Who buried Avraham?',
+        answer: 'His sons, Yitzchak and Yishmael (25:9).',
+        scene:
+          'back home at a cozy Shabbat table at night with candles and challah, a small carved olive-wood box on the table with its lid closing and a last warm glow drifting out of it, the three sisters around it, the older girl closing a book, the toddler rubbing her eyes, the baby asleep',
+      },
+    ],
+  },
+  {
+    slug: 'toldot',
+    // Trailer: which pages play under each voiceover line (0 = cover, 'title' = title card).
+    trailerShots: [[1], [2, 3], [4], [7, 8], [10], [11], [12, 'title']],
+    parasha: 'Toldot',
+    hebrew: 'תּוֹלְדֹת',
+    range: 'Genesis 25:19–28:9',
+    title: 'Twins, Wells and a Blessing',
+    tagline: '[[{Group} ride|{BIG} rides]] the Parsha Box into Yitzchak and Rivka\'s tent — and [[meet|meets]] Esav and Yaakov.',
+    color: '#9a6b3f',
+    cover:
+      'a large carved olive-wood box with its lid open on a hill at sunset above a desert tent camp, a bubbling pot of red lentil stew over a small fire beside the tent, a stone well with water sparkling, golden light pouring out of the box, the three sisters leaning over its edge looking down',
+    trailer: [
+      'Two nations. One mother. And they were already pushing.',
+      'One came out red and hairy. One came out holding his heel.',
+      'A pot of red, red stew. A birthright — sold.',
+      'Wells dug. Wells fought over. And then — room for everyone.',
+      'Two goats. Goatskin gloves. His brother\'s best clothes.',
+      'The voice is the voice of Yaakov. But the hands are the hands of Esav.',
+      '[[{Group}|{BIG}]]. One Parsha Box. Parashat Toldot.',
+    ],
+    pages: [
+      {
+        ref: 'Genesis 25:19-23',
+        title: 'Two Nations Inside',
+        story: `The Parsha Box was rattling on the Shabbat table, as if something inside was pushing. {BIG} lifted the lid, the box grew, [[the {sisters} climbed|she climbed]] in — and whoosh! It set down beside a big tent. {BIG} read: Yitzchak was forty years old when he married Rivka. Rivka had no children, so Yitzchak prayed to Hashem for his wife — and Hashem answered him. But the babies pushed and pushed inside her! Rivka went to ask Hashem, and Hashem told her: "Two nations are inside you. One will be stronger than the other, and the older will serve the younger." {MID} gasped. "Twins!"`,
+        question: 'What did Hashem tell Rivka was inside her?',
+        answer: 'Two nations — "the older will serve the younger" (25:23).',
+        scene:
+          'a large carved olive-wood box with its lid open landing beside a big goat-hair tent at twilight, golden light swirling out of the box, the three sisters climbing out of it in excitement, facing us; in the distance a young woman in a modest blue robe and head scarf, seen from behind, standing alone under the first stars',
+      },
+      {
+        ref: 'Genesis 25:24-26',
+        title: 'Red and Hairy, Holding On',
+        story: `When it was time — there were twins! The first one came out red, all over like a hairy cloak, and they named him Esav. Then his brother came out, and his hand was holding on to Esav's heel, so they named him Yaakov. {MID} grabbed {BIG}'s heel to show how. {BABY} grabbed {MID}'s. Everyone tumbled over laughing. {BIG} read: Yitzchak was sixty years old when they were born. "He waited twenty years," she said.`,
+        question: 'Why was Yaakov named Yaakov?',
+        answer: 'Because his hand was holding on to Esav\'s heel — akev (25:26).',
+        scene:
+          'inside a cozy lamp-lit tent at night, two little woven reed cradles side by side, one with a fuzzy red wool blanket and the other with a plain cream blanket, oil lamps glowing; the three sisters tumbling on a rug laughing, the toddler holding her big sister\'s heel, the baby holding the toddler\'s',
+      },
+      {
+        ref: 'Genesis 25:27-28',
+        title: 'The Hunter and the Tent',
+        story: `The boys grew up. Esav became a skilled hunter, a man of the field. Yaakov was a wholesome man who stayed in the tents. Yitzchak loved Esav, because Esav brought him meat from his hunting. And Rivka loved Yaakov. {MID} looked from one brother to the other. "They're so different," she said. "Twins can be different," said {BIG}. "Like you and me — and we're not even twins."`,
+        question: 'How does the Torah describe Yaakov?',
+        answer: 'A wholesome man (ish tam) who dwelled in tents (25:27).',
+        scene:
+          'split view of a desert camp: on the left a rugged young man with a bow on his back striding off into open wild fields, on the right a calm young man sitting in the doorway of a tent among sheep; the three sisters standing in the middle looking from one to the other',
+      },
+      {
+        ref: 'Genesis 25:29-34',
+        title: 'Red, Red Stew',
+        story: `One day Yaakov was cooking a stew, and Esav came in from the field, exhausted. "Pour me some of that red, red stuff — I'm exhausted!" That is why he was called Edom. Yaakov said, "First sell me your birthright." "I'm about to die," said Esav. "What good is a birthright to me?" So Esav swore and sold it. Yaakov gave him bread and lentil stew, and he ate and drank and got up and left. {BIG} read the last words slowly: "And Esav despised the birthright." {MID} shook her head. "I would never trade something special for soup."`,
+        question: 'What did Esav sell to Yaakov for the stew?',
+        answer: 'His birthright (25:33).',
+        scene:
+          'beside a tent a calm bearded young man in a plain robe stirring a big bubbling clay pot of red lentil stew over a small fire, and a tired, rugged red-haired young man with a bow on his back flopping down next to him reaching for a bowl, bread on a cloth; to one side just the three sisters watching, the toddler shaking her head, the baby sniffing the steam',
+      },
+      {
+        ref: 'Genesis 26:1-5',
+        title: 'Stay in the Land',
+        story: `There was a famine in the land, like in Avraham's days. Yitzchak went to Avimelech, king of the Plishtim, in Gerar. Hashem appeared to him and said: "Don't go down to Egypt. Live in this land, and I will be with you and bless you. I will make your offspring as many as the stars of the sky, and give them all these lands — because Avraham listened to My voice." {MID} looked up. "Stars again!" she said. "Same promise," said {BIG}. "Now it's Yitzchak's turn."`,
+        question: 'Where did Hashem tell Yitzchak not to go?',
+        answer: 'Down to Egypt (26:2).',
+        scene:
+          'a tent camp on dry cracked land at night under brilliant stars, a soft beam of golden light shining down from the sky onto a tiny bearded grown man far away at the edge of the camp; in the front the three sisters sitting together on one woven blanket, the big girl, the toddler and the baby, pointing up at the stars',
+      },
+      {
+        ref: 'Genesis 26:12-14',
+        title: 'A Hundred Times as Much',
+        story: `Yitzchak planted seeds in that land, and that year he harvested a hundred times as much — because Hashem blessed him. The man grew great, and greater and greater, until he was very great. He had flocks of sheep and herds of cattle and many servants. {MID} hid in the tall golden wheat. {BABY} hugged a whole sheaf. And the Plishtim were jealous of him.`,
+        question: 'How much did Yitzchak harvest that year?',
+        answer: 'A hundred times what he planted (26:12).',
+        scene:
+          'enormous fields of tall golden wheat in bright sunshine stretching to the horizon, herds of sheep and cattle beyond, workers far away; the toddler peeking out of the tall wheat, the baby hugging a big sheaf, the older girl laughing',
+      },
+      {
+        ref: 'Genesis 26:18-22',
+        title: 'Esek, Sitnah, Rechovot',
+        story: `Yitzchak dug again the wells his father Avraham had dug, which the Plishtim had stopped up — and he gave them the same names his father had. Then his servants dug in the valley and found a well of fresh, flowing water. But the shepherds of Gerar argued: "The water is ours!" So he named it Esek — Argument. They dug another well, and they fought over that one too, so he named it Sitnah. He moved on and dug another well — and nobody fought over it. He named it Rechovot: "Now Hashem has made room for us." {MID} spread her arms wide. "Room for everyone!"`,
+        question: 'Why did Yitzchak name the third well Rechovot?',
+        answer: '"For now Hashem has made room for us" (26:22).',
+        scene:
+          'a wide valley with three stone wells: two far away with small groups of shepherds arguing, and one in the front with clear fresh water sparkling up and nobody arguing, servants with shovels resting; the toddler standing by the front well with her arms spread wide, the older girl and baby splashing their hands in the water',
+      },
+      {
+        ref: 'Genesis 26:23-25; Genesis 26:32-33',
+        title: 'We Found Water!',
+        story: `Yitzchak went up to Be'er Sheva. That night Hashem appeared to him: "I am the God of Avraham your father. Don't be afraid, for I am with you." So Yitzchak built an altar there and called out in the name of Hashem, and he pitched his tent, and his servants dug a well. That very day the servants came running: "We found water!" He named it Shiv'ah. {BIG} read: that's why the city is called Be'er Sheva to this day. {MID} gasped. "Be'er Sheva — we were there last time, with Avraham!"`,
+        question: 'What did Yitzchak build in Be\'er Sheva?',
+        answer: 'An altar — and he pitched his tent there and his servants dug a well (26:25).',
+        scene:
+          'a sunny desert camp with a tent and a simple stone altar, servants running joyfully toward us from a freshly dug well with water splashing up; the three sisters cheering in the foreground, the baby clapping',
+      },
+      {
+        ref: 'Genesis 27:1-4',
+        title: 'Go Out and Hunt',
+        story: `Yitzchak grew old, and his eyes grew too dim to see. He called Esav, his older son: "My son!" "Here I am." "I am old now. Take your bow and your arrows, go out to the field and hunt for me. Make me the tasty food I love and bring it to me, so I can eat and bless you." Esav went out to the field. {MID} whispered, "He's going to get the blessing." {BIG} looked over at the other side of the tent. "Someone else was listening," she said.`,
+        question: 'What did Yitzchak ask Esav to bring him?',
+        answer: 'Game from the field, made into the tasty food he loved (27:3-4).',
+        scene:
+          'inside a dim tent, a very old white-bearded man with cloudy eyes sitting on cushions, a rugged young man with a bow and quiver standing before him, seen from a distance; at the edge of the tent curtain a young woman in a blue head scarf listening, seen from behind; the three sisters sitting quietly by the tent pole, facing us',
+      },
+      {
+        ref: 'Genesis 27:5-17',
+        title: 'Goatskin Gloves',
+        story: `Rivka heard everything. She said to Yaakov: "Listen to me, my son. Go to the flock and bring me two good young goats, and I'll make them into the tasty food your father loves. You will bring it to him." Yaakov said: "But Esav my brother is a hairy man, and I am a smooth man! What if my father touches me?" Rivka said, "Just listen to my voice." She dressed Yaakov in Esav's best clothes, and she put the goat skins on his hands and on the smooth part of his neck. {MID} patted her own arm. "Smooth," she said. {BABY} patted a goat.`,
+        question: 'Why was Yaakov worried about his father touching him?',
+        answer: 'Because Esav was a hairy man and Yaakov was smooth (27:11).',
+        scene:
+          'inside a lamp-lit tent, a grown woman in a dark blue robe and blue head scarf, seen from behind, wrapping fuzzy goat skin around the hands of a nervous bearded young man in a fine red robe, a steaming clay pot nearby, two little goats at the tent door; just the three sisters watching from the side, the toddler patting her own arm, the baby petting a goat',
+      },
+      {
+        ref: 'Genesis 27:18-29',
+        title: 'The Voice and the Hands',
+        story: `Yaakov came to his father: "My father." "Here I am. Who are you, my son?" "I am Esav, your firstborn." "Come close so I can feel you," said Yitzchak. Yitzchak felt him and said: "The voice is the voice of Yaakov — but the hands are the hands of Esav." He did not recognize him, and he blessed him: "May God give you of the dew of the sky and the richness of the earth, and plenty of grain and wine." {MID} put her hands over her mouth. "He knew the voice," whispered {BIG}. "But he trusted the hands."`,
+        question: 'What did Yitzchak say about the voice and the hands?',
+        answer: '"The voice is the voice of Yaakov, but the hands are the hands of Esav" (27:22).',
+        scene:
+          'inside a dim tent, a very old blind white-bearded man reaching out to feel the goat-skin covered hands of a young man in a fine red robe kneeling before him, a bowl of food between them, seen from a little distance in warm lamplight; the three sisters huddled by the tent wall, the toddler with her hands over her mouth',
+      },
+      {
+        ref: 'Genesis 27:30-34; Genesis 28:1-5',
+        title: 'Off to Charan',
+        story: `Yaakov had just gone out when Esav came in from hunting. "Who are you?" asked Yitzchak. "I am Esav!" Yitzchak trembled very much. And Esav cried a great and bitter cry: "Bless me too, my father!" Later, Yitzchak called Yaakov and blessed him, and told him: "Go to Paddan Aram, to the house of Betuel, your mother's father, and marry one of Lavan's daughters. May God give you the blessing of Avraham." [[The {sisters} climbed|{BIG} climbed]] back into the Parsha Box, and whoosh — [[they were|she was]] home at the Shabbat table, and the box was small again. "Next week," said {BIG}, "Yaakov goes on a long trip — and has a dream."`,
+        question: 'Where did Yitzchak send Yaakov?',
+        answer: 'To Paddan Aram, to the house of Betuel, to marry from the daughters of Lavan (28:2).',
+        scene:
+          'back home at night: just the three sisters at a cozy Shabbat table with two candles and challah, a small carved olive-wood box on the table closing its lid with a golden glow and a tiny traveler on a road inside the light, the toddler yawning, the baby asleep in the big girl\'s lap, no grown-ups',
+      },
+    ],
+  },
 ];
 
 export const bookBySlug = Object.fromEntries(books.map((b) => [b.slug, b]));
