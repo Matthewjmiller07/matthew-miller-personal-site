@@ -1,0 +1,400 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Double Portion, Five Sela — Daf Yomi Game: Bekhorot 46"
+  description="Bekhorot 46: award the inheritance and redemption tokens across thirteen family trees, defend Shmuel until the Gemara refutes him, and uncover just enough of a face for each court."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --ink:#1b1824; --panel:#262233; --line:#453f58; --text:#ece8f2; --mute:#b4adc4; --gold:#e3ae4b; --silver:#9fd0cb; --good:#8fce9f; --bad:#e58a78; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: .9rem; }
+    .btn { border: 1px solid var(--line); border-radius: .55rem; padding: .55rem .8rem; font-size: .875rem; text-align: left; background: transparent; transition: background .15s, border-color .15s; }
+    .btn:hover:not(:disabled) { background: #332d44; }
+    .btn:disabled { cursor: default; }
+    .btn.ok { background: #1f3528; border-color: var(--good); }
+    .btn.no { background: #3c211f; border-color: var(--bad); }
+    .btn.primary { border-color: var(--gold); background: #3a2f1a; font-weight: 700; text-align: center; }
+    .token { display: flex; align-items: center; gap: .6rem; width: 100%; border: 2px dashed var(--line); border-radius: .7rem; padding: .6rem .75rem; font-size: .875rem; text-align: left; transition: background .15s, border-color .15s; }
+    .token .disc { width: 2rem; height: 2rem; flex: none; border-radius: 999px; border: 2px dashed var(--line); display: grid; place-items: center; font-family: 'Frank Ruhl Libre', serif; font-weight: 900; font-size: 1rem; }
+    .token.gold[aria-pressed="true"] { border: 2px solid var(--gold); background: #3a2f1a; }
+    .token.gold[aria-pressed="true"] .disc { background: var(--gold); border: 2px solid var(--gold); color: #2b2008 !important; }
+    .token.silver[aria-pressed="true"] { border: 2px solid var(--silver); background: #1d3534; }
+    .token.silver[aria-pressed="true"] .disc { background: var(--silver); border: 2px solid var(--silver); color: #0f2726 !important; }
+    .quad { min-height: 5.6rem; border: 1px solid var(--line); padding: .6rem; display: flex; flex-direction: column; gap: .35rem; }
+    .pin { display: inline-grid; place-items: center; width: 1.45rem; height: 1.45rem; border-radius: 999px; background: #453f58; font-size: .72rem; font-weight: 700; }
+    .pin.fresh { outline: 2px solid var(--gold); }
+    .kin { border: 1px solid var(--line); border-radius: .6rem; padding: .55rem .7rem; background: #1f1c2a; font-size: .84rem; line-height: 1.45; }
+    .shield { width: 1.5rem; height: 1.8rem; transition: opacity .35s, transform .35s; }
+    .shield.cracked { opacity: .25; transform: rotate(14deg) translateY(3px); }
+    .tile { cursor: pointer; transition: opacity .2s; }
+    .tile .cover { transition: opacity .2s; }
+    .tile.open .cover { opacity: 0; }
+    .tile:focus-visible { outline: none; }
+    .tile:focus-visible .edge { stroke: var(--gold); stroke-width: 3; }
+    .quote { border-inline-start: 3px solid var(--line); padding: .35rem .8rem; font-size: .9rem; line-height: 1.65; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { .btn, .token, .shield, .tile, .tile .cover { transition: none; } }
+  </style>
+
+  <main class="min-h-screen bg-[#1b1824] !text-[#ece8f2]">
+
+    <header class="mx-auto max-w-3xl px-4 pt-10 pb-6">
+      <p class="mb-5 text-sm !text-[#b4adc4]"><a href="/daf" class="underline hover:!text-[#ece8f2]">Daf Yomi Arcade</a>, Bekhorot 46, 5 November 2026</p>
+      <p class="frank text-3xl font-light !text-[#e3ae4b]" dir="rtl" lang="he">יֵשׁ בְּכוֹר לַנַּחֲלָה וְאֵינוֹ בְּכוֹר לַכֹּהֵן</p>
+      <h1 class="frank mt-2 text-4xl font-black tracking-tight sm:text-5xl !text-[#f6f3fa]">Double Portion, Five Sela</h1>
+      <p class="mt-3 max-w-xl leading-relaxed !text-[#d5cfe0]">
+        One son can be a firstborn to his father's estate and not to the priest. Another is the reverse.
+        The mishna draws four boxes, and this board fills as you rule on each family.
+      </p>
+      <div class="mt-6" id="board" aria-live="polite">
+        <div class="grid grid-cols-[auto_1fr_1fr] text-xs sm:text-sm">
+          <div></div>
+          <div class="pb-1 text-center font-bold !text-[#9fd0cb]">Redeem from the priest</div>
+          <div class="pb-1 text-center font-bold !text-[#9fd0cb]">No redemption</div>
+          <div class="flex items-center pr-2 font-bold !text-[#e3ae4b] [writing-mode:vertical-rl] rotate-180 justify-center">Double portion</div>
+          <div class="quad" id="q-both"><span class="!text-[#b4adc4] text-xs">Firstborn for both</span><div class="flex flex-wrap gap-1" data-pins></div></div>
+          <div class="quad" id="q-inh"><span class="!text-[#b4adc4] text-xs">Inheritance only</span><div class="flex flex-wrap gap-1" data-pins></div></div>
+          <div class="flex items-center pr-2 font-bold !text-[#e3ae4b] [writing-mode:vertical-rl] rotate-180 justify-center">Equal share</div>
+          <div class="quad" id="q-pri"><span class="!text-[#b4adc4] text-xs">Priest only</span><div class="flex flex-wrap gap-1" data-pins></div></div>
+          <div class="quad" id="q-none"><span class="!text-[#b4adc4] text-xs">Firstborn for neither</span><div class="flex flex-wrap gap-1" data-pins></div></div>
+        </div>
+      </div>
+      <p class="mt-4 text-sm !text-[#b4adc4]">Score: <span id="score" class="font-bold !text-[#e3ae4b]">0</span> of <span id="max" class="font-bold !text-[#e3ae4b]">0</span></p>
+    </header>
+
+    <div class="mx-auto flex max-w-3xl flex-col gap-6 px-4 pb-12">
+
+      <section class="panel p-5" aria-labelledby="h-tree">
+        <h2 id="h-tree" class="frank text-2xl font-bold !text-[#f6f3fa]">Thirteen families</h2>
+        <p class="mt-1 mb-4 text-sm leading-relaxed !text-[#d5cfe0]">
+          Rashi gives the rule: inheritance depends on the father, “the first of his strength” (Deut. 21:17), and redemption depends on the mother, “whatever opens the womb.”
+          Read the family, then give this son whichever tokens he is owed. Several cases involve pregnancy loss, which the mishna rules on plainly.
+        </p>
+        <div id="tree"></div>
+      </section>
+
+      <section class="panel p-5" aria-labelledby="h-duel">
+        <h2 id="h-duel" class="frank text-2xl font-bold !text-[#f6f3fa]">Defend Shmuel</h2>
+        <p class="mt-1 mb-3 text-sm leading-relaxed !text-[#d5cfe0]">
+          Shmuel: <span class="frank" dir="rtl" lang="he">אֵין הָרֹאשׁ פּוֹטֵר בִּנְפָלִים</span>, a head alone does not count as a birth for a non-viable fetus <a class="underline !text-[#e3ae4b]" href="https://www.sefaria.org/Bekhorot.46b.1" target="_blank" rel="noopener">46b:1</a>.
+          You are his counsel. Each time the Gemara attacks, pick the answer it gives. You have four shields, and the Gemara will get through all of them.
+        </p>
+        <div class="mb-3 flex gap-1" id="shields" role="img" aria-label="Shields left"></div>
+        <div id="duel" aria-live="polite"></div>
+      </section>
+
+      <section class="panel p-5" aria-labelledby="h-face">
+        <h2 id="h-face" class="frank text-2xl font-bold !text-[#f6f3fa]">How much of a face?</h2>
+        <p class="mt-1 mb-4 text-sm leading-relaxed !text-[#d5cfe0]">
+          From here the question is how much of a person has to be seen. Open only the tiles this ruling names, then check.
+        </p>
+        <div class="grid gap-5 sm:grid-cols-[11rem_1fr]">
+          <svg viewBox="0 0 160 210" class="mx-auto w-40" role="group" aria-label="A face divided into three tiles">
+            <ellipse cx="80" cy="105" rx="66" ry="92" fill="#c9a98a" stroke="#6d5a49" stroke-width="2"/>
+            <path d="M42 66 q14 -9 28 0 M90 66 q14 -9 28 0" stroke="#4a3a2d" stroke-width="3" fill="none"/>
+            <circle cx="56" cy="82" r="5" fill="#2e241b"/><circle cx="104" cy="82" r="5" fill="#2e241b"/>
+            <path d="M80 80 L70 124 Q80 132 90 124 Z" fill="#b8967a" stroke="#6d5a49" stroke-width="2"/>
+            <path d="M58 152 q22 14 44 0" stroke="#7e4a3c" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <clipPath id="faceClip"><ellipse cx="80" cy="105" rx="66" ry="92"/></clipPath>
+            <g id="t-forehead" class="tile" clip-path="url(#faceClip)" tabindex="0" role="button" aria-label="Forehead tile"></g>
+            <g id="t-face" class="tile" clip-path="url(#faceClip)" tabindex="0" role="button" aria-label="Countenance tile"></g>
+            <g id="t-nose" class="tile" clip-path="url(#faceClip)" tabindex="0" role="button" aria-label="Nose tile"></g>
+          </svg>
+          <div>
+            <p class="mb-2 font-semibold !text-[#f6f3fa]" id="faceQ"></p>
+            <p class="mb-3 text-sm !text-[#b4adc4]" id="faceOpen"></p>
+            <button class="btn primary" id="faceCheck" type="button">Check these tiles</button>
+            <p class="quote mt-3 !text-[#d5cfe0]" id="faceFb" aria-live="polite">Tap a tile to open it. Tap again to close it.</p>
+            <button class="btn mt-3 hidden" id="faceNext" type="button">Next ruling</button>
+          </div>
+        </div>
+        <div id="convert" class="mt-6 hidden">
+          <p class="mb-2 font-semibold !text-[#f6f3fa]">Resh Lakish says the forehead counts “everywhere.” Here is what that adds <a class="underline !text-[#e3ae4b]" href="https://www.sefaria.org/Bekhorot.46b.10" target="_blank" rel="noopener">46b:10</a>: a child's forehead emerges while the mother is a gentile, then she converts, then the birth finishes. Is she treated as a Jewish woman who gave birth, with days of impurity and purity and a birth offering?</p>
+          <div class="flex flex-wrap gap-2" id="convertBtns"></div>
+          <p class="quote mt-3 hidden !text-[#d5cfe0]" id="convertFb"></p>
+        </div>
+      </section>
+
+      <section class="panel p-5" aria-labelledby="h-wit">
+        <h2 id="h-wit" class="frank text-2xl font-bold !text-[#f6f3fa]">The witness stand</h2>
+        <p class="mt-1 mb-4 text-sm leading-relaxed !text-[#d5cfe0]">
+          The Gemara saves Rabbi Yoḥanan by saying the Sages were strict about testimony that frees a woman to remarry. But the same Sages accept hearsay and a maidservant's word <a class="underline !text-[#e3ae4b]" href="https://www.sefaria.org/Bekhorot.46b.13" target="_blank" rel="noopener">46b:13</a>.
+          Each witness below says a husband died. Accept or reject the testimony.
+        </p>
+        <div id="wit" class="flex flex-col gap-3"></div>
+        <p class="quote mt-4 hidden !text-[#d5cfe0]" id="witFb"></p>
+      </section>
+
+      <section class="panel p-5" aria-labelledby="h-vow">
+        <h2 id="h-vow" class="frank text-2xl font-bold !text-[#f6f3fa]">Before the chapter closes: the teacher's vow</h2>
+        <p class="mt-1 mb-4 text-sm leading-relaxed !text-[#d5cfe0]">
+          The daf opens with the end of the previous chapter. A teacher of children was hitting them too much, so Rav Aḥa made him vow, on the consent of the public, to stop teaching <a class="underline !text-[#e3ae4b]" href="https://www.sefaria.org/Bekhorot.46a.2" target="_blank" rel="noopener">46a:2</a>.
+        </p>
+        <div id="vow" class="flex flex-col gap-4"></div>
+      </section>
+
+      <section class="panel p-5" aria-labelledby="h-learn">
+        <h2 id="h-learn" class="frank text-2xl font-bold !text-[#f6f3fa]">Learn the real daf</h2>
+        <p class="mt-1 mb-3 text-sm leading-relaxed !text-[#d5cfe0]">
+          The mishna names four boxes, but this daf spells out only inheritance-only and priest-only. The “both” families here come from the Rabbis and Rabbi Yosei HaGelili, and the “neither” family is the Gemara's inference. Rabbi Yoḥanan's next answer begins on the last line of 46b and continues on the next daf.
+        </p>
+        <ul class="space-y-1 text-sm">
+          <li><a class="underline !text-[#e3ae4b]" href="https://www.sefaria.org/Bekhorot.46a" target="_blank" rel="noopener">Bekhorot 46a</a> and <a class="underline !text-[#e3ae4b]" href="https://www.sefaria.org/Bekhorot.46b" target="_blank" rel="noopener">46b</a> on Sefaria</li>
+          <li><a class="underline !text-[#e3ae4b]" href="https://www.sefaria.org/Rashi_on_Bekhorot.46a" target="_blank" rel="noopener">Rashi</a> (46 comments on this daf)</li>
+          <li><a class="underline !text-[#e3ae4b]" href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.46a" target="_blank" rel="noopener">Steinsaltz</a> (24) and <a class="underline !text-[#e3ae4b]" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.46a" target="_blank" rel="noopener">Rabbeinu Gershom</a> (24)</li>
+          <li><a class="underline !text-[#e3ae4b]" href="https://www.sefaria.org/Tosafot_on_Bekhorot.46a" target="_blank" rel="noopener">Tosafot</a> (12) and <a class="underline !text-[#e3ae4b]" href="https://www.sefaria.org/Tur,_Choshen_Mishpat.277" target="_blank" rel="noopener">Tur, Choshen Mishpat 277</a> on the firstborn's portion</li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <script is:inline>
+    (function () {
+      var $ = function (id) { return document.getElementById(id); };
+      function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+      function sefaria(seg) { return 'https://www.sefaria.org/Bekhorot.' + seg.replace(':', '.'); }
+      var score = 0, max = 0;
+      function addMax(n) { max += n; $('max').textContent = max; }
+      function bump(n) { score += n; $('score').textContent = score; }
+
+      // ---- Thirteen families. i = double portion, p = redeem from the priest.
+      var FAM = [
+        { t: 'Second marriage, on her side', f: 'Has no sons yet.', m: 'Already gave birth, before this marriage.', i: true, p: false, seg: '46a:8', why: 'He is his father\'s first, so he takes the double portion. His mother\'s womb was already opened, so there is no redemption.' },
+        { t: 'Second marriage, on his side', f: 'Already has sons.', m: 'Has never given birth.', i: false, p: true, seg: '46a:10', why: 'The reverse family. He opened his mother\'s womb, but his father already has older sons.' },
+        { t: 'An earlier loss', f: 'Has no sons yet.', m: 'Miscarried a non-viable fetus earlier, even one whose head emerged alive.', i: true, p: false, seg: '46a:6', why: 'The earlier fetus opened the womb, so this son owes the priest nothing. It was never a viable son to the father, so this son is his first.' },
+        { t: 'A full-term stillbirth', f: 'Has no sons yet.', m: 'Earlier carried to nine months. The head emerged dead.', i: true, p: false, seg: '46a:6', why: 'The womb was opened, so no redemption. A child who was not alive at the head\'s emergence does not take the father\'s firstborn place.' },
+        { t: 'The Gemara\'s inference', f: 'Has no other sons.', m: 'Earlier, the head of a nine-month fetus emerged alive. This son came after it.', i: false, p: false, seg: '46b:4', why: 'The mishna says “dead.” So if the nine-month fetus\'s head emerged alive, the one after is not a firstborn even for inheritance, and his mother\'s womb is already open. That fills the fourth box.' },
+        { t: 'According to Rabbi Meir', f: 'Has no sons yet.', m: 'Miscarried a fetus with the form of an animal, a beast or a bird.', i: true, p: false, seg: '46a:6', why: 'For Rabbi Meir that form still opens the womb. Inheritance yes, priest no.' },
+        { t: 'The same family, according to the Rabbis', f: 'Has no sons yet.', m: 'Miscarried a fetus with the form of an animal, a beast or a bird.', i: true, p: true, seg: '46a:7', why: 'The Rabbis require some human form. Rashi: without it this does not count as opening the womb, so the next son is a firstborn even for the priest.' },
+        { t: 'Without a viable form', f: 'Has no sons yet.', m: 'Lost a pregnancy earlier: a sandal fetus, an afterbirth, a sac with formed tissue, or a fetus that emerged in pieces.', i: true, p: false, seg: '46a:7', why: 'Each of these opens the womb, and none is a son to the father. Inheritance yes, priest no.' },
+        { t: 'Anonymous first opinion', f: 'Has no sons yet.', m: 'Gave birth while a gentile or a Canaanite maidservant. Then she converted or was freed, and then this son was born.', i: true, p: false, seg: '46a:8', why: 'The first opinion looks at the body: her womb is already open. The father has no earlier son, so he inherits double.' },
+        { t: 'The same family, according to Rabbi Yosei HaGelili', f: 'Has no sons yet.', m: 'Gave birth while a gentile or a Canaanite maidservant. Then she converted or was freed, and then this son was born.', i: true, p: true, seg: '46a:9', why: '“Whatever opens the womb among the children of Israel” (Exod. 13:2). He reads that as a womb opened within Israel, so the earlier birth does not count, and this son is a firstborn for both.' },
+        { t: 'Pregnant at the change', f: 'Has no halakhic standing as father, since the son was conceived before his mother joined.', m: 'Converted or was freed while pregnant. This is her first child.', i: false, p: true, seg: '46a:10', why: 'He opened an Israelite womb, so he is redeemed. Rashi: he was conceived outside of holiness and has no father to inherit from.' },
+        { t: 'Babies mixed up', f: 'Has no sons yet, but cannot say this son is his.', m: 'Gave birth for the first time, in the same place as a first-time priest\'s or Levite\'s wife, or a woman who had given birth before. No one knows which baby is whose.', i: false, p: true, seg: '46a:11', why: 'The mishna: firstborn for the priest, not for inheritance. Rashi on the last pairing: the husband of the first-time mother owes the five sela either way, since a son of his exists somewhere. But he cannot show whose son this one is, so he cannot claim a double portion.' },
+        { t: 'Remarried too soon', f: 'Two candidates: the late husband or the new one.', m: 'Remarried within three months of being widowed. This is her first child, and he could be nine months from the first husband or seven from the second.', i: false, p: true, seg: '46a:11', why: 'He opened the womb, and Rashi says he redeems himself. He cannot prove which man he would inherit from. Rashi adds that the Gemara will ask whether he even takes an ordinary son\'s share.' }
+      ];
+      addMax(FAM.length * 2);
+      var fi = 0;
+      function quadOf(c) { return c.i && c.p ? 'q-both' : c.i ? 'q-inh' : c.p ? 'q-pri' : 'q-none'; }
+      function drawFam() {
+        var host = $('tree'); host.innerHTML = '';
+        if (fi >= FAM.length) { host.appendChild(el('p', 'quote !text-[#d5cfe0]', 'All four boxes hold a family. The same son can sit in different boxes depending on whose reading you follow, which is why two of these families appeared twice.')); return; }
+        var c = FAM[fi];
+        host.appendChild(el('p', 'mb-2 text-sm !text-[#b4adc4]', 'Family ' + (fi + 1) + ' of ' + FAM.length));
+        host.appendChild(el('h3', 'frank mb-3 text-xl font-bold !text-[#f6f3fa]', c.t));
+        var kin = el('div', 'grid gap-2 sm:grid-cols-2');
+        var fa = el('div', 'kin'); fa.appendChild(el('strong', 'block !text-[#e3ae4b]', 'Father')); fa.appendChild(el('span', '!text-[#ece8f2]', c.f));
+        var mo = el('div', 'kin'); mo.appendChild(el('strong', 'block !text-[#9fd0cb]', 'Mother')); mo.appendChild(el('span', '!text-[#ece8f2]', c.m));
+        kin.appendChild(fa); kin.appendChild(mo); host.appendChild(kin);
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 200 34'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'mx-auto my-1 h-8 w-48');
+        svg.innerHTML = '<path d="M50 0 V12 H100 V34" fill="none" stroke="#e3ae4b" stroke-width="2"/><path d="M150 0 V12 H100 V34" fill="none" stroke="#9fd0cb" stroke-width="2"/>';
+        host.appendChild(svg);
+        host.appendChild(el('p', 'mb-2 text-center text-sm font-semibold !text-[#f6f3fa]', 'This son receives:'));
+        var row = el('div', 'grid gap-2 sm:grid-cols-2');
+        var state = { i: false, p: false };
+        function tok(key, cls, letter, label, sub) {
+          var b = el('button', 'token ' + cls); b.type = 'button'; b.setAttribute('aria-pressed', 'false');
+          var d = el('span', 'disc !text-[#ece8f2]', letter); d.setAttribute('aria-hidden', 'true');
+          var txt = el('span', '!text-[#ece8f2]'); txt.appendChild(el('strong', 'block !text-[#f6f3fa]', label)); txt.appendChild(el('span', 'text-xs !text-[#b4adc4]', sub));
+          b.appendChild(d); b.appendChild(txt);
+          b.onclick = function () { state[key] = !state[key]; b.setAttribute('aria-pressed', String(state[key])); };
+          return b;
+        }
+        var t1 = tok('i', 'gold', '2', 'Double portion', 'His father\'s firstborn');
+        var t2 = tok('p', 'silver', '5', 'Five sela to the priest', 'He must be redeemed');
+        row.appendChild(t1); row.appendChild(t2); host.appendChild(row);
+        var go = el('button', 'btn primary mt-3 w-full', 'Rule on this son'); go.type = 'button'; host.appendChild(go);
+        var fb = el('div', 'hidden mt-3'); host.appendChild(fb);
+        go.onclick = function () {
+          t1.disabled = t2.disabled = true; go.classList.add('hidden');
+          var pts = (state.i === c.i ? 1 : 0) + (state.p === c.p ? 1 : 0); bump(pts);
+          var word = pts === 2 ? 'Correct.' : 'Not quite. He gets: ' + (c.i && c.p ? 'both tokens.' : c.i ? 'only the double portion.' : c.p ? 'only the redemption.' : 'neither token.');
+          fb.classList.remove('hidden');
+          var q = el('p', 'quote !text-[#d5cfe0]');
+          q.appendChild(el('strong', pts === 2 ? '!text-[#8fce9f]' : '!text-[#e58a78]', word + ' '));
+          q.appendChild(document.createTextNode(c.why + ' '));
+          var a = el('a', 'underline !text-[#e3ae4b]', c.seg); a.href = sefaria(c.seg); a.target = '_blank'; a.rel = 'noopener'; q.appendChild(a);
+          fb.appendChild(q);
+          var old = document.querySelectorAll('.pin.fresh'); Array.prototype.forEach.call(old, function (o) { o.classList.remove('fresh'); });
+          var pin = el('span', 'pin fresh !text-[#f6f3fa]', String(fi + 1)); pin.title = c.t;
+          $(quadOf(c)).querySelector('[data-pins]').appendChild(pin);
+          var nx = el('button', 'btn primary mt-3 w-full', fi + 1 < FAM.length ? 'Next family' : 'Finish the board'); nx.type = 'button';
+          nx.onclick = function () { fi++; drawFam(); var f = $('tree').querySelector('button'); if (f) f.focus(); };
+          fb.appendChild(nx); nx.focus();
+        };
+      }
+      drawFam();
+
+      // ---- Defend Shmuel: a duel that cannot be won.
+      var SH = [
+        { seg: '46b:2', atk: 'What is Shmuel\'s source?', a: '“All in whose nostrils was the breath of the spirit of life”: a head counts only where there is life', opts: ['“All in whose nostrils was the breath of the spirit of life”: a head counts only where there is life', '“He shall recognize”: a head that no one can recognize does not count', '“Whatever opens the womb”: only a whole body opens it'] },
+        { seg: '46b:3', atk: 'The mishna speaks of a non-viable fetus whose “head emerged alive,” and that exempts the next son. So a head does count.', a: '“Its head” means most of its body', opts: ['“Its head” means most of its body', 'The mishna is Rabbi Meir alone, and Shmuel follows the Rabbis', 'The mishna is speaking of a nine-month fetus only'] },
+        { seg: '46b:4', atk: 'Then the mishna should say “most of it.”', a: 'The next clause must say “head” to teach about a nine-month fetus, so the first clause matches its wording', opts: ['The next clause must say “head” to teach about a nine-month fetus, so the first clause matches its wording', '“Head” and “most” are the same word in the mishna\'s dialect', 'The mishna was taught in haste and is not precise'] },
+        { seg: '46b:5', atk: 'What does that next clause teach, that a head alone is a birth? We already know that from Ḥullin 68a.', a: 'Ḥullin speaks of an animal, and a person cannot be learned from an animal, whose womb opening is not concealed', opts: ['Ḥullin speaks of an animal, and a person cannot be learned from an animal, whose womb opening is not concealed', 'Ḥullin is a minority opinion', 'Ḥullin speaks only of a fetus that stayed outside'] }
+      ];
+      addMax(SH.length);
+      var si = 0, shields = 4;
+      function drawShields() {
+        var s = $('shields'); s.innerHTML = '';
+        for (var i = 0; i < 4; i++) { var d = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); d.setAttribute('viewBox', '0 0 24 30'); d.setAttribute('class', 'shield' + (i >= shields ? ' cracked' : '')); d.innerHTML = '<path d="M12 1 L23 5 V15 C23 22 17 27 12 29 C7 27 1 22 1 15 V5 Z" fill="#e3ae4b" stroke="#6d5320"/>'; s.appendChild(d); }
+        s.setAttribute('aria-label', shields + ' of 4 shields left');
+      }
+      function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+      function drawDuel() {
+        var h = $('duel'); h.innerHTML = ''; drawShields();
+        if (si >= SH.length) return drawFinal();
+        var r = SH[si];
+        var q = el('p', 'quote mb-3 font-semibold !text-[#f6f3fa]', 'The Gemara: ' + r.atk + ' '); var a = el('a', 'font-normal underline !text-[#e3ae4b]', r.seg); a.href = sefaria(r.seg); a.target = '_blank'; a.rel = 'noopener'; q.appendChild(a); h.appendChild(q);
+        var w = el('div', 'flex flex-col gap-2'); h.appendChild(w);
+        shuffle(r.opts).forEach(function (o) {
+          var b = el('button', 'btn !text-[#ece8f2]', o); b.type = 'button';
+          b.onclick = function () {
+            var ok = o === r.a; if (ok) bump(1); else { shields = Math.max(0, shields - 1); drawShields(); }
+            Array.prototype.forEach.call(w.children, function (c) { c.disabled = true; if (c.textContent === r.a) c.classList.add('ok'); else if (c === b) c.classList.add('no'); });
+            var nx = el('button', 'btn primary mt-3 w-full', ok ? 'Hold the line' : 'Take the hit and go on'); nx.type = 'button';
+            nx.onclick = function () { si++; drawDuel(); var f = $('duel').querySelector('button'); if (f) f.focus(); };
+            h.appendChild(nx); nx.focus();
+          };
+          w.appendChild(b);
+        });
+      }
+      function drawFinal() {
+        var h = $('duel');
+        h.appendChild(el('p', 'quote mb-3 font-semibold !text-[#f6f3fa]', 'The Gemara: People are already covered too. Nidda 28a teaches that a head-first birth counts once most of the head is out, which means the forehead. So the mishna\'s clause adds nothing, your reason for its wording is gone, and “head” for a miscarriage stands against Shmuel.'));
+        var side = el('p', 'mb-3 text-sm !text-[#d5cfe0]', 'The Gemara agrees that animals and people each need their own source: an animal cannot be learned from a person, whose face is significant (46b:7). But both sources already exist, and you have no answer left.');
+        h.appendChild(side);
+        var b = el('button', 'btn primary w-full', 'Concede'); b.type = 'button';
+        b.onclick = function () {
+          shields = 0; drawShields(); b.remove();
+          var p = el('p', 'frank text-center text-3xl font-bold !text-[#e58a78] mt-1', 'תְּיוּבְתָּא דִשְׁמוּאֵל, תְּיוּבְתָּא'); p.setAttribute('dir', 'rtl'); p.setAttribute('lang', 'he');
+          h.appendChild(p);
+          h.appendChild(el('p', 'quote mt-3 !text-[#d5cfe0]', 'The refutation of Shmuel is a refutation (46b:8). Every answer you gave was the Gemara\'s own. They were good answers, and he still loses.'));
+        };
+        h.appendChild(b);
+      }
+      drawDuel();
+
+      // ---- Face tiles
+      function tileHTML(path) { return '<path class="cover" d="' + path + '" fill="#3a3450"/><path class="edge" d="' + path + '" fill="none" stroke="#6b6484" stroke-width="1.5"/>'; }
+      var PATHS = {
+        forehead: 'M0 0 H160 V58 H0 Z',
+        nose: 'M62 58 H98 V134 H62 Z',
+        face: 'M0 58 H62 V134 H98 V58 H160 V210 H0 Z'
+      };
+      Object.keys(PATHS).forEach(function (k) { $('t-' + k).innerHTML = tileHTML(PATHS[k]) + '<path d="' + PATHS[k] + '" fill="transparent"/>'; });
+      var NAMES = { forehead: 'forehead', face: 'countenance', nose: 'nose' };
+      var FQ = [
+        { q: 'A son\'s birth for redemption and everything else, per Resh Lakish and the Nidda mishna', need: ['forehead'], seg: '46b:9', fb: 'The forehead alone. Rashi: birth counts from the emergence of the forehead.' },
+        { q: 'Inheritance, per Rabbi Yoḥanan', need: ['forehead'], seg: '46b:9', fb: 'Even for inheritance the forehead is enough. Rashi: a forehead is also a form of recognition.' },
+        { q: '“He shall recognize” (Deut. 21:17), as the baraita is first quoted against Rabbi Yoḥanan', need: ['face', 'nose'], seg: '46b:11', fb: '“The countenance of the face with the nose.” Rashi: whoever\'s face was recognized first is the firstborn. That is Resh Lakish\'s side, and it is trouble for Rabbi Yoḥanan.' },
+        { q: 'The same baraita, after the Gemara changes one word: “up to the nose”', need: ['face'], seg: '46b:11', fb: 'עִם becomes עַד. “With the nose” becomes “up to the nose,” and Steinsaltz spells it out: the nose is not included.' },
+        { q: 'Testimony that a man died, freeing his wife to remarry, in the last source the Gemara brings', need: ['forehead', 'face', 'nose'], seg: '46b:12', fb: 'All three. “Forehead without countenance, countenance without forehead: they do not testify until both are seen, with the nose.” The Yevamot mishna could be re-read with “up to.” This source cannot, so the Gemara answers that testimony for a wife is different.' }
+      ];
+      addMax(FQ.length);
+      var fq = 0, open = {};
+      function paintFace() {
+        Object.keys(PATHS).forEach(function (k) { var e = $('t-' + k); e.classList.toggle('open', !!open[k]); e.setAttribute('aria-pressed', String(!!open[k])); e.setAttribute('aria-label', NAMES[k] + ' tile, ' + (open[k] ? 'open' : 'closed')); });
+        var o = Object.keys(open).filter(function (k) { return open[k]; }).map(function (k) { return NAMES[k]; });
+        $('faceOpen').textContent = o.length ? 'Open: ' + o.join(', ') : 'No tiles open.';
+      }
+      var faceLocked = false;
+      function setFace() { faceLocked = false; open = {}; $('faceQ').textContent = FQ[fq].q; $('faceFb').textContent = 'Tap a tile to open it. Tap again to close it.'; $('faceCheck').classList.remove('hidden'); $('faceNext').classList.add('hidden'); paintFace(); }
+      Object.keys(PATHS).forEach(function (k) {
+        var e = $('t-' + k);
+        function tap() { if (faceLocked) return; open[k] = !open[k]; paintFace(); }
+        e.addEventListener('click', tap);
+        e.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); tap(); } });
+      });
+      $('faceCheck').onclick = function () {
+        var r = FQ[fq], got = Object.keys(open).filter(function (k) { return open[k]; }).sort().join(), want = r.need.slice().sort().join(), ok = got === want;
+        if (ok) bump(1);
+        faceLocked = true; open = {}; r.need.forEach(function (k) { open[k] = true; }); paintFace();
+        var fb = $('faceFb'); fb.innerHTML = '';
+        fb.appendChild(el('strong', ok ? '!text-[#8fce9f]' : '!text-[#e58a78]', (ok ? 'Correct. ' : 'The ruling needs these tiles. ')));
+        fb.appendChild(document.createTextNode(r.fb + ' '));
+        var a = el('a', 'underline !text-[#e3ae4b]', r.seg); a.href = sefaria(r.seg); a.target = '_blank'; a.rel = 'noopener'; fb.appendChild(a);
+        $('faceCheck').classList.add('hidden');
+        if (fq + 1 < FQ.length) { $('faceNext').classList.remove('hidden'); $('faceNext').focus(); }
+        else { $('convert').classList.remove('hidden'); }
+      };
+      $('faceNext').onclick = function () { fq++; setFace(); };
+      setFace();
+      addMax(1);
+      [['Yes, the birth finished after she converted', false], ['No, the child counts as born while she was a gentile', true]].forEach(function (o) {
+        var b = el('button', 'btn !text-[#ece8f2]', o[0]); b.type = 'button';
+        b.onclick = function () {
+          if (o[1]) bump(1);
+          Array.prototype.forEach.call($('convertBtns').children, function (c) { c.disabled = true; });
+          b.classList.add(o[1] ? 'ok' : 'no');
+          var f = $('convertFb'); f.classList.remove('hidden');
+          f.textContent = 'No days of impurity or purity and no birth offering. The forehead was the birth, and it happened before she converted.';
+        };
+        $('convertBtns').appendChild(b);
+      });
+
+      // ---- Witnesses: who speaks vs what they saw
+      var WIT = [
+        { who: 'A man repeating another man\'s eyewitness report', saw: ['forehead', 'face', 'nose'], ok: true },
+        { who: 'A Canaanite maidservant', saw: ['forehead', 'face', 'nose'], ok: true },
+        { who: 'Two scholars of the town', saw: ['forehead'], ok: false },
+        { who: 'A woman', saw: ['forehead', 'face', 'nose'], ok: true },
+        { who: 'Two respected elders', saw: ['face', 'nose'], ok: false },
+        { who: 'A Canaanite slave', saw: ['forehead', 'face'], ok: false }
+      ];
+      addMax(WIT.length);
+      var witDone = 0;
+      WIT.forEach(function (w) {
+        var row = el('div', 'kin flex flex-col gap-2 sm:flex-row sm:items-center');
+        var text = el('div', 'flex-1');
+        text.appendChild(el('strong', 'block !text-[#f6f3fa]', w.who));
+        text.appendChild(el('span', 'text-sm !text-[#b4adc4]', 'Saw: ' + w.saw.map(function (k) { return NAMES[k]; }).join(', ')));
+        row.appendChild(text);
+        var bs = el('div', 'flex gap-2');
+        [['Accept', true], ['Reject', false]].forEach(function (o) {
+          var b = el('button', 'btn !text-[#ece8f2]', o[0]); b.type = 'button'; b.setAttribute('aria-label', o[0] + ': ' + w.who);
+          b.onclick = function () {
+            var ok = o[1] === w.ok; if (ok) bump(1);
+            Array.prototype.forEach.call(bs.children, function (c) { c.disabled = true; });
+            b.classList.add(ok ? 'ok' : 'no');
+            witDone++;
+            if (witDone === WIT.length) {
+              var f = $('witFb'); f.classList.remove('hidden');
+              f.textContent = 'Who speaks did not matter, and what they saw decided every case. The Gemara: the Sages were lenient at the end of the testimony, who may report it, and not at its beginning, whether the dead man was properly identified. Rashi: first the witness must recognize him well.';
+            }
+          };
+          bs.appendChild(b);
+        });
+        row.appendChild(bs);
+        $('wit').appendChild(row);
+      });
+
+      // ---- Vow coda
+      var VOW = [
+        { seg: '46a:2', q: 'Ameimar\'s ruling, for an optional matter. A vow taken on the consent of the public can be nullified:', a: 'Never, even according to the opinion that nullifies vows taken in public', opts: ['Never, even according to the opinion that nullifies vows taken in public', 'Only with the opinion that nullifies public vows', 'Always, with a court of three'] },
+        { seg: '46a:2', q: 'Ravina nullified the teacher\'s vow and gave him back his job. Why?', a: 'It was for a mitzva, since no other teacher was found to be as meticulous', opts: ['It was for a mitzva, since no other teacher was found to be as meticulous', 'The teacher promised to stop hitting the children', 'Rav Aḥa had not gathered enough of the public'] },
+        { seg: '46a:3', q: 'A priest who defiled himself with the dead only has to accept a commitment. A priest who married improperly must vow. Why the difference?', a: '“There, his desire seizes him”', opts: ['“There, his desire seizes him”', 'A marriage is public and a corpse is not', 'The Torah states the vow only for marriage'] }
+      ];
+      addMax(VOW.length);
+      VOW.forEach(function (v) {
+        var box = el('div'); var qp = el('p', 'mb-2 text-sm font-semibold !text-[#f6f3fa]', v.q + ' ');
+        var a = el('a', 'font-normal underline !text-[#e3ae4b]', v.seg); a.href = sefaria(v.seg); a.target = '_blank'; a.rel = 'noopener'; qp.appendChild(a); box.appendChild(qp);
+        var w = el('div', 'flex flex-col gap-2');
+        shuffle(v.opts).forEach(function (o) {
+          var b = el('button', 'btn !text-[#ece8f2]', o); b.type = 'button';
+          b.onclick = function () {
+            var ok = o === v.a; if (ok) bump(1);
+            Array.prototype.forEach.call(w.children, function (c) { c.disabled = true; if (c.textContent === v.a) c.classList.add('ok'); else if (c === b) c.classList.add('no'); });
+          };
+          w.appendChild(b);
+        });
+        box.appendChild(w); $('vow').appendChild(box);
+      });
+    })();
+  </script>
+</Layout>
