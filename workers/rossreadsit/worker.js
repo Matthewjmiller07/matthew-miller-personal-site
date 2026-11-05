@@ -30,8 +30,8 @@ const LIBRARY = /^[a-f0-9]{32}$/;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Library, X-Feed-Token, X-Title, X-Duration-Seconds',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Library, X-Feed-Token, X-Title, X-Duration-Seconds, X-Cover-Title',
   'Access-Control-Expose-Headers': 'X-Content-Kind',
   'Access-Control-Max-Age': '86400',
 };
