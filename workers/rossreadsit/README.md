@@ -15,9 +15,11 @@ wrangler deploy
 
 ## Hebrew
 
-Text that is more than a fifth Hebrew letters goes to Gemini TTS on Replicate instead of Kokoro, at
-about 1.5 cents per minute of audio. It has its own counters per day: 600 characters per person (about a
-minute), 2,000 for everyone (about 5 cents), and 10,000 for the owner (about 18 minutes, 25 cents).
+Text that is more than a fifth Hebrew letters goes to Google's WaveNet voice (`he-IL-Wavenet-B`, on
+project `personal-site-460904`) instead of Kokoro. Google gives 4M characters free a month, then $4 per
+1M. It has its own counters, with the same per-person limits as English, plus a cap of 125,000 characters
+a day across everyone, the owner included, so a 31-day month stays inside the free tier. Needs
+`wrangler secret put GOOGLE_TTS_API_KEY`, with the key restricted to the Text-to-Speech API.
 
 ## Limits
 

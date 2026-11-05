@@ -9,11 +9,11 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 const API = 'https://rossreadsit.parasha.workers.dev';
 const SAMPLE_RATE = 24000; // Kokoro's native rate, mono
 const ENGLISH_CHUNK_CHARS = 1200;
-const HEBREW_CHUNK_CHARS = 300;
+const HEBREW_CHUNK_CHARS = 1200; // Google takes 5,000 bytes a request, and a Hebrew letter is 2
 const CONCURRENCY = 12; // sections in progress at once; each has its own MP3 encoder
 const GAP_SAMPLES = SAMPLE_RATE / 5; // 200 ms of silence after each section
 const CHARS_PER_MINUTE = 915; // measured on Ross's voice
-const HEBREW_CHARS_PER_MINUTE = 545; // measured on the Hebrew voice
+const HEBREW_CHARS_PER_MINUTE = 730; // measured on the Hebrew voice
 const MAX_EPISODE_CHARS = 25_000; // about 27 minutes: long chapters become parts, which also fit a day's allowance
 const SKIP_BY_DEFAULT = /^(contents|table of contents|index|copyright|bibliography|references|notes|acknowledg|dedication|title page|cover|about the author|also by|תוכן|מפתח)/i;
 const LIBRARY_KEY = 'ross-library';
@@ -355,7 +355,6 @@ function updateAllowance() {
 // --- Speech ---
 
 function chunkSentences(text: string): string[] {
-  // Hebrew's daily allowance is smaller than a normal section, so its sections are shorter.
   const MAX_CHUNK_CHARS = languageOf(text) === 'he' ? HEBREW_CHUNK_CHARS : ENGLISH_CHUNK_CHARS;
   const sentences = text
     .replace(/\s+/g, ' ')
@@ -423,6 +422,8 @@ async function speakOnce(text: string, signal: AbortSignal): Promise<Int16Array>
   if (res.status === 402) throw new FinalError("That's all Ross can read for today.");
   if (res.status === 403) throw new FinalError("Ross doesn't read for this page.");
   if (!res.ok) throw new Error(`The voice service had a problem (HTTP ${res.status}).`);
+  // Hebrew comes back as the audio itself; English as a link to it.
+  if (res.headers.get('Content-Type')?.startsWith('audio/')) return pcmFromWav(await res.arrayBuffer());
   const { url } = (await res.json()) as { url: string };
   const audio = await fetch(url, { signal });
   if (!audio.ok) throw new Error(`Ross couldn't fetch the audio (HTTP ${audio.status}).`);
