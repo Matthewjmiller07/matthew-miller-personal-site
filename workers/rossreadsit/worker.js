@@ -16,6 +16,8 @@ const MAX_TTS_CHARS = 4_000;
 const MAX_FEEDS = 20;
 const MAX_FETCH_BYTES = 30 * 1024 * 1024;
 const MAX_COVER_BYTES = 2 * 1024 * 1024;
+const FEED_TITLE_CHARS = 70;
+const EPISODE_TITLE_CHARS = 100;
 
 const SITE = 'https://theothermatthewmiller.com';
 const COVER = `${SITE}/ross/cover.png`;
@@ -364,7 +366,7 @@ async function route(request, env) {
 
   if (path === '/feeds' && method === 'POST') {
     const { title } = await request.json().catch(() => ({}));
-    const name = String(title || '').trim().slice(0, 150);
+    const name = String(title || '').trim().slice(0, FEED_TITLE_CHARS);
     if (!name) return fail('Give the feed a name.', 400);
     const { n } = await env.DB.prepare('SELECT COUNT(*) AS n FROM feeds WHERE library = ?').bind(user.library).first();
     if (n >= MAX_FEEDS) return fail(`${MAX_FEEDS} feeds is the most you can have.`, 400);
@@ -402,7 +404,7 @@ async function route(request, env) {
     if (!feed) return fail('Feed not found', 404);
     if (method === 'PATCH') {
       const { title } = await request.json().catch(() => ({}));
-      const name = String(title || '').trim().slice(0, 150);
+      const name = String(title || '').trim().slice(0, FEED_TITLE_CHARS);
       if (!name) return fail('Give the feed a name.', 400);
       await env.DB.prepare('UPDATE feeds SET title = ? WHERE token = ?').bind(name, feed.token).run();
       return json(await libraryView(user, request, env, origin));
@@ -427,7 +429,7 @@ async function route(request, env) {
     if (!episode) return fail('Episode not found', 404);
     if (method === 'PATCH') {
       const { title } = await request.json().catch(() => ({}));
-      const name = String(title || '').trim().slice(0, 200);
+      const name = String(title || '').trim().slice(0, EPISODE_TITLE_CHARS);
       if (!name) return fail('Give the episode a title.', 400);
       await env.DB.prepare('UPDATE episodes SET title = ? WHERE id = ?').bind(name, episode.id).run();
       return json(await libraryView(user, request, env, origin));
@@ -447,7 +449,7 @@ async function route(request, env) {
       const over = await reserve(env, [['up:all', UPLOAD_ALL], [`up:${await ipSubject(request, env)}`, UPLOAD_PER_PERSON]], body.byteLength);
       if (over) return json({ error: 'limit' }, 402);
     }
-    const title = decodeURIComponent(request.headers.get('X-Title') || 'Untitled').trim().slice(0, 200) || 'Untitled';
+    const title = decodeURIComponent(request.headers.get('X-Title') || 'Untitled').trim().slice(0, EPISODE_TITLE_CHARS) || 'Untitled';
     const key = `${token}/${randomHex(8)}.mp3`;
     const duration = Math.round(Number(request.headers.get('X-Duration-Seconds'))) || null;
     await env.AUDIO.put(key, body, { httpMetadata: { contentType: 'audio/mpeg' } });

@@ -14,8 +14,9 @@ const CONCURRENCY = 12; // sections in progress at once; each has its own MP3 en
 const GAP_SAMPLES = SAMPLE_RATE / 5; // 200 ms of silence after each section
 const CHARS_PER_MINUTE = 915; // measured on Ross's voice
 const HEBREW_CHARS_PER_MINUTE = 730; // measured on the Hebrew voice
+const MIN_EPISODE_CHARS = 400; // title pages and part dividers start unticked
 const MAX_EPISODE_CHARS = 25_000; // about 27 minutes: long chapters become parts, which also fit a day's allowance
-const SKIP_BY_DEFAULT = /^(contents|table of contents|index|copyright|bibliography|references|notes|acknowledg|dedication|title page|cover|about the author|also by|תוכן|מפתח)/i;
+const SKIP_BY_DEFAULT = /^((brief |detailed |short )?contents|table of contents|index|copyright|bibliography|references|notes|acknowledg|dedication|title page|cover|about the author|also by|תוכן|מפתח)/i;
 const LIBRARY_KEY = 'ross-library';
 const OLD_FEED_KEY = 'pdf-audio-feed-token'; // from when this tool was PDF to Audio
 
@@ -113,9 +114,74 @@ async function refresh() {
 
 // --- Reading things in ---
 
+const FEED_TITLE_CHARS = 70;
+const CHAPTER_TITLE_CHARS = 80; // leaves room for ", part 10 of 12" in an episode title of 100
+
+function clipTitle(title: string, max: number): string {
+  if (title.length <= max) return title;
+  const cut = title.slice(0, max - 1);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s,:;–—-]+$/, '')}…`;
+}
+
+const SMALL_WORDS = /^(a|an|and|as|at|by|for|in|of|on|or|the|to|with)$/;
+
+// Tables of contents often shout. A title in capitals becomes a title in title case.
+function tidyChapterTitle(raw: string): string {
+  let title = raw.replace(/\s+/g, ' ').trim().replace(/\s+[-–—]\s+/, ': ');
+  if (/\p{Lu}/u.test(title) && !/\p{Ll}/u.test(title)) {
+    title = title
+      .split(' ')
+      .map((word, i, words) => {
+        if (/^[IVXLC]+[.:,]?$/.test(word)) return word;
+        const lower = word.toLowerCase();
+        return i > 0 && !words[i - 1].endsWith(':') && SMALL_WORDS.test(lower) ? lower : lower.replace(/\p{L}/u, (c) => c.toUpperCase());
+      })
+      .join(' ');
+  }
+  return clipTitle(title, CHAPTER_TITLE_CHARS);
+}
+
+function tidyFileTitle(name: string): string {
+  const title = name
+    .replace(/\.[^.]+$/, '')
+    .replace(/_ /g, ': ')
+    .replace(/[_\s]+/g, ' ')
+    .replace(/[\s(–—-]*\b(pdf|e-?book|pdf e-?book)\b\)?\s*$/i, '')
+    .trim();
+  return clipTitle(title || name, FEED_TITLE_CHARS);
+}
+
+// Page numbers and the titles repeated at the top and bottom of pages would be read out in the
+// middle of sentences. A line at a page's edge counts if it's a bare number or recurs on other pages.
+function stripRunningHeads(pages: string[]): string[] {
+  const key = (line: string) => line.toLowerCase().replace(/[^\p{L}]/gu, '');
+  const edges = (lines: string[]) => {
+    const filled = lines.flatMap((line, i) => (line.trim() ? [i] : []));
+    return new Set([...filled.slice(0, 2), ...filled.slice(-2)]);
+  };
+  const split = pages.map((page) => page.split('\n'));
+  const seen = new Map<string, number>();
+  for (const lines of split) {
+    const keys = new Set([...edges(lines)].map((i) => key(lines[i])));
+    for (const k of keys) if (k) seen.set(k, (seen.get(k) ?? 0) + 1);
+  }
+  return split.map((lines) => {
+    const atEdge = edges(lines);
+    return lines
+      .filter((line, i) => {
+        if (!atEdge.has(i)) return true;
+        const trimmed = line.trim();
+        if (/^(\d{1,4}|[ivxlc]{1,7})$/i.test(trimmed)) return false;
+        return trimmed.length > 90 || (seen.get(key(line)) ?? 0) < 3;
+      })
+      .join('\n');
+  });
+}
+
 function cleanText(raw: string): string {
   return raw
-    .replace(/(\w)-\n(\w)/g, '$1$2') // words split across lines
+    .replace(/(\p{Ll}) ?-\s*\n\s*(\p{Ll})/gu, '$1$2') // words split across lines
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .replace(/ {2,}/g, ' ')
@@ -125,14 +191,15 @@ function cleanText(raw: string): string {
 
 async function readPdf(data: ArrayBuffer, say: (s: string) => void): Promise<{ text: string; chapters: Chapter[] }> {
   const doc = await pdfjsLib.getDocument({ data }).promise;
-  const pages: string[] = [];
+  const raw: string[] = [];
   for (let n = 1; n <= doc.numPages; n++) {
     say(`Reading page ${n} of ${doc.numPages}…`);
     const content = await (await doc.getPage(n)).getTextContent();
-    pages.push(
+    raw.push(
       (content.items as { str?: string; hasEOL?: boolean }[]).map((i) => (i.str ?? '') + (i.hasEOL ? '\n' : ' ')).join(''),
     );
   }
+  const pages = stripRunningHeads(raw);
   const text = cleanText(pages.join('\n\n'));
   return { text, chapters: await chaptersFromOutline(doc, pages) };
 }
@@ -147,7 +214,7 @@ async function chaptersFromOutline(doc: pdfjsLib.PDFDocumentProxy, pages: string
       if (!dest?.[0]) continue;
       const ref = dest[0];
       const page = typeof ref === 'number' ? ref : await doc.getPageIndex(ref);
-      marks.push({ title: item.title.trim(), page });
+      marks.push({ title: tidyChapterTitle(item.title), page });
     }
     marks.sort((x, y) => x.page - y.page);
     const out: Chapter[] = [];
@@ -176,7 +243,7 @@ function chaptersFromHeadings(text: string): Chapter[] {
   const before = cleanText(lines.slice(0, starts[0]).join('\n'));
   if (before.length > 200) out.push({ title: 'Front matter', text: before });
   starts.forEach((start, i) => {
-    out.push({ title: lines[start].trim(), text: cleanText(lines.slice(start, starts[i + 1] ?? lines.length).join('\n')) });
+    out.push({ title: tidyChapterTitle(lines[start]), text: cleanText(lines.slice(start, starts[i + 1] ?? lines.length).join('\n')) });
   });
   // Mostly tiny sections means it found a contents page or running headers, not chapters.
   const real = out.filter((c) => c.text.length > 1000);
@@ -300,10 +367,10 @@ async function takeInput(run: (say: (s: string) => void) => Promise<Taken>) {
 function takeFiles(list: FileList | File[] | null | undefined) {
   const files = Array.from(list ?? []);
   if (!files.length) return;
-  const name = files[0].name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
+  const name = tidyFileTitle(files[0].name);
   const pdf = files.find((f) => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name));
   const images = files.filter((f) => f.type.startsWith('image/'));
-  if (pdf) void takeInput(async (say) => ({ ...(await readPdf(await pdf.arrayBuffer(), say)), title: pdf.name.replace(/\.pdf$/i, '') }));
+  if (pdf) void takeInput(async (say) => ({ ...(await readPdf(await pdf.arrayBuffer(), say)), title: tidyFileTitle(pdf.name) }));
   else if (images.length) void takeInput(async (say) => ({ text: await readImages(images, say), title: name }));
   else void takeInput(async () => ({ text: cleanText(await files[0].text()), title: name }));
 }
@@ -639,10 +706,10 @@ function updateBook() {
 
 function showBook(list: Chapter[]) {
   chapters = list;
-  $('book-title').textContent = `Ross found ${list.length} chapters`;
+  $('book-title').textContent = `Ross split this into ${list.length} episodes`;
   $('chapter-list').replaceChildren(
     ...list.map((chapter, i) => {
-      const box = el('input', { type: 'checkbox', value: String(i), checked: !SKIP_BY_DEFAULT.test(chapter.title) && chapter.title !== 'Front matter' });
+      const box = el('input', { type: 'checkbox', value: String(i), checked: !SKIP_BY_DEFAULT.test(chapter.title) && chapter.title !== 'Front matter' && chapter.text.length >= MIN_EPISODE_CHARS });
       box.addEventListener('change', updateBook);
       return el(
         'li',
@@ -929,7 +996,7 @@ function renderFeeds() {
   $('feeds').replaceChildren(
     ...(me?.feeds ?? []).map((feed) => {
       const host = feed.feedUrl.replace(/^https?:\/\//, '');
-      const name = titleInput('ross-feed-name', 'Feed name', feed.title, 150, `/feeds/${feed.token}`);
+      const name = titleInput('ross-feed-name', 'Feed name', feed.title, FEED_TITLE_CHARS, `/feeds/${feed.token}`);
       const cover = el('img', { className: 'ross-feed-cover', src: feed.coverUrl, alt: '', width: 72, height: 72 });
       cover.dataset.cover = feed.token;
       const copy = el('button', { className: 'ross-link', type: 'button', textContent: 'Copy link' });
@@ -963,7 +1030,7 @@ function renderFeeds() {
         ...feed.episodes.map((episode) => {
           const del = el('button', { className: 'ross-link', type: 'button', textContent: 'Delete' });
           del.addEventListener('click', () => act(() => apiJson(`/episodes/${episode.id}`, 'DELETE')));
-          return el('li', {}, titleInput('ross-ep-name', 'Episode title', episode.title, 200, `/episodes/${episode.id}`), del);
+          return el('li', {}, titleInput('ross-ep-name', 'Episode title', episode.title, 100, `/episodes/${episode.id}`), del);
         }),
       );
       const episodes = el(
