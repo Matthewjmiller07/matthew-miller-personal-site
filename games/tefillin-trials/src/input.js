@@ -12,6 +12,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('keydown', (e) => {
     if (e.repeat) return;
     if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    if (document.querySelector('.tt-lb')) return; // the leaderboard is open
     if (/^Digit[1-4]$/.test(e.code)) { fire('pick', Number(e.code.slice(5)) - 1); return; }
     const name = KEYMAP[e.code];
     if (name) {

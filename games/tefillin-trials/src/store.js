@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { RANKS } from './content.js';
+import { fromUrl, syncUrl } from './nav.js';
 
 const SAVE_KEY = 'tefillin-trials-v1';
 
@@ -13,9 +14,12 @@ function load() {
 }
 
 const saved = load();
+const start = fromUrl();
 
 export const useGame = create((set, get) => ({
-  screen: 'title', // title | hub | gauntlet | catch | table | results
+  screen: start.screen || 'title', // title | hub | gauntlet | catch | table | stand | results
+  leaderboard: start.leaderboard ? (start.screen && start.screen !== 'hub' ? start.screen : 'stand') : null, // level shown in the leaderboard panel
+  player: saved.player || '',
   minhag: saved.minhag || 'ashkenaz',
   xp: saved.xp || 0,
   sayings: saved.sayings || [],
@@ -32,7 +36,9 @@ export const useGame = create((set, get) => ({
   levelKey: 0, // bump to remount a level
 
   setMinhag: (minhag) => { set({ minhag }); persist(); },
-  go: (screen) => set((s) => ({ screen, results: null, reaction: null, prompt: null, bubble: null, hud: {}, levelKey: s.levelKey + 1 })),
+  go: (screen) => { syncUrl(screen); set((s) => ({ screen, results: null, reaction: null, prompt: null, bubble: null, hud: {}, levelKey: s.levelKey + 1 })); },
+  showLeaderboard: (level) => set({ leaderboard: level }),
+  setPlayer: (player) => { set({ player }); persist(); },
   setHud: (patch) => set((s) => ({ hud: { ...s.hud, ...patch } })),
   setPrompt: (prompt) => { if (get().prompt !== prompt) set({ prompt }); },
   setReaction: (reaction) => set({ reaction }),
@@ -65,9 +71,9 @@ export const useGame = create((set, get) => ({
 }));
 
 function persist() {
-  const { minhag, xp, sayings, stars, muted } = useGame.getState();
+  const { minhag, xp, sayings, stars, muted, player } = useGame.getState();
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ minhag, xp, sayings, stars, muted }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ minhag, xp, sayings, stars, muted, player }));
   } catch {}
 }
 

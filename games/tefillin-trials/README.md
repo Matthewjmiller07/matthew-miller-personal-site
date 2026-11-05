@@ -17,4 +17,11 @@ Build (writes to `public/games/tefillin-trials/`, which is committed; the Astro 
     npm install
     npm run build
 
+Deep links: `?level=stand` (or `gauntlet`, `catch`, `table`; aliases like `hefsek`, `hum`, `yad-keha`),
+`?shiur=4` / `?world=2` for a shiur's world, `?leaderboard` to open the leaderboard. The address bar
+follows you as you move between levels (`src/nav.js`, worlds listed in `SHIURIM` in `src/content.js`).
+
+Leaderboard: `/api/tefillin-trials` (site API route) over Supabase `tefillin_trials_scores`
+(`tefillin-trials-supabase-setup.sql`). Each finished run can post its XP.
+
 `?nopost`, `?nofx`, `?noreflect`, `?noenv` switch features off for debugging.

@@ -514,3 +514,19 @@ export const STAND_LESSONS = [
   'The bracha comes after placing it on the arm and before tightening: “over la’asiyatan” (Menachot 36a, #56).',
   'The kiborret: the lower half of the muscle by all opinions (#60-#64).',
 ];
+
+// ── Worlds, one per shiur. Deep links: ?shiur=4, ?world=2, ?level=stand (see nav.js) ──
+export const SHIURIM = [
+  {
+    shiur: 3, world: 1, title: 'One bracha or two?', he: 'הֶפְסֵק', sub: 'Siman 25 · sheet #36-51 · in the shul',
+    levels: [
+      { id: 'gauntlet', name: 'The Hefsek Gauntlet', color: '#ff5a4a' },
+      { id: 'catch', name: 'Bracha Catch', color: '#5fb3ff' },
+      { id: 'table', name: 'Hum or Hush', color: '#7ad1a8' },
+    ],
+  },
+  {
+    shiur: 4, world: 2, title: 'Which arm, where, and when', he: 'יָד כֵּהָה', sub: 'Simanim 25-27 · sheet #52-75 · the tefillin stand',
+    levels: [{ id: 'stand', name: 'The Tefillin Stand', color: '#ffb347' }],
+  },
+];

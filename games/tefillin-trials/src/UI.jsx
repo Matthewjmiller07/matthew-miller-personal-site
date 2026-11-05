@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGame, rankFor, touch } from './store.js';
 import { useAction, fire } from './input.js';
-import { RAMBAM, HINENI, WHO_SAID, RANKS } from './content.js';
+import { RAMBAM, HINENI, WHO_SAID, RANKS, SHIURIM } from './content.js';
+import { fetchBoard, postScore } from './leaderboard.js';
+import { levelLink, shiurFor } from './nav.js';
 import { TOKENS } from './levels/BrachaCatch.jsx';
 import { sfx } from './audio.js';
 
@@ -19,6 +21,7 @@ export function UI() {
       {screen === 'table' && <TableHud />}
       {screen === 'stand' && <StandHud />}
       {screen === 'results' && <Results />}
+      <LeaderboardPanel />
       <Reaction />
       <Prompt />
       <Toasts />
@@ -51,6 +54,21 @@ function Title() {
           <button aria-pressed={minhag === 'sefard'} onClick={() => setMinhag('sefard')}>Sefardim · one bracha</button>
         </div>
         <button className="tt-play" onClick={start}>Enter the shul ▸</button>
+        <div className="tt-shiurim">
+          {SHIURIM.map((sh) => (
+            <div key={sh.shiur} className="tt-shiur">
+              <div className="tt-shiur-head"><b>World {sh.world} · Shiur {sh.shiur}</b><span lang="he" dir="rtl">{sh.he}</span></div>
+              <div className="tt-shiur-title">{sh.title}</div>
+              <small>{sh.sub}</small>
+              <div className="tt-shiur-levels">
+                {sh.levels.map((l) => (
+                  <button key={l.id} style={{ borderColor: l.color, color: l.color }} onClick={() => { sfx.unlock(); go(l.id); }}>{l.name} ▸</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <button className="tt-lb-open" onClick={() => useGame.getState().showLeaderboard('stand')}>🏆 Leaderboard</button>
         <p className="tt-controls">WASD / arrows to move · Shift to run · E to talk/act · Space: Do Not Disturb pulse · H to hum · B to bless · 1–3 to choose. On a phone: joystick and buttons.</p>
       </div>
     </div>
@@ -78,6 +96,7 @@ function TopBar() {
       <div className="tt-sefer" title="Poskim you've talked to">📜 {sayings.length}/{WHO_SAID.length}</div>
       <div className="tt-top-btns">
         {screen !== 'hub' && <button onClick={() => go('hub')}>⟵ Shul</button>}
+        <button onClick={() => useGame.getState().showLeaderboard(LEVEL_NAMES[screen] ? screen : 'stand')} aria-label="Leaderboard">🏆</button>
         <button onClick={toggleMute} aria-label="Toggle sound">{muted ? '🔇' : '🔊'}</button>
       </div>
     </div>
@@ -231,7 +250,8 @@ function Reaction() {
 function Prompt() {
   const p = useGame((s) => s.prompt);
   const reaction = useGame((s) => s.reaction);
-  if (!p || reaction) return null;
+  const screen = useGame((s) => s.screen);
+  if (!p || reaction || screen === 'title' || screen === 'results') return null;
   return <button className="tt-prompt" onClick={() => fire('action')}>{p}</button>;
 }
 
@@ -263,9 +283,114 @@ function Results() {
             <ul>{r.lessons.map((l, i) => <li key={i}>{l}</li>)}</ul>
           </div>
         )}
+        <PostScore r={r} />
         <div className="tt-results-btns">
           <button onClick={() => go(r.level)}>↻ Play again</button>
           <button className="primary" onClick={() => go('hub')}>Back to the shul ▸</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const LB_LEVELS = SHIURIM.flatMap((sh) => sh.levels.map((l) => ({ ...l, world: sh.world, shiur: sh.shiur })));
+
+function Board({ rows, me, mark }) {
+  if (!rows) return <div className="tt-lb-note">Loading…</div>;
+  if (!rows.length) return <div className="tt-lb-note">No scores yet. Be the first!</div>;
+  return (
+    <ol className="tt-lb-list">
+      {rows.map((row, i) => {
+        const mine = me && row.player.toLowerCase() === me.toLowerCase();
+        return (
+          <li key={`${row.player}-${i}`} className={`${mine ? 'me' : ''} ${mark === i + 1 ? 'new' : ''}`}>
+            <span className="tt-lb-rank">{i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</span>
+            <span className="tt-lb-name">{row.player}</span>
+            <span className="tt-lb-stars">{'★'.repeat(row.stars)}<i>{'★'.repeat(3 - row.stars)}</i></span>
+            <b>{row.score}</b>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** On the results card: post this run, then show where it landed. */
+function PostScore({ r }) {
+  const saved = useGame((s) => s.player);
+  const minhag = useGame((s) => s.minhag);
+  const [name, setName] = useState(saved);
+  const [state, setState] = useState({ status: 'idle' }); // idle | saving | done | error
+  const [rows, setRows] = useState(null);
+  useEffect(() => { fetchBoard(r.level, 5).then(setRows).catch(() => setRows([])); }, [r.level]);
+  const submit = async (e) => {
+    e?.preventDefault();
+    if (!name.trim() || state.status === 'saving' || state.status === 'done') return;
+    useGame.getState().setPlayer(name.trim());
+    setState({ status: 'saving' });
+    try {
+      const res = await postScore({ player: name.trim(), level: r.level, score: r.xp, stars: r.stars, minhag });
+      setRows(res.scores.slice(0, 5));
+      setState({ status: 'done', rank: res.rank });
+    } catch (err) {
+      setState({ status: 'error', msg: err.message });
+    }
+  };
+  return (
+    <div className="tt-lb-post">
+      <b>🏆 Leaderboard · {LEVEL_NAMES[r.level]}</b>
+      {state.status !== 'done' ? (
+        <form onSubmit={submit} onKeyDown={(e) => e.stopPropagation()}>
+          <input value={name} maxLength={24} placeholder="Your name" onChange={(e) => setName(e.target.value)} aria-label="Your name for the leaderboard" />
+          <button type="submit" disabled={!name.trim() || state.status === 'saving'}>{state.status === 'saving' ? 'Saving…' : `Post ${r.xp}`}</button>
+        </form>
+      ) : (
+        <div className="tt-lb-note good">Saved{state.rank ? `: you’re #${state.rank}` : ''}!</div>
+      )}
+      {state.status === 'error' && <div className="tt-lb-note bad">{state.msg}</div>}
+      <Board rows={rows} me={saved} mark={state.rank} />
+      <button className="tt-lb-more" onClick={() => useGame.getState().showLeaderboard(r.level)}>Full leaderboard ▸</button>
+    </div>
+  );
+}
+
+/** The full leaderboard, one tab per level, grouped by shiur. */
+function LeaderboardPanel() {
+  const level = useGame((s) => s.leaderboard);
+  const me = useGame((s) => s.player);
+  const [rows, setRows] = useState(null);
+  const [err, setErr] = useState(null);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!level) return;
+    setRows(null); setErr(null); setCopied(false);
+    fetchBoard(level, 25).then(setRows).catch((e) => { setErr(e.message); setRows([]); });
+  }, [level]);
+  if (!level) return null;
+  const close = () => useGame.getState().showLeaderboard(null);
+  const sh = shiurFor(level);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(levelLink(level)); setCopied(true); } catch { /* clipboard blocked */ }
+  };
+  return (
+    <div className="tt-lb" onClick={close}>
+      <div className="tt-lb-card" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+        <button className="tt-lb-x" onClick={close} aria-label="Close">✕</button>
+        <div className="tt-kicker">Leaderboard</div>
+        <h2>🏆 {LEVEL_NAMES[level]}</h2>
+        {sh && <div className="tt-lb-sub">World {sh.world} · Shiur {sh.shiur} · {sh.sub}</div>}
+        <div className="tt-lb-tabs">
+          {LB_LEVELS.map((l) => (
+            <button key={l.id} aria-pressed={l.id === level} style={{ '--c': l.color }} onClick={() => useGame.getState().showLeaderboard(l.id)}>
+              <small>W{l.world}</small> {l.name}
+            </button>
+          ))}
+        </div>
+        {err && <div className="tt-lb-note bad">{err}</div>}
+        <Board rows={rows} me={me} />
+        <div className="tt-results-btns">
+          <button onClick={copy}>{copied ? '✓ Link copied' : '🔗 Copy link to this level'}</button>
+          <button className="primary" onClick={() => { close(); useGame.getState().go(level); }}>Play it ▸</button>
         </div>
       </div>
     </div>
