@@ -6,6 +6,10 @@
 const CHARS_FREE = 4_500; // per person per day, about 5 minutes of audio
 const CHARS_WITH_EMAIL = 27_500; // about 30 minutes
 const CHARS_ALL = 125_000; // everyone together per day
+// Hebrew uses a different voice at about 1.5 cents per minute of audio, some 40x the English one.
+const HE_CHARS_PERSON = 600; // about a minute per person per day
+const HE_CHARS_ALL = 2_000; // about 5 cents for everyone together
+const HE_CHARS_OWNER = 10_000; // about 18 minutes, or 25 cents
 const UPLOAD_PER_PERSON = 100 * 1024 * 1024;
 const UPLOAD_ALL = 300 * 1024 * 1024;
 const FETCHES_PER_PERSON = 60;
@@ -17,6 +21,9 @@ const SITE = 'https://theothermatthewmiller.com';
 const COVER = `${SITE}/ross/cover.png`;
 const KOKORO_VERSION = 'f559560eb822dc509045f3921a1921234918b91739db4bf3daab2169b71c7a13';
 const KOKORO_VOICE = 'am_michael';
+const GEMINI_MODEL = 'google/gemini-3.8-flash-tts';
+const GEMINI_VOICE = 'Charon';
+const GEMINI_STYLE = 'Read this aloud clearly and steadily, like an audiobook narrator.';
 
 // The Origin header can be faked outside a browser, so the caps are what really bound the bill.
 const ALLOWED_ORIGIN = /^(https:\/\/theothermatthewmiller\.com|https:\/\/[a-z0-9-]+--[a-z0-9-]+\.netlify\.app|http:\/\/localhost:\d+)$/;
@@ -89,15 +96,22 @@ async function getUser(request, env) {
 
 const personalLimit = (user) => user.daily_limit ?? (user.email ? CHARS_WITH_EMAIL : CHARS_FREE);
 
-async function speechCounters(user, request, env) {
-  const limit = personalLimit(user);
-  const mine = [`tts:${user.library}`, limit];
-  if (user.daily_limit) return [mine];
-  return [['tts:all', CHARS_ALL], [`tts:${await ipSubject(request, env)}`, limit], mine];
+function isHebrew(text) {
+  const letters = text.match(/\p{L}/gu) || [];
+  const hebrew = text.match(/\p{Script=Hebrew}/gu) || [];
+  return letters.length > 0 && hebrew.length / letters.length > 0.2;
 }
 
-async function remainingChars(user, request, env) {
-  const counters = await speechCounters(user, request, env);
+async function speechCounters(user, request, env, hebrew = false) {
+  const kind = hebrew ? 'he' : 'tts';
+  const limit = hebrew ? (user.daily_limit ? HE_CHARS_OWNER : HE_CHARS_PERSON) : personalLimit(user);
+  const mine = [`${kind}:${user.library}`, limit];
+  if (user.daily_limit) return [mine];
+  return [[`${kind}:all`, hebrew ? HE_CHARS_ALL : CHARS_ALL], [`${kind}:${await ipSubject(request, env)}`, limit], mine];
+}
+
+async function remainingChars(user, request, env, hebrew = false) {
+  const counters = await speechCounters(user, request, env, hebrew);
   const left = await Promise.all(counters.map(async ([s, l]) => l - (await used(env, s))));
   return Math.max(0, Math.min(...left));
 }
@@ -138,6 +152,7 @@ async function libraryView(user, request, env, origin) {
   return {
     hasEmail: Boolean(user.email),
     charsLeft: await remainingChars(user, request, env),
+    hebrewCharsLeft: await remainingChars(user, request, env, true),
     sharedLeft: user.daily_limit ? user.daily_limit : Math.max(0, CHARS_ALL - (await used(env, 'tts:all'))),
     freeChars: CHARS_FREE,
     emailChars: CHARS_WITH_EMAIL,
@@ -151,12 +166,15 @@ async function libraryView(user, request, env, origin) {
 
 // --- Speech ---
 
-async function synthesize(text, env) {
+async function synthesize(text, hebrew, env) {
   const headers = { Authorization: `Bearer ${env.REPLICATE_API_TOKEN}`, 'Content-Type': 'application/json' };
-  const created = await fetch('https://api.replicate.com/v1/predictions', {
+  const [endpoint, body] = hebrew
+    ? [`models/${GEMINI_MODEL}/predictions`, { input: { text, voice: GEMINI_VOICE, style: GEMINI_STYLE, output_format: 'wav' } }]
+    : ['predictions', { version: KOKORO_VERSION, input: { text, voice: KOKORO_VOICE, speed: 1 } }];
+  const created = await fetch(`https://api.replicate.com/v1/${endpoint}`, {
     method: 'POST',
     headers: { ...headers, Prefer: 'wait=30' },
-    body: JSON.stringify({ version: KOKORO_VERSION, input: { text, voice: KOKORO_VOICE, speed: 1 } }),
+    body: JSON.stringify(body),
   });
   if (!created.ok) throw new Error(`Replicate returned ${created.status}`);
   let prediction = await created.json();
@@ -165,10 +183,11 @@ async function synthesize(text, env) {
     await new Promise((r) => setTimeout(r, 2000));
     prediction = await (await fetch(prediction.urls.get, { headers })).json();
   }
-  if (prediction.status !== 'succeeded' || !prediction.output) {
+  const output = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+  if (prediction.status !== 'succeeded' || !output) {
     throw new Error(prediction.error || `Prediction ${prediction.status}`);
   }
-  return prediction.output;
+  return output;
 }
 
 // --- Fetching a link ---
@@ -285,11 +304,12 @@ async function route(request, env) {
   if (path === '/tts' && method === 'POST') {
     const { text } = await request.json().catch(() => ({}));
     if (typeof text !== 'string' || !text.trim() || text.length > MAX_TTS_CHARS) return fail('Bad text', 400);
-    const counters = await speechCounters(user, request, env);
+    const hebrew = isHebrew(text);
+    const counters = await speechCounters(user, request, env, hebrew);
     const over = await reserve(env, counters, text.length);
-    if (over) return json({ error: 'limit', everyone: over === 'tts:all' }, 402);
+    if (over) return json({ error: 'limit', everyone: over.endsWith(':all') }, 402);
     try {
-      return json({ url: await synthesize(text, env) });
+      return json({ url: await synthesize(text, hebrew, env) });
     } catch (err) {
       await refund(env, counters, text.length);
       return fail(String(err.message || err), 502);

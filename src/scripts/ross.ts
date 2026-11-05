@@ -8,33 +8,46 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const API = 'https://rossreadsit.parasha.workers.dev';
 const SAMPLE_RATE = 24000; // Kokoro's native rate, mono
-const MAX_CHUNK_CHARS = 1200;
+const ENGLISH_CHUNK_CHARS = 1200;
+const HEBREW_CHUNK_CHARS = 300;
 const CONCURRENCY = 12; // sections in progress at once; each has its own MP3 encoder
 const GAP_SAMPLES = SAMPLE_RATE / 5; // 200 ms of silence after each section
 const CHARS_PER_MINUTE = 915; // measured on Ross's voice
+const HEBREW_CHARS_PER_MINUTE = 545; // measured on the Hebrew voice
+const MAX_EPISODE_CHARS = 25_000; // about 27 minutes: long chapters become parts, which also fit a day's allowance
+const SKIP_BY_DEFAULT = /^(contents|table of contents|index|copyright|bibliography|references|notes|acknowledg|dedication|title page|cover|about the author|also by|תוכן|מפתח)/i;
 const LIBRARY_KEY = 'ross-library';
 const OLD_FEED_KEY = 'pdf-audio-feed-token'; // from when this tool was PDF to Audio
 
 interface Episode { id: number; title: string; duration: number | null; created: string }
 interface Feed { token: string; title: string; feedUrl: string; episodes: Episode[] }
-interface Me { hasEmail: boolean; charsLeft: number; sharedLeft: number; freeChars: number; emailChars: number; feeds: Feed[] }
+interface Me { hasEmail: boolean; charsLeft: number; hebrewCharsLeft: number; sharedLeft: number; freeChars: number; emailChars: number; feeds: Feed[] }
+interface Chapter { title: string; text: string }
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-const minutes = (chars: number) => Math.max(1, Math.round(chars / CHARS_PER_MINUTE));
+const minutes = (chars: number, language = 'en') => Math.max(1, Math.round(chars / (language === 'he' ? HEBREW_CHARS_PER_MINUTE : CHARS_PER_MINUTE)));
+const mins = (chars: number, language = 'en') => {
+  const n = minutes(chars, language);
+  return `${n} ${n === 1 ? 'minute' : 'minutes'}`;
+};
 
 let me: Me | null = null;
 let cancelled = false;
 let stopRequests: AbortController | null = null;
 let mp3Blob: Blob | null = null;
 let mp3Duration = 0;
+let chapters: Chapter[] = [];
+let bookTitle = '';
+let bookText = '';
+let bookRunning = false;
 
 function status(id: string, text: string, bad = false) {
   $(id).textContent = text;
   $(id).classList.toggle('is-bad', bad);
 }
 
-function show(step: 'start' | 'review' | 'done') {
-  for (const s of ['start', 'review', 'done']) $(s).hidden = s !== step;
+function show(step: 'start' | 'review' | 'book' | 'done') {
+  for (const s of ['start', 'review', 'book', 'done']) $(s).hidden = s !== step;
 }
 
 // --- Library: a random secret in this browser, carried to other devices by a link ---
@@ -79,6 +92,7 @@ function setMe(next: Me) {
   me = next;
   renderFeeds();
   if (!$('review').hidden) updateAllowance();
+  if (!$('book').hidden) updateBook();
 }
 
 async function refresh() {
@@ -104,27 +118,96 @@ function cleanText(raw: string): string {
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .replace(/ {2,}/g, ' ')
+    .replace(/[\u0591-\u05AF]/g, '') // Torah cantillation marks; vowel points stay
     .trim();
 }
 
-async function readPdf(data: ArrayBuffer, say: (s: string) => void): Promise<string> {
+async function readPdf(data: ArrayBuffer, say: (s: string) => void): Promise<{ text: string; chapters: Chapter[] }> {
   const doc = await pdfjsLib.getDocument({ data }).promise;
-  const parts: string[] = [];
+  const pages: string[] = [];
   for (let n = 1; n <= doc.numPages; n++) {
     say(`Reading page ${n} of ${doc.numPages}…`);
     const content = await (await doc.getPage(n)).getTextContent();
-    parts.push(
+    pages.push(
       (content.items as { str?: string; hasEOL?: boolean }[]).map((i) => (i.str ?? '') + (i.hasEOL ? '\n' : ' ')).join(''),
     );
   }
-  return cleanText(parts.join('\n\n'));
+  const text = cleanText(pages.join('\n\n'));
+  return { text, chapters: await chaptersFromOutline(doc, pages) };
 }
+
+// The PDF's own table of contents, when it has one, is the most reliable way to find chapters.
+async function chaptersFromOutline(doc: pdfjsLib.PDFDocumentProxy, pages: string[]): Promise<Chapter[]> {
+  try {
+    const outline = (await doc.getOutline()) ?? [];
+    const marks: { title: string; page: number }[] = [];
+    for (const item of outline) {
+      const dest = typeof item.dest === 'string' ? await doc.getDestination(item.dest) : item.dest;
+      if (!dest?.[0]) continue;
+      const ref = dest[0];
+      const page = typeof ref === 'number' ? ref : await doc.getPageIndex(ref);
+      marks.push({ title: item.title.trim(), page });
+    }
+    marks.sort((x, y) => x.page - y.page);
+    const out: Chapter[] = [];
+    if (marks.length && marks[0].page > 0) {
+      out.push({ title: 'Front matter', text: cleanText(pages.slice(0, marks[0].page).join('\n\n')) });
+    }
+    marks.forEach((mark, i) => {
+      // Entries on the same page share it, so a short entry still gets its text.
+      const end = i + 1 < marks.length ? Math.max(marks[i + 1].page, mark.page + 1) : pages.length;
+      out.push({ title: mark.title, text: cleanText(pages.slice(mark.page, end).join('\n\n')) });
+    });
+    return out.filter((c) => c.text);
+  } catch {
+    return [];
+  }
+}
+
+// Without a table of contents, look for headings on lines of their own. A line ending in a
+// number is a contents-page entry rather than the chapter itself.
+const HEADING = /^(chapter|part|book|lesson|unit|פרק|חלק|שיעור)\s+([0-9]+|[ivxlc]+|[a-z]+|[\u05D0-\u05EA"'׳״]{1,5})\b.{0,60}$/i;
+function chaptersFromHeadings(text: string): Chapter[] {
+  const lines = text.split('\n');
+  const starts = lines.flatMap((line, i) => (HEADING.test(line.trim()) && !/\d\s*$/.test(line.replace(/^\D*\d+/, '')) ? [i] : []));
+  if (starts.length < 2) return [];
+  const out: Chapter[] = [];
+  const before = cleanText(lines.slice(0, starts[0]).join('\n'));
+  if (before.length > 200) out.push({ title: 'Front matter', text: before });
+  starts.forEach((start, i) => {
+    out.push({ title: lines[start].trim(), text: cleanText(lines.slice(start, starts[i + 1] ?? lines.length).join('\n')) });
+  });
+  // Mostly tiny sections means it found a contents page or running headers, not chapters.
+  const real = out.filter((c) => c.text.length > 1000);
+  return real.length >= 2 && real.length >= out.length / 2 ? out : [];
+}
+
+// A chapter too long for one sitting becomes parts, split between sentences.
+function splitLongChapters(list: Chapter[]): Chapter[] {
+  return list.flatMap((chapter) => {
+    if (chapter.text.length <= MAX_EPISODE_CHARS) return [chapter];
+    const sentences = chapter.text.match(/[^.!?…]+[.!?…]*["')\]]*\s*/g) ?? [chapter.text];
+    const parts: string[] = [];
+    let cur = '';
+    for (const sentence of sentences) {
+      if (cur && cur.length + sentence.length > MAX_EPISODE_CHARS) {
+        parts.push(cur);
+        cur = '';
+      }
+      cur += sentence;
+    }
+    if (cur) parts.push(cur);
+    return parts.map((text, i) => ({ title: `${chapter.title}, part ${i + 1} of ${parts.length}`, text: text.trim() }));
+  });
+}
+
+interface Taken { text: string; title: string; chapters?: Chapter[] }
 
 async function readImages(files: File[], say: (s: string) => void): Promise<string> {
   say('Getting ready to read your photo…');
   const { createWorker } = await import('tesseract.js');
   let page = 1;
-  const worker = await createWorker('eng', 1, {
+  const worker = await createWorker(['eng', 'heb'], 1, {
     logger: (m: { status: string; progress: number }) => {
       if (m.status === 'recognizing text') {
         say(`Reading photo ${page} of ${files.length}: ${Math.round(m.progress * 100)}%`);
@@ -144,7 +227,7 @@ async function readImages(files: File[], say: (s: string) => void): Promise<stri
   return cleanText(parts.join('\n\n'));
 }
 
-async function readLink(link: string, say: (s: string) => void): Promise<{ text: string; title: string }> {
+async function readLink(link: string, say: (s: string) => void): Promise<Taken> {
   say('Fetching the page…');
   const res = await api(`/extract?url=${encodeURIComponent(link)}`);
   if (!res.ok) {
@@ -153,7 +236,7 @@ async function readLink(link: string, say: (s: string) => void): Promise<{ text:
   }
   const host = new URL(link).hostname.replace(/^www\./, '');
   const kind = res.headers.get('X-Content-Kind');
-  if (kind === 'pdf') return { text: await readPdf(await res.arrayBuffer(), say), title: host };
+  if (kind === 'pdf') return { ...(await readPdf(await res.arrayBuffer(), say)), title: host };
   const raw = await res.text();
   if (kind === 'text') return { text: cleanText(raw), title: host };
   // DOMParser builds an inert document: nothing in it runs or loads.
@@ -172,12 +255,23 @@ function firstWords(text: string): string {
   return line.length < text.trim().length ? `${line}…` : line;
 }
 
-function review(text: string, title: string) {
+function review(text: string, title: string, found: Chapter[] = []) {
   if (!text.trim()) {
     status('start-status', "Ross found no words in that. If it's a scan, try a photo of the page.", true);
     show('start');
     return;
   }
+  bookTitle = title;
+  bookText = text;
+  const list = splitLongChapters(found.length >= 2 ? found : chaptersFromHeadings(text));
+  if (list.length >= 2) {
+    showBook(list);
+    return;
+  }
+  showSingle(text, title);
+}
+
+function showSingle(text: string, title: string) {
   $<HTMLInputElement>('title').value = title;
   $<HTMLTextAreaElement>('text').value = text;
   status('read-status', '');
@@ -186,14 +280,14 @@ function review(text: string, title: string) {
   updateAllowance();
 }
 
-async function takeInput(run: (say: (s: string) => void) => Promise<{ text: string; title: string }>) {
+async function takeInput(run: (say: (s: string) => void) => Promise<Taken>) {
   const say = (s: string) => status('start-status', s);
   $<HTMLButtonElement>('go').disabled = true;
   $<HTMLButtonElement>('choose').disabled = true;
   try {
-    const { text, title } = await run(say);
+    const { text, title, chapters: found } = await run(say);
     say('');
-    review(text, title);
+    review(text, title, found);
   } catch (err) {
     status('start-status', err instanceof Error ? err.message : String(err), true);
   } finally {
@@ -208,47 +302,61 @@ function takeFiles(list: FileList | File[] | null | undefined) {
   const name = files[0].name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
   const pdf = files.find((f) => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name));
   const images = files.filter((f) => f.type.startsWith('image/'));
-  if (pdf) void takeInput(async (say) => ({ text: await readPdf(await pdf.arrayBuffer(), say), title: pdf.name.replace(/\.pdf$/i, '') }));
+  if (pdf) void takeInput(async (say) => ({ ...(await readPdf(await pdf.arrayBuffer(), say)), title: pdf.name.replace(/\.pdf$/i, '') }));
   else if (images.length) void takeInput(async (say) => ({ text: await readImages(images, say), title: name }));
   else void takeInput(async () => ({ text: cleanText(await files[0].text()), title: name }));
 }
 
 // --- Allowance ---
 
-function isMostlyEnglish(text: string): boolean {
+type Language = 'en' | 'he' | 'other';
+
+function languageOf(text: string): Language {
   const letters = text.match(/\p{L}/gu) ?? [];
+  if (!letters.length) return 'en';
+  const hebrew = text.match(/\p{Script=Hebrew}/gu) ?? [];
+  if (hebrew.length / letters.length > 0.2) return 'he'; // same test as the Worker
   const latin = text.match(/\p{Script=Latin}/gu) ?? [];
-  return letters.length === 0 || latin.length / letters.length > 0.8;
+  return latin.length / letters.length > 0.8 ? 'en' : 'other';
+}
+
+function allowanceFor(language: Language): number {
+  return language === 'he' ? (me?.hebrewCharsLeft ?? 0) : (me?.charsLeft ?? 0);
 }
 
 function updateAllowance() {
   if (!me) return;
-  const length = $<HTMLTextAreaElement>('text').value.trim().length;
-  const left = me.charsLeft;
-  const needsEmail = !me.hasEmail && me.sharedLeft > 0 && length > left;
+  const value = $<HTMLTextAreaElement>('text').value;
+  const length = value.trim().length;
+  const language = languageOf(value);
+  const left = allowanceFor(language);
+  const needsEmail = language === 'en' && !me.hasEmail && me.sharedLeft > 0 && length > left;
   const read = $<HTMLButtonElement>('read');
   const note = $('review-note');
   $('email-form').hidden = !needsEmail;
-  const english = isMostlyEnglish($<HTMLTextAreaElement>('text').value);
-  read.disabled = !english || left <= 0 || length === 0;
-  if (!english) {
-    note.textContent = 'Ross reads English only for now, and this looks like another language.';
+  read.disabled = language === 'other' || left <= 0 || length === 0;
+  if (language === 'other') {
+    note.textContent = 'Ross reads English and Hebrew, and this looks like another language.';
   } else if (left <= 0) {
-    note.textContent = me.sharedLeft <= 0
-      ? "Ross has read all he can for everyone today. He's back tomorrow."
-      : me.hasEmail
-        ? "That's all Ross can read for you today. He's back tomorrow."
-        : "That's today's free reading.";
+    note.textContent = language === 'he'
+      ? "That's all the Hebrew Ross can read for you today. He's back tomorrow."
+      : me.sharedLeft <= 0
+        ? "Ross has read all he can for everyone today. He's back tomorrow."
+        : me.hasEmail
+          ? "That's all Ross can read for you today. He's back tomorrow."
+          : "That's today's free reading.";
   } else if (length > left) {
-    note.textContent = `That's about ${minutes(length)} minutes. Ross can read the first ${minutes(left)} for you today.`;
+    note.textContent = `That's about ${mins(length, language)}. Ross can read the first ${mins(left, language)} for you today.`;
   } else {
-    note.textContent = `About ${minutes(length)} ${minutes(length) === 1 ? 'minute' : 'minutes'}. Fix or delete anything you don't want read aloud.`;
+    note.textContent = `About ${mins(length, language)}. Fix or delete anything you don't want read aloud.`;
   }
 }
 
 // --- Speech ---
 
 function chunkSentences(text: string): string[] {
+  // Hebrew's daily allowance is smaller than a normal section, so its sections are shorter.
+  const MAX_CHUNK_CHARS = languageOf(text) === 'he' ? HEBREW_CHUNK_CHARS : ENGLISH_CHUNK_CHARS;
   const sentences = text
     .replace(/\s+/g, ' ')
     // The last alternative keeps trailing text that has no final punctuation.
@@ -353,7 +461,11 @@ function withGap(pcm: Int16Array): Int16Array {
   return out;
 }
 
-async function synthesize(chunks: string[]): Promise<{ blob: Blob; duration: number; done: number }> {
+async function synthesize(
+  chunks: string[],
+  onProgress?: (fraction: number) => void,
+  statusId = 'read-status',
+): Promise<{ blob: Blob; duration: number; done: number }> {
   const started = performance.now();
   const sections: ({ mp3: Uint8Array; samples: number } | undefined)[] = new Array(chunks.length);
   stopRequests = new AbortController();
@@ -363,6 +475,10 @@ async function synthesize(chunks: string[]): Promise<{ blob: Blob; duration: num
   let failure: unknown = null;
 
   const progress = () => {
+    if (onProgress) {
+      onProgress(finished / chunks.length);
+      return;
+    }
     $('bar').style.width = `${(finished / chunks.length) * 100}%`;
     const elapsed = performance.now() - started;
     const left = finished ? Math.ceil(((elapsed / finished) * (chunks.length - finished)) / 1000) : 0;
@@ -404,7 +520,7 @@ async function synthesize(chunks: string[]): Promise<{ blob: Blob; duration: num
     done++;
   }
   const message = failure instanceof Error ? failure.message : failure ? String(failure) : '';
-  if (message) status('read-status', message, true);
+  if (message) status(statusId, message, true);
   return { blob: new Blob(parts as BlobPart[], { type: 'audio/mpeg' }), duration: samples / SAMPLE_RATE, done };
 }
 
@@ -412,7 +528,7 @@ async function readAloud() {
   if (!me) return;
   const text = $<HTMLTextAreaElement>('text').value.trim();
   const all = chunkSentences(text);
-  const chunks = fitToAllowance(all, me.charsLeft);
+  const chunks = fitToAllowance(all, allowanceFor(languageOf(text)));
   if (!chunks.length) {
     status('read-status', "Ross doesn't have enough reading left today for that. Try a shorter piece.", true);
     return;
@@ -459,6 +575,169 @@ async function readAloud() {
     $('restart').hidden = false;
     read.disabled = false;
     void apiJson('/me', 'GET').then(setMe).catch(() => {});
+  }
+}
+
+async function addEpisode(feedToken: string, title: string, blob: Blob, duration: number) {
+  const res = await api('/upload', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'audio/mpeg',
+      'X-Feed-Token': feedToken,
+      'X-Title': encodeURIComponent(title),
+      'X-Duration-Seconds': String(Math.round(duration)),
+    },
+    body: blob,
+  });
+  if (res.status === 402) throw new Error('Too much audio has been added today. Try again tomorrow.');
+  if (!res.ok) throw new Error(`Adding it failed (HTTP ${res.status}). Try again.`);
+  setMe((await res.json()) as Me);
+}
+
+// --- Books: one episode per chapter ---
+
+function chapterRows() {
+  return [...document.querySelectorAll<HTMLInputElement>('#chapter-list input[type=checkbox]')];
+}
+
+function selectedChapters() {
+  return chapterRows().filter((box) => box.checked).map((box) => Number(box.value));
+}
+
+function targetFeed(): Feed | undefined {
+  return me?.feeds.find((f) => f.token === $<HTMLSelectElement>('book-feed').value);
+}
+
+function updateBook() {
+  if (!me || $('book').hidden) return;
+  const feed = targetFeed();
+  const done = new Set(feed?.episodes.map((e) => e.title));
+  for (const box of chapterRows()) {
+    const chapter = chapters[Number(box.value)];
+    const already = done.has(chapter.title);
+    (box.closest('li') as HTMLElement).dataset.done = already ? '1' : '';
+    if (already) box.checked = false;
+  }
+  const picked = selectedChapters();
+  const total = picked.reduce((sum, i) => sum + chapters[i].text.length, 0);
+  const language = languageOf(chapters.map((c) => c.text).join(' ').slice(0, 5000));
+  const left = allowanceFor(language);
+  $('email-form-book').hidden = !(language === 'en' && !me.hasEmail && me.sharedLeft > 0 && total > left);
+  const read = $<HTMLButtonElement>('read-book');
+  read.textContent = `Read ${picked.length} ${picked.length === 1 ? 'chapter' : 'chapters'}`;
+  read.disabled = bookRunning || picked.length === 0 || language === 'other';
+  const hours = minutes(total, language) / 60;
+  const size = hours >= 1 ? `about ${hours.toFixed(1)} hours` : `about ${mins(total, language)}`;
+  $('book-note').textContent = language === 'other'
+    ? 'Ross reads English and Hebrew, and this looks like another language.'
+    : total > left
+      ? `That's ${size}. Ross can read about ${mins(left, language)} for you today. Drop the same file in tomorrow and he picks up where he left off.`
+      : `That's ${size}. Keep this tab open while Ross reads.`;
+}
+
+function showBook(list: Chapter[]) {
+  chapters = list;
+  $('book-title').textContent = `Ross found ${list.length} chapters`;
+  $('chapter-list').replaceChildren(
+    ...list.map((chapter, i) => {
+      const box = el('input', { type: 'checkbox', value: String(i), checked: !SKIP_BY_DEFAULT.test(chapter.title) && chapter.title !== 'Front matter' });
+      box.addEventListener('change', updateBook);
+      return el(
+        'li',
+        {},
+        el('label', {}, box, el('span', { className: 'ross-ch-title', textContent: chapter.title }), el('span', { className: 'ross-ch-len', textContent: `${minutes(chapter.text.length, languageOf(chapter.text))} min` })),
+      );
+    }),
+  );
+  fillBookFeeds();
+  status('book-status', '');
+  $('book-bar-wrap').hidden = true;
+  show('book');
+  updateBook();
+}
+
+const NEW_FEED = 'new';
+
+function fillBookFeeds() {
+  const pick = $<HTMLSelectElement>('book-feed');
+  const current = pick.value;
+  const existing = me?.feeds.find((f) => f.title === bookTitle);
+  pick.replaceChildren(
+    ...(existing ? [] : [el('option', { value: NEW_FEED, textContent: `A new feed called "${bookTitle}"` })]),
+    ...(me?.feeds ?? []).map((f) => el('option', { value: f.token, textContent: f.title })),
+  );
+  if (existing) pick.value = existing.token;
+  else if (current && [...pick.options].some((o) => o.value === current)) pick.value = current;
+}
+
+async function readBook() {
+  const picked = selectedChapters();
+  if (!picked.length || !me) return;
+  const read = $<HTMLButtonElement>('read-book');
+  const stop = $<HTMLButtonElement>('stop-book');
+  const bar = $('book-bar');
+  const mark = $('ross-mark');
+  cancelled = false;
+  bookRunning = true;
+  read.disabled = true;
+  stop.hidden = false;
+  stop.disabled = false;
+  $('book-bar-wrap').hidden = false;
+  mark.classList.add('is-reading');
+  const say = (text: string, bad = false) => status('book-status', text, bad);
+  let finished = 0;
+  try {
+    let token = $<HTMLSelectElement>('book-feed').value;
+    if (token === NEW_FEED) {
+      const before = new Set(me.feeds.map((f) => f.token));
+      setMe(await apiJson('/feeds', 'POST', { title: bookTitle }));
+      token = me.feeds.find((f) => !before.has(f.token))?.token ?? '';
+      fillBookFeeds();
+      $<HTMLSelectElement>('book-feed').value = token;
+    }
+    for (const index of picked) {
+      if (cancelled) break;
+      const chapter = chapters[index];
+      const language = languageOf(chapter.text);
+      const allowance = allowanceFor(language);
+      if (language === 'other') {
+        say(`"${chapter.title}" isn't in English or Hebrew, so Ross stopped there.`, true);
+        break;
+      }
+      if (chapter.text.length > allowance) {
+        say(
+          finished
+            ? `Ross read ${finished} ${finished === 1 ? 'chapter' : 'chapters'} today, which is all he can. Drop the same file in tomorrow and he picks up where he left off.`
+            : `The next chapter is longer than what Ross has left for you today. Try again tomorrow.`,
+          !finished,
+        );
+        break;
+      }
+      const label = `${finished + 1} of ${picked.length}: ${chapter.title}`;
+      const pieces = chunkSentences(chapter.text);
+      const { blob, duration, done } = await synthesize(pieces, (fraction) => {
+        bar.style.width = `${((finished + fraction) / picked.length) * 100}%`;
+        status('book-status', `Reading ${label}`);
+      }, 'book-status');
+      if (cancelled) break;
+      // Never publish half a chapter as if it were whole.
+      if (done < pieces.length) break;
+      say(`Adding ${label}`);
+      await addEpisode(token, chapter.title, blob, duration);
+      finished++;
+      bar.style.width = `${(finished / picked.length) * 100}%`;
+      updateBook();
+      await apiJson('/me', 'GET').then(setMe);
+    }
+    if (finished === picked.length) say(`Done. All ${finished} chapters are in your feed. Subscribe below if you haven't yet.`);
+    else if (cancelled) say(`Stopped. ${finished} ${finished === 1 ? 'chapter is' : 'chapters are'} in your feed.`);
+  } catch (err) {
+    say(err instanceof Error ? err.message : String(err), true);
+  } finally {
+    bookRunning = false;
+    mark.classList.remove('is-reading');
+    stop.hidden = true;
+    updateBook();
   }
 }
 
@@ -606,15 +885,27 @@ function init() {
   $('restart').addEventListener('click', again);
   $('another').addEventListener('click', again);
 
-  $('email-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    try {
-      setMe(await apiJson('/email', 'POST', { email: $<HTMLInputElement>('email').value }));
-      status('read-status', 'Saved. Ross can read for up to 30 minutes a day now.');
-    } catch (err) {
-      status('read-status', err instanceof Error ? err.message : String(err), true);
-    }
+  for (const [form, field, statusId] of [['email-form', 'email', 'read-status'], ['email-form-book', 'email-book', 'book-status']]) {
+    $(form).addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        setMe(await apiJson('/email', 'POST', { email: $<HTMLInputElement>(field).value }));
+        status(statusId, 'Saved. Ross can read for up to 30 minutes a day now.');
+      } catch (err) {
+        status(statusId, err instanceof Error ? err.message : String(err), true);
+      }
+    });
+  }
+
+  $('book-feed').addEventListener('change', updateBook);
+  $('read-book').addEventListener('click', () => void readBook());
+  $('stop-book').addEventListener('click', () => {
+    cancelled = true;
+    $<HTMLButtonElement>('stop-book').disabled = true;
+    stopRequests?.abort();
   });
+  $('as-one').addEventListener('click', () => showSingle(bookText, bookTitle));
+  $('restart-book').addEventListener('click', again);
 
   $('add').addEventListener('click', async () => {
     if (!mp3Blob) return;
@@ -623,20 +914,8 @@ function init() {
     add.disabled = true;
     status('add-status', 'Adding…');
     try {
-      const res = await api('/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'audio/mpeg',
-          'X-Feed-Token': pick.value,
-          'X-Title': encodeURIComponent($('done-title').textContent ?? ''),
-          'X-Duration-Seconds': String(Math.round(mp3Duration)),
-        },
-        body: mp3Blob,
-      });
-      if (res.status === 402) throw new Error('Too much audio has been added today. Try again tomorrow.');
-      if (!res.ok) throw new Error(`Adding it failed (HTTP ${res.status}). Try again.`);
       const feedName = pick.selectedOptions[0]?.textContent ?? 'your feed';
-      setMe((await res.json()) as Me);
+      await addEpisode(pick.value, $('done-title').textContent ?? '', mp3Blob, mp3Duration);
       status('add-status', `Added to ${feedName}. It shows up in your podcast app the next time it checks. Subscribe below if you haven't yet.`);
     } catch (err) {
       status('add-status', err instanceof Error ? err.message : String(err), true);
