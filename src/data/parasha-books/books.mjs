@@ -502,7 +502,7 @@ export const books = [
         question: 'What was the smallest number Avraham asked about?',
         answer: 'Ten — "I will not destroy, for the sake of the ten" (18:32).',
         scene:
-          'an old bearded man in a brown robe standing alone on a high rocky ridge at sunset looking down over a wide hazy plain with a distant walled city, a soft beam of golden light from the sky; behind him on the ridge the open carved wooden box with just the three sisters inside — the big girl, the toddler counting on her fingers, and the baby',
+          'on a high rocky ridge at sunset, an old man with a long white beard and a dark brown head cloth, seen in profile, looking down over a wide hazy plain with a distant walled city, a soft beam of golden light from the sky; next to him the open carved wooden box with the three sisters sitting inside, the toddler counting on her fingers',
       },
       {
         ref: 'Genesis 19:15-17; Genesis 19:24-26',
@@ -520,7 +520,7 @@ export const books = [
         question: 'How old was Avraham when Yitzchak was born?',
         answer: 'One hundred years old (21:5).',
         scene:
-          'a joyful scene outside a big festive desert tent hung with colorful woven cloths, oil lamps and flowers, an elderly white-haired couple seen from behind in the tent doorway; in front just the big girl holding the giggling baby, and the toddler laughing beside them',
+          'outside a festive desert tent hung with colorful cloths, oil lamps and flowers, an elderly white-haired couple in dark robes standing in the doorway, seen from a distance; in front, the big girl holding the baby on her hip and the toddler laughing next to her — three children in total',
       },
       {
         ref: 'Genesis 21:14-19',
@@ -634,7 +634,7 @@ export const books = [
         question: 'Where did Avraham send his servant to find a wife for Yitzchak?',
         answer: 'To his land and his birthplace (24:4).',
         scene:
-          'inside a large lamp-lit goat-hair tent, a very old white-bearded man seated on cushions speaking seriously to a gray-bearded servant standing with his hand on his heart, both in the middle of the tent; at the open tent flap in the corner just the three sisters peeking in, facing us',
+          'a very old white-bearded man in a dark head cloth seated on cushions inside a big lamp-lit tent, talking to a gray-bearded servant standing before him with his hand on his heart; the three sisters peeking in together from behind the open tent flap on the left',
       },
       {
         ref: 'Genesis 24:10-14',
@@ -775,7 +775,7 @@ export const books = [
         question: 'Where did Hashem tell Yitzchak not to go?',
         answer: 'Down to Egypt (26:2).',
         scene:
-          'a dry cracked land at night under brilliant stars, a bearded grown man in a robe seen from behind standing at the edge of a tent camp in a soft beam of golden light from the sky; nearby on a rock the open carved wooden box with just the three sisters inside pointing up at the stars',
+          'a dry cracked land at night under brilliant stars, a grown man with a short dark beard and a dark head cloth standing in profile at the edge of a tent camp, lit by a soft beam of golden light from the sky; the three sisters sitting together inside the open carved wooden box on a rock beside him, pointing up at the stars',
       },
       {
         ref: 'Genesis 26:12-14',
@@ -838,7 +838,7 @@ export const books = [
         question: 'Where did Yitzchak send Yaakov?',
         answer: 'To Paddan Aram, to the house of Betuel, to marry from the daughters of Lavan (28:2).',
         scene:
-          'back home at night: just the three sisters at a cozy Shabbat table with candles and challah, a small carved olive-wood box closing its lid with a last golden glow inside it showing a tiny traveler on a long road, the big girl closing a book, the toddler yawning, the baby asleep on the big girl\'s lap, no grown-ups',
+          'back home at night: just the three sisters at a cozy Shabbat table with two candles and challah, a small carved olive-wood box on the table closing its lid with a golden glow and a tiny traveler on a road inside the light, the toddler yawning, the baby asleep in the big girl\'s lap, no grown-ups',
       },
     ],
   },
