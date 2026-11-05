@@ -775,7 +775,7 @@ export const books = [
         question: 'Where did Hashem tell Yitzchak not to go?',
         answer: 'Down to Egypt (26:2).',
         scene:
-          'a tent camp on dry cracked land at night under brilliant stars, a soft beam of golden light shining down from the sky onto a tiny bearded grown man far away at the edge of the camp; in the front the open carved wooden box on a rock with the three sisters sitting inside it in a row, pointing up at the stars',
+          'a tent camp on dry cracked land at night under brilliant stars, a soft beam of golden light shining down from the sky onto a tiny bearded grown man far away at the edge of the camp; in the front the three sisters sitting together on one woven blanket, the big girl, the toddler and the baby, pointing up at the stars',
       },
       {
         ref: 'Genesis 26:12-14',
