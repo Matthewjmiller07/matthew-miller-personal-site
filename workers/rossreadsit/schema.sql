@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS feeds (
   token TEXT PRIMARY KEY,        -- public: it is in the feed URL
   library TEXT,                  -- NULL until a pre-existing feed is claimed
   title TEXT NOT NULL,
+  cover_key TEXT,                -- this feed's own art in R2; drawn by the page with its title
+  cover_title TEXT,              -- the title that art shows, so a rename can redraw it
   created TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS feeds_library ON feeds(library);

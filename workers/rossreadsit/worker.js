@@ -15,6 +15,9 @@ const FETCHES_PER_PERSON = 60;
 const MAX_TTS_CHARS = 4_000;
 const MAX_FEEDS = 20;
 const MAX_FETCH_BYTES = 30 * 1024 * 1024;
+const MAX_COVER_BYTES = 2 * 1024 * 1024;
+const FEED_TITLE_CHARS = 70;
+const EPISODE_TITLE_CHARS = 100;
 
 const SITE = 'https://theothermatthewmiller.com';
 const COVER = `${SITE}/ross/cover.png`;
@@ -29,8 +32,8 @@ const LIBRARY = /^[a-f0-9]{32}$/;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Library, X-Feed-Token, X-Title, X-Duration-Seconds',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Library, X-Feed-Token, X-Title, X-Duration-Seconds, X-Cover-Title',
   'Access-Control-Expose-Headers': 'X-Content-Kind',
   'Access-Control-Max-Age': '86400',
 };
@@ -136,11 +139,17 @@ async function adoptOldFeed(env, token) {
   return env.DB.prepare('SELECT * FROM feeds WHERE token = ?').bind(token).first();
 }
 
+// A feed's art is served from the same route as its audio, and its name changes with each redraw
+// because podcast apps hold on to artwork by URL.
+function coverUrl(origin, key) {
+  return key ? `${origin}/audio/${key.split('/').map(encodeURIComponent).join('/')}` : COVER;
+}
+
 async function libraryView(user, request, env, origin) {
-  let { results: feeds } = await env.DB.prepare('SELECT token, title FROM feeds WHERE library = ? ORDER BY created').bind(user.library).all();
+  let { results: feeds } = await env.DB.prepare('SELECT token, title, cover_key, cover_title FROM feeds WHERE library = ? ORDER BY created').bind(user.library).all();
   if (!feeds.length) {
     const title = 'My reading';
-    feeds = [{ token: await createFeed(env, user.library, title), title }];
+    feeds = [{ token: await createFeed(env, user.library, title), title, cover_key: null, cover_title: null }];
   }
   const tokens = feeds.map((f) => f.token);
   const { results: episodes } = await env.DB.prepare(
@@ -153,8 +162,10 @@ async function libraryView(user, request, env, origin) {
     sharedLeft: user.daily_limit ? user.daily_limit : Math.max(0, CHARS_ALL - (await used(env, 'tts:all'))),
     freeChars: CHARS_FREE,
     emailChars: CHARS_WITH_EMAIL,
-    feeds: feeds.map((f) => ({
+    feeds: feeds.map(({ cover_key, cover_title, ...f }) => ({
       ...f,
+      coverUrl: coverUrl(origin, cover_key),
+      coverTitle: cover_title,
       feedUrl: `${origin}/feed/${f.token}.xml`,
       episodes: episodes.filter((e) => e.feed_token === f.token).map(({ feed_token, ...e }) => e),
     })),
@@ -263,7 +274,8 @@ function feedXml(origin, feed, episodes) {
   <description>Your reading, read out loud by Ross. This feed is private: anyone with its link can listen, so keep it to yourself.</description>
   <language>en</language>
   <itunes:author>Ross Reads It</itunes:author>
-  <itunes:image href="${COVER}" />
+  <itunes:image href="${esc(coverUrl(origin, feed.cover_key))}" />
+  <image><url>${esc(coverUrl(origin, feed.cover_key))}</url><title>${esc(feed.title)}</title><link>${SITE}/ross</link></image>
   <itunes:explicit>false</itunes:explicit>
   <itunes:block>Yes</itunes:block>
 ${items}
@@ -354,12 +366,36 @@ async function route(request, env) {
 
   if (path === '/feeds' && method === 'POST') {
     const { title } = await request.json().catch(() => ({}));
-    const name = String(title || '').trim().slice(0, 80);
+    const name = String(title || '').trim().slice(0, FEED_TITLE_CHARS);
     if (!name) return fail('Give the feed a name.', 400);
     const { n } = await env.DB.prepare('SELECT COUNT(*) AS n FROM feeds WHERE library = ?').bind(user.library).first();
     if (n >= MAX_FEEDS) return fail(`${MAX_FEEDS} feeds is the most you can have.`, 400);
     await createFeed(env, user.library, name);
     return json(await libraryView(user, request, env, origin));
+  }
+
+  const coverRoute = path.match(/^\/feeds\/([a-zA-Z0-9_-]{8,64})\/cover$/);
+  if (coverRoute && method === 'PUT') {
+    const feed = await env.DB.prepare('SELECT * FROM feeds WHERE token = ? AND library = ?').bind(coverRoute[1], user.library).first();
+    if (!feed) return fail('Feed not found', 404);
+    const body = await request.arrayBuffer();
+    const signature = new Uint8Array(body.slice(0, 8)).join();
+    if (signature !== '137,80,78,71,13,10,26,10' || body.byteLength > MAX_COVER_BYTES) return fail('That is not a usable cover.', 400);
+    if (!user.daily_limit) {
+      const over = await reserve(env, [['up:all', UPLOAD_ALL], [`up:${await ipSubject(request, env)}`, UPLOAD_PER_PERSON]], body.byteLength);
+      if (over) return json({ error: 'limit' }, 402);
+    }
+    let shown;
+    try {
+      shown = decodeURIComponent(request.headers.get('X-Cover-Title') || '').slice(0, 150);
+    } catch {
+      return fail('Bad title', 400);
+    }
+    const key = `${feed.token}/cover-${randomHex(8)}.png`;
+    await env.AUDIO.put(key, body, { httpMetadata: { contentType: 'image/png' } });
+    await env.DB.prepare('UPDATE feeds SET cover_key = ?, cover_title = ? WHERE token = ?').bind(key, shown, feed.token).run();
+    if (feed.cover_key) await env.AUDIO.delete(feed.cover_key);
+    return json({ coverUrl: coverUrl(origin, key), coverTitle: shown });
   }
 
   const feedRoute = path.match(/^\/feeds\/([a-zA-Z0-9_-]{8,64})$/);
@@ -368,14 +404,15 @@ async function route(request, env) {
     if (!feed) return fail('Feed not found', 404);
     if (method === 'PATCH') {
       const { title } = await request.json().catch(() => ({}));
-      const name = String(title || '').trim().slice(0, 80);
+      const name = String(title || '').trim().slice(0, FEED_TITLE_CHARS);
       if (!name) return fail('Give the feed a name.', 400);
       await env.DB.prepare('UPDATE feeds SET title = ? WHERE token = ?').bind(name, feed.token).run();
       return json(await libraryView(user, request, env, origin));
     }
     if (method === 'DELETE') {
       const { results } = await env.DB.prepare('SELECT r2_key FROM episodes WHERE feed_token = ?').bind(feed.token).all();
-      if (results.length) await env.AUDIO.delete(results.map((e) => e.r2_key));
+      const keys = [...results.map((e) => e.r2_key), ...(feed.cover_key ? [feed.cover_key] : [])];
+      if (keys.length) await env.AUDIO.delete(keys);
       await env.DB.batch([
         env.DB.prepare('DELETE FROM episodes WHERE feed_token = ?').bind(feed.token),
         env.DB.prepare('DELETE FROM feeds WHERE token = ?').bind(feed.token),
@@ -385,11 +422,18 @@ async function route(request, env) {
   }
 
   const episodeRoute = path.match(/^\/episodes\/(\d+)$/);
-  if (episodeRoute && method === 'DELETE') {
+  if (episodeRoute && (method === 'DELETE' || method === 'PATCH')) {
     const episode = await env.DB.prepare(
       'SELECT e.id, e.r2_key FROM episodes e JOIN feeds f ON f.token = e.feed_token WHERE e.id = ? AND f.library = ?',
     ).bind(Number(episodeRoute[1]), user.library).first();
     if (!episode) return fail('Episode not found', 404);
+    if (method === 'PATCH') {
+      const { title } = await request.json().catch(() => ({}));
+      const name = String(title || '').trim().slice(0, EPISODE_TITLE_CHARS);
+      if (!name) return fail('Give the episode a title.', 400);
+      await env.DB.prepare('UPDATE episodes SET title = ? WHERE id = ?').bind(name, episode.id).run();
+      return json(await libraryView(user, request, env, origin));
+    }
     await env.AUDIO.delete(episode.r2_key);
     await env.DB.prepare('DELETE FROM episodes WHERE id = ?').bind(episode.id).run();
     return json(await libraryView(user, request, env, origin));
@@ -405,7 +449,7 @@ async function route(request, env) {
       const over = await reserve(env, [['up:all', UPLOAD_ALL], [`up:${await ipSubject(request, env)}`, UPLOAD_PER_PERSON]], body.byteLength);
       if (over) return json({ error: 'limit' }, 402);
     }
-    const title = decodeURIComponent(request.headers.get('X-Title') || 'Untitled').trim().slice(0, 200) || 'Untitled';
+    const title = decodeURIComponent(request.headers.get('X-Title') || 'Untitled').trim().slice(0, EPISODE_TITLE_CHARS) || 'Untitled';
     const key = `${token}/${randomHex(8)}.mp3`;
     const duration = Math.round(Number(request.headers.get('X-Duration-Seconds'))) || null;
     await env.AUDIO.put(key, body, { httpMetadata: { contentType: 'audio/mpeg' } });

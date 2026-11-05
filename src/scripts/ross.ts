@@ -14,13 +14,14 @@ const CONCURRENCY = 12; // sections in progress at once; each has its own MP3 en
 const GAP_SAMPLES = SAMPLE_RATE / 5; // 200 ms of silence after each section
 const CHARS_PER_MINUTE = 915; // measured on Ross's voice
 const HEBREW_CHARS_PER_MINUTE = 730; // measured on the Hebrew voice
+const MIN_EPISODE_CHARS = 400; // title pages and part dividers start unticked
 const MAX_EPISODE_CHARS = 25_000; // about 27 minutes: long chapters become parts, which also fit a day's allowance
-const SKIP_BY_DEFAULT = /^(contents|table of contents|index|copyright|bibliography|references|notes|acknowledg|dedication|title page|cover|about the author|also by|תוכן|מפתח)/i;
+const SKIP_BY_DEFAULT = /^((brief |detailed |short )?contents|table of contents|index|copyright|bibliography|references|notes|acknowledg|dedication|title page|cover|about the author|also by|תוכן|מפתח)/i;
 const LIBRARY_KEY = 'ross-library';
 const OLD_FEED_KEY = 'pdf-audio-feed-token'; // from when this tool was PDF to Audio
 
 interface Episode { id: number; title: string; duration: number | null; created: string }
-interface Feed { token: string; title: string; feedUrl: string; episodes: Episode[] }
+interface Feed { token: string; title: string; feedUrl: string; coverUrl: string; coverTitle: string | null; episodes: Episode[] }
 interface Me { hasEmail: boolean; charsLeft: number; hebrewCharsLeft: number; sharedLeft: number; freeChars: number; emailChars: number; feeds: Feed[] }
 interface Chapter { title: string; text: string }
 
@@ -91,6 +92,7 @@ async function apiJson(path: string, method: string, body?: unknown): Promise<Me
 function setMe(next: Me) {
   me = next;
   renderFeeds();
+  void syncCovers();
   if (!$('review').hidden) updateAllowance();
   if (!$('book').hidden) updateBook();
 }
@@ -112,9 +114,74 @@ async function refresh() {
 
 // --- Reading things in ---
 
+const FEED_TITLE_CHARS = 70;
+const CHAPTER_TITLE_CHARS = 80; // leaves room for ", part 10 of 12" in an episode title of 100
+
+function clipTitle(title: string, max: number): string {
+  if (title.length <= max) return title;
+  const cut = title.slice(0, max - 1);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s,:;–—-]+$/, '')}…`;
+}
+
+const SMALL_WORDS = /^(a|an|and|as|at|by|for|in|of|on|or|the|to|with)$/;
+
+// Tables of contents often shout. A title in capitals becomes a title in title case.
+function tidyChapterTitle(raw: string): string {
+  let title = raw.replace(/\s+/g, ' ').trim().replace(/\s+[-–—]\s+/, ': ');
+  if (/\p{Lu}/u.test(title) && !/\p{Ll}/u.test(title)) {
+    title = title
+      .split(' ')
+      .map((word, i, words) => {
+        if (/^[IVXLC]+[.:,]?$/.test(word)) return word;
+        const lower = word.toLowerCase();
+        return i > 0 && !words[i - 1].endsWith(':') && SMALL_WORDS.test(lower) ? lower : lower.replace(/\p{L}/u, (c) => c.toUpperCase());
+      })
+      .join(' ');
+  }
+  return clipTitle(title, CHAPTER_TITLE_CHARS);
+}
+
+function tidyFileTitle(name: string): string {
+  const title = name
+    .replace(/\.[^.]+$/, '')
+    .replace(/_ /g, ': ')
+    .replace(/[_\s]+/g, ' ')
+    .replace(/[\s(–—-]*\b(pdf|e-?book|pdf e-?book)\b\)?\s*$/i, '')
+    .trim();
+  return clipTitle(title || name, FEED_TITLE_CHARS);
+}
+
+// Page numbers and the titles repeated at the top and bottom of pages would be read out in the
+// middle of sentences. A line at a page's edge counts if it's a bare number or recurs on other pages.
+function stripRunningHeads(pages: string[]): string[] {
+  const key = (line: string) => line.toLowerCase().replace(/[^\p{L}]/gu, '');
+  const edges = (lines: string[]) => {
+    const filled = lines.flatMap((line, i) => (line.trim() ? [i] : []));
+    return new Set([...filled.slice(0, 2), ...filled.slice(-2)]);
+  };
+  const split = pages.map((page) => page.split('\n'));
+  const seen = new Map<string, number>();
+  for (const lines of split) {
+    const keys = new Set([...edges(lines)].map((i) => key(lines[i])));
+    for (const k of keys) if (k) seen.set(k, (seen.get(k) ?? 0) + 1);
+  }
+  return split.map((lines) => {
+    const atEdge = edges(lines);
+    return lines
+      .filter((line, i) => {
+        if (!atEdge.has(i)) return true;
+        const trimmed = line.trim();
+        if (/^(\d{1,4}|[ivxlc]{1,7})$/i.test(trimmed)) return false;
+        return trimmed.length > 90 || (seen.get(key(line)) ?? 0) < 3;
+      })
+      .join('\n');
+  });
+}
+
 function cleanText(raw: string): string {
   return raw
-    .replace(/(\w)-\n(\w)/g, '$1$2') // words split across lines
+    .replace(/(\p{Ll}) ?-\s*\n\s*(\p{Ll})/gu, '$1$2') // words split across lines
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .replace(/ {2,}/g, ' ')
@@ -124,14 +191,15 @@ function cleanText(raw: string): string {
 
 async function readPdf(data: ArrayBuffer, say: (s: string) => void): Promise<{ text: string; chapters: Chapter[] }> {
   const doc = await pdfjsLib.getDocument({ data }).promise;
-  const pages: string[] = [];
+  const raw: string[] = [];
   for (let n = 1; n <= doc.numPages; n++) {
     say(`Reading page ${n} of ${doc.numPages}…`);
     const content = await (await doc.getPage(n)).getTextContent();
-    pages.push(
+    raw.push(
       (content.items as { str?: string; hasEOL?: boolean }[]).map((i) => (i.str ?? '') + (i.hasEOL ? '\n' : ' ')).join(''),
     );
   }
+  const pages = stripRunningHeads(raw);
   const text = cleanText(pages.join('\n\n'));
   return { text, chapters: await chaptersFromOutline(doc, pages) };
 }
@@ -146,7 +214,7 @@ async function chaptersFromOutline(doc: pdfjsLib.PDFDocumentProxy, pages: string
       if (!dest?.[0]) continue;
       const ref = dest[0];
       const page = typeof ref === 'number' ? ref : await doc.getPageIndex(ref);
-      marks.push({ title: item.title.trim(), page });
+      marks.push({ title: tidyChapterTitle(item.title), page });
     }
     marks.sort((x, y) => x.page - y.page);
     const out: Chapter[] = [];
@@ -175,7 +243,7 @@ function chaptersFromHeadings(text: string): Chapter[] {
   const before = cleanText(lines.slice(0, starts[0]).join('\n'));
   if (before.length > 200) out.push({ title: 'Front matter', text: before });
   starts.forEach((start, i) => {
-    out.push({ title: lines[start].trim(), text: cleanText(lines.slice(start, starts[i + 1] ?? lines.length).join('\n')) });
+    out.push({ title: tidyChapterTitle(lines[start]), text: cleanText(lines.slice(start, starts[i + 1] ?? lines.length).join('\n')) });
   });
   // Mostly tiny sections means it found a contents page or running headers, not chapters.
   const real = out.filter((c) => c.text.length > 1000);
@@ -299,10 +367,10 @@ async function takeInput(run: (say: (s: string) => void) => Promise<Taken>) {
 function takeFiles(list: FileList | File[] | null | undefined) {
   const files = Array.from(list ?? []);
   if (!files.length) return;
-  const name = files[0].name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
+  const name = tidyFileTitle(files[0].name);
   const pdf = files.find((f) => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name));
   const images = files.filter((f) => f.type.startsWith('image/'));
-  if (pdf) void takeInput(async (say) => ({ ...(await readPdf(await pdf.arrayBuffer(), say)), title: pdf.name.replace(/\.pdf$/i, '') }));
+  if (pdf) void takeInput(async (say) => ({ ...(await readPdf(await pdf.arrayBuffer(), say)), title: tidyFileTitle(pdf.name) }));
   else if (images.length) void takeInput(async (say) => ({ text: await readImages(images, say), title: name }));
   else void takeInput(async () => ({ text: cleanText(await files[0].text()), title: name }));
 }
@@ -625,7 +693,7 @@ function updateBook() {
   const left = allowanceFor(language);
   $('email-form-book').hidden = !(language === 'en' && !me.hasEmail && me.sharedLeft > 0 && total > left);
   const read = $<HTMLButtonElement>('read-book');
-  read.textContent = `Read ${picked.length} ${picked.length === 1 ? 'chapter' : 'chapters'}`;
+  read.textContent = `Read ${picked.length} ${picked.length === 1 ? 'episode' : 'episodes'}`;
   read.disabled = bookRunning || picked.length === 0 || language === 'other';
   const hours = minutes(total, language) / 60;
   const size = hours >= 1 ? `about ${hours.toFixed(1)} hours` : `about ${mins(total, language)}`;
@@ -638,10 +706,10 @@ function updateBook() {
 
 function showBook(list: Chapter[]) {
   chapters = list;
-  $('book-title').textContent = `Ross found ${list.length} chapters`;
+  $('book-title').textContent = `Ross split this into ${list.length} episodes`;
   $('chapter-list').replaceChildren(
     ...list.map((chapter, i) => {
-      const box = el('input', { type: 'checkbox', value: String(i), checked: !SKIP_BY_DEFAULT.test(chapter.title) && chapter.title !== 'Front matter' });
+      const box = el('input', { type: 'checkbox', value: String(i), checked: !SKIP_BY_DEFAULT.test(chapter.title) && chapter.title !== 'Front matter' && !/\b(front|back) cover\b/i.test(chapter.title) && chapter.text.length >= MIN_EPISODE_CHARS });
       box.addEventListener('change', updateBook);
       return el(
         'li',
@@ -730,7 +798,7 @@ async function readBook() {
       updateBook();
       await apiJson('/me', 'GET').then(setMe);
     }
-    if (finished === picked.length) say(`Done. All ${finished} chapters are in your feed. Subscribe below if you haven't yet.`);
+    if (finished === picked.length) say(`Done. ${finished === 1 ? 'The episode is' : `All ${finished} episodes are`} in your feed. Subscribe below if you haven't yet.`);
     else if (cancelled) say(`Stopped. ${finished} ${finished === 1 ? 'chapter is' : 'chapters are'} in your feed.`);
   } catch (err) {
     say(err instanceof Error ? err.message : String(err), true);
@@ -764,6 +832,162 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLEl
   return node;
 }
 
+// --- Cover art: Ross and the feed's title, drawn here so Hebrew is shaped by the browser ---
+
+const COVER_SIZE = 1400; // the smallest Apple Podcasts accepts
+const COVER_MARGIN = 110;
+const COVER_FONT = '"Bricolage Grotesque", "Heebo", system-ui, sans-serif';
+
+// Lay the title out as big as it fits above Ross, breaking mid-word only when a word can't fit.
+function fitTitle(ctx: CanvasRenderingContext2D, title: string, width: number, height: number) {
+  const LINE = 1.04;
+  const SMALLEST = 74;
+  for (let size = 230; size >= SMALLEST; size -= 6) {
+    ctx.font = `800 ${size}px ${COVER_FONT}`;
+    const fits = (s: string) => ctx.measureText(s).width <= width;
+    const words = title.split(/\s+/).flatMap((word) => {
+      if (fits(word) || size > SMALLEST) return [word];
+      const pieces: string[] = [];
+      let cur = '';
+      for (const ch of word) {
+        if (!fits(cur + ch)) {
+          pieces.push(cur);
+          cur = '';
+        }
+        cur += ch;
+      }
+      return [...pieces, cur];
+    });
+    if (!words.every(fits)) continue;
+    const lines: string[] = [];
+    for (const word of words) {
+      const last = lines[lines.length - 1];
+      if (last !== undefined && fits(`${last} ${word}`)) lines[lines.length - 1] = `${last} ${word}`;
+      else lines.push(word);
+    }
+    if (lines.length * size * LINE <= height) return { lines, size, step: size * LINE };
+  }
+  return { lines: [title], size: SMALLEST, step: SMALLEST * LINE };
+}
+
+async function drawCover(title: string): Promise<Blob> {
+  await Promise.all([
+    document.fonts.load(`800 100px "Bricolage Grotesque"`, 'Ross'),
+    document.fonts.load(`800 100px "Heebo"`, 'א'),
+  ]).catch(() => undefined); // A missing font falls back to the system's.
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = COVER_SIZE;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#1b2bd8';
+  ctx.fillRect(0, 0, COVER_SIZE, COVER_SIZE);
+
+  // Ross, from public/ross/mark.svg, in its 100-unit square.
+  ctx.save();
+  ctx.translate(COVER_MARGIN - 60, COVER_SIZE - 400);
+  ctx.scale(4, 4);
+  ctx.strokeStyle = '#ffc92e';
+  ctx.lineWidth = 11;
+  ctx.lineCap = 'round';
+  ctx.stroke(new Path2D('M30 37a35 35 0 0 1 35 35'));
+  ctx.stroke(new Path2D('M30 16a56 56 0 0 1 56 56'));
+  ctx.fillStyle = '#ffc92e';
+  ctx.fill(new Path2D('M46 72a16 16 0 1 1-32 0a16 16 0 1 1 32 0'));
+  ctx.lineWidth = 2.6;
+  ctx.strokeStyle = '#10133f';
+  for (const x of [23.5, 36.5]) {
+    const eye = new Path2D();
+    eye.arc(x, 71, 5.6, 0, Math.PI * 2);
+    ctx.fillStyle = '#fffdf4';
+    ctx.fill(eye);
+    ctx.stroke(eye);
+    ctx.fillStyle = '#10133f';
+    ctx.beginPath();
+    ctx.arc(x + 1, 71.4, 1.7, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.stroke(new Path2D('M29 70.5q1-1 2 0'));
+  ctx.restore();
+
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#fffdf4';
+  ctx.font = `800 76px ${COVER_FONT}`;
+  ctx.textAlign = 'right';
+  ctx.fillText('Ross reads it', COVER_SIZE - COVER_MARGIN, COVER_SIZE - 130);
+
+  const rtl = languageOf(title) === 'he';
+  ctx.direction = rtl ? 'rtl' : 'ltr';
+  ctx.textAlign = rtl ? 'right' : 'left';
+  ctx.fillStyle = '#ffc92e';
+  const { lines, size, step } = fitTitle(ctx, title, COVER_SIZE - COVER_MARGIN * 2, COVER_SIZE - COVER_MARGIN - 470);
+  ctx.font = `800 ${size}px ${COVER_FONT}`;
+  lines.forEach((line, i) => ctx.fillText(line, rtl ? COVER_SIZE - COVER_MARGIN : COVER_MARGIN, COVER_MARGIN + size * 0.85 + i * step));
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('No cover'))), 'image/png');
+  });
+}
+
+// Every new visitor has an empty "My reading", so that one waits until it holds something.
+const wantsCover = (feed: Feed) => feed.coverTitle !== feed.title && (feed.episodes.length > 0 || feed.title !== 'My reading');
+const coverTried = new Map<string, string>();
+let coversRunning = false;
+
+async function syncCovers() {
+  if (coversRunning) return;
+  coversRunning = true;
+  try {
+    for (;;) {
+      const feed = me?.feeds.find((f) => wantsCover(f) && coverTried.get(f.token) !== f.title);
+      if (!feed) return;
+      const { token, title } = feed;
+      coverTried.set(token, title);
+      try {
+        const res = await api(`/feeds/${token}/cover`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'image/png', 'X-Cover-Title': encodeURIComponent(title) },
+          body: await drawCover(title),
+        });
+        if (!res.ok) continue;
+        const cover = (await res.json()) as Pick<Feed, 'coverUrl' | 'coverTitle'>;
+        const current = me?.feeds.find((f) => f.token === token);
+        if (current) Object.assign(current, cover);
+        document.querySelector<HTMLImageElement>(`img[data-cover="${token}"]`)?.setAttribute('src', cover.coverUrl);
+      } catch {
+        // The feed keeps its current art, and the next visit tries again.
+      }
+    }
+  } finally {
+    coversRunning = false;
+  }
+}
+
+// Saving a title doesn't redraw the list, so the cursor stays wherever the person moved it next.
+function titleInput(className: string, label: string, value: string, maxLength: number, path: string) {
+  const input = el('input', { className, type: 'text', value, maxLength, ariaLabel: label, dir: 'auto' });
+  let saved = value;
+  input.addEventListener('change', async () => {
+    const title = input.value.trim();
+    if (!title) {
+      input.value = saved;
+      return;
+    }
+    try {
+      me = await apiJson(path, 'PATCH', { title });
+      saved = title;
+      fillFeedPicker();
+      if (!$('book').hidden) updateBook();
+      status('feeds-status', 'Saved. Podcast apps show the change the next time they refresh.');
+      void syncCovers();
+    } catch (err) {
+      input.value = saved;
+      status('feeds-status', err instanceof Error ? err.message : String(err), true);
+    }
+  });
+  return input;
+}
+
+const openEpisodeLists = new Set<string>();
+
 function renderFeeds() {
   fillFeedPicker();
   const say = (s: string, bad = false) => status('feeds-status', s, bad);
@@ -772,11 +996,9 @@ function renderFeeds() {
   $('feeds').replaceChildren(
     ...(me?.feeds ?? []).map((feed) => {
       const host = feed.feedUrl.replace(/^https?:\/\//, '');
-      const name = el('input', { className: 'ross-feed-name', type: 'text', value: feed.title, maxLength: 80, ariaLabel: 'Feed name' });
-      name.addEventListener('change', () => {
-        if (name.value.trim()) act(() => apiJson(`/feeds/${feed.token}`, 'PATCH', { title: name.value }));
-        else name.value = feed.title;
-      });
+      const name = titleInput('ross-feed-name', 'Feed name', feed.title, FEED_TITLE_CHARS, `/feeds/${feed.token}`);
+      const cover = el('img', { className: 'ross-feed-cover', src: feed.coverUrl, alt: '', width: 72, height: 72 });
+      cover.dataset.cover = feed.token;
       const copy = el('button', { className: 'ross-link', type: 'button', textContent: 'Copy link' });
       copy.addEventListener('click', async () => {
         await navigator.clipboard.writeText(feed.feedUrl);
@@ -808,17 +1030,21 @@ function renderFeeds() {
         ...feed.episodes.map((episode) => {
           const del = el('button', { className: 'ross-link', type: 'button', textContent: 'Delete' });
           del.addEventListener('click', () => act(() => apiJson(`/episodes/${episode.id}`, 'DELETE')));
-          return el('li', {}, el('span', { textContent: episode.title }), del);
+          return el('li', {}, titleInput('ross-ep-name', 'Episode title', episode.title, 100, `/episodes/${episode.id}`), del);
         }),
       );
       const episodes = el(
         'details',
-        { className: 'ross-eps' },
+        { className: 'ross-eps', open: openEpisodeLists.has(feed.token) },
         el('summary', { textContent: count ? `${count} ${count === 1 ? 'episode' : 'episodes'}` : 'No episodes yet' }),
         list,
         remove,
       );
-      return el('article', { className: 'ross-feed' }, el('div', { className: 'ross-feed-top' }, name), subs, episodes);
+      episodes.addEventListener('toggle', () => {
+        if (episodes.open) openEpisodeLists.add(feed.token);
+        else openEpisodeLists.delete(feed.token);
+      });
+      return el('article', { className: 'ross-feed' }, el('div', { className: 'ross-feed-top' }, cover, name), subs, episodes);
     }),
   );
 }

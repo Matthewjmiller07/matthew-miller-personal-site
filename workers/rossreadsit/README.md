@@ -21,6 +21,12 @@ project `personal-site-460904`) instead of Kokoro. Google gives 4M characters fr
 a day across everyone, the owner included, so a 31-day month stays inside the free tier. Needs
 `wrangler secret put GOOGLE_TTS_API_KEY`, with the key restricted to the Text-to-Speech API.
 
+## Cover art
+
+The page draws each feed's cover (Ross and the feed's title) on a canvas and uploads it with
+`PUT /feeds/:token/cover`. A rename redraws it under a new file name, because podcast apps hold on to
+art by URL. The empty default feed uses `public/ross/cover.png` until it holds an episode.
+
 ## Limits
 
 In `worker.js`. Per day: 4,500 characters per person (about 5 minutes), 27,500 once they leave
