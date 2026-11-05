@@ -520,7 +520,7 @@ export const books = [
         question: 'How old was Avraham when Yitzchak was born?',
         answer: 'One hundred years old (21:5).',
         scene:
-          'outside a festive desert tent hung with colorful cloths, oil lamps and flowers, an elderly white-haired couple in dark robes standing in the doorway, seen from a distance; in front, the big girl holding the baby on her hip and the toddler laughing next to her — three children in total',
+          'a big festive desert tent hung with colorful woven cloths, oil lamps and flowers, far back in its doorway a tiny elderly white-haired couple in dark robes; in the front the three sisters sitting in a row on a woven rug laughing together, the baby giggling',
       },
       {
         ref: 'Genesis 21:14-19',
@@ -634,7 +634,7 @@ export const books = [
         question: 'Where did Avraham send his servant to find a wife for Yitzchak?',
         answer: 'To his land and his birthplace (24:4).',
         scene:
-          'a very old white-bearded man in a dark head cloth seated on cushions inside a big lamp-lit tent, talking to a gray-bearded servant standing before him with his hand on his heart; the three sisters peeking in together from behind the open tent flap on the left',
+          'inside a big lamp-lit tent, in the middle distance a very old white-bearded man in a dark head cloth seated on cushions, talking to a gray-bearded servant in a traveling cloak who stands before him with his hand on his heart; in the front corner the three sisters sitting in a row on a rug, listening',
       },
       {
         ref: 'Genesis 24:10-14',
@@ -775,7 +775,7 @@ export const books = [
         question: 'Where did Hashem tell Yitzchak not to go?',
         answer: 'Down to Egypt (26:2).',
         scene:
-          'a dry cracked land at night under brilliant stars, a grown man with a short dark beard and a dark head cloth standing in profile at the edge of a tent camp, lit by a soft beam of golden light from the sky; the three sisters sitting together inside the open carved wooden box on a rock beside him, pointing up at the stars',
+          'a tent camp on dry cracked land at night under brilliant stars, a soft beam of golden light shining down from the sky onto a tiny bearded grown man far away at the edge of the camp; in the front the open carved wooden box on a rock with the three sisters sitting inside it in a row, pointing up at the stars',
       },
       {
         ref: 'Genesis 26:12-14',
