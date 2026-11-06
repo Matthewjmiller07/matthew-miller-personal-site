@@ -687,6 +687,7 @@ function updateBook() {
     (box.closest('li') as HTMLElement).dataset.done = already ? '1' : '';
     if (already) box.checked = false;
   }
+  $('book-feed-link-row').hidden = $<HTMLSelectElement>('book-feed').value !== NEW_FEED;
   const picked = selectedChapters();
   const total = picked.reduce((sum, i) => sum + chapters[i].text.length, 0);
   const language = languageOf(chapters.map((c) => c.text).join(' ').slice(0, 5000));
@@ -759,7 +760,7 @@ async function readBook() {
     let token = $<HTMLSelectElement>('book-feed').value;
     if (token === NEW_FEED) {
       const before = new Set(me.feeds.map((f) => f.token));
-      setMe(await apiJson('/feeds', 'POST', { title: bookTitle }));
+      setMe(await apiJson('/feeds', 'POST', { title: bookTitle, link: $<HTMLInputElement>('book-feed-link').value }));
       token = me.feeds.find((f) => !before.has(f.token))?.token ?? '';
       fillBookFeeds();
       $<HTMLSelectElement>('book-feed').value = token;
@@ -1155,8 +1156,10 @@ function init() {
     e.preventDefault();
     const name = $<HTMLInputElement>('new-feed-name');
     try {
-      setMe(await apiJson('/feeds', 'POST', { title: name.value }));
+      const link = $<HTMLInputElement>('new-feed-link');
+      setMe(await apiJson('/feeds', 'POST', { title: name.value, link: link.value }));
       name.value = '';
+      link.value = '';
       status('feeds-status', '');
     } catch (err) {
       status('feeds-status', err instanceof Error ? err.message : String(err), true);

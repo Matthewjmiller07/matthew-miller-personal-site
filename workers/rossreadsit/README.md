@@ -27,6 +27,11 @@ The page draws each feed's cover (Ross and the feed's title) on a canvas and upl
 `PUT /feeds/:token/cover`. A rename redraws it under a new file name, because podcast apps hold on to
 art by URL. The empty default feed uses `public/ross/cover.png` until it holds an episode.
 
+## Feed links
+
+A new feed can have a chosen link name, such as `ethics-code-1a2b3c4d`. The 8 random characters stay, because a feed
+link is all anyone needs to listen. The link can't change later, since podcast apps subscribe to it.
+
 ## Limits
 
 In `worker.js`. Per day: 4,500 characters per person (about 5 minutes), 27,500 once they leave

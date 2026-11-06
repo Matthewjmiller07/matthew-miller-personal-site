@@ -17,6 +17,7 @@ const MAX_FEEDS = 20;
 const MAX_FETCH_BYTES = 30 * 1024 * 1024;
 const MAX_COVER_BYTES = 2 * 1024 * 1024;
 const FEED_TITLE_CHARS = 70;
+const FEED_LINK_CHARS = 40;
 const EPISODE_TITLE_CHARS = 100;
 
 const SITE = 'https://theothermatthewmiller.com';
@@ -116,8 +117,14 @@ async function remainingChars(user, request, env, hebrew = false) {
   return Math.max(0, Math.min(...left));
 }
 
-async function createFeed(env, library, title) {
-  const token = randomHex(12);
+// A chosen link name keeps random characters after it, because anyone who can guess a feed's link can listen.
+function feedToken(link) {
+  const name = String(link || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, FEED_LINK_CHARS).replace(/-+$/, '');
+  return name ? `${name}-${randomHex(4)}` : randomHex(12);
+}
+
+async function createFeed(env, library, title, link) {
+  const token = feedToken(link);
   await env.DB.prepare('INSERT INTO feeds (token, library, title) VALUES (?, ?, ?)').bind(token, library, title).run();
   return token;
 }
@@ -365,12 +372,12 @@ async function route(request, env) {
   }
 
   if (path === '/feeds' && method === 'POST') {
-    const { title } = await request.json().catch(() => ({}));
+    const { title, link } = await request.json().catch(() => ({}));
     const name = String(title || '').trim().slice(0, FEED_TITLE_CHARS);
     if (!name) return fail('Give the feed a name.', 400);
     const { n } = await env.DB.prepare('SELECT COUNT(*) AS n FROM feeds WHERE library = ?').bind(user.library).first();
     if (n >= MAX_FEEDS) return fail(`${MAX_FEEDS} feeds is the most you can have.`, 400);
-    await createFeed(env, user.library, name);
+    await createFeed(env, user.library, name, link);
     return json(await libraryView(user, request, env, origin));
   }
 
