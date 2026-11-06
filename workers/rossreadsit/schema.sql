@@ -1,7 +1,9 @@
 CREATE TABLE IF NOT EXISTS users (
   library TEXT PRIMARY KEY,      -- secret, held by the browser
   email TEXT,
-  daily_limit INTEGER,           -- set only for the owner; exempts from the shared budget
+  daily_limit INTEGER,           -- set only for the owner, who never has to pay
+  paid_until TEXT,               -- ISO time their paid year ends
+  checkout_session TEXT,         -- Stripe Checkout session not yet finished
   created TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS feeds (
@@ -24,7 +26,7 @@ CREATE TABLE IF NOT EXISTS episodes (
 );
 CREATE INDEX IF NOT EXISTS episodes_feed ON episodes(feed_token);
 CREATE TABLE IF NOT EXISTS usage (
-  day TEXT NOT NULL,
+  day TEXT NOT NULL,             -- or 'forever', for free reading, which is once per library
   subject TEXT NOT NULL,         -- 'all', hashed IP, or library, per kind of use
   amount INTEGER NOT NULL,
   PRIMARY KEY (day, subject)
