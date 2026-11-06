@@ -1,14 +1,21 @@
-// Ross Reads It: speech, per-person and daily limits, podcast feeds.
+// Ross Reads It: speech, free reading, paid years, podcast feeds.
 //
 // The browser holds a random secret "library" id, which owns feeds. There are no accounts.
-// Spending is bounded by atomic counters in D1: Kokoro on Replicate costs about 1 cent per
-// 25,000 characters, so the shared cap below is about 5 cents a day.
-const CHARS_FREE = 4_500; // per person per day, about 5 minutes of audio
-const CHARS_WITH_EMAIL = 27_500; // about 30 minutes
-const CHARS_ALL = 125_000; // everyone together per day
-// Hebrew uses Google's WaveNet voice: 4M characters free a month, then $4 per 1M. This cap applies to
-// everyone, the owner included, and 31 days of it stays inside the free tier.
-const HE_CHARS_ALL = 125_000;
+// Everyone gets about 5 minutes free, once. After that a year costs $10, paid once through Stripe Checkout.
+// Free reading is bounded by atomic counters in D1: Kokoro on Replicate costs about 1 cent per 25,000
+// characters, so the shared cap below is about 5 cents a day.
+const FREE_CHARS = 4_500; // per library, ever: about 5 minutes of audio
+const FREE_CHARS_PER_IP = 27_500; // per day, so a cleared browser can't read for free without end
+const CHARS_ALL = 125_000; // all free English per day, everyone together
+const HE_CHARS_ALL = 125_000; // all free Hebrew per day, everyone together
+// Paid reading has no limit a reader should ever meet. These only stop a leaked link or a script from
+// running up the bill: each is about $2 a day (Kokoro about 40 cents per 1M, Google $4 per 1M past its
+// 4M free a month) and about 90 and 11 hours of audio a day.
+const PAID_CHARS_PER_DAY = 5_000_000;
+const PAID_HE_CHARS_PER_DAY = 500_000;
+const YEAR_PRICE_CENTS = 1_000;
+const YEAR_DAYS = 365;
+const FOREVER = 'forever'; // a usage row that the nightly clean-up leaves alone
 const UPLOAD_PER_PERSON = 100 * 1024 * 1024;
 const UPLOAD_ALL = 300 * 1024 * 1024;
 const FETCHES_PER_PERSON = 60;
@@ -52,37 +59,37 @@ async function ipSubject(request, env) {
 
 // --- Usage counters ---
 
-async function used(env, subject) {
-  const row = await env.DB.prepare('SELECT amount FROM usage WHERE day = ? AND subject = ?').bind(today(), subject).first();
+async function used(env, subject, day = today()) {
+  const row = await env.DB.prepare('SELECT amount FROM usage WHERE day = ? AND subject = ?').bind(day, subject).first();
   return row ? row.amount : 0;
 }
 
-async function add(env, subject, amount, limit) {
+async function add(env, subject, amount, limit, day) {
   const row = await env.DB.prepare(
     `INSERT INTO usage (day, subject, amount) SELECT ?1, ?2, ?3 WHERE ?3 <= ?4
      ON CONFLICT (day, subject) DO UPDATE SET amount = amount + excluded.amount
      WHERE amount + excluded.amount <= ?4 RETURNING amount`,
-  ).bind(today(), subject, amount, limit).first();
+  ).bind(day, subject, amount, limit).first();
   return row !== null;
 }
 
 // All counters must have room, or none are charged.
 async function reserve(env, counters, amount) {
   const charged = [];
-  for (const [subject, limit] of counters) {
-    if (!(await add(env, subject, amount, limit))) {
+  for (const [subject, limit, day = today()] of counters) {
+    if (!(await add(env, subject, amount, limit, day))) {
       await refund(env, charged, amount);
       return subject;
     }
-    charged.push([subject, limit]);
+    charged.push([subject, limit, day]);
   }
   return null;
 }
 
 async function refund(env, counters, amount) {
-  for (const [subject] of counters) {
+  for (const [subject, , day = today()] of counters) {
     await env.DB.prepare('UPDATE usage SET amount = MAX(0, amount - ?) WHERE day = ? AND subject = ?')
-      .bind(amount, today(), subject).run();
+      .bind(amount, day, subject).run();
   }
 }
 
@@ -95,7 +102,8 @@ async function getUser(request, env) {
   return env.DB.prepare('SELECT * FROM users WHERE library = ?').bind(library).first();
 }
 
-const personalLimit = (user) => user.daily_limit ?? (user.email ? CHARS_WITH_EMAIL : CHARS_FREE);
+// A row with daily_limit set is the owner, who never expires.
+const isPaid = (user) => user.daily_limit != null || (user.paid_until != null && user.paid_until > new Date().toISOString());
 
 function isHebrew(text) {
   const letters = text.match(/\p{L}/gu) || [];
@@ -105,15 +113,60 @@ function isHebrew(text) {
 
 async function speechCounters(user, request, env, hebrew = false) {
   const kind = hebrew ? 'he' : 'tts';
-  const mine = [`${kind}:${user.library}`, personalLimit(user)];
-  if (user.daily_limit) return hebrew ? [mine, [`${kind}:all`, HE_CHARS_ALL]] : [mine];
-  return [[`${kind}:all`, hebrew ? HE_CHARS_ALL : CHARS_ALL], [`${kind}:${await ipSubject(request, env)}`, personalLimit(user)], mine];
+  if (isPaid(user)) return [[`${kind}:${user.library}`, hebrew ? PAID_HE_CHARS_PER_DAY : PAID_CHARS_PER_DAY]];
+  return [
+    [`${kind}:all`, hebrew ? HE_CHARS_ALL : CHARS_ALL],
+    [`${kind}:${await ipSubject(request, env)}`, FREE_CHARS_PER_IP],
+    [`free:${user.library}`, FREE_CHARS, FOREVER],
+  ];
 }
 
 async function remainingChars(user, request, env, hebrew = false) {
   const counters = await speechCounters(user, request, env, hebrew);
-  const left = await Promise.all(counters.map(async ([s, l]) => l - (await used(env, s))));
+  const left = await Promise.all(counters.map(async ([s, l, d]) => l - (await used(env, s, d))));
   return Math.max(0, Math.min(...left));
+}
+
+// --- Paying ---
+
+async function stripe(env, path, form) {
+  const res = await fetch(`https://api.stripe.com/v1${path}`, {
+    method: form ? 'POST' : 'GET',
+    headers: {
+      Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Stripe-Version': '2024-06-20', // free orders need 2023-08-16 or later
+    },
+    body: form ? new URLSearchParams(form) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error?.message || `Stripe answered ${res.status}`);
+  return data;
+}
+
+// The library stays out of Stripe, so the session id waits on the user's row. Asking Stripe here, rather than
+// trusting the return from Checkout, means someone who pays and closes the tab still gets their year on their
+// next visit. Returns the user as they now stand, and the session if it can still be paid.
+async function settleCheckout(user, env) {
+  if (!user.checkout_session) return { user };
+  let session;
+  try {
+    session = await stripe(env, `/checkout/sessions/${encodeURIComponent(user.checkout_session)}`);
+  } catch {
+    return { user }; // Stripe is unreachable: the session stays on the row and is asked about next time.
+  }
+  if (session.status === 'open') return { user, openUrl: session.url };
+  let paidUntil = user.paid_until;
+  // A promo code for 100% off finishes as no_payment_required.
+  if (session.status === 'complete' && session.payment_status !== 'unpaid') {
+    const now = new Date().toISOString();
+    const from = new Date(paidUntil && paidUntil > now ? paidUntil : now);
+    paidUntil = new Date(from.getTime() + YEAR_DAYS * 86_400_000).toISOString();
+  }
+  // Matching the session id means two requests at once can't add two years.
+  const row = await env.DB.prepare('UPDATE users SET paid_until = ?, checkout_session = NULL WHERE library = ? AND checkout_session = ? RETURNING *')
+    .bind(paidUntil, user.library, user.checkout_session).first();
+  return { user: row ?? (await env.DB.prepare('SELECT * FROM users WHERE library = ?').bind(user.library).first()) };
 }
 
 async function createFeed(env, library, title) {
@@ -156,12 +209,11 @@ async function libraryView(user, request, env, origin) {
     `SELECT id, feed_token, title, duration, created FROM episodes WHERE feed_token IN (${tokens.map(() => '?').join(',')}) ORDER BY created DESC, id DESC`,
   ).bind(...tokens).all();
   return {
-    hasEmail: Boolean(user.email),
+    paid: isPaid(user),
+    paidUntil: user.paid_until,
     charsLeft: await remainingChars(user, request, env),
     hebrewCharsLeft: await remainingChars(user, request, env, true),
-    sharedLeft: user.daily_limit ? user.daily_limit : Math.max(0, CHARS_ALL - (await used(env, 'tts:all'))),
-    freeChars: CHARS_FREE,
-    emailChars: CHARS_WITH_EMAIL,
+    freeLeft: Math.max(0, FREE_CHARS - (await used(env, `free:${user.library}`, FOREVER))),
     feeds: feeds.map(({ cover_key, cover_title, ...f }) => ({
       ...f,
       coverUrl: coverUrl(origin, cover_key),
@@ -321,7 +373,36 @@ async function route(request, env) {
   const user = await getUser(request, env);
   if (!user) return fail('Missing library', 400);
 
-  if (path === '/me' && method === 'GET') return json(await libraryView(user, request, env, origin));
+  if (path === '/me' && method === 'GET') {
+    const settled = await settleCheckout(user, env);
+    return json(await libraryView(settled.user, request, env, origin));
+  }
+
+  if (path === '/checkout' && method === 'POST') {
+    const { user: current, openUrl } = await settleCheckout(user, env);
+    if (isPaid(current)) return fail('You already have Ross for the year.', 400);
+    if (openUrl) return json({ url: openUrl }); // Never two open at once: paying both would charge twice.
+    const page = `${request.headers.get('Origin')}/ross`;
+    try {
+      const session = await stripe(env, '/checkout/sessions', {
+        mode: 'payment',
+        allow_promotion_codes: 'true',
+        success_url: `${page}?paid=1`,
+        cancel_url: page,
+        expires_at: String(Math.floor(Date.now() / 1000) + 3600),
+        'line_items[0][quantity]': '1',
+        'line_items[0][price_data][currency]': 'usd',
+        'line_items[0][price_data][unit_amount]': String(YEAR_PRICE_CENTS),
+        'line_items[0][price_data][product_data][name]': 'Ross Reads It for a year',
+        'line_items[0][price_data][product_data][description]': 'Paid once, with no renewal.',
+      });
+      await env.DB.prepare('UPDATE users SET checkout_session = ? WHERE library = ?').bind(session.id, user.library).run();
+      return json({ url: session.url });
+    } catch (err) {
+      console.error('checkout', err);
+      return fail("Payment isn't working right now. Try again in a little while.", 502);
+    }
+  }
 
   if (path === '/tts' && method === 'POST') {
     const { text } = await request.json().catch(() => ({}));
@@ -338,15 +419,6 @@ async function route(request, env) {
       await refund(env, counters, text.length);
       return fail(String(err.message || err), 502);
     }
-  }
-
-  if (path === '/email' && method === 'POST') {
-    const { email } = await request.json().catch(() => ({}));
-    if (typeof email !== 'string' || email.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return fail('That email address looks mistyped.', 400);
-    }
-    await env.DB.prepare('UPDATE users SET email = ? WHERE library = ?').bind(email.trim().toLowerCase(), user.library).run();
-    return json(await libraryView({ ...user, email }, request, env, origin));
   }
 
   if (path === '/extract' && method === 'GET') {
@@ -369,7 +441,7 @@ async function route(request, env) {
     const name = String(title || '').trim().slice(0, FEED_TITLE_CHARS);
     if (!name) return fail('Give the feed a name.', 400);
     const { n } = await env.DB.prepare('SELECT COUNT(*) AS n FROM feeds WHERE library = ?').bind(user.library).first();
-    if (n >= MAX_FEEDS) return fail(`${MAX_FEEDS} feeds is the most you can have.`, 400);
+    if (!isPaid(user) && n >= MAX_FEEDS) return fail(`${MAX_FEEDS} feeds is the most you can have.`, 400);
     await createFeed(env, user.library, name);
     return json(await libraryView(user, request, env, origin));
   }
@@ -381,7 +453,7 @@ async function route(request, env) {
     const body = await request.arrayBuffer();
     const signature = new Uint8Array(body.slice(0, 8)).join();
     if (signature !== '137,80,78,71,13,10,26,10' || body.byteLength > MAX_COVER_BYTES) return fail('That is not a usable cover.', 400);
-    if (!user.daily_limit) {
+    if (!isPaid(user)) {
       const over = await reserve(env, [['up:all', UPLOAD_ALL], [`up:${await ipSubject(request, env)}`, UPLOAD_PER_PERSON]], body.byteLength);
       if (over) return json({ error: 'limit' }, 402);
     }
@@ -445,7 +517,7 @@ async function route(request, env) {
     if (!feed) return fail('Feed not found', 404);
     const body = await request.arrayBuffer();
     if (body.byteLength === 0 || body.byteLength > 90 * 1024 * 1024) return fail('That audio is too big to add.', 413);
-    if (!user.daily_limit) {
+    if (!isPaid(user)) {
       const over = await reserve(env, [['up:all', UPLOAD_ALL], [`up:${await ipSubject(request, env)}`, UPLOAD_PER_PERSON]], body.byteLength);
       if (over) return json({ error: 'limit' }, 402);
     }

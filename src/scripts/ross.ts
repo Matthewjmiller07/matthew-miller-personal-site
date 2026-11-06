@@ -15,14 +15,14 @@ const GAP_SAMPLES = SAMPLE_RATE / 5; // 200 ms of silence after each section
 const CHARS_PER_MINUTE = 915; // measured on Ross's voice
 const HEBREW_CHARS_PER_MINUTE = 730; // measured on the Hebrew voice
 const MIN_EPISODE_CHARS = 400; // title pages and part dividers start unticked
-const MAX_EPISODE_CHARS = 25_000; // about 27 minutes: long chapters become parts, which also fit a day's allowance
+const MAX_EPISODE_CHARS = 25_000; // about 27 minutes: long chapters become parts, which also keep a stop from losing much
 const SKIP_BY_DEFAULT = /^((brief |detailed |short )?contents|table of contents|index|copyright|bibliography|references|notes|acknowledg|dedication|title page|cover|about the author|also by|תוכן|מפתח)/i;
 const LIBRARY_KEY = 'ross-library';
 const OLD_FEED_KEY = 'pdf-audio-feed-token'; // from when this tool was PDF to Audio
 
 interface Episode { id: number; title: string; duration: number | null; created: string }
 interface Feed { token: string; title: string; feedUrl: string; coverUrl: string; coverTitle: string | null; episodes: Episode[] }
-interface Me { hasEmail: boolean; charsLeft: number; hebrewCharsLeft: number; sharedLeft: number; freeChars: number; emailChars: number; feeds: Feed[] }
+interface Me { paid: boolean; paidUntil: string | null; charsLeft: number; hebrewCharsLeft: number; freeLeft: number; feeds: Feed[] }
 interface Chapter { title: string; text: string }
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -89,8 +89,13 @@ async function apiJson(path: string, method: string, body?: unknown): Promise<Me
   return data as Me;
 }
 
+function untilDate(): string {
+  return new Date(me?.paidUntil ?? '').toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 function setMe(next: Me) {
   me = next;
+  $('plan-note').textContent = next.paid && next.paidUntil ? `Your year with Ross runs until ${untilDate()}.` : '';
   renderFeeds();
   void syncCovers();
   if (!$('review').hidden) updateAllowance();
@@ -398,23 +403,22 @@ function updateAllowance() {
   const length = value.trim().length;
   const language = languageOf(value);
   const left = allowanceFor(language);
-  const needsEmail = language === 'en' && !me.hasEmail && me.sharedLeft > 0 && length > left;
   const read = $<HTMLButtonElement>('read');
   const note = $('review-note');
-  $('email-form').hidden = !needsEmail;
+  $('pay').hidden = me.paid || language === 'other' || length <= left;
   read.disabled = language === 'other' || left <= 0 || length === 0;
   if (language === 'other') {
     note.textContent = 'Ross reads English and Hebrew, and this looks like another language.';
   } else if (left <= 0) {
-    note.textContent = language === 'he'
-      ? "That's all the Hebrew Ross can read for you today. He's back tomorrow."
-      : me.sharedLeft <= 0
-        ? "Ross has read all he can for everyone today. He's back tomorrow."
-        : me.hasEmail
-          ? "That's all Ross can read for you today. He's back tomorrow."
-          : "That's today's free reading.";
+    note.textContent = me.paid
+      ? "That's all Ross can read for you today. He's back tomorrow."
+      : me.freeLeft <= 0
+        ? "You've used your free 5 minutes."
+        : "Ross has read all he can for free today. He's back tomorrow, or get a year and he'll read now.";
   } else if (length > left) {
-    note.textContent = `That's about ${mins(length, language)}. Ross can read the first ${mins(left, language)} for you today.`;
+    note.textContent = me.paid
+      ? `That's about ${mins(length, language)}. Ross can read the first ${mins(left, language)} for you today.`
+      : `That's about ${mins(length, language)}. Your free reading covers the first ${mins(left, language)}.`;
   } else {
     note.textContent = `About ${mins(length, language)}. Fix or delete anything you don't want read aloud.`;
   }
@@ -487,7 +491,7 @@ async function speakOnce(text: string, signal: AbortSignal): Promise<Int16Array>
     body: JSON.stringify({ text }),
     signal,
   });
-  if (res.status === 402) throw new FinalError("That's all Ross can read for today.");
+  if (res.status === 402) throw new FinalError(me?.paid ? "That's all Ross can read for you today." : "That's the end of your free reading.");
   if (res.status === 403) throw new FinalError("Ross doesn't read for this page.");
   if (!res.ok) throw new Error(`The voice service had a problem (HTTP ${res.status}).`);
   // Hebrew comes back as the audio itself; English as a link to it.
@@ -599,7 +603,7 @@ async function readAloud() {
   const all = chunkSentences(text);
   const chunks = fitToAllowance(all, allowanceFor(languageOf(text)));
   if (!chunks.length) {
-    status('read-status', "Ross doesn't have enough reading left today for that. Try a shorter piece.", true);
+    status('read-status', me.paid ? "Ross can't read any more for you today." : 'Your free reading has run out. Get a year and Ross will read this.', true);
     return;
   }
   const read = $<HTMLButtonElement>('read');
@@ -611,7 +615,7 @@ async function readAloud() {
   stop.disabled = false;
   $('restart').hidden = true;
   $('bar-wrap').hidden = false;
-  $('email-form').hidden = true;
+  $('pay').hidden = true;
   mark.classList.add('is-reading');
   const started = performance.now();
   try {
@@ -691,7 +695,7 @@ function updateBook() {
   const total = picked.reduce((sum, i) => sum + chapters[i].text.length, 0);
   const language = languageOf(chapters.map((c) => c.text).join(' ').slice(0, 5000));
   const left = allowanceFor(language);
-  $('email-form-book').hidden = !(language === 'en' && !me.hasEmail && me.sharedLeft > 0 && total > left);
+  $('pay-book').hidden = me.paid || language === 'other' || total <= left;
   const read = $<HTMLButtonElement>('read-book');
   read.textContent = `Read ${picked.length} ${picked.length === 1 ? 'episode' : 'episodes'}`;
   read.disabled = bookRunning || picked.length === 0 || language === 'other';
@@ -700,7 +704,11 @@ function updateBook() {
   $('book-note').textContent = language === 'other'
     ? 'Ross reads English and Hebrew, and this looks like another language.'
     : total > left
-      ? `That's ${size}. Ross can read about ${mins(left, language)} for you today. Drop the same file in tomorrow and he picks up where he left off.`
+      ? me.paid
+        ? `That's ${size}. Ross can read about ${mins(left, language)} for you today. Drop the same file in tomorrow and he picks up where he left off.`
+        : left > 0
+          ? `That's ${size}. You have about ${mins(left, language)} of free reading left.`
+          : `That's ${size}. You've used your free 5 minutes.`
       : `That's ${size}. Keep this tab open while Ross reads.`;
 }
 
@@ -774,10 +782,15 @@ async function readBook() {
         break;
       }
       if (chapter.text.length > allowance) {
+        const count = `${finished} ${finished === 1 ? 'chapter' : 'chapters'}`;
         say(
-          finished
-            ? `Ross read ${finished} ${finished === 1 ? 'chapter' : 'chapters'} today, which is all he can. Drop the same file in tomorrow and he picks up where he left off.`
-            : `The next chapter is longer than what Ross has left for you today. Try again tomorrow.`,
+          me.paid
+            ? finished
+              ? `Ross read ${count} today, which is all he can. Drop the same file in tomorrow and he picks up where he left off.`
+              : 'The next chapter is longer than what Ross has left for you today. Try again tomorrow.'
+            : finished
+              ? `Ross read ${count} with your free reading. Get a year, drop the same file in, and he picks up where he left off.`
+              : "The next chapter is longer than your free reading. Get a year, or have Ross read the start as one episode.",
           !finished,
         );
         break;
@@ -1112,14 +1125,19 @@ function init() {
   $('restart').addEventListener('click', again);
   $('another').addEventListener('click', again);
 
-  for (const [form, field, statusId] of [['email-form', 'email', 'read-status'], ['email-form-book', 'email-book', 'book-status']]) {
-    $(form).addEventListener('submit', async (e) => {
-      e.preventDefault();
+  for (const [button, statusId] of [['pay-button', 'read-status'], ['pay-button-book', 'book-status']]) {
+    $(button).addEventListener('click', async () => {
+      const go = $<HTMLButtonElement>(button);
+      go.disabled = true;
+      status(statusId, 'Opening checkout…');
       try {
-        setMe(await apiJson('/email', 'POST', { email: $<HTMLInputElement>(field).value }));
-        status(statusId, 'Saved. Ross can read for up to 30 minutes a day now.');
+        const res = await api('/checkout', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Something went wrong (HTTP ${res.status}).`);
+        location.href = data.url;
       } catch (err) {
         status(statusId, err instanceof Error ? err.message : String(err), true);
+        go.disabled = false;
       }
     });
   }
@@ -1168,9 +1186,18 @@ function init() {
     $('copy-link-status').textContent = 'Copied. Open it on your other device. Keep it private: it opens your feeds.';
   });
 
-  refresh().catch(() => status('feeds-status', "Ross couldn't load your feeds. Reload the page to try again.", true));
+  const params = new URLSearchParams(location.search);
+  const backFromPaying = params.has('paid');
+  if (backFromPaying) history.replaceState(null, '', location.pathname);
+  refresh()
+    .then(() => {
+      if (!backFromPaying) return;
+      if (me?.paid) status('start-status', `Thank you. Ross will read as much as you like until ${untilDate()}. Give him your file or link again to start. Use "Copy my link" below to put this on your other devices, and keep that link somewhere safe: it's how you get back to your year.`);
+      else status('start-status', "Stripe hasn't confirmed your payment yet. Reload this page in a minute.", true);
+    })
+    .catch(() => status('feeds-status', "Ross couldn't load your feeds. Reload the page to try again.", true));
 
-  const shared = new URLSearchParams(location.search).get('url');
+  const shared = params.get('url');
   if (shared) {
     input.value = shared;
     go();
