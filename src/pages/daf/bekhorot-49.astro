@@ -1,0 +1,681 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Thirtieth Day — Daf Yomi Game: Bekhorot 49"
+  description="Bekhorot 49: settle the five sela on the day the baby dies, build the case that splits Rav and Shmuel, and work out which field pays for whose redemption."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --murex:#260d2a; --dye:#3d1642; --line:#6d3a70; --text:#f3edf3; --mute:#c9b8cc; --silver:#d8e0e4; --rose:#ec8fc0; --good:#a6e3b5; --bad:#f4ab93; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .t-text { color: var(--text) !important; }
+    .t-mute { color: var(--mute) !important; }
+    .t-silver { color: var(--silver) !important; }
+    .t-rose { color: var(--rose) !important; }
+    .t-good { color: var(--good) !important; }
+    .t-bad { color: var(--bad) !important; }
+    .t-dark { color: #260d2a !important; }
+    .t-text a, .t-mute a, a.ref { color: var(--rose) !important; text-decoration: underline; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .55rem .8rem; font-size: .9rem; line-height: 1.4; text-align: start; background: transparent; color: var(--text) !important; }
+    .btn:hover:not(:disabled) { background: var(--dye); }
+    .btn:disabled { cursor: default; opacity: .78; }
+    .btn.ok { background: #1d4030; border-color: var(--good); opacity: 1; }
+    .btn.no { background: #4c2120; border-color: var(--bad); opacity: 1; }
+    .btn.go { background: var(--silver); border-color: var(--silver); color: #260d2a !important; font-weight: 700; }
+    .btn.go:hover:not(:disabled) { background: #fff; }
+    .btn.on { border-color: var(--silver); background: var(--dye); box-shadow: inset 0 0 0 1px var(--silver); }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--silver); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .92rem; line-height: 1.65; margin-top: .75rem; }
+    .note.ok { border-color: var(--good); }
+    .note.no { border-color: var(--bad); }
+
+    /* Five sela */
+    .sela { display: inline-block; width: 1.65rem; height: 1.65rem; border-radius: 50%; background: radial-gradient(circle at 34% 30%, #fff, var(--silver) 48%, #8f9ba2); box-shadow: inset 0 0 0 2px #8f9ba2; }
+    .sela.empty { background: transparent; box-shadow: inset 0 0 0 2px var(--line); }
+    .purse { min-height: 8rem; border: 2px solid var(--line); border-radius: 1rem 1rem 2.2rem 2.2rem; padding: .7rem; display: flex; flex-direction: column; gap: .5rem; align-items: center; justify-content: space-between; text-align: center; width: 100%; background: transparent; color: var(--text) !important; }
+    .purse[aria-pressed="true"] { border-color: var(--silver); background: var(--dye); }
+    .purse:disabled { cursor: default; }
+    .stack { display: flex; min-height: 1.65rem; justify-content: center; }
+    .stack .sela + .sela { margin-inline-start: -.7rem; }
+
+    /* Tally of days */
+    .tally { display: grid; grid-template-columns: repeat(31, minmax(0, 1fr)); gap: 2px; align-items: end; }
+    .tally i { display: block; height: 1.5rem; background: var(--line); border-radius: 1px; }
+    .tally i.past { background: var(--mute); }
+    .tally i.thirty { height: 2.2rem; background: var(--rose); }
+    .tally i.now { height: 2.6rem; background: var(--silver); box-shadow: 0 0 0 1px var(--silver); }
+    .hero-tally i { height: 3.4rem; background: var(--mute); transform-origin: bottom; animation: rise .32s both; animation-delay: calc(var(--i) * 34ms); }
+    .hero-tally i.thirty { height: 5rem; background: var(--rose); }
+    @keyframes rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+    /* Day picker, Rav and Shmuel */
+    .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+    .day { border: 1px solid var(--line); border-radius: .25rem; padding: .4rem 0; font-size: .85rem; text-align: center; background: transparent; color: var(--text) !important; }
+    .day.on { background: var(--bad); border-color: var(--bad); color: #260d2a !important; font-weight: 700; }
+    .day.gone { background: #4c2120; }
+    .verdict { flex: 1; border: 1px solid var(--line); padding: .6rem .7rem; font-size: .9rem; }
+    .word { font-family: 'Frank Ruhl Libre', serif; font-size: 1.5rem; padding: .1rem .45rem; border: 1px dashed var(--line); border-radius: .3rem; background: transparent; color: var(--text) !important; }
+    .word:hover:not(:disabled) { background: var(--dye); }
+    .word.ok { border: 1px solid var(--good); background: #1d4030; }
+    .word.no { border: 1px solid var(--bad); background: #4c2120; }
+    .goal { font-size: .9rem; padding: .35rem 0; }
+    .goal.done { color: var(--good) !important; }
+
+    /* Fields */
+    .plot { fill: #4f2a53; stroke: var(--line); stroke-width: 2; }
+    .plot.self { fill: #8b6d9a; stroke: var(--silver); }
+    .plot.son { fill: #a63a78; stroke: var(--rose); }
+    .plot.absent { opacity: .2; }
+    .lien { stroke-width: 3; fill: none; opacity: 0; transition: opacity .3s; }
+    .lien.show { opacity: 1; }
+    svg text { font-family: inherit; }
+
+    /* Scale rows */
+    .bar { height: .8rem; background: var(--silver); border-radius: .4rem; transition: width .25s; min-width: 0; }
+    .chip { min-width: 2.7rem; }
+    .istera { width: 2.8rem; height: 2.8rem; border-radius: 50%; border: 2px solid var(--line); background: transparent; color: var(--text) !important; font-size: .85rem; }
+    .istera[aria-pressed="true"] { background: var(--silver); border-color: var(--silver); color: #260d2a !important; font-weight: 700; }
+
+    #bank { position: sticky; top: var(--nav-h, 4rem); z-index: 30; background: var(--murex); border-bottom: 1px solid var(--line); }
+    @media (prefers-reduced-motion: reduce) { .hero-tally i { animation: none; } .bar, .lien { transition: none; } }
+  </style>
+
+  <main class="min-h-screen bg-[#260d2a] t-text">
+    <header class="mx-auto max-w-3xl px-4 pt-10 pb-8">
+      <p class="mb-6 text-sm t-mute"><a href="/daf" class="underline">Daf Yomi Arcade</a>, Bekhorot 49, 6 November 2026</p>
+      <div class="tally hero-tally" aria-hidden="true" id="heroTally"></div>
+      <p class="frank mt-6 text-3xl font-light t-rose" dir="rtl" lang="he">מֵת בְּיוֹם שְׁלֹשִׁים כְּיוֹם שֶׁלְּפָנָיו</p>
+      <h1 class="frank mt-2 text-5xl font-black tracking-tight sm:text-6xl t-text">The Thirtieth Day</h1>
+      <p class="mt-4 max-w-xl text-lg leading-relaxed t-text">
+        A father owes a priest five silver sela for his firstborn son, but only after thirty days. Everything on this daf turns on where those five coins are when the count runs out.
+      </p>
+    </header>
+
+    <div id="bank" aria-live="polite">
+      <div class="mx-auto flex max-w-3xl items-center gap-3 px-4 py-2">
+        <div class="flex gap-1" id="bankCoins"></div>
+        <p class="text-sm t-mute" id="bankText">Finish each of the five sections to earn a sela.</p>
+      </div>
+    </div>
+
+    <div class="mx-auto max-w-3xl px-4">
+
+      <section class="stn" aria-labelledby="h1">
+        <h2 id="h1" class="frank text-3xl font-bold t-text">The baby dies. Where do the coins go?</h2>
+        <p class="mt-2 max-w-2xl leading-relaxed t-mute">
+          Move the five sela to the purse where they end up, then seal the ledger. The mishna gives the rule for each day <a class="ref" href="https://www.sefaria.org/Bekhorot.49a.5" target="_blank" rel="noopener">49a:5</a>.
+        </p>
+        <div class="mt-5" id="ledger"></div>
+        <div class="mt-6" id="fork" hidden></div>
+        <div class="mt-6" id="mourn" hidden></div>
+      </section>
+
+      <section class="stn" aria-labelledby="h2">
+        <h2 id="h2" class="frank text-3xl font-bold t-text">The priest spends the money</h2>
+        <p class="mt-2 max-w-2xl leading-relaxed t-mute">
+          A father hands over five sela on day 10. Rav says that one who redeems early has redeemed. Shmuel says he has not <a class="ref" href="https://www.sefaria.org/Bekhorot.49a.12" target="_blank" rel="noopener">49a:12</a>. They agree more often than that sounds. Set what the father says and when the priest spends the coins, and build each outcome below.
+        </p>
+        <div class="mt-5" id="contract"></div>
+        <div class="mt-6" id="after" hidden></div>
+        <div class="mt-6" id="tanna" hidden></div>
+      </section>
+
+      <section class="stn" aria-labelledby="h3">
+        <h2 id="h3" class="frank text-3xl font-bold t-text">The father dies without saying</h2>
+        <p class="mt-2 max-w-2xl leading-relaxed t-mute">
+          A firstborn has lost his father and nobody knows whether the five sela were paid. The day of the father's death decides what we assume, and how hard that assumption is to overturn <a class="ref" href="https://www.sefaria.org/Bekhorot.49a.11" target="_blank" rel="noopener">49a:11</a>.
+        </p>
+        <div class="mt-5" id="chazaka"></div>
+      </section>
+
+      <section class="stn" aria-labelledby="h4">
+        <h2 id="h4" class="frank text-3xl font-bold t-text">Two fields, two redemptions</h2>
+        <p class="mt-2 max-w-2xl leading-relaxed t-mute">
+          He was never redeemed, and now he has a firstborn of his own. The Rabbis put him first and Rabbi Yehuda puts the son first. Rabbi Yirmeya explains when they actually disagree <a class="ref" href="https://www.sefaria.org/Bekhorot.49b.7" target="_blank" rel="noopener">49b:7</a>. Tap a field to change what it pays for.
+        </p>
+        <div class="mt-5" id="fields"></div>
+      </section>
+
+      <section class="stn" aria-labelledby="h5">
+        <h2 id="h5" class="frank text-3xl font-bold t-text">Weigh it in Tyre</h2>
+        <p class="mt-2 max-w-2xl leading-relaxed t-mute">
+          Every sum the Torah fixes is paid in the shekel of the Sanctuary, and that means Tyrian silver <a class="ref" href="https://www.sefaria.org/Bekhorot.49b.10" target="_blank" rel="noopener">49b:10–11</a>. Set the amount owed for each case.
+        </p>
+        <div class="mt-5" id="scale"></div>
+        <div class="mt-6" id="goods" hidden></div>
+        <div class="mt-6" id="changer" hidden></div>
+      </section>
+
+      <section class="stn" aria-labelledby="h6">
+        <h2 id="h6" class="frank text-3xl font-bold t-text">Before the coins: the mixed-up cradles</h2>
+        <p class="mt-2 max-w-2xl leading-relaxed t-mute">
+          The daf opens in the middle of the previous mishna. Two women who had never given birth deliver at once and the babies get mixed up. This one is extra and earns no sela.
+        </p>
+        <div class="mt-5" id="cradles"></div>
+      </section>
+
+      <section class="stn pb-16" aria-labelledby="h7">
+        <h2 id="h7" class="frank text-3xl font-bold t-text">Learn the real daf</h2>
+        <p class="mt-2 max-w-2xl leading-relaxed t-mute">
+          The game follows the Koren and Steinsaltz reading of Rabbi Ami, where five sela equal an Arabian dinar. Rashi reads him differently: a single Tyrian sela is that dinar, and Rashi adds that he was not given its measure. The Gemara's account of the Tyrian maneh continues on the next daf.
+        </p>
+        <ul class="mt-3 space-y-1 t-text">
+          <li><a class="ref" href="https://www.sefaria.org/Bekhorot.49a" target="_blank" rel="noopener">Bekhorot 49a</a> and <a class="ref" href="https://www.sefaria.org/Bekhorot.49b" target="_blank" rel="noopener">49b</a> on Sefaria</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Bekhorot.49a" target="_blank" rel="noopener">Rashi</a> (35 comments on this daf), especially on why the presumption flips at thirty days</li>
+          <li><a class="ref" href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.49a" target="_blank" rel="noopener">Steinsaltz</a> (25) and <a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.49a" target="_blank" rel="noopener">Rabbeinu Gershom</a> (22)</li>
+          <li><a class="ref" href="https://www.sefaria.org/Tosafot_on_Bekhorot.49a" target="_blank" rel="noopener">Tosafot</a> (11) and <a class="ref" href="https://www.sefaria.org/Mishneh_Torah,_First_Fruits_and_other_Gifts_to_Priests_Outside_the_Sanctuary.11.19" target="_blank" rel="noopener">Mishneh Torah, First Fruits 11:19</a> and <a class="ref" href="https://www.sefaria.org/Kiddushin.29a" target="_blank" rel="noopener">Kiddushin 29a</a>, where the daf's rulings reappear</li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <script is:inline>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const REF = (r, label) => `<a class="ref" href="https://www.sefaria.org/Bekhorot.${r}" target="_blank" rel="noopener">${label || r.replace('.', ':')}</a>`;
+      const sela = (n) => Array.from({ length: n }, () => '<span class="sela"></span>').join('');
+
+      /* Hero and bank */
+      $('heroTally').innerHTML = Array.from({ length: 30 }, (_, i) => `<i class="${i === 29 ? 'thirty' : ''}" style="--i:${i}"></i>`).join('');
+      $('heroTally').style.gridTemplateColumns = 'repeat(30, minmax(0, 1fr))';
+      const earned = new Set();
+      function renderBank() {
+        $('bankCoins').innerHTML = [0, 1, 2, 3, 4].map((i) => `<span class="sela ${i < earned.size ? '' : 'empty'}"></span>`).join('');
+        $('bankText').textContent = earned.size === 5
+          ? 'Five sela, in Tyrian silver. Paid in full.'
+          : earned.size === 0 ? 'Finish each of the five sections to earn a sela.' : `${earned.size} of 5 sela earned.`;
+      }
+      function earn(k) { earned.add(k); renderBank(); }
+      renderBank();
+
+      /* A deck of one-at-a-time rulings */
+      function deck(host, cards, onDone) {
+        let i = 0, right = 0;
+        function show() {
+          const c = cards[i];
+          host.innerHTML = `<p class="mb-1 text-sm t-mute">Case ${i + 1} of ${cards.length}</p>
+            <p class="max-w-2xl font-semibold leading-relaxed t-text">${c.q}</p>
+            <div class="mt-3 flex flex-col gap-2" data-opts></div><div data-why></div>`;
+          const box = host.querySelector('[data-opts]');
+          const opts = c.opts.slice();
+          for (let k = opts.length - 1; k > 0; k--) { const r = Math.floor(Math.random() * (k + 1)); [opts[k], opts[r]] = [opts[r], opts[k]]; }
+          opts.forEach((o) => {
+            const b = document.createElement('button');
+            b.type = 'button'; b.className = 'btn'; b.innerHTML = o.t;
+            b.addEventListener('click', () => {
+              box.querySelectorAll('button').forEach((x, k) => { x.disabled = true; if (opts[k].ok) x.classList.add('ok'); });
+              if (o.ok) right++; else b.classList.add('no');
+              const why = host.querySelector('[data-why]');
+              why.innerHTML = `<p class="note t-text ${o.ok ? 'ok' : 'no'}">${c.why}</p>`;
+              const n = document.createElement('button');
+              n.type = 'button'; n.className = 'btn go mt-3';
+              n.textContent = i + 1 < cards.length ? 'Next case' : 'Finish';
+              n.addEventListener('click', () => { i++; if (i < cards.length) { show(); host.querySelector('button').focus(); } else finish(); });
+              why.appendChild(n); n.focus();
+            });
+            box.appendChild(b);
+          });
+        }
+        function finish() {
+          host.innerHTML = `<p class="t-good">You ruled ${right} of ${cards.length} right the first time.</p>`;
+          if (onDone) onDone(right);
+        }
+        show();
+      }
+
+      /* 1. The ledger */
+      const R = 'the Rabbis', A = 'Rabbi Akiva';
+      const LEDGER = [
+        { who: R, day: 12, paid: true, end: 'father', why: 'Died within thirty days, so the priest gives it back, even though the father already paid. The baby was treated as non-viable and no obligation ever began.' },
+        { who: R, day: 12, paid: false, end: 'father', why: 'No obligation began, and nothing was paid. The coins stay home.' },
+        { who: R, day: 31, paid: false, end: 'priest', why: 'After thirty days the obligation has taken hold. Even though he never paid, he pays now, and the death changes nothing.' },
+        { who: R, day: 30, paid: true, end: 'father', why: 'To the Rabbis the thirtieth day is like the day before it, because the obligation only starts once thirty days have passed. The priest returns the money.' },
+        { who: R, day: 30, paid: false, end: 'father', why: 'Still like the day before. Nothing is owed.' },
+        { who: A, day: 30, paid: true, end: 'priest', why: 'Rabbi Akiva is unsure about the thirtieth day. If he paid, he may not take it back.' },
+        { who: A, day: 30, paid: false, end: 'father', why: 'The same doubt points the other way. If he has not paid, he need not pay.' },
+      ];
+      (function ledger() {
+        const host = $('ledger');
+        let i = 0, right = 0, loc = 'father', sealed = false;
+        function draw() {
+          const c = LEDGER[i];
+          const ticks = Array.from({ length: 31 }, (_, d) => {
+            const n = d + 1;
+            let cls = n < c.day ? 'past' : '';
+            if (n === 30) cls = 'thirty';
+            if (n === c.day) cls = 'now';
+            return `<i class="${cls}"></i>`;
+          }).join('');
+          host.innerHTML = `
+            <p class="mb-1 text-sm t-mute">Case ${i + 1} of ${LEDGER.length}, according to ${c.who}</p>
+            <div class="tally" aria-hidden="true">${ticks}</div>
+            <p class="mt-3 max-w-2xl text-lg font-semibold t-text">The son dies on day ${c.day}. ${c.paid ? 'His father already paid the priest.' : 'His father has not paid yet.'}</p>
+            <div class="mt-4 grid grid-cols-2 gap-3" style="max-width:26rem">
+              ${['father', 'priest'].map((p) => `<button type="button" class="purse" data-p="${p}" aria-pressed="${loc === p}" ${sealed ? 'disabled' : ''}>
+                <span class="frank text-lg font-bold t-text">${p === 'father' ? 'The father' : 'The priest'}</span>
+                <span class="stack">${loc === p ? sela(5) : ''}</span>
+                <span class="text-xs t-mute">${loc === p ? 'Holds the five sela' : (sealed ? 'Empty' : 'Move coins here')}</span>
+              </button>`).join('')}
+            </div>
+            <div data-tail class="mt-3"></div>`;
+          host.querySelectorAll('.purse').forEach((b) => b.addEventListener('click', () => { loc = b.dataset.p; draw(); host.querySelector(`.purse[data-p="${loc}"]`).focus(); }));
+          const tail = host.querySelector('[data-tail]');
+          if (!sealed) {
+            const s = document.createElement('button');
+            s.type = 'button'; s.className = 'btn go'; s.textContent = 'Seal the ledger';
+            s.addEventListener('click', () => {
+              const ok = loc === c.end; if (ok) right++;
+              sealed = true; const picked = ok; loc = c.end; draw();
+              const t = host.querySelector('[data-tail]');
+              t.innerHTML = `<p class="note t-text ${picked ? 'ok' : 'no'}">${picked ? '' : 'The coins belong in the other purse. '}${c.why}</p>`;
+              const n = document.createElement('button');
+              n.type = 'button'; n.className = 'btn go mt-3';
+              n.textContent = i + 1 < LEDGER.length ? 'Next case' : 'Close the ledger';
+              n.addEventListener('click', () => {
+                i++;
+                if (i < LEDGER.length) { sealed = false; loc = LEDGER[i].paid ? 'priest' : 'father'; draw(); }
+                else {
+                  host.innerHTML = `<p class="note ok t-text">You settled ${right} of ${LEDGER.length} right the first time. Look at Rabbi Akiva's two cases: his coins never moved. Whoever holds the five sela on day 30 keeps them.</p>`;
+                  showFork();
+                }
+              });
+              t.appendChild(n); n.focus();
+            });
+            tail.appendChild(s);
+          }
+        }
+        loc = LEDGER[0].paid ? 'priest' : 'father';
+        draw();
+      })();
+
+      function showFork() {
+        const host = $('fork'); host.hidden = false;
+        const seen = new Set();
+        host.innerHTML = `
+          <h3 class="frank text-2xl font-bold t-text">Why can't Rabbi Akiva decide?</h3>
+          <p class="mt-2 max-w-2xl leading-relaxed t-mute">The redemption verse leaves out "and upward." The Rabbis fill it in from the census in the wilderness ${REF('49a.6', '49a:6')}. But the same phrase is written a second time, for valuations ${REF('49a.7', '49a:7')}.</p>
+          <div class="mt-3 grid gap-2 sm:grid-cols-3 text-sm">
+            <div class="verdict"><p class="frank text-lg t-silver" dir="rtl" lang="he">מִבֶּן חֹדֶשׁ <b>וָמַעְלָה</b></p><p class="t-mute">Firstborn in the wilderness, Numbers 3:40</p></div>
+            <div class="verdict"><p class="frank text-lg t-silver" dir="rtl" lang="he">מִבֶּן שִׁשִּׁים שָׁנָה <b>וָמַעְלָה</b></p><p class="t-mute">Valuations, Leviticus 27:7</p></div>
+            <div class="verdict"><p class="frank text-lg t-silver" dir="rtl" lang="he">מִבֶּן חֹדֶשׁ תִּפְדֶּה</p><p class="t-mute">Redemption for all generations, Numbers 18:16</p></div>
+          </div>
+          <p class="mt-3 max-w-2xl leading-relaxed t-text">Two verses that say the same thing do not teach it to anywhere else. Try both readings of that rule on the baby who dies on day 30.</p>
+          <div class="mt-3 flex flex-col gap-2" data-b>
+            <button type="button" class="btn" data-k="a">They teach nothing to any other case, including this one</button>
+            <button type="button" class="btn" data-k="b">They only stay silent about unrelated areas. A related case, firstborn from firstborn, still learns from them</button>
+          </div>
+          <div data-out></div>`;
+        const OUT = {
+          a: `Then "and upward" never reaches our verse. Day 30 is like the day after it, the father is obligated, and the coins go to the priest ${REF('49a.8', '49a:8')}.`,
+          b: `Then the firstborn of later generations do learn from the wilderness firstborn. Day 30 is like the day before it, nothing is owed, and the coins go home ${REF('49a.9', '49a:9')}.`,
+        };
+        host.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => {
+          host.querySelectorAll('[data-k]').forEach((x) => x.classList.remove('on'));
+          b.classList.add('on'); seen.add(b.dataset.k);
+          let html = `<p class="note t-text">${OUT[b.dataset.k]}</p>`;
+          if (seen.size === 2) html += `<p class="note ok t-text">Rabbi Akiva can't choose between these, so nobody can be made to hand over money on day 30. That is his ruling in the mishna: whoever holds it keeps it.</p>`;
+          else html += `<p class="mt-2 text-sm t-mute">Now try the other reading.</p>`;
+          host.querySelector('[data-out]').innerHTML = html;
+          if (seen.size === 2 && $('mourn').hidden) showMourn();
+        }));
+      }
+
+      function showMourn() {
+        const host = $('mourn'); host.hidden = false;
+        const inner = document.createElement('div');
+        host.innerHTML = `<h3 class="frank mb-2 text-2xl font-bold t-text">One more on day 30</h3>`;
+        host.appendChild(inner);
+        deck(inner, [{
+          q: 'A baby dies on his thirtieth day. Does the father observe mourning?',
+          opts: [
+            { t: 'No, and here everyone agrees, including Rabbi Akiva', ok: true },
+            { t: 'Only according to Rabbi Akiva, who is in doubt' },
+            { t: 'Yes, because thirty days have nearly passed' },
+          ],
+          why: `Rav Ashi: everyone agrees that for mourning, day 30 is like the day before, and the baby is treated as non-viable. As Shmuel says, in mourning the halakha follows the lenient view ${REF('49a.10', '49a:10')}.`,
+        }], () => earn('ledger'));
+      }
+
+      /* 2. The contract */
+      (function contract() {
+        const host = $('contract');
+        const GOALS = [
+          { id: 'split', t: 'Rav says redeemed, Shmuel says not' },
+          { id: 'both', t: 'Both say redeemed' },
+          { id: 'neither', t: 'Both say not redeemed' },
+        ];
+        const done = new Set();
+        let say = 'after', spent = 20, last = null;
+        const DAYS = []; for (let d = 10; d <= 30; d++) DAYS.push(d);
+        function judge() {
+          if (say === 'now') return { rav: false, sh: false, why: `With "from now" both agree nothing happened, since the obligation has not begun. Rashi: it is just a gift ${REF('49a.12', '49a:12')}.` };
+          if (spent === 0) return { rav: true, sh: true, why: `The money is still with the priest when the thirty days end, as if he had handed it over at that moment. Both agree ${REF('49a.12', '49a:12')}.` };
+          return { rav: true, sh: false, why: `This is the whole dispute: "after thirty days," with the coins gone by then. Rav compares it to betrothal with a delayed start, which holds even if the money was spent ${REF('49a.13', '49a:13')}.` };
+        }
+        function draw() {
+          host.innerHTML = `
+            <p class="mb-2 text-sm t-mute">What the father says when he pays</p>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="btn ${say === 'now' ? 'on' : ''}" data-say="now" aria-pressed="${say === 'now'}">"He is redeemed from now"</button>
+              <button type="button" class="btn ${say === 'after' ? 'on' : ''}" data-say="after" aria-pressed="${say === 'after'}">"It takes effect after thirty days"</button>
+            </div>
+            <p class="mb-2 mt-4 text-sm t-mute">The day the priest spends the coins</p>
+            <div class="days">${DAYS.map((d) => `<button type="button" class="day ${spent === d ? 'on' : (spent && d > spent ? 'gone' : '')}" data-d="${d}" aria-pressed="${spent === d}" aria-label="Spent on day ${d}">${d}</button>`).join('')}</div>
+            <button type="button" class="btn mt-2 ${spent === 0 ? 'on' : ''}" data-d="0" aria-pressed="${spent === 0}">He still has them after day 30</button>
+            <button type="button" class="btn go mt-4 block" id="runCase">Bring the case to Rav and Shmuel</button>
+            <div data-res class="mt-4">${last || ''}</div>
+            <ul class="mt-4" aria-label="Outcomes to build">${GOALS.map((g) => `<li class="goal ${done.has(g.id) ? 'done' : 't-text'}">${done.has(g.id) ? '✓' : '○'} ${g.t}</li>`).join('')}</ul>`;
+          host.querySelectorAll('[data-say]').forEach((b) => b.addEventListener('click', () => { say = b.dataset.say; last = null; draw(); host.querySelector(`[data-say="${say}"]`).focus(); }));
+          host.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => { spent = +b.dataset.d; last = null; draw(); host.querySelector(`[data-d="${spent}"]`).focus(); }));
+          $('runCase').addEventListener('click', () => {
+            const r = judge();
+            const id = r.rav && r.sh ? 'both' : r.rav ? 'split' : 'neither';
+            const fresh = !done.has(id);
+            done.add(id);
+            last = `<div class="flex gap-2">
+                <div class="verdict"><p class="frank font-bold t-text">Rav</p><p class="${r.rav ? 't-good' : 't-bad'}">${r.rav ? 'His son is redeemed' : 'Not redeemed'}</p></div>
+                <div class="verdict"><p class="frank font-bold t-text">Shmuel</p><p class="${r.sh ? 't-good' : 't-bad'}">${r.sh ? 'His son is redeemed' : 'Not redeemed'}</p></div>
+              </div><p class="note t-text ${fresh ? 'ok' : ''}">${r.why}${fresh ? '' : ' You have built this outcome already. Change a setting to find another.'}</p>`;
+            draw();
+            if (done.size === 3 && $('after').hidden) showAfter();
+            $('runCase').focus();
+          });
+        }
+        draw();
+      })();
+
+      function showAfter() {
+        const host = $('after'); host.hidden = false;
+        host.innerHTML = `<h3 class="frank mb-2 text-2xl font-bold t-text">Shmuel answers back</h3><div data-d></div>`;
+        deck(host.querySelector('[data-d]'), [
+          {
+            q: 'Rav compared this to betrothal. A man gives a woman coins and says "after thirty days," and she spends them. Why does Shmuel accept that betrothal but not this redemption?',
+            opts: [
+              { t: 'He could have betrothed her today if he wanted, but he cannot redeem his son today', ok: true },
+              { t: 'A woman owns what she receives, and a priest only holds it in trust' },
+              { t: 'A betrothal is witnessed, and a payment to a priest is not' },
+            ],
+            why: `<span class="frank" dir="rtl" lang="he">הָתָם בְּיָדוֹ לְקַדְּשָׁהּ מֵעַכְשָׁיו, הָכָא אֵין בְּיָדוֹ לִפְדּוֹתוֹ מֵעַכְשָׁיו</span>. Redemption before thirty days is not in his power at all ${REF('49b.2', '49b:2')}.`,
+          },
+          {
+            q: 'The Gemara challenges Shmuel. The mishna says a son who died within thirty days means the priest gives the money back. So if he lived, he seems to be redeemed by an early payment. How does Shmuel read the mishna?',
+            opts: [
+              { t: 'It speaks of a case where the money is still with the priest', ok: true },
+              { t: 'It speaks of a father who said "from now"' },
+              { t: 'Shmuel concedes that the mishna is against him' },
+            ],
+            why: `<span class="frank" dir="rtl" lang="he">דְּאִיתַנְהוּ לְמָעוֹת</span>. With the coins still there after thirty days, even Shmuel agrees he is redeemed ${REF('49b.3', '49b:3')}.`,
+          },
+          {
+            q: 'A second challenge: the father died within thirty days, and the son is presumed unredeemed until people say he was redeemed. So an early redemption can work. Shmuel\'s answer?',
+            opts: [
+              { t: 'The same answer: the money is still there, intact', ok: true },
+              { t: 'The people must be two formal witnesses' },
+              { t: 'The son must also pay again' },
+            ],
+            why: `<span class="frank" dir="rtl" lang="he">הָתָם נָמֵי דְּאִיתַנְהוּ לְמָעוֹת בְּעֵינַיְיהוּ</span> ${REF('49b.4', '49b:4')}.`,
+          },
+        ], showTanna);
+      }
+
+      function showTanna() {
+        const host = $('tanna'); host.hidden = false;
+        const WORDS = [['הַפּוֹדֶה'], ['אֶת'], ['בְּנוֹ'], ['בְּתוֹךְ'], ['שְׁלֹשִׁים'], ['יוֹם'], ['בְּנוֹ'], ['פָּדוּי', true]];
+        host.innerHTML = `<h3 class="frank text-2xl font-bold t-text">Stop the reciter</h3>
+          <p class="mt-2 max-w-2xl leading-relaxed t-mute">A tanna recites a baraita in front of Rav Yehuda, and Rav Yehuda holds by Shmuel. You are Rav Yehuda. Tap the word you cannot let pass ${REF('49b.5', '49b:5')}.</p>
+          <p class="mt-3 flex flex-wrap gap-1" dir="rtl" lang="he" data-w></p><div data-o></div>`;
+        const box = host.querySelector('[data-w]');
+        WORDS.forEach(([w, ok]) => {
+          const b = document.createElement('button');
+          b.type = 'button'; b.className = 'word'; b.textContent = w;
+          b.addEventListener('click', () => {
+            if (!ok) { b.classList.add('no'); b.disabled = true; return; }
+            b.classList.add('ok');
+            box.querySelectorAll('button').forEach((x) => { x.disabled = true; });
+            host.querySelector('[data-o]').innerHTML = `<p class="note ok t-text"><span class="frank" dir="rtl" lang="he">שְׁמוּאֵל אָמַר אֵין בְּנוֹ פָּדוּי, וְאַתְּ אָמְרַתְּ בְּנוֹ פָּדוּי?!</span> "Shmuel said his son is not redeemed, and you say he is?" Twice the Gemara says it: even though we usually follow Rav in ritual law and Shmuel in money law, here the halakha is like Shmuel ${REF('49b.2', '49b:2')}, ${REF('49b.5', '49b:5')}.</p>`;
+            earn('contract');
+          });
+          box.appendChild(b);
+        });
+      }
+
+      /* 3. The presumption */
+      deck($('chazaka'), [
+        {
+          q: 'The father dies on day 20. Nobody knows anything. What do we assume about the son?',
+          opts: [{ t: 'Not redeemed', ok: true }, { t: 'Redeemed' }],
+          why: `Rashi: people don't usually redeem before thirty days, so the son is presumed unredeemed ${REF('49a.11', '49a:11')}.`,
+        },
+        {
+          q: 'The same son wants to overturn that. What does he need?',
+          opts: [{ t: 'He must bring proof that he was redeemed', ok: true }, { t: 'Nothing, because his own word is enough' }, { t: 'Nothing can overturn it, and he must always pay' }],
+          why: `<span class="frank" dir="rtl" lang="he">עַד שֶׁיָּבִיא רְאָיָה שֶׁנִּפְדָּה</span>. And on Shmuel's view, the early payment only counts if the coins were still with the priest after thirty days ${REF('49b.4', '49b:4')}.`,
+        },
+        {
+          q: 'Now the father dies on day 50. Nobody knows anything. What do we assume?',
+          opts: [{ t: 'Redeemed', ok: true }, { t: 'Not redeemed' }],
+          why: `<span class="frank" dir="rtl" lang="he">בְּחֶזְקַת שֶׁנִּפְדָּה</span>. Rashi: any priest coming to collect would be taking money out of another's hands, so his position is the weaker one ${REF('49a.11', '49a:11')}.`,
+        },
+        {
+          q: 'People tell the son his father said on his deathbed that he was never redeemed. No formal witnesses. Is that enough to make him pay?',
+          opts: [{ t: 'Yes, their word alone is enough', ok: true }, { t: 'No, he needs two valid witnesses' }, { t: 'No, once the presumption is set it never moves' }],
+          why: `Rashi: this is not a strong presumption, because most people don't rush to pay a debt. So a plain statement overturns it. Demanding full proof would make no sense here, since the son could always say his father paid some other priest ${REF('49a.11', '49a:11')}.`,
+        },
+      ], () => earn('chazaka'));
+
+      /* 4. The fields */
+      (function fields() {
+        const host = $('fields');
+        const NAMES = { none: 'Pays for nothing', self: 'Pays for himself', son: 'Pays for his son' };
+        const ORDER = ['none', 'self', 'son'];
+        const SC = [
+          {
+            title: 'Everyone agrees', sold: false, ans: { free: 'self' },
+            ask: 'He has only five sela, and no land was sold.',
+            why: `Rabbi Yirmeya: here even Rabbi Yehuda agrees he comes first, because his own mitzva is preferable ${REF('49b.7', '49b:7')}.`,
+          },
+          {
+            title: 'According to Rabbi Yehuda', sold: true, ans: { free: 'son', sold: 'self' }, lien: ['l-self', 'l-son', 'l-block'],
+            ask: 'He has one free field worth five sela, and one field worth five sela that he sold after his own birth but before his son was born.',
+            why: `A debt written in the Torah is like one written in a document, so it is collected from sold land. The priest's claim on him goes back to his own birth, before the sale. The priest goes and takes the sold field, and the free field redeems the son. That is "his son comes first." Both mitzvot get done ${REF('49b.8', '49b:8')}.`,
+          },
+          {
+            title: 'According to the Rabbis', sold: true, ans: { free: 'self', sold: 'none' }, lien: ['l-no'],
+            ask: 'The same two fields.',
+            why: `A debt written in the Torah is not like one in a document, because a buyer would not know to guard against it. The sold field is out of reach, so one field remains, and his own mitzva is preferable. His son waits ${REF('49b.9', '49b:9')}.`,
+          },
+        ];
+        let i = 0, right = 0, firstTry = true, pick = { free: 'none', sold: 'none' }, solved = false;
+        function draw() {
+          const s = SC[i];
+          const cls = (p) => pick[p] === 'none' ? '' : pick[p];
+          const lien = (id) => (solved && (s.lien || []).includes(id)) ? 'show' : '';
+          host.innerHTML = `
+            <p class="mb-1 text-sm t-mute">Part ${i + 1} of ${SC.length}</p>
+            <p class="frank text-xl font-bold t-silver">${s.title}</p>
+            <p class="mt-1 max-w-2xl leading-relaxed t-text">${s.ask}</p>
+            <svg viewBox="0 0 640 240" class="mt-3 w-full" role="img" aria-label="Timeline of his birth, the sale, and his son's birth above two fields">
+              <line x1="70" y1="34" x2="570" y2="34" stroke="#c9b8cc" stroke-width="2" />
+              <circle cx="90" cy="34" r="7" fill="#d8e0e4" /><circle cx="320" cy="34" r="7" fill="#d8e0e4" /><circle cx="550" cy="34" r="7" fill="#d8e0e4" />
+              <text x="90" y="18" fill="#f3edf3" font-size="20" text-anchor="middle">He is born</text>
+              <text x="320" y="18" fill="#f3edf3" font-size="20" text-anchor="middle">${s.sold ? 'He sells a field' : ''}</text>
+              <text x="550" y="18" fill="#f3edf3" font-size="20" text-anchor="middle">His son is born</text>
+              <path class="lien ${lien('l-self')}" d="M90 42 C 90 110, 160 110, 190 138" stroke="#d8e0e4" />
+              <path class="lien ${lien('l-son')}" d="M550 42 C 550 110, 480 110, 450 138" stroke="#ec8fc0" />
+              <path class="lien ${lien('l-block')}" d="M550 42 C 480 80, 300 90, 230 138" stroke="#ec8fc0" stroke-dasharray="4 7" />
+              <path class="lien ${lien('l-no')}" d="M90 42 C 90 110, 160 110, 190 138" stroke="#f4ab93" stroke-dasharray="4 7" />
+              <rect class="plot ${s.sold ? cls('sold') : 'absent'}" x="90" y="140" width="210" height="84" rx="4" />
+              <text x="195" y="174" fill="#f3edf3" font-size="24" text-anchor="middle" opacity="${s.sold ? 1 : 0.3}">Sold field</text>
+              <text x="195" y="206" fill="#f3edf3" font-size="20" text-anchor="middle" opacity="${s.sold ? 1 : 0.3}">${s.sold ? NAMES[pick.sold] : 'none here'}</text>
+              <rect class="plot ${cls('free')}" x="340" y="140" width="210" height="84" rx="4" />
+              <text x="445" y="174" fill="#f3edf3" font-size="24" text-anchor="middle">${s.sold ? 'Free field' : 'Five sela'}</text>
+              <text x="445" y="206" fill="#f3edf3" font-size="20" text-anchor="middle">${NAMES[pick.free]}</text>
+            </svg>
+            <div class="mt-2 flex flex-wrap gap-2">
+              ${s.sold ? `<button type="button" class="btn" data-plot="sold" ${solved ? 'disabled' : ''}>Sold field: ${NAMES[pick.sold]}</button>` : ''}
+              <button type="button" class="btn" data-plot="free" ${solved ? 'disabled' : ''}>${s.sold ? 'Free field' : 'Five sela'}: ${NAMES[pick.free]}</button>
+            </div>
+            ${solved && s.lien ? '<p class="mt-2 text-sm t-mute">A solid line means the claim reaches that field. A dashed line means it cannot.</p>' : ''}
+            <div data-t class="mt-3"></div>`;
+          host.querySelectorAll('[data-plot]').forEach((b) => b.addEventListener('click', () => {
+            const p = b.dataset.plot;
+            pick[p] = ORDER[(ORDER.indexOf(pick[p]) + 1) % 3];
+            draw();
+            host.querySelector(`[data-plot="${p}"]`).focus();
+          }));
+          const t = host.querySelector('[data-t]');
+          if (solved) {
+            t.innerHTML = `<p class="note ok t-text">${s.why}</p>`;
+            const n = document.createElement('button');
+            n.type = 'button'; n.className = 'btn go mt-3';
+            n.textContent = i + 1 < SC.length ? 'Next part' : 'Finish';
+            n.addEventListener('click', () => {
+              i++;
+              if (i < SC.length) { solved = false; firstTry = true; pick = { free: 'none', sold: 'none' }; draw(); }
+              else { host.innerHTML = `<p class="t-good">You solved ${right} of ${SC.length} on the first try. Rashi adds why the order matters: pay for himself from the free field and the son can't be redeemed from the sold one, since the sale may have come before the son's birth ${REF('49b.8', '49b:8')}.</p>`; earn('fields'); }
+            });
+            t.appendChild(n); n.focus();
+          } else {
+            const c = document.createElement('button');
+            c.type = 'button'; c.className = 'btn go'; c.textContent = 'Check the fields';
+            c.addEventListener('click', () => {
+              const ok = Object.keys(s.ans).every((k) => pick[k] === s.ans[k]);
+              if (ok) { if (firstTry) right++; solved = true; draw(); }
+              else {
+                firstTry = false;
+                const old = t.querySelector('.note'); if (old) old.remove();
+                const m = document.createElement('p');
+                m.className = 'note no t-text';
+                m.textContent = s.sold ? 'That is not how this view divides the fields. Ask whether a debt from the Torah can reach land a buyer already holds.' : 'He has one payment to make. Whose comes first?';
+                t.appendChild(m);
+              }
+            });
+            t.appendChild(c);
+          }
+        }
+        draw();
+      })();
+
+      /* 5. Tyre */
+      (function scale() {
+        const host = $('scale');
+        const ROWS = [
+          { k: 'son', t: 'Redeeming a firstborn son', a: 5 },
+          { k: 'slave', t: 'A Canaanite slave killed by an ox', a: 30 },
+          { k: 'rape', t: 'The rapist of a young woman', a: 50 },
+          { k: 'seduce', t: 'The seducer of a young woman', a: 50 },
+          { k: 'defame', t: 'One who defames his bride', a: 100 },
+        ];
+        const AM = [5, 30, 50, 100];
+        const pick = {};
+        host.innerHTML = ROWS.map((r) => `<div class="mb-3" data-row="${r.k}">
+            <p class="text-sm t-text">${r.t}</p>
+            <div class="mt-1 flex flex-wrap items-center gap-1">
+              ${AM.map((a) => `<button type="button" class="btn chip" data-a="${a}" aria-pressed="false" style="text-align:center">${a}</button>`).join('')}
+              <div class="ms-2 flex-1" style="min-width:5rem"><div class="bar" style="width:0%"></div></div>
+            </div></div>`).join('') + `<button type="button" class="btn go" data-c>Weigh them</button><div data-m></div>`;
+        host.querySelectorAll('[data-row]').forEach((row) => {
+          row.querySelectorAll('[data-a]').forEach((b) => b.addEventListener('click', () => {
+            pick[row.dataset.row] = +b.dataset.a;
+            row.querySelectorAll('[data-a]').forEach((x) => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
+            row.querySelector('.bar').style.width = `${+b.dataset.a}%`;
+          }));
+        });
+        host.querySelector('[data-c]').addEventListener('click', () => {
+          const wrong = ROWS.filter((r) => pick[r.k] !== r.a);
+          const m = host.querySelector('[data-m]');
+          if (wrong.length) {
+            m.innerHTML = `<p class="note no t-text">${wrong.length} ${wrong.length === 1 ? 'amount is' : 'amounts are'} off. Check: ${wrong.map((r) => r.t.toLowerCase()).join('; ')}.</p>`;
+            return;
+          }
+          host.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+          m.innerHTML = `<p class="note ok t-text"><span class="frank" dir="rtl" lang="he">כּוּלָּם בְּשֶׁקֶל הַקֹּדֶשׁ, בְּמָנֶה צוֹרִי</span>. All of them in the shekel of the Sanctuary, by the Tyrian maneh, even where the verse never says "shekel" ${REF('49b.11', '49b:11')}.</p>`;
+          showGoods();
+        });
+      })();
+
+      function showGoods() {
+        const host = $('goods'); host.hidden = false;
+        host.innerHTML = `<h3 class="frank mb-2 text-2xl font-bold t-text">Must it be coins?</h3><div data-d></div>`;
+        deck(host.querySelector('[data-d]'), [
+          {
+            q: 'A father brings cloth worth exactly five sela to the priest. Can that redeem his son?',
+            opts: [{ t: 'Yes, goods worth the sum are fine', ok: true }, { t: 'No, it must be silver coin' }],
+            why: `<span class="frank" dir="rtl" lang="he">וְכוּלָּן נִפְדִּין בְּכֶסֶף וּבְשָׁוֵה כֶּסֶף</span>. All of them may be paid in money or in money's worth ${REF('49b.11', '49b:11')}.`,
+          },
+          {
+            q: 'A man brings cloth worth a half-shekel to the Temple chamber for his yearly donation. Is that accepted?',
+            opts: [{ t: 'No, the half-shekel must be a coin', ok: true }, { t: 'Yes, like everything else on the list' }],
+            why: `<span class="frank" dir="rtl" lang="he">חוּץ מִשְּׁקָלִים</span>. Rashi: only half-shekel coins are brought to the chamber ${REF('49b.11', '49b:11')}.`,
+          },
+        ], showChanger);
+      }
+
+      function showChanger() {
+        const host = $('changer'); host.hidden = false;
+        let chosen = new Set();
+        host.innerHTML = `<h3 class="frank text-2xl font-bold t-text">At the money-changer</h3>
+          <p class="mt-2 max-w-2xl leading-relaxed t-mute">So what is a "Tyrian maneh" in coins you can actually hold? Three answers ${REF('49b.12', '49b:12')}:</p>
+          <ul class="mt-2 max-w-2xl space-y-1 t-text">
+            <li>Rabbi Asi: the maneh used in Tyre itself, five sela of it.</li>
+            <li>Rabbi Ami: a golden Arabian dinar.</li>
+            <li>Rabbi Ḥanina: Syrian <i>istera</i> coins, eight of which sell for one large golden dinar.</li>
+          </ul>
+          <p class="mt-3 font-semibold t-text">Here is a gold dinar's worth of Rabbi Ḥanina's istera. Set aside what you would give the priest.</p>
+          <div class="mt-2 flex flex-wrap gap-2" data-c>${Array.from({ length: 8 }, (_, n) => `<button type="button" class="istera" data-n="${n}" aria-pressed="false" aria-label="Istera ${n + 1}">${n + 1}</button>`).join('')}</div>
+          <button type="button" class="btn go mt-3" data-pay>Pay the priest</button><div data-m></div>`;
+        host.querySelectorAll('[data-n]').forEach((b) => b.addEventListener('click', () => {
+          const n = +b.dataset.n;
+          if (chosen.has(n)) chosen.delete(n); else chosen.add(n);
+          b.setAttribute('aria-pressed', chosen.has(n));
+        }));
+        host.querySelector('[data-pay]').addEventListener('click', () => {
+          const m = host.querySelector('[data-m]');
+          if (chosen.size !== 5) { m.innerHTML = `<p class="note no t-text">You set aside ${chosen.size}. The redemption is five sela, and Rabbi Ḥanina counts each istera as one.</p>`; return; }
+          host.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+          m.innerHTML = `<p class="note ok t-text"><span class="frank" dir="rtl" lang="he">חֲמֵשׁ מִינַּיְיהוּ לְפִדְיוֹן הַבֵּן</span>. Five of the eight for the redemption of the son.</p>`;
+          earn('tyre');
+        });
+      }
+
+      /* Extra: cradles */
+      deck($('cradles'), [
+        {
+          q: 'Two husbands, two wives. They have a boy and a girl, and nobody knows which baby is whose. Who pays the priest?',
+          opts: [{ t: 'The fathers are exempt, but the boy must redeem himself when he grows up', ok: true }, { t: 'Each father pays five sela' }, { t: 'Nobody ever pays' }],
+          why: `Each father can say "mine is the girl." But the boy is certainly a firstborn, so the duty falls on him ${REF('49a.3', '49a:3')}.`,
+        },
+        {
+          q: 'Two husbands, two wives. Two girls and a boy are born, or two girls and two boys. Who pays?',
+          opts: [{ t: 'No one', ok: true }, { t: 'The boys redeem themselves' }],
+          why: `<span class="frank" dir="rtl" lang="he">אֵין כָּאן לַכֹּהֵן כְּלוּם</span>. A girl could have come first to each mother ${REF('49a.3', '49a:3')}.`,
+        },
+        {
+          q: 'Rav Huna\'s case: two husbands, two wives, two boys and a girl. One boy is definitely a firstborn. Who pays?',
+          opts: [{ t: 'No one, neither the fathers nor the boys', ok: true }, { t: 'The two boys split five sela' }, { t: 'Each boy redeems himself' }],
+          why: `Each father says "my first was the girl." Each boy says "maybe the firstborn is the other one." The priest has a definite claim and nobody to bring it against ${REF('49a.3', '49a:3')}.`,
+        },
+        {
+          q: 'One husband with two wives, and two boys and a girl. Why doesn\'t the mishna list Rav Huna\'s case?',
+          opts: [{ t: 'With one husband a firstborn is certainly his, so he owes five sela. The mishna keeps "the priest has nothing" for cases that work both ways', ok: true }, { t: 'The mishna\'s author disagrees with Rav Huna' }],
+          why: `Rav Huna's ruling holds only with two husbands, so the tanna leaves it out ${REF('49a.4', '49a:4')}.`,
+        },
+        {
+          q: 'Two fathers gave ten sela to one priest for two mixed-up boys, and one boy dies within thirty days. The mishna says five go back. But the priest can tell each father "your son is the one alive." How does anyone collect?',
+          opts: [{ t: 'One father comes with authorization from the other, so the priest has no answer', ok: true }, { t: 'The priest must give back all ten' }],
+          why: `Whichever boy died, this one man holds the claim. With two different priests, each could point at the other, so the authorization does no good ${REF('49a.1', '49a:1')}.`,
+        },
+        {
+          q: 'But the Sages of Neharde\'a said no authorization document is written for movable property, and coins are movable. Why does it work here?',
+          opts: [{ t: 'That rule applies only once the respondent has denied the claim, and this priest does not deny receiving the money', ok: true }, { t: 'Neharde\'a is overruled here' }],
+          why: `<span class="frank" dir="rtl" lang="he">הָנֵי מִילֵּי הֵיכָא דְּכַפְרֵיהּ</span> ${REF('49a.2', '49a:2')}.`,
+        },
+      ]);
+    })();
+  </script>
+</Layout>
