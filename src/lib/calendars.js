@@ -2,6 +2,7 @@ import likuteiPeshatimEvents from '../data/likutei-peshatim/events.json';
 import raananaGaniYolaEvents from '../data/raanana-gani-yola/events.json';
 import torahTidbitsEvents from '../data/torah-tidbits-events/events.json';
 import aiTechEvents from '../data/ai-tech-events/events.json';
+import raananaEvents from '../data/raanana-events/events.json';
 
 export const siteBase = 'https://theothermatthewmiller.com';
 
@@ -78,6 +79,17 @@ const rawCalendars = [
     tags: ['AI', 'Tech', 'Israel', 'Networking', 'Events'],
     eventCount: aiTechEvents.length,
     note: 'Researched and refreshed daily. Times are best-effort from the organizer listings — always confirm exact times and registration with the organizer before heading out. Multi-day conferences appear once per day or as a single all-day block.',
+  },
+  {
+    slug: 'RaananaEvents',
+    id: 'raanana_events',
+    name: "Ra'anana Events — Community, Culture & Family",
+    description: "Community, culture and family events in Ra'anana: municipal happenings, exhibitions, concerts, performances, festivals, family activities and guided tours. Researched weekly from raanana.news.",
+    file: '/calendar/raanana_events.ics',
+    source: 'https://raanana.news',
+    tags: ["Ra'anana", 'Community', 'Culture', 'Family', 'Events', 'Weekly'],
+    eventCount: raananaEvents.length,
+    note: 'Updated weekly from raanana.news. Dates and venues verified against the article text — always confirm exact times and tickets with the organizer before heading out. Past events stay in the file as an archive; calendar apps filter by date.',
   },
 ];
 
