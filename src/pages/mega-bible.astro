@@ -5107,6 +5107,25 @@ function applyVerseVisibility() {
   renderCompareBar();
 }
 
+// Jump to the Wondrous collection: Explore mode, filtered to the tag.
+// Used by the left-sidebar Wondrous pill and by the ✦ badge on a verse.
+function showWondrousCollection() {
+  navMode = 'alldevices';
+  document.querySelectorAll('.mb-mode-btn').forEach(b => {
+    (b as HTMLElement).classList.toggle('active', (b as HTMLElement).dataset.mode === 'alldevices');
+  });
+  groupChapter.classList.add('hidden');
+  groupParsha.classList.add('hidden');
+  groupHaftarah.classList.add('hidden');
+  groupBechdel.classList.add('hidden');
+  groupAllDevices.classList.remove('hidden');
+  allDevSel.value = '__wondrous__';
+  allSectSel.value = '';
+  closeDetail();
+  handleLoad();
+  main.scrollTop = 0;
+}
+
 function updateDevicePills(allDevices: any[]) {
   devicePills.innerHTML = '';
   // Build count map from current passage if available. Counts occurrences
@@ -5149,6 +5168,21 @@ function updateDevicePills(allDevices: any[]) {
     return btn;
   };
   devicePills.appendChild(makeBtn('All', ''));
+  // Wondrous tag: a left-side filter that opens the whole collection
+  // (not a passage filter like the device pills). Count = how many
+  // Wondrous comments are collected in this list.
+  const wondrousCount = allDevices.filter(r => (r.tags || []).includes('Wondrous')).length;
+  if (wondrousCount) {
+    const wBtn = document.createElement('button');
+    wBtn.className = 'sb-pill' + (navMode === 'alldevices' && allDevSel.value === '__wondrous__' ? ' active' : '');
+    wBtn.textContent = '✦ Wondrous';
+    const wBadge = document.createElement('span');
+    wBadge.className = 'sb-pill-count';
+    wBadge.textContent = String(wondrousCount);
+    wBtn.appendChild(wBadge);
+    wBtn.addEventListener('click', showWondrousCollection);
+    devicePills.appendChild(wBtn);
+  }
   const seen = new Set<string>();
   allDevices.forEach(r => {
     const d = r.device?.toLowerCase();
@@ -5858,7 +5892,8 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
           badgesRow.appendChild(badge);
         }
       }
-      // Tags are not devices: gold ✦ badge, one per tag.
+      // Tags are not devices: gold ✦ badge, one per tag. Clicking it
+      // opens the whole Wondrous collection.
       (d.tags || []).forEach(t => {
         const key = 'tag:' + String(t).toLowerCase();
         if (seen.has(key)) return;
@@ -5867,8 +5902,10 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
         badge.className = 'vdb-badge vdb-tag';
         badge.style.background = '#c9a227';
         badge.style.color = '#111';
-        badge.title = d.notes || '';
+        badge.style.cursor = 'pointer';
+        badge.title = 'Click to see all Wondrous comments';
         badge.textContent = '✦ ' + t;
+        badge.addEventListener('click', (e) => { e.stopPropagation(); showWondrousCollection(); });
         badgesRow.appendChild(badge);
       });
     });
@@ -6010,7 +6047,9 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     // Device match
     if (matchedDevices.length) {
       const primaryDevice = matchedDevices[0];
-      const color = deviceColor(primaryDevice.device?.toLowerCase() || '');
+      const primaryName = (primaryDevice.device || '').toLowerCase();
+      // A tagged word with no device (e.g. Wondrous) highlights gold.
+      const color = primaryName ? deviceColor(primaryName) : '#c9a227';
       span.classList.add('has-dev');
       span.style.setProperty('--dev-color', color);
       // Semi-transparent background from the device color
