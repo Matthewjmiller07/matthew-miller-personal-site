@@ -1,0 +1,502 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Money-Changer's Bench — Daf Yomi Game: Bekhorot 50"
+  description="Bekhorot 50: run Rabbi Yoḥanan's sum until it lands on twenty, stretch the shekel from twenty gera to twenty-four, settle Rav Ashi's third of a dinar, and defend Rav Asi's Tyrian silver against every challenge."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --patina:#10201d; --felt:#183330; --line:#3f6a61; --text:#eef3ee; --mute:#b7c9c2; --gold:#e8c66b; --bronze:#d39558; --silver:#d8e0e4; --good:#a6e3b5; --bad:#f4ab93; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .t-text { color: var(--text) !important; }
+    .t-mute { color: var(--mute) !important; }
+    .t-gold { color: var(--gold) !important; }
+    .t-bronze { color: var(--bronze) !important; }
+    .t-good { color: var(--good) !important; }
+    .t-bad { color: var(--bad) !important; }
+    .t-text a, .t-mute a, a.ref { color: var(--gold) !important; text-decoration: underline; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .55rem .8rem; font-size: .9rem; line-height: 1.4; text-align: start; background: transparent; color: var(--text) !important; }
+    .btn:hover:not(:disabled) { background: var(--felt); }
+    .btn:disabled { cursor: default; opacity: .6; }
+    .btn.ok { background: #1d4030; border-color: var(--good); opacity: 1; }
+    .btn.no { background: #4c2120; border-color: var(--bad); opacity: 1; }
+    .btn.go { background: var(--gold); border-color: var(--gold); color: #10201d !important; font-weight: 700; }
+    .btn.go:hover:not(:disabled) { background: #fff3c4; }
+    .btn.on { border-color: var(--gold); background: var(--felt); box-shadow: inset 0 0 0 1px var(--gold); }
+    button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .92rem; line-height: 1.65; margin-top: .75rem; }
+    .note.ok { border-color: var(--good); }
+    .note.no { border-color: var(--bad); }
+    .he { font-family: 'Frank Ruhl Libre', serif; direction: rtl; }
+
+    /* bench */
+    .bench { background: repeating-linear-gradient(90deg, #1a302c 0 22px, #172b27 22px 44px); border: 1px solid var(--line); border-radius: .8rem; padding: 1rem; }
+    .tile { border: 2px dashed var(--bronze); border-radius: .5rem; padding: .5rem .8rem; font-weight: 700; background: #2a2418; color: var(--bronze) !important; }
+    .tile:disabled { opacity: .35; }
+    .pipe { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; min-height: 3rem; }
+    .chip { border-radius: 999px; padding: .25rem .7rem; font-size: .9rem; }
+    .chip.val { background: var(--gold); color: #10201d !important; font-weight: 700; }
+    .chip.op { border: 1px solid var(--bronze); color: var(--bronze) !important; }
+    .reading { font-size: 2.6rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+
+    /* ma'a ruler */
+    .ruler { display: grid; gap: 2px; }
+    .maa { height: 2.3rem; border-radius: 3px; background: var(--silver); box-shadow: inset 0 -3px 0 #8f9ba2; }
+    .maa.add { background: var(--gold); box-shadow: inset 0 -3px 0 #a78431; }
+    .maa.dinar { margin-inline-end: 4px; }
+    .maa.cut { background: transparent; box-shadow: inset 0 0 0 2px var(--bad); }
+    input[type=range] { width: 100%; accent-color: var(--gold); }
+
+    /* letters */
+    .letter { background: #efe3c4; color: #2b2214 !important; border-radius: .3rem; padding: 1rem 1.1rem; box-shadow: 0 6px 18px #0007; transform: rotate(-.6deg); }
+    .letter * { color: #2b2214 !important; }
+    .letter.r { transform: rotate(.7deg); }
+    .letter .btn { border-color: #8a7550; }
+    .letter .btn:hover:not(:disabled) { background: #e2d2a8; }
+    .amt { font-size: 1.9rem; font-weight: 900; min-width: 6rem; text-align: center; font-variant-numeric: tabular-nums; }
+
+    /* shelves */
+    .shelf { border-bottom: 6px solid #6b4a2a; padding: .5rem .25rem .3rem; }
+    .bar { height: 1.1rem; background: linear-gradient(90deg, var(--silver), var(--gold)); border-radius: 2px; transition: width .6s ease; }
+
+    /* rule card */
+    .rule { border: 2px solid var(--gold); border-radius: .6rem; padding: .9rem 1rem; background: #1d2a1e; }
+    .rule .old { text-decoration: line-through; opacity: .55; }
+    .crack { border-color: var(--bad) !important; animation: shake .4s; }
+    @keyframes shake { 0%,100%{transform:none} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+
+    /* coin field */
+    canvas { width: 100%; height: auto; border-radius: .6rem; border: 1px solid var(--line); background: #0c1816; display: block; }
+    @media (prefers-reduced-motion: reduce) { .bar { transition: none; } .crack { animation: none; } .letter, .letter.r { transform: none; } }
+  </style>
+
+  <div class="min-h-screen" style="background: var(--patina);">
+    <div class="max-w-3xl mx-auto px-4 py-10">
+      <p class="text-sm t-mute"><a href="/daf/" class="ref">Daf Yomi Arcade</a> · Bekhorot 50 · <span class="he">בכורות נ׳</span></p>
+      <h1 class="frank text-4xl sm:text-5xl font-black t-gold mt-2">The Money-Changer's Bench</h1>
+      <p class="t-text mt-3 text-lg leading-relaxed">
+        Bekhorot 50 is the Talmud doing arithmetic on coins. How much silver redeems a firstborn son, and in whose currency?
+        Six stations: run Rabbi Yoḥanan's sum, stretch the shekel, answer Rav Ashi's letter, weigh the Bible's shekels,
+        defend Rav Asi's rule, and take back the plundered silver.
+      </p>
+      <p class="t-mute mt-2 text-sm">Score: <span id="score" class="t-gold font-bold">0</span> / <span id="scoreMax">0</span> right on the first try</p>
+
+      <!-- 1 -->
+      <section class="stn" aria-labelledby="h1a">
+        <h2 id="h1a" class="frank text-3xl font-bold t-text">1 · Rabbi Yoḥanan's sum</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          Take a worn-out gold dinar of Hadrian or Trajan, sold for 25 silver dinars, and take a sixth off. What's left is five sela, which is 20 dinars
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.50a.1" target="_blank" rel="noopener">50a:1</a>. The Gemara checks his math twice before it works.
+          Put the steps in order and see if you land on exactly <b class="t-gold">20</b>.
+        </p>
+        <p class="he t-text text-lg mt-2">דַּל מִינַּיְיהוּ שְׁתוּתָא וְהָנָךְ לְפִדְיוֹן הַבֵּן</p>
+        <div class="bench mt-4">
+          <div class="flex flex-wrap gap-2">
+            <button class="tile" data-op="sixth">− ⅙ of what's there (shetuta)</button>
+            <button class="tile" data-op="one">− 1 dinar</button>
+            <button class="btn" id="pReset">Clear</button>
+            <button class="btn go" id="pRun">Count it out</button>
+          </div>
+          <div class="pipe mt-4" id="pipe" aria-live="polite"></div>
+          <div class="mt-3 flex items-baseline gap-3"><span class="reading t-gold" id="pOut">25</span><span class="t-mute">dinars</span></div>
+        </div>
+        <div id="pLog"></div>
+      </section>
+
+      <!-- 2 -->
+      <section class="stn" aria-labelledby="h2a">
+        <h2 id="h2a" class="frank text-3xl font-bold t-text">2 · Twenty gera, or more</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          Rava says the Torah's sela is only 3⅓ dinars: "twenty gera is the shekel" is translated twenty <i>ma'a</i>, and six ma'a make a dinar
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.50a.3" target="_blank" rel="noopener">50a:3</a>.
+          Each bar below is one ma'a. Every six make a dinar. Slide to set the shekel and see what the verses allow
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.50a.6" target="_blank" rel="noopener">50a:6</a>.
+        </p>
+        <div class="bench mt-4">
+          <div class="ruler" id="ruler"></div>
+          <label class="block mt-3 t-mute text-sm" for="maaRange">Ma'a in one shekel: <b class="t-gold" id="maaN">20</b></label>
+          <input type="range" id="maaRange" min="16" max="28" value="20" />
+          <div class="grid sm:grid-cols-3 gap-2 mt-3 text-center">
+            <div><div class="t-mute text-xs">one sela</div><div class="t-gold text-xl font-bold" id="selaD">3⅓ dinars</div></div>
+            <div><div class="t-mute text-xs">five sela (firstborn)</div><div class="t-gold text-xl font-bold" id="fiveD">16⅔ dinars</div></div>
+            <div><div class="t-mute text-xs">pundeyon (½ ma'a) per sela</div><div class="t-gold text-xl font-bold" id="pundN">40</div></div>
+          </div>
+          <p class="note" id="maaNote"></p>
+        </div>
+        <div class="mt-5">
+          <p class="t-text font-bold">The field redeemer's ledger <a class="ref" href="https://www.sefaria.org/Bekhorot.50a.4" target="_blank" rel="noopener">50a:4–5</a></p>
+          <p class="t-mute text-sm mt-1 leading-relaxed">The Torah prices an ancestral field at fifty sela for 49 years. The Sages said: a sela and a pundeyon for every year. Drag the years.</p>
+          <input type="range" id="yrRange" min="1" max="49" value="1" class="mt-2" aria-label="Years" />
+          <p class="t-text mt-1" id="yrOut"></p>
+          <div id="kilbonQ" class="mt-3"></div>
+        </div>
+      </section>
+
+      <!-- 3 -->
+      <section class="stn" aria-labelledby="h3a">
+        <h2 id="h3a" class="frank text-3xl font-bold t-text">3 · Two letters</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          Rav Ashi sends Rav Aḥa son of Ravina, a priest, <b class="t-gold">17 dinars</b> to redeem his firstborn son
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.50a.7" target="_blank" rel="noopener">50a:7</a>. You write both letters.
+        </p>
+        <div class="grid sm:grid-cols-2 gap-5 mt-4">
+          <div class="letter">
+            <p class="text-xs uppercase tracking-wider">From Rav Ashi</p>
+            <p class="mt-1 text-sm">17 dinars enclosed. Going by Rava's sela, please send me back:</p>
+            <div class="flex items-center gap-2 mt-3"><button class="btn" data-l="0" data-d="-1" aria-label="Less">−</button><span class="amt" id="l0">0</span><button class="btn" data-l="0" data-d="1" aria-label="More">+</button></div>
+            <button class="btn mt-3" data-send="0">Seal and send</button>
+            <p class="text-sm mt-2" id="l0n"></p>
+          </div>
+          <div class="letter r">
+            <p class="text-xs uppercase tracking-wider">From Rav Aḥa son of Ravina</p>
+            <p class="mt-1 text-sm">Received. Counting the sixth the Sages added, you still owe me:</p>
+            <div class="flex items-center gap-2 mt-3"><button class="btn" data-l="1" data-d="-1" aria-label="Less">−</button><span class="amt" id="l1">0</span><button class="btn" data-l="1" data-d="1" aria-label="More">+</button></div>
+            <button class="btn mt-3" data-send="1">Seal and send</button>
+            <p class="text-sm mt-2" id="l1n"></p>
+          </div>
+        </div>
+        <p class="t-mute text-xs mt-3">Amounts move in thirds of a dinar.</p>
+      </section>
+
+      <!-- 4 -->
+      <section class="stn" aria-labelledby="h4a">
+        <h2 id="h4a" class="frank text-3xl font-bold t-text">4 · How heavy is a shekel?</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          Rabbi Ḥanina: an unspecified silver shekel weighs differently depending on which shelf of the Bible it sits on
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.50a.8" target="_blank" rel="noopener">50a:8</a>. Pick the weight for each shelf.
+        </p>
+        <div id="shelves" class="mt-4 space-y-4"></div>
+        <div id="ephron" class="mt-4"></div>
+      </section>
+
+      <!-- 5 -->
+      <section class="stn" aria-labelledby="h5a">
+        <h2 id="h5a" class="frank text-3xl font-bold t-text">5 · Hold the rule</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          Rav Yehuda quotes Rav Asi <a class="ref" href="https://www.sefaria.org/Bekhorot.50b.1" target="_blank" rel="noopener">50b:1</a>.
+          The Gemara throws four cases at the rule. You have four answers. Each can be used once. Use the one the Gemara uses.
+        </p>
+        <div class="rule mt-4" id="ruleCard">
+          <p class="he t-gold text-xl" id="ruleHe">כׇּל ״כֶּסֶף״ הָאָמוּר בַּתּוֹרָה סְתָם — כֶּסֶף צוֹרִי, וְשֶׁל דִּבְרֵיהֶם — כֶּסֶף מְדִינָה</p>
+          <p class="t-text mt-1" id="ruleEn">Every "money" in the Torah, unspecified, is Tyrian silver. Money in the Sages' rulings is provincial coinage, worth about an eighth as much.</p>
+        </div>
+        <div id="chal" class="mt-4"></div>
+        <div id="hand" class="flex flex-wrap gap-2 mt-3"></div>
+        <div id="ruleAfter" class="mt-4"></div>
+      </section>
+
+      <!-- 6 -->
+      <section class="stn" aria-labelledby="h6a">
+        <h2 id="h6a" class="frank text-3xl font-bold t-text">6 · The plundered silver</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          The Temple's silver and gold were carried off and mixed into the world's money. The Sages wanted to put it out of use
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.50a.9" target="_blank" rel="noopener">50a:9–10</a>. But which money?
+          Gold dots are Temple metal. The mix is illustrative, not a count.
+        </p>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <button class="btn on" data-pool="world">Rabbi Oshaya: all the silver and gold in the world</button>
+          <button class="btn" data-pool="hadrian">Abaye: the worn dinars of Hadrian and Trajan</button>
+        </div>
+        <canvas id="field" width="720" height="260" class="mt-3" aria-label="A field of coins with Temple metal mixed in"></canvas>
+        <p class="note" id="poolNote"></p>
+        <div class="mt-3">
+          <button class="btn go" id="verseBtn">Read the verse they found</button>
+          <p class="he t-text text-lg mt-3 hidden" id="verseHe">וּבָאוּ בָהּ פָּרִיצִים וְחִלְּלוּהָ</p>
+          <p class="t-mute text-sm hidden" id="verseEn">"And robbers shall enter into it, and profane it" (<a class="ref" href="https://www.sefaria.org/Ezekiel.7.22" target="_blank" rel="noopener">Ezekiel 7:22</a>). Once plundered, it is no longer holy.</p>
+        </div>
+      </section>
+
+      <!-- coda -->
+      <section class="stn" aria-labelledby="h7a">
+        <h2 id="h7a" class="frank text-3xl font-bold t-text">Coda · Ḥanan the wicked</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          Ḥanan struck a man. Rav Huna told him: pay him half a dinar, the provincial "sela" fine
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.50b.11" target="_blank" rel="noopener">50b:11</a>. Ḥanan had only a worn-out dinar that wasn't in circulation, and the man wouldn't take it. What did Ḥanan do?
+        </p>
+        <div id="coda" class="grid gap-2 mt-3"></div>
+      </section>
+
+      <!-- learn -->
+      <section class="stn" aria-labelledby="h8a">
+        <h2 id="h8a" class="frank text-3xl font-bold t-text">Learn the real daf</h2>
+        <ul class="t-text mt-3 space-y-2 list-disc ps-5">
+          <li><a class="ref" href="https://www.sefaria.org/Bekhorot.50a" target="_blank" rel="noopener">Bekhorot 50a</a> and <a class="ref" href="https://www.sefaria.org/Bekhorot.50b" target="_blank" rel="noopener">50b</a> on Sefaria, with the Ḥanan story finishing on <a class="ref" href="https://www.sefaria.org/Bekhorot.51a.1" target="_blank" rel="noopener">51a</a></li>
+          <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Bekhorot.50a" target="_blank" rel="noopener">Rashi</a> (39 comments), who works through Rabbi Yoḥanan's arithmetic step by step</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.50a" target="_blank" rel="noopener">Rabbeinu Gershom</a> (25), <a class="ref" href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.50a" target="_blank" rel="noopener">Steinsaltz</a> (21) and <a class="ref" href="https://www.sefaria.org/Rashash_on_Bekhorot.50a" target="_blank" rel="noopener">Rashash</a> (10)</li>
+          <li><a class="ref" href="https://www.sefaria.org/Tosafot_on_Bekhorot.50a" target="_blank" rel="noopener">Tosafot</a> (6), and the rulings in <a class="ref" href="https://www.sefaria.org/Mishneh_Torah,_Sheqel_Dues.1.3" target="_blank" rel="noopener">Mishneh Torah, Sheqel Dues 1:3</a> and the <a class="ref" href="https://www.sefaria.org/Tur,_Choshen_Mishpat.420" target="_blank" rel="noopener">Tur, Choshen Mishpat 420</a> on the striking fine</li>
+          <li>Jastrow on <a class="ref" href="https://www.sefaria.org/Jastrow,_טְרָיָינָא_1" target="_blank" rel="noopener">טְרָיָינָא</a>, the Trajan coin</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <script is:inline>
+  (() => {
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+    const REF = (r, label) => `<a class="ref" href="https://www.sefaria.org/Bekhorot.${r}" target="_blank" rel="noopener">${label || r.replace('.', ':')}</a>`;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // scoring: each question id counts once, first try only
+    let score = 0, max = 0; const seen = new Set();
+    const tally = (id, ok) => { if (seen.has(id)) return; seen.add(id); if (ok) score++; $('#score').textContent = score; };
+    const register = n => { max += n; $('#scoreMax').textContent = max; };
+    const note = (el, html, ok) => { el.className = 'note' + (ok === true ? ' ok' : ok === false ? ' no' : ''); el.innerHTML = html; };
+
+    // fractions
+    const gcd = (a, b) => b ? gcd(b, a % b) : Math.abs(a);
+    const F = (n, d = 1) => { const g = gcd(n, d) || 1; return [n / g, d / g]; };
+    const fsub = (a, b) => F(a[0] * b[1] - b[0] * a[1], a[1] * b[1]);
+    const fmul = (a, b) => F(a[0] * b[0], a[1] * b[1]);
+    const glyph = { '1/6': '⅙', '5/6': '⅚', '1/3': '⅓', '2/3': '⅔', '1/2': '½' };
+    const fstr = f => { const [n, d] = f; if (d === 1) return String(n); const w = Math.floor(n / d), r = n - w * d; const fr = glyph[r + '/' + d] || `${r}/${d}`; return w ? `${w}${fr}` : fr; };
+
+    /* ---------- 1. Pipeline ---------- */
+    register(1);
+    let ops = [];
+    const tried = new Set();
+    const pipeRender = () => {
+      let v = F(25); let html = `<span class="chip val">25</span>`;
+      for (const o of ops) { v = o === 'sixth' ? fsub(v, fmul(v, F(1, 6))) : fsub(v, F(1)); html += `<span class="chip op">${o === 'sixth' ? '− ⅙' : '− 1'}</span><span class="chip val">${fstr(v)}</span>`; }
+      $('#pipe').innerHTML = html; $('#pOut').textContent = fstr(v);
+      $$('.tile').forEach(t => t.disabled = ops.includes(t.dataset.op));
+      return v;
+    };
+    $$('.tile').forEach(t => t.addEventListener('click', () => { ops.push(t.dataset.op); pipeRender(); }));
+    $('#pReset').addEventListener('click', () => { ops = []; pipeRender(); });
+    $('#pRun').addEventListener('click', () => {
+      const v = pipeRender(); const key = ops.join(',') || 'none';
+      const log = document.createElement('p'); log.className = 'note';
+      const msgs = {
+        'none': [`25 dinars is more than five sela. Something has to come off.`, false],
+        'sixth': [`<b>${fstr(v)}</b>: "twenty-one less a <i>danka</i>". That is exactly the Gemara's first objection ${REF('50a.1')}. A sixth of 25 is 4⅙, not 5.`, false],
+        'sixth,one': [`<b>${fstr(v)}</b>: twenty less a sixth. The Gemara's second objection ${REF('50a.2')}. Taking the sixth first shaves off a sixth of that extra dinar too.`, false],
+        'one': [`<b>${fstr(v)}</b>. Not five sela yet. The sixth still has to come off.`, false],
+        'one,sixth': [`<b>Exactly 20.</b> First take off one dinar, then a sixth of the 24 that are left ${REF('50a.2')}. Five sela of four dinars each. The Gemara adds that this weighs 20 small gold <i>matkalei</i>, worth 28½ and half a sixth of Arabian silver dinars.`, true],
+      };
+      const [m, ok] = msgs[key];
+      if (!tried.has(key)) { tried.add(key); log.className = 'note' + (ok ? ' ok' : ' no'); log.innerHTML = m; $('#pLog').appendChild(log); }
+      if (ok) tally('pipe', tried.size === 1);
+    });
+    pipeRender();
+
+    /* ---------- 2. Ruler ---------- */
+    const ruler = $('#ruler');
+    const drawRuler = n => {
+      $('#maaN').textContent = n;
+      ruler.style.gridTemplateColumns = `repeat(${Math.max(n, 20)}, 1fr)`;
+      let h = '';
+      for (let i = 0; i < Math.max(n, 20); i++) {
+        const cls = i >= n ? 'cut' : i >= 20 ? 'add' : '';
+        h += `<div class="maa ${cls} ${(i + 1) % 6 === 0 ? 'dinar' : ''}" title="ma'a ${i + 1}"></div>`;
+      }
+      ruler.innerHTML = h;
+      $('#selaD').textContent = fstr(F(n, 6)) + ' dinars';
+      $('#fiveD').textContent = fstr(F(5 * n, 6)) + ' dinars';
+      $('#pundN').textContent = 2 * n;
+      const el = $('#maaNote');
+      if (n < 20) note(el, `<span class="he">״עֶשְׂרִים גֵּרָה הוּא״</span>: "the same is twenty gera" (Numbers 18:16). <b>Blocked.</b> The shekel may not drop below twenty.`, false);
+      else if (n === 20) note(el, `<span class="he">״עֶשְׂרִים גֵּרָה הַשֶּׁקֶל״</span>: the Torah's sela per Rava, 3⅓ dinars. Five of them: 16⅔.`);
+      else if (n < 24) note(el, `<span class="he">״עֶשְׂרִים גֵּרָה יִהְיֶה הַשֶּׁקֶל״</span>: "shall be" (Leviticus 27:25) means one may add. Allowed, but not what the Sages did.`);
+      else if (n === 24) note(el, `The Sages added four ma'a, a sixth of the new sela. Now a sela is <b>4 dinars</b>, 48 pundeyon, and the firstborn's five sela are 20 dinars, Rabbi Yoḥanan's number.`, true);
+      else note(el, `"Shall be" allows adding, but the sela the Sages actually used is 24 ma'a.`);
+    };
+    $('#maaRange').addEventListener('input', e => drawRuler(+e.target.value));
+    drawRuler(20);
+
+    register(2);
+    const yr = y => {
+      const pund = y, sela = y + Math.floor(pund / 48), rem = pund % 48;
+      $('#yrOut').innerHTML = `${y} year${y > 1 ? 's' : ''}: ${y} sela + ${y} pundeyon = <b class="t-gold">${sela} sela${rem ? ` + ${rem} pundeyon` : ''}</b>`
+        + (y === 49 ? ` <span class="t-bad">— one pundeyon over the Torah's fifty.</span>` : '');
+      if (y === 49 && !$('#kilbonQ').innerHTML) askKilbon();
+    };
+    $('#yrRange').addEventListener('input', e => yr(+e.target.value)); yr(1);
+
+    const quiz = (host, id, prompt, opts, after) => {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `<p class="t-text">${prompt}</p><div class="grid gap-2 mt-2"></div><p class="note hidden"></p>`;
+      const grid = wrap.querySelector('div'), out = wrap.querySelector('p.note');
+      let first = true;
+      opts.forEach(([label, ok, why]) => {
+        const b = document.createElement('button'); b.className = 'btn'; b.innerHTML = label;
+        b.addEventListener('click', () => {
+          tally(id, ok && first); first = false;
+          b.classList.add(ok ? 'ok' : 'no'); out.classList.remove('hidden'); note(out, why, ok);
+          if (ok) { $$('button', grid).forEach(x => x.disabled = true); after && after(); }
+        });
+        grid.appendChild(b);
+      });
+      host.appendChild(wrap); return wrap;
+    };
+
+    function askKilbon() {
+      const host = $('#kilbonQ');
+      quiz(host, 'kilbon', 'What is that extra pundeyon?', [
+        ['The money-changer\'s fee (<i>kilbon</i>) for breaking the sela into pundeyon', true, `Right ${REF('50a.5')}. Paying a sela a year means breaking sela into small coins, and that costs a premium.`],
+        ['A penalty for redeeming late', false, 'Nothing about lateness. The baraita asks what this pundeyon is for and gives a different answer.'],
+        ['The Jubilee year itself', false, 'The forty-nine years are what is being priced. Try again.'],
+      ], () => quiz(host, 'rava', 'Forty-eight pundeyon to the sela means 24 ma\'a. How does that fit Rava\'s twenty?', [
+        ['The baraita speaks after the Sages added a sixth to the sela', true, `That's the answer ${REF('50a.6')}: Torah sela 20 ma'a, then "shall be" let the Sages add four. Set the ruler above to 24 to see it.`],
+        ['Rava is refuted', false, 'The Gemara answers the challenge. Rava stands.'],
+        ['A pundeyon is a third of a ma\'a', false, 'The baraita\'s pundeyon is half a ma\'a. The answer is about the sela, not the pundeyon.'],
+      ]));
+    }
+
+    /* ---------- 3. Letters ---------- */
+    register(2);
+    const L = [0, 0]; const target = [1, 9]; // thirds
+    const showL = i => $('#l' + i).textContent = L[i] ? fstr(F(L[i], 3)) : '0';
+    $$('[data-l]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.l; L[i] = Math.max(0, Math.min(30, L[i] + +b.dataset.d)); showL(i); }));
+    $$('[data-send]').forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.send, ok = L[i] === target[i]; tally('letter' + i, ok);
+      const n = $('#l' + i + 'n');
+      if (i === 0) n.innerHTML = ok ? `✓ Five Torah sela at 3⅓ = 16⅔. You sent 17, so ⅓ comes back.` : `✗ Five sela at 3⅓ dinars each comes to ${fstr(F(50, 3))}. How much over is 17?`;
+      else n.innerHTML = ok ? `✓ With the Sages' sixth, five sela are 20 dinars. 20 − 17 = 3.` : `✗ After the addition a sela is 4 dinars. Five of them, minus the 17 already sent?`;
+      n.style.fontWeight = '700';
+    }));
+
+    /* ---------- 4. Shelves ---------- */
+    register(3);
+    const units = [['sela', 1], ['litra (25 sela)', 25], ['kintar (100 sela)', 100]];
+    const shelves = [['Torah', 'תורה', 1], ['Prophets', 'נביאים', 25], ['Writings', 'כתובים', 100]];
+    let shelfDone = 0;
+    shelves.forEach(([en, he, w], k) => {
+      const d = document.createElement('div'); d.className = 'shelf';
+      d.innerHTML = `<div class="flex items-baseline justify-between"><span class="t-text font-bold">${en}</span><span class="he t-gold">${he}</span></div>
+        <div class="flex flex-wrap gap-2 mt-2">${units.map(([u, v]) => `<button class="btn" data-w="${v}">${u}</button>`).join('')}</div>
+        <div class="mt-2" style="background:#0c1816;border-radius:2px"><div class="bar" style="width:0"></div></div><p class="t-mute text-xs mt-1"></p>`;
+      let first = true;
+      $$('button', d).forEach(b => b.addEventListener('click', () => {
+        const ok = +b.dataset.w === w; tally('shelf' + k, ok && first); first = false;
+        b.classList.add(ok ? 'ok' : 'no');
+        if (ok) {
+          $$('button', d).forEach(x => x.disabled = true);
+          $('.bar', d).style.width = (Math.log10(w) / Math.log10(40000) * 100 + 3) + '%';
+          $('p', d).textContent = `One unspecified silver shekel here = ${w} sela.`;
+          if (++shelfDone === 3) showEphron();
+        }
+      }));
+      $('#shelves').appendChild(d);
+    });
+    function showEphron() {
+      $('#ephron').innerHTML = `<div class="shelf"><div class="flex items-baseline justify-between"><span class="t-bronze font-bold">The exception: Ephron's field</span><span class="he t-gold">אַרְבַּע מֵאוֹת שֶׁקֶל כֶּסֶף עֹבֵר לַסֹּחֵר</span></div>
+        <div class="mt-2" style="background:#0c1816;border-radius:2px"><div class="bar" id="eBar" style="width:0"></div></div>
+        <p class="t-text text-sm mt-2">It's in the Torah, yet "four hundred shekels of silver, current money with the merchant" (<a class="ref" href="https://www.sefaria.org/Genesis.23.16" target="_blank" rel="noopener">Genesis 23:16</a>) were <b class="t-gold">kintarin</b>: there is a place where a kintar is called a shekel. 400 × 100 = <b class="t-gold" id="eCount">0</b> sela. (The bars are on a log scale.)</p></div>`;
+      requestAnimationFrame(() => $('#eBar').style.width = '100%');
+      const end = 40000, c = $('#eCount');
+      if (reduce) { c.textContent = end.toLocaleString(); return; }
+      const t0 = performance.now();
+      const step = t => { const p = Math.min(1, (t - t0) / 1200); c.textContent = Math.round(end * p * p).toLocaleString(); if (p < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    }
+
+    /* ---------- 5. Hold the rule ---------- */
+    const cards = {
+      hekesh: 'Juxtaposition: "money" is paired with "vessels"',
+      ribbui: 'Amplification: "money" is written more than once',
+      gzs: 'Verbal analogy: "holy" here and "holy" by second tithe',
+      restate: 'Restate the rule: only fixed sums are Tyrian',
+    };
+    const challenges = [
+      { ref: '50b.2', title: 'Partial admission', text: '"If a man delivers to his neighbor money or vessels to guard…" (Exodus 22:6). Yet the oath kicks in at a claim of just <b>two ma\'a</b> of silver (Shevuot 38b). Not Tyrian at all.', ans: 'hekesh', why: `Money is read like vessels: "vessels" means at least two, so "money" means two coins, and vessels must be significant like money ${REF('50b.4')}. Rav Asi meant money with no juxtaposition.` },
+      { ref: '50b.5', title: 'Second tithe', text: '"And bind up the money in your hand" (Deuteronomy 14:25). Yet Beit Shammai let you exchange <b>copper coins</b> of second-tithe money for a silver sela (Ma\'aser Sheni 2:8).', ans: 'ribbui', why: `"Money," "money": the repetition amplifies, so second-tithe money can be any coin, even copper ${REF('50b.5')}.` },
+      { ref: '50b.6', title: 'Consecrated property', text: '"He will give the money and it will be assured to him." Yet Shmuel: property worth a hundred dinars redeemed with <b>a peruta\'s worth</b> is redeemed.', ans: 'gzs', why: `Shmuel learns "holy" here from "holy" by second tithe, so whatever works there works here ${REF('50b.6')}.` },
+      { ref: '50b.7', title: 'Betrothal', text: '"She goes out for nothing, without money" (Exodus 21:11). Beit Shammai betroth with a dinar, but Beit Hillel, whom we follow, with <b>a peruta</b>. Is Rav Asi following Beit Shammai?', ans: 'restate', why: `No. The statement is reformulated ${REF('50b.8')}: only a <i>fixed</i> sum in the Torah (like the rapist's fifty) is Tyrian. Betrothal has no fixed sum.` },
+    ];
+    register(challenges.length + 1 + 5);
+    let ci = 0; const used = new Set();
+    const chal = $('#chal'), hand = $('#hand');
+    const drawHand = () => {
+      hand.innerHTML = '';
+      Object.entries(cards).forEach(([k, label]) => {
+        const b = document.createElement('button'); b.className = 'btn'; b.textContent = label; b.disabled = used.has(k) || ci >= challenges.length;
+        b.addEventListener('click', () => play(k, b)); hand.appendChild(b);
+      });
+    };
+    let firstTry = true;
+    const drawChal = () => {
+      firstTry = true;
+      if (ci >= challenges.length) { chal.innerHTML = ''; finishRule(); return; }
+      const c = challenges[ci];
+      chal.innerHTML = `<div class="bench"><p class="t-bronze text-xs uppercase tracking-wider">Challenge ${ci + 1} of ${challenges.length} · ${REF(c.ref)}</p><p class="t-text font-bold mt-1">${c.title}</p><p class="t-text mt-1 leading-relaxed">${c.text}</p><p class="note hidden" id="cNote"></p></div>`;
+      $('#ruleCard').classList.add('crack'); setTimeout(() => $('#ruleCard').classList.remove('crack'), 450);
+    };
+    const play = (k, b) => {
+      const c = challenges[ci], n = $('#cNote'); n.classList.remove('hidden');
+      if (k === c.ans) {
+        tally('rule' + ci, firstTry); used.add(k); note(n, '✓ ' + c.why, true);
+        if (k === 'restate') {
+          $('#ruleHe').innerHTML = `כׇּל כֶּסֶף <b>קָצוּב</b> הָאָמוּר בַּתּוֹרָה — כֶּסֶף צוֹרִי, וְשֶׁל דִּבְרֵיהֶם — כֶּסֶף מְדִינָה`;
+          $('#ruleEn').innerHTML = `<span class="old">Every "money" in the Torah, unspecified</span> Every <b>fixed sum</b> in the Torah is Tyrian silver. Sums set by the Sages are provincial coinage.`;
+        }
+        ci++; $$('button', hand).forEach(x => x.disabled = true);
+        const nx = document.createElement('button'); nx.className = 'btn go mt-3'; nx.textContent = ci < challenges.length ? 'Next challenge' : 'Done';
+        nx.addEventListener('click', () => { drawChal(); drawHand(); }); n.after(nx);
+      } else { firstTry = false; note(n, '✗ That answer doesn\'t fit this case. Look at what the Gemara would need here.', false); b.classList.add('no'); }
+    };
+    function finishRule() {
+      const host = $('#ruleAfter'); host.innerHTML = '';
+      quiz(host, 'novel', 'The mishna already says five sela, thirty, fifty and a hundred are all in Sanctuary (Tyrian) shekels. So what is Rav Asi adding?', [
+        ['That the Sages\' fines are provincial: the "sela" for a disrespectful slap is half a dinar', true, `That's it ${REF('50b.10')}. The mishna in Bava Kamma 90a fines a sela for a slap, and Rav Asi says it's not a four-dinar Tyrian sela but the provincial one people call a sela, worth half a dinar.`],
+        ['That the firstborn\'s five sela are Tyrian', false, `The mishna already teaches that ${REF('50b.9')}.`],
+        ['That the betrothal peruta is Tyrian', false, 'Betrothal has no fixed sum, which is why the rule was restated.'],
+      ], sortSums);
+    }
+    function sortSums() {
+      const host = $('#ruleAfter');
+      const sums = [['Five sela to redeem a firstborn son', 'T'], ['Thirty for a Canaanite slave killed by an ox', 'T'], ['Fifty from a rapist', 'T'], ['A hundred from the slanderer', 'T'], ['A "sela" for a disrespectful slap', 'P']];
+      const box = document.createElement('div'); box.className = 'mt-4';
+      box.innerHTML = `<p class="t-text font-bold">Stamp each sum ${REF('50b.9', '50b:9–10')}</p>`;
+      sums.forEach(([s, a], i) => {
+        const row = document.createElement('div'); row.className = 'flex flex-wrap items-center gap-2 mt-2';
+        row.innerHTML = `<span class="t-text flex-1 min-w-[12rem]">${s}</span><button class="btn" data-a="T">Tyrian</button><button class="btn" data-a="P">Provincial</button>`;
+        let first = true;
+        $$('button', row).forEach(b => b.addEventListener('click', () => {
+          const ok = b.dataset.a === a; tally('sum' + i, ok && first); first = false; b.classList.add(ok ? 'ok' : 'no');
+          if (ok) $$('button', row).forEach(x => x.disabled = true);
+        }));
+        box.appendChild(row);
+      });
+      host.appendChild(box);
+    }
+    drawChal(); drawHand();
+
+    /* ---------- 6. Coin field ---------- */
+    const cv = $('#field'), cx = cv.getContext('2d');
+    let pool = 'world', profaned = false;
+    const rnd = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(7);
+    const dots = Array.from({ length: 900 }, () => ({ x: rnd(), y: rnd(), r: rnd(), j: rnd() }));
+    const drawField = () => {
+      const W = cv.width, H = cv.height; cx.clearRect(0, 0, W, H);
+      const n = pool === 'world' ? 900 : 140, share = pool === 'world' ? 0.012 : 0.35, rad = pool === 'world' ? 3.2 : 7;
+      for (let i = 0; i < n; i++) {
+        const d = dots[i]; const temple = d.r < share;
+        cx.beginPath(); cx.arc(12 + d.x * (W - 24), 12 + d.y * (H - 24), rad, 0, 7);
+        cx.fillStyle = temple ? (profaned ? '#b7c9c2' : '#e8c66b') : '#5d7a73';
+        cx.fill();
+        if (temple && !profaned) { cx.strokeStyle = '#fff3c4'; cx.lineWidth = 1.2; cx.stroke(); }
+      }
+      const el = $('#poolNote');
+      if (pool === 'world') note(el, `Rabbi Oshaya: they wanted to ban <i>all</i> the silver and gold in the world. The Gemara asks: <b>is Jerusalem the majority of the world?</b> A sliver of Temple metal can't forbid everything ${REF('50a.10')}.`, false);
+      else note(el, `Abaye: it was the worn-out dinars of Hadrian and Trajan, minted with a large share of the Temple treasury's metal. That's the pool they wanted to sequester ${REF('50a.10')}: the same coins Rabbi Yoḥanan's sum starts from.`, true);
+    };
+    $$('[data-pool]').forEach(b => b.addEventListener('click', () => { pool = b.dataset.pool; $$('[data-pool]').forEach(x => x.classList.toggle('on', x === b)); drawField(); }));
+    $('#verseBtn').addEventListener('click', () => { profaned = true; $('#verseHe').classList.remove('hidden'); $('#verseEn').classList.remove('hidden'); $('#verseBtn').disabled = true; drawField(); });
+    drawField();
+
+    /* ---------- Coda ---------- */
+    quiz($('#coda'), 'hanan', '', [
+      ['Paid with the worn dinar anyway', false, 'The man refused it.'],
+      ['Went to change it at the money-changer', false, 'Ḥanan had a quicker, nastier idea.'],
+      ['Struck him again, then handed over the whole dinar for both slaps', true, `Two half-dinar fines make one dinar ${'<a class="ref" href="https://www.sefaria.org/Bekhorot.51a.1" target="_blank" rel="noopener">51a:1</a>'}. Ḥanan the wicked, indeed.`],
+    ]);
+    register(1);
+  })();
+  </script>
+</Layout>
