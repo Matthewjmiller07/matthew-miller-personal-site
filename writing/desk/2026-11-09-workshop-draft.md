@@ -13,7 +13,7 @@ tags: next-issue, draft
 
 Shalom friends,
 
-This week the workshop got a 3D printer, so a lot of what shipped can now sit on your Shabbat table. There's a toy for every parsha, the Ten Plagues in kits, and a printer I took apart because it came without a power cord. Here's what shipped.
+This week a lot of what I built is made to come off a 3D printer and sit on your Shabbat table: a toy for every parsha and the Ten Plagues in kits. Plus a printer I took apart because it came without a power cord. Here's what shipped.
 
 ## 🧸 Headliner: A toy for every parsha, after Shadal
 
@@ -31,7 +31,7 @@ Every toy prints on a Bambu A1 mini with no supports. The page has a 3D viewer y
 
 ## 🐸 The Ten Plagues, as kits
 
-[Ten snap-together kits](https://theothermatthewmiller.com/3d/plagues), one per plague, on the same printer. There's a frog that has already split off a baby (Rashi's one frog), a clear hailstone that closes around a flame, and blood on the doorposts printed as a second colour.
+[Ten snap-together kits](https://theothermatthewmiller.com/3d/plagues), one per plague, built for the same printer. There's a frog that has already split off a baby (Rashi's one frog), a clear hailstone that closes around a flame, and blood on the doorposts printed as a second colour.
 
 Where the commentators disagree, you get a kit for each reading. Arov is R' Yehuda's wild animals or R' Nechemia's hornets and mosquitoes (Shemot Rabbah 11:3). Choshech is darkness over the land, or the Torah Temimah's bold suggestion (10:21) that it was a film over the pupil "the thickness of a dinar," which you could feel with your hand. That kit is an eye with a film you can take off.
 
@@ -47,9 +47,7 @@ He reads Hebrew too. Half an hour of audio takes about a minute, because a GPU d
 
 ## 🖨️ Taking apart a printer
 
-I got an old HP Photosmart C6180 without a power cord, so I'm [taking it apart](https://theothermatthewmiller.com/3d/printer-teardown) instead. The 3D model comes apart one step at a time, in the order of the real teardown, and you can click any part to see what it does.
-
-The surprise: **there are no stepper motors in it.** The carriage and the paper both run on cheap DC motors, and a clear strip and a clear disc printed with fine lines tell the printer exactly where they are. It also explains where the ink goes when the printer is just sitting there: into a felt pad.
+*(GIF: the model pulling apart and snapping back)* An old HP Photosmart C6180 showed up without a power cord, so I [took it apart](https://theothermatthewmiller.com/3d/printer-teardown) instead, in 3D, one step at a time, and you can click any part to see what it does. The surprise: **there are no stepper motors in it.** Cheap DC motors move the carriage and the paper, and a clear strip and a clear disc printed with fine lines tell the printer exactly where they are.
 
 ## 🪬 Tefillin Trials, World 2: the tefillin stand
 
@@ -66,10 +64,10 @@ Every level now ends with a leaderboard, and each shiur has [its own link](https
 - **Three new Parasha Books.** [Vayera](https://theothermatthewmiller.com/parasha-books/vayera), [Chayei Sarah](https://theothermatthewmiller.com/parasha-books/chayei-sarah) and [Toldot](https://theothermatthewmiller.com/parasha-books/toldot). The kids now get there by the Parsha Box, a little carved box on the Shabbat table that grows big enough to climb into. Still all peshat: where the Torah is silent, they wonder instead of filling in a midrash.
 - **Books.** [My library, online](https://theothermatthewmiller.com/books): every book on the shelf, plus the ones I'm giving away and keeping only as a scan. First one out the door: Areshes Shefoseinu (Los Angeles, 1942).
 - **Daf games for Bekhorot.** Including [Six Fingers, 248 Bones](https://theothermatthewmiller.com/daf/bekhorot-45) and [The Money-Changer's Bench](https://theothermatthewmiller.com/daf/bekhorot-50), where you stretch the shekel from twenty gera to twenty-four.
-- **Rav Asher Weiss quote cards.** [Ten new cards](https://theothermatthewmiller.com/rav-asher-weiss), including Rav Ovadia writing Yabia Omer at 32, and the longest siman in Choshen Mishpat meeting the longest chapter in Bereishit.
+- **Rav Asher Weiss quote cards.** [Ten new cards](https://theothermatthewmiller.com/rav-asher-weiss), including [Rav Ovadia writing Yabia Omer at 32](https://theothermatthewmiller.com/rav-asher-weiss#q64), and the longest siman in Choshen Mishpat meeting the longest chapter in Bereishit.
 - **Melachim, read and filmed.** Every day's 929 chapter, 1 Kings 19 through 2 Kings 2, as a [full reading](https://theothermatthewmiller.com/audio/929-full/melakhim2-2.mp3) and a [lip-synced film](https://theothermatthewmiller.com/video/929-lipsync/melakhim2-2.mp4). Elijah goes up in the whirlwind this week.
 
-**Numbers:** 54 parsha toys · 10 plague kits · 0 stepper motors · 3 new Parasha Books · 5 arms at the tefillin stand
+**Numbers:** 54 parsha toys · 10 plague kits · 0 stepper motors · 3 new Parasha Books
 
 Reply and tell me which parsha toy you'd print first, or what Ross should read you. I really do read every reply.
 
@@ -80,7 +78,8 @@ Matthew
 
 <!-- Notes for Matthew (not part of the email):
 - Built from next-issue.md, /everything (Nov 1–8) and live desk_items. No live notes from you this week beyond the pipeline items.
-- Verify before sending: the "5 arms" count (lefty, ambidextrous, mixed, two soldiers) and the Rav Asher Weiss card count (10 between Nov 2–6 per /everything).
+- Model pills (from commit trailers / session records): Opus 5.5 for parsha toys, plagues, Ross, printer, Tefillin World 2, Parasha Books, Books, Bekhorot 50; Sonnet 5.5 for Bekhorot 45. Ross voices: Kokoro + Google WaveNet. Parasha Books art: FLUX.2 [klein] 9B, trailers MiniMax. Melachim audio: Chatterbox.
+- Rav Ovadia card (q64): from Rav Asher Weiss, Parashat Bereshit 5781 (TorahAnytime 127376, 09:49): "אברך צעיר בן 32 — ספר עמוס וגדוש בתשובות של גדול בישראל."
 - Hero image candidate: a render of the parsha toys plate or the Ten Plagues frog-and-baby kit.
 - Daf games: only Bekhorot 45, 46, 49, 50 exist on disk for 44–50, so the bullet doesn't claim a range.
 -->
