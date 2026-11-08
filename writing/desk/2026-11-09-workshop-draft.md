@@ -82,3 +82,5 @@ Matthew
 - Hero image candidate: a render of the parsha toys plate or the Ten Plagues frog-and-baby kit.
 - Daf games: only Bekhorot 45, 46, 49, 50 exist on disk for 44–50, so the bullet doesn't claim a range.
 -->
+
+<!-- Sponsor (added for the send): DoppelGifter, placed after the Ten Plagues. "Yaakov needed goatskin. You just need a tie." Image: Yaakov in goatskin sleeves and a lentil-stew necktie serving Yitzchak, Rivka thumbs-up (FLUX.2 [klein] 9B). Links to doppelgifter.com/parsha-ties/, code YUD. Discloses it's Matthew's own shop. -->
