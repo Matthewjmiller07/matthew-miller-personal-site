@@ -63,7 +63,7 @@ Every level now ends with a leaderboard, and each shiur has [its own link](https
 
 ## ⚡ Also this week
 
-- **Three new Parasha Books.** [Vayera](https://theothermatthewmiller.com/parasha-books/vayera), [Chayei Sarah](https://theothermatthewmiller.com/parasha-books/chayei-sarah) and [Toldot](https://theothermatthewmiller.com/parasha-books/toldot). The girls now get there by the Parsha Box, a little carved box on the Shabbat table that grows big enough to climb into. Still all peshat: where the Torah is silent, they wonder instead of filling in a midrash.
+- **Three new Parasha Books.** [Vayera](https://theothermatthewmiller.com/parasha-books/vayera), [Chayei Sarah](https://theothermatthewmiller.com/parasha-books/chayei-sarah) and [Toldot](https://theothermatthewmiller.com/parasha-books/toldot). The kids now get there by the Parsha Box, a little carved box on the Shabbat table that grows big enough to climb into. Still all peshat: where the Torah is silent, they wonder instead of filling in a midrash.
 - **Books.** [My library, online](https://theothermatthewmiller.com/books): every book on the shelf, plus the ones I'm giving away and keeping only as a scan. First one out the door: Areshes Shefoseinu (Los Angeles, 1942).
 - **Daf games for Bekhorot.** Including [Six Fingers, 248 Bones](https://theothermatthewmiller.com/daf/bekhorot-45) and [The Money-Changer's Bench](https://theothermatthewmiller.com/daf/bekhorot-50), where you stretch the shekel from twenty gera to twenty-four.
 - **Rav Asher Weiss quote cards.** [Ten new cards](https://theothermatthewmiller.com/rav-asher-weiss), including Rav Ovadia writing Yabia Omer at 32, and the longest siman in Choshen Mishpat meeting the longest chapter in Bereishit.
