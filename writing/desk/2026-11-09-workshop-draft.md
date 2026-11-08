@@ -63,7 +63,7 @@ Every level now ends with a leaderboard, and each shiur has [its own link](https
 
 - **Books.** [My library, online](https://theothermatthewmiller.com/books): every book on the shelf, plus the ones I'm giving away and keeping only as a scan. First one out the door: Areshes Shefoseinu (Los Angeles, 1942).
 - **Daf games for Bekhorot.** Including [Six Fingers, 248 Bones](https://theothermatthewmiller.com/daf/bekhorot-45) and [The Money-Changer's Bench](https://theothermatthewmiller.com/daf/bekhorot-50), where you stretch the shekel from twenty gera to twenty-four.
-- **Rav Asher Weiss quote cards.** [Ten new cards](https://theothermatthewmiller.com/rav-asher-weiss), including [Rav Ovadia writing Yabia Omer at 32](https://theothermatthewmiller.com/rav-asher-weiss#q64), and the longest siman in Choshen Mishpat meeting the longest chapter in Bereishit.
+- **Rav Asher Weiss quote cards.** [Ten new cards](https://theothermatthewmiller.com/rav-asher-weiss), including [Rav Ovadia writing Yabia Omer in his early 30s](https://theothermatthewmiller.com/rav-asher-weiss#q64), and the longest siman in Choshen Mishpat meeting the longest chapter in Bereishit.
 - **Melachim, read and filmed.** Every day's 929 chapter, 1 Kings 19 through 2 Kings 2, as a [full reading](https://theothermatthewmiller.com/audio/929-full/melakhim2-2.mp3) and a [lip-synced film](https://theothermatthewmiller.com/video/929-lipsync/melakhim2-2.mp4). Elijah goes up in the whirlwind this week.
 
 **Numbers:** 54 parsha toys · 10 plague kits · 0 stepper motors · 10 quote cards
