@@ -1,0 +1,270 @@
+---
+import Layout from '../layouts/Layout.astro';
+import data from '../data/taz-bach/citations.json';
+
+const pageTitle = 'Does the Taz Mostly Disagree with the Bach?';
+const pageDescription = 'Testing Rav Asher Weiss’s remark that most of the time the Taz quotes the Bach, he disagrees with him — by counting all 499 places the Taz cites his father-in-law and classifying a random sample of 60, with an independent check by TypeSafe’s Jev.';
+
+const { results, citations } = data;
+const mine = results.mine;
+const jev = results.jev;
+
+const verdictLabel = { disagree: 'Disagrees', agree: 'Agrees', neutral: 'Neutral' };
+const verdictClass = {
+  disagree: 'bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-100',
+  agree: 'bg-green-100 text-green-900 dark:bg-green-900/40 dark:text-green-100',
+  neutral: 'bg-stone-200 text-stone-700 dark:bg-stone-700 dark:text-stone-200',
+};
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+  <main class="max-w-5xl mx-auto px-4 py-10">
+    <header class="mb-8">
+      <p class="text-sm uppercase tracking-widest opacity-60 mb-2">A statistical check · 8 November 2026</p>
+      <h1 class="text-3xl md:text-4xl font-bold mb-3">Does the Taz Mostly Disagree with the Bach?</h1>
+      <p class="text-lg opacity-80 max-w-3xl">
+        In his shiur on <em>Parshat Toldot: Indirectly Causing an Obstacle</em>, Rav Asher Weiss
+        said of the Taz and the Bach — father-in-law and son-in-law — “I didn't check it out
+        statistically, but I think most of the times the Taz quotes the Bach, he disagrees with
+        him.” This page is the statistical check he didn't do.
+      </p>
+      <p class="mt-3 text-sm opacity-70">
+        The shiur:
+        <a class="underline hover:no-underline" href="https://yutorah-rss.netlify.app/transcripts/#265883@00:08:28" target="_blank" rel="noopener">transcript, 8:28</a>
+        · <a class="underline hover:no-underline" href="https://www.torahanytime.com/lectures/265883" target="_blank" rel="noopener">TorahAnytime lecture 265883</a>
+      </p>
+    </header>
+
+    <section class="mb-10 rounded-xl border border-current/20 p-5 md:p-6">
+      <h2 class="text-xl font-bold mb-2">The verdict: mostly yes — but it depends where you look</h2>
+      <p class="mb-3">
+        In a random sample of <strong>60</strong> places where the Taz cites the Bach, he
+        <strong>disagrees 30 times, agrees 20, and takes no position 10</strong>.
+        Among the 50 citations where he takes a position at all, he disagrees
+        <strong>60% of the time</strong> (95% confidence interval 46–72%).
+        TypeSafe's Jev, classifying the same 60 independently, got nearly the same headline:
+        <strong>29 disagree, 16 agree, 15 neutral — 64%</strong> among position-takers.
+      </p>
+      <p>
+        But the pattern is not uniform. In <strong>Even HaEzer he disagrees in 10 of 11</strong>
+        position-taking citations (91%). In <strong>Orach Chaim he agrees slightly more often
+        than he disagrees</strong> (12 agree, 11 disagree). The “mostly disagrees” is real,
+        and it lives mostly in Even HaEzer.
+      </p>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">How it was counted</h2>
+      <ol class="list-decimal ml-6 space-y-2 max-w-3xl">
+        <li>
+          <strong>Source.</strong> The full Hebrew text of the Taz (<em>Turei Zahav</em>) on all
+          four parts of Shulchan Arukh, from Sefaria — 1,705 simanim, fetched siman by siman.
+        </li>
+        <li>
+          <strong>Finding the Bach.</strong> There are 794 references to the Bach in the Taz.
+          The trap: the abbreviation <span dir="rtl" lang="he">ב״ח</span> usually does
+          <em>not</em> mean the Bach — in the Taz it is mostly <span dir="rtl" lang="he">בעל חוב</span> (a
+          creditor), and also <span dir="rtl" lang="he">בבא בתרא</span>, <span dir="rtl" lang="he">ברכת חתנים</span>
+          and <span dir="rtl" lang="he">בן חורין</span>. Only about 30% of
+          <span dir="rtl" lang="he">ב״ח</span> tokens are the Bach at all. The clean population is
+          <span dir="rtl" lang="he">מו״ח</span> — “my teacher, my father-in-law” — which is
+          unambiguously the Bach: <strong>499 occurrences</strong> (Orach Chaim 216, Yoreh De'ah 191,
+          Even HaEzer 90, Choshen Mishpat 2).
+        </li>
+        <li>
+          <strong>Sample.</strong> A random sample of 60 <span dir="rtl" lang="he">מו״ח</span> citations
+          (seed 5787), each read in context and classified <em>disagree / agree / neutral</em>.
+          “Neutral” covers citations where the Taz reports the Bach, and cases where he answers
+          the Bach's difficulty without ruling on the Bach's position. Later editor glosses
+          (<span dir="rtl" lang="he">דברי המגיה</span>) were excluded.
+        </li>
+        <li>
+          <strong>Independent check.</strong> Jev (jev-1.14.0) classified the same 60 passages.
+          It agreed on 38 of 60 (63%) — see below.
+        </li>
+        <li>
+          <strong>Cross-check.</strong> An earlier 60-sample drawn before Orach Chaim was fetched
+          (Yoreh De'ah / Even HaEzer / Choshen Mishpat only) gave 28 disagree, 21 agree, 11 neutral —
+          the same direction.
+        </li>
+      </ol>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">By section</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-current/20">
+              <th class="py-2 pr-4">Section</th>
+              <th class="py-2 pr-4">Sampled</th>
+              <th class="py-2 pr-4">Disagree</th>
+              <th class="py-2 pr-4">Agree</th>
+              <th class="py-2 pr-4">Neutral</th>
+              <th class="py-2">Disagree, of those taking a position</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-current/10"><td class="py-2 pr-4">Orach Chaim</td><td class="py-2 pr-4">28</td><td class="py-2 pr-4">11</td><td class="py-2 pr-4">12</td><td class="py-2 pr-4">5</td><td class="py-2">48%</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-4">Yoreh De'ah</td><td class="py-2 pr-4">18</td><td class="py-2 pr-4">9</td><td class="py-2 pr-4">7</td><td class="py-2 pr-4">2</td><td class="py-2">56%</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-4">Even HaEzer</td><td class="py-2 pr-4">14</td><td class="py-2 pr-4">10</td><td class="py-2 pr-4">1</td><td class="py-2 pr-4">3</td><td class="py-2">91%</td></tr>
+            <tr class="font-bold"><td class="py-2 pr-4">Total</td><td class="py-2 pr-4">60</td><td class="py-2 pr-4">30</td><td class="py-2 pr-4">20</td><td class="py-2 pr-4">10</td><td class="py-2">60%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-3 text-sm opacity-70 max-w-3xl">
+        Choshen Mishpat has only 2 <span dir="rtl" lang="he">מו״ח</span> citations in the whole
+        Taz, and neither fell in the sample — the Bach is cited there almost entirely as
+        <span dir="rtl" lang="he">ב״ח</span>, where he is indistinguishable from a creditor without reading.
+      </p>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">Three moments that show the range</h2>
+      <div class="space-y-5 max-w-3xl">
+        <div>
+          <p class="font-semibold">The bluntest disagreement — Yoreh De'ah 98:7</p>
+          <p>
+            The one place the Bach is spelled out in full — <span dir="rtl" lang="he">בספר בית חדש פסק מו״ח ז״ל</span> —
+            he rules leniently, that after the fact the food is permitted. The Taz answers:
+            <span dir="rtl" lang="he">ולע״ד נראה דלא להקל כלל בזה</span> — “in my humble opinion, one should
+            not be lenient in this at all.”
+          </p>
+        </div>
+        <div>
+          <p class="font-semibold">The sharpest language — Even HaEzer 129:25</p>
+          <p>
+            On the Bach's ruling about a get: <span dir="rtl" lang="he">מכשול יצא מתחת ידי מו״ח ז״ל בזה</span> —
+            “a stumbling block came from under the Bach's hand in this.” The Taz says the Bach
+            himself was not happy with it.
+          </p>
+        </div>
+        <div>
+          <p class="font-semibold">The reverse — Yoreh De'ah 204:5</p>
+          <p>
+            The Taz presented his reading to the Bach in person after the Bach had printed his
+            work — <span dir="rtl" lang="he">והסכים לדברי ואמר בפירוש שרמ״א טעה בכך</span> — “and he agreed
+            with my words, and said explicitly that the Rema had erred in this.” Sometimes the
+            father-in-law conceded.
+          </p>
+        </div>
+        <div>
+          <p class="font-semibold">The shiur's own case — Yoreh De'ah 147</p>
+          <p>
+            The dispute Weiss was teaching — whether a non-Jew may say thank you to idolatry —
+            leaves no named trace: the Taz's comment on Yoreh De'ah 147 never mentions the Bach
+            at all. The disagreement there is substantive, not a citation.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">The Jev check — same headline, different mistakes</h2>
+      <p class="max-w-3xl mb-3">
+        Jev classified the same 60 passages: 29 disagree, 16 agree, 15 neutral. Its headline
+        matches (64% disagree among position-takers, against my 60%), and it agreed with my
+        verdict on 38 of 60. But it is more cautious than a human reader — it called 15
+        citations neutral where I called 10 — and it misreads characteristic Taz idiom:
+        <span dir="rtl" lang="he">יפה הקשה</span> (“he asked well” — praise, not a fight),
+        <span dir="rtl" lang="he">ובחנם</span> (“for nothing” — a dismissal),
+        <span dir="rtl" lang="he">ולא כדעת</span> (“not like the view of” — an explicit disagreement).
+        Four of its five most confident disagreements with me are wrong on the Hebrew.
+      </p>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">Caveats</h2>
+      <ul class="list-disc ml-6 space-y-2 max-w-3xl">
+        <li>
+          Sixty is a small sample: the disagree share among position-takers is 60%, but the 95%
+          confidence interval runs 46–72%. “Most” is supported; a landslide is not.
+        </li>
+        <li>
+          Each verdict rests on roughly 600 characters around the citation. Longer context could
+          flip a few — the contested ones are marked in the table where Jev and I differ.
+        </li>
+        <li>
+          “Disagree” covers a range, from the blunt <span dir="rtl" lang="he">דזה אינו</span> (“this is
+          not so”) to the mild <span dir="rtl" lang="he">בחנם</span> (“for nothing” — the Bach's
+          move was unnecessary) and <span dir="rtl" lang="he">לא נהירא</span> (“it is not clear to me”).
+        </li>
+        <li>
+          The Taz often answers the Bach's difficulty rather than ruling on it; those are counted
+          neutral, which is why the disagree share is higher among position-takers (60%) than
+          across all citations (50%).
+        </li>
+      </ul>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">All 60 citations</h2>
+      <div class="mb-4 flex flex-wrap gap-2 text-sm" id="filters">
+        <button class="filter-btn px-3 py-1 rounded-full border border-current/30" data-filter="all">All · 60</button>
+        <button class="filter-btn px-3 py-1 rounded-full border border-current/30" data-filter="disagree">Disagree · 30</button>
+        <button class="filter-btn px-3 py-1 rounded-full border border-current/30" data-filter="agree">Agree · 20</button>
+        <button class="filter-btn px-3 py-1 rounded-full border border-current/30" data-filter="neutral">Neutral · 10</button>
+        <button class="filter-btn px-3 py-1 rounded-full border border-current/30" data-filter="differ">Muse–Jev differ · 22</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm" id="citeTable">
+          <thead>
+            <tr class="border-b border-current/20">
+              <th class="py-2 pr-3">#</th>
+              <th class="py-2 pr-3">Source</th>
+              <th class="py-2 pr-3">Passage</th>
+              <th class="py-2 pr-3">Taz vs Bach</th>
+              <th class="py-2">Jev</th>
+            </tr>
+          </thead>
+          <tbody>
+            {citations.map((c) => (
+              <tr class="border-b border-current/10 align-top cite-row" data-verdict={c.mine} data-differ={String(!c.agree)}>
+                <td class="py-2 pr-3 whitespace-nowrap opacity-70">{c.id}</td>
+                <td class="py-2 pr-3 whitespace-nowrap">
+                  <a class="underline hover:no-underline" href={c.url} target="_blank" rel="noopener">{c.ref}</a>
+                </td>
+                <td class="py-2 pr-3" dir="rtl" lang="he">{c.hebrew}</td>
+                <td class="py-2 pr-3 whitespace-nowrap">
+                  <span class={`px-2 py-0.5 rounded-full text-xs font-semibold ${verdictClass[c.mine]}`}>{verdictLabel[c.mine]}</span>
+                </td>
+                <td class="py-2 whitespace-nowrap">
+                  <span class={`px-2 py-0.5 rounded-full text-xs font-semibold ${verdictClass[c.jev]}`}>{verdictLabel[c.jev]}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mb-6 text-sm opacity-70 max-w-3xl">
+      <h2 class="text-base font-bold mb-2 opacity-100">Sources</h2>
+      <p>
+        Taz text: Sefaria, <em>Turei Zahav on Shulchan Arukh</em> (Ashlei Ravrevei, Lemberg 1888).
+        The claim: Rav Asher Weiss, “Parshat Toldot: Indirectly Causing an Obstacle,” 16 November 2023,
+        at 8:28 — <a class="underline hover:no-underline" href="https://yutorah-rss.netlify.app/transcripts/#265883@00:08:28" target="_blank" rel="noopener">transcript</a>.
+        Classification: a random sample of 60 of the 499 <span dir="rtl" lang="he">מו״ח</span> citations
+        (seed 5787), read in context; Jev (jev-1.14.0) classified the same 60 independently.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    const btns = document.querySelectorAll('.filter-btn');
+    const rows = document.querySelectorAll('.cite-row');
+    btns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const f = btn.getAttribute('data-filter');
+        rows.forEach((row) => {
+          let show = true;
+          if (f === 'differ') show = row.getAttribute('data-differ') === 'true';
+          else if (f !== 'all') show = row.getAttribute('data-verdict') === f;
+          row.style.display = show ? '' : 'none';
+        });
+        btns.forEach((b) => b.classList.remove('opacity-100', 'font-bold'));
+        btn.classList.add('opacity-100', 'font-bold');
+      });
+    });
+  </script>
+</Layout>
