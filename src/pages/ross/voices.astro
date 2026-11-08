@@ -1,0 +1,165 @@
+---
+// Voice test for Ross Reads It: the same paragraph of the ethics textbook read by 11 voices, with prices.
+// Unlisted: not in the sitemap, noindex. Clips in public/ross/voices, all made on Replicate on 8 Nov 2026.
+import Layout from '../../layouts/Layout.astro';
+
+const passage =
+  'Individuals who come to psychologists for assessment, counseling, or therapy are often either receiving or in need of collateral medical, legal, educational, or social services. Collaboration and consultation with, and referral to, other professionals are thus often necessary to serve the best interests of clients/patients. Standard 3.09 requires psychologists to cooperate with other professionals when it is appropriate and will help serve the client/patient most effectively.';
+
+// A 300-page textbook is about 850,000 characters, about 15.5 hours at Ross's pace (915 characters a minute).
+const BOOK_CHARS = 850_000;
+const HOUR_CHARS = 915 * 60;
+
+interface Voice {
+  file: string;
+  name: string;
+  model: string;
+  perMillion: number; // dollars per million characters
+  estimate?: boolean;
+  pitch: number; // standard deviation of pitch, in semitones: higher means less monotone
+  note: string;
+  current?: boolean;
+}
+
+const voices: Voice[] = [
+  { file: 'kokoro-michael', name: 'Kokoro · Michael', model: 'jaaari/kokoro-82m (am_michael)', perMillion: 0.4, pitch: 3.3, current: true,
+    note: 'What Ross uses now. A small open model on a cheap GPU, which is why a whole book costs pennies. Steady and even, and the voice people called monotonous.' },
+  { file: 'kokoro-george', name: 'Kokoro · George', model: 'jaaari/kokoro-82m (bm_george)', perMillion: 0.4, pitch: 3.0,
+    note: 'British male, same model and price. The flattest of the eleven by the numbers.' },
+  { file: 'kokoro-bella', name: 'Kokoro · Bella', model: 'jaaari/kokoro-82m (af_bella)', perMillion: 0.4, pitch: 4.4,
+    note: 'American female, same model and price. Clearly more movement than Michael: the free fix, if a voice change is enough.' },
+  { file: 'inworld', name: 'Inworld TTS-2 · Dennis', model: 'inworld/realtime-tts-2', perMillion: 25, pitch: 3.6,
+    note: 'Built for voice agents. Takes bracketed directions like [say warmly] and reads Hebrew too, so one engine could cover both languages.' },
+  { file: 'chatterbox-turbo', name: 'Chatterbox Turbo · Brian', model: 'resemble-ai/chatterbox-turbo', perMillion: 25, estimate: true, pitch: 3.9,
+    note: 'The family behind the Melachim audio. 500 characters a request, so Ross would have to cut text into smaller pieces.' },
+  { file: 'gemini', name: 'Gemini 3.8 Flash TTS · Charon', model: 'google/gemini-3.8-flash-tts', perMillion: 33, pitch: 5.3,
+    note: 'Directed as "an engaging lecturer reading a textbook aloud: warm, clear, with natural emphasis". The most pitch movement of the eleven, and the style line can be tuned.' },
+  { file: 'elevenlabs-turbo', name: 'ElevenLabs Turbo v2.5 · Roger', model: 'elevenlabs/turbo-v2.5', perMillion: 50, pitch: 3.4,
+    note: 'ElevenLabs\' fast, cheaper tier. Polished, but by the numbers barely livelier than Kokoro.' },
+  { file: 'minimax-turbo', name: 'MiniMax Speech 2.8 Turbo · Deep-Voiced Gentleman', model: 'minimax/speech-2.8-turbo', perMillion: 60, pitch: 3.1,
+    note: 'Deep, low, audiobook-style male voice. Flat by the numbers, which suits the voice more than the brief.' },
+  { file: 'qwen3', name: 'Qwen3 TTS · Ryan', model: 'qwen/qwen3-tts', perMillion: 65, estimate: true, pitch: 5.3,
+    note: 'Open model with the same "engaging lecturer" direction. Lively, but billed by GPU time and about as slow as real time (31 seconds for this clip).' },
+  { file: 'minimax-hd', name: 'MiniMax Speech 2.8 HD · Wise Lady', model: 'minimax/speech-2.8-hd', perMillion: 100, pitch: 4.6,
+    note: 'MiniMax\'s top tier: a measured, older female narrator. Slowest pace of the eleven (37 seconds).' },
+  { file: 'elevenlabs-v3', name: 'ElevenLabs v3 · Roger', model: 'elevenlabs/v3', perMillion: 100, pitch: 5.0,
+    note: 'ElevenLabs\' most expressive model, the usual benchmark for audiobooks. Same voice as the Turbo clip above, so the two show what the model adds.' },
+];
+
+const money = (n: number) => (n < 1 ? `${Math.round(n * 100)}¢` : `$${n < 10 ? n.toFixed(2) : Math.round(n)}`);
+const maxPitch = Math.max(...voices.map((v) => v.pitch));
+---
+
+<Layout title="Ross voice test" description="One paragraph of a textbook, read by eleven voices, with what each would cost.">
+  <meta name="robots" content="noindex, nofollow" slot="head" />
+
+  <main class="vt">
+    <header>
+      <p class="vt-kicker">Ross Reads It · voice test</p>
+      <h1>Eleven voices, one paragraph</h1>
+      <p>
+        Ross's voice was called too monotonous for a textbook. Here is the same paragraph from <cite>Decoding the Ethics
+        Code</cite> (p. 194), read by eleven voices, cheapest first after the current one. Each clip cost about a cent or two.
+      </p>
+      <blockquote>{passage}</blockquote>
+    </header>
+
+    <ol class="vt-list">
+      {voices.map((v) => (
+        <li class:list={['vt-card', { 'is-current': v.current }]}>
+          <div class="vt-top">
+            <h2>{v.name}{v.current && <span class="vt-badge">now</span>}</h2>
+            <span class="vt-price">${v.perMillion < 1 ? v.perMillion.toFixed(2) : v.perMillion}/1M chars{v.estimate && ' (est.)'}</span>
+          </div>
+          <audio controls preload="none" src={`/ross/voices/${v.file}.mp3`}></audio>
+          <p>{v.note}</p>
+          <dl>
+            <div><dt>An hour of audio</dt><dd>{money((v.perMillion * HOUR_CHARS) / 1e6)}</dd></div>
+            <div><dt>A 300-page textbook</dt><dd>{money((v.perMillion * BOOK_CHARS) / 1e6)}</dd></div>
+            <div>
+              <dt>Pitch movement</dt>
+              <dd><span class="vt-bar" style={`--w:${(v.pitch / maxPitch) * 100}%`}></span>{v.pitch.toFixed(1)}</dd>
+            </div>
+          </dl>
+          <p class="vt-model">{v.model}</p>
+        </li>
+      ))}
+    </ol>
+
+    <section class="vt-notes">
+      <h2>How to read this</h2>
+      <ul>
+        <li>
+          <strong>Pitch movement</strong> is how much each voice's pitch varies over the clip, in semitones (the standard
+          deviation, measured with Praat). Monotone speech scores low. It doesn't measure pacing or emphasis, so trust your ears over it.
+        </li>
+        <li>
+          <strong>Prices</strong> are list rates per million characters as of November 2026 (MiniMax and Google from their
+          own pricing, ElevenLabs and Inworld from published API rates). Replicate can differ slightly. Chatterbox and Qwen are
+          estimates: Qwen is billed by GPU time.
+        </li>
+        <li>
+          <strong>What it means for Ross:</strong> today the whole site is capped at 125,000 characters a day, about 5¢ with
+          Kokoro. The same cap would cost about $3 a day at $25/1M, $4 at Gemini's rate and $12.50 with ElevenLabs v3. So a
+          better voice either goes to whole books only, or the free allowance shrinks.
+        </li>
+        <li>
+          Every clip uses the voice's default speed. Gemini and Qwen were given the same one-line direction, and the rest have
+          no styling.
+        </li>
+      </ul>
+    </section>
+  </main>
+</Layout>
+
+<style>
+  .vt {
+    --ink: #10133f;
+    --blue: #1b2bd8;
+    --sun: #ffc92e;
+    --paper: #fffdf4;
+    --line: #d9d6c3;
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 2rem 1rem 4rem;
+    background: #f6f4ea;
+    border-radius: 16px;
+    color: var(--ink);
+    font-family: 'Atkinson Hyperlegible', system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  .vt.vt :is(h1, h2, p, li, dt, dd, span, blockquote, cite, strong) { color: var(--ink) !important; }
+  .vt.vt .vt-kicker { font-weight: 700; color: var(--blue) !important; margin: 0; letter-spacing: 0.02em; }
+  .vt h1 { font-size: clamp(2rem, 6vw, 3rem); line-height: 1.05; margin: 0.25rem 0 1rem; font-weight: 800; }
+  .vt blockquote {
+    margin: 1.25rem 0 2rem;
+    padding: 1rem 1.25rem;
+    background: var(--paper);
+    border-left: 4px solid var(--sun);
+    font-family: Georgia, serif;
+    font-size: 0.95rem;
+  }
+  .vt-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; }
+  .vt-card { border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.25rem; background: #fff; }
+  .vt-card.is-current { border: 2px solid var(--blue); }
+  .vt-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.25rem 1rem; }
+  .vt h2 { font-size: 1.15rem; margin: 0; font-weight: 800; }
+  .vt.vt .vt-badge {
+    margin-left: 0.5rem; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 99px;
+    background: var(--blue); color: #fff !important; vertical-align: middle;
+  }
+  .vt-price { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .vt audio { width: 100%; margin: 0.75rem 0 0.25rem; }
+  .vt-card p { margin: 0.5rem 0; }
+  .vt dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; margin: 0.75rem 0 0.25rem; }
+  .vt dt { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; }
+  .vt dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 0.4rem; }
+  .vt-bar { display: inline-block; height: 0.5rem; width: calc(var(--w) * 0.6); background: var(--sun); border-radius: 4px; }
+  .vt-model { font-family: ui-monospace, monospace; font-size: 0.75rem; opacity: 0.6; }
+  .vt-notes { margin-top: 2.5rem; }
+  .vt-notes h2 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+  .vt-notes li { margin-bottom: 0.6rem; }
+  @media (max-width: 520px) {
+    .vt dl { grid-template-columns: 1fr 1fr; }
+  }
+</style>

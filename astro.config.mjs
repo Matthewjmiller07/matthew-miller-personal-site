@@ -20,7 +20,8 @@ export default defineConfig({
         !page.includes('/dweck-sukkot-picks') &&
         !page.includes('/desk') &&
         !page.includes('/everything') &&
-        !page.includes('/ross/kit'),
+        !page.includes('/ross/kit') &&
+        !page.includes('/ross/voices'),
     })
   ],
   vite: {
