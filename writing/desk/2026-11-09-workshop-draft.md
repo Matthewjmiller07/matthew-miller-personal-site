@@ -83,4 +83,4 @@ Matthew
 - Daf games: only Bekhorot 45, 46, 49, 50 exist on disk for 44–50, so the bullet doesn't claim a range.
 -->
 
-<!-- Sponsor (added for the send): DoppelGifter, placed after the Ten Plagues. "Yaakov needed goatskin. You just need a tie." Image: Yaakov in goatskin sleeves and a lentil-stew necktie serving Yitzchak, Rivka thumbs-up (FLUX.2 [klein] 9B). Links to doppelgifter.com/parsha-ties/, code YUD. Discloses it's Matthew's own shop. -->
+<!-- Sponsor (added for the send): DoppelGifter, placed after the Ten Plagues. "Yaakov needed goatskin. You just need DoppelGifter." Image: Yaakov in goatskin sleeves and a lentil-stew necktie serving Yitzchak, Rivka thumbs-up (FLUX.2 [klein] 9B). Copy covers mugs, framed prints, phone cases and parsha ties; links to doppelgifter.com, code YUD. Discloses it's Matthew's own shop. -->
