@@ -1558,6 +1558,7 @@ a.w-gen-link:hover { background:var(--gold); color:#0c0b09; }
         <select class="mb-sel" id="allDevSel" aria-label="Device filter">
           <option value="">All Devices</option>
           <option value="__modern__">Modern Hebrew (all)</option>
+          <option value="__wondrous__">✦ Wondrous (tag)</option>
         </select>
         <span class="mb-nav-label">Section</span>
         <select class="mb-sel" id="allSectSel" aria-label="Section filter">
@@ -2376,15 +2377,30 @@ Promise.all([loadMorphData(), loadLemmaData(), loadHaftarah(), loadGraetz(), loa
   if (hasURLParams) restoreFromURL();
 }).catch(() => {});
 
+// Devices plus tagged rows (a tagged row may carry no device, e.g. the
+// Wondrous tag). Two simple server filters, merged client-side and deduped
+// by id — a row with both a device and a tag appears once.
+async function fetchExploreRows(): Promise<any[]> {
+  const headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+  const base = `${SUPABASE_URL}/rest/v1/literary_bible?select=id,book,chapter,verse,device,words,notes,my_comments,tags&order=book,chapter,verse`;
+  const [withDevice, withTag] = await Promise.all([
+    fetch(`${base}&device=not.is.null`, { headers }).then(r => r.ok ? r.json() : []),
+    fetch(`${base}&tags=not.is.null`, { headers }).then(r => r.ok ? r.json() : []),
+  ]);
+  const seen = new Set<number>();
+  const rows: any[] = [];
+  for (const r of [...withDevice, ...withTag]) {
+    if (r.id != null && seen.has(r.id)) continue;
+    if (r.id != null) seen.add(r.id);
+    rows.push(r);
+  }
+  return rows;
+}
+
 async function loadAllDevices() {
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
   try {
-    const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,notes,my_comments&device=not.is.null&order=book,chapter,verse`,
-      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
-    );
-    if (!r.ok) return;
-    allDevicesData = await r.json();
+    allDevicesData = await fetchExploreRows();
     updateDevicePills(allDevicesData);
     // Populate allDevSel with unique devices
     const devicesSeen = new Set<string>();
@@ -3453,11 +3469,7 @@ async function handleAllDevicesLoad() {
   let rows: any[] = allDevicesData;
   if (!rows.length) {
     try {
-      const r = await fetch(
-        `${SUPABASE_URL}/rest/v1/literary_bible?select=book,chapter,verse,device,words,notes,my_comments&device=not.is.null&order=book,chapter,verse`,
-        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
-      );
-      rows = await r.json();
+      rows = await fetchExploreRows();
       allDevicesData = rows;
     } catch {
       main.innerHTML = '<div class="mb-placeholder">Error loading devices.</div>';
@@ -3480,6 +3492,8 @@ async function handleAllDevicesLoad() {
       notes: modernKind(m.literary_device) + (m.comments ? ` — ${m.comments}` : ''),
       my_comments: undefined,
     }));
+  } else if (filterDev === '__wondrous__') {
+    filtered = rows.filter(r => (r.tags || []).includes('Wondrous'));
   } else {
     filtered = rows;
     if (filterDev) filtered = filtered.filter(r => (r.device || '').toLowerCase() === filterDev);
@@ -3499,7 +3513,7 @@ async function handleAllDevicesLoad() {
   // Context
   const ctx = document.createElement('div');
   ctx.className = 'mb-context';
-  const ctxLabel = filterDev === '__modern__' ? 'Modern Hebrew' : 'Literary Devices';
+  const ctxLabel = filterDev === '__modern__' ? 'Modern Hebrew' : filterDev === '__wondrous__' ? 'Wondrous' : 'Literary Devices';
   ctx.innerHTML = `<span>${ctxLabel}</span> · <span class="chip-count">${filtered.length}</span> annotations`;
   main.appendChild(ctx);
 
@@ -3519,11 +3533,13 @@ async function handleAllDevicesLoad() {
   filtered.forEach(row => {
     const div = document.createElement('div');
     div.className = 'dev-browser-row';
-    const color = deviceColor((row.device || '').toLowerCase());
+    const hasDevice = (row.device || '').trim();
+    const color = hasDevice ? deviceColor((row.device || '').toLowerCase()) : '#c9a227';
+    const deviceLabel = hasDevice ? row.device : ((row.tags || []).length ? '✦ ' + row.tags.join(', ') : '');
     div.innerHTML = `
       <div class="dev-browser-ref">${row.book}</div>
       <div class="dev-browser-ref">${row.book} ${row.chapter}:${row.verse}</div>
-      <div class="dev-browser-device" style="color:${color}">${row.device || ''}</div>
+      <div class="dev-browser-device" style="color:${color}">${deviceLabel}</div>
       <div style="font-family:var(--heb);direction:rtl;font-size:1rem">${row.words || ''}</div>
       <div>
         ${row.notes ? `<div style="font-style:italic;color:var(--muted);font-size:.78rem">${row.notes}</div>` : ''}
@@ -3552,7 +3568,7 @@ async function handleAllDevicesLoad() {
     main.appendChild(div);
   });
 
-  const unit = filterDev === '__modern__' ? 'note' : 'device';
+  const unit = filterDev === '__modern__' ? 'note' : filterDev === '__wondrous__' ? 'tag' : 'device';
   setStatus(`${filtered.length} ${unit}${filtered.length !== 1 ? 's' : ''}`);
 }
 
@@ -3796,12 +3812,13 @@ async function fetchDevices(book: string): Promise<any[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/literary_bible?select=id,book,chapter,verse,verse_end,focus_verse,focus_verse_end,device,words,sources,urls,notes,my_comments,book_paper,book_pages,book_notes&book=eq.${encodeURIComponent(book)}`,
+      `${SUPABASE_URL}/rest/v1/literary_bible?select=id,book,chapter,verse,verse_end,focus_verse,focus_verse_end,device,words,sources,urls,notes,my_comments,book_paper,book_pages,book_notes,tags&book=eq.${encodeURIComponent(book)}`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     if (!r.ok) return [];
     const rows: any[] = await r.json();
-    const devices = rows.filter(d => (d.device || '').trim());
+    // Device rows plus tagged rows (a tagged row may carry no device).
+    const devices = rows.filter(d => (d.device || '').trim() || (d.tags || []).length);
     supabaseCache.set(book, devices);
     booksCache.set(book, rows.filter(d => (d.book_paper || '').trim()));
     return devices;
@@ -5090,6 +5107,25 @@ function applyVerseVisibility() {
   renderCompareBar();
 }
 
+// Jump to the Wondrous collection: Explore mode, filtered to the tag.
+// Used by the left-sidebar Wondrous pill and by the ✦ badge on a verse.
+function showWondrousCollection() {
+  navMode = 'alldevices';
+  document.querySelectorAll('.mb-mode-btn').forEach(b => {
+    (b as HTMLElement).classList.toggle('active', (b as HTMLElement).dataset.mode === 'alldevices');
+  });
+  groupChapter.classList.add('hidden');
+  groupParsha.classList.add('hidden');
+  groupHaftarah.classList.add('hidden');
+  groupBechdel.classList.add('hidden');
+  groupAllDevices.classList.remove('hidden');
+  allDevSel.value = '__wondrous__';
+  allSectSel.value = '';
+  closeDetail();
+  handleLoad();
+  main.scrollTop = 0;
+}
+
 function updateDevicePills(allDevices: any[]) {
   devicePills.innerHTML = '';
   // Build count map from current passage if available. Counts occurrences
@@ -5132,6 +5168,21 @@ function updateDevicePills(allDevices: any[]) {
     return btn;
   };
   devicePills.appendChild(makeBtn('All', ''));
+  // Wondrous tag: a left-side filter that opens the whole collection
+  // (not a passage filter like the device pills). Count = how many
+  // Wondrous comments are collected in this list.
+  const wondrousCount = allDevices.filter(r => (r.tags || []).includes('Wondrous')).length;
+  if (wondrousCount) {
+    const wBtn = document.createElement('button');
+    wBtn.className = 'sb-pill' + (navMode === 'alldevices' && allDevSel.value === '__wondrous__' ? ' active' : '');
+    wBtn.textContent = '✦ Wondrous';
+    const wBadge = document.createElement('span');
+    wBadge.className = 'sb-pill-count';
+    wBadge.textContent = String(wondrousCount);
+    wBtn.appendChild(wBadge);
+    wBtn.addEventListener('click', showWondrousCollection);
+    devicePills.appendChild(wBtn);
+  }
   const seen = new Set<string>();
   allDevices.forEach(r => {
     const d = r.device?.toLowerCase();
@@ -5327,7 +5378,7 @@ async function renderRange(
     // The Commentator's Eye strip rides directly under the stats panel so a
     // range entry in this chapter is announced at the top, not found by luck.
     if (!appendMode) {
-      main.appendChild(buildStatsPanel(stats, devices.length));
+      main.appendChild(buildStatsPanel(stats, devices.filter(d => (d.device || '').trim()).length));
       const cbStrip = buildCbStrip(book, sc, sv, ec, ev);
       if (cbStrip) main.appendChild(cbStrip);
     }
@@ -5828,16 +5879,35 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     const seen = new Set<string>();
     devices.forEach(d => {
       const name = (d.device || '').toLowerCase();
-      if (seen.has(name)) return;
-      seen.add(name);
-      const color = deviceColor(name);
-      const badge = document.createElement('span');
-      badge.className = 'vdb-badge';
-      badge.style.background = color;
-      badge.style.color = '#111';
-      badge.title = d.notes || '';
-      badge.textContent = d.device || name;
-      badgesRow.appendChild(badge);
+      if (name) {
+        if (!seen.has(name)) {
+          seen.add(name);
+          const color = deviceColor(name);
+          const badge = document.createElement('span');
+          badge.className = 'vdb-badge';
+          badge.style.background = color;
+          badge.style.color = '#111';
+          badge.title = d.notes || '';
+          badge.textContent = d.device || name;
+          badgesRow.appendChild(badge);
+        }
+      }
+      // Tags are not devices: gold ✦ badge, one per tag. Clicking it
+      // opens the whole Wondrous collection.
+      (d.tags || []).forEach(t => {
+        const key = 'tag:' + String(t).toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        const badge = document.createElement('span');
+        badge.className = 'vdb-badge vdb-tag';
+        badge.style.background = '#c9a227';
+        badge.style.color = '#111';
+        badge.style.cursor = 'pointer';
+        badge.title = 'Click to see all Wondrous comments';
+        badge.textContent = '✦ ' + t;
+        badge.addEventListener('click', (e) => { e.stopPropagation(); showWondrousCollection(); });
+        badgesRow.appendChild(badge);
+      });
     });
     ref.appendChild(badgesRow);
   }
@@ -5977,7 +6047,9 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     // Device match
     if (matchedDevices.length) {
       const primaryDevice = matchedDevices[0];
-      const color = deviceColor(primaryDevice.device?.toLowerCase() || '');
+      const primaryName = (primaryDevice.device || '').toLowerCase();
+      // A tagged word with no device (e.g. Wondrous) highlights gold.
+      const color = primaryName ? deviceColor(primaryName) : '#c9a227';
       span.classList.add('has-dev');
       span.style.setProperty('--dev-color', color);
       // Semi-transparent background from the device color
@@ -6040,13 +6112,15 @@ function buildVerseBlock(verseNode: Element, book: string, ch: number, v: number
     fn.className = 'verse-footnotes';
     fn.dataset.focus = 'devices';
     devices.forEach(d => {
-      const color = deviceColor(d.device?.toLowerCase() || '');
+      const hasDevice = (d.device || '').trim();
+      const color = hasDevice ? deviceColor(d.device.toLowerCase()) : '#c9a227';
+      const label = hasDevice ? d.device : ((d.tags || []).length ? '✦ ' + d.tags.join(', ') : '');
       const srcParts = d.sources ? d.sources.split(';').map((s: string) => s.trim()) : [];
       const urlParts = d.urls    ? d.urls.split(';').map((u: string) => u.trim())    : [];
       const srcs = srcParts.map((s: string, i: number) =>
         urlParts[i] ? `<a href="${urlParts[i]}" target="_blank" rel="noopener" style="color:var(--gold-dim)">${s}</a>` : s
       ).join(', ');
-      fn.innerHTML += `<span class="fn-device" style="color:${color}">${d.device}</span>${srcs ? '(' + srcs + ')' : ''}${d.notes ? ' — ' + d.notes : ''}<br>`;
+      fn.innerHTML += `<span class="fn-device" style="color:${color}">${label}</span>${srcs ? '(' + srcs + ')' : ''}${d.notes ? ' — ' + d.notes : ''}<br>`;
     });
     fn.appendChild(focusShareEl('devices', book, ch, v));
     block.appendChild(fn);
@@ -6220,10 +6294,13 @@ function showDetail(text: string, lemma: string, morph: string, devices: any[], 
   }
   if (devices.length) {
     const devHtml = devices.map(d => {
-      const color = deviceColor(d.device?.toLowerCase() || '');
-      return `<span style="color:${color};font-weight:600">${d.device}</span>`;
+      const hasDevice = (d.device || '').trim();
+      const color = hasDevice ? deviceColor(d.device.toLowerCase()) : '#c9a227';
+      const label = hasDevice ? d.device : ((d.tags || []).length ? '✦ ' + d.tags.join(', ') : '');
+      return `<span style="color:${color};font-weight:600">${label}</span>`;
     }).join(' · ');
-    html += `<div class="mb-detail-devices"><strong style="color:var(--muted)">Device:</strong> ${devHtml}</div>`;
+    const hasTagOnly = devices.some(d => !(d.device || '').trim() && (d.tags || []).length);
+    html += `<div class="mb-detail-devices"><strong style="color:var(--muted)">${hasTagOnly ? 'Tag:' : 'Device:'}</strong> ${devHtml}</div>`;
   }
   if (modernEntries.length) {
     html += `<div class="mb-detail-modern"><div class="sb-title">Biblical → Modern Hebrew</div>${modernEntries.map(m => modernEntryHtml(m, true)).join('')}</div>`;
