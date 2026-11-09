@@ -1,0 +1,471 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Jubilee Surveyor — Daf Yomi Game: Bekhorot 52"
+  description="Bekhorot 52: ripen the field and decide who shares in the growth, place the yavam's harvest on Abaye's and Rava's timelines, blow the Jubilee shofar under three tannaim, redivide the brothers' field, and buy back the family graveyard."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --soil:#1b1810; --field:#2a2517; --line:#5c5233; --text:#f1ecdc; --mute:#c7bd9f; --wheat:#e8c769; --olive:#a9bf6e; --clay:#d68a5a; --good:#a6e3b5; --bad:#f4ab93; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .t-text { color: var(--text) !important; }
+    .t-mute { color: var(--mute) !important; }
+    .t-wheat { color: var(--wheat) !important; }
+    .t-olive { color: var(--olive) !important; }
+    .t-clay { color: var(--clay) !important; }
+    .t-good { color: var(--good) !important; }
+    .t-bad { color: var(--bad) !important; }
+    a.ref, .t-text a, .t-mute a { color: var(--wheat) !important; text-decoration: underline; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .55rem .8rem; font-size: .92rem; line-height: 1.4; text-align: start; background: transparent; color: var(--text) !important; }
+    .btn:hover:not(:disabled) { background: var(--field); }
+    .btn:disabled { cursor: default; opacity: .6; }
+    .btn.ok { background: #1f3f2a; border-color: var(--good); opacity: 1; }
+    .btn.no { background: #4b2318; border-color: var(--bad); opacity: 1; }
+    .btn.go { background: var(--wheat); border-color: var(--wheat); color: #1b1810 !important; font-weight: 700; }
+    .btn.go:hover:not(:disabled) { background: #fff0bf; }
+    .btn.on { border-color: var(--wheat); background: var(--field); box-shadow: inset 0 0 0 1px var(--wheat); }
+    button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--wheat); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .93rem; line-height: 1.65; margin-top: .75rem; }
+    .note.ok { border-color: var(--good); }
+    .note.no { border-color: var(--bad); }
+    .he { font-family: 'Frank Ruhl Libre', serif; direction: rtl; }
+    .quote { background: #221e13; border: 1px solid var(--line); border-radius: .5rem; padding: .8rem 1rem; }
+    input[type=range] { width: 100%; accent-color: var(--wheat); }
+
+    /* growing field */
+    .crop { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; align-items: end; height: 120px; padding: .5rem; border-radius: .6rem; background: linear-gradient(#2c3a22 0 70%, #4a3a22 70%); border: 1px solid var(--line); }
+    .stalk { border-radius: 3px 3px 0 0; background: var(--olive); transition: height .35s ease, background .35s ease; position: relative; }
+    .stalk.palm { background: #7d5b34; width: 40%; justify-self: center; }
+    .stalk .head { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 14px; height: 14px; border-radius: 50%; transition: background .35s, transform .35s; }
+
+    /* yavam timeline */
+    .tl { position: relative; height: 90px; margin: 1rem .5rem; }
+    .tl .axis { position: absolute; top: 45px; left: 0; right: 0; height: 4px; background: var(--line); border-radius: 2px; }
+    .tl .mk { position: absolute; top: 30px; width: 2px; height: 34px; background: var(--wheat); }
+    .tl .lbl { position: absolute; top: 68px; font-size: .75rem; transform: translateX(-50%); white-space: nowrap; color: var(--mute) !important; }
+    .tl .sprout { position: absolute; top: 4px; font-size: 1.5rem; transform: translateX(-50%); transition: left .5s ease; }
+    .zone { position: absolute; top: 40px; height: 14px; border-radius: 3px; opacity: .55; transition: background .3s; }
+
+    /* jubilee map */
+    .map { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .6rem; padding: .8rem; border-radius: .8rem; border: 1px solid var(--line); background: repeating-linear-gradient(135deg, #252012 0 14px, #221d10 14px 28px); }
+    .plot { position: relative; min-height: 118px; border: 2px solid #6d6140; border-radius: .5rem; padding: .55rem .6rem; background: #2f2a18; text-align: start; transition: transform .7s ease, opacity .7s, border-color .2s; }
+    .plot.pick { border-color: var(--wheat); box-shadow: inset 0 0 0 1px var(--wheat); background: #3a321b; }
+    .plot .flag { position: absolute; bottom: .4rem; inset-inline-end: .5rem; font-size: .75rem; font-weight: 700; }
+    .plot.fly { transform: translateY(-10px) scale(.96); }
+    .plot.right { border-color: var(--good); }
+    .plot.wrong { border-color: var(--bad); }
+    .horn { font-size: 2.2rem; display: inline-block; transition: transform .3s; }
+    .horn.blow { animation: blow 1s ease; }
+    @keyframes blow { 0%{transform:rotate(0)} 30%{transform:rotate(-18deg) scale(1.15)} 100%{transform:rotate(0)} }
+
+    /* brothers bar */
+    .bros { display: flex; height: 64px; border-radius: .5rem; overflow: hidden; border: 1px solid var(--line); }
+    .bros > div { display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; transition: flex-basis .3s ease; color: #1b1810 !important; }
+    .bros .b0 { background: var(--wheat); } .bros .b1 { background: var(--olive); } .bros .b2 { background: var(--clay); }
+
+    /* graveyard */
+    .yard { display: grid; grid-template-columns: 2fr 1fr; gap: .5rem; }
+    .cell { border: 1px solid var(--line); border-radius: .5rem; padding: .7rem; min-height: 90px; }
+    @media (prefers-reduced-motion: reduce) { .stalk, .stalk .head, .tl .sprout, .plot, .bros > div { transition: none; } .horn.blow { animation: none; } }
+  </style>
+
+  <div class="min-h-screen" style="background: var(--soil);">
+    <div class="max-w-3xl mx-auto px-4 py-10">
+      <p class="text-sm t-mute"><a href="/daf/" class="ref">Daf Yomi Arcade</a> · Bekhorot 52 · <span class="he">בכורות נ״ב</span></p>
+      <h1 class="frank text-4xl sm:text-5xl font-black t-wheat mt-2">The Jubilee Surveyor</h1>
+      <p class="t-text mt-3 text-lg leading-relaxed">
+        Bekhorot 52 asks two questions about land. When a field grows after its owner dies, who shares in the growth?
+        And when the Jubilee shofar sounds, which fields go back? You're the surveyor: ripen the crops, time the yavam's harvest,
+        blow the shofar for three tannaim, redivide the brothers' field, and settle the graveyard.
+      </p>
+      <p class="t-mute mt-2 text-sm">Score: <span id="score" class="t-wheat font-bold">0</span> / <span id="scoreMax">0</span> right on the first try</p>
+
+      <!-- 1 -->
+      <section class="stn" aria-labelledby="h1a">
+        <h2 id="h1a" class="frank text-3xl font-bold t-text">1 · The field that grew by itself</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          The father has died. Drag the slider to let the field ripen on its own: fodder (<i>ḥafura</i>) heads into ears,
+          date blossoms (<i>shalpufei</i>) swell into dates. Nobody lifted a finger. The mishna still says
+          <span class="he t-wheat">וְכוּלָּם אֵין נוֹטְלִין בַּשֶּׁבַח וְלֹא בָּרָאוּי כְּבַמּוּחְזָק</span>
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.52a.1" target="_blank" rel="noopener">52a:1</a>,
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.52b.1" target="_blank" rel="noopener">52b:1</a>.
+        </p>
+        <div class="crop mt-4" id="crop" aria-hidden="true"></div>
+        <label class="block mt-3 t-mute text-sm" for="grow">Time since the death: <span id="growLbl" class="t-wheat font-bold">the day he died</span></label>
+        <input id="grow" type="range" min="0" max="100" value="0" />
+        <p class="t-text mt-4">Then the claimants line up at the gate. For each: does this claim reach the growth (or the property that wasn't his yet)?</p>
+        <div id="claims" class="mt-3 space-y-4"></div>
+      </section>
+
+      <!-- 2 -->
+      <section class="stn" aria-labelledby="h2a">
+        <h2 id="h2a" class="frank text-3xl font-bold t-text">2 · When did the yavam's field grow?</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          A brother died childless, and his brother performs levirate marriage and takes his share of their father's estate.
+          The Torah calls him <span class="he t-wheat">״וְהָיָה הַבְּכוֹר״</span>
+          (<a class="ref" href="https://www.sefaria.org/Deuteronomy.25.6" target="_blank" rel="noopener">Deut. 25:6</a>), so like a firstborn he gets no share of growth
+          after the death. But growth <em>after the yibum</em> and before the estate is divided? Abaye and Rava disagree
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.52a.6" target="_blank" rel="noopener">52a:6–7</a>. The sprout shows where the growth happened. Rule for each.
+        </p>
+        <div class="tl" id="tl">
+          <div class="axis"></div>
+          <div class="zone" id="zA" style="left:0%;width:45%"></div>
+          <div class="zone" id="zB" style="left:45%;width:40%"></div>
+          <div class="mk" style="left:0%"></div><div class="lbl" style="left:3%">brother dies</div>
+          <div class="mk" style="left:45%"></div><div class="lbl" style="left:45%">yibum</div>
+          <div class="mk" style="left:85%"></div><div class="lbl" style="left:85%">estate divided</div>
+          <div class="sprout" id="sprout" style="left:22%">🌱</div>
+        </div>
+        <div id="yavam" class="mt-2"></div>
+      </section>
+
+      <!-- 3 -->
+      <section class="stn" aria-labelledby="h3a">
+        <h2 id="h3a" class="frank text-3xl font-bold t-text">3 · Blow the shofar</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          In the Jubilee, sold land goes back to its ancestral owners. The mishna lists fields that might not:
+          <span class="he t-wheat">וְאֵלּוּ שֶׁאֵין חוֹזְרִין בַּיּוֹבֵל — הַבְּכוֹרָה, וְהַיּוֹרֵשׁ אֶת אִשְׁתּוֹ, וְהַמְיַיבֵּם אֶת אֵשֶׁת אָחִיו, וְהַמַּתָּנָה</span>
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.52b.3" target="_blank" rel="noopener">52b:3–4</a>.
+          Pick a tanna, tap every plot that returns under his view, then blow the shofar.
+        </p>
+        <div class="flex flex-wrap gap-2 mt-4" id="sages" role="tablist" aria-label="Choose a tanna"></div>
+        <p class="t-text mt-3 text-sm" id="sageLine"></p>
+        <div class="map mt-3" id="map"></div>
+        <div class="flex items-center gap-3 mt-4">
+          <button class="btn go" id="blow"><span class="horn" id="horn" aria-hidden="true">📯</span> Blow the shofar</button>
+          <span class="t-mute text-sm" id="mapStatus"></span>
+        </div>
+        <div id="mapNotes"></div>
+      </section>
+
+      <!-- 4 -->
+      <section class="stn" aria-labelledby="h4a">
+        <h2 id="h4a" class="frank text-3xl font-bold t-text">4 · The brothers redivide</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          Rabbi Asi says in Rabbi Yoḥanan's name: brothers who divide an estate are <em>buyers from each other</em>, so in the Jubilee
+          they hand their portions back and divide again
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.52b.12" target="_blank" rel="noopener">52b:12</a>.
+          Rav Hoshaya objects: the mishna says the firstborn's portion does not return! The answers turn on what "return" means.
+          A firstborn and two brothers. Drag the two boundary stones to set the new shares after the Jubilee.
+        </p>
+        <div class="flex flex-wrap gap-2 mt-4" id="readings"></div>
+        <p class="t-text mt-3" id="readingQ"></p>
+        <div class="bros mt-3" id="bros"><div class="b0">Firstborn</div><div class="b1">Brother</div><div class="b2">Brother</div></div>
+        <label class="block mt-3 t-mute text-sm" for="s1">Stone 1 (firstborn | brother): <span id="s1v"></span></label>
+        <input id="s1" type="range" min="1" max="10" value="4" />
+        <label class="block mt-2 t-mute text-sm" for="s2">Stone 2 (brother | brother): <span id="s2v"></span></label>
+        <input id="s2" type="range" min="2" max="11" value="8" />
+        <button class="btn go mt-3" id="survey">Record the survey</button>
+        <div id="broNotes"></div>
+        <div id="hama" class="mt-6"></div>
+      </section>
+
+      <!-- 5 -->
+      <section class="stn" aria-labelledby="h5a">
+        <h2 id="h5a" class="frank text-3xl font-bold t-text">5 · The family graveyard</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          Rabbi Yoḥanan ben Beroka: <span class="he t-wheat">אַף הַיּוֹרֵשׁ אֶת אִשְׁתּוֹ יַחְזִיר לִבְנֵי מִשְׁפָּחָה, וִינַכֶּה מֵהֶן אֶת הַדָּמִים</span>.
+          But if a husband's inheritance is Torah law it shouldn't return, and if it's rabbinic, why would the family pay him?
+          <a class="ref" href="https://www.sefaria.org/Bekhorot.52b.15" target="_blank" rel="noopener">52b:15–17</a>. Work out the case.
+        </p>
+        <div class="yard mt-4" aria-hidden="true">
+          <div class="cell"><p class="t-olive font-bold text-sm">🌾 The wife's fields</p><p class="t-mute text-xs mt-1">Inherited by her husband</p></div>
+          <div class="cell" id="graveCell"><p class="t-clay font-bold text-sm">🪦 Her family's graveyard</p><p class="t-mute text-xs mt-1" id="graveTxt">Also inherited by her husband</p></div>
+        </div>
+        <div id="grave" class="mt-4 space-y-4"></div>
+      </section>
+
+      <section class="stn" aria-labelledby="h6a" id="end">
+        <h2 id="h6a" class="frank text-3xl font-bold t-text">Survey filed</h2>
+        <p class="t-text mt-2" id="final">Finish the stations to see your survey.</p>
+      </section>
+
+      <section class="stn" aria-labelledby="h7a">
+        <h2 id="h7a" class="frank text-3xl font-bold t-text">Learn the real daf</h2>
+        <ul class="t-text mt-3 space-y-2 list-disc ps-5">
+          <li><a class="ref" href="https://www.sefaria.org/Bekhorot.52a" target="_blank" rel="noopener">Bekhorot 52a</a> and <a class="ref" href="https://www.sefaria.org/Bekhorot.52b" target="_blank" rel="noopener">52b</a> on Sefaria</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Bekhorot.52a" target="_blank" rel="noopener">Rashi</a> (30 comments) and <a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.52a" target="_blank" rel="noopener">Rabbeinu Gershom</a> (30), on <i>ḥafura</i>, <i>shalpufei</i> and "returns for naught"</li>
+          <li><a class="ref" href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.52a" target="_blank" rel="noopener">Steinsaltz</a> (25) and <a class="ref" href="https://www.sefaria.org/Rashash_on_Bekhorot.52a" target="_blank" rel="noopener">Rashash</a> (13)</li>
+          <li>The verses: <a class="ref" href="https://www.sefaria.org/Deuteronomy.21.16-17" target="_blank" rel="noopener">Deut. 21:16–17</a> (the double portion), <a class="ref" href="https://www.sefaria.org/Deuteronomy.25.6" target="_blank" rel="noopener">Deut. 25:6</a> (the yavam), <a class="ref" href="https://www.sefaria.org/Leviticus.25.10-13" target="_blank" rel="noopener">Lev. 25:10–13</a> (the Jubilee), with <a class="ref" href="https://www.sefaria.org/Torah_Temimah_on_Torah,_Deuteronomy.21.17" target="_blank" rel="noopener">Torah Temimah on Deut. 21:17</a></li>
+          <li><a class="ref" href="https://www.sefaria.org/Tosafot_on_Bekhorot.52a.4.1" target="_blank" rel="noopener">Tosafot</a> (7), on Shmuel's creditor and on "returns for naught", and the shevach rules in the <a class="ref" href="https://www.sefaria.org/Siftei_Kohen_on_Shulchan_Arukh,_Choshen_Mishpat.115.32.1" target="_blank" rel="noopener">Shakh</a> and <a class="ref" href="https://www.sefaria.org/Urim_VeTumim,_Tumim.112.3" target="_blank" rel="noopener">Tumim</a> on Choshen Mishpat</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <script is:inline>
+  (() => {
+    const $ = (s, r = document) => r.querySelector(s);
+    const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+    const ref = (r, label) => `<a class="ref" href="https://www.sefaria.org/${r.replace(/ /g, '_')}" target="_blank" rel="noopener">${label}</a>`;
+    let score = 0, max = 0;
+    const done = new Set();
+    const bump = (ok) => { if (ok) score++; $('#score').textContent = score; };
+    const register = (n) => { max += n; $('#scoreMax').textContent = max; };
+    const finish = (k) => {
+      done.add(k);
+      if (done.size === 5) {
+        const pct = score / max;
+        $('#final').innerHTML = `You scored <b class="t-wheat">${score} / ${max}</b>. ` + (pct > .85 ? 'Every field is where it belongs. The elders of Rabbi Elazar\'s beit midrash would hire you.' : pct > .6 ? 'A solid survey, with a few boundary stones to reset. Go back over 52b with Rashi.' : 'The Jubilee came and the map is still a mess. Read the daf, then survey again.');
+      }
+    };
+
+    // 1 · growing field
+    const crop = $('#crop');
+    for (let i = 0; i < 12; i++) {
+      const s = el('div', 'stalk' + (i % 4 === 3 ? ' palm' : ''));
+      s.appendChild(el('span', 'head'));
+      crop.appendChild(s);
+    }
+    const growLbls = ['the day he died', 'a few weeks', 'stalks heading', 'ears filling', 'harvest-ready'];
+    const grow = () => {
+      const v = +$('#grow').value;
+      $('#growLbl').textContent = growLbls[Math.min(4, Math.floor(v / 21))];
+      crop.querySelectorAll('.stalk').forEach((s, i) => {
+        const palm = s.classList.contains('palm');
+        s.style.height = (palm ? 70 + v * .25 : 20 + v * .75) + 'px';
+        const h = s.firstChild;
+        h.style.background = palm ? (v < 50 ? '#f4e6ef' : '#a0522d') : (v < 40 ? 'transparent' : `hsl(${48 - v * .1},75%,${45 + v * .15}%)`);
+        h.style.transform = `translateX(-50%) scale(${palm ? .6 + v / 100 : .4 + v / 120})`;
+      });
+    };
+    $('#grow').addEventListener('input', grow); grow();
+
+    const claims = [
+      { q: 'The firstborn wants his double portion in the growth.', a: false, why: `"A double portion of <b>all that he has</b>" (${ref('Deuteronomy.21.17', 'Deut. 21:17')}). The growth wasn't the father's when he died ${ref('Bekhorot.52a.3', '52a:3')}. Even growth that happened by itself is excluded: that's why the mishna repeats the rule ${ref('Bekhorot.52b.1', '52b:1')}.` },
+      { q: 'The same firstborn wants his ordinary brother\'s share of the growth.', a: true, why: `Yes. The mishna only denies him the <em>second</em> share, the firstborn's extra. As one of the brothers he shares in the growth like everyone else.` },
+      { q: 'A creditor of the father collects from the enhanced field.', a: true, why: `Shmuel: a creditor collects the enhancement after the borrower's death ${ref('Bekhorot.52a.4', '52a:4')}. That's exactly why the next claim needs an explanation.` },
+      { q: 'The widow collects her ketuba from the enhanced field.', a: false, why: `She's a creditor too, but Rabbi Abba: the Sages made the ketuba lenient for the husband's estate, so she does not collect from the enhancement ${ref('Bekhorot.52a.4', '52a:4')}.` },
+      { q: 'The daughters take their sustenance from the enhanced field.', a: false, why: `Their sustenance is a condition written into the ketuba, and the ketuba's conditions are like the ketuba itself ${ref('Bekhorot.52a.5', '52a:5')}.` },
+      { q: 'The firstborn wants a double portion of his <em>mother\'s</em> estate.', a: false, why: `"The law of the firstborn is <b>his</b>": a man owes his firstborn a double portion, a woman doesn't ${ref('Bekhorot.52a.2', '52a:2')}.` },
+      { q: 'Grandfather dies after father. The firstborn wants a double portion of what reaches them from grandfather.', a: false, why: `That property was only <i>due</i> the father (<span class="he">רָאוּי</span>), never in his possession, and the repeated clause is there to include exactly this case ${ref('Bekhorot.52b.2', '52b:2')}.` },
+    ];
+    register(claims.length);
+    let claimsDone = 0;
+    claims.forEach((c) => {
+      const box = el('div', 'quote');
+      box.appendChild(el('p', 't-text', c.q));
+      const row = el('div', 'flex gap-2 mt-2');
+      const yes = el('button', 'btn', 'Takes it'), no = el('button', 'btn', 'Doesn\'t');
+      row.append(yes, no); box.appendChild(row);
+      const pick = (ans) => {
+        const ok = ans === c.a;
+        bump(ok);
+        [yes, no].forEach(b => b.disabled = true);
+        (ans ? yes : no).classList.add(ok ? 'ok' : 'no');
+        if (!ok) (c.a ? yes : no).classList.add('ok');
+        box.appendChild(el('p', 'note t-text ' + (ok ? 'ok' : 'no'), c.why));
+        if (++claimsDone === claims.length) finish(1);
+      };
+      yes.onclick = () => pick(true); no.onclick = () => pick(false);
+      $('#claims').appendChild(box);
+    });
+
+    // 2 · yavam timeline
+    const yRounds = [
+      { who: 'Abaye', zone: 'A', a: false, why: `Growth between the brother's death and the yibum: everyone agrees he doesn't take it. That's the case the mishna is about ${ref('Bekhorot.52a.6', '52a:6')}.` },
+      { who: 'Abaye', zone: 'B', a: true, why: `Abaye: "<b>shall succeed</b> in the name of his brother" (${ref('Deuteronomy.25.6', 'Deut. 25:6')}). Once he performed yibum he has succeeded him, and this growth came afterward ${ref('Bekhorot.52a.6', '52a:6')}.` },
+      { who: 'Rava', zone: 'A', a: false, why: `Same as Abaye here. Before the yibum he has no claim to the growth at all.` },
+      { who: 'Rava', zone: 'B', a: false, why: `Rava: he's compared to a firstborn, and a firstborn has nothing special in the estate until it's divided. So even after the yibum he doesn't take it ${ref('Bekhorot.52a.7', '52a:7')}.` },
+    ];
+    register(yRounds.length);
+    let yi = 0;
+    const yBox = $('#yavam');
+    const yRender = () => {
+      const r = yRounds[yi];
+      $('#sprout').style.left = r.zone === 'A' ? '22%' : '65%';
+      $('#zA').style.background = r.zone === 'A' ? 'var(--wheat)' : 'transparent';
+      $('#zB').style.background = r.zone === 'B' ? 'var(--wheat)' : 'transparent';
+      yBox.innerHTML = '';
+      const q = el('p', 't-text', `<b class="t-wheat">According to ${r.who}:</b> the field grew ${r.zone === 'A' ? '<em>before</em> the yibum' : '<em>after</em> the yibum, before the estate was divided'}. Does the yavam take his brother's share of this growth?`);
+      const row = el('div', 'flex gap-2 mt-2');
+      const yes = el('button', 'btn', 'He takes it'), no = el('button', 'btn', 'He doesn\'t');
+      row.append(yes, no); yBox.append(q, row);
+      const pick = (ans) => {
+        const ok = ans === r.a; bump(ok);
+        [yes, no].forEach(b => b.disabled = true);
+        (ans ? yes : no).classList.add(ok ? 'ok' : 'no');
+        if (!ok) (r.a ? yes : no).classList.add('ok');
+        yBox.appendChild(el('p', 'note t-text ' + (ok ? 'ok' : 'no'), r.why));
+        const nx = el('button', 'btn go mt-3', yi < yRounds.length - 1 ? 'Next growth →' : 'Done');
+        nx.onclick = () => { if (++yi < yRounds.length) yRender(); else { nx.remove(); finish(2); } };
+        yBox.appendChild(nx); nx.focus();
+      };
+      yes.onclick = () => pick(true); no.onclick = () => pick(false);
+    };
+    yRender();
+
+    // 3 · jubilee map
+    const plots = [
+      { id: 'sale', name: 'Field sold for money', he: 'מֶכֶר', icon: '💰' },
+      { id: 'bkh', name: 'Firstborn\'s extra portion', he: 'הַבְּכוֹרָה', icon: '👑' },
+      { id: 'wife', name: 'Field the husband inherited from his wife', he: 'הַיּוֹרֵשׁ אֶת אִשְׁתּוֹ', icon: '💍' },
+      { id: 'yvm', name: 'The yavam\'s share of his brother\'s estate', he: 'הַמְיַיבֵּם', icon: '🤝' },
+      { id: 'gift', name: 'Field given as a gift', he: 'מַתָּנָה', icon: '🎁' },
+    ];
+    const sages = {
+      meir: { name: 'Rabbi Meir', line: 'Only a sale returns. A gift and an inheritance don\'t.',
+        ret: { sale: true, bkh: false, wife: false, yvm: false, gift: false },
+        why: { sale: 'The Torah speaks of a sale (Lev. 25:28).', bkh: '"<b>By giving</b> him a double portion": the Torah calls it a gift, and gifts stay.', wife: 'A husband inherits his wife by Torah law, and inheritance stays.', yvm: '"It shall be, <b>the firstborn</b>": the yavam is like the firstborn, so it stays.', gift: 'For Rabbi Meir a gift is not a sale.' }, src: '52b:5' },
+      rabbis: { name: 'The Rabbis', line: 'A gift is like a sale.',
+        ret: { sale: true, bkh: false, wife: false, yvm: false, gift: true },
+        why: { sale: 'Returns.', bkh: '"By giving him" is set next to "on the day he causes his sons to <b>inherit</b>" (Deut. 21:16). The extra portion is an inheritance like his ordinary share, so it stays.', wife: 'Torah-law inheritance: stays.', yvm: 'Like a firstborn: stays.', gift: 'The second "you shall return" (Lev. 25:13), after Lev. 25:10 already said it, adds a gift.' }, src: '52b:7' },
+      elazar: { name: 'Rabbi Elazar', line: 'Agrees a gift returns, and holds all four are gifts.',
+        ret: { sale: true, bkh: true, wife: true, yvm: true, gift: true },
+        why: { sale: 'Returns.', bkh: '"By giving him": the firstborn\'s portion is a gift, and gifts return.', wife: 'A husband\'s inheritance is only rabbinic, so it\'s not a Torah inheritance that stays.', yvm: 'Called a firstborn, and the firstborn\'s portion returns.', gift: 'With the Rabbis: the extra "you shall return" adds a gift.' }, src: '52b:10' },
+    };
+    const sageOrder = ['meir', 'rabbis', 'elazar'];
+    register(sageOrder.length * plots.length);
+    let cur = 'meir';
+    const picks = {}, blown = {};
+    sageOrder.forEach(s => { picks[s] = new Set(); });
+    const sageBtns = {};
+    sageOrder.forEach(s => {
+      const b = el('button', 'btn', sages[s].name);
+      b.setAttribute('role', 'tab');
+      b.onclick = () => { cur = s; renderMap(); };
+      sageBtns[s] = b; $('#sages').appendChild(b);
+    });
+    const renderMap = () => {
+      const S = sages[cur];
+      sageOrder.forEach(s => { sageBtns[s].classList.toggle('on', s === cur); sageBtns[s].setAttribute('aria-selected', s === cur); sageBtns[s].textContent = sages[s].name + (blown[s] ? ' ✓' : ''); });
+      $('#sageLine').innerHTML = blown[cur] ? `<b class="t-wheat">${S.name}:</b> ${S.line} ${ref('Bekhorot.' + S.src.replace(':', '.'), S.src)}` : `Surveying for <b class="t-wheat">${S.name}</b>. Which plots go back?`;
+      const map = $('#map'); map.innerHTML = '';
+      plots.forEach(p => {
+        const b = el('button', 'plot');
+        b.innerHTML = `<div class="text-2xl" aria-hidden="true">${p.icon}</div><p class="t-text text-sm font-bold mt-1">${p.name}</p><p class="he t-mute text-sm">${p.he}</p>`;
+        const on = picks[cur].has(p.id);
+        b.setAttribute('aria-pressed', on);
+        if (on) b.classList.add('pick');
+        if (blown[cur]) {
+          b.disabled = true;
+          const right = on === S.ret[p.id];
+          b.classList.add(right ? 'right' : 'wrong');
+          const f = el('span', 'flag ' + (S.ret[p.id] ? 't-clay' : 't-olive'), S.ret[p.id] ? '↩ returns' : '■ stays');
+          b.appendChild(f);
+          if (S.ret[p.id]) b.classList.add('fly');
+        } else {
+          b.onclick = () => { picks[cur].has(p.id) ? picks[cur].delete(p.id) : picks[cur].add(p.id); renderMap(); map.children[plots.indexOf(p)].focus(); };
+        }
+        map.appendChild(b);
+      });
+      $('#blow').disabled = !!blown[cur];
+      $('#mapStatus').textContent = blown[cur] ? '' : `${picks[cur].size} plot${picks[cur].size === 1 ? '' : 's'} marked to return`;
+      const notes = $('#mapNotes'); notes.innerHTML = '';
+      if (blown[cur]) {
+        const ul = el('ul', 'note t-text space-y-1');
+        plots.forEach(p => ul.appendChild(el('li', '', `<b>${p.icon} ${p.name}:</b> ${S.why[p.id]}`)));
+        notes.appendChild(ul);
+        if (cur === 'elazar') notes.appendChild(el('p', 'note t-mute', `Rabbi Yoḥanan ben Beroka adds one more case about the wife's field. That's station 5.`));
+      }
+    };
+    $('#blow').onclick = () => {
+      const S = sages[cur];
+      plots.forEach(p => bump(picks[cur].has(p.id) === S.ret[p.id]));
+      blown[cur] = true;
+      const h = $('#horn'); h.classList.remove('blow'); void h.offsetWidth; h.classList.add('blow');
+      renderMap();
+      if (sageOrder.every(s => blown[s])) finish(3);
+      else { const nxt = sageOrder.find(s => !blown[s]); $('#mapStatus').innerHTML = `Next: ${sages[nxt].name}`; }
+    };
+    renderMap();
+
+    // 4 · brothers redivide
+    const readings = [
+      { key: 'ela', label: 'Rabbi Elazar answers Rav Hoshaya', q: `Rabbi Elazar: "They do not return" means <em>they do not return for naught</em> <span class="he">(לְבַטָּלָה)</span>. The field is redivided, but how ${ref('Bekhorot.52b.13', '52b:13')}?`, target: [6, 9], why: `The brothers hand everything back, but the firstborn takes a double portion again: half for him, a quarter each for the others (2 : 1 : 1). Rabbi Yoḥanan's rule and the mishna both stand.` },
+      { key: 'ravin', label: 'Ravin\'s report from Eretz Yisrael', q: `Ravin, for Rabbi Elazar ben Shammua (the tanna "Rabbi Elazar" of the mishna): when he says these fields return, <em>they return for naught</em> <span class="he">(חוֹזְרִין לְבַטָּלָה)</span> ${ref('Bekhorot.52b.14', '52b:14')}. Now redivide.`, target: [4, 8], why: `The firstborn forfeits the extra portion he received. Shared among three brothers, that's equal thirds.` },
+    ];
+    register(readings.length + 1);
+    let ri = 0;
+    const renderBros = () => {
+      let a = +$('#s1').value, b = +$('#s2').value;
+      if (b <= a) { b = a + 1; $('#s2').value = b; }
+      if (a >= b) { a = b - 1; $('#s1').value = a; }
+      const parts = [a, b - a, 12 - b];
+      const fr = (n) => ({ 12: 'all', 6: '½', 4: '⅓', 3: '¼', 8: '⅔', 9: '¾', 2: '⅙', 1: '1/12' }[n] || `${n}/12`);
+      $('#bros').querySelectorAll('div').forEach((d, i) => { d.style.flexBasis = (parts[i] / 12 * 100) + '%'; d.textContent = `${['Firstborn', 'Brother', 'Brother'][i]} · ${fr(parts[i])}`; });
+      $('#s1v').textContent = fr(a); $('#s2v').textContent = fr(b);
+    };
+    ['#s1', '#s2'].forEach(s => $(s).addEventListener('input', renderBros));
+    const renderReading = () => {
+      $('#readings').innerHTML = '';
+      readings.forEach((r, i) => { const b = el('button', 'btn' + (i === ri ? ' on' : ''), r.label); b.disabled = true; $('#readings').appendChild(b); });
+      $('#readingQ').innerHTML = readings[ri].q;
+      $('#s1').value = 3; $('#s2').value = 6; renderBros();
+      $('#survey').disabled = false;
+    };
+    $('#survey').onclick = () => {
+      const r = readings[ri];
+      const ok = +$('#s1').value === r.target[0] && +$('#s2').value === r.target[1];
+      bump(ok);
+      $('#survey').disabled = true;
+      if (!ok) { $('#s1').value = r.target[0]; $('#s2').value = r.target[1]; renderBros(); }
+      $('#broNotes').appendChild(el('p', 'note t-text ' + (ok ? 'ok' : 'no'), `<b>${r.label}:</b> ${r.why}`));
+      if (++ri < readings.length) {
+        const nx = el('button', 'btn go mt-3', 'Next reading →');
+        nx.onclick = () => { nx.remove(); renderReading(); };
+        $('#broNotes').appendChild(nx);
+      } else hamaQ();
+    };
+    const hamaQ = () => {
+      const box = $('#hama');
+      box.appendChild(el('p', 't-text', `In between, Rav Sheshet had objected to Rabbi Elazar's answer: would anyone say the firstborn's portion returns <em>for naught</em>? Why should he lose it? Rav Ḥama answered with a verse, <span class="he t-wheat">״טוֹבָה חׇכְמָה עִם נַחֲלָה״</span>, "Wisdom is good with an inheritance" (${ref('Ecclesiastes.7.11', 'Eccl. 7:11')}). What was his point?`));
+      const opts = [
+        ['Rav Sheshet knew the baraitot by heart but hadn\'t heard Ravin\'s report that someone does say "for naught"', true],
+        ['The firstborn should get the double portion because he is wiser', false],
+        ['Brothers who know Torah shouldn\'t argue about land', false],
+      ];
+      const row = el('div', 'grid gap-2 mt-2');
+      opts.forEach(([t, a]) => {
+        const b = el('button', 'btn', t);
+        b.onclick = () => {
+          bump(a);
+          row.querySelectorAll('button').forEach((x, i) => { x.disabled = true; if (opts[i][1]) x.classList.add('ok'); });
+          if (!a) b.classList.add('no');
+          box.appendChild(el('p', 'note t-text ' + (a ? 'ok' : 'no'), `Inheriting a store of baraitot (Rav Sheshet's strength) isn't enough; you also need the amoraim's wisdom. Ravin's report shows the "for naught" view exists, and it's Rabbi Elazar ben Shammua's ${ref('Bekhorot.52b.14', '52b:14')}.`));
+          finish(4);
+        };
+        row.appendChild(b);
+      });
+      box.appendChild(row);
+    };
+    renderReading();
+
+    // 5 · graveyard
+    const gSteps = [
+      { q: 'Rabbi Yoḥanan ben Beroka holds a husband inherits his wife by…', opts: [['Torah law, so ordinary fields stay with him', true], ['Rabbinic law, so everything returns', false]], why: `Torah law. Only one special piece of land goes back ${ref('Bekhorot.52b.16', '52b:16')}.` },
+      { q: 'Which piece goes back to her father\'s family?', opts: [['All of her fields', false], ['Her family\'s graveyard', true], ['Only the field around her own grave', false]], why: `She left him her family's graveyard. Having the family buried in someone else's plot would shame them, so the Sages had him return it ${ref('Bekhorot.52b.16', '52b:16')}.`, grave: true },
+      { q: 'And the money, "וִינַכֶּה מֵהֶן אֶת הַדָּמִים"?', opts: [['He pays them for taking it back', false], ['They pay him the graveyard\'s value, minus the value of his wife\'s grave', true], ['Nobody pays: it\'s theirs', false]], why: `They buy it back, but he deducts the price of his wife's grave, because a husband must pay for his wife's burial ${ref('Bekhorot.52b.17', '52b:17')} (${ref('Ketubot.47b', 'Ketubot 47b')}).` },
+      { q: 'The source, a baraita: a man sold his grave, or the path to it, or the mourners\' standing place. His family…', opts: [['May still bury him there against the buyer\'s wishes', true], ['Must buy the plot back first', false], ['Must bury him elsewhere', false]], why: `They may bury him there anyway, to spare the family the shame ${ref('Bekhorot.52b.17', '52b:17')}.` },
+    ];
+    register(gSteps.length);
+    let gi = 0;
+    const gRender = () => {
+      const s = gSteps[gi];
+      const box = el('div', 'quote');
+      box.appendChild(el('p', 't-text', s.q));
+      const row = el('div', 'grid gap-2 mt-2');
+      s.opts.forEach(([t, a]) => {
+        const b = el('button', 'btn', t);
+        b.onclick = () => {
+          bump(a);
+          row.querySelectorAll('button').forEach((x, i) => { x.disabled = true; if (s.opts[i][1]) x.classList.add('ok'); });
+          if (!a) b.classList.add('no');
+          box.appendChild(el('p', 'note t-text ' + (a ? 'ok' : 'no'), s.why));
+          if (s.grave) { $('#graveCell').style.borderColor = 'var(--clay)'; $('#graveTxt').innerHTML = '↩ Returns to her father\'s family, for a price'; }
+          if (++gi < gSteps.length) gRender(); else finish(5);
+        };
+        row.appendChild(b);
+      });
+      box.appendChild(row);
+      $('#grave').appendChild(box);
+    };
+    gRender();
+  })();
+  </script>
+</Layout>
