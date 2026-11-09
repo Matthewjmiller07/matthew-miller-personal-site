@@ -1,0 +1,627 @@
+---
+import Layout from '../layouts/Layout.astro';
+import data from '../data/shechalak/blessings.json';
+
+const pageTitle = 'Who Said Shechalak on Whom?';
+const pageDescription =
+  'A mapping project: every documented case of a rabbi reciting the blessing shechalak mechochmato lire’av on another rabbi — 37 sayings, 20 designations, 12 refusals — and what the pattern says about the globalisation of the rabbinic world.';
+
+const acts = data.blessings.filter((b) => b.is_act);
+const dream = data.blessings.find((b) => b.is_dream);
+const rabbiById = new Map(data.rabbis.map((r) => [r.id, r]));
+const nameOf = (id) => rabbiById.get(id)?.name_en ?? id;
+
+// Hub ranking: in-degree among acts only (A19 anecdotal included, flagged in the table).
+const inDegree = new Map();
+for (const e of acts) inDegree.set(e.recipient_id, (inDegree.get(e.recipient_id) ?? 0) + 1);
+const hubs = [...inDegree.entries()]
+  .map(([id, n]) => ({
+    id, name: nameOf(id), n, community: rabbiById.get(id)?.community ?? '',
+    who: acts.filter((e) => e.recipient_id === id).map((e) => ({
+      edge: e.edge_id, name: nameOf(e.sayer_id), date: e.date ?? 'undated', place: e.place ?? '',
+    })),
+  }))
+  .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+
+const eras = [...new Set(acts.map((e) => e.era))];
+const eraOrder = ['Talmudic', '19th century', 'Early 20th century', 'War and upheaval', '1948-1967', 'Jet age', 'Digital age', 'Unknown'];
+
+// Sayer ranking: out-degree among acts only.
+const outDegree = new Map();
+for (const e of acts) outDegree.set(e.sayer_id, (outDegree.get(e.sayer_id) ?? 0) + 1);
+const sayers = [...outDegree.entries()]
+  .map(([id, n]) => ({
+    id, name: nameOf(id), n, community: rabbiById.get(id)?.community ?? '',
+    who: acts.filter((e) => e.sayer_id === id).map((e) => ({
+      edge: e.edge_id, name: nameOf(e.recipient_id), date: e.date ?? 'undated', place: e.place ?? '',
+    })),
+  }))
+  .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+
+// Map: acts with coordinates, grouped by encounter place.
+const mappable = acts.filter((e) => e.place_lat != null && e.place_lon != null);
+const unmappable = acts.filter((e) => e.place_lat == null || e.place_lon == null);
+const places = [...new Map(mappable.map((e) => [`${e.place_lat},${e.place_lon}`, {
+  lat: e.place_lat, lon: e.place_lon, name: e.place,
+  edges: mappable.filter((x) => x.place_lat === e.place_lat && x.place_lon === e.place_lon),
+}])).values()];
+const eraList = eraOrder.filter((e) => eras.includes(e));
+const eraCount = (era) => acts.filter((e) => e.era === era).length;
+
+// Cross-community acts, hand-checked from the nodes' communities.
+const crossCommunity = ['A9', 'A12', 'A19'];
+const dataJson = JSON.stringify(data);
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+  <main class="max-w-5xl mx-auto px-4 py-10">
+    <header class="mb-8">
+      <p class="text-sm uppercase tracking-widest opacity-60 mb-2">A mapping project · Version 2 · 8 November 2026</p>
+      <h1 class="text-3xl md:text-4xl font-bold mb-3">Who said <span dir="rtl" lang="he">שחלק מחכמתו</span> on whom?</h1>
+      <p class="text-lg opacity-80 max-w-3xl">
+        The blessing on seeing a great Torah scholar — <em>Baruch Atah Hashem Elokeinu Melech
+        HaOlam, shechalak mechochmato lire’av</em>, “who apportioned of His wisdom to those who
+        fear Him” (Berakhot 58a; Shulchan Arukh, Orach Chaim 224:6) — is a dated, located,
+        face-to-face encounter between two named rabbis. Each attested saying is therefore a
+        data point: who recognised whom, where, when, and across what boundary.
+      </p>
+      <p class="mt-4 max-w-3xl" dir="rtl" lang="he">
+        ברוך אתה ה׳ אלקינו מלך העולם, שחלק מחכמתו ליראיו
+      </p>
+    </header>
+
+    <section class="mb-10 rounded-xl border border-current/20 p-5 md:p-6">
+      <h2 class="text-xl font-bold mb-2">What version 2 found</h2>
+      <ul class="list-disc ml-6 space-y-2 max-w-3xl">
+        <li><strong>37 sayings in 35 encounters</strong> — one Talmudic encounter had two sayers (Rav Papa and Rav Huna on Rav Chanina), and one American event blessed two Chief Rabbis at once (V03/V04). One further case, the Aderet’s dream blessing, is catalogued separately: a dream is not a waking act. A19 (Rav Ovadia on Rav Moshe Feinstein) still rests only on a forum post and is marked anecdotal.</li>
+        <li><strong>A hub emerges, and a most prolific sayer.</strong> Rav Ovadia Yosef is now the clearest recipient hub (4 sayings), followed by the Chazon Ish and Rav Elyashiv (3 each). Rav Chaim Kanievsky is the dataset’s most prolific sayer — 7 sayings on 6 recipients, all via his father the Steipler’s instruction or his own diary: the Steipler’s household as the blessing’s transmission belt.</li>
+        <li><strong>The earliest Eretz Yisrael instance moves back to Hebron, 1925.</strong> Rav Yosef Chaim Sonnenfeld blessed on Rav Moshe Mordechai Epstein’s arrival to head the Hebron yeshiva (V05), sixteen years before the 1941 Jerusalem greeting — the blessing arrives in Eretz Yisrael with the Slobodka/Hebron yeshiva, not with the 1941 Brisker aliyah.</li>
+        <li><strong>The geography moves Lithuania → Vienna → Berlin → Jerusalem / Bnei Brak → New York → Tiberias.</strong> Version 2 adds a Berlin instance (Weinberg on Wasserman, pre-1941) and a dated American mass event (a thousand-plus blessing both Chief Rabbis, 1983–1993). And Tiberias 2024–25 is a new pattern: the blessing as <em>local</em> acclamation of a living community rav, Rav Dov Kook — either a revival of the blessing’s plain sense or a dilution of it, depending on one’s posek.</li>
+        <li><strong>The cross-community pairs are the sharpest finding.</strong> A Litvish rosh yeshiva blesses a Hasidic rebbe (Baruch Ber on the Karliner, who answered Amen); a Litvish rabbi blesses a Sephardi gadol against his own gadol’s ruling (Deblitzky on Rav Ovadia, after Elyashiv told him not to bless in our times); Baba Sali, a Sephardi elder, stands full height to bless on the younger Rav Ovadia; an American congregation blesses the Ashkenazi and Sephardi Chief Rabbis together. Rav Ovadia designates Rav Moshe Feinstein — Sephardi on Ashkenazi, and the reverse direction is absent as an act.</li>
+        <li><strong>The “Baruch Shem” demurral is a pattern, not a quirk.</strong> Elyashiv, Kanievsky and Sheinberg all deflect with it — theological self-doubt (Elyashiv: “‘שחלק מחכמתו’, מילא, אבל ‘ליראיו’?”; Sheinberg the same), procedural deflection (Kanievsky), halachic protest (Shapira, Wasserman, Mazuz) — with Rav Mordechai Eliyahu’s “Amen v’Amen” as the only recorded defence of a blessing by a fellow recipient.</li>
+        <li><strong>The circle contracts.</strong> In the Talmud the blessing is a live, even reciprocal act. By the 19th century it is already reserved for the <em>yechidei segula</em> of the generation. In the 21st century each designator names one or two living men — “the only one”, “there aren’t many… but on him, without doubt” — and almost every recipient declines it for himself.</li>
+      </ul>
+      <p class="mt-3 text-sm opacity-70 max-w-3xl">
+        This is a study, not a psak. Where the poskim disagree, the disagreement is stated, not resolved.
+        Nothing here was invented: every row carries its source and a confidence rating, and widely
+        repeated stories without a traceable source are marked anecdotal.
+      </p>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">The network</h2>
+      <p class="mb-4 max-w-3xl">
+        Each arrow runs from the sayer to the rabbi blessed upon. Click a name to highlight its
+        blessings; click again to clear. Use the era buttons to filter the graph and the register below.
+      </p>
+      <div class="flex flex-wrap gap-2 mb-4" id="era-filters">
+        <button data-era="All" class="era-btn px-3 py-1 rounded-full border border-current/30 text-sm font-semibold">All eras · 37</button>
+        {eraList.map((era) => (
+          <button data-era={era} class="era-btn px-3 py-1 rounded-full border border-current/30 text-sm">{era} · {eraCount(era)}</button>
+        ))}
+      </div>
+      <div class="rounded-xl border border-current/20 p-2 overflow-x-auto">
+        <svg id="network" viewBox="0 0 900 620" class="w-full min-w-[640px]" role="img" aria-label="Network of rabbis who said shechalak mechochmato on other rabbis"></svg>
+      </div>
+      <p id="node-detail" class="mt-3 text-sm opacity-80">Click a rabbi’s name in the graph to see their blessings here.</p>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">The map — where the blessings happened</h2>
+      <p class="mb-4 max-w-3xl">
+        {mappable.length} of the 37 sayings have a known encounter place. Each marker is a place;
+        the number is how many blessings happened there. Click a marker for the sayings at that
+        place. The era buttons above filter the map as well as the network and the register.
+      </p>
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+      <style is:global>
+        /* is:global — Leaflet creates markers and popups at runtime, so Astro's
+           scoped styles would never match them (that left the numbered marker
+           circles invisible, though still clickable). */
+        .map-count span { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #b45309; color: #fff; font-weight: 700; font-size: 13px; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+        .leaflet-popup-content, .leaflet-popup-content * { color: #1a1a1a !important; }
+        .leaflet-popup-content-wrapper { background: #fff !important; }
+        .leaflet-popup-content ul { margin: 0.4em 0 0 1.1em; padding: 0; }
+        .leaflet-popup-content li { margin-bottom: 0.2em; }
+        /* Guard against Tailwind preflight (img { max-width: 100%; height: auto })
+           shrinking Leaflet tiles: they must stay exactly one tile (256px). */
+        #map .leaflet-tile { width: 256px !important; height: 256px !important; max-width: none !important; max-height: none !important; }
+      </style>
+      <div id="map" class="rounded-xl border border-current/20 overflow-hidden z-0" style="height: 480px;"></div>
+      <p class="mt-3 text-sm opacity-80 max-w-3xl">
+        Not on the map — place unknown: {unmappable.map((e) => e.edge_id).join(', ')}
+        {unmappable.some((e) => e.edge_id === 'V03') ? ' (V03–V04: United States, city unknown)' : ''}.
+        Babylonia (A1/A1b) is plotted approximately, in the Baghdad area.
+        Places with several blessings: Jerusalem (9), Bnei Brak (4), Tiberias (3), Babylonia (2).
+      </p>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">Hubs — most blessed upon</h2>
+      <p class="mb-3 max-w-3xl text-sm opacity-80">In-degree among the 37 sayings only. Designations and refusals are not counted here. Click a number to expand who blessed on that rabbi.</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-current/20">
+              <th class="py-2 pr-4">Recipient</th><th class="py-2 pr-4">Community</th><th class="py-2">Sayings</th>
+            </tr>
+          </thead>
+          <tbody>
+            {hubs.map((h) => (
+              <>
+                <tr class="border-b border-current/10">
+                  <td class="py-2 pr-4 font-semibold">{h.name}</td>
+                  <td class="py-2 pr-4">{h.community}</td>
+                  <td class="py-2">
+                    <button class="count-btn underline decoration-dotted underline-offset-4 cursor-pointer" data-target={`hub-${h.id}`} aria-expanded="false">{h.n} ▸</button>
+                  </td>
+                </tr>
+                <tr class="expand-row border-b border-current/10" id={`hub-${h.id}`} hidden>
+                  <td colspan="3" class="py-2 pr-4 text-sm">
+                    <ul class="list-disc ml-5 space-y-1">
+                      {h.who.map((w) => (
+                        <li><strong>{w.name}</strong> — {w.edge}, {w.date}{w.place ? ` · ${w.place}` : ''}</li>
+                      ))}
+                    </ul>
+                  </td>
+                </tr>
+              </>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">Most prolific sayers</h2>
+      <p class="mb-3 max-w-3xl text-sm opacity-80">Out-degree among the 37 sayings only. Rav Chaim Kanievsky’s seven sayings run to six recipients (the Gryz twice); the next-highest sayers have two each. Click a number to expand whom each sayer blessed.</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-current/20">
+              <th class="py-2 pr-4">Sayer</th><th class="py-2 pr-4">Community</th><th class="py-2">Sayings</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sayers.map((s) => (
+              <>
+                <tr class="border-b border-current/10">
+                  <td class="py-2 pr-4 font-semibold">{s.name}</td>
+                  <td class="py-2 pr-4">{s.community}</td>
+                  <td class="py-2">
+                    <button class="count-btn underline decoration-dotted underline-offset-4 cursor-pointer" data-target={`sayer-${s.id}`} aria-expanded="false">{s.n} ▸</button>
+                  </td>
+                </tr>
+                <tr class="expand-row border-b border-current/10" id={`sayer-${s.id}`} hidden>
+                  <td colspan="3" class="py-2 pr-4 text-sm">
+                    <ul class="list-disc ml-5 space-y-1">
+                      {s.who.map((w) => (
+                        <li><strong>{w.name}</strong> — {w.edge}, {w.date}{w.place ? ` · ${w.place}` : ''}</li>
+                      ))}
+                    </ul>
+                  </td>
+                </tr>
+              </>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">The register — actual blessings</h2>
+      <p class="mb-3 max-w-3xl text-sm opacity-80">
+        One row per attested saying. “Crowd” rows are mass blessings with no named sayer.
+        A19 (Rav Ovadia on Rav Moshe Feinstein) rests only on a forum post and is marked anecdotal.
+        The Aderet’s dream blessing ({dream?.sayer_id ? nameOf(dream.sayer_id) : ''} on {dream ? nameOf(dream.recipient_id) : ''}) is <strong>not</strong> in this table — a dream is not a waking act.
+      </p>
+      <div class="overflow-x-auto">
+        <table id="acts-table" class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-current/20">
+              <th class="py-2 pr-3">#</th><th class="py-2 pr-3">Sayer</th><th class="py-2 pr-3">Recipient</th>
+              <th class="py-2 pr-3">Date / place</th><th class="py-2 pr-3">Era</th><th class="py-2 pr-3">Confidence</th><th class="py-2">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {acts.map((e) => (
+              <tr class="border-b border-current/10 act-row" data-era={e.era}>
+                <td class="py-2 pr-3">{e.edge_id}</td>
+                <td class="py-2 pr-3 font-semibold">{nameOf(e.sayer_id)}</td>
+                <td class="py-2 pr-3 font-semibold">{nameOf(e.recipient_id)}</td>
+                <td class="py-2 pr-3">{e.date ?? 'undated'}{e.place ? ` · ${e.place}` : ''}<br /><span class="opacity-70">{e.occasion ?? ''}</span></td>
+                <td class="py-2 pr-3">{e.era}</td>
+                <td class="py-2 pr-3">{e.confidence}</td>
+                <td class="py-2">{e.source}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-3">
+        <button id="download-data" class="px-4 py-2 rounded-full border border-current/30 text-sm font-semibold">Download the dataset (JSON)</button>
+        <span class="text-sm opacity-70 ml-2">Rabbis and blessings, with places, dates, confidence and sources — version 2.</span>
+      </p>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">Designations — ruled blessable, no act recorded</h2>
+      <p class="mb-3 max-w-3xl text-sm opacity-80">
+        A rabbi ruled or taught that one may or should bless on the named person. These are <strong>not</strong>
+        sayings, and they are not in the graph or the hub counts — but they show who counted as blessable, when, and by whom.
+      </p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-current/20">
+              <th class="py-2 pr-3">#</th><th class="py-2 pr-3">Designator</th><th class="py-2 pr-3">Designated</th><th class="py-2 pr-3">Context</th><th class="py-2">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B1</td><td class="py-2 pr-3">The Chazon Ish</td><td class="py-2 pr-3">The Steipler</td><td class="py-2 pr-3">Bnei Brak, pre-1953</td><td class="py-2">Orchos Rabbeinu 1:109</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B2</td><td class="py-2 pr-3">Rav Yaakov Kamenetzky</td><td class="py-2 pr-3">Rav Aharon Kotler</td><td class="py-2 pr-3">Ruling relayed by Rav Taplin</td><td class="py-2">Orach Yosrael p. 255</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B3</td><td class="py-2 pr-3">Rav Moshe Feinstein</td><td class="py-2 pr-3">“A Torah scholar proficient in all of Shas” (unnamed class)</td><td class="py-2 pr-3">Reported in his name by Rav Taplin</td><td class="py-2">OU Torah</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B4</td><td class="py-2 pr-3">Rav Ephraim Greenblatt, Rivevos Ephraim 8:128</td><td class="py-2 pr-3">Rav Shach, Rav Elyashiv, Rav Chaim Kanievsky</td><td class="py-2 pr-3">Written ruling</td><td class="py-2">OU Torah</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B5</td><td class="py-2 pr-3">Rav Ben-Zion Abba Shaul</td><td class="py-2 pr-3">Rav Ovadia Yosef and Rav Elyashiv</td><td class="py-2 pr-3">Taught to his students</td><td class="py-2">Halacha Yomit Q&amp;A 31</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B6</td><td class="py-2 pr-3">Rav Elyashiv</td><td class="py-2 pr-3">The Steipler and Rav Moshe Feinstein</td><td class="py-2 pr-3">Relayed in Gedola Shemushah</td><td class="py-2">Dirshu</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B7</td><td class="py-2 pr-3">Rav Elyashiv (via Rav Yitzchak Zilberstein)</td><td class="py-2 pr-3">Rav Moshe Feinstein, “among the three gedolei hador” — the third is Rav Aharon Kotler in one version (see B19); another version names only two</td><td class="py-2 pr-3">Told in Simcha BaBayit</td><td class="py-2">Dirshu</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B8</td><td class="py-2 pr-3">Rav Elyashiv (secondhand)</td><td class="py-2 pr-3">The Tchebiner Rav at 80, and Rav Ben-Zion Abba Shaul at 40</td><td class="py-2 pr-3">Tisha BeAv shiur by Rav Eitan Cohen — anecdotal, third-hand</td><td class="py-2">darashty.co.il</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B9</td><td class="py-2 pr-3">Rav Ovadia Yosef</td><td class="py-2 pr-3">Rav Moshe Feinstein — “there is one you can certainly bless on… and I don’t know if there is another”</td><td class="py-2 pr-3">Sermon, undated</td><td class="py-2">Halacha Yomit, HalachaID 468 (the “3530” citation does not exist)</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B10</td><td class="py-2 pr-3">Rav Ovadia Yosef (forum claim)</td><td class="py-2 pr-3">Rav Shmuel Wosner, Rav Shlomo Mashash, Rav Shlomo Amar</td><td class="py-2 pr-3">Cited as Ma’ayan Omer vol. 1, siman 38 — verify in print; anecdotal</td><td class="py-2">Forum Mizrach</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B11</td><td class="py-2 pr-3">Rav Shlomo Amar</td><td class="py-2 pr-3">Rav Avraham Shapira</td><td class="py-2 pr-3">2007 eulogy, secondhand</td><td class="py-2">yeshiva.org.il</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B12</td><td class="py-2 pr-3">Rav David Yosef</td><td class="py-2 pr-3">Rav Yaakov Chaim Sofer</td><td class="py-2 pr-3">Feb 2026, Yeshivat Kef HaChaim graduates’ event — now also an act (V16): the graduates had already blessed when he endorsed it</td><td class="py-2">Kol Barama, 12 Feb 2026</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B13</td><td class="py-2 pr-3">Rav Dov Kook</td><td class="py-2 pr-3">Rav Chaim Kanievsky — “the only one in our generation”</td><td class="py-2 pr-3">2021 article</td><td class="py-2">Etz Chaim</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B14</td><td class="py-2 pr-3">The Minchas Elazar of Munkatch</td><td class="py-2 pr-3">Torah scholars generally (no names)</td><td class="py-2 pr-3">Minchas Elazar 5:7</td><td class="py-2">OU Torah</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B15</td><td class="py-2 pr-3">Rav Chaim Kanievsky</td><td class="py-2 pr-3">Rav Shach — “one can still make a beracha pronouncing Hashem’s name on Rabbi Shach… ‘Rabbi Shach,’ said Reb Chaim, ‘is the Gadol Hadar’”</td><td class="py-2 pr-3">1993</td><td class="py-2">Jewish Observer, Feb 2002, pp. 12–13</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B16</td><td class="py-2 pr-3">Rav Mordechai Eliyahu</td><td class="py-2 pr-3">Rav Tzvi Yehuda Kook</td><td class="py-2 pr-3">Asked if there is a sage on whom one can bless shechalak</td><td class="py-2">Har Bracha, Revivim 255</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B17</td><td class="py-2 pr-3">Rav Moshe Shmuel Shapira (Rosh Yeshivat Be’er Ya’akov, 1917–2006)</td><td class="py-2 pr-3">Rav Chaim Kanievsky</td><td class="py-2 pr-3">Standing instruction to his son, before 2006</td><td class="py-2">Divrei Siach, Emor 5783</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B18</td><td class="py-2 pr-3">Rav Elyashiv</td><td class="py-2 pr-3">Unnamed “gedolei hador” of our generation</td><td class="py-2 pr-3">Undated</td><td class="py-2">Dirshu Likrat Shabbat 5778</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B19</td><td class="py-2 pr-3">Rav Elyashiv</td><td class="py-2 pr-3">Rav Aharon Kotler — third of three, with the Steipler and Rav Moshe Feinstein</td><td class="py-2 pr-3">Undated; conflicts with the two-name version (B6/B7) — Kotler died 1962, so the three-name list cannot be a post-1962 practical list. Both versions carried, not merged.</td><td class="py-2">Kol HaLashon PDF, Zilberstein shiur, Chayei Sarah 506</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">B20</td><td class="py-2 pr-3">Rav Chaim Kanievsky</td><td class="py-2 pr-3">Rav Dov Landau — “נחשב מופלג בדורו”</td><td class="py-2 pr-3">Undated</td><td class="py-2">Mishpacha, “גאונות האדם”</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">Refusals — withheld, declined, or ruled out</h2>
+      <p class="mb-3 max-w-3xl text-sm opacity-80">The blessing survives as a designation partly because almost everyone declines it for himself.</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-current/20">
+              <th class="py-2 pr-3">#</th><th class="py-2 pr-3">Who</th><th class="py-2 pr-3">What happened</th><th class="py-2">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">C1</td><td class="py-2 pr-3">Rav Elyashiv (recipient)</td><td class="py-2 pr-3">Did not answer Amen; demurred on the word <em>lire’av</em> — “‘שחלק מחכמתו’, מילא, אבל ‘ליראיו’?” (“the wisdom, yes; ‘those who fear Him’, no”) — wording now confirmed verbatim from a second print source</td><td class="py-2">Yalkut Yosef 455 (2024); Dirshu Likrat Shabbat 5778 (from Gedola Shemushah)</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">C2</td><td class="py-2 pr-3">Rav Elyashiv (as posek)</td><td class="py-2 pr-3">Told Rav Sarya Deblitzky the blessing should not be recited in our times — Deblitzky blessed on Rav Ovadia anyway (A12)</td><td class="py-2">Halacha Yomit 3010</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">C3</td><td class="py-2 pr-3">Rav David Yosef (recipient)</td><td class="py-2 pr-3">Angrily refused: “I ask you not to bless on me” (anecdotal; in tension with B12)</td><td class="py-2">Forum Mizrach</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">C4</td><td class="py-2 pr-3">The Lubavitcher Rebbe</td><td class="py-2 pr-3">“A Rebbe is above this” — the blessing does not apply to a Rebbe (chronology problem: the Rayatz died in 1950; verify against Kuntres Birkhot HaHitgalut)</td><td class="py-2">Chabadpedia</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">C5</td><td class="py-2 pr-3">Rav Aharon Leib Steinman</td><td class="py-2 pr-3">Shown rare video of the Chafetz Chaim (Apr 2015): “it is not applicable to bless shechalak” — a video image is not “seeing”</td><td class="py-2">Behadrei Chareidim via Kooker</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">C6</td><td class="py-2 pr-3">Rav Yitzchak Yosef (recollection)</td><td class="py-2 pr-3">Does not remember the blessing being said on the previous generation’s Sephardi gedolim (Attiya, Hadaya, Adas, HaKohen) — the revival is largely Rav Ovadia’s doing</td><td class="py-2">Yalkut Yosef 455 (2024)</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">C7</td><td class="py-2 pr-3">The Chozeh of Lublin</td><td class="py-2 pr-3">For the 16 years the Berditchever lived, set aside an hour every day to thank Hashem for sending such a soul — the thanksgiving the blessing institutionalises, as a daily practice</td><td class="py-2">Hamichlol</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">C8</td><td class="py-2 pr-3">Rav Avraham Shapira (recipient, V03/V04)</td><td class="py-2 pr-3">Stood and called out: “זו ברכה לבטלה ולא עניתי עליה אמן”. Rav Eliyahu publicly disagreed: “Amen v’Amen” — one Amen meaning “it is true” (about Shapira), the other “may it be so” (about himself). The only recorded defence of a blessing by a fellow recipient.</td><td class="py-2">harav.org; Wikishiva</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">C9</td><td class="py-2 pr-3">Rav Chaim Kanievsky (recipient, V02)</td><td class="py-2 pr-3">Answered humbly “צריך לומר ברוך שם” — one should say Baruch Shem [Kevod Malchuto]. Shapira replied that saying Baruch Shem would violate kibbud av, since his father had commanded him to bless — “ורבינו סבר וקיבל”</td><td class="py-2">Divrei Siach, Emor 5783</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">C10</td><td class="py-2 pr-3">Rav Elchanan Wasserman (recipient, V13)</td><td class="py-2 pr-3">Protested with tears that it was bracha levatala; Dirshu variant: fainted from grief</td><td class="py-2">Seridei Esh memoirs; Dirshu</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">C11</td><td class="py-2 pr-3">Rav Meir Mazuz (d. 19 Apr 2025)</td><td class="py-2 pr-3">On hearing someone had blessed shechalak on him, publicly expressed displeasure, said it was bracha levatala, and was very angry. Sayer unnamed, date unknown.</td><td class="py-2">Hamichlol bio (unsourced)</td></tr>
+            <tr class="border-b border-current/10"><td class="py-2 pr-3">C12</td><td class="py-2 pr-3">Rav Chaim Pinchas Sheinberg (Torah Ore)</td><td class="py-2 pr-3">People often blessed on him; he showed displeasure; asked why, he answered: “‘שחלק מחכמתו’, מילא, אבל ‘ליראיו’?” — doubting his own yir’at Shamayim. He himself held there were gedolim one could bless on.</td><td class="py-2">Dirshu Likrat Shabbat 5778</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">The halacha — why the map looks like this</h2>
+      <p class="mb-3 max-w-3xl">
+        Three camps. <strong>Yes, with Shem uMalchut:</strong> Chayei Adam, Rav Ovadia Yosef
+        (Yechaveh Daat 4:16 — the fullest modern treatment), Rav Shmuel Wosner (Shevet HaLevi 10:13),
+        Rav Mordechai Eliyahu. <strong>No, or only without Shem uMalchut:</strong> Aruch HaShulchan
+        224:6 (“how great must he be? It was not explained — so nowadays we refrain”), Yosef Ometz,
+        Ben Ish Chai, Tzitz Eliezer. <strong>Reshut, and fragmented:</strong> Rav Asher Weiss,
+        Minchat Asher, Corona 53 — the blessing is optional, and “in early days gedolim were accepted
+        by the entire people; not so today — every circle has its own gadol, each disqualifying the
+        other’s witnesses,” so ruling either way risks a vain blessing or an insult to Torah.
+      </p>
+      <p class="mb-3 max-w-3xl">
+        Two rules shape the data. <strong>Face to face only:</strong> seeing a gadol in a photo or on
+        a screen does not count, so every edge in the graph is a real journey by somebody.
+        <strong>The 30-day rule:</strong> the blessing is repeated only after thirty days without
+        seeing the sage — Rav Chaim Kanievsky visited Rav Shach every thirty days precisely
+        to say it again (V01, Jewish Observer, Feb 2002), turning a halachic interval into a monthly pilgrimage. The modern mass form
+        inverts it: thousands blessing on Rav Sternbuch at Chol HaMoed, the recipient correcting
+        the grammar.
+      </p>
+      <p class="max-w-3xl">
+        Who qualifies? No source gives a quantitative threshold. The working definitions: outstanding
+        in Torah and fear of Heaven, a teacher of rulings in Israel (Yechaveh Daat / Yalkut Yosef);
+        “asked everywhere and answers” (Rav Eliyahu); proficient in all of Shas (reported in Rav
+        Moshe Feinstein’s name). A rosh yeshiva who does not know halacha, or who “only knows Mishnah
+        Berurah”, does not qualify. Whether the blessing may be said on a woman scholar, no posek
+        found so far addresses directly — an open question, not filled in by inference.
+      </p>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold mb-3">Globalisation — ten hypotheses, still untested</h2>
+      <p class="mb-3 max-w-3xl">
+        At n = 37 none of these can be tested yet — but version 2 gives the first readings. The top
+        five recipients take 14 of 37 edges (38%), short of the half that hypothesis 6 predicts; the
+        cross-community share grows with the Baba Sali and joint Chief Rabbis cases; and the Tiberias
+        cases pull against hypothesis 2 (Israel as the hub) by reproducing the practice at the periphery.
+        The full statements, with predictions and falsifiers, are in the project notes; the short forms:
+      </p>
+      <ol class="list-decimal ml-6 space-y-1 max-w-3xl">
+        <li><strong>Distance rises:</strong> median travel distance grows across the eras; same-town edges fall from a majority to a minority after 1967.</li>
+        <li><strong>Israel becomes the hub:</strong> after 1948, Israel’s share of encounter places rises above half, and the most-blessed-upon rabbis are Israel-based.</li>
+        <li><strong>A travel ritual:</strong> in the jet age the blessing becomes something said on arrival — at airports, kinusim, shiva calls.</li>
+        <li><strong>Diaspora → Israel dominates:</strong> the flow into Israel outweighs the flow out of it by at least three to one.</li>
+        <li><strong>Crossing rises:</strong> the share of cross-community edges grows over time.</li>
+        <li><strong>Hub concentration:</strong> the top five recipients take more than half of all edges.</li>
+        <li><strong>A halachic split is a geographic split:</strong> Sephardi sayers are over-represented, because Sephardi poskim generally say the blessing and many Ashkenazi poskim hesitate.</li>
+        <li><strong>Repeaters are a separate local network:</strong> 30-day repeat edges cluster in one town.</li>
+        <li><strong>The digital paradox:</strong> travel is cheapest and the screen still does not count — so does frequency rise (more travel) or fall (recognition moves online, where the blessing cannot follow)? Two rival predictions.</li>
+        <li><strong>Blessing ≠ teacher–student:</strong> the blessing network is not the teacher–student network.</li>
+      </ol>
+      <p class="mt-3 max-w-3xl text-sm opacity-80">
+        Three null checks travel with them: source volume (are there more recent cases because more
+        happened, or because more was printed?), survivorship, and reporting bias — Sephardi sources
+        and English-language sources report this blessing far more than others do.
+      </p>
+    </section>
+
+    <section class="mb-10 rounded-xl border border-current/20 p-5 md:p-6">
+      <h2 class="text-xl font-bold mb-2">Method, limits, and version 3</h2>
+      <p class="mb-3 max-w-3xl">
+        Version 2 is a web sweep (Hebrew and English, November 2026) plus a grep of 2,085 transcripts
+        from the Weiss, Wieder, Fuerst, Headlines, Breitowitz and Schachter archives — zero genuine
+        mentions of the scholar’s blessing (the 39 שחלק hits are ASR garble; the only adjacent find
+        is the king’s blessing, שחלק מכבודו, in two Weiss shiurim). Sources: OU Torah, Halacha Yomit,
+        Yeshiva.org.il, Dirshu, Etz Chaim, Kol Barama, Chabadpedia, Harav.org, and the seforim they cite.
+        It is not a census. No instance was found on the web for Rav Kook, Rav Soloveitchik,
+        Rav Lichtenstein, Rav Shach as sayer, Rav Hershel Schachter, or Rav Asher Weiss — recorded
+        as “not found”, not “did not happen”. The four dead ends share a profile: men whose
+        <em>writings</em> discuss the blessing but whose anecdote literature is thinnest in the
+        hagiographic genre where the blessing is documented.
+      </p>
+      <p class="mb-3 max-w-3xl">
+        The book-length treatment — Rav Yechezkel Moskowitz, <em>Birkat Chachamim</em> (Bnei Brak,
+        5784) — was <em>not</em> located anywhere: NLI, HebrewBooks, WorldCat and bookstores are
+        empty, and its only attestation anywhere is a “Further reading” line in Hebrew Wikipedia.
+        Version 3 needs it in print (NLI catalog, Otzar HaHochma, Bnei Brak stores), plus the
+        fifteen open leads: the Eliyahu/Shapira US date, the Meshiv author’s identity, Piskei
+        Teshuvot 224 n. 17 (reportedly several testimonies of rabbis who blessed with Shem uMalkhut),
+        the unnamed gadol of Tzitz Eliezer 14:37, and a print check of Minchat Asher Corona 53.
+        Rav Ovadia on Rav Moshe Feinstein as an act is still unverified — no dated meeting, and the
+        “Halacha Yomit 3530” citation does not exist (the real article is HalachaID 468).
+      </p>
+      <p class="max-w-3xl text-sm opacity-70">
+        Corrections welcome. If you can source an instance — or correct one — the dataset is the
+        place to fix it, not the prose.
+      </p>
+    </section>
+  </main>
+
+  <script define:vars={{ dataJson }}>
+    const DATA = JSON.parse(dataJson);
+    const acts = DATA.blessings.filter((b) => b.is_act);
+    const byId = new Map(DATA.rabbis.map((r) => [r.id, r]));
+    const nameOf = (id) => byId.get(id)?.name_en ?? id;
+
+    // Nodes: everyone who says or receives in an act, placed on a circle by birth year.
+    const ids = [...new Set(acts.flatMap((e) => [e.sayer_id, e.recipient_id]))];
+    const nodes = ids.map((id) => byId.get(id)).filter(Boolean);
+    nodes.sort((a, b) => (a.birth_year ?? 9999) - (b.birth_year ?? 9999) || a.name_en.localeCompare(b.name_en));
+
+    const svg = document.getElementById('network');
+    const NS = 'http://www.w3.org/2000/svg';
+    const CX = 450, CY = 310, R = 250;
+    const pos = new Map();
+    nodes.forEach((n, i) => {
+      const a = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
+      pos.set(n.id, { x: CX + R * Math.cos(a), y: CY + R * Math.sin(a) });
+    });
+
+    const el = (tag, attrs) => {
+      const e = document.createElementNS(NS, tag);
+      for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+      return e;
+    };
+
+    let currentEra = 'All';
+    let selected = null;
+    const detail = document.getElementById('node-detail');
+
+    function edgeVisible(e) { return currentEra === 'All' || e.era === currentEra; }
+
+    function render() {
+      svg.innerHTML = '';
+      const edgeLayer = el('g', {});
+      const nodeLayer = el('g', {});
+      svg.appendChild(edgeLayer);
+      svg.appendChild(nodeLayer);
+
+      for (const e of acts) {
+        if (!pos.has(e.sayer_id) || !pos.has(e.recipient_id)) continue;
+        const p1 = pos.get(e.sayer_id), p2 = pos.get(e.recipient_id);
+        const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
+        const dx = p2.x - p1.x, dy = p2.y - p1.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const cx = mx - dy / len * 28, cy = my + dx / len * 28;
+        const active = edgeVisible(e) && (!selected || e.sayer_id === selected || e.recipient_id === selected);
+        const line = el('path', {
+          d: `M ${p1.x} ${p1.y} Q ${cx} ${cy} ${p2.x} ${p2.y}`,
+          fill: 'none', stroke: active ? '#b45309' : '#94a3b8',
+          'stroke-width': active ? 2.5 : 1.2,
+          opacity: active ? 0.95 : (edgeVisible(e) ? 0.45 : 0.08),
+          'marker-end': 'url(#arrow)',
+        });
+        line.style.cursor = 'pointer';
+        line.addEventListener('click', () => {
+          detail.textContent = `${nameOf(e.sayer_id)} → ${nameOf(e.recipient_id)} · ${e.date ?? 'undated'}${e.place ? ' · ' + e.place : ''} · ${e.source} (${e.confidence})`;
+        });
+        edgeLayer.appendChild(line);
+      }
+
+      const defs = el('defs', {});
+      defs.innerHTML = '<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#b45309"/></marker>';
+      svg.appendChild(defs);
+
+      for (const n of nodes) {
+        const p = pos.get(n.id);
+        const involved = acts.some((e) => edgeVisible(e) && (e.sayer_id === n.id || e.recipient_id === n.id));
+        const isSel = selected === n.id;
+        const g = el('g', { style: 'cursor:pointer', opacity: involved ? 1 : 0.25 });
+        const c = el('circle', { cx: p.x, cy: p.y, r: isSel ? 9 : 6, fill: isSel ? '#b45309' : '#0e7490', stroke: '#fff', 'stroke-width': 1.5 });
+        const t = el('text', { x: p.x, y: p.y - 12, 'text-anchor': 'middle', 'font-size': 11, fill: 'currentColor' });
+        t.textContent = n.name_en.split('—')[0].trim().split(' ').slice(-2).join(' ');
+        g.appendChild(c); g.appendChild(t);
+        g.addEventListener('click', () => {
+          selected = selected === n.id ? null : n.id;
+          if (selected) {
+            const said = acts.filter((e) => e.sayer_id === selected);
+            const got = acts.filter((e) => e.recipient_id === selected);
+            const bits = [];
+            if (said.length) bits.push(`said it on ${said.map((e) => nameOf(e.recipient_id)).join(', ')}`);
+            if (got.length) bits.push(`blessed upon by ${got.map((e) => nameOf(e.sayer_id)).join(', ')}`);
+            detail.textContent = `${nameOf(selected)} (${n.birth_year ?? '?'}–${n.death_year ?? ''}) — ${bits.join('; ') || 'no acts in this filter'}.`;
+          } else {
+            detail.textContent = 'Click a rabbi’s name in the graph to see their blessings here.';
+          }
+          render();
+        });
+        nodeLayer.appendChild(g);
+      }
+    }
+
+    document.querySelectorAll('.era-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        currentEra = btn.dataset.era;
+        document.querySelectorAll('.era-btn').forEach((b) => b.classList.toggle('font-semibold', b === btn));
+        document.querySelectorAll('.act-row').forEach((row) => {
+          row.style.display = currentEra === 'All' || row.dataset.era === currentEra ? '' : 'none';
+        });
+        render();
+        refreshMap();
+      });
+    });
+
+    // Expandable counts in the hub and sayer tables.
+    document.querySelectorAll('.count-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const row = document.getElementById(btn.dataset.target);
+        if (!row) return;
+        const opening = row.hidden;
+        row.hidden = !opening;
+        btn.setAttribute('aria-expanded', String(opening));
+        btn.textContent = btn.textContent.replace(/[▸▾]/, opening ? '▾' : '▸');
+      });
+    });
+
+    // Geographic map (Leaflet, OpenStreetMap tiles). Astro turns an external
+    // <script src> in a .astro component into a deferred module import, which
+    // runs AFTER this classic script — so window.L was undefined at init time
+    // and the map stayed blank. Load Leaflet at runtime instead.
+    let refreshMap = () => {};
+    const mapEl = document.getElementById('map');
+    const initMap = () => {
+      // fadeAnimation off: a static map has no use for the 200ms fade-in.
+      // scrollWheelZoom off: scrolling the page with the cursor over the map
+      // used to zoom the map out instead (that was the "first-load half-blank
+      // tiles" defect — the map itself was fine; the scroll zoomed it out to
+      // zoom 0, centre near Antarctica). Pan and the +/− buttons still work.
+      const map = L.map('map', { fadeAnimation: false, scrollWheelZoom: false }).setView([33, 22], 3);
+      const tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      });
+      tileLayer.addTo(map);
+      const placeData = acts.filter((e) => e.place_lat != null && e.place_lon != null)
+        .reduce((acc, e) => {
+          const key = `${e.place_lat},${e.place_lon}`;
+          (acc[key] = acc[key] || { lat: e.place_lat, lon: e.place_lon, name: e.place, edges: [] }).edges.push(e);
+          return acc;
+        }, {});
+      const popupHtml = (name, edges) =>
+        `<strong>${name}</strong><ul>${edges.map((e) => `<li>${nameOf(e.sayer_id)} → ${nameOf(e.recipient_id)} · ${e.edge_id}, ${e.date ?? 'undated'}</li>`).join('')}</ul>`;
+      const placeMarkers = [];
+      for (const p of Object.values(placeData)) {
+        const icon = L.divIcon({
+          className: 'map-count',
+          html: `<span>${p.edges.length}</span>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        });
+        // Bigger counts on top: at world zoom the Israel places sit within a
+        // few pixels of each other, and Jerusalem's 9 was buried under a 1.
+        const marker = L.marker([p.lat, p.lon], { icon, zIndexOffset: p.edges.length * 100 });
+        marker._placeEdges = p.edges;
+        marker._placeName = p.name;
+        marker.bindPopup(popupHtml(p.name, p.edges));
+        marker.addTo(map);
+        placeMarkers.push(marker);
+      }
+      // The map is only built once the container has its real height (see
+      // startMap's size gate): the tile level's origin is computed once when
+      // the layer is added, and a wrong origin at that moment used to shift
+      // the whole grid. (Also tried and ruled out: moveend forcing,
+      // re-adding the same layer — GridLayer.onRemove never clears _levels,
+      // so the stale origin survives — and rebuilding the whole map.)
+      window.__shechMap = map;
+      window.__shechInitH = mapEl.clientHeight;
+      map.invalidateSize();
+      // (No diagnostic line: the map is verified — see the size gate above
+      // and the scrollWheelZoom note at map creation.)
+      refreshMap = () => {
+        for (const m of placeMarkers) {
+          const visible = m._placeEdges.filter(edgeVisible);
+          if (!visible.length) { map.removeLayer(m); continue; }
+          m.setPopupContent(popupHtml(m._placeName, visible));
+          m.addTo(map);
+        }
+      };
+    };
+    // Initialise only when the map scrolls into view: initialising at page
+    // load left the bottom half of the frame tile-less on first paint, while
+    // a reload with the map already in view filled it. Also re-apply the era
+    // filter at init, in case an era was picked before the map existed.
+    // Size gate: only build the map once the container has its real height.
+    // Building it while layout is still settling captures a wrong pixel
+    // origin, and Leaflet never recomputes the tile level's origin afterwards.
+    const startMapWhenReady = (attempts = 0) => {
+      if (mapEl.clientHeight >= 400 || attempts >= 20) { initMap(); refreshMap(); }
+      else setTimeout(() => startMapWhenReady(attempts + 1), 100);
+    };
+    const startMap = () => {
+      if (window.L) { startMapWhenReady(); }
+      else {
+        const leafletScript = document.createElement('script');
+        leafletScript.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        leafletScript.onload = () => { startMapWhenReady(); };
+        leafletScript.onerror = () => {
+          mapEl.innerHTML = '<p class="p-4 text-sm">The map could not load (Leaflet did not load). The encounter places are listed in the register below.</p>';
+        };
+        document.head.appendChild(leafletScript);
+      }
+    };
+    if (mapEl) {
+      if ('IntersectionObserver' in window) {
+        const mapObserver = new IntersectionObserver((entries) => {
+          if (entries.some((e) => e.isIntersecting)) { mapObserver.disconnect(); startMap(); }
+        }, { rootMargin: '200px' });
+        mapObserver.observe(mapEl);
+      } else startMap();
+    }
+
+    document.getElementById('download-data').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'shechalak-blessings-v2.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    render();
+  </script>
+</Layout>
