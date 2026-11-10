@@ -157,7 +157,7 @@ def greystone(out):
             nx, ny = dy, -dx
             p = [(mx - dx * 2.2, my - dy * 2.2), (mx + dx * 2.2, my + dy * 2.2)]
             m.prism(CHARCOAL, [p[0], p[1], (p[1][0] + nx * 0.5, p[1][1] + ny * 0.5), (p[0][0] + nx * 0.5, p[0][1] + ny * 0.5)], z, z + 9)
-    DOOR = "#7E2F25"
+    DOOR = CHARCOAL
     m.box(DOOR, 7.5, 14.5, -8.6, -8, G + 6, G + 17)                      # raised front door
     m.box(IVORY, 6.5, 15.5, -9, -8, G + 17, G + 18.5)
     for k in range(5):                                                   # stoop

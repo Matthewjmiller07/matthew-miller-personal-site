@@ -11,6 +11,8 @@ export interface Agent {
   brokerage: string;
   area: string;
   listing: string | null;
+  /** True once the printed model has been dropped at their office. */
+  delivered?: boolean;
   /** Models made for this agent: files in public/warmhouse/models/ (see src/data/warmhouse/README.md). */
   models?: { id: string; name: string; blurb?: string }[];
 }
@@ -110,7 +112,11 @@ const faqs = [
           )}
           {agent ? (
             agent.listing ? (
-              <h1>{agent.first}, that’s <em>{agent.listing}</em> on your desk.</h1>
+              agent.delivered ? (
+                <h1>{agent.first}, that’s <em>{agent.listing}</em> on your desk.</h1>
+              ) : (
+                <h1>{agent.first}, we modeled <em>{agent.listing}.</em></h1>
+              )
             ) : (
               <h1>{agent.first}, picture this on your <em>buyer’s mantel.</em></h1>
             )
@@ -118,10 +124,17 @@ const faqs = [
             <h1>Their new home, small enough for <em>the mantel.</em></h1>
           )}
           {agent?.listing ? (
-            <p class="wh-lede">
-              We made it from your listing photos, and it’s yours to keep. Now picture one at your next closing: the
-              exact home your client just bought, with your name on the base, on display for years.
-            </p>
+            agent.delivered ? (
+              <p class="wh-lede">
+                We made it from your listing photos, and it’s yours to keep. Now picture one at your next closing: the
+                exact home your client just bought, with your name on the base, on display for years.
+              </p>
+            ) : (
+              <p class="wh-lede">
+                This is your listing, modeled from the listing photos and ready to print with your name on the base.
+                Say the word and the first one is yours, free, delivered to your office.
+              </p>
+            )
           ) : (
             <p class="wh-lede">
               WarmHouse makes a custom 3D-printed model of the exact home your client just bought, from your listing
