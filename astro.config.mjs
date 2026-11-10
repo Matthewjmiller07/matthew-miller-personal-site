@@ -20,6 +20,7 @@ export default defineConfig({
         !page.includes('/dweck-sukkot-picks') &&
         !page.includes('/desk') &&
         !page.includes('/everything') &&
+        !page.includes('/warmhouse/for') &&
         !page.includes('/ross/kit'),
     })
   ],

@@ -1,0 +1,723 @@
+---
+// The WarmHouse landing page. /warmhouse renders it plain; /warmhouse/for/<slug> passes an agent
+// from src/data/warmhouse/agents.json and gets the personal version.
+import WarmHouseLayout from '../../layouts/WarmHouseLayout.astro';
+import catalog from '../../data/warmhouse/models.json';
+
+export interface Agent {
+  slug: string;
+  name: string;
+  first: string;
+  brokerage: string;
+  area: string;
+  listing: string | null;
+  /** Models made for this agent: files in public/warmhouse/models/ (see src/data/warmhouse/README.md). */
+  models?: { id: string; name: string; blurb?: string }[];
+}
+export interface Props {
+  agent?: Agent;
+}
+const { agent } = Astro.props;
+
+// The gallery: this agent's own models first, then the ready-made homes, those that suit their area first.
+const fits = (areas: string[]) => (agent ? areas.some((a) => agent.area.includes(a)) : false);
+const gallery = [
+  ...(agent?.models || []).map((m) => ({ ...m, blurb: m.blurb || 'Modeled from your listing photos.', kind: 'Made for you' })),
+  ...catalog.filter((m) => fits(m.areas)),
+  ...catalog.filter((m) => !fits(m.areas)),
+].map((m) => ({ ...m, file: `/warmhouse/models/${m.id}.json`, image: `/warmhouse/models/${m.id}.jpg` }));
+// The hero turntable opens on the agent's best match; the plain page opens on the printed home.
+const first = (agent ? undefined : gallery.find((m) => m.kind === 'Printed')) || gallery[0];
+const plateAddress = agent?.listing || '1418 Maple Lane';
+const plateName = agent?.name || 'Your Name';
+
+const title = agent
+  ? `For ${agent.name} | WarmHouse`
+  : 'WarmHouse | Custom 3D home models for closing gifts';
+const description =
+  'WarmHouse makes custom 3D-printed models of the exact home your client just bought, from listing photos, with your name on the base. Hand-delivered in Chicago and the North Shore.';
+
+const tiers = [
+  {
+    name: 'Signature',
+    price: '$195',
+    pack: '5 for $875',
+    blurb: 'The one most agents give.',
+    points: ['Up to about 7 inches wide', 'Up to four matte colors', 'Base with the address and your name'],
+  },
+  {
+    name: 'Estate',
+    price: '$350',
+    pack: '5 for $1,575',
+    blurb: 'For the home that deserves more room.',
+    points: ['Larger, printed in sections and assembled', 'Landscaping: trees, beds, paths', 'Gift box with a card'],
+  },
+];
+
+const faqs = [
+  {
+    q: 'What do you need from me?',
+    a: 'Listing photos you have the rights to (front, sides, and the back if you have it), the address, what the base should say, and the closing date. A link to the listing helps too.',
+  },
+  {
+    q: 'How far ahead should I order?',
+    a: 'We take ten business days from photos to delivery. Most agents order two to four weeks before closing.',
+  },
+  {
+    q: 'How big is it?',
+    a: 'A Signature model is up to about seven inches wide, the size of a paperback. Estate models are larger and come with landscaping.',
+  },
+  {
+    q: 'Where do you deliver?',
+    a: 'By hand anywhere in Chicago and the North Shore: your office, the closing table, or your client’s front door. Outside that area, ask and we will work out shipping.',
+  },
+  {
+    q: 'Can I give one to sellers?',
+    a: 'Yes. The Listing edition is the same model, given at listing or as a going-away gift: the home they are leaving, to take with them. It counts toward an agent pack.',
+  },
+];
+---
+
+<WarmHouseLayout title={title} description={description} noindex={Boolean(agent)}>
+  <header class="wh-nav">
+    <div class="wh-wrap wh-nav-in">
+      <a href={agent ? `/warmhouse/for/${agent.slug}` : '/warmhouse'} class="wh-logo" aria-label="WarmHouse">
+        <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+          <path d="M4.5 15.5 16 5l11.5 10.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M8 13.5V26h16V13.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          <rect x="13" y="16.5" width="6" height="6" rx="1" fill="#B9482A"></rect>
+        </svg>
+        <span>Warm<b>House</b></span>
+      </a>
+      <nav class="wh-nav-links" aria-label="Page">
+        <a href="#models">Models</a>
+        <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#questions">Questions</a>
+      </nav>
+      <a href="#order" class="wh-btn wh-btn-solid wh-nav-cta">{agent ? 'Claim your free model' : 'Request a model'}</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="wh-hero">
+      <div class="wh-wrap wh-hero-in">
+        <div class="wh-hero-copy">
+          {agent ? (
+            <p class="wh-eyebrow">Prepared for {agent.name} · {agent.brokerage}</p>
+          ) : (
+            <p class="wh-eyebrow">Closing gifts for Chicago &amp; North Shore agents</p>
+          )}
+          {agent ? (
+            agent.listing ? (
+              <h1>{agent.first}, that’s <em>{agent.listing}</em> on your desk.</h1>
+            ) : (
+              <h1>{agent.first}, picture this on your <em>buyer’s mantel.</em></h1>
+            )
+          ) : (
+            <h1>Their new home, small enough for <em>the mantel.</em></h1>
+          )}
+          {agent?.listing ? (
+            <p class="wh-lede">
+              We made it from your listing photos, and it’s yours to keep. Now picture one at your next closing: the
+              exact home your client just bought, with your name on the base, on display for years.
+            </p>
+          ) : (
+            <p class="wh-lede">
+              WarmHouse makes a custom 3D-printed model of the exact home your client just bought, from your listing
+              photos, with your name on the base. It’s the closing gift that stays on display for years.
+            </p>
+          )}
+          <div class="wh-hero-cta">
+            <a href="#order" class="wh-btn wh-btn-solid">{agent ? 'Claim your free first model' : 'Request a model'}</a>
+            <a href="#pricing" class="wh-btn wh-btn-ghost">See pricing</a>
+          </div>
+          <ul class="wh-hero-facts">
+            <li><b>10</b> business days, photos to delivery</li>
+            <li><b>Hand-delivered</b> in Chicago &amp; the North Shore</li>
+            <li><b>Your name</b> on every base</li>
+          </ul>
+        </div>
+
+        <div class="wh-stage">
+          <div class="wh-viewer" data-wh-viewer data-model={first.file}>
+            <canvas aria-label="A 3D-printed model of a house on its lawn, slowly turning. Drag to turn it yourself."></canvas>
+            <p class="wh-viewer-hint">Drag to turn</p>
+          </div>
+          <div class="wh-plate" aria-label="Sample base plate">
+            <span class="wh-plate-address" data-wh-plate-address>{plateAddress}</span>
+            <span class="wh-plate-name">Presented by <span data-wh-plate-name>{plateName}</span></span>
+          </div>
+          {!agent && (
+            <label class="wh-try">
+              <span>See your name on the base</span>
+              <input type="text" maxlength="40" placeholder="Type your name" data-wh-try autocomplete="off" />
+            </label>
+          )}
+          <p class="wh-stage-note">
+            <span data-wh-stage-name>{first.name}</span>: four matte colors, 4.3 inches wide. <a href="#models">See all {gallery.length} models</a>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="wh-models" id="models">
+      <div class="wh-wrap">
+        <p class="wh-eyebrow">Ready-made models</p>
+        <h2>{agent ? `Pick one, ${agent.first}, and it’s yours.` : 'Pick one and it’s yours.'}</h2>
+        <p class="wh-models-lede">
+          These are modeled and ready to print today, with any address and your name on the base. Or send a listing
+          and we’ll model that exact home.
+        </p>
+        <div class="wh-cards">
+          {gallery.map((m) => (
+            <article class="wh-card" data-wh-card data-file={m.file} data-name={m.name}>
+              <button type="button" class="wh-card-img" data-wh-view aria-label={`Turn the ${m.name} model in 3D`}>
+                <img src={m.image} alt={`${m.name}: ${m.blurb}`} width="800" height="640" loading="lazy" />
+                <span class="wh-card-tag" data-kind={m.kind}>{m.kind}</span>
+                <span class="wh-card-3d">View in 3D</span>
+              </button>
+              <div class="wh-card-body">
+                <h3>{m.name}</h3>
+                <p>{m.blurb}</p>
+                <p class="wh-card-spec">Signature size · four matte colors · $195</p>
+                <button type="button" class="wh-btn wh-btn-solid" data-wh-want>I want this one</button>
+              </div>
+            </article>
+          ))}
+          <article class="wh-card wh-card-yours">
+            <div class="wh-card-body">
+              <span class="wh-num">Made to order</span>
+              <h3>{agent ? 'Your listing' : 'Your client’s home'}</h3>
+              <p>
+                {agent
+                  ? 'Tell us which of your listings to model. Your first one is on us, delivered to your office.'
+                  : 'Send the listing photos and we’ll model that exact home, ready in ten business days.'}
+              </p>
+              <a href="#order" class="wh-btn wh-btn-ghost" data-wh-custom>{agent ? 'Choose a listing' : 'Start a custom model'}</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="wh-why">
+      <div class="wh-wrap">
+        <h2>A gift that keeps your name in the room.</h2>
+        <div class="wh-why-grid">
+          <article>
+            <span class="wh-num">01</span>
+            <h3>It gets photographed.</h3>
+            <p>A tiny version of their own house is hard not to post. Clients share it, tag you, and their friends ask who their agent was.</p>
+          </article>
+          <article>
+            <span class="wh-num">02</span>
+            <h3>It works at both ends of a sale.</h3>
+            <p>Give buyers their new home at closing. Give sellers the home they’re leaving, at listing or as a going-away gift.</p>
+          </article>
+          <article>
+            <span class="wh-num">03</span>
+            <h3>It’s personal, not swag.</h3>
+            <p>One home, one model, made for one client. Nobody regifts it, and nobody else at the closing table brought one.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="wh-how" id="how">
+      <div class="wh-wrap">
+        <p class="wh-eyebrow">How it works</p>
+        <h2>Three steps, ten business days.</h2>
+        <ol class="wh-steps">
+          <li>
+            <h3>Send the photos</h3>
+            <p>Your listing photos, the address, what the base should say, and the closing date. That’s the whole brief.</p>
+          </li>
+          <li>
+            <h3>We model and print it</h3>
+            <p>We build the home in 3D by hand from your photos: roofline, windows, front door, garden. Then we print it in up to four matte colors.</p>
+          </li>
+          <li>
+            <h3>We bring it to you</h3>
+            <p>Hand-delivered to your office, the closing, or your client’s door, anywhere in Chicago and the North Shore.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="wh-pricing" id="pricing">
+      <div class="wh-wrap">
+        <p class="wh-eyebrow">Pricing</p>
+        <h2>Two sizes. Better by the five-pack.</h2>
+        <div class="wh-tiers">
+          {tiers.map((t) => (
+            <article class="wh-tier">
+              <h3>{t.name}</h3>
+              <p class="wh-tier-blurb">{t.blurb}</p>
+              <p class="wh-price">{t.price}<span> each</span></p>
+              <p class="wh-pack">Agent pack: <b>{t.pack}</b></p>
+              <ul>
+                {t.points.map((p) => <li>{p}</li>)}
+              </ul>
+            </article>
+          ))}
+          <article class="wh-tier wh-tier-note">
+            <h3>Listing edition</h3>
+            <p class="wh-tier-blurb">For your sellers.</p>
+            <p>The same model in either size, given at listing or as a going-away gift. Same prices, and it counts toward your pack.</p>
+            {agent ? (
+              <p class="wh-free"><b>Your first model is on us.</b> Pick one of your current listings and we’ll deliver it to your office.</p>
+            ) : (
+              <p class="wh-free"><b>New to WarmHouse?</b> Chicago-area agents can ask for a sample model of a current listing.</p>
+            )}
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="wh-faq" id="questions">
+      <div class="wh-wrap wh-faq-in">
+        <div>
+          <p class="wh-eyebrow">Questions</p>
+          <h2>What agents ask first.</h2>
+        </div>
+        <div class="wh-faq-list">
+          {faqs.map((f, i) => (
+            <details open={i === 0}>
+              <summary>{f.q}</summary>
+              <p>{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="wh-order" id="order">
+      <div class="wh-wrap wh-order-in">
+        <div class="wh-order-copy">
+          <p class="wh-eyebrow">{agent ? 'Your first model is free' : 'Request a model'}</p>
+          {agent ? (
+            <h2>Which listing should we make, {agent.first}?</h2>
+          ) : (
+            <h2>Tell us about the home.</h2>
+          )}
+          <p>
+            {agent
+              ? 'Send a listing or an upcoming closing. We’ll reply within one business day to confirm the details.'
+              : 'Send what you have. We’ll reply within one business day to confirm the details and the delivery date.'}
+          </p>
+          <p class="wh-order-small">Only send photos you have the rights to share. We use them to build your model and nothing else.</p>
+        </div>
+
+        <form class="wh-form" data-wh-form novalidate>
+          <input type="hidden" name="agent_slug" value={agent?.slug || ''} />
+          <input type="hidden" name="model_choice" value="" />
+          <p class="wh-picked" data-wh-picked hidden>
+            <span>You picked the <b data-wh-picked-name></b>. Add your email and send: that’s all we need.</span>
+            <button type="button" data-wh-unpick aria-label="Clear the model you picked">Clear</button>
+          </p>
+          <label class="wh-hp" aria-hidden="true">Website<input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+          <div class="wh-row">
+            <label>Your name<input name="name" required maxlength="120" autocomplete="name" value={agent && !/group|team/i.test(agent.name) ? agent.name : ''} /></label>
+            <label>Email<input name="email" type="email" required maxlength="200" autocomplete="email" /></label>
+          </div>
+          <div class="wh-row">
+            <label>Phone <i>optional</i><input name="phone" type="tel" maxlength="40" autocomplete="tel" /></label>
+            <label>Brokerage or team <i>optional</i><input name="brokerage" maxlength="160" value={agent ? (/group|team/i.test(agent.name) ? `${agent.name}, ${agent.brokerage}` : agent.brokerage) : ''} /></label>
+          </div>
+          <div class="wh-row">
+            <label>What is it for?
+              <select name="kind">
+                {agent && <option>Free first model of one of my listings</option>}
+                <option>Closing gift for a buyer</option>
+                <option>Listing gift for a seller</option>
+                <option>Agent pack of five</option>
+                {!agent && <option>Sample of one of my listings</option>}
+                <option>Just asking</option>
+              </select>
+            </label>
+            <label>Size
+              <select name="tier">
+                <option>Signature</option>
+                <option>Estate</option>
+                <option>Not sure yet</option>
+              </select>
+            </label>
+          </div>
+          <label>Address of the home<input name="property_address" maxlength="240" autocomplete="off" /></label>
+          <div class="wh-row">
+            <label>Name for the base <i>optional</i><input name="plate_text" maxlength="120" placeholder="Presented by…" value={agent?.name || ''} /></label>
+            <label>Closing or gift date <i>optional</i><input name="closing_date" type="date" /></label>
+          </div>
+          <label>Link to the listing <i>optional</i><input name="listing_url" type="url" maxlength="500" placeholder="https://" /></label>
+          <label>Photos <i>optional, up to 8</i>
+            <input name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple />
+          </label>
+          <label>Anything else? <i>optional</i><textarea name="note" rows="3" maxlength="2000"></textarea></label>
+          <button type="submit" class="wh-btn wh-btn-solid">{agent ? 'Send it over' : 'Send request'}</button>
+          <p class="wh-form-msg" data-wh-msg role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wh-foot">
+    <div class="wh-wrap wh-foot-in">
+      <span class="wh-logo wh-logo-small"><span>Warm<b>House</b></span></span>
+      <span>Custom 3D home models, made in Chicago.</span>
+      <a href="#order">Request a model</a>
+    </div>
+  </footer>
+</WarmHouseLayout>
+
+<style is:global>
+  /* Nav */
+  .wh-nav { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .wh-nav-in { display: flex; align-items: center; gap: 28px; height: 66px; }
+  .wh-logo { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; font-family: var(--serif); font-size: 1.4rem; letter-spacing: -0.02em; color: var(--ink); }
+  .wh-logo b { font-weight: 600; font-style: italic; color: var(--ember); }
+  .wh-logo-small { font-size: 1.15rem; }
+  .wh-nav-links { display: flex; gap: 26px; margin-left: auto; font-size: 0.94rem; }
+  .wh-nav-links a { text-decoration: none; color: var(--ink-2); }
+  .wh-nav-links a:hover { color: var(--ember); }
+  .wh-nav-cta { padding: 0.55em 1.1em; font-size: 0.92rem; }
+
+  /* Hero */
+  .wh-hero { padding: 56px 0 72px; overflow: hidden; }
+  .wh-hero-in { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+  .wh-hero h1 { font-size: clamp(2.5rem, 5.4vw, 4.3rem); margin: 18px 0 22px; }
+  .wh-hero h1 em { font-style: italic; color: var(--ember); }
+  .wh-lede { font-size: 1.16rem; color: var(--ink-2); max-width: 34em; }
+  .wh-hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 30px 0 34px; }
+  .wh-hero-facts { list-style: none; margin: 0; padding: 22px 0 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; font-size: 0.9rem; color: var(--ink-2); line-height: 1.4; }
+  .wh-hero-facts b { display: block; font-family: var(--serif); font-weight: 500; font-size: 1.3rem; color: var(--ink); margin-bottom: 2px; }
+
+  .wh-stage { display: flex; flex-direction: column; align-items: center; }
+  .wh-viewer { position: relative; width: 100%; aspect-ratio: 1 / 0.86; border-radius: 28px; background: radial-gradient(ellipse 62% 50% at 50% 62%, #fffaf1 0%, #f1e6d3 62%, var(--paper-2) 100%); border: 1px solid var(--line); cursor: grab; touch-action: pan-y; user-select: none; overflow: hidden; }
+  .wh-viewer:active { cursor: grabbing; }
+  .wh-viewer canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 0.6s; }
+  .wh-viewer.is-ready canvas { opacity: 1; }
+  .wh-viewer-hint { position: absolute; right: 16px; top: 14px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); pointer-events: none; }
+  .wh-plate { margin-top: -26px; position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 34px 13px; min-width: 60%; max-width: 92%; text-align: center; border-radius: 6px; background: linear-gradient(160deg, #d9bd7c 0%, #b08d4c 45%, #c9a961 70%, #9c7a3c 100%); color: #3a2b10; box-shadow: 0 1px 0 #f0dca8 inset, 0 -1px 0 #7d6130 inset, 0 10px 24px -10px rgba(60, 40, 10, 0.45); }
+  .wh-plate-address { font-family: var(--serif); font-weight: 600; font-size: 1.02rem; letter-spacing: 0.14em; text-transform: uppercase; text-shadow: 0 1px 0 rgba(255, 240, 200, 0.55); overflow-wrap: anywhere; }
+  .wh-plate-name { font-size: 0.74rem; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.85; overflow-wrap: anywhere; }
+  .wh-try { margin-top: 18px; display: flex; align-items: center; gap: 10px; font-size: 0.88rem; color: var(--ink-2); flex-wrap: wrap; justify-content: center; }
+  .wh-try input { font: inherit; padding: 0.45em 0.8em; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink); width: 11.5em; }
+  .wh-stage-note { margin-top: 12px; font-size: 0.82rem; color: var(--ink-3); text-align: center; }
+
+  /* Ready-made models */
+  .wh-models { padding: 20px 0 84px; }
+  .wh-models h2 { margin-top: 12px; }
+  .wh-models-lede { color: var(--ink-2); max-width: 38em; margin-top: 14px; }
+  .wh-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; margin-top: 40px; }
+  .wh-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; }
+  .wh-card-img { position: relative; display: block; padding: 0; border: 0; background: var(--paper-2); cursor: pointer; width: 100%; }
+  .wh-card-img img { display: block; width: 100%; height: auto; aspect-ratio: 5 / 4; object-fit: cover; transition: transform 0.4s; }
+  .wh-card-img:hover img { transform: scale(1.04); }
+  .wh-card-tag { position: absolute; left: 14px; top: 14px; padding: 0.3em 0.8em; border-radius: 999px; background: var(--ink); color: var(--paper); font: 600 0.7rem var(--sans); letter-spacing: 0.1em; text-transform: uppercase; }
+  .wh-card-tag[data-kind='Printed'] { background: var(--moss); }
+  .wh-card-tag[data-kind='Made for you'] { background: var(--ember); }
+  .wh-card-3d { position: absolute; right: 14px; bottom: 14px; padding: 0.4em 0.9em; border-radius: 999px; background: rgba(251, 247, 240, 0.92); color: var(--ink); font: 600 0.8rem var(--sans); border: 1px solid var(--line); }
+  .wh-card-body { padding: 22px 24px 26px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .wh-card-body h3 { font-size: 1.45rem; }
+  .wh-card-body p { color: var(--ink-2); font-size: 0.96rem; }
+  .wh-card-body .wh-card-spec { color: var(--ink-3); font-size: 0.84rem; }
+  .wh-card-body .wh-btn { margin-top: auto; align-self: flex-start; padding: 0.65em 1.3em; font-size: 0.95rem; }
+  .wh-card-body .wh-card-spec + .wh-btn, .wh-card-yours p + .wh-btn { margin-top: 14px; }
+  .wh-card-yours { background: transparent; border-style: dashed; justify-content: center; }
+  .wh-stage-note a { color: var(--ember); white-space: nowrap; }
+  .wh-picked { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #f3e3d6; border: 1px solid #e3bfa6; border-radius: 12px; padding: 12px 14px; font-size: 0.95rem; }
+  .wh-picked[hidden] { display: none; }
+  .wh-picked button { font: 600 0.82rem var(--sans); background: none; border: 0; color: var(--ember-dark); cursor: pointer; text-decoration: underline; padding: 0; margin: 0; }
+
+  /* Sections */
+  .wh-why, .wh-how, .wh-pricing, .wh-faq, .wh-order { padding: 84px 0; }
+  .wh h2 { font-size: clamp(1.9rem, 3.6vw, 2.8rem); }
+  .wh-why { background: var(--ink); color: var(--paper); }
+  .wh-why h2 { max-width: 15em; }
+  .wh-why-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; margin-top: 48px; }
+  .wh-why article { border-top: 1px solid rgba(246, 239, 228, 0.22); padding-top: 20px; }
+  .wh-num { font-family: var(--serif); font-style: italic; color: #e08a66; font-size: 0.95rem; }
+  .wh-why h3 { font-size: 1.4rem; margin: 8px 0 10px; }
+  .wh-why p { color: #d8cbba; font-size: 0.98rem; }
+
+  .wh-how h2, .wh-pricing h2 { margin-top: 12px; }
+  .wh-steps { list-style: none; counter-reset: step; margin: 48px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .wh-steps li { counter-increment: step; background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 28px 26px 30px; }
+  .wh-steps li::before { content: counter(step); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--ember); color: #fff8ef; font-family: var(--serif); font-size: 1.15rem; margin-bottom: 18px; }
+  .wh-steps h3 { font-size: 1.35rem; margin-bottom: 8px; }
+  .wh-steps p { color: var(--ink-2); font-size: 0.98rem; }
+
+  .wh-pricing { background: var(--paper-2); }
+  .wh-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 44px; align-items: stretch; }
+  .wh-tier { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 30px 28px; display: flex; flex-direction: column; }
+  .wh-tier h3 { font-size: 1.6rem; }
+  .wh-tier-blurb { color: var(--ink-3); font-size: 0.92rem; margin-top: 4px; }
+  .wh-price { font-family: var(--serif); font-size: 3.2rem; line-height: 1; margin: 22px 0 8px; letter-spacing: -0.02em; }
+  .wh-price span { font-family: var(--sans); font-size: 0.95rem; color: var(--ink-3); letter-spacing: 0; }
+  .wh-pack { font-size: 0.95rem; color: var(--moss); }
+  .wh-tier ul { list-style: none; margin: 22px 0 0; padding: 20px 0 0; border-top: 1px solid var(--line); display: grid; gap: 9px; font-size: 0.96rem; color: var(--ink-2); }
+  .wh-tier li { padding-left: 1.4em; position: relative; }
+  .wh-tier li::before { content: ''; position: absolute; left: 0; top: 0.55em; width: 0.6em; height: 0.6em; border-radius: 2px; background: var(--ember); transform: rotate(45deg); }
+  .wh-tier-note { background: transparent; border-style: dashed; }
+  .wh-tier-note > p:not(.wh-tier-blurb) { color: var(--ink-2); font-size: 0.98rem; margin-top: 18px; }
+  .wh-tier-note .wh-free { margin-top: auto; padding-top: 22px; color: var(--ink); }
+  .wh-free b { color: var(--ember); }
+
+  .wh-faq-in { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr); gap: 48px; }
+  .wh-faq h2 { margin-top: 12px; }
+  .wh-faq details { border-top: 1px solid var(--line); padding: 18px 0; }
+  .wh-faq details:last-child { border-bottom: 1px solid var(--line); }
+  .wh-faq summary { cursor: pointer; font-family: var(--serif); font-size: 1.22rem; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+  .wh-faq summary::-webkit-details-marker { display: none; }
+  .wh-faq summary::after { content: '+'; color: var(--ember); font-family: var(--sans); font-size: 1.3rem; line-height: 1; }
+  .wh-faq details[open] summary::after { content: '–'; }
+  .wh-faq details p { color: var(--ink-2); margin-top: 10px; max-width: 40em; }
+
+  .wh-order { background: var(--ink); color: var(--paper); }
+  .wh-order-in { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.25fr); gap: 56px; align-items: start; }
+  .wh-order .wh-eyebrow { color: #e08a66; }
+  .wh-order h2 { margin: 12px 0 18px; }
+  .wh-order-copy p { color: #d8cbba; }
+  .wh-order-copy .wh-order-small { font-size: 0.86rem; color: #a99a8a; margin-top: 18px; }
+  .wh-form { background: var(--card); color: var(--ink); border-radius: 24px; padding: 30px; display: grid; gap: 16px; }
+  .wh-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .wh-form label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 0.86rem; font-weight: 600; color: var(--ink-2); }
+  .wh-form label i { font-style: normal; font-weight: 400; color: var(--ink-3); }
+  .wh-form input, .wh-form select, .wh-form textarea { font: 400 1rem var(--sans); color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 0.65em 0.8em; width: 100%; min-width: 0; }
+  .wh-form input[type='file'] { padding: 0.5em; font-size: 0.9rem; }
+  .wh-form textarea { resize: vertical; }
+  .wh-form input:focus, .wh-form select:focus, .wh-form textarea:focus { outline: 2px solid var(--ember); outline-offset: 1px; border-color: transparent; }
+  .wh-form > button { justify-self: start; margin-top: 4px; border: 0; }
+  .wh-form button[disabled] { opacity: 0.6; cursor: wait; }
+  .wh-form-msg { font-size: 0.95rem; min-height: 1.5em; }
+  .wh-form-msg.is-ok { color: var(--moss); font-weight: 600; }
+  .wh-form-msg.is-err { color: var(--ember-dark); font-weight: 600; }
+  .wh-hp { position: absolute !important; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+  .wh-foot { background: var(--ink); color: #a99a8a; border-top: 1px solid rgba(246, 239, 228, 0.14); padding: 26px 0 34px; font-size: 0.88rem; }
+  .wh-foot-in { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; }
+  .wh-foot .wh-logo { color: var(--paper); }
+  .wh-foot a { margin-left: auto; color: var(--paper); }
+
+  @media (max-width: 900px) {
+    .wh-hero { padding: 36px 0 56px; }
+    .wh-hero-in, .wh-faq-in, .wh-order-in { grid-template-columns: 1fr; gap: 40px; }
+    .wh-why-grid, .wh-steps, .wh-tiers { grid-template-columns: 1fr; gap: 20px; }
+    .wh-nav-links { display: none; }
+    .wh-nav-cta { margin-left: auto; }
+    .wh-why, .wh-how, .wh-pricing, .wh-faq, .wh-order { padding: 60px 0; }
+  }
+  @media (max-width: 560px) {
+    .wh-wrap { padding: 0 18px; }
+    .wh-row { grid-template-columns: 1fr; }
+    .wh-hero-facts { grid-template-columns: 1fr; gap: 12px; }
+    .wh-hero-facts b { display: inline; font-size: 1.05rem; margin-right: 4px; }
+    .wh-form { padding: 22px 18px; }
+    .wh-foot a { margin-left: 0; }
+  }
+</style>
+
+<script>
+  // --- Name on the base plate ---
+  const tryInput = document.querySelector<HTMLInputElement>('[data-wh-try]');
+  const plateName = document.querySelector<HTMLElement>('[data-wh-plate-name]');
+  const plateField = document.querySelector<HTMLInputElement>('.wh-form [name="plate_text"]');
+  tryInput?.addEventListener('input', () => {
+    const v = tryInput.value.trim();
+    if (plateName) plateName.textContent = v || 'Your Name';
+    if (plateField) plateField.value = v;
+  });
+
+  // --- 3D viewer: loads three.js only when the model scrolls into view ---
+  const viewer = document.querySelector<HTMLElement>('[data-wh-viewer]');
+  async function startViewer(el: HTMLElement) {
+    const [THREE, data] = await Promise.all([import('three'), fetch(el.dataset.model!).then((r) => r.json())]);
+    const canvas = el.querySelector('canvas')!;
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(26, 1, 10, 2000);
+    const span = Math.max(data.size[0], data.size[1]);
+    camera.position.set(0, span * 1.5, span * 2.75);
+    camera.lookAt(0, data.size[2] * 0.3, 0);
+
+    scene.add(new THREE.HemisphereLight(0xfff6e8, 0xb9a48a, 1.9));
+    const sun = new THREE.DirectionalLight(0xfff1dc, 2.6);
+    sun.position.set(-span * 0.9, span * 1.6, span * 1.1);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    Object.assign(sun.shadow.camera, { left: -span, right: span, top: span, bottom: -span, near: 1, far: span * 5 });
+    sun.shadow.bias = -0.0015;
+    sun.shadow.radius = 6;
+    scene.add(sun);
+
+    const turn = new THREE.Group();
+    scene.add(turn);
+    function show(model: { parts: { color: string; v: number[]; i: number[] }[] }) {
+      for (const old of [...turn.children] as any[]) {
+        turn.remove(old);
+        old.geometry.dispose();
+        old.material.dispose();
+      }
+      for (const part of model.parts) {
+        const pos = new Float32Array(part.i.length * 3);
+        // The file is millimetres x100 with z up; three.js wants y up.
+        part.i.forEach((vi, n) => {
+          pos[n * 3] = part.v[vi * 3] / 100;
+          pos[n * 3 + 1] = part.v[vi * 3 + 2] / 100;
+          pos[n * 3 + 2] = -part.v[vi * 3 + 1] / 100;
+        });
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.computeVertexNormals();
+        const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: part.color, roughness: 0.92, metalness: 0, flatShading: true, side: THREE.DoubleSide }));
+        mesh.castShadow = mesh.receiveShadow = true;
+        turn.add(mesh);
+      }
+    }
+    show(data);
+    // A model card's "View in 3D" swaps the house on the turntable.
+    el.addEventListener('wh:model', async (e) => {
+      const next = await fetch((e as CustomEvent).detail).then((r) => r.json());
+      show(next);
+      if (!still) spin = 0.18;
+    });
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(span * 6, span * 6), new THREE.ShadowMaterial({ opacity: 0.2 }));
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.05;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let yaw = Number(new URLSearchParams(location.search).get('yaw') ?? -0.62);
+    let spin = still ? 0 : 0.18; // radians per second
+    let dragX: number | null = null;
+    let visible = true;
+    let last = performance.now();
+
+    function resize() {
+      const { width, height } = el.getBoundingClientRect();
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(el);
+    resize();
+
+    el.addEventListener('pointerdown', (e) => {
+      dragX = e.clientX;
+      spin = 0;
+      el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (dragX === null) return;
+      yaw += (e.clientX - dragX) * 0.01;
+      dragX = e.clientX;
+    });
+    const release = () => (dragX = null);
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    new IntersectionObserver(([entry]) => (visible = entry.isIntersecting)).observe(el);
+
+    function frame(now: number) {
+      const dt = Math.min((now - last) / 1000, 0.1);
+      last = now;
+      if (visible) {
+        yaw += spin * dt;
+        turn.rotation.y = yaw;
+        renderer.render(scene, camera);
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    el.classList.add('is-ready');
+  }
+  if (viewer) {
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      io.disconnect();
+      startViewer(viewer).catch(() => viewer.classList.add('is-failed'));
+    }, { rootMargin: '200px' });
+    io.observe(viewer);
+  }
+
+  // --- Model cards: turn one in 3D, or pick it and jump to the form ---
+  const picked = document.querySelector<HTMLElement>('[data-wh-picked]');
+  const choice = document.querySelector<HTMLInputElement>('.wh-form [name="model_choice"]');
+  function pick(name: string) {
+    if (choice) choice.value = name;
+    if (picked) {
+      picked.hidden = !name;
+      picked.querySelector('[data-wh-picked-name]')!.textContent = name;
+    }
+  }
+  document.querySelectorAll<HTMLElement>('[data-wh-card]').forEach((card) => {
+    card.querySelector('[data-wh-view]')?.addEventListener('click', () => {
+      viewer?.dispatchEvent(new CustomEvent('wh:model', { detail: card.dataset.file }));
+      const label = document.querySelector('[data-wh-stage-name]');
+      if (label) label.textContent = card.dataset.name!;
+      viewer?.scrollIntoView({ block: 'center' });
+    });
+    card.querySelector('[data-wh-want]')?.addEventListener('click', () => {
+      pick(card.dataset.name!);
+      document.getElementById('order')?.scrollIntoView();
+      const empty = [...document.querySelectorAll<HTMLInputElement>('.wh-form [name="name"], .wh-form [name="email"]')].find((i) => !i.value);
+      empty?.focus({ preventScroll: true });
+    });
+  });
+  document.querySelector('[data-wh-unpick]')?.addEventListener('click', () => pick(''));
+  document.querySelector('[data-wh-custom]')?.addEventListener('click', () => pick(''));
+
+  // --- Request form ---
+  const form = document.querySelector<HTMLFormElement>('[data-wh-form]');
+  const msg = document.querySelector<HTMLElement>('[data-wh-msg]');
+  const say = (text: string, kind = '') => {
+    if (!msg) return;
+    msg.textContent = text;
+    msg.className = `wh-form-msg ${kind}`;
+  };
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!form.reportValidity()) return;
+    const fd = new FormData(form);
+    const files = (fd.getAll('photos') as File[]).filter((f) => f && f.size > 0);
+    if (files.length > 8) return say('Please send up to 8 photos. You can email more later.', 'is-err');
+    if (files.some((f) => f.size > 15 * 1024 * 1024)) return say('One of those photos is over 15 MB. Please pick a smaller one.', 'is-err');
+    const body: Record<string, unknown> = {};
+    fd.forEach((v, k) => {
+      if (typeof v === 'string') body[k] = v;
+    });
+    body.photos = files.map((f) => ({ name: f.name, type: f.type }));
+    const button = form.querySelector('button')!;
+    button.disabled = true;
+    say('Sending…');
+    try {
+      const res = await fetch('/api/warmhouse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(out.error || 'Something went wrong. Please try again.');
+      let failed = 0;
+      const uploads: { url: string }[] = out.uploads || [];
+      for (let n = 0; n < uploads.length; n++) {
+        say(`Uploading photo ${n + 1} of ${uploads.length}…`);
+        const up = await fetch(uploads[n].url, { method: 'PUT', headers: { 'Content-Type': files[n].type, 'x-upsert': 'false' }, body: files[n] }).catch(() => null);
+        if (!up?.ok) failed++;
+      }
+      form.reset();
+      pick('');
+      say(
+        failed || uploads.length < files.length
+          ? 'Got your request, but some photos didn’t upload. We’ll ask for them when we reply.'
+          : 'Thank you. We’ll reply within one business day.',
+        'is-ok',
+      );
+    } catch (err) {
+      say(err instanceof Error ? err.message : 'Something went wrong. Please try again.', 'is-err');
+    } finally {
+      button.disabled = false;
+    }
+  });
+</script>

@@ -1,0 +1,29 @@
+# Emails new WarmHouse requests from /warmhouse. Started right away by
+# /api/warmhouse (workflow_dispatch); the hourly run catches anything that start missed.
+name: WarmHouse — request emails
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: warmhouse-notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/warmhouse
+      - name: Notify
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          NEWSLETTER_TOKEN: ${{ secrets.NEWSLETTER_TOKEN }}
+          # Public anon key (it already ships in the site's browser bundle); the RPCs also need NEWSLETTER_TOKEN.
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1a3ppb2p5bXdsdm1yemFwZ3lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwNjMxNzAsImV4cCI6MjA2OTYzOTE3MH0.I7oR9fcypn-BKb9AS4d2UlXrgvMbpTQtWySqxgAWGzo
+        run: python3 scripts/warmhouse/notify_requests.py
