@@ -14,6 +14,7 @@ in four filaments.
 import json, math, os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import make_prototypes  # noqa: E402
 from make_prototypes import Model, G  # noqa: E402
 
 FLOOR = 14.0
@@ -33,6 +34,8 @@ def build(spec):
         return colours[role]
 
     trim = col(trim_role)
+    make_prototypes.CHARCOAL = colours["dark"]  # tree trunks
+    make_prototypes.GREEN = colours["lawn"]     # the plate
 
     def roof(v, x0, x1, y0, y1, z, wall):
         kind = v.get("roof", "hip")
@@ -187,8 +190,6 @@ def build(spec):
 def main(spec_path, out_dir="public/warmhouse/models"):
     spec = json.load(open(spec_path))
     m, lawn = build(spec)
-    import make_prototypes
-    make_prototypes.GREEN = lawn
     ident = os.path.splitext(os.path.basename(spec_path))[0]
     m.save(os.path.join(out_dir, f"{ident}.json"))
     used = len(m.parts)
