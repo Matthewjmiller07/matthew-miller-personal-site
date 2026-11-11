@@ -1,0 +1,273 @@
+---
+// Private outreach tracker for the WarmHouse campaign: who has been contacted, who opened their
+// page, and who sent the form. Data comes from /api/warmhouse-tracker behind the desk passcode.
+// Opening this page also marks this browser as the owner's, so your own visits to agent pages
+// aren't logged as theirs.
+import WarmHouseLayout from '../../layouts/WarmHouseLayout.astro';
+---
+
+<WarmHouseLayout title="Tracker | WarmHouse" description="WarmHouse outreach tracker." noindex>
+  <main class="wt wh-wrap">
+    <header class="wt-head">
+      <div>
+        <p class="wh-eyebrow">WarmHouse</p>
+        <h1>Outreach tracker</h1>
+      </div>
+      <button type="button" class="wt-refresh" data-refresh hidden>Refresh</button>
+    </header>
+
+    <form class="wt-login" data-login hidden>
+      <label>Passcode<input type="password" name="pass" autocomplete="current-password" required /></label>
+      <button type="submit" class="wh-btn wh-btn-solid">Open</button>
+      <p class="wt-msg" data-login-msg role="status"></p>
+    </form>
+
+    <section class="wt-stats" data-stats hidden></section>
+    <p class="wt-note" data-note hidden>
+      Visits come from each agent’s own page. This browser is marked as yours, so your own visits aren’t counted.
+      Add <code>?src=email</code> (or <code>qr</code>, <code>dm</code>, <code>card</code>, <code>text</code>) to a link
+      to see where a visit came from.
+    </p>
+    <section class="wt-list" data-list></section>
+    <section class="wt-activity" data-activity hidden>
+      <h2>Recent activity</h2>
+      <ol data-activity-list></ol>
+    </section>
+  </main>
+</WarmHouseLayout>
+
+<style is:global>
+  .wt { padding: 40px 24px 80px; }
+  .wt-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+  .wt h1 { font-size: clamp(2rem, 4vw, 2.8rem); margin-top: 6px; }
+  .wt-refresh { font: 600 0.9rem var(--sans); background: none; border: 1.5px solid var(--ink); border-radius: 999px; padding: 0.5em 1.1em; cursor: pointer; color: var(--ink); }
+  .wt-refresh:hover { background: var(--ink); color: var(--paper); }
+  .wt-login { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px; max-width: 520px; }
+  .wt-login[hidden] { display: none; }
+  .wt-login label { display: grid; gap: 6px; font-size: 0.86rem; font-weight: 600; color: var(--ink-2); flex: 1; min-width: 200px; }
+  .wt input, .wt select, .wt textarea { font: 400 0.95rem var(--sans); color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 9px; padding: 0.5em 0.65em; width: 100%; min-width: 0; }
+  .wt textarea { resize: vertical; }
+  .wt-msg { width: 100%; font-size: 0.9rem; color: var(--ember-dark); min-height: 1.2em; }
+  .wt-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .wt-stats[hidden], .wt-note[hidden], .wt-activity[hidden] { display: none; }
+  .wt-stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .wt-stat b { display: block; font-family: var(--serif); font-weight: 500; font-size: 2rem; line-height: 1.1; }
+  .wt-stat span { font-size: 0.82rem; color: var(--ink-3); }
+  .wt-note { font-size: 0.86rem; color: var(--ink-3); margin-bottom: 26px; max-width: 60em; }
+  .wt-note code { font-size: 0.82rem; background: var(--paper-2); padding: 0.1em 0.35em; border-radius: 4px; }
+  .wt-list { display: grid; gap: 14px; }
+  .wt-card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) minmax(0, 0.9fr); gap: 18px 24px; }
+  .wt-card.is-hot { border-color: var(--ember); box-shadow: 0 0 0 1px var(--ember) inset; }
+  .wt-who h3 { font-size: 1.3rem; }
+  .wt-who p { font-size: 0.85rem; color: var(--ink-3); }
+  .wt-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .wt-links a, .wt-links button { font: 600 0.78rem var(--sans); padding: 0.35em 0.8em; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); text-decoration: none; cursor: pointer; }
+  .wt-links a:hover, .wt-links button:hover { border-color: var(--ink); }
+  .wt-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .wt-fields label { display: grid; gap: 4px; font-size: 0.76rem; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .wt-fields .wt-wide { grid-column: 1 / -1; }
+  .wt-saved { font-size: 0.78rem; color: var(--moss); min-height: 1.1em; grid-column: 1 / -1; }
+  .wt-seen { font-size: 0.9rem; }
+  .wt-seen > b { font-family: var(--serif); font-weight: 500; font-size: 1.6rem; display: block; line-height: 1.1; }
+  .wt-seen .wt-dim { color: var(--ink-3); font-size: 0.84rem; }
+  .wt-seen ul { list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.8rem; color: var(--ink-2); display: grid; gap: 2px; }
+  .wt-req { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: #f3e3d6; font-size: 0.84rem; }
+  .wt-activity { margin-top: 40px; }
+  .wt-activity h2 { font-size: 1.5rem; margin-bottom: 12px; }
+  .wt-activity ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.9rem; color: var(--ink-2); }
+  .wt-activity time { color: var(--ink-3); font-size: 0.82rem; margin-right: 8px; }
+  @media (max-width: 900px) {
+    .wt-card { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .wt { padding: 28px 18px 60px; }
+    .wt-fields { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  type Visit = { created_at: string; slug: string | null; src: string | null; referrer_host: string | null; device: string | null };
+  type Req = { created_at: string; name: string; email: string; kind: string | null; model_choice: string | null; property_address: string | null };
+  type Agent = {
+    slug: string;
+    name: string;
+    brokerage: string;
+    area: string;
+    listing: string | null;
+    outreach: Record<string, string | null>;
+    visits: Visit[];
+    requests: Req[];
+  };
+
+  // This browser belongs to the owner: agent pages won't log its visits.
+  try {
+    localStorage.setItem('wh-owner', '1');
+  } catch {
+    // storage blocked: own visits may be logged
+  }
+
+  const $ = <T extends Element>(sel: string) => document.querySelector<T>(sel)!;
+  const login = $<HTMLFormElement>('[data-login]');
+  const list = $<HTMLElement>('[data-list]');
+  const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  const ago = (iso: string) => {
+    const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return `${m} min ago`;
+    const h = Math.round(m / 60);
+    if (h < 24) return `${h} h ago`;
+    const d = Math.round(h / 24);
+    return d < 30 ? `${d} d ago` : new Date(iso).toLocaleDateString();
+  };
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  let pass = '';
+  try {
+    pass = localStorage.getItem('wh-pass') || '';
+  } catch {
+    // ask each time
+  }
+
+  async function api(method: 'GET' | 'POST', body?: unknown) {
+    const res = await fetch('/api/warmhouse-tracker', {
+      method,
+      headers: { Authorization: `Bearer ${pass}`, 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(out.error || 'Request failed'), { status: res.status });
+    return out;
+  }
+
+  function card(a: Agent, statuses: string[]) {
+    const o = a.outreach;
+    const page = `${location.origin}/warmhouse/for/${a.slug}`;
+    const last = a.visits[0];
+    const hot = last && Date.now() - new Date(last.created_at).getTime() < 3 * 864e5;
+    const el = document.createElement('article');
+    el.className = `wt-card${hot || a.requests.length ? ' is-hot' : ''}`;
+    el.innerHTML = `
+      <div class="wt-who">
+        <h3>${esc(a.name)}</h3>
+        <p>${esc(a.brokerage)} · ${esc(a.area)}</p>
+        <p>${a.listing ? `Modeled: ${esc(a.listing)}` : 'No listing modeled yet'}</p>
+        <div class="wt-links">
+          <a href="${page}" target="_blank" rel="noopener">Open page</a>
+          <button type="button" data-copy="${page}?src=email">Copy email link</button>
+          <button type="button" data-copy="${page}?src=qr">Copy QR link</button>
+        </div>
+      </div>
+      <div class="wt-fields">
+        <label>Status<select name="status">${statuses.map((s) => `<option${s === o.status ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
+        <label>Next step<input name="next_step" value="${esc(o.next_step)}" placeholder="e.g. follow up Nov 19" /></label>
+        <label>Emailed<input type="date" name="emailed_at" value="${esc(o.emailed_at)}" /></label>
+        <label>Dropped off<input type="date" name="dropped_at" value="${esc(o.dropped_at)}" /></label>
+        <label class="wt-wide">Notes<textarea name="notes" rows="2">${esc(o.notes)}</textarea></label>
+        <span class="wt-saved" data-saved></span>
+      </div>
+      <div class="wt-seen">
+        <b>${a.visits.length}</b>
+        <span class="wt-dim">${a.visits.length === 1 ? 'visit' : 'visits'}${last ? `, last ${ago(last.created_at)}` : ''}</span>
+        ${
+          a.visits.length
+            ? `<ul>${a.visits
+                .slice(0, 4)
+                .map((v) => `<li>${when(v.created_at)} · ${esc(v.device || '?')}${v.src ? ` · from ${esc(v.src)}` : ''}</li>`)
+                .join('')}</ul>`
+            : ''
+        }
+        ${a.requests
+          .map(
+            (r) =>
+              `<div class="wt-req"><b>Form sent ${ago(r.created_at)}</b><br>${esc(r.name)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a>${
+                r.model_choice ? `<br>Picked: ${esc(r.model_choice)}` : ''
+              }${r.kind ? `<br>${esc(r.kind)}` : ''}</div>`,
+          )
+          .join('')}
+      </div>`;
+    const saved = el.querySelector<HTMLElement>('[data-saved]')!;
+    el.querySelectorAll<HTMLInputElement>('.wt-fields [name]').forEach((field) => {
+      field.addEventListener('change', async () => {
+        saved.textContent = 'Saving…';
+        try {
+          await api('POST', { slug: a.slug, [field.name]: field.value });
+          saved.textContent = 'Saved';
+        } catch (e) {
+          saved.textContent = e instanceof Error ? e.message : 'Couldn’t save';
+        }
+      });
+    });
+    el.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(b.dataset.copy!).catch(() => {});
+        const t = b.textContent;
+        b.textContent = 'Copied';
+        setTimeout(() => (b.textContent = t), 1200);
+      }),
+    );
+    return el;
+  }
+
+  async function load() {
+    let data;
+    try {
+      data = await api('GET');
+    } catch (e: any) {
+      login.hidden = false;
+      $('[data-refresh]').toggleAttribute('hidden', true);
+      if (pass) $('[data-login-msg]').textContent = e.message;
+      return;
+    }
+    login.hidden = true;
+    $('[data-refresh]').toggleAttribute('hidden', false);
+    const agents: Agent[] = data.agents;
+    // Most recent activity first; untouched agents last.
+    const score = (a: Agent) =>
+      Math.max(0, ...[...a.visits, ...a.requests].map((x) => new Date(x.created_at).getTime())) || (a.outreach.status !== 'Not started' ? 1 : 0);
+    agents.sort((x, y) => score(y) - score(x));
+    list.replaceChildren(...agents.map((a) => card(a, data.statuses)));
+
+    const count = (f: (a: Agent) => boolean) => agents.filter(f).length;
+    const reached = ['Emailed', 'Dropped off', 'Followed up', 'Replied', 'Call booked', 'Ordered', 'Not interested'];
+    const stats: [number, string][] = [
+      [count((a) => Boolean(a.listing)), 'listings modeled'],
+      [count((a) => reached.includes(a.outreach.status || '')), 'contacted'],
+      [count((a) => a.visits.length > 0), 'opened their page'],
+      [count((a) => a.requests.length > 0), 'sent the form'],
+      [count((a) => ['Replied', 'Call booked', 'Ordered'].includes(a.outreach.status || '')), 'replied'],
+      [count((a) => a.outreach.status === 'Ordered'), 'ordered'],
+    ];
+    const box = $<HTMLElement>('[data-stats]');
+    box.innerHTML = stats.map(([n, l]) => `<div class="wt-stat"><b>${n}</b><span>${l}</span></div>`).join('');
+    box.hidden = false;
+    $<HTMLElement>('[data-note]').hidden = false;
+
+    const events = [
+      ...agents.flatMap((a) => a.visits.map((v) => ({ t: v.created_at, text: `${a.name} opened their page${v.src ? ` (from ${v.src})` : ''} on ${v.device || 'a device'}` }))),
+      ...agents.flatMap((a) => a.requests.map((r) => ({ t: r.created_at, text: `${a.name}: form sent by ${r.name}` }))),
+      ...data.unmatched.requests.map((r: Req) => ({ t: r.created_at, text: `Form from ${r.name} on the main page` })),
+      ...data.unmatched.visits.map((v: Visit) => ({ t: v.created_at, text: `Someone opened the main page${v.src ? ` (from ${v.src})` : ''}` })),
+    ]
+      .sort((a, b) => b.t.localeCompare(a.t))
+      .slice(0, 40);
+    $<HTMLElement>('[data-activity]').hidden = !events.length;
+    $<HTMLElement>('[data-activity-list]').innerHTML = events
+      .map((e) => `<li><time>${when(e.t)}</time>${esc(e.text)}</li>`)
+      .join('');
+  }
+
+  login.addEventListener('submit', (e) => {
+    e.preventDefault();
+    pass = (login.elements.namedItem('pass') as HTMLInputElement).value;
+    try {
+      localStorage.setItem('wh-pass', pass);
+    } catch {
+      // remember for this visit only
+    }
+    $('[data-login-msg]').textContent = 'Opening…';
+    load();
+  });
+  $('[data-refresh]').addEventListener('click', () => load());
+  load();
+</script>

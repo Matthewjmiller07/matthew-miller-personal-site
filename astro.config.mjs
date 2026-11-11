@@ -21,6 +21,7 @@ export default defineConfig({
         !page.includes('/desk') &&
         !page.includes('/everything') &&
         !page.includes('/warmhouse/for') &&
+        !page.includes('/warmhouse/tracker') &&
         !page.includes('/ross/kit'),
     })
   ],
