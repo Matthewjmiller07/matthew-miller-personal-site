@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Email new WarmHouse requests from /warmhouse.
+"""Email new WarmHouse requests from /warmhouse, and alerts when an agent opens their page.
 
 Reads un-notified rows from Supabase `warmhouse_requests` through token-gated RPCs (the same
 NEWSLETTER_TOKEN the newsletter uses), sends one email per request to GMAIL_USER with the
@@ -36,11 +36,10 @@ def main():
         sys.exit("Missing GMAIL_USER / GMAIL_APP_PASSWORD / NEWSLETTER_TOKEN / SUPABASE_ANON_KEY.")
     rows = rpc("warmhouse_requests_pending", p_token=token) or []
     print(f"{len(rows)} new request(s)")
-    if not rows:
-        return
     done = []
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
         s.login(user, pw)
+        notify_visits(s, user, token)
         for r in rows:
             lines = [f"{label}: {r[key]}" for label, key in FIELDS if r.get(key)]
             photos = r.get("photo_paths") or []
@@ -64,6 +63,54 @@ def main():
     if done:
         rpc("warmhouse_requests_mark", p_token=token, p_ids=done)
     print(f"emailed {len(done)}")
+
+
+def notify_visits(s, user, token):
+    """One email per agent whose page was opened since the last run."""
+    rows = rpc("warmhouse_visits_pending", p_token=token) or []
+    print(f"{len(rows)} new agent-page visit(s)")
+    if not rows:
+        return
+    names = {}
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "../../src/data/warmhouse/agents.json")) as f:
+            names = {a["slug"]: a["name"] for a in json.load(f)}
+    except OSError:
+        pass
+    by_slug = {}
+    for r in rows:
+        by_slug.setdefault(r["slug"], []).append(r)
+    done = []
+    for slug, visits in by_slug.items():
+        earlier = rpc("warmhouse_visit_count", p_token=token, p_slug=slug, p_before=visits[0]["created_at"]) or 0
+        who = names.get(slug, slug)
+        first = earlier == 0
+        lines = [
+            f"- {v['created_at'][:16].replace('T', ' ')} UTC on {v.get('device') or 'a device'}"
+            + (f", from {v['src']}" if v.get("src") else "")
+            + (f", via {v['referrer_host']}" if v.get("referrer_host") else "")
+            for v in visits
+        ]
+        msg = EmailMessage()
+        msg["From"] = f"WarmHouse <{user}>"
+        msg["To"] = user
+        msg["Subject"] = f"{who} {'opened their WarmHouse page' if first else 'is back on their WarmHouse page'}" + (
+            f" ({len(visits)} visits)" if len(visits) > 1 else ""
+        )
+        msg.set_content(
+            f"{who} {'just opened their page for the first time' if first else f'opened their page again ({earlier + len(visits)} visits so far)'}.\n\n"
+            + "\n".join(lines)
+            + f"\n\nTheir page: {SITE}/warmhouse/for/{slug}\nTracker: {SITE}/warmhouse/tracker\n"
+            + ("\nA good moment for a follow-up.\n" if first else "")
+        )
+        try:
+            s.send_message(msg)
+            done += [v["id"] for v in visits]
+        except smtplib.SMTPException:
+            print("one visit alert failed; it will be retried next run")
+    if done:
+        rpc("warmhouse_visits_mark", p_token=token, p_ids=done)
+    print(f"alerted on {len(done)} visit(s)")
 
 
 if __name__ == "__main__":

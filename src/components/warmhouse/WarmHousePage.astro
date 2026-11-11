@@ -521,6 +521,17 @@ const faqs = [
 </style>
 
 <script>
+  // --- Visit log for the outreach tracker (skipped in the owner's own browser) ---
+  try {
+    if (!localStorage.getItem('wh-owner')) {
+      const params = new URLSearchParams(location.search);
+      const slug = document.querySelector<HTMLInputElement>('.wh-form [name="agent_slug"]')?.value || null;
+      navigator.sendBeacon?.('/api/warmhouse-visit', JSON.stringify({ slug, src: params.get('src'), referrer: document.referrer }));
+    }
+  } catch {
+    // Private mode or no beacon support: the page works the same, the visit just isn't logged.
+  }
+
   // --- Name on the base plate ---
   const tryInput = document.querySelector<HTMLInputElement>('[data-wh-try]');
   const plateName = document.querySelector<HTMLElement>('[data-wh-plate-name]');
@@ -582,6 +593,11 @@ const faqs = [
       }
     }
     show(data);
+    // Set the angle directly (used by scripts/warmhouse/render_gif.cjs to film a turn).
+    el.addEventListener('wh:yaw', (e) => {
+      spin = 0;
+      yaw = (e as CustomEvent).detail;
+    });
     // A model card's "View in 3D" swaps the house on the turntable.
     el.addEventListener('wh:model', async (e) => {
       const next = await fetch((e as CustomEvent).detail).then((r) => r.json());
