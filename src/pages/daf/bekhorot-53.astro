@@ -1,0 +1,435 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Under the Rod — Daf Yomi Game: Bekhorot 53"
+  description="Bekhorot 53: pen the flock so the right animals are counted together under the rod, build the Gemara's argument for why nobody tithes animals today, and unlock five rulings with the right verse."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --night:#14130e; --pasture:#1f2117; --line:#4f513a; --text:#efe9da; --mute:#bdb79f; --ochre:#e07a4c; --grass:#9dbd73; --wool:#f3ecd6; --good:#a6e3b5; --bad:#f4ab93; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .t-text { color: var(--text) !important; }
+    .t-mute { color: var(--mute) !important; }
+    .t-ochre { color: var(--ochre) !important; }
+    .t-grass { color: var(--grass) !important; }
+    .t-good { color: var(--good) !important; }
+    .t-bad { color: var(--bad) !important; }
+    a.ref, .t-text a, .t-mute a { color: var(--grass) !important; text-decoration: underline; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .55rem .8rem; font-size: .92rem; line-height: 1.4; text-align: start; background: transparent; color: var(--text) !important; }
+    .btn:hover:not(:disabled) { background: var(--pasture); }
+    .btn:disabled { cursor: default; opacity: .6; }
+    .btn.ok { background: #1f3f2a; border-color: var(--good); opacity: 1; }
+    .btn.no { background: #4b2318; border-color: var(--bad); opacity: 1; }
+    .btn.go { background: var(--grass); border-color: var(--grass); color: #14130e !important; font-weight: 700; }
+    .btn.go:hover:not(:disabled) { background: #c5df9f; }
+    .btn.on { border-color: var(--ochre); box-shadow: inset 0 0 0 1px var(--ochre); }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--grass); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .93rem; line-height: 1.65; margin-top: .75rem; }
+    .note.ok { border-color: var(--good); }
+    .note.no { border-color: var(--bad); }
+    .he { font-family: 'Frank Ruhl Libre', serif; direction: rtl; }
+    .quote { background: #1b1c13; border: 1px solid var(--line); border-radius: .5rem; padding: .8rem 1rem; }
+
+    /* pens */
+    .yard { display: flex; flex-wrap: wrap; gap: .4rem; min-height: 64px; padding: .6rem; border: 1px dashed var(--line); border-radius: .6rem; }
+    .pens { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; margin-top: .8rem; }
+    .pen { border: 2px solid #6b5a3a; border-radius: .6rem; padding: .5rem; min-height: 120px; background: repeating-linear-gradient(90deg, #26261a 0 18px, #222216 18px 36px); text-align: start; cursor: pointer; }
+    .pen.exempt { border-style: dashed; border-color: #666; background: #1a1a16; }
+    .pen.target { border-color: var(--ochre); }
+    .pen .ph { font-size: .8rem; font-weight: 700; color: var(--mute) !important; display: block; margin-bottom: .35rem; }
+    .pen .in { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .tok { position: relative; display: inline-flex; flex-direction: column; align-items: center; min-width: 54px; padding: .25rem .3rem; border: 1px solid var(--line); border-radius: .45rem; background: #2a2a1e; font-size: 1.45rem; line-height: 1.1; color: var(--text) !important; }
+    .tok small { font-size: .62rem; line-height: 1.1; color: var(--mute) !important; text-align: center; max-width: 64px; }
+    .tok.sel { border-color: var(--ochre); box-shadow: 0 0 0 2px var(--ochre); transform: translateY(-2px); }
+    .tok.tenth { background: #4b2318; border-color: var(--ochre); }
+    .tok.tenth::after { content: 'קֹדֶשׁ'; position: absolute; top: -.7rem; inset-inline-end: -.3rem; font-family: 'Frank Ruhl Libre', serif; font-size: .7rem; background: var(--ochre); color: #14130e; padding: 0 .25rem; border-radius: .25rem; }
+    .tok.walk { animation: walk .32s ease; }
+    @keyframes walk { 0% { transform: translateX(-14px); opacity: .2 } 100% { transform: none; opacity: 1 } }
+    .gate { display: flex; align-items: center; gap: .6rem; margin-top: .6rem; font-size: .9rem; }
+    .gate .rod { font-size: 1.4rem; display: inline-block; transform-origin: bottom left; }
+    .gate .rod.tap { animation: tap .3s ease; }
+    @keyframes tap { 50% { transform: rotate(-25deg) } }
+
+    /* argument chain */
+    .chain { border-inline-start: 2px solid var(--line); margin-inline-start: .4rem; padding-inline-start: 1rem; }
+    .step { margin-bottom: .9rem; }
+    .step .q { font-weight: 700; color: var(--wool) !important; }
+    .step .a { color: var(--mute) !important; margin-top: .2rem; line-height: 1.6; }
+    .pool { display: grid; gap: .45rem; margin-top: .6rem; }
+    .shake { animation: shake .35s; }
+    @keyframes shake { 25% { transform: translateX(-5px) } 75% { transform: translateX(5px) } }
+
+    /* locks */
+    .lock { border: 1px solid var(--line); border-radius: .6rem; padding: .8rem 1rem; background: #1b1c13; }
+    .sw { display: inline-flex; align-items: center; gap: .5rem; font-weight: 700; font-size: .9rem; }
+    .sw .knob { width: 42px; height: 22px; border-radius: 11px; background: var(--bad); position: relative; transition: background .3s; }
+    .sw .knob::after { content: ''; position: absolute; top: 3px; inset-inline-start: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: inset-inline-start .3s; }
+    .sw.flip .knob::after { inset-inline-start: 23px; }
+    .rack { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .5rem; }
+    .verse.armed { border-color: var(--ochre); box-shadow: inset 0 0 0 1px var(--ochre); }
+    @media (prefers-reduced-motion: reduce) { .tok.walk, .gate .rod.tap, .shake { animation: none; } .sw .knob, .sw .knob::after { transition: none; } .tok.sel { transform: none; } }
+  </style>
+
+  <div class="min-h-screen" style="background: var(--night);">
+    <div class="max-w-3xl mx-auto px-4 py-10">
+      <p class="text-sm t-mute"><a href="/daf/" class="ref">Daf Yomi Arcade</a> · Bekhorot 53 · <span class="he">בכורות נ״ג</span></p>
+      <h1 class="frank text-4xl sm:text-5xl font-black t-ochre mt-2">Under the Rod</h1>
+      <p class="he text-2xl mt-2" style="color:var(--wool)">כֹּל אֲשֶׁר יַעֲבֹר תַּחַת הַשָּׁבֶט הָעֲשִׂירִי יִהְיֶה קֹּדֶשׁ לַה׳</p>
+      <p class="t-text mt-3 text-lg leading-relaxed">
+        The animals file out through a narrow gate one at a time. The owner counts them with a rod, and every tenth one is holy
+        (<a class="ref" href="https://www.sefaria.org/Leviticus.27.32" target="_blank" rel="noopener">Lev. 27:32</a>).
+        Bekhorot 53 asks which animals may be counted together, and why nobody counts them any more.
+        Pen the flocks, rebuild the Gemara's argument, then unlock five rulings with the right verse.
+      </p>
+      <p class="t-mute mt-2 text-sm">Score: <span id="score" class="t-ochre font-bold">0</span> / <span id="scoreMax">0</span> right on the first try</p>
+
+      <!-- 1 -->
+      <section class="stn" aria-labelledby="h1a">
+        <h2 id="h1a" class="frank text-3xl font-bold t-text">1 · Pen the flock</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          The mishna: animal tithe applies in the Land and outside it, to the herd and the flock, but not one for the other;
+          sheep and goats are tithed together; new and old are not; sacrificial animals are not tithed
+          (<a class="ref" href="https://www.sefaria.org/Bekhorot.53a.1" target="_blank" rel="noopener">53a:1–2</a>).
+          Tap an animal, then tap a pen. Put every animal that may be counted together into <b>one</b> pen, and send the animals that aren't tithed
+          to the side. Then send them under the rod.
+        </p>
+        <p class="t-mute text-sm mt-1">All three farms are set while the Temple stands. Section 2 explains why.</p>
+        <div id="farmHead" class="mt-4"></div>
+        <div id="yard" class="yard mt-2" aria-label="Animals waiting"></div>
+        <div id="pens" class="pens"></div>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <button id="check" class="btn go">Pass under the rod</button>
+          <button id="reset" class="btn">Start this farm over</button>
+        </div>
+        <div id="farmOut" aria-live="polite"></div>
+      </section>
+
+      <!-- 2 -->
+      <section class="stn" aria-labelledby="h2a">
+        <h2 id="h2a" class="frank text-3xl font-bold t-text">2 · Why don't we tithe today?</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          The mishna says animal tithe applies "not in the presence of the Temple" too. So why does nobody count their flock today?
+          The Gemara goes back and forth ten times (<a class="ref" href="https://www.sefaria.org/Bekhorot.53a.7" target="_blank" rel="noopener">53a:7</a>–<a class="ref" href="https://www.sefaria.org/Bekhorot.53b.5" target="_blank" rel="noopener">53b:5</a>).
+          Each answer opens a new objection. Pick the move that comes next.
+        </p>
+        <div id="chain" class="chain mt-4" aria-live="polite"></div>
+        <div id="pool" class="pool"></div>
+      </section>
+
+      <!-- 3 -->
+      <section class="stn" aria-labelledby="h3a">
+        <h2 id="h3a" class="frank text-3xl font-bold t-text">3 · Five locks, five verses</h2>
+        <p class="t-mute mt-2 leading-relaxed">
+          Each lock shows what logic alone would say. Arm a verse from the rack, then use it on the lock it overturns.
+          Sources: <a class="ref" href="https://www.sefaria.org/Bekhorot.53b.6" target="_blank" rel="noopener">53b:6–17</a>.
+        </p>
+        <div id="rack" class="rack mt-4"></div>
+        <div id="locks" class="space-y-3 mt-4"></div>
+      </section>
+
+      <section class="stn" aria-labelledby="h4a">
+        <h2 id="h4a" class="frank text-3xl font-bold t-text">The count</h2>
+        <p class="t-text mt-2" id="final">Finish the three sections to see your count.</p>
+      </section>
+
+      <section class="stn" aria-labelledby="h5a">
+        <h2 id="h5a" class="frank text-3xl font-bold t-text">Learn the real daf</h2>
+        <ul class="t-text mt-3 space-y-2 list-disc ps-5">
+          <li><a class="ref" href="https://www.sefaria.org/Bekhorot.53a" target="_blank" rel="noopener">Bekhorot 53a</a> and <a class="ref" href="https://www.sefaria.org/Bekhorot.53b" target="_blank" rel="noopener">53b</a> on Sefaria</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Bekhorot.53a" target="_blank" rel="noopener">Rashi</a> (47 comments) and <a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.53a" target="_blank" rel="noopener">Rabbeinu Gershom</a> (30), on the orphan decree, the <i>takala</i> and "year by year"</li>
+          <li><a class="ref" href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.53a" target="_blank" rel="noopener">Steinsaltz</a> (28) and <a class="ref" href="https://www.sefaria.org/Tosafot_on_Bekhorot.53a.1.1" target="_blank" rel="noopener">Tosafot</a> (11)</li>
+          <li>The verses: <a class="ref" href="https://www.sefaria.org/Leviticus.27.32-33" target="_blank" rel="noopener">Lev. 27:32–33</a>, <a class="ref" href="https://www.sefaria.org/Deuteronomy.14.22-23" target="_blank" rel="noopener">Deut. 14:22–23</a>, <a class="ref" href="https://www.sefaria.org/Deuteronomy.12.6" target="_blank" rel="noopener">Deut. 12:6</a>, <a class="ref" href="https://www.sefaria.org/Numbers.18.12" target="_blank" rel="noopener">Num. 18:12</a>, with <a class="ref" href="https://www.sefaria.org/Torah_Temimah_on_Torah,_Leviticus.27.32" target="_blank" rel="noopener">Torah Temimah on Lev. 27:32</a></li>
+          <li>The codes: <a class="ref" href="https://www.sefaria.org/Mishneh_Torah,_Firstlings.6.2" target="_blank" rel="noopener">Rambam, Hilkhot Bekhorot 6:2</a> with <a class="ref" href="https://www.sefaria.org/Har_HaMoriyah_on_Mishneh_Torah,_Firstlings.6.2.1" target="_blank" rel="noopener">Har HaMoriyah</a>, and <a class="ref" href="https://www.sefaria.org/Sefer_Mitzvot_Gadol,_Positive_Commandments.212" target="_blank" rel="noopener">Semag, positive commandment 212</a></li>
+          <li>The cross-references: <a class="ref" href="https://www.sefaria.org/Mishnah_Temurah.7.1" target="_blank" rel="noopener">Temura 32a</a> (no sanctity on top of sanctity) and <a class="ref" href="https://www.sefaria.org/Mishnah_Terumot.2.4" target="_blank" rel="noopener">Terumot 2:4</a> (no teruma from one kind for another)</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <script is:inline>
+  (() => {
+    const $ = (s, r = document) => r.querySelector(s);
+    const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+    const ref = (r, label) => `<a class="ref" href="https://www.sefaria.org/${r.replace(/ /g, '_')}" target="_blank" rel="noopener">${label}</a>`;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const sleep = (ms) => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+    let score = 0, max = 0;
+    const done = new Set();
+    const bump = (ok) => { if (ok) score++; $('#score').textContent = score; };
+    const register = (n) => { max += n; $('#scoreMax').textContent = max; };
+    const finish = (k) => {
+      done.add(k);
+      if (done.size === 3) {
+        const pct = score / max;
+        $('#final').innerHTML = `You scored <b class="t-ochre">${score} / ${max}</b>. ` + (pct > .85
+          ? 'Every animal went through the right gate. Rava would say: "year by year", and you knew which year.'
+          : pct > .6 ? 'A decent count, with a few strays in the wrong pen. Go over 53b with Rashi.'
+          : 'The flock got mixed up. Read the daf, then count again.');
+      }
+    };
+    const shake = (n) => { n.classList.remove('shake'); void n.offsetWidth; n.classList.add('shake'); };
+
+    /* ---------- 1. Pens ---------- */
+    const ICON = { sheep: '🐑', goat: '🐐', calf: '🐄' };
+    const mk = (n, kind, extra = {}) => Array.from({ length: n }, () => ({ kind, year: 'new', status: 'ok', ...extra }));
+    const FARMS = [
+      {
+        name: 'Farm 1 · A hill farm in the Galilee',
+        animals: [...mk(6, 'sheep'), ...mk(4, 'goat'), ...mk(5, 'calf')],
+        lesson: `Six lambs and four kids make ten, and the tenth is holy. On their own neither group reaches ten. Sheep and goats join because the verse says
+          "flock" (<span class="he">צֹאן</span>), and every kind called flock is one species for tithe, even though they are <i>kilayim</i> with each other
+          (${ref('Bekhorot 53a:2', '53a:2')}, ${ref('Bekhorot 53b:15', '53b:15')}). The five calves are herd (<span class="he">בָּקָר</span>), and herd is never tithed for flock (${ref('Bekhorot 53a:1', '53a:1')}).`,
+      },
+      {
+        name: 'Farm 2 · Near Jerusalem',
+        animals: [...mk(7, 'sheep'), ...mk(3, 'goat'), ...mk(3, 'sheep', { year: 'old' }), ...mk(1, 'sheep', { status: 'orphan' }), ...mk(1, 'sheep', { status: 'offering' })],
+        lesson: `This year's seven lambs and three kids make ten. Last year's three lambs stay apart: "you shall tithe" and "year by year" (<span class="he">שָׁנָה שָׁנָה</span>) tie the
+          animal tithe to grain tithe, which is never taken from new for old (${ref('Bekhorot 53b:14', '53b:14–16')}). The orphan (its mother died before it was born) is exempt, which is
+          the whole basis of Rav Huna's decree (${ref('Bekhorot 53a:7', '53a:7')}). The lamb already set aside as a peace offering is not tithed: the tenth "<i>shall be</i> holy", so only an animal
+          that is not yet holy (${ref('Bekhorot 53b:8', '53b:6–12')}).`,
+      },
+      {
+        name: 'Farm 3 · Outside the Land, in Babylonia',
+        animals: [...mk(10, 'goat'), ...mk(2, 'goat', { status: 'bought' })],
+        lesson: `Ten kids born to the owner's flock: the mishna says tithe applies outside the Land too, so the tenth is holy (${ref('Bekhorot 53a:1', '53a:1')}).
+          The two goats he bought are exempt; the Gemara relies on that mishna on 55b when it suggests buying offerings (${ref('Bekhorot 53b:5', '53b:5')}).`,
+        after: {
+          q: 'The tenth kid is holy, but it was born in Babylonia. What happens to it?',
+          opts: [
+            ['He brings it to Jerusalem and it is sacrificed on the altar.', false, 'That is what Rabbi Akiva\'s baraita rules out: "and you shall bring there… your tithes" (Deut. 12:6) ties animal tithe to grain tithe, and grain tithe is brought only from the Land.'],
+            ['It is holy, and the owner eats it only once it has a blemish.', true, 'Right. The Gemara reconciles the mishna with Rabbi Akiva: the baraita is about bringing it to the altar, the mishna is about its sanctity. Outside the Land it stays consecrated and the owner eats it once it is blemished.'],
+            ['It goes to a priest, like a firstborn.', false, 'Animal tithe belongs to the owner, not the priest. The question is only whether it goes on the altar.'],
+          ],
+          src: ref('Bekhorot 53a:3', '53a:3–6'),
+        },
+      },
+    ];
+    const keyOf = (a) => a.status !== 'ok' ? 'X' : (a.kind === 'calf' ? 'herd' : 'flock') + '-' + a.year;
+    const tagOf = (a) => ({ orphan: 'orphan', offering: 'peace offering', bought: 'bought' }[a.status] || (a.year === 'old' ? 'last year' : (a.kind === 'calf' ? 'calf' : a.kind === 'goat' ? 'kid' : 'lamb')));
+    let fi = 0, toks = [], sel = null, firstTry = true, locked = false;
+    register(FARMS.length + 1);
+
+    const PENS = [{ id: 'A', label: 'Pen A' }, { id: 'B', label: 'Pen B' }, { id: 'C', label: 'Pen C' }, { id: 'X', label: 'Not tithed', exempt: true }];
+    const loadFarm = (fresh = true) => {
+      const f = FARMS[fi];
+      toks = f.animals.map((a, i) => ({ ...a, i, pen: null }));
+      // light shuffle so groups aren't pre-sorted
+      for (let i = toks.length - 1; i > 0; i--) { const j = (i * 7 + 3) % (i + 1); [toks[i], toks[j]] = [toks[j], toks[i]]; }
+      sel = null; if (fresh) firstTry = true; locked = false;
+      $('#farmHead').innerHTML = `<h3 class="frank text-xl font-bold t-ochre">${f.name}</h3><p class="t-mute text-sm">${toks.length} animals at the gate.</p>`;
+      $('#farmOut').innerHTML = '';
+      $('#check').disabled = false; $('#reset').disabled = false;
+      render();
+    };
+    const tokBtn = (t) => {
+      const b = el('button', 'tok' + (sel === t ? ' sel' : ''), `${ICON[t.kind]}<small>${tagOf(t)}</small>`);
+      b.setAttribute('aria-label', `${tagOf(t)} ${t.kind}${sel === t ? ', selected' : ''}`);
+      b.setAttribute('aria-pressed', sel === t ? 'true' : 'false');
+      b.dataset.i = t.i;
+      b.onclick = (e) => { e.stopPropagation(); if (locked) return; sel = sel === t ? null : t; render(); const n = document.querySelector(`.tok[data-i="${t.i}"]`); n && n.focus(); };
+      return b;
+    };
+    const render = () => {
+      const yard = $('#yard'); yard.innerHTML = '';
+      toks.filter(t => !t.pen).forEach(t => yard.appendChild(tokBtn(t)));
+      if (!yard.children.length) yard.appendChild(el('span', 't-mute text-sm', 'Everyone is penned.'));
+      yard.onclick = () => { if (sel && !locked) { sel.pen = null; sel = null; render(); } };
+      const pens = $('#pens'); pens.innerHTML = '';
+      PENS.forEach(p => {
+        const box = el('div', 'pen' + (p.exempt ? ' exempt' : '') + (sel ? ' target' : ''));
+        box.setAttribute('role', 'button'); box.tabIndex = 0;
+        box.setAttribute('aria-label', `${p.label}${sel ? ': move selected animal here' : ''}`);
+        box.appendChild(el('span', 'ph', `${p.label} · ${toks.filter(t => t.pen === p.id).length}`));
+        const inner = el('div', 'in'); inner.id = 'pen' + p.id;
+        toks.filter(t => t.pen === p.id).forEach(t => inner.appendChild(tokBtn(t)));
+        box.appendChild(inner);
+        const drop = () => { if (!sel || locked) return; sel.pen = p.id; sel = null; render(); };
+        box.onclick = drop;
+        box.onkeydown = (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === box) { e.preventDefault(); drop(); } };
+        pens.appendChild(box);
+      });
+    };
+    const problems = () => {
+      const out = [];
+      if (toks.some(t => !t.pen)) out.push('Some animals are still waiting at the gate.');
+      toks.filter(t => t.pen === 'X' && t.status === 'ok').forEach(t => out.push(`A ${tagOf(t)} was sent aside, but nothing exempts it.`));
+      toks.filter(t => t.pen && t.pen !== 'X' && t.status !== 'ok').forEach(t => out.push({
+        orphan: 'The orphan is in a pen. An animal whose mother died before it was born is exempt from tithe (53a:7).',
+        offering: 'The peace-offering lamb is in a pen. It is already holy, and the tenth "shall be holy", so it is not tithed (53b:8).',
+        bought: 'A bought goat is in a pen. Purchased animals are exempt (the mishna on 55b, cited at 53b:5).',
+      }[t.status]));
+      ['A', 'B', 'C'].forEach(p => {
+        const ks = new Set(toks.filter(t => t.pen === p && t.status === 'ok').map(keyOf));
+        if ([...ks].some(k => k.startsWith('herd')) && [...ks].some(k => k.startsWith('flock'))) out.push(`Pen ${p} mixes calves with sheep or goats. Herd and flock are not tithed one for the other.`);
+        if (ks.has('flock-new') && ks.has('flock-old')) out.push(`Pen ${p} mixes this year's and last year's animals. New and old are not tithed one for the other.`);
+      });
+      const byKey = {};
+      toks.filter(t => t.pen && t.pen !== 'X' && t.status === 'ok').forEach(t => { (byKey[keyOf(t)] ||= new Set()).add(t.pen); });
+      Object.entries(byKey).forEach(([k, s]) => { if (s.size > 1) out.push(`Animals that may be counted together (${k.startsWith('herd') ? 'calves' : k.endsWith('old') ? "last year's flock" : "this year's flock"}) are split across pens. Put them through one gate.`); });
+      return [...new Set(out)];
+    };
+    $('#reset').onclick = () => { if (!locked) loadFarm(false); };
+    $('#check').onclick = async () => {
+      if (locked) return;
+      const probs = problems();
+      const out = $('#farmOut');
+      if (probs.length) {
+        if (firstTry && !toks.some(t => !t.pen)) firstTry = false;
+        out.innerHTML = `<div class="note no t-text">${probs.map(p => '• ' + p).join('<br>')}</div>`;
+        shake($('#pens'));
+        return;
+      }
+      locked = true; $('#check').disabled = true; $('#reset').disabled = true;
+      bump(firstTry);
+      out.innerHTML = `<div class="gate t-text"><span class="rod" id="rod">🪵</span><span id="cnt" class="frank text-2xl t-ochre">0</span><span class="t-mute" id="gmsg">counting…</span></div>`;
+      for (const p of ['A', 'B', 'C']) {
+        const nodes = [...document.querySelectorAll(`#pen${p} .tok`)];
+        if (!nodes.length) continue;
+        $('#gmsg').textContent = `Pen ${p}`;
+        for (let k = 0; k < nodes.length; k++) {
+          const n = nodes[k];
+          n.classList.remove('walk'); void n.offsetWidth; n.classList.add('walk');
+          const rod = $('#rod'); rod.classList.remove('tap'); void rod.offsetWidth; rod.classList.add('tap');
+          $('#cnt').textContent = (k % 10) + 1;
+          if ((k + 1) % 10 === 0) n.classList.add('tenth');
+          await sleep(260);
+        }
+        await sleep(300);
+      }
+      const tenths = document.querySelectorAll('#pens .tok.tenth').length;
+      $('#gmsg').textContent = `${tenths} tenth${tenths === 1 ? '' : 's'} marked holy.`;
+      const f = FARMS[fi];
+      out.appendChild(el('div', 'note ok t-text', (firstTry ? '<b class="t-good">Right on the first try.</b> ' : '<b>Now it\'s right.</b> ') + f.lesson));
+      const next = () => {
+        const nb = el('button', 'btn go mt-3', fi < FARMS.length - 1 ? 'Next farm →' : 'Done with the farms');
+        nb.onclick = () => { if (fi < FARMS.length - 1) { fi++; loadFarm(); } else { nb.disabled = true; finish('pens'); } };
+        out.appendChild(nb);
+      };
+      if (f.after) {
+        const box = el('div', 'mt-4');
+        box.appendChild(el('p', 't-text font-bold', f.after.q));
+        const row = el('div', 'grid gap-2 mt-2');
+        f.after.opts.forEach(([txt, ok, why]) => {
+          const b = el('button', 'btn', txt);
+          b.onclick = () => {
+            [...row.children].forEach(c => c.disabled = true);
+            b.classList.add(ok ? 'ok' : 'no');
+            if (!ok) [...row.children][f.after.opts.findIndex(o => o[1])].classList.add('ok');
+            bump(ok);
+            box.appendChild(el('div', 'note ' + (ok ? 'ok' : 'no') + ' t-text', why + ' ' + f.after.src));
+            next();
+          };
+          row.appendChild(b);
+        });
+        box.appendChild(row);
+        out.appendChild(box);
+      } else next();
+    };
+    loadFarm();
+
+    /* ---------- 2. Argument chain ---------- */
+    const OPEN = { q: 'The mishna: animal tithe applies even when the Temple is not standing. So even nowadays! Why don\'t people tithe their flocks?',
+      a: `Rav Huna: <span class="he">גְּזֵירָה מִשּׁוּם יָתוֹם</span>, a rabbinic decree lest an orphan, an animal whose mother died before it was born and which is exempt, get counted with the others. ${ref('Bekhorot 53a:7', '53a:7')}` };
+    const MOVES = [
+      { q: 'Then they should have stopped tithing when the Temple stood, too.',
+        a: `No: then they could just announce that orphans are exempt. ${ref('Bekhorot 53a:8', '53a:8')}` },
+      { q: 'So make the same announcement today.',
+        a: `Rather, Rabba: <span class="he">מִשּׁוּם תַּקָּלָה</span>, lest a holy animal be misused. We fear it after the destruction: nothing may be consecrated today, and an animal that was gets locked in a stall until it dies. ${ref('Bekhorot 53a:9', '53a:9–10')}` },
+      { q: 'Then a firstborn should also be a problem.',
+        a: `Is a firstborn up to us? It is holy the moment it leaves the womb. ${ref('Bekhorot 53a:11', '53a:11')}` },
+      { q: 'Then sell the firstborns\' ears to a gentile before birth, so they never become holy.',
+        a: `There's a better way that doesn't cost the priest: Rabbi Yehuda lets you blemish a firstborn before it emerges into the air of the world. ${ref('Bekhorot 53b:1', '53b:1')}` },
+      { q: 'Then blemish the tithe animal in advance too, before it becomes holy.',
+        a: `Who knows which one will come out tenth? ${ref('Bekhorot 53b:2', '53b:2')}` },
+      { q: 'Bring the blemished one out tenth on purpose.',
+        a: `<span class="he">לֹא יְבַקֵּר בֵּין טוֹב לָרַע</span>, "he shall not inquire whether it is good or bad" (Lev. 27:33). You may not choose the tenth. ${ref('Bekhorot 53b:2', '53b:2')}` },
+      { q: 'Then blemish the whole herd.',
+        a: `The Temple will soon be rebuilt, and we'll need animals for offerings and find none without a blemish. ${ref('Bekhorot 53b:3', '53b:3')}` },
+      { q: 'The same worry applies to blemishing firstborns.',
+        a: `Offerings can come from animals that aren't firstborns. ${ref('Bekhorot 53b:4', '53b:4')}` },
+      { q: 'And offerings can come from bought animals, which are exempt from tithe.',
+        a: `Everyone would blemish their whole herd, so there would be few to buy, and a blemish as small as one on the eyelid disqualifies. So the Sages decreed: no tithing today. ${ref('Bekhorot 53b:5', '53b:5')}` },
+    ];
+    register(MOVES.length);
+    let mi = 0, mFirst = true;
+    const pool = $('#pool'), chain = $('#chain');
+    const addStep = (s) => { const d = el('div', 'step'); d.appendChild(el('p', 'q', s.q)); d.appendChild(el('p', 'a', s.a)); chain.appendChild(d); };
+    addStep(OPEN);
+    const order = MOVES.map((_, i) => i).sort((a, b) => ((a * 5 + 2) % 9) - ((b * 5 + 2) % 9));
+    const drawPool = () => {
+      pool.innerHTML = '';
+      if (mi >= MOVES.length) {
+        pool.appendChild(el('div', 'note ok t-text', 'That\'s the whole sugya: the orphan decree failed, the <i>takala</i> held, and every workaround either cost the priest, broke <i>lo yevaker</i>, or emptied the Temple of offerings.'));
+        finish('chain'); return;
+      }
+      pool.appendChild(el('p', 't-mute text-sm', `Move ${mi + 1} of ${MOVES.length}: what does the Gemara push back with?`));
+      order.filter(i => i >= mi).forEach(i => {
+        const b = el('button', 'btn', MOVES[i].q);
+        b.onclick = () => {
+          if (i === mi) { bump(mFirst); addStep(MOVES[i]); mi++; mFirst = true; drawPool(); const f = pool.querySelector('button'); f && f.focus(); }
+          else { mFirst = false; b.classList.add('no'); b.disabled = true; shake(b); }
+        };
+        pool.appendChild(b);
+      });
+    };
+    drawPool();
+
+    /* ---------- 3. Locks ---------- */
+    const VERSES = [
+      { id: 'tzon', he: 'בָּקָר וָצֹאן', en: '"the herd or the flock" (Lev. 27:32)' },
+      { id: 'yihyeh', he: 'הָעֲשִׂירִי יִהְיֶה קֹּדֶשׁ', en: '"the tenth shall be holy" (Lev. 27:32)' },
+      { id: 'aser', he: 'עַשֵּׂר תְּעַשֵּׂר', en: '"you shall tithe a tithe" (Deut. 14:22)' },
+      { id: 'shana', he: 'שָׁנָה שָׁנָה', en: '"year by year" (Deut. 14:22)' },
+      { id: 'chelev', he: 'כׇּל חֵלֶב יִצְהָר וְכׇל חֵלֶב תִּירוֹשׁ', en: '"all the best of the oil and all the best of the wine" (Num. 18:12)' },
+    ];
+    const LOCKS = [
+      { id: 'tzon', ask: 'Sheep tithed for goats?', logic: 'Mishna\'s a fortiori: new and old flock aren\'t kilayim and still can\'t be tithed for each other, so sheep and goats, which are kilayim, surely can\'t.',
+        from: 'May not', to: 'May', why: 'Every kind called "flock" is one species for tithe, so sheep and goats join.', src: ref('Bekhorot 53a:2', '53a:2') },
+      { id: 'aser', ask: 'New flock tithed for old?', logic: 'Baraita\'s a fortiori: sheep and goats are kilayim and still join, so new and old, which aren\'t, surely join.',
+        from: 'May', to: 'May not', why: 'Deut. 14:22–23 puts animal tithe next to grain tithe, and grain tithe is never taken from new for old; "you shall tithe a tithe" keeps the flocks apart too.', src: ref('Bekhorot 53b:13', '53b:13–16') },
+      { id: 'shana', ask: 'Does the grain comparison also forbid sheep for goats?', logic: 'If animal tithe is like grain tithe, and grain isn\'t tithed from one kind for another, sheep and goats shouldn\'t be either.',
+        from: 'Forbids', to: 'Only the year', why: 'Rava: "I compared them with regard to the year, and not for anything else." The comparison covers new and old, not species.', src: ref('Bekhorot 53b:16', '53b:16') },
+      { id: 'yihyeh', ask: 'Is a lamb already set aside as a peace offering tithed?', logic: 'Rabbi Yosei HaGelili: offerings of lesser sanctity are the owner\'s property, so maybe the owner\'s tithe takes hold of them, adding "not redeemed, not sold".',
+        from: 'Tithed', to: 'Not tithed', why: 'Only an animal that is about to become holy, not one already holy. It still needed saying, since every animal stands to become tithe from birth, unlike a burnt offering (Temura 32a).', src: ref('Bekhorot 53b:8', '53b:7–12') },
+      { id: 'chelev', ask: 'Teruma from wine for oil?', logic: 'If it is all going to the priest, why not separate from one kind for another?',
+        from: 'Valid', to: 'Not teruma', why: 'Rabbi Ami in the name of Rabbi Yannai (or Reish Lakish): "Give the best for this one and the best for that one." Terumot 2:4: if he did, his teruma is not teruma.', src: ref('Bekhorot 53b:17', '53b:17') },
+    ];
+    register(LOCKS.length);
+    let armed = null, lockLeft = LOCKS.length;
+    const rack = $('#rack'), locks = $('#locks');
+    VERSES.forEach(v => {
+      const b = el('button', 'btn verse', `<span class="he text-lg block" style="color:var(--wool)">${v.he}</span><span class="t-mute text-xs">${v.en}</span>`);
+      b.setAttribute('aria-pressed', 'false');
+      b.onclick = () => { armed = armed === v.id ? null : v.id; [...rack.children].forEach((c, k) => { const on = VERSES[k].id === armed; c.classList.toggle('armed', on); c.setAttribute('aria-pressed', on); }); };
+      v.node = b; rack.appendChild(b);
+    });
+    LOCKS.forEach(L => {
+      let first = true;
+      const box = el('div', 'lock');
+      box.appendChild(el('p', 't-text font-bold', L.ask));
+      box.appendChild(el('p', 't-mute text-sm mt-1', L.logic));
+      const row = el('div', 'flex flex-wrap items-center gap-3 mt-2');
+      const sw = el('span', 'sw', `<span class="knob" aria-hidden="true"></span><span class="lbl">Logic says: ${L.from}</span>`);
+      const use = el('button', 'btn', 'Use armed verse here');
+      row.appendChild(sw); row.appendChild(use); box.appendChild(row);
+      const msg = el('div', ''); box.appendChild(msg);
+      use.onclick = () => {
+        if (!armed) { msg.innerHTML = '<div class="note t-mute">Arm a verse from the rack first.</div>'; return; }
+        if (armed !== L.id) { first = false; shake(box); msg.innerHTML = '<div class="note no t-text">That verse doesn\'t open this lock. Try another.</div>'; return; }
+        bump(first); use.disabled = true;
+        sw.classList.add('flip'); sw.querySelector('.knob').style.background = 'var(--good)';
+        sw.querySelector('.lbl').textContent = 'Verse says: ' + L.to;
+        msg.innerHTML = `<div class="note ok t-text">${first ? '<b class="t-good">First try.</b> ' : ''}${L.why} ${L.src}</div>`;
+        const v = VERSES.find(x => x.id === L.id); v.node.disabled = true; v.node.classList.remove('armed'); armed = null;
+        if (--lockLeft === 0) finish('locks');
+      };
+      locks.appendChild(box);
+    });
+  })();
+  </script>
+</Layout>
