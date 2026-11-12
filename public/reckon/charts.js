@@ -1,4 +1,4 @@
-// Charts for Kama Ze, drawn as plain HTML and SVG. Bars are single-hue (they show magnitude);
+// Charts for Reckon, drawn as plain HTML and SVG. Bars are single-hue (they show magnitude);
 // the cheapest branch is marked with a label as well as an accent, never by colour alone.
 // Every chart has a table view underneath for screen readers and for copying numbers.
 

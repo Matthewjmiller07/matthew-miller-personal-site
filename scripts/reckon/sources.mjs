@@ -4,7 +4,7 @@
 // (prices.shufersal.co.il), which needs no login.
 import { gunzipSync, inflateRawSync } from 'node:zlib';
 
-export const UA = 'kama-ze/1.0 (Raanana price comparison; reads public price-transparency files)';
+export const UA = 'reckon/1.0 (Raanana price comparison; reads public price-transparency files)';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
