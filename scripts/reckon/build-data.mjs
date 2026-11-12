@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Builds the Kama Ze data set: every product and price at every Ra'anana branch of the chains
+// Builds the Reckon data set: every product and price at every Ra'anana branch of the chains
 // in sources.mjs, read from the price files the chains publish by law.
 //
-//   node scripts/kamaze/build-data.mjs --out <dir> [--prev <dir>]
+//   node scripts/reckon/build-data.mjs --out <dir> [--prev <dir>]
 //
-// --prev points at the previous data set (the kamaze-data branch); prices that changed since
+// --prev points at the previous data set (the reckon-data branch); prices that changed since
 // then are appended to history.json, so the price-history charts grow by themselves.
 //
 // Output (all JSON, arrays kept positional so the files stay small):
@@ -19,7 +19,7 @@ import { SOURCES, raananaStores, blocks, field } from './sources.mjs';
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith('--') ? [...acc, [a.slice(2), all[i + 1]]] : acc), []),
 );
-const OUT = args.out || 'public/kamaze/data';
+const OUT = args.out || 'public/reckon/data';
 const PREV = args.prev;
 
 const EPOCH = Date.UTC(2020, 0, 1);

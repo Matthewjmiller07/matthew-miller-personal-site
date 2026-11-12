@@ -1,7 +1,7 @@
-name: Kama Ze price data
+name: Reckon price data
 
 # Reads the price files Ra'anana supermarket branches publish by law and puts the result on the
-# kamaze-data branch, which the app at /kamaze/ loads directly. Nothing is committed to main and
+# reckon-data branch, which the app at /reckon/ loads directly. Nothing is committed to main and
 # nothing is deployed, so this costs no Netlify credits. The branch holds a single commit that
 # is replaced on every run; price changes accumulate inside history.json.
 on:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: kamaze-data
+  group: reckon-data
   cancel-in-progress: false
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: scripts/kamaze
+          sparse-checkout: scripts/reckon
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -32,17 +32,17 @@ jobs:
         run: |
           mkdir -p prev
           for f in meta catalog promos history; do
-            curl -fsSL "https://raw.githubusercontent.com/${{ github.repository }}/kamaze-data/$f.json" -o "prev/$f.json" || true
+            curl -fsSL "https://raw.githubusercontent.com/${{ github.repository }}/reckon-data/$f.json" -o "prev/$f.json" || true
           done
           ls -la prev
       - name: Build
-        run: node scripts/kamaze/build-data.mjs --out out --prev prev
-      - name: Publish to the kamaze-data branch
+        run: node scripts/reckon/build-data.mjs --out out --prev prev
+      - name: Publish to the reckon-data branch
         run: |
           cd out
-          git init -q -b kamaze-data
+          git init -q -b reckon-data
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -q -m "Kama Ze price data $(date -u +%Y-%m-%dT%H:%MZ)"
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" kamaze-data
+          git commit -q -m "Reckon price data $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" reckon-data

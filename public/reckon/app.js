@@ -1,17 +1,18 @@
-// Kama Ze (כמה זה): Ra'anana grocery prices. Everything runs in the browser: the price data is
+// Reckon: grocery prices branch by branch, starting with Ra'anana. Everything runs in the browser: the price data is
 // a few static JSON files, the list lives in localStorage, and barcode and receipt reading
 // happen on the device.
-import { STR, DICT, SUGGEST } from '/kamaze/i18n.js';
-import { indexChart, gapsChart, changesChart, offersChart, storeBars, sparkline, wireTips } from '/kamaze/charts.js';
+import { STR, DICT, SUGGEST } from '/reckon/i18n.js';
+import { indexChart, gapsChart, changesChart, offersChart, storeBars, sparkline, wireTips } from '/reckon/charts.js';
 
-const LIVE = 'https://raw.githubusercontent.com/matthewjmiller07/matthew-miller-personal-site/kamaze-data/';
-const LOCAL = '/kamaze/data/';
-const SITE = 'https://theothermatthewmiller.com/kamaze/';
+const LIVE = 'https://raw.githubusercontent.com/matthewjmiller07/matthew-miller-personal-site/reckon-data/';
+const LOCAL = '/reckon/data/';
+const SITE = 'https://theothermatthewmiller.com/reckon/';
 const EPOCH = Date.UTC(2020, 0, 1);
 
 const store = {
-  get(k, d) { try { const v = localStorage.getItem('kamaze.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
-  set(k, v) { try { localStorage.setItem('kamaze.' + k, JSON.stringify(v)); } catch { /* private mode */ } },
+  // 'kamaze.' was the app's first name; lists saved under it still load.
+  get(k, d) { try { const v = localStorage.getItem('reckon.' + k) ?? localStorage.getItem('kamaze.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('reckon.' + k, JSON.stringify(v)); } catch { /* private mode */ } },
 };
 
 export const S = {
@@ -210,7 +211,7 @@ function parseShared() {
 
 function whatsappText(lines, b) {
   const date = fmtDate(new Date(), { day: 'numeric', month: 'short' });
-  const out = [`🛒 *${S.lang === 'he' ? 'כמה זה · רעננה' : "Kama Ze · Ra'anana"}* (${date})`, ''];
+  const out = [`🛒 *Reckon · ${S.lang === 'he' ? S.meta.city : S.meta.cityEn}* (${date})`, ''];
   const line = (l, si) => {
     const r = S.items.get(l.c);
     const c = si == null ? null : cost(l.c, si, l.q);
@@ -365,7 +366,7 @@ function viewInsights() {
     <div class="card"><h3>${t('offersTitle')}</h3><p class="sub">${t('offersSub')}</p>${offersChart(S, t, storeName)}</div>
     <div class="card"><h3>${t('changesTitle')}</h3><p class="sub">${t('changesSub')}</p>${changesChart(S, t)}</div>
     <p class="sub">${t('source')} ${t('updated')} ${fmtDate(new Date(m.updated), { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.</p>
-    <p class="sub">${t('coverage')} <a href="/kamaze/why/">${t('why')}</a></p>
+    <p class="sub">${t('coverage')} <a href="/reckon/why/">${t('why')}</a></p>
   </section>`;
 }
 
@@ -459,8 +460,8 @@ function loadScript(src) {
 }
 
 async function zxing() {
-  zxingReady ||= loadScript('/kamaze/vendor/zxing-reader.js').then(() => {
-    window.ZXingWASM.prepareZXingModule({ overrides: { locateFile: (p) => '/kamaze/vendor/' + p }, fireImmediately: true });
+  zxingReady ||= loadScript('/reckon/vendor/zxing-reader.js').then(() => {
+    window.ZXingWASM.prepareZXingModule({ overrides: { locateFile: (p) => '/reckon/vendor/' + p }, fireImmediately: true });
     return window.ZXingWASM;
   });
   return zxingReady;
@@ -536,9 +537,9 @@ function fileToImage(file) {
 
 let ocrWorker = null;
 async function ocr(canvas, onProgress) {
-  if (!window.Tesseract) await loadScript('/kamaze/vendor/tesseract.min.js');
+  if (!window.Tesseract) await loadScript('/reckon/vendor/tesseract.min.js');
   ocrWorker ||= await window.Tesseract.createWorker('eng', 1, {
-    workerPath: '/kamaze/vendor/worker.min.js', corePath: '/kamaze/vendor/tesseract-core-simd-lstm.wasm.js', langPath: '/kamaze/vendor', gzip: true,
+    workerPath: '/reckon/vendor/worker.min.js', corePath: '/reckon/vendor/tesseract-core-simd-lstm.wasm.js', langPath: '/reckon/vendor', gzip: true,
     logger: (m) => m.status === 'recognizing text' && onProgress?.(m.progress),
   });
   await ocrWorker.setParameters({ tessedit_pageseg_mode: '6', preserve_interword_spaces: '1' });
@@ -702,8 +703,8 @@ async function boot() {
   if (isIos) { const b = $('#installBtn'); b.hidden = false; b.textContent = t('install'); }
   setOnline();
   render();
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('/kamaze/sw.js', { scope: '/kamaze/' }).catch(() => {});
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('/reckon/sw.js', { scope: '/reckon/' }).catch(() => {});
 }
 
-window.kamaze = { S, search, basket, parseReceipt, detectBarcodes, findCode, whatsappText, readReceipt, cost };
+window.reckon = { S, search, basket, parseReceipt, detectBarcodes, findCode, whatsappText, readReceipt, cost };
 boot();
