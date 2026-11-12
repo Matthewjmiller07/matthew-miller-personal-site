@@ -59,6 +59,12 @@ const pageTitle = 'Rabbi Jeremy Wieder — Shiur Transcripts';
       const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
       return h ? h + 'h ' + m + 'm' : m + ' min';
     }
+    function fmtTS(s) {
+      s = parseInt(s, 10);
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+      const p = (n) => String(n).padStart(2, '0');
+      return p(h) + ':' + p(m) + ':' + p(ss);
+    }
     function esc(t) {
       return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
@@ -82,10 +88,13 @@ const pageTitle = 'Rabbi Jeremy Wieder — Shiur Transcripts';
       if (!shown.length) rows.innerHTML = '<p class="empty">No matches.</p>';
     }
 
-    async function show(id) {
+    async function show(id, seek) {
       const it = items.find((x) => String(x.id) === String(id));
       if (!it) return;
-      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+      try {
+        history.replaceState(null, '', '#' + id +
+          (seek != null ? '@' + fmtTS(seek) : ''));
+      } catch (e) {}
       listView.hidden = true;
       detailView.hidden = false;
       document.getElementById('dTitle').textContent = it.title;
@@ -133,6 +142,21 @@ const pageTitle = 'Rabbi Jeremy Wieder — Shiur Transcripts';
             a.play().catch(() => {});
           });
         });
+        // Deep link with a timestamp (#533@00:05:23): seek the audio to
+        // that moment and scroll to the segment containing it.
+        if (seek != null && audio.getAttribute('src')) {
+          const go = () => { try { audio.currentTime = seek; } catch (e) {} };
+          if (audio.readyState >= 1) go();
+          else audio.addEventListener('loadedmetadata', go, { once: true });
+          audio.load();
+          const chips = Array.from(body.querySelectorAll('.ts'));
+          let target = null;
+          for (const c of chips) {
+            if (+c.dataset.t <= seek) target = c;
+            else break;
+          }
+          if (target) target.scrollIntoView({ block: 'center' });
+        }
       } catch (e) {
         body.innerHTML = '<p>Could not load transcript.</p>';
       }
@@ -156,7 +180,17 @@ const pageTitle = 'Rabbi Jeremy Wieder — Shiur Transcripts';
         items = d;
         renderList('');
         const h = location.hash.replace('#', '');
-        if (h && /^\d+$/.test(h)) show(h);
+        const m = h.match(/^(\d+)(?:@(\d{1,2}:\d{2}:\d{2}|\d+))?$/);
+        if (m) {
+          let seek = null;
+          if (m[2]) {
+            if (m[2].indexOf(':') !== -1) {
+              const p = m[2].split(':').map(Number);
+              seek = p[0] * 3600 + p[1] * 60 + p[2];
+            } else seek = parseInt(m[2], 10);
+          }
+          show(m[1], seek);
+        }
       })
       .catch(() => {
         rows.innerHTML = '<p class="empty">Could not load the transcript index.</p>';
