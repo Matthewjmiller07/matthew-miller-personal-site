@@ -1,0 +1,48 @@
+name: Kama Ze price data
+
+# Reads the price files Ra'anana supermarket branches publish by law and puts the result on the
+# kamaze-data branch, which the app at /kamaze/ loads directly. Nothing is committed to main and
+# nothing is deployed, so this costs no Netlify credits. The branch holds a single commit that
+# is replaced on every run; price changes accumulate inside history.json.
+on:
+  schedule:
+    - cron: '20 3 * * *'   # ~05:20 Israel time, after the chains post the day's full files
+    - cron: '20 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kamaze-data
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/kamaze
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Previous data (for price history)
+        run: |
+          mkdir -p prev
+          for f in meta catalog promos history; do
+            curl -fsSL "https://raw.githubusercontent.com/${{ github.repository }}/kamaze-data/$f.json" -o "prev/$f.json" || true
+          done
+          ls -la prev
+      - name: Build
+        run: node scripts/kamaze/build-data.mjs --out out --prev prev
+      - name: Publish to the kamaze-data branch
+        run: |
+          cd out
+          git init -q -b kamaze-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Kama Ze price data $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" kamaze-data
