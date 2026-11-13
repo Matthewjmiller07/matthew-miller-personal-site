@@ -1,0 +1,453 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Split the Estate — Daf Yomi Game: Bekhorot 56"
+  description="Bekhorot 56: unmask which animal 'your son' points to, time when a lamb was bought, and divide two brothers' inheritance (coins and goats) to see when they owe the animal tithe, the kalbon, both, or neither."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --night:#1b1611; --hide:#2a2219; --line:#4c3e2e; --wool:#efe6d2; --dust:#b5a68e; --ochre:#d9a441; --sage:#93b57c; --rust:#cf6b4d; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .t-wool { color: var(--wool) !important; }
+    .t-dust { color: var(--dust) !important; }
+    .t-ochre { color: var(--ochre) !important; }
+    .t-sage { color: var(--sage) !important; }
+    .t-rust { color: var(--rust) !important; }
+    a.ref { color: var(--ochre) !important; text-decoration: underline; text-underline-offset: 2px; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .he { font-family: 'Frank Ruhl Libre', serif; direction: rtl; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .5rem .8rem; font-size: .92rem; line-height: 1.4; text-align: start; background: transparent; color: var(--wool) !important; }
+    .btn:hover:not(:disabled) { background: var(--hide); }
+    .btn:disabled { cursor: default; opacity: .6; }
+    .btn.on { border-color: var(--ochre); box-shadow: inset 0 0 0 1px var(--ochre); background: var(--hide); opacity: 1; }
+    .btn.ok { background: #263522; border-color: var(--sage); opacity: 1; }
+    .btn.no { background: #45231b; border-color: var(--rust); opacity: 1; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .93rem; line-height: 1.65; margin-top: .75rem; color: var(--wool) !important; }
+    .note.ok { border-color: var(--sage); }
+    .note.no { border-color: var(--rust); }
+    .note.tk { border-color: var(--ochre); }
+    .quote { background: #241d16; border: 1px solid var(--line); border-radius: .5rem; padding: .8rem 1rem; }
+    .row { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+    /* guess-who board */
+    .suspects { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; }
+    .sus { perspective: 600px; min-height: 150px; }
+    .sus .face { border: 1px solid var(--line); border-radius: .6rem; background: var(--hide); padding: .7rem; height: 100%; transition: transform .5s ease, opacity .5s ease; transform-origin: bottom; }
+    .sus.down .face { transform: rotateX(72deg); opacity: .35; }
+    .sus.win .face { border-color: var(--sage); box-shadow: 0 0 18px rgba(147,181,124,.35); }
+    .sus .emo { font-size: 1.8rem; }
+    /* ledger grid */
+    .grid4 { display: grid; grid-template-columns: auto 1fr 1fr; gap: .4rem; align-items: stretch; }
+    .grid4 .h { font-size: .8rem; color: var(--dust) !important; align-self: end; }
+    .cell { border: 1px dashed var(--line); border-radius: .4rem; padding: .5rem; min-height: 4.2rem; }
+    .cell.got { border-style: solid; border-color: var(--sage); background: #222c1d; }
+    .lamp { display: inline-flex; align-items: center; gap: .5rem; font-weight: 700; padding: .4rem .75rem; border-radius: 999px; border: 1px solid var(--line); font-size: .9rem; }
+    .lamp i { width: .75rem; height: .75rem; border-radius: 50%; background: #555; display: inline-block; }
+    .lamp.yes i { background: var(--sage); box-shadow: 0 0 10px var(--sage); }
+    .lamp.nope i { background: var(--rust); box-shadow: 0 0 10px var(--rust); }
+    /* herd dealing */
+    .pens { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+    .pen { border: 2px solid var(--line); border-radius: .6rem; padding: .6rem; min-height: 120px; background: #211a14; }
+    .pen.drop { border-color: var(--ochre); }
+    .beast { font-size: 1.35rem; line-height: 1; padding: .2rem; border-radius: .3rem; background: transparent; border: 1px solid transparent; cursor: pointer; }
+    .beast:hover { border-color: var(--line); }
+    .beast.kid { font-size: 1rem; }
+    .goals li { list-style: none; padding: .2rem 0; color: var(--dust) !important; }
+    .goals li.hit { color: var(--sage) !important; }
+    .goals li::before { content: '○ '; }
+    .goals li.hit::before { content: '● '; }
+    .coin { transition: transform .6s ease; }
+    @media (prefers-reduced-motion: reduce) { .sus .face, .coin { transition: none; } }
+  </style>
+
+  <div class="min-h-screen" style="background: var(--night);">
+    <div class="max-w-3xl mx-auto px-4 py-10">
+      <p class="text-sm t-dust"><a href="/daf/" class="ref">Daf Yomi Arcade</a> · Bekhorot 56 · <span class="he">בכורות נ״ו</span></p>
+      <h1 class="frank text-5xl sm:text-6xl font-black t-wool mt-2">Split the Estate</h1>
+      <p class="he text-2xl mt-3 t-ochre">מָה בָּנֶיךָ — אֵין בְּלָקוּחַ וּבְמַתָּנָה</p>
+      <p class="t-wool mt-3 text-lg leading-relaxed">
+        Bekhorot 56 asks whose animals owe the animal tithe. A bought or gifted animal is exempt, because the flock is compared to "your son",
+        and you can't buy a firstborn son. Then two brothers inherit their father's coins and goats. Whether they owe the tithe, the
+        <i>kalbon</i> (the premium added to the half-shekel), both, or neither depends on what they have divided.
+      </p>
+      <p class="t-dust mt-2 text-sm">Score: <span id="score" class="t-ochre font-bold">0</span> / <span id="scoreMax">0</span> right on the first try</p>
+
+      <!-- 1 -->
+      <section class="stn" aria-labelledby="h1">
+        <h2 id="h1" class="frank text-3xl font-bold t-wool">1 · Who is "your oxen and your sheep"?</h2>
+        <p class="t-dust mt-2 leading-relaxed">
+          "So you shall do with your oxen and with your sheep… on the eighth day you shall give it to Me"
+          (<a class="ref" href="https://www.sefaria.org/Exodus.22.28-29" target="_blank" rel="noopener">Ex. 22:28–29</a>).
+          The verse puts the flock next to "the firstborn of your sons", so whatever animal it means can't be bought or received as a gift, just like a son.
+          But which animal is it? Five suspects. Ask the questions the Gemara asks, one trait of "your son" at a time, and flip down every card that doesn't match
+          (<a class="ref" href="https://www.sefaria.org/Bekhorot.56a.1-5" target="_blank" rel="noopener">56a:1–5</a>). Fewer questions is better.
+        </p>
+        <div id="suspects" class="suspects mt-4"></div>
+        <p class="t-dust text-sm mt-4">Ask the verse:</p>
+        <div id="asks" class="row mt-1"></div>
+        <div id="askLog"></div>
+      </section>
+
+      <!-- 2 -->
+      <section class="stn" aria-labelledby="h2">
+        <h2 id="h2" class="frank text-3xl font-bold t-wool">2 · When was it bought?</h2>
+        <p class="t-dust mt-2 leading-relaxed">
+          You can't buy a son <i>at all</i>. So why does Rabbi Asi say in Rabbi Yoḥanan's name that ten fetuses bought in the womb all go into the pen to be tithed?
+          Rava and Rabbi Elazar (who saw Rabbi Yoḥanan in a dream) answer from the same verse: "<i>So you shall do</i>." Buying only exempts an animal
+          if it happens at the "time of doing" (<a class="ref" href="https://www.sefaria.org/Bekhorot.56a.6-10" target="_blank" rel="noopener">56a:6–10</a>).
+          Tap a moment on the lamb's life to sell it then, and rule.
+        </p>
+        <svg viewBox="0 0 640 120" class="w-full mt-4" role="group" aria-label="Lamb's life: in the womb, born, day three, day eight, day thirty">
+          <line x1="40" y1="60" x2="600" y2="60" stroke="#4c3e2e" stroke-width="4" stroke-linecap="round" />
+          <line x1="190" y1="40" x2="190" y2="80" stroke="#b5a68e" stroke-width="2" />
+          <text x="190" y="30" text-anchor="middle" fill="#b5a68e" font-size="13">birth</text>
+          <line x1="430" y1="40" x2="430" y2="80" stroke="#d9a441" stroke-width="2" />
+          <text x="430" y="30" text-anchor="middle" fill="#d9a441" font-size="13">day 8: fit for the altar</text>
+          <g id="moments"></g>
+        </svg>
+        <div id="sale"></div>
+        <div id="saleDone"></div>
+      </section>
+
+      <!-- 3 -->
+      <section class="stn" aria-labelledby="h3">
+        <h2 id="h3" class="frank text-3xl font-bold t-wool">3 · Abaye's crossed wires</h2>
+        <p class="t-dust mt-2 leading-relaxed">
+          A baraita says a prostitute's fee "that he gave her and then bought back from her" goes into the pen. But bought animals are exempt!
+          The answer: he gave it while it was still in the womb, and bought it back from a <i>gentile</i> prostitute
+          (<a class="ref" href="https://www.sefaria.org/Bekhorot.56a.11-56b.2" target="_blank" rel="noopener">56a:11–56b:2</a>).
+          Why not a Jewish one, who could tithe it herself? Because of Abaye, whose two rulings point in opposite directions
+          (<a class="ref" href="https://www.sefaria.org/Bekhorot.56b.3-6" target="_blank" rel="noopener">56b:3–6</a>). Fill in his board.
+        </p>
+        <div id="abaye" class="grid4 mt-4"></div>
+        <div id="abayeWhy"></div>
+      </section>
+
+      <!-- 4 -->
+      <section class="stn" aria-labelledby="h4">
+        <h2 id="h4" class="frank text-3xl font-bold t-wool">4 · Coins and goats</h2>
+        <p class="t-dust mt-2 leading-relaxed">
+          The mishna: <span class="he t-wool">חַיָּיבִין בַּקָּלְבּוֹן — פְּטוּרִין מִמַּעְשַׂר בְּהֵמָה</span>. Brothers who owe the kalbon are exempt from the animal tithe, and brothers who owe the tithe are exempt from the kalbon
+          (<a class="ref" href="https://www.sefaria.org/Bekhorot.56b.7-8" target="_blank" rel="noopener">56b:7–8</a>). Partners pay the kalbon, while a single owner, like a father, owes the tithe.
+          "That shall be <i>yours</i>" (<a class="ref" href="https://www.sefaria.org/Exodus.13.12" target="_blank" rel="noopener">Ex. 13:12</a>) excludes partners, and "shall be" brings back an undivided inheritance
+          (<a class="ref" href="https://www.sefaria.org/Bekhorot.56b.9-10" target="_blank" rel="noopener">56b:9–10</a>).
+          Rabbi Yirmeya says all four combinations happen (<a class="ref" href="https://www.sefaria.org/Bekhorot.56b.11-14" target="_blank" rel="noopener">56b:11–14</a>).
+          Divide or reunite the estate, predict both lamps, and collect all four.
+        </p>
+        <svg viewBox="0 0 640 150" class="w-full mt-4" role="img" aria-label="The father's estate: a purse of coins and a flock, between two brothers">
+          <text x="110" y="22" text-anchor="middle" fill="#b5a68e" font-size="14">Reuven</text>
+          <text x="530" y="22" text-anchor="middle" fill="#b5a68e" font-size="14">Shimon</text>
+          <text x="320" y="22" text-anchor="middle" fill="#d9a441" font-size="14">father's estate</text>
+          <g id="coinsL" class="coin"><circle cx="300" cy="60" r="16" fill="#d9a441" /><text x="300" y="66" text-anchor="middle" font-size="15" fill="#1b1611">₪</text></g>
+          <g id="coinsR" class="coin"><circle cx="340" cy="60" r="16" fill="#d9a441" /><text x="340" y="66" text-anchor="middle" font-size="15" fill="#1b1611">₪</text></g>
+          <g id="goatsL" class="coin"><text x="300" y="125" text-anchor="middle" font-size="30">🐐</text></g>
+          <g id="goatsR" class="coin"><text x="340" y="125" text-anchor="middle" font-size="30">🐐</text></g>
+        </svg>
+        <div class="row mt-2">
+          <button type="button" class="btn" id="tMoney" aria-pressed="false">Divide the money</button>
+          <button type="button" class="btn" id="tBeast" aria-pressed="false">Divide the animals</button>
+          <button type="button" class="btn" id="tRejoin" aria-pressed="false">…then rejoin as partners</button>
+        </div>
+        <p class="t-dust text-sm mt-3">Your prediction:</p>
+        <div class="row mt-1"><span class="t-wool text-sm" style="min-width:6.5rem">Kalbon</span><button type="button" class="btn pk" data-k="k" data-v="1">owed</button><button type="button" class="btn pk" data-k="k" data-v="0">exempt</button></div>
+        <div class="row mt-1"><span class="t-wool text-sm" style="min-width:6.5rem">Animal tithe</span><button type="button" class="btn pk" data-k="t" data-v="1">owed</button><button type="button" class="btn pk" data-k="t" data-v="0">exempt</button></div>
+        <div class="row mt-3"><button type="button" class="btn" id="rule" style="border-color:var(--ochre)">Rule</button><span id="lampK" class="lamp"><i></i>Kalbon</span><span id="lampT" class="lamp"><i></i>Tithe</span></div>
+        <div id="ruleWhy"></div>
+        <p class="t-dust text-sm mt-5">Rabbi Yirmeya's four:</p>
+        <div id="yirmeya" class="grid4 mt-1"></div>
+        <div id="novelty"></div>
+      </section>
+
+      <!-- 5 -->
+      <section class="stn" aria-labelledby="h5">
+        <h2 id="h5" class="frank text-3xl font-bold t-wool">5 · Deal the herd</h2>
+        <p class="t-dust mt-2 leading-relaxed">
+          They divided, then joined up again. Does the old single estate come back, or are they strangers who have pooled their animals?
+          It depends on <i>how</i> they divided (<a class="ref" href="https://www.sefaria.org/Bekhorot.56b.16-21" target="_blank" rel="noopener">56b:16–21</a>).
+          The father left 18 large goats and 20 kids, and 9 large goats are worth 10 kids. Big 🐐 are large goats and small 🐐 are kids. Tap an animal to move it between the brothers, then rejoin and read the four amora'im.
+        </p>
+        <div class="pens mt-4">
+          <div><p class="t-wool text-sm mb-1">Reuven <span id="cntA" class="t-dust"></span></p><div id="penA" class="pen row" aria-label="Reuven's pen"></div></div>
+          <div><p class="t-wool text-sm mb-1">Shimon <span id="cntB" class="t-dust"></span></p><div id="penB" class="pen row" aria-label="Shimon's pen"></div></div>
+        </div>
+        <div class="row mt-2">
+          <button type="button" class="btn" data-preset="even">Preset: 9 + 10 each</button>
+          <button type="button" class="btn" data-preset="swap">Preset: goats ↔ kids</button>
+          <button type="button" class="btn" data-preset="reset">Everything to Reuven</button>
+        </div>
+        <div class="row mt-3"><button type="button" class="btn" id="rejoin" style="border-color:var(--ochre)">Rejoin and rule</button></div>
+        <div id="dealOut"></div>
+        <ul class="goals mt-4" id="goals">
+          <li data-g="g1">Rav Anan and Rav Naḥman disagree</li>
+          <li data-g="g2">All four agree they're exempt</li>
+          <li data-g="g3">Find a split no one can rule on, because it isn't a fair division</li>
+        </ul>
+        <p id="final" class="t-wool mt-8 text-lg"></p>
+      </section>
+
+      <section class="stn" aria-labelledby="h6">
+        <h2 id="h6" class="frank text-3xl font-bold t-wool">Learn the real daf</h2>
+        <ul class="t-wool mt-3 space-y-2 list-disc ps-5">
+          <li><a class="ref" href="https://www.sefaria.org/Bekhorot.56a" target="_blank" rel="noopener">Bekhorot 56a</a> and <a class="ref" href="https://www.sefaria.org/Bekhorot.56b" target="_blank" rel="noopener">56b</a> on Sefaria</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Bekhorot.56a" target="_blank" rel="noopener">Rashi</a> (38 comments), on why Rabbi Shimon ben Yehuda's baraita still lets a fetus into the pen, and on the kalbon</li>
+          <li><a class="ref" href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.56a" target="_blank" rel="noopener">Steinsaltz</a> (33) and <a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.56a" target="_blank" rel="noopener">Rabbeinu Gershom</a> (22), plus <a class="ref" href="https://www.sefaria.org/Tosafot_on_Bekhorot.56a" target="_blank" rel="noopener">Tosafot</a> and <a class="ref" href="https://www.sefaria.org/Rashash_on_Bekhorot.56a" target="_blank" rel="noopener">Rashash</a></li>
+          <li>The verses: <a class="ref" href="https://www.sefaria.org/Exodus.22.28-29" target="_blank" rel="noopener">Ex. 22:28–29</a>, <a class="ref" href="https://www.sefaria.org/Exodus.13.12" target="_blank" rel="noopener">Ex. 13:12</a>, <a class="ref" href="https://www.sefaria.org/Deuteronomy.12.6" target="_blank" rel="noopener">Deut. 12:6</a>, <a class="ref" href="https://www.sefaria.org/Deuteronomy.23.19" target="_blank" rel="noopener">Deut. 23:19</a>, <a class="ref" href="https://www.sefaria.org/Leviticus.18.29" target="_blank" rel="noopener">Lev. 18:29</a>, <a class="ref" href="https://www.sefaria.org/Leviticus.21.14-15" target="_blank" rel="noopener">Lev. 21:14–15</a></li>
+          <li>On the kalbon itself: <a class="ref" href="https://www.sefaria.org/Mishnah_Shekalim.1.7" target="_blank" rel="noopener">Mishna Shekalim 1:7</a></li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <script is:inline>
+  (() => {
+    const $ = (s, r = document) => r.querySelector(s);
+    const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+    const ref = (r, label) => `<a class="ref" href="https://www.sefaria.org/${r.replace(/ /g, '_')}" target="_blank" rel="noopener">${label}</a>`;
+    let score = 0, max = 0;
+    const bump = (ok) => { max++; if (ok) score++; $('#score').textContent = score; $('#scoreMax').textContent = max; };
+    const finished = new Set();
+    const finish = (k) => { finished.add(k); if (finished.size === 5) $('#final').innerHTML = `Estate settled: ${score} of ${max} right on the first try. The Gemara says Rabbi Elazar knew he had the right answer because he saw Rabbi Yoḥanan in a dream. You only had the daf.`; };
+
+    // ---------- 1 · Guess who ----------
+    const SUS = [
+      { id: 'bekhor', emo: '🐑', name: 'Firstborn animal', he: 'בכור', trait: { act: false, sin: false, vow: false, time: false } },
+      { id: 'hatat', emo: '⚖️', name: 'Sin & guilt offerings', he: 'חטאת ואשם', trait: { act: true, sin: true, vow: false, time: false } },
+      { id: 'olah', emo: '🔥', name: 'Burnt & peace offerings', he: 'עולה ושלמים', trait: { act: true, sin: false, vow: true, time: false } },
+      { id: 'reiyah', emo: '🏔️', name: 'Pilgrim’s burnt offering', he: 'עולת ראייה', trait: { act: true, sin: false, vow: false, time: true } },
+      { id: 'maaser', emo: '🔟', name: 'Animal tithe', he: 'מעשר בהמה', trait: { act: true, sin: false, vow: false, time: false } },
+    ];
+    const ASKS = [
+      { k: 'act', q: 'Does it need someone to do something to become holy?', son: true, why: `${ref('Bekhorot 56a:2', '56a:2')}: "So you shall <i>do</i>." A firstborn animal is holy from the womb and nobody does anything to it. The tithe is holy only once it is counted out as the tenth.` },
+      { k: 'sin', q: 'Is it brought to atone for a sin?', son: false, why: `${ref('Bekhorot 56a:3', '56a:3')}: a son isn't redeemed because of a sin. Sin and guilt offerings are.` },
+      { k: 'vow', q: 'Can it be a vow or a gift?', son: false, why: `${ref('Bekhorot 56a:4', '56a:4')}: nobody pledges a son as a vow. Burnt and peace offerings can be.` },
+      { k: 'time', q: 'Does it have a fixed day in the calendar?', son: false, why: `${ref('Bekhorot 56a:5', '56a:5')}: a son is redeemed any time after thirty days. The pilgrim's offering is brought only at the three festivals.` },
+      { k: 'temple', q: 'Is it brought in the Temple?', decoy: true, why: `Every suspect is, so this question flips down nobody. The Gemara never asks it.` },
+    ];
+    const susBox = $('#suspects');
+    SUS.forEach(s => {
+      const c = el('div', 'sus'); c.id = 'sus-' + s.id;
+      c.innerHTML = `<div class="face"><div class="emo" aria-hidden="true">${s.emo}</div><p class="t-wool font-bold mt-1">${s.name}</p><p class="he t-dust">${s.he}</p></div>`;
+      susBox.append(c);
+    });
+    const up = new Set(SUS.map(s => s.id));
+    let asked = 0;
+    ASKS.forEach(a => {
+      const b = el('button', 'btn', a.q); b.type = 'button';
+      b.onclick = () => {
+        b.disabled = true; asked++;
+        const flipped = [];
+        if (!a.decoy) SUS.forEach(s => { if (up.has(s.id) && s.trait[a.k] !== a.son) { up.delete(s.id); $('#sus-' + s.id).classList.add('down'); flipped.push(s.name); } });
+        $('#askLog').append(el('div', 'note ' + (a.decoy ? 'no' : 'ok'), `<b>The verse's animal: ${a.decoy ? 'yes' : (a.son ? 'yes' : 'no')}.</b> ${flipped.length ? 'Flipped down: ' + flipped.join(', ') + '. ' : ''}${a.why}`));
+        if (up.size === 1) {
+          $('#sus-maaser').classList.add('win');
+          const best = asked === 4;
+          bump(best);
+          [...$('#asks').children].forEach(x => x.disabled = true);
+          $('#askLog').append(el('div', 'note tk', `<b>The animal tithe, in ${asked} questions${best ? ', the fewest possible' : ''}.</b> It isn't for a sin, isn't a vow or gift, has no fixed day, and needs someone to count it. So like a son, a tithe animal can't be bought or received as a gift: <span class="he">מָה בָּנֶיךָ — אֵין בְּלָקוּחַ וּבְמַתָּנָה, אַף צֹאנְךָ וּבְקָרְךָ — אֵינוֹ בְּלָקוּחַ וּבְמַתָּנָה</span> (${ref('Bekhorot 56a:1', '56a:1')}).`));
+          finish('s1');
+        }
+      };
+      $('#asks').append(b);
+    });
+
+    // ---------- 2 · Timeline ----------
+    const MOM = [
+      { x: 110, lab: 'in the womb', title: 'Ten fetuses bought in their mothers’ wombs, born in the buyer’s flock', ans: true,
+        why: `<b>Into the pen.</b> Rabbi Asi in Rabbi Yoḥanan's name. A fetus can't be offered yet, so buying it isn't "at the time of doing", and the purchase doesn't count against it. That is Rava's answer, and Rabbi Elazar's too (${ref('Bekhorot 56a:6-9', '56a:6–9')}).` },
+      { x: 310, lab: 'day 3', title: 'A lamb bought three days after birth', ans: false,
+        why: `<b>Exempt, according to the baraita Rabbi Shimon ben Elyakim cites:</b> buying exempts even an animal "whose time has not yet arrived". So why not a fetus too? Rabbi Elazar: <i>this baraita isn't reliable</i>. Or if it is, it follows Rabbi Shimon ben Yehuda in Rabbi Shimon's name. For him a pre-day-8 lamb already enters the pen, like a firstborn that is holy before its time and offered after it. So day 3 is already "the time of doing" for him, and buying then exempts it. Rashi: even he agrees a fetus isn't (${ref('Bekhorot 56a:9-10', '56a:9–10')}, ${ref('Rashi on Bekhorot 56a:10:1', 'Rashi')}).` },
+      { x: 520, lab: 'day 30', title: 'A grown lamb bought at a month old', ans: false,
+        why: `<b>Exempt.</b> This is the mishna's plain case: one who buys an animal or receives it as a gift is exempt from the tithe (${ref('Bekhorot 56a:8', '56a:8')}).` },
+    ];
+    const g = $('#moments');
+    let saleDone = 0;
+    MOM.forEach((m, i) => {
+      const n = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      n.setAttribute('tabindex', '0'); n.setAttribute('role', 'button'); n.setAttribute('aria-label', 'Sell at ' + m.lab); n.style.cursor = 'pointer';
+      n.innerHTML = `<circle cx="${m.x}" cy="60" r="16" fill="#2a2219" stroke="#efe6d2" stroke-width="2"/><text x="${m.x}" y="66" text-anchor="middle" font-size="16">${i === 0 ? '🤰' : '🐑'}</text><text x="${m.x}" y="102" text-anchor="middle" fill="#efe6d2" font-size="13">${m.lab}</text>`;
+      const open = () => {
+        if (m.opened) return; m.opened = true;
+        n.querySelector('circle').setAttribute('stroke', '#d9a441');
+        const card = el('div', 'quote mt-3');
+        card.append(el('p', 't-wool', '🏷️ ' + m.title));
+        const r = el('div', 'row mt-2'); card.append(r);
+        [[true, 'Into the pen'], [false, 'Exempt: it was bought']].forEach(([v, l]) => {
+          const b = el('button', 'btn', l); b.type = 'button';
+          b.onclick = () => {
+            const ok = v === m.ans; bump(ok);
+            [...r.children].forEach(y => y.disabled = true); b.classList.add(ok ? 'ok' : 'no');
+            card.append(el('div', 'note ' + (ok ? 'ok' : 'no'), m.why));
+            n.querySelector('circle').setAttribute('stroke', m.ans ? '#93b57c' : '#cf6b4d');
+            if (++saleDone === MOM.length) { $('#saleDone').innerHTML = `<div class="note tk">So "time of doing" is the line. Buying before it doesn't count, buying after it exempts the animal, and Rabbi Elazar and the baraita only disagree about where the line falls for a newborn.</div>`; finish('s2'); }
+          };
+          r.append(b);
+        });
+        $('#sale').append(card);
+        card.querySelector('button').focus();
+      };
+      n.addEventListener('click', open);
+      n.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+      g.append(n);
+    });
+
+    // ---------- 3 · Abaye ----------
+    const AB = {
+      'gentile-etnan': [true, `"Abomination" here and "abominations" among the forbidden relations (${ref('Deuteronomy 23:19', 'Deut. 23:19')} / ${ref('Leviticus 18:29', 'Lev. 18:29')}). Those are women with whom betrothal can't take effect, so the prostitute meant here is a gentile one.`],
+      'gentile-flog': [false, `"He shall not profane his <i>seed</i>" (${ref('Leviticus 21:15', 'Lev. 21:15')}). A gentile mother's child isn't his seed, so he isn't flogged under this verse.`],
+      'jewish-etnan': [false, `Betrothal can take effect with her, so the abomination analogy doesn't cover her. Her fee may go on the altar.`],
+      'jewish-flog': [true, `Her child is his seed, so he has profaned it and is flogged.`],
+    };
+    const ab = $('#abaye');
+    ab.append(el('span', 'h', ''), el('span', 'h', 'Her fee is forbidden on the altar?'), el('span', 'h', 'A priest with her is flogged?'));
+    let abDone = 0;
+    [['gentile', 'Gentile prostitute'], ['jewish', 'Jewish prostitute']].forEach(([w, lab]) => {
+      ab.append(el('span', 't-wool text-sm', lab));
+      ['etnan', 'flog'].forEach(c => {
+        const cell = el('div', 'cell'); const r = el('div', 'row'); cell.append(r);
+        const [ans, why] = AB[w + '-' + c];
+        [[true, 'Yes'], [false, 'No']].forEach(([v, l]) => {
+          const b = el('button', 'btn', l); b.type = 'button';
+          b.onclick = () => {
+            const ok = v === ans; bump(ok);
+            [...r.children].forEach(y => y.disabled = true); b.classList.add(ok ? 'ok' : 'no');
+            cell.classList.add('got'); cell.append(el('p', 'text-xs t-dust mt-1', why));
+            if (++abDone === 4) { $('#abayeWhy').innerHTML = `<div class="note tk">That is why the baraita uses a gentile. A Jewish prostitute's fee isn't a forbidden fee at all, so there would be nothing to teach. A gentile's fee <i>is</i> forbidden, and she isn't obligated to tithe, so the only way it reaches the pen is if he bought it back while it was still in the womb (${ref('Bekhorot 56b:1-2', '56b:1–2')}).</div>`; finish('s3'); }
+          };
+          r.append(b);
+        });
+        ab.append(cell);
+      });
+    });
+
+    // ---------- 4 · Coins & goats ----------
+    const st = { m: false, b: false, j: false };
+    const pred = { k: null, t: null };
+    const CASES = {
+      '1-0': { k: 1, t: 1, txt: 'Divided the money, not the animals', why: `The money is split, so they are partners for the shekel and owe the kalbon. The flock is still their father's undivided flock, so they owe the tithe too (${ref('Bekhorot 56b:12', '56b:12')}).` },
+      '0-1': { k: 0, t: 0, txt: 'Divided the animals, not the money', why: `The flock is split, so they are partners and exempt from the tithe. But the money is still their father's, so it is as if he pays the shekel, and they are exempt from the kalbon too (${ref('Bekhorot 56b:12', '56b:12')}).` },
+      '1-1': { k: 1, t: 0, txt: 'Divided both, then rejoined', why: `They are ordinary partners now, not heirs holding one estate. Partners pay the kalbon and are exempt from the tithe. This is the mishna's own case (${ref('Bekhorot 56b:8', '56b:8')}, ${ref('Bekhorot 56b:13', '56b:13')}).` },
+      '0-0': { k: 0, t: 1, txt: 'Divided nothing', why: `It is as if their father still owns everything and pays one shekel for them both. A single owner owes the tithe and is exempt from the kalbon (${ref('Bekhorot 56b:14', '56b:14')}).` },
+    };
+    const yb = $('#yirmeya');
+    yb.append(el('span', 'h', ''), el('span', 'h', 'Kalbon owed'), el('span', 'h', 'Kalbon exempt'));
+    const slot = {};
+    [[1, 'Tithe owed'], [0, 'Tithe exempt']].forEach(([t, lab]) => {
+      yb.append(el('span', 't-wool text-sm', lab));
+      [1, 0].forEach(k => { const c = el('div', 'cell text-sm t-dust', '?'); slot[k + '' + t] = c; yb.append(c); });
+    });
+    const collected = new Set();
+    const svgMove = () => {
+      const s = (id, dx) => { $(id).style.transform = `translateX(${dx}px)`; };
+      const together = st.j;
+      s('#coinsL', st.m && !together ? -190 : 0); s('#coinsR', st.m && !together ? 190 : 0);
+      s('#goatsL', st.b && !together ? -190 : 0); s('#goatsR', st.b && !together ? 190 : 0);
+    };
+    const syncBtns = () => {
+      $('#tMoney').classList.toggle('on', st.m); $('#tMoney').setAttribute('aria-pressed', st.m);
+      $('#tBeast').classList.toggle('on', st.b); $('#tBeast').setAttribute('aria-pressed', st.b);
+      $('#tRejoin').classList.toggle('on', st.j); $('#tRejoin').setAttribute('aria-pressed', st.j);
+      $('#tRejoin').disabled = !(st.m && st.b);
+      ['#lampK', '#lampT'].forEach(i => $(i).className = 'lamp');
+      $('#ruleWhy').innerHTML = '';
+      svgMove();
+    };
+    $('#tMoney').onclick = () => { st.m = !st.m; if (!st.m) st.j = false; syncBtns(); };
+    $('#tBeast').onclick = () => { st.b = !st.b; if (!st.b) st.j = false; syncBtns(); };
+    $('#tRejoin').onclick = () => { st.j = !st.j; syncBtns(); };
+    document.querySelectorAll('.pk').forEach(b => b.onclick = () => {
+      pred[b.dataset.k] = +b.dataset.v;
+      document.querySelectorAll(`.pk[data-k="${b.dataset.k}"]`).forEach(x => x.classList.toggle('on', x === b));
+    });
+    $('#rule').onclick = () => {
+      if (pred.k === null || pred.t === null) { $('#ruleWhy').innerHTML = `<div class="note">Predict both lamps first.</div>`; return; }
+      if (st.m && st.b && !st.j) { $('#ruleWhy').innerHTML = `<div class="note">They've split everything and each brother now has his own coins and goats, so there's no partnership left to rule on. Tap "rejoin as partners", the mishna's case.</div>`; return; }
+      const key = (st.m ? 1 : 0) + '-' + (st.b ? 1 : 0);
+      const c = CASES[key];
+      $('#lampK').className = 'lamp ' + (c.k ? 'yes' : 'nope');
+      $('#lampT').className = 'lamp ' + (c.t ? 'yes' : 'nope');
+      const ok = pred.k === c.k && pred.t === c.t;
+      const fresh = !collected.has(key);
+      if (fresh) bump(ok);
+      $('#ruleWhy').innerHTML = `<div class="note ${ok ? 'ok' : 'no'}"><b>${c.txt}: kalbon ${c.k ? 'owed' : 'exempt'}, tithe ${c.t ? 'owed' : 'exempt'}.</b> ${c.why}</div>`;
+      if (fresh) {
+        collected.add(key);
+        const s = slot[c.k + '' + c.t]; s.classList.add('got'); s.innerHTML = `<span class="t-wool">${c.txt}</span>`;
+        if (key === '0-1') $('#novelty').innerHTML = `<div class="note tk"><b>Isn't this obvious?</b> The Gemara says this case was the reason he spoke. Once they split the flock, you might think they've shown they intend to split everything, so the estate "stands to be divided" and they'd owe the kalbon. Rabbi Yirmeya teaches that they don't, until the money is actually divided (${ref('Bekhorot 56b:15', '56b:15')}).</div>`;
+        if (collected.size === 4) finish('s4');
+      }
+      document.querySelectorAll('.pk').forEach(x => x.classList.remove('on')); pred.k = pred.t = null;
+    };
+    syncBtns();
+
+    // ---------- 5 · Deal the herd ----------
+    const herd = [];
+    for (let i = 0; i < 18; i++) herd.push({ t: 'L', at: 'A' });
+    for (let i = 0; i < 20; i++) herd.push({ t: 'K', at: 'A' });
+    const render = () => {
+      ['A', 'B'].forEach(p => {
+        const pen = $('#pen' + p); pen.innerHTML = '';
+        herd.forEach((a, i) => {
+          if (a.at !== p) return;
+          const b = el('button', 'beast' + (a.t === 'K' ? ' kid' : ''), '🐐');
+          b.type = 'button'; b.title = (a.t === 'L' ? 'Large goat' : 'Kid') + ': move to ' + (p === 'A' ? 'Shimon' : 'Reuven');
+          b.setAttribute('aria-label', b.title);
+          b.onclick = () => { a.at = p === 'A' ? 'B' : 'A'; render(); const nx = $('#pen' + p).children[0]; if (nx) nx.focus(); };
+          pen.append(b);
+        });
+        const L = herd.filter(a => a.at === p && a.t === 'L').length, K = herd.filter(a => a.at === p && a.t === 'K').length;
+        $('#cnt' + p).textContent = `· ${L} large, ${K} kids`;
+      });
+      $('#dealOut').innerHTML = '';
+    };
+    document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+      const p = b.dataset.preset; let l = 0, k = 0;
+      herd.forEach(a => {
+        if (p === 'even') a.at = a.t === 'L' ? (l++ < 9 ? 'A' : 'B') : (k++ < 10 ? 'A' : 'B');
+        else if (p === 'swap') a.at = a.t === 'L' ? 'A' : 'B';
+        else a.at = 'A';
+      });
+      render();
+    });
+    const goals = new Set();
+    const hit = (k) => { if (goals.has(k)) return; goals.add(k); document.querySelector(`[data-g="${k}"]`).classList.add('hit'); if (goals.size === 3) finish('s5'); };
+    $('#rejoin').onclick = () => {
+      const cnt = (p, t) => herd.filter(a => a.at === p && a.t === t).length;
+      const aL = cnt('A', 'L'), aK = cnt('A', 'K'), bL = cnt('B', 'L'), bK = cnt('B', 'K');
+      const val = (L, K) => L * 10 + K * 9; // 9 large = 10 kids
+      let kind;
+      if (val(aL, aK) !== val(bL, bK)) kind = 'unfair';
+      else if (aL === bL && aK === bK) kind = 'even';
+      else if ((aK === 0 && bL === 0) || (aL === 0 && bK === 0)) kind = 'swap';
+      else kind = 'mixed';
+      const out = $('#dealOut');
+      if (kind === 'unfair') {
+        out.innerHTML = `<div class="note no"><b>Not a fair split</b> (Reuven ${aL}+${aK}, Shimon ${bL}+${bK}; 9 large = 10 kids). One brother got more than his half, so this is a gift or a sale, not a division of an inheritance, and the sugya never rules on it.</div>`;
+        hit('g3'); return;
+      }
+      if (kind === 'mixed') {
+        out.innerHTML = `<div class="note tk"><b>Equal in value but lopsided</b> (Reuven ${aL}+${aK}, Shimon ${bL}+${bK}). Part of this was a trade of goats for kids, so it's closer to the exempt case. But the daf only rules on the two clean splits. Try the presets.</div>`; return;
+      }
+      const even = kind === 'even';
+      const V = [
+        ['Rav Anan', even ? 'owe' : 'ex', even ? 'Kids for kids, goats for goats: each took the share that was his from the start (<i>bererah</i>). When they rejoin, the old estate comes back.' : 'Goats for kids is a trade, so they are strangers who have joined.', 'Bekhorot 56b:16-17'],
+        ['Rav Naḥman', 'ex', 'Even kids for kids, we do not say each took what was his from the start. Once they divide, they are partners.', 'Bekhorot 56b:18'],
+        ['Rabbi Elazar', even ? 'owe' : 'ex', even ? 'Nine large and ten kids each is his share from the start, so the estate comes back.' : 'Nine large for ten kids is a sale, worth for worth.', 'Bekhorot 56b:19-20'],
+        ['Rabbi Yoḥanan', 'ex', 'Even nine for nine and ten for ten, they are partners.', 'Bekhorot 56b:21'],
+      ];
+      out.innerHTML = `<p class="t-wool mt-3">${even ? 'Each took 9 large and 10 kids' : 'One took all the large goats, the other all the kids'}, then they rejoined:</p>`;
+      const box = el('div', 'space-y-2 mt-2');
+      V.forEach(([who, v, why, r]) => {
+        box.append(el('div', 'quote', `<span class="lamp ${v === 'owe' ? 'yes' : 'nope'}"><i></i>${who}: tithe ${v === 'owe' ? 'owed' : 'exempt'}</span><p class="text-sm t-dust mt-1">${why} (${ref(r, r.replace('Bekhorot ', ''))})</p>`));
+      });
+      out.append(box);
+      if (even) out.append(el('div', 'note tk', 'Two pairs and one disagreement: does dividing an estate reveal that each heir’s share was his from the start, or is it like a sale?'));
+      if (even) hit('g1'); else hit('g2');
+    };
+    render();
+  })();
+  </script>
+</Layout>
