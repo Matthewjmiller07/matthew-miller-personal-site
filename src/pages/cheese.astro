@@ -1,0 +1,474 @@
+---
+// Why only kosher-animal milk turns into cheese: a 3D casein-micelle simulation plus the
+// chemistry and the Talmudic sources (Avodah Zarah 35b). All numbers are approximate
+// literature values per 100 g of milk; the simulation is a teaching model, not a lab result.
+import Layout from '../layouts/Layout.astro';
+
+const animals = [
+    { id: 'cow', en: 'Cow', he: 'פָּרָה', kosher: true, casein: 2.6, whey: 0.6, kappa: 13, rennet: 1.0, r: 0.3,
+      note: 'The reference milk. Casein is about 80% of its protein, and calf rennet was made for it.' },
+    { id: 'goat', en: 'Goat', he: 'עֵז', kosher: true, casein: 2.5, whey: 0.6, kappa: 15, rennet: 0.9, r: 0.27,
+      note: 'Smaller micelles than cow, a slightly softer curd, the same basic behaviour.' },
+    { id: 'sheep', en: 'Sheep', he: 'כֶּבֶשׂ', kosher: true, casein: 4.2, whey: 1.0, kappa: 13, rennet: 1.1, r: 0.3,
+      note: 'Nearly twice the casein of cow milk, which is why sheep cheeses (feta, pecorino, Roquefort) set so firm.' },
+    { id: 'buffalo', en: 'Water buffalo', he: 'תְּאוֹ', kosher: true, casein: 3.6, whey: 0.7, kappa: 13, rennet: 1.0, r: 0.32,
+      note: 'The mozzarella animal. Rich, casein-heavy, sets quickly.' },
+    { id: 'camel', en: 'Camel', he: 'גָּמָל', kosher: false, casein: 2.4, whey: 0.9, kappa: 4, rennet: 0.1, r: 0.38, gel: 0.6,
+      note: 'The borderline case: it chews the cud but lacks the split hoof. Plenty of casein, but very little κ-casein, and calf rennet barely cuts it.' },
+    { id: 'horse', en: 'Horse', he: 'סוּס', kosher: false, casein: 1.1, whey: 0.9, kappa: 5, rennet: 0.6, r: 0.26,
+      note: 'Half its protein is whey. Steppe herders ferment mare’s milk into kumis instead of making cheese.' },
+    { id: 'donkey', en: 'Donkey', he: 'חֲמוֹר', kosher: false, casein: 0.7, whey: 0.8, kappa: 4, rennet: 0.6, r: 0.24,
+      note: 'Closer to human milk than to cow. Too little casein to build a curd on its own.' },
+];
+---
+
+<Layout
+    title="Why Only Kosher Milk Makes Cheese · חלב טהור עומד"
+    description="A 3D simulation of rennet cutting casein micelles in cow, goat, sheep, buffalo, camel, horse and donkey milk, showing why the Talmud could say 'kosher milk sets, non-kosher milk does not' (Avodah Zarah 35b), and where that rule bends."
+>
+    <main class="max-w-6xl mx-auto px-4 py-8 text-gray-100">
+        <p class="text-sm mb-4"><a href="/projects" class="text-amber-300 hover:underline">← Projects</a></p>
+
+        <header class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold">Why only kosher milk turns into cheese</h1>
+            <p class="mt-2 text-2xl text-amber-300" dir="rtl" lang="he">חָלָב טָהוֹר עוֹמֵד, חָלָב טָמֵא אֵינוֹ עוֹמֵד</p>
+            <p class="mt-1 text-sm text-gray-400">“Kosher milk sets; non-kosher milk does not.” Avodah Zarah 35b</p>
+            <p class="mt-4 text-gray-300 max-w-3xl">
+                The Talmud treats it as a known fact: put rennet in milk from a kosher animal and it curdles into cheese;
+                do the same to milk from a non-kosher animal and nothing happens. The rabbis used this to rule out a
+                worry: nobody could secretly mix camel or donkey milk into a cheese, because it would just run out with the whey.
+                Two thousand years later, food chemistry explains why they were (almost entirely) right.
+                Pick an animal, add rennet, and watch what happens inside the milk.
+            </p>
+        </header>
+
+        <!-- Simulation -->
+        <section class="mb-12" aria-label="Rennet simulation">
+            <div class="flex flex-wrap gap-2 mb-3" id="ch-picker" role="tablist">
+                {animals.map((a, i) => (
+                    <button
+                        type="button"
+                        data-animal={a.id}
+                        class={`ch-pick px-3 py-1.5 rounded-full border text-sm transition-colors ${a.kosher ? 'border-emerald-700' : 'border-rose-800'} ${i === 0 ? 'bg-gray-700' : 'bg-gray-900/60'} hover:border-amber-400`}
+                    >
+                        <span>{a.en}</span>
+                        <span class={`ml-1 text-xs ${a.kosher ? 'text-emerald-400' : 'text-rose-400'}`}>{a.kosher ? 'kosher' : 'not kosher'}</span>
+                    </button>
+                ))}
+            </div>
+
+            <div class="grid lg:grid-cols-[1fr_320px] gap-4">
+                <div class="relative rounded-2xl overflow-hidden border border-gray-700 bg-gray-950" style="aspect-ratio: 4 / 3; max-height: 70vh;">
+                    <canvas id="ch-canvas" class="w-full h-full block touch-none"></canvas>
+                    <div class="absolute top-3 left-3 text-xs text-gray-400 bg-gray-950/70 rounded px-2 py-1 pointer-events-none">
+                        Drag to turn · scroll or pinch to zoom
+                    </div>
+                    <div id="ch-clock" class="absolute top-3 right-3 text-sm font-mono text-amber-200 bg-gray-950/70 rounded px-2 py-1 pointer-events-none">0 min</div>
+                    <div id="ch-verdict" class="absolute bottom-3 left-3 right-3 text-center text-lg font-semibold bg-gray-950/80 rounded-lg px-3 py-2 hidden"></div>
+                </div>
+
+                <aside class="rounded-2xl border border-gray-700 bg-gray-900/60 p-4 text-sm">
+                    <h2 class="text-xl font-bold"><span id="ch-name">Cow</span> <span id="ch-he" class="text-amber-300 ml-1" dir="rtl" lang="he"></span></h2>
+                    <p id="ch-note" class="mt-2 text-gray-300"></p>
+                    <dl class="mt-3 grid grid-cols-2 gap-y-1 text-gray-300">
+                        <dt class="text-gray-400">Casein</dt><dd id="ch-casein" class="text-right font-mono"></dd>
+                        <dt class="text-gray-400">Whey protein</dt><dd id="ch-whey" class="text-right font-mono"></dd>
+                        <dt class="text-gray-400">κ-casein share</dt><dd id="ch-kappa" class="text-right font-mono"></dd>
+                    </dl>
+
+                    <div id="ch-rennet-wrap" class="mt-4">
+                        <label class="text-gray-400 block mb-1" for="ch-rennet">Enzyme</label>
+                        <select id="ch-rennet" class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1">
+                            <option value="calf">Calf rennet (chymosin from a calf’s stomach)</option>
+                            <option value="camel">Camel chymosin (made to match camel milk)</option>
+                        </select>
+                    </div>
+
+                    <div class="mt-4 flex gap-2">
+                        <button id="ch-go" type="button" class="flex-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-900 font-semibold px-3 py-2">Add rennet</button>
+                        <button id="ch-reset" type="button" class="rounded-lg border border-gray-600 hover:border-amber-400 px-3 py-2">Reset</button>
+                    </div>
+
+                    <div class="mt-4">
+                        <div class="flex justify-between text-gray-400"><span>Curd firmness</span><span id="ch-firm-n" class="font-mono">0%</span></div>
+                        <div class="h-3 rounded bg-gray-800 mt-1 overflow-hidden"><div id="ch-firm" class="h-full bg-amber-400 transition-[width] duration-300" style="width:0%"></div></div>
+                        <p class="mt-1 text-xs text-gray-500">100% = what cow milk reaches in the same time.</p>
+                    </div>
+
+                    <ul class="mt-4 space-y-1 text-xs text-gray-400">
+                        <li><span class="inline-block w-3 h-3 rounded-full align-middle mr-1" style="background:#f4ecd8"></span>casein micelle, still wearing its κ-casein “hairs”</li>
+                        <li><span class="inline-block w-3 h-3 rounded-full align-middle mr-1" style="background:#f5b942"></span>shaved bare by rennet, now sticky</li>
+                        <li><span class="inline-block w-3 h-3 rounded-full align-middle mr-1" style="background:#d9822b"></span>locked into the curd network</li>
+                        <li><span class="inline-block w-3 h-3 rounded-full align-middle mr-1" style="background:#6fa8dc"></span>whey protein: never joins, drains away</li>
+                    </ul>
+                </aside>
+            </div>
+            <p class="mt-2 text-xs text-gray-500">
+                A teaching model: each sphere stands for many millions of real micelles, and the numbers are typical literature values per 100 g of milk.
+                Firmness scales roughly with the square of how much casein bonds, as real rennet gels do.
+            </p>
+        </section>
+
+        <!-- How cheese works -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold mb-4">How milk becomes cheese, in four steps</h2>
+            <ol class="grid md:grid-cols-2 gap-4">
+                <li class="rounded-xl border border-gray-700 bg-gray-900/50 p-4">
+                    <p class="text-amber-300 font-semibold">1. Milk is a suspension of tiny balls</p>
+                    <p class="mt-1 text-gray-300">Most of the protein in cow milk (about 80%) is <strong>casein</strong>, packed with calcium phosphate into
+                    spheres called micelles, about a ten-thousandth of a millimetre across. A spoonful holds trillions. The rest of the protein,
+                    <strong>whey</strong>, floats free as single molecules.</p>
+                </li>
+                <li class="rounded-xl border border-gray-700 bg-gray-900/50 p-4">
+                    <p class="text-amber-300 font-semibold">2. A coat of hairs keeps them apart</p>
+                    <p class="mt-1 text-gray-300">The outside of each micelle is covered in <strong>κ-casein</strong>, whose tail sticks out into the milk like
+                    hair. The hairs are negatively charged and bushy, so micelles bounce off each other. That is why milk stays liquid in the fridge.</p>
+                </li>
+                <li class="rounded-xl border border-gray-700 bg-gray-900/50 p-4">
+                    <p class="text-amber-300 font-semibold">3. Rennet gives them a haircut</p>
+                    <p class="mt-1 text-gray-300">Rennet, from the stomach of a nursing calf (the <em>keivah</em> the Gemara talks about), contains <strong>chymosin</strong>,
+                    an enzyme that cuts κ-casein at one exact bond, between amino acids 105 and 106. The hair falls off. Once most of a micelle is bald,
+                    it has nothing left to keep it away from its neighbours.</p>
+                </li>
+                <li class="rounded-xl border border-gray-700 bg-gray-900/50 p-4">
+                    <p class="text-amber-300 font-semibold">4. Calcium stitches a net</p>
+                    <p class="mt-1 text-gray-300">Bare micelles bump, stick and are bridged by calcium into a continuous web that traps fat and water: the
+                    <strong>curd</strong>. Cut it and the liquid that runs out is whey, carrying the whey proteins with it. Press the curd and you have cheese.</p>
+                </li>
+            </ol>
+            <p class="mt-4 text-gray-300 max-w-3xl">
+                So a milk needs three things to set with rennet: <strong>enough casein</strong> to build a net that spans the whole pot,
+                <strong>κ-casein</strong> on the micelles in the form the enzyme can cut, and an enzyme that recognises it. Kosher-animal milk has all three.
+                Non-kosher dairy animals are each missing at least one.
+            </p>
+        </section>
+
+        <!-- Why the line falls here -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold mb-4">Why the line falls between kosher and non-kosher</h2>
+            <p class="text-gray-300 max-w-3xl">
+                The Torah’s signs for a kosher land animal, chewing the cud and a fully split hoof (Leviticus 11:3), pick out almost exactly the
+                <strong>ruminants</strong>: cattle, sheep, goats, buffalo, deer. Ruminants raise their young on <strong>casein milk</strong>, thick with
+                micelles, which sets into a firm clot in the calf’s stomach and is digested slowly. The non-kosher animals people milk, horses and donkeys,
+                make <strong>whey milk</strong> instead, thin and quick to digest, closer to human milk. So the halakhic line and the biological line are,
+                for the animals anyone actually milks, nearly the same line.
+            </p>
+            <div class="mt-4 overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="text-gray-400 text-left">
+                        <tr><th class="py-2 pr-4">Animal</th><th class="py-2 pr-4">Status</th><th class="py-2 pr-4 text-right">Casein g/100g</th><th class="py-2 pr-4 text-right">Whey g/100g</th><th class="py-2 pr-4 text-right">κ share of casein</th><th class="py-2">Rennet curd</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        {animals.map((a) => (
+                            <tr>
+                                <td class="py-2 pr-4">{a.en} <span class="text-amber-300" dir="rtl" lang="he">{a.he}</span></td>
+                                <td class={`py-2 pr-4 ${a.kosher ? 'text-emerald-400' : 'text-rose-400'}`}>{a.kosher ? 'kosher' : 'not kosher'}</td>
+                                <td class="py-2 pr-4 text-right font-mono">{a.casein.toFixed(1)}</td>
+                                <td class="py-2 pr-4 text-right font-mono">{a.whey.toFixed(1)}</td>
+                                <td class="py-2 pr-4 text-right font-mono">~{a.kappa}%</td>
+                                <td class="py-2 text-gray-300">{
+                                    a.kosher ? (a.casein > 3.4 ? 'very firm' : 'firm')
+                                    : a.id === 'camel' ? 'barely, after hours; weak'
+                                    : 'none to a loose flocculate'
+                                }</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <p class="mt-2 text-xs text-gray-500">Approximate typical values; real milks vary with breed, season and stage of lactation.</p>
+            <div class="mt-6 grid md:grid-cols-2 gap-4">
+                <div class="rounded-xl border border-rose-900/60 bg-rose-950/20 p-4">
+                    <p class="font-semibold text-rose-300">Horse and donkey: not enough casein</p>
+                    <p class="mt-1 text-gray-300">With roughly a third to a quarter of cow milk’s casein, and half their protein as whey, there are too few micelles to
+                    reach each other and form a net, however bald the rennet makes them. Central Asian herders turned mare’s milk into fermented
+                    kumis, not cheese. The one well-known donkey cheese, Serbian <em>pule</em>, only works because it is mixed with goat milk.</p>
+                </div>
+                <div class="rounded-xl border border-rose-900/60 bg-rose-950/20 p-4">
+                    <p class="font-semibold text-rose-300">Camel: the wrong kind of hair</p>
+                    <p class="mt-1 text-gray-300">Camel milk has nearly as much casein as cow milk, but only a fraction of it is κ-casein, its micelles are large,
+                    and calf chymosin cuts camel κ-casein poorly. Add ordinary rennet and you get, at best, a weak, slow, crumbly clot.
+                    Try it above with calf rennet, then switch to camel chymosin.</p>
+                </div>
+            </div>
+            <p class="mt-4 text-gray-300 max-w-3xl">
+                It fits that the camel is the hard case. In Leviticus 11:4 it is the first animal named that has one sign and not the other: it chews the cud,
+                but its foot is a padded, not a split, hoof. Biologically too it is a near-ruminant, with a three-chambered stomach, and its milk sits halfway
+                between the two families.
+            </p>
+        </section>
+
+        <!-- Sources -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold mb-4">What the sources say</h2>
+            <div class="space-y-4">
+                <blockquote class="rounded-xl border border-gray-700 bg-gray-900/50 p-4">
+                    <p class="text-lg leading-relaxed" dir="rtl" lang="he">
+                        חָלָב לְמַאי נֵיחוּשׁ לַהּ? אִי מִשּׁוּם אִיחַלּוֹפֵי — טָהוֹר חִיוָּר, טָמֵא יָרוֹק! וְאִי מִשּׁוּם אִיעָרוֹבֵי — נֵיקוּם! דְּאָמַר מָר:
+                        חָלָב טָהוֹר עוֹמֵד, חָלָב טָמֵא אֵינוֹ עוֹמֵד.
+                    </p>
+                    <p class="mt-2 text-gray-300">
+                        “As for [gentile] milk, what is the worry? If that they swapped it for non-kosher milk, kosher milk is white and non-kosher milk is greenish.
+                        If that they mixed some in, let him set it [as cheese], for the master said: kosher milk sets, non-kosher milk does not.”
+                    </p>
+                    <footer class="mt-2 text-sm text-gray-500"><a class="text-amber-300 hover:underline" href="https://www.sefaria.org/Avodah_Zarah.35b.11" target="_blank" rel="noopener">Avodah Zarah 35b</a></footer>
+                </blockquote>
+                <blockquote class="rounded-xl border border-gray-700 bg-gray-900/50 p-4">
+                    <p class="text-lg leading-relaxed" dir="rtl" lang="he">
+                        חלב בהמה טמאה אינו נקפה ועומד כחלב בהמה טהורה, ואם נתערב חלב בהמה טהורה בחלב בהמה טמאה, כשתעמוד אותם יעמוד חלב הטהורה
+                        ויצא חלב הטמאה עם הקום של גבינה, והם מי חלב.
+                    </p>
+                    <p class="mt-2 text-gray-300">
+                        “Milk of a non-kosher animal does not curdle and set like the milk of a kosher animal. If they are mixed and you set them, the kosher milk sets
+                        and the non-kosher milk leaves with the liquid of the cheese, which is the whey.”
+                    </p>
+                    <footer class="mt-2 text-sm text-gray-500"><a class="text-amber-300 hover:underline" href="https://www.sefaria.org/Sefer_Mitzvot_Gadol,_Negative_Commandments.132.1" target="_blank" rel="noopener">Sefer Mitzvot Gadol, Negative Commandments 132</a></footer>
+                </blockquote>
+            </div>
+            <p class="mt-4 text-gray-300 max-w-3xl">
+                That last line is exactly the chemistry: whatever doesn’t join the casein net drains out with the whey. The rule matters because the Mishnah
+                (Avodah Zarah 29b) forbids gentile cheese, and the Gemara has to work out why. It can’t be fear of non-kosher milk mixed in, since that milk
+                would never become cheese; so the reasons offered are others, such as rennet from the stomach of an unslaughtered animal and the
+                <em>tzichtzuchei chalav</em>, droplets of milk caught between the curds (Rashi, cited by the Ohr Zarua). By the same logic many Rishonim
+                permitted gentile butter, among them the Tashbetz (III:258) and Rabbeinu Yerucham, who cite the rule <span dir="rtl" lang="he">דבר טמא אינו עומד</span>,
+                while others forbade it because of those leftover droplets.
+            </p>
+        </section>
+
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold mb-4">Where the rule bends</h2>
+            <p class="text-gray-300 max-w-3xl">
+                Modern dairies can now make camel cheese. In Mauritania, the Tiviski dairy has sold a camel-milk camembert since the 1990s, after FAO researchers
+                worked out a recipe using added calcium and a lot of patience; since then, chymosin produced from the camel’s own gene sets camel milk
+                far better than calf rennet does. Donkey cheese exists only as a blend with goat milk. Both need technology or mixing that the
+                Talmud’s world didn’t have, so as a statement about milk, rennet and a pot, “non-kosher milk does not set” held up.
+            </p>
+            <p class="mt-3 text-gray-300 max-w-3xl">
+                In practice, kosher cheese doesn’t lean on the rule at all: the rabbinic decree on gentile cheese stands on its own, and kosher cheese is
+                made under supervision from the milking onward. For questions of halakha, ask your rabbi.
+            </p>
+        </section>
+    </main>
+
+    <script type="application/json" id="ch-data" set:html={JSON.stringify(animals)} />
+
+    <script is:inline type="module" data-astro-rerun>
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/+esm';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js/+esm';
+
+        const ANIMALS = JSON.parse(document.getElementById('ch-data').textContent);
+        const canvas = document.getElementById('ch-canvas');
+        const $ = (id) => document.getElementById(id);
+
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b0f17);
+        const camera = new THREE.PerspectiveCamera(45, 4 / 3, 0.1, 100);
+        camera.position.set(9, 6, 11);
+        const controls = new OrbitControls(camera, canvas);
+        controls.enableDamping = true;
+        controls.minDistance = 5;
+        controls.maxDistance = 30;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.6;
+
+        scene.add(new THREE.HemisphereLight(0xfff4e0, 0x3a4660, 2.2));
+        const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+        sun.position.set(5, 10, 7);
+        scene.add(sun);
+
+        // The "pot": a glass box of milk
+        const B = 4; // half-size
+        const glass = new THREE.Mesh(
+            new THREE.BoxGeometry(B * 2, B * 2, B * 2),
+            new THREE.MeshPhysicalMaterial({ color: 0xbcd4ff, transparent: true, opacity: 0.06, roughness: 0.1, side: THREE.BackSide })
+        );
+        scene.add(glass);
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(B * 2, B * 2, B * 2)),
+            new THREE.LineBasicMaterial({ color: 0x5c6b85 }));
+        scene.add(edges);
+
+        const C_INTACT = new THREE.Color(0xf4ecd8), C_BARE = new THREE.Color(0xf5b942), C_BOUND = new THREE.Color(0xd9822b);
+        const HAIRS = 16; // hair slots per micelle (visual); κ share sets how many are filled
+        const cow = ANIMALS[0];
+        const COW_N = Math.round(cow.casein * 30);
+
+        let A = cow, rennetKind = 'calf', group = null, sim = null;
+
+        function build(animal) {
+            if (group) { scene.remove(group); group.traverse((o) => { o.geometry?.dispose(); o.material?.dispose?.(); }); }
+            group = new THREE.Group();
+            scene.add(group);
+            const n = Math.min(160, Math.round(animal.casein * 30));
+            const nw = Math.round(animal.whey * 40);
+            const hairsPer = Math.max(3, Math.round(HAIRS * Math.min(1, animal.kappa / 13)));
+            const r = animal.r;
+
+            const mic = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(r, 2), new THREE.MeshStandardMaterial({ roughness: 0.55, emissive: 0x2a1d0c }), n);
+            const hair = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.022, 0.03, r * 0.75, 5).translate(0, r * 1.25, 0),
+                new THREE.MeshStandardMaterial({ color: 0x9ec5ff, roughness: 0.5 }), n * hairsPer);
+            const whey = new THREE.InstancedMesh(new THREE.SphereGeometry(0.07, 6, 4), new THREE.MeshStandardMaterial({ color: 0x6fa8dc, emissive: 0x15324f }), nw);
+            const MAXB = 600;
+            const bondGeo = new THREE.BufferGeometry();
+            bondGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXB * 6), 3));
+            bondGeo.setDrawRange(0, 0);
+            const bonds = new THREE.LineSegments(bondGeo, new THREE.LineBasicMaterial({ color: 0xffd27a }));
+            group.add(mic, hair, whey, bonds);
+
+            const P = [];
+            for (let i = 0; i < n; i++) {
+                const dirs = [];
+                for (let h = 0; h < hairsPer; h++) {
+                    // spread hairs evenly with a golden-spiral
+                    const y = 1 - (2 * (h + 0.5)) / hairsPer, rr = Math.sqrt(1 - y * y), th = h * 2.39996;
+                    dirs.push(new THREE.Vector3(Math.cos(th) * rr, y, Math.sin(th) * rr));
+                }
+                P.push({
+                    p: new THREE.Vector3((Math.random() * 2 - 1) * (B - r), (Math.random() * 2 - 1) * (B - r), (Math.random() * 2 - 1) * (B - r)),
+                    v: new THREE.Vector3(), dirs, alive: dirs.map(() => true), left: hairsPer,
+                    sticky: false, bound: false, rot: new THREE.Quaternion().random(),
+                });
+            }
+            const W = [];
+            for (let i = 0; i < nw; i++) W.push({ p: new THREE.Vector3((Math.random() * 2 - 1) * B, (Math.random() * 2 - 1) * B, (Math.random() * 2 - 1) * B), v: new THREE.Vector3() });
+
+            sim = { animal, n, nw, r, hairsPer, mic, hair, whey, P, W, bonds, links: [], MAXB, t: 0, running: false, done: false, bound: 0 };
+            for (let i = 0; i < n; i++) mic.setColorAt(i, C_INTACT);
+            draw();
+        }
+
+        const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), s1 = new THREE.Vector3(1, 1, 1), s0 = new THREE.Vector3(0, 0, 0);
+        function draw() {
+            const { P, W, mic, hair, whey, hairsPer } = sim;
+            P.forEach((m, i) => {
+                m4.compose(m.p, m.rot, s1); mic.setMatrixAt(i, m4);
+                mic.setColorAt(i, m.bound ? C_BOUND : m.sticky ? C_BARE : C_INTACT);
+                m.dirs.forEach((d, h) => {
+                    const wd = d.clone().applyQuaternion(m.rot);
+                    q.setFromUnitVectors(up, wd);
+                    m4.compose(m.p, q, m.alive[h] ? s1 : s0);
+                    hair.setMatrixAt(i * hairsPer + h, m4);
+                });
+            });
+            W.forEach((w, i) => { m4.compose(w.p, q.identity(), s1); whey.setMatrixAt(i, m4); });
+            mic.instanceMatrix.needsUpdate = true; hair.instanceMatrix.needsUpdate = true; whey.instanceMatrix.needsUpdate = true;
+            if (mic.instanceColor) mic.instanceColor.needsUpdate = true;
+            const pos = sim.bonds.geometry.attributes.position;
+            sim.links.forEach(([i, j], k) => { pos.setXYZ(k * 2, P[i].p.x, P[i].p.y, P[i].p.z); pos.setXYZ(k * 2 + 1, P[j].p.x, P[j].p.y, P[j].p.z); });
+            pos.needsUpdate = true; sim.bonds.geometry.setDrawRange(0, sim.links.length * 2);
+        }
+
+        const TMAX = 45; // simulated minutes shown on the clock
+        const SPEED = 1.5; // sim minutes per real second
+        function step(dt) {
+            const s = sim, { P, W, r } = s;
+            const jitter = 2.2;
+            const enzyme = s.animal.id === 'camel' && rennetKind === 'camel' ? 0.6 : s.animal.rennet;
+            if (s.running) {
+                s.t += dt * SPEED;
+                const pCut = 1 - Math.exp(-0.22 * enzyme * dt * SPEED); // per-hair cut chance this frame
+                for (const m of P) {
+                    if (m.sticky) continue;
+                    for (let h = 0; h < m.alive.length; h++) if (m.alive[h] && Math.random() < pCut) { m.alive[h] = false; m.left--; }
+                    if (m.left / m.alive.length <= 0.2) m.sticky = true;
+                }
+            }
+            // Brownian motion for free micelles and whey
+            for (const m of P) {
+                if (m.bound) continue;
+                m.v.x += (Math.random() - 0.5) * jitter * dt; m.v.y += (Math.random() - 0.5) * jitter * dt; m.v.z += (Math.random() - 0.5) * jitter * dt;
+                m.v.multiplyScalar(0.96);
+                m.p.addScaledVector(m.v, dt * 3);
+                for (const k of ['x', 'y', 'z']) if (Math.abs(m.p[k]) > B - r) { m.p[k] = Math.sign(m.p[k]) * (B - r); m.v[k] *= -1; }
+            }
+            for (const w of W) {
+                w.v.x += (Math.random() - 0.5) * 3 * dt; w.v.y += (Math.random() - 0.5) * 3 * dt; w.v.z += (Math.random() - 0.5) * 3 * dt;
+                w.v.multiplyScalar(0.95); w.p.addScaledVector(w.v, dt * 3);
+                for (const k of ['x', 'y', 'z']) if (Math.abs(w.p[k]) > B) { w.p[k] = Math.sign(w.p[k]) * B; w.v[k] *= -1; }
+            }
+            // Bonding: bare micelles that touch lock together (calcium bridges)
+            const reach = (2 * r + 0.08) ** 2;
+            for (let i = 0; i < P.length; i++) {
+                const a = P[i]; if (!a.sticky) continue;
+                for (let j = i + 1; j < P.length; j++) {
+                    const b = P[j]; if (!b.sticky || (a.bound && b.bound)) continue;
+                    // a sticky micelle reaches further while it drifts, so sparse milks still meet sometimes
+                    if (a.p.distanceToSquared(b.p) < reach * 2.2) {
+                        if (!a.bound) { a.bound = true; a.v.set(0, 0, 0); s.bound++; }
+                        if (!b.bound) { b.bound = true; b.v.set(0, 0, 0); s.bound++; }
+                        if (s.links.length < s.MAXB) s.links.push([i, j]);
+                    }
+                }
+            }
+            if (s.running && s.t >= TMAX) { s.t = TMAX; s.running = false; s.done = true; finish(); }
+        }
+
+        function firmness() {
+            const f = (sim.bound * (sim.animal.gel ?? 1)) / (COW_N * 0.92);
+            return Math.max(0, f * f);
+        }
+
+        function finish() {
+            const f = firmness();
+            const el = $('ch-verdict');
+            const msg = f > 1.3 ? ['Very firm curd: cut it, drain it, press it.', 'text-emerald-300']
+                : f > 0.6 ? ['A clean, firm curd. This milk makes cheese.', 'text-emerald-300']
+                : f > 0.3 ? ['A soft, fragile curd. Cheese is possible, with care.', 'text-amber-300']
+                : f > 0.12 ? ['A weak, crumbly clot. Hard to make into cheese.', 'text-amber-300']
+                : ['No curd. It is still milk, and it would drain out with the whey.', 'text-rose-300'];
+            el.textContent = msg[0];
+            el.className = `absolute bottom-3 left-3 right-3 text-center text-lg font-semibold bg-gray-950/80 rounded-lg px-3 py-2 ${msg[1]}`;
+            $('ch-go').textContent = 'Add rennet';
+        }
+
+        function ui() {
+            const a = A;
+            $('ch-name').textContent = a.en; $('ch-he').textContent = a.he; $('ch-note').textContent = a.note;
+            $('ch-casein').textContent = `${a.casein.toFixed(1)} g`;
+            $('ch-whey').textContent = `${a.whey.toFixed(1)} g`;
+            $('ch-kappa').textContent = `~${a.kappa}%`;
+            $('ch-rennet-wrap').style.display = a.id === 'camel' ? '' : 'none';
+            $('ch-verdict').classList.add('hidden');
+            $('ch-go').textContent = 'Add rennet';
+            document.querySelectorAll('.ch-pick').forEach((b) => {
+                b.classList.toggle('bg-gray-700', b.dataset.animal === a.id);
+                b.classList.toggle('bg-gray-900/60', b.dataset.animal !== a.id);
+            });
+        }
+
+        function select(id) { A = ANIMALS.find((x) => x.id === id) || cow; build(A); ui(); }
+
+        document.querySelectorAll('.ch-pick').forEach((b) => b.addEventListener('click', () => select(b.dataset.animal)));
+        $('ch-rennet').addEventListener('change', (e) => { rennetKind = e.target.value; build(A); ui(); });
+        $('ch-reset').addEventListener('click', () => { build(A); ui(); });
+        $('ch-go').addEventListener('click', () => {
+            if (sim.done) { build(A); ui(); }
+            sim.running = !sim.running;
+            $('ch-go').textContent = sim.running ? 'Pause' : 'Resume';
+            $('ch-verdict').classList.add('hidden');
+        });
+
+        function resize() {
+            const w = canvas.clientWidth, h = canvas.clientHeight;
+            if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) {
+                renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+            }
+        }
+
+        select('cow');
+        let last = performance.now();
+        renderer.setAnimationLoop((now) => {
+            const dt = Math.min(0.05, (now - last) / 1000); last = now;
+            resize();
+            step(dt);
+            draw();
+            $('ch-clock').textContent = `${Math.round(sim.t)} min`;
+            const f = firmness();
+            $('ch-firm').style.width = `${Math.min(100, f * 100)}%`;
+            $('ch-firm-n').textContent = `${Math.round(f * 100)}%`;
+            controls.update();
+            renderer.render(scene, camera);
+        });
+    </script>
+</Layout>
