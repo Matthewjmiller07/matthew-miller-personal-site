@@ -1,7 +1,7 @@
 ---
-title: "The Workshop, week of 16 November 2026 (draft)"
+title: "The Workshop, week of 16 November 2026 (sent)"
 date: 2026-11-15
-status: draft
+status: sent
 tags: next-issue, draft
 ---
 
