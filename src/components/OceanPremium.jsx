@@ -224,7 +224,7 @@ export default function OceanPremium() {
   const allRows = [...east.map(h => ({ ...h, side: "east" })), ...west.map(h => ({ ...h, side: "west" }))].sort((a, b) => b.v - a.v).slice(0, 12);
 
   return (
-    <div className="min-h-screen" style={{ background: C.paper, color: C.ink }}>
+    <div className="on-light min-h-screen" style={{ background: C.paper, color: C.ink }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
         body { font-family: 'IBM Plex Sans', sans-serif; }`}</style>
 

@@ -29,8 +29,18 @@
      }
      
      /* Ensure good contrast for text in both light and dark modes */
+     /* The site is always in dark mode, so text is forced light below. That must
+        not reach into light surfaces (a white card, a cream panel), or the text
+        there turns light-on-light. A light surface is anything with a plain
+        light background utility and no dark: counterpart, or anything marked
+        .on-light (use that for surfaces coloured by custom CSS). The :where()
+        keeps these rules at the weight they always had, so dark:text-* and
+        page styles still win. */
      h1, h2, h3, h4, h5, h6 {
-       @apply text-gray-900 dark:text-white;
+       @apply text-gray-900;
+     }
+     .dark :is(h1, h2, h3, h4, h5, h6):where(:not(:is(.on-light, :is(.bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100):not([class*="dark:bg-"], [class*="bg-opacity-"])), :is(.on-light, :is(.bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100):not([class*="dark:bg-"], [class*="bg-opacity-"])) *)) {
+       @apply text-white;
      }
     
     /* Exclude parsha explorer headings from gray text */
@@ -44,7 +54,19 @@
     }
      
      p, li, span, div {
-       @apply text-gray-800 dark:text-gray-200;
+       @apply text-gray-800;
+     }
+     .dark :is(p, li, span, div):where(:not(:is(.on-light, :is(.bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100):not([class*="dark:bg-"], [class*="bg-opacity-"])), :is(.on-light, :is(.bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100):not([class*="dark:bg-"], [class*="bg-opacity-"])) *)) {
+       @apply text-gray-200;
+     }
+     /* On a light surface: dark text by default, and text inside inherits from
+        whatever holds it (so a white title on a coloured banner stays white)
+        and any colour class still wins. */
+     :where(.dark :is(.on-light, :is(.bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100):not([class*="dark:bg-"], [class*="bg-opacity-"]))):is(a, button, label, td, th, section, article, aside, main, form, ul, ol, table, details, summary, figure, blockquote) {
+       @apply text-gray-800;
+     }
+     :where(.dark :is(.on-light, :is(.bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100):not([class*="dark:bg-"], [class*="bg-opacity-"]))) :is(p, li, span, div, h1, h2, h3, h4, h5, h6) {
+       color: inherit;
      }
     
     /* Exclude parsha explorer from gray text */
