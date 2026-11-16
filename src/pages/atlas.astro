@@ -1,0 +1,742 @@
+---
+// The Atlas: the whole site as a night sky. Every public page is a star, grouped
+// into constellations. The chart is generated from src/pages by src/lib/atlas.ts,
+// so new pages appear here on their own.
+import Layout from '../layouts/Layout.astro';
+import { loadAtlas } from '../lib/atlas';
+
+const { stars, constellations } = loadAtlas();
+
+// Daf games sit on a spiral in the order of the daily cycle.
+const SHAS = ['berakhot','shabbat','eruvin','pesachim','shekalim','yoma','sukkah','beitzah','rosh-hashanah','taanit','megillah','moed-katan','chagigah','yevamot','ketubot','nedarim','nazir','sotah','gittin','kiddushin','bava-kamma','bava-metzia','bava-batra','sanhedrin','makkot','shevuot','avodah-zarah','horayot','zevachim','menachot','chullin','bekhorot','arakhin','temurah','keritot','meilah','kinnim','tamid','middot','niddah'];
+const dafKey = (p: string) => {
+  const m = p.match(/^\/daf\/(.+)-(\d+)$/);
+  if (!m) return -1;
+  const i = SHAS.indexOf(m[1]);
+  return (i < 0 ? SHAS.length : i) * 1000 + Number(m[2]);
+};
+const ordered = [...stars].sort((a, b) => b.mag - a.mag || dafKey(a.path) - dafKey(b.path));
+
+const byGroup = constellations.map((c) => ({ ...c, stars: ordered.filter((s) => s.group === c.id) }));
+const payload = JSON.stringify({
+  constellations,
+  stars: ordered.map((s) => ({ p: s.path, t: s.title, d: s.desc, g: s.group, m: s.mag, n: s.isNew ? 1 : 0, ...(s.keywords ? { k: s.keywords } : {}) })),
+}).replace(/</g, '\\u003c');
+---
+
+<Layout
+  title="The Atlas"
+  description={`Every page on the site as a star: ${stars.length} pages in ${constellations.length} constellations. Drag, zoom, search, or jump somewhere at random.`}
+>
+  <section id="atlas-stage" class="atlas-stage" aria-label="Interactive star chart of the site">
+    <canvas id="atlas-canvas" class="atlas-canvas" aria-hidden="true"></canvas>
+
+    <header class="atlas-head">
+      <p class="atlas-eyebrow">A chart of the workshop</p>
+      <h1 class="atlas-title">The Atlas</h1>
+      <p class="atlas-count">
+        <span>{stars.length}</span> pages · <span>{constellations.length}</span> constellations
+      </p>
+    </header>
+
+    <div class="atlas-search">
+      <label class="sr-only" for="atlas-q">Search the atlas</label>
+      <input id="atlas-q" type="search" placeholder="Search every page…" autocomplete="off" spellcheck="false" />
+      <kbd aria-hidden="true">/</kbd>
+      <ul id="atlas-results" class="atlas-results" hidden></ul>
+    </div>
+
+    <p id="atlas-hint" class="atlas-hint" aria-hidden="true">Drag to move · scroll to zoom · pick a star</p>
+
+    <aside id="atlas-card" class="atlas-card" hidden aria-live="polite">
+      <button id="atlas-card-close" class="atlas-card-close" type="button" aria-label="Close">×</button>
+      <p class="atlas-card-group"><i id="atlas-card-dot"></i><span id="atlas-card-group"></span><em id="atlas-card-new" hidden>new</em></p>
+      <h2 id="atlas-card-title"></h2>
+      <p id="atlas-card-desc" class="atlas-card-desc"></p>
+      <p id="atlas-card-path" class="atlas-card-path"></p>
+      <a id="atlas-card-open" class="atlas-card-open" href="/">Open page <span aria-hidden="true">→</span></a>
+    </aside>
+
+    <div class="atlas-dock">
+      <nav class="atlas-legend" aria-label="Constellations">
+        {constellations.map((c) => (
+          <button type="button" class="atlas-chip" data-group={c.id} style={`--c:${c.color}`}>
+            <i></i>{c.name}
+          </button>
+        ))}
+      </nav>
+      <div class="atlas-actions">
+        <button id="atlas-jump" type="button" class="atlas-jump">✦ Surprise me</button>
+        <button id="atlas-out" type="button" class="atlas-icon" aria-label="Zoom out">−</button>
+        <button id="atlas-in" type="button" class="atlas-icon" aria-label="Zoom in">+</button>
+        <button id="atlas-reset" type="button" class="atlas-icon" aria-label="Show the whole sky" title="Show the whole sky">⤢</button>
+        <a href="#atlas-index" class="atlas-icon atlas-tolist" aria-label="Skip to the plain list" title="Plain list">☰</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="atlas-index" class="atlas-index" aria-labelledby="atlas-index-h">
+    <div class="atlas-index-inner">
+      <h2 id="atlas-index-h">The same sky, as a list</h2>
+      <p class="atlas-index-sub">Every page above, in plain links.</p>
+      {byGroup.map((c) => (
+        <div class="atlas-index-group" style={`--c:${c.color}`}>
+          <h3><i></i>{c.name} <span lang="he" dir="rtl">{c.he}</span> <small>{c.stars.length}</small></h3>
+          <p>{c.blurb}</p>
+          <ul>
+            {c.stars.map((s) => (
+              <li><a href={s.path}>{s.title}</a></li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <script type="application/json" id="atlas-data" set:html={payload}></script>
+
+  <style is:global>
+    .atlas-stage {
+      --ink: #f4eee1;
+      --dim: #c9c0ad;
+      --bronze: #c9a86a;
+      --night: #0a0908;
+      position: relative;
+      height: calc(100vh - 4rem);
+      height: calc(100dvh - 4rem);
+      min-height: 460px;
+      overflow: hidden;
+      background: radial-gradient(120% 90% at 50% 40%, #14110d 0%, #0a0908 55%, #060504 100%);
+      color: var(--ink);
+      font-family: Inter, system-ui, sans-serif;
+    }
+    .atlas-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+    .atlas-canvas.is-drag { cursor: grabbing; }
+    .atlas-canvas.is-hot { cursor: pointer; }
+
+    .atlas-head { position: absolute; top: 1.25rem; left: 1.5rem; pointer-events: none; }
+    .atlas-eyebrow { margin: 0; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.28em; text-transform: uppercase; color: var(--bronze); }
+    .atlas-title { margin: 0.2rem 0 0; font-family: 'Frank Ruhl Libre', Georgia, serif; font-weight: 700; font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1; letter-spacing: -0.01em; color: var(--ink); text-shadow: 0 2px 24px #0a0908; }
+    .atlas-count { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--dim); font-variant-numeric: tabular-nums; }
+    .atlas-count span { color: var(--ink); font-weight: 600; }
+
+    .atlas-search { position: absolute; top: 1.4rem; right: 1.5rem; width: min(22rem, calc(100vw - 3rem)); }
+    .atlas-search input { width: 100%; box-sizing: border-box; padding: 0.7rem 2.4rem 0.7rem 1rem; border-radius: 999px; border: 1px solid rgba(201, 168, 106, 0.35); background: rgba(14, 12, 10, 0.78); backdrop-filter: blur(8px); color: var(--ink); font: inherit; font-size: 0.95rem; outline: none; }
+    .atlas-search input::placeholder { color: #8d8676; }
+    .atlas-search input:focus-visible { border-color: var(--bronze); box-shadow: 0 0 0 3px rgba(201, 168, 106, 0.25); }
+    .atlas-search input::-webkit-search-cancel-button { display: none; }
+    .atlas-search kbd { position: absolute; right: 0.9rem; top: 0.62rem; padding: 0.05rem 0.4rem; border: 1px solid rgba(201, 168, 106, 0.35); border-radius: 0.3rem; font: 0.72rem 'JetBrains Mono', monospace; color: var(--bronze); pointer-events: none; }
+    .atlas-results { list-style: none; margin: 0.4rem 0 0; padding: 0.3rem; border-radius: 0.9rem; border: 1px solid rgba(201, 168, 106, 0.25); background: rgba(14, 12, 10, 0.94); backdrop-filter: blur(10px); max-height: min(50vh, 22rem); overflow-y: auto; }
+    .atlas-results button { display: flex; width: 100%; align-items: baseline; gap: 0.6rem; padding: 0.5rem 0.7rem; border: 0; border-radius: 0.6rem; background: none; color: var(--ink); font: inherit; font-size: 0.9rem; text-align: left; cursor: pointer; }
+    .atlas-results button i { flex: none; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
+    .atlas-results button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .atlas-results button:hover, .atlas-results button.is-on { background: rgba(201, 168, 106, 0.16); }
+    .atlas-results .atlas-none { padding: 0.6rem 0.7rem; font-size: 0.88rem; color: var(--dim); }
+
+    .atlas-hint { position: absolute; left: 50%; bottom: 5.4rem; transform: translateX(-50%); margin: 0; padding: 0.35rem 0.9rem; border-radius: 999px; background: rgba(14, 12, 10, 0.6); font-size: 0.76rem; letter-spacing: 0.04em; color: var(--dim); white-space: nowrap; pointer-events: none; transition: opacity 0.6s; }
+    .atlas-hint.is-gone { opacity: 0; }
+
+    .atlas-card { position: absolute; right: 1.5rem; top: 5.2rem; width: min(21rem, calc(100vw - 3rem)); box-sizing: border-box; padding: 1.2rem 1.3rem 1.3rem; border-radius: 1.1rem; border: 1px solid rgba(201, 168, 106, 0.3); background: rgba(14, 12, 10, 0.9); backdrop-filter: blur(12px); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55); animation: atlas-card-in 0.28s ease-out; }
+    .atlas-search:has(.atlas-results:not([hidden])) ~ .atlas-card { visibility: hidden; }
+    @keyframes atlas-card-in { from { opacity: 0; transform: translateY(8px); } }
+    .atlas-card-close { position: absolute; top: 0.5rem; right: 0.6rem; width: 2rem; height: 2rem; border: 0; border-radius: 50%; background: none; color: var(--dim); font-size: 1.3rem; line-height: 1; cursor: pointer; }
+    .atlas-card-close:hover { color: var(--ink); background: rgba(255, 255, 255, 0.08); }
+    .atlas-card-group { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); }
+    .atlas-card-group i { width: 0.55rem; height: 0.55rem; border-radius: 50%; }
+    .atlas-card-group em { font-style: normal; padding: 0.05rem 0.45rem; border-radius: 999px; background: var(--bronze); color: #0a0908; letter-spacing: 0.1em; }
+    .atlas-card h2 { margin: 0.55rem 1.4rem 0 0; font-family: 'Frank Ruhl Libre', Georgia, serif; font-size: 1.45rem; font-weight: 700; line-height: 1.2; color: var(--ink); text-wrap: balance; }
+    .atlas-card-desc { margin: 0.6rem 0 0; font-size: 0.92rem; line-height: 1.55; color: var(--dim); display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+    .atlas-card-path { margin: 0.7rem 0 0; font: 0.74rem 'JetBrains Mono', monospace; color: #8d8676; overflow-wrap: anywhere; }
+    .atlas-card-open { display: inline-block; margin-top: 0.9rem; padding: 0.6rem 1.1rem; border-radius: 0.6rem; background: var(--bronze); color: #0a0908; font-size: 0.9rem; font-weight: 700; text-decoration: none; transition: background 0.15s, transform 0.15s; }
+    .atlas-card-open:hover { background: #e0c184; transform: translateY(-1px); }
+    .atlas-card-open:focus-visible, .atlas-chip:focus-visible, .atlas-jump:focus-visible, .atlas-icon:focus-visible, .atlas-card-close:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+    .atlas-dock { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; padding: 1rem 1.5rem 1.2rem; background: linear-gradient(to top, rgba(6, 5, 4, 0.92), rgba(6, 5, 4, 0)); pointer-events: none; }
+    .atlas-dock > * { pointer-events: auto; }
+    .atlas-legend { display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 46rem; }
+    .atlas-chip { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.38rem 0.75rem; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(14, 12, 10, 0.7); color: var(--dim); font: inherit; font-size: 0.78rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s; }
+    .atlas-chip i { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
+    .atlas-chip:hover { color: var(--ink); border-color: var(--c); }
+    .atlas-chip.is-on { color: #0a0908; background: var(--c); border-color: var(--c); font-weight: 700; }
+    .atlas-chip.is-on i { background: #0a0908; box-shadow: none; }
+    .atlas-actions { display: flex; flex: none; gap: 0.4rem; align-items: center; }
+    .atlas-jump { padding: 0.62rem 1.1rem; border-radius: 999px; border: 1px solid var(--bronze); background: rgba(201, 168, 106, 0.14); color: var(--ink); font: inherit; font-size: 0.86rem; font-weight: 700; white-space: nowrap; cursor: pointer; transition: background 0.15s, color 0.15s; }
+    .atlas-jump:hover { background: var(--bronze); color: #0a0908; }
+    .atlas-icon { display: inline-grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(14, 12, 10, 0.7); color: var(--ink); font-size: 1.05rem; line-height: 1; text-decoration: none; cursor: pointer; }
+    .atlas-icon:hover { border-color: var(--bronze); color: var(--bronze); }
+
+    .atlas-index { background: #0a0908; border-top: 1px solid rgba(255, 255, 255, 0.1); color: #c9c0ad; padding: 4rem 1.5rem 5rem; font-family: Inter, system-ui, sans-serif; scroll-margin-top: 4rem; }
+    .atlas-index-inner { max-width: 72rem; margin: 0 auto; }
+    .atlas-index h2 { margin: 0; font-family: 'Frank Ruhl Libre', Georgia, serif; font-size: clamp(1.8rem, 4vw, 2.6rem); color: #f4eee1; }
+    .atlas-index-sub { margin: 0.4rem 0 0; color: #8d8676; }
+    .atlas-index-group { margin-top: 2.8rem; }
+    .atlas-index-group h3 { display: flex; align-items: baseline; gap: 0.6rem; margin: 0; font-size: 1.05rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #f4eee1; }
+    .atlas-index-group h3 i { align-self: center; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+    .atlas-index-group h3 span { font-family: 'Frank Ruhl Libre', serif; font-weight: 400; letter-spacing: 0; color: var(--c); }
+    .atlas-index-group h3 small { font-size: 0.75rem; font-weight: 500; letter-spacing: 0; color: #8d8676; }
+    .atlas-index-group p { margin: 0.3rem 0 0; font-size: 0.9rem; color: #8d8676; }
+    .atlas-index-group ul { list-style: none; margin: 0.9rem 0 0; padding: 0; columns: 16rem; column-gap: 2rem; }
+    .atlas-index-group li { break-inside: avoid; padding: 0.22rem 0; font-size: 0.92rem; line-height: 1.4; }
+    .atlas-index-group a { color: #c9c0ad; text-decoration: none; }
+    .atlas-index-group a:hover { color: #f4eee1; text-decoration: underline; text-decoration-color: var(--c); text-underline-offset: 3px; }
+
+    @media (max-width: 760px) {
+      .atlas-head { top: 0.9rem; left: 1rem; }
+      .atlas-title { font-size: 1.9rem; }
+      .atlas-eyebrow { display: none; }
+      .atlas-count { margin-top: 0.15rem; font-size: 0.74rem; }
+      .atlas-search { top: 4.6rem; left: 1rem; right: 1rem; width: auto; }
+      .atlas-search kbd { display: none; }
+      .atlas-dock { flex-direction: column-reverse; align-items: stretch; gap: 0.6rem; padding: 0.8rem 0 0.9rem; }
+      .atlas-legend { flex-wrap: nowrap; overflow-x: auto; padding: 0 1rem; scrollbar-width: none; max-width: none; }
+      .atlas-legend::-webkit-scrollbar { display: none; }
+      .atlas-actions { justify-content: flex-end; padding: 0 1rem; }
+      .atlas-card { top: auto; right: 0.75rem; left: 0.75rem; bottom: 7.4rem; width: auto; padding: 1rem 1.1rem 1.1rem; }
+      .atlas-card h2 { font-size: 1.2rem; }
+      .atlas-card-desc { -webkit-line-clamp: 3; font-size: 0.86rem; }
+      .atlas-card-path { display: none; }
+      .atlas-hint { bottom: 7.6rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .atlas-card { animation: none; }
+    }
+  </style>
+
+  <script>
+    type S = { p: string; t: string; d: string; g: string; m: number; n: number; k?: string; x: number; y: number; c: string; hay: string; born: number; seed: number };
+    type C = { id: string; name: string; he: string; color: string; x: number; y: number; r: number; stars: S[]; path: S[] };
+
+    function hash(str: string) {
+      let h = 2166136261;
+      for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+      return ((h >>> 0) % 100000) / 100000;
+    }
+    const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+
+    function init() {
+      const stage = document.getElementById('atlas-stage') as HTMLElement | null;
+      const canvas = document.getElementById('atlas-canvas') as HTMLCanvasElement | null;
+      const raw = document.getElementById('atlas-data');
+      if (!stage || !canvas || !raw || stage.dataset.ready) return;
+      stage.dataset.ready = '1';
+
+      const ctx = canvas.getContext('2d')!;
+      const data = JSON.parse(raw.textContent || '{}');
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const life = new AbortController();
+      const on = { signal: life.signal };
+      const $ = (id: string) => document.getElementById(id)!;
+
+      // ── Lay out the sky ──────────────────────────────────────────────────
+      const stars: S[] = data.stars.map((s: any) => ({ ...s, x: 0, y: 0, c: '#fff', hay: '', born: 0, seed: hash(s.p) }));
+      const groups: C[] = data.constellations.map((c: any) => ({ ...c, x: 0, y: 0, r: 0, stars: stars.filter((s) => s.g === c.id), path: [] }));
+      const groupOf = new Map(groups.map((g) => [g.id, g]));
+      let W = 0, H = 0, dpr = 1;
+      let world = { w: 2400, h: 1600 };
+      let laidOut = false, first = true;
+      let ringX = 1000, ringY = 640;
+
+      function layout(portrait: boolean) {
+        const ry = portrait ? 900 : 640;
+        const rx = portrait ? 500 : clamp(ry * (W / Math.max(1, H)) * 0.92, 900, 1300);
+        const ring = groups.filter((g) => g.id !== 'talmud');
+        ring.forEach((g, i) => {
+          const a = -Math.PI / 2 + ((i + (portrait ? 0 : 0.5)) / ring.length) * Math.PI * 2;
+          g.x = Math.cos(a) * rx; g.y = Math.sin(a) * ry;
+          if (portrait) {
+            // a phone has no room for a ring: two columns either side of the daf spiral
+            const rows = Math.ceil(ring.length / 2);
+            g.x = (i % 2 ? 1 : -1) * 500;
+            g.y = rows > 1 ? -900 + Math.floor(i / 2) * (1800 / (rows - 1)) : 0;
+          }
+          g.stars.forEach((s, k) => {
+            // sunflower packing: the hub sits in the middle, the rest spiral out
+            const r = 33 * Math.sqrt(k), t = k * 2.39996 + hash(g.id) * 6;
+            s.x = g.x + Math.cos(t) * r + (s.seed - 0.5) * 12;
+            s.y = g.y + Math.sin(t) * r + (hash(s.p + 'y') - 0.5) * 12;
+          });
+          g.r = 33 * Math.sqrt(Math.max(1, g.stars.length)) + 30;
+        });
+        const daf = groupOf.get('talmud');
+        if (daf) {
+          daf.x = 0; daf.y = 0;
+          const games = daf.stars.filter((s) => s.p.startsWith('/daf/'));
+          const others = daf.stars.filter((s) => !s.p.startsWith('/daf/'));
+          // one long arm, a daf every 30 units: the cycle read outward from the middle
+          const b = 7.4;
+          games.forEach((s, k) => {
+            const t = Math.sqrt((2 * 30 * (k + 7)) / b);
+            s.x = Math.cos(t) * b * t; s.y = Math.sin(t) * b * t;
+          });
+          const outer = b * Math.sqrt((2 * 30 * (games.length + 7)) / b) + 46;
+          others.forEach((s, k) => {
+            if (s.p === '/daf') { s.x = 0; s.y = 0; return; }
+            const a = -0.9 + (k / Math.max(1, others.length - 1)) * Math.PI * 1.7;
+            s.x = Math.cos(a) * outer; s.y = Math.sin(a) * outer;
+          });
+          daf.r = outer + 34;
+          daf.path = games;
+        }
+        for (const g of ring) {
+          // the drawn figure: a short nearest-neighbour walk through the brightest stars
+          const pool = g.stars.slice(0, Math.min(7, g.stars.length));
+          const path = pool.length ? [pool[0]] : [];
+          const left = pool.slice(1);
+          while (left.length) {
+            const last = path[path.length - 1];
+            left.sort((a, b2) => Math.hypot(a.x - last.x, a.y - last.y) - Math.hypot(b2.x - last.x, b2.y - last.y));
+            path.push(left.shift()!);
+          }
+          g.path = path;
+        }
+        ringX = rx; ringY = ry;
+        world = { w: rx * 2 + (portrait ? 380 : 520), h: ry * 2 + 440 };
+      }
+
+      for (const s of stars) {
+        const g = groupOf.get(s.g)!;
+        s.c = g.color;
+        s.hay = (s.t + ' ' + s.d + ' ' + s.p + ' ' + g.name + ' ' + (s.k || '')).toLowerCase();
+      }
+
+      // glow sprites, one per colour
+      const sprites = new Map<string, HTMLCanvasElement>();
+      for (const g of groups) {
+        const c = document.createElement('canvas');
+        c.width = c.height = 96;
+        const x = c.getContext('2d')!;
+        const grad = x.createRadialGradient(48, 48, 0, 48, 48, 48);
+        grad.addColorStop(0, g.color); grad.addColorStop(0.18, g.color + 'aa'); grad.addColorStop(0.5, g.color + '22'); grad.addColorStop(1, g.color + '00');
+        x.fillStyle = grad; x.fillRect(0, 0, 96, 96);
+        sprites.set(g.color, c);
+      }
+
+      // far-away dust, three depths
+      const dust = Array.from({ length: 420 }, (_, i) => ({
+        x: hash('dx' + i), y: hash('dy' + i), layer: i % 3, a: 0.25 + hash('da' + i) * 0.6, tw: hash('dt' + i) * 6.28,
+      }));
+
+      // ── Camera ───────────────────────────────────────────────────────────
+      const cam = { x: 0, y: 0, z: 0.5 };
+      let fitZ = 0.5;
+      let tween: null | { fx: number; fy: number; fz: number; tx: number; ty: number; tz: number; t0: number; dur: number } = null;
+      let vel = { x: 0, y: 0 };
+      let speed = 0; // screen px/frame of camera travel, drives the warp streaks
+      let selected: S | null = null, hover: S | null = null;
+      let activeGroup: string | null = null;
+      let matches: Set<S> | null = null;
+      let t0 = performance.now();
+      let touched = false;
+
+      const sx = (x: number) => (x - cam.x) * cam.z + W / 2;
+      const sy = (y: number) => (y - cam.y) * cam.z + H / 2;
+
+      function resize() {
+        const r = stage!.getBoundingClientRect();
+        const wasFit = Math.abs(cam.z - fitZ) < 0.002 && !tween;
+        const portraitBefore = H > W * 1.1;
+        W = r.width; H = r.height; dpr = Math.min(2, window.devicePixelRatio || 1);
+        canvas!.width = Math.round(W * dpr); canvas!.height = Math.round(H * dpr);
+        const portrait = H > W * 1.1;
+        if (portrait !== portraitBefore || !laidOut) { layout(portrait); laidOut = true; }
+        const padTop = W < 760 ? 175 : 60, padBot = W < 760 ? 150 : 70;
+        fitZ = Math.min(W / world.w, (H - padTop - padBot) / world.h);
+        if (wasFit || first) { first = false; cam.x = 0; cam.y = ((padBot - padTop) / 2) / fitZ; cam.z = fitZ; }
+      }
+
+      function flyTo(x: number, y: number, z: number, dur = 1100) {
+        z = clamp(z, fitZ * 0.8, 6);
+        if (reduce) { cam.x = x; cam.y = y; cam.z = z; tween = null; return; }
+        tween = { fx: cam.x, fy: cam.y, fz: cam.z, tx: x, ty: y, tz: z, t0: performance.now(), dur };
+        vel = { x: 0, y: 0 };
+      }
+      function home() {
+        const padTop = W < 760 ? 175 : 60, padBot = W < 760 ? 150 : 70;
+        flyTo(0, ((padBot - padTop) / 2) / fitZ, fitZ, 1000);
+      }
+      function zoomAt(px: number, py: number, factor: number) {
+        const wx = (px - W / 2) / cam.z + cam.x, wy = (py - H / 2) / cam.z + cam.y;
+        cam.z = clamp(cam.z * factor, fitZ * 0.8, 6);
+        cam.x = wx - (px - W / 2) / cam.z; cam.y = wy - (py - H / 2) / cam.z;
+        tween = null;
+      }
+
+      // ── Selection, card, search ─────────────────────────────────────────
+      const card = $('atlas-card');
+      function select(s: S | null, fly = true, dur = 1100) {
+        selected = s;
+        if (!s) { card.hidden = true; history.replaceState(null, '', location.pathname + location.search); return; }
+        const g = groupOf.get(s.g)!;
+        $('atlas-card-title').textContent = s.t;
+        $('atlas-card-desc').textContent = s.d || g.name;
+        $('atlas-card-group').textContent = g.name;
+        ($('atlas-card-dot') as HTMLElement).style.cssText = `background:${g.color};box-shadow:0 0 10px ${g.color}`;
+        $('atlas-card-path').textContent = s.p;
+        $('atlas-card-new').hidden = !s.n;
+        ($('atlas-card-open') as HTMLAnchorElement).href = s.p;
+        card.hidden = true; void card.offsetWidth; card.hidden = false; // replay the entrance
+        history.replaceState(null, '', '#' + s.p);
+        if (fly) {
+          const z = Math.max(cam.z, W < 760 ? 1.5 : 1.9);
+          // keep the star clear of the card: left of it on desktop, above it on a phone
+          const ox = W < 760 ? 0 : 170 / z, oy = W < 760 ? 90 / z : 0;
+          flyTo(s.x + ox, s.y + oy, z, dur);
+        }
+      }
+
+      const q = $('atlas-q') as HTMLInputElement;
+      const list = $('atlas-results');
+      let shown: S[] = [], cursor = 0;
+      function search() {
+        const words = q.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+        list.textContent = '';
+        if (!words.length) { matches = null; list.hidden = true; shown = []; return; }
+        const found = stars.filter((s) => words.every((w) => s.hay.includes(w)));
+        // title hits first
+        found.sort((a, b) => Number(words.every((w) => b.t.toLowerCase().includes(w))) - Number(words.every((w) => a.t.toLowerCase().includes(w))) || b.m - a.m);
+        matches = new Set(found);
+        shown = found.slice(0, 8); cursor = 0;
+        if (activeGroup) { activeGroup = null; chips.forEach((c) => c.classList.remove('is-on')); }
+        if (found.length) {
+          const xs = found.map((s) => s.x), ys = found.map((s) => s.y);
+          const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+          const z = Math.min((W * 0.6) / Math.max(120, x1 - x0), (H * 0.5) / Math.max(120, y1 - y0), 1.6);
+          flyTo((x0 + x1) / 2, (y0 + y1) / 2, Math.max(z, fitZ), 700);
+        }
+        if (!found.length) {
+          const li = document.createElement('li');
+          li.className = 'atlas-none'; li.textContent = 'No star by that name.';
+          list.append(li);
+        }
+        shown.forEach((s, i) => {
+          const li = document.createElement('li');
+          const b = document.createElement('button');
+          b.type = 'button'; b.style.setProperty('--c', s.c);
+          if (i === 0) b.className = 'is-on';
+          const dot = document.createElement('i'); const label = document.createElement('span');
+          label.textContent = s.t; b.append(dot, label);
+          b.addEventListener('click', () => { list.hidden = true; select(s); });
+          li.append(b); list.append(li);
+        });
+        list.hidden = false;
+      }
+      q.addEventListener('input', search, on);
+      q.addEventListener('focus', () => { if (q.value.trim()) list.hidden = false; }, on);
+      q.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          if (!shown.length) return;
+          e.preventDefault();
+          cursor = (cursor + (e.key === 'ArrowDown' ? 1 : -1) + shown.length) % shown.length;
+          list.querySelectorAll('button').forEach((b, i) => b.classList.toggle('is-on', i === cursor));
+        } else if (e.key === 'Enter' && shown[cursor]) {
+          list.hidden = true; q.blur(); select(shown[cursor]);
+        } else if (e.key === 'Escape') {
+          q.value = ''; search(); q.blur();
+        }
+      }, on);
+
+      const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('.atlas-chip'));
+      function focusGroup(id: string | null) {
+        activeGroup = id;
+        chips.forEach((c) => c.classList.toggle('is-on', c.dataset.group === id));
+        if (!id) return home();
+        const g = groupOf.get(id)!;
+        const z = Math.min((Math.min(W, H) * 0.42) / g.r, 2.2);
+        flyTo(g.x, g.y + (W < 760 ? 30 / z : 0), z, 1000);
+      }
+      chips.forEach((c) => c.addEventListener('click', () => { select(null, false); focusGroup(activeGroup === c.dataset.group ? null : c.dataset.group!); }, on));
+
+      $('atlas-jump').addEventListener('click', () => {
+        const pool = stars.filter((s) => s !== selected);
+        const s = pool[Math.floor(Math.random() * pool.length)];
+        focusGroup(null); tween = null;
+        q.value = ''; search();
+        select(s, true, 1700);
+        touch();
+      }, on);
+      $('atlas-in').addEventListener('click', () => flyTo(cam.x, cam.y, cam.z * 1.6, 350), on);
+      $('atlas-out').addEventListener('click', () => flyTo(cam.x, cam.y, cam.z / 1.6, 350), on);
+      $('atlas-reset').addEventListener('click', () => { select(null, false); focusGroup(null); }, on);
+      $('atlas-card-close').addEventListener('click', () => select(null, false), on);
+
+      function touch() {
+        if (touched) return;
+        touched = true; $('atlas-hint').classList.add('is-gone');
+      }
+
+      // ── Pointer: drag, pinch, wheel, pick ───────────────────────────────
+      const ptrs = new Map<number, { x: number; y: number }>();
+      let moved = 0, pinch = 0, lastMove = 0;
+      function pick(px: number, py: number): S | null {
+        let best: S | null = null, bd = 22;
+        for (const s of stars) {
+          if (!visible(s)) continue;
+          const d = Math.hypot(sx(s.x) - px, sy(s.y) - py);
+          if (d < bd) { bd = d; best = s; }
+        }
+        return best;
+      }
+      const visible = (s: S) => (!matches || matches.has(s));
+      const local = (e: PointerEvent | WheelEvent) => { const r = canvas!.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+
+      canvas.addEventListener('pointerdown', (e) => {
+        canvas!.setPointerCapture(e.pointerId);
+        ptrs.set(e.pointerId, local(e)); moved = 0; tween = null; vel = { x: 0, y: 0 };
+        if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); }
+        q.blur(); list.hidden = true;
+      }, on);
+      canvas.addEventListener('pointermove', (e) => {
+        const p = local(e), prev = ptrs.get(e.pointerId);
+        if (!prev) { hover = pick(p.x, p.y); canvas!.classList.toggle('is-hot', !!hover); return; }
+        if (ptrs.size === 1) {
+          const dx = p.x - prev.x, dy = p.y - prev.y;
+          moved += Math.abs(dx) + Math.abs(dy);
+          cam.x -= dx / cam.z; cam.y -= dy / cam.z;
+          vel = { x: -dx / cam.z, y: -dy / cam.z }; lastMove = performance.now();
+          if (moved > 6) { canvas!.classList.add('is-drag'); touch(); }
+        }
+        ptrs.set(e.pointerId, p);
+        if (ptrs.size === 2) {
+          const [a, b] = [...ptrs.values()];
+          const d = Math.hypot(a.x - b.x, a.y - b.y);
+          if (pinch) zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, d / pinch);
+          pinch = d; moved += 10; touch();
+        }
+      }, on);
+      const up = (e: PointerEvent) => {
+        const p = local(e);
+        const wasDown = ptrs.delete(e.pointerId);
+        canvas!.classList.remove('is-drag');
+        if (ptrs.size < 2) pinch = 0;
+        if (!wasDown || ptrs.size) return;
+        if (performance.now() - lastMove > 60) vel = { x: 0, y: 0 };
+        if (moved <= 6 && e.type === 'pointerup') {
+          const s = pick(p.x, p.y);
+          if (s) { select(s); touch(); }
+          else if (selected) select(null, false);
+        }
+      };
+      canvas.addEventListener('pointerup', up, on);
+      canvas.addEventListener('pointercancel', up, on);
+      canvas.addEventListener('pointerleave', () => { hover = null; canvas!.classList.remove('is-hot'); }, on);
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const p = local(e);
+        zoomAt(p.x, p.y, Math.exp(-e.deltaY * (e.ctrlKey ? 0.012 : 0.0016)));
+        touch();
+      }, { passive: false, signal: life.signal });
+      canvas.addEventListener('dblclick', (e) => { const p = local(e); const wx = (p.x - W / 2) / cam.z + cam.x, wy = (p.y - H / 2) / cam.z + cam.y; flyTo(wx, wy, cam.z * 1.8, 400); }, on);
+
+      window.addEventListener('keydown', (e) => {
+        const el = e.target as HTMLElement;
+        if (el && /INPUT|TEXTAREA|SELECT/.test(el.tagName)) return;
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        const step = 90 / cam.z;
+        if (e.key === '/') { e.preventDefault(); q.focus(); }
+        else if (e.key === 'Escape') { select(null, false); focusGroup(null); }
+        else if (e.key === '+' || e.key === '=') flyTo(cam.x, cam.y, cam.z * 1.4, 250);
+        else if (e.key === '-') flyTo(cam.x, cam.y, cam.z / 1.4, 250);
+        else if (e.key === 'ArrowLeft') { cam.x -= step; tween = null; }
+        else if (e.key === 'ArrowRight') { cam.x += step; tween = null; }
+        else if (e.key === 'ArrowUp' && document.activeElement === document.body) { e.preventDefault(); cam.y -= step; tween = null; }
+        else if (e.key === 'ArrowDown' && document.activeElement === document.body) { e.preventDefault(); cam.y += step; tween = null; }
+      }, on);
+      window.addEventListener('resize', resize, on);
+      window.addEventListener('hashchange', () => {
+        const p = decodeURIComponent(location.hash.slice(1));
+        const s = p.startsWith('/') ? stars.find((x) => x.p === p) : null;
+        if (s && s !== selected) select(s);
+      }, on);
+
+      // ── Draw ─────────────────────────────────────────────────────────────
+      let running = true, raf = 0;
+      const io = new IntersectionObserver(([en]) => { running = en.isIntersecting; if (running) { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); } });
+      io.observe(stage);
+
+      const boxes: number[][] = [];
+      function label(text: string, x: number, y: number, alpha: number, font: string, color: string, force = false) {
+        ctx.font = font;
+        const w = ctx.measureText(text).width, h = 14;
+        const box = [x - 3, y - h, x + w + 3, y + 4];
+        if (!force) for (const b of boxes) if (box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1]) return;
+        boxes.push(box);
+        ctx.globalAlpha = alpha;
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,7,6,0.85)'; ctx.strokeText(text, x, y);
+        ctx.fillStyle = color; ctx.fillText(text, x, y);
+      }
+
+      function frame(now: number) {
+        if (!canvas!.isConnected) { life.abort(); io.disconnect(); return; }
+        if (!running || document.hidden) { raf = requestAnimationFrame(frame); return; }
+        const time = (now - t0) / 1000;
+        const px = cam.x, py = cam.y, pz = cam.z;
+
+        if (tween) {
+          const k = clamp((now - tween.t0) / tween.dur, 0, 1), e = ease(k);
+          // long hops pull back mid-flight, like looking up from the page to find your place
+          const far = Math.hypot(tween.tx - tween.fx, tween.ty - tween.fy) * Math.min(tween.fz, tween.tz);
+          const dip = far > Math.max(W, H) * 0.6 ? Math.sin(k * Math.PI) * 0.45 : 0;
+          cam.x = tween.fx + (tween.tx - tween.fx) * e; cam.y = tween.fy + (tween.ty - tween.fy) * e;
+          cam.z = Math.exp(Math.log(tween.fz) + (Math.log(tween.tz) - Math.log(tween.fz)) * e) * (1 - dip);
+          if (k >= 1) tween = null;
+        } else if (!ptrs.size && (Math.abs(vel.x) > 0.01 || Math.abs(vel.y) > 0.01)) {
+          cam.x += vel.x; cam.y += vel.y; vel.x *= 0.93; vel.y *= 0.93;
+        }
+        cam.x = clamp(cam.x, -world.w / 2, world.w / 2); cam.y = clamp(cam.y, -world.h / 2, world.h / 2);
+        const mvx = (cam.x - px) * cam.z, mvy = (cam.y - py) * cam.z;
+        speed = speed * 0.7 + Math.hypot(mvx, mvy) * 0.3 + Math.abs(cam.z - pz) * 40;
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, W, H);
+
+        // dust, with parallax; it smears into streaks when the camera moves fast
+        const streak = clamp((speed - 6) / 30, 0, 1);
+        for (const d of dust) {
+          const par = 0.04 + d.layer * 0.07;
+          const span = 1600;
+          let x = ((d.x * span - cam.x * par * cam.z) % span + span) % span;
+          let y = ((d.y * span - cam.y * par * cam.z) % span + span) % span;
+          x = (x / span) * (W + 200) - 100; y = (y / span) * (H + 200) - 100;
+          const tw = reduce ? 1 : 0.7 + 0.3 * Math.sin(time * (0.6 + d.layer * 0.4) + d.tw);
+          ctx.globalAlpha = d.a * tw * (0.35 + d.layer * 0.2);
+          if (streak > 0.02) {
+            const dx = x - W / 2, dy = y - H / 2, len = streak * (10 + d.layer * 16), n = Math.hypot(dx, dy) || 1;
+            ctx.strokeStyle = '#e9dfc8'; ctx.lineWidth = 0.8 + d.layer * 0.3;
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (dx / n) * len, y + (dy / n) * len); ctx.stroke();
+          } else {
+            ctx.fillStyle = '#e9dfc8';
+            const r = 0.5 + d.layer * 0.35;
+            ctx.fillRect(x - r, y - r, r * 2, r * 2);
+          }
+        }
+
+        // the chart's own furniture: orbit rings and tick marks in bronze ink
+        const ox = sx(0), oy = sy(0);
+        ctx.strokeStyle = '#c9a86a'; ctx.lineWidth = 1;
+        const rings = [0.34, 0.68, 1.02];
+        const base = Math.min(world.w, world.h) / 2;
+        rings.forEach((r, i) => {
+          ctx.globalAlpha = 0.07 + (i === 2 ? 0.04 : 0);
+          ctx.beginPath(); ctx.ellipse(ox, oy, ringX * r * cam.z, ringY * r * cam.z, 0, 0, Math.PI * 2); ctx.stroke();
+        });
+        ctx.globalAlpha = 0.16;
+        for (let i = 0; i < 72; i++) {
+          const a = (i / 72) * Math.PI * 2, long = i % 6 === 0;
+          const rx = ringX * 1.02 * cam.z, ry = ringY * 1.02 * cam.z;
+          const k = 1 + (long ? 16 : 7) / Math.max(40, base * cam.z);
+          ctx.beginPath(); ctx.moveTo(ox + Math.cos(a) * rx, oy + Math.sin(a) * ry); ctx.lineTo(ox + Math.cos(a) * rx * k, oy + Math.sin(a) * ry * k); ctx.stroke();
+        }
+
+        // nebulae
+        ctx.globalCompositeOperation = 'lighter';
+        for (const g of groups) {
+          const gx = sx(g.x), gy = sy(g.y), gr = g.r * 1.9 * cam.z;
+          if (gx + gr < 0 || gx - gr > W || gy + gr < 0 || gy - gr > H) continue;
+          const on2 = !activeGroup || activeGroup === g.id;
+          ctx.globalAlpha = (on2 ? 0.2 : 0.06) * (matches ? 0.4 : 1);
+          ctx.drawImage(sprites.get(g.color)!, gx - gr, gy - gr, gr * 2, gr * 2);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+
+        // constellation figures
+        for (const g of groups) {
+          if (g.path.length < 2) continue;
+          const lit = (!activeGroup || activeGroup === g.id) && !matches;
+          ctx.globalAlpha = lit ? (g.id === 'talmud' ? 0.3 : 0.38) : 0.08;
+          ctx.strokeStyle = g.color; ctx.lineWidth = 1;
+          ctx.beginPath();
+          const reveal = reduce ? 1 : clamp((time - 0.5) / 1.8, 0, 1);
+          const n = Math.max(2, Math.ceil(g.path.length * reveal));
+          g.path.slice(0, n).forEach((s, i) => (i ? ctx.lineTo(sx(s.x), sy(s.y)) : ctx.moveTo(sx(s.x), sy(s.y))));
+          ctx.stroke();
+        }
+
+        // stars
+        boxes.length = 0;
+        const labelQueue: [S, number, number, number][] = [];
+        for (const s of stars) {
+          const x = sx(s.x), y = sy(s.y);
+          if (x < -60 || x > W + 60 || y < -60 || y > H + 60) continue;
+          if (!s.born) s.born = reduce ? -10 : 0.15 + Math.hypot(s.x, s.y) / 1500 + s.seed * 0.3;
+          const birth = clamp((time - s.born) / 0.7, 0, 1);
+          if (birth <= 0) continue;
+          const isSel = s === selected, isHov = s === hover;
+          let a = 1;
+          if (matches && !matches.has(s)) a = 0.07;
+          else if (activeGroup && activeGroup !== s.g) a = 0.22;
+          const tw = reduce ? 1 : 0.82 + 0.18 * Math.sin(time * (1.1 + s.seed * 1.6) + s.seed * 40);
+          const zoomK = clamp(Math.pow(cam.z / fitZ, 0.42), 1, 2.6);
+          const core = (s.m === 3 ? 3 : s.m === 2 ? 2.2 : 1.45) * zoomK * (isSel || isHov ? 1.35 : 1);
+          const glow = core * (s.m === 3 ? 8.5 : 6.5) * (0.9 + 0.1 * tw) * (2 - birth);
+          ctx.globalAlpha = a * birth * tw * 0.9;
+          ctx.drawImage(sprites.get(s.c)!, x - glow, y - glow, glow * 2, glow * 2);
+          ctx.globalAlpha = a * birth;
+          ctx.fillStyle = '#fffaf0';
+          ctx.beginPath(); ctx.arc(x, y, core, 0, Math.PI * 2); ctx.fill();
+          if (s.n && a > 0.5) {
+            // new this month: a slow ripple
+            const ph = reduce ? 0.5 : (time * 0.5 + s.seed) % 1;
+            ctx.globalAlpha = (1 - ph) * 0.7; ctx.strokeStyle = '#fffaf0'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(x, y, core + 3 + ph * 14, 0, Math.PI * 2); ctx.stroke();
+          }
+          if (isSel) {
+            const rr = core + 11, rot = reduce ? 0 : time * 0.8;
+            ctx.globalAlpha = 0.95; ctx.strokeStyle = '#f4eee1'; ctx.lineWidth = 1.4;
+            for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(x, y, rr, rot + i * (Math.PI / 2) + 0.25, rot + (i + 1) * (Math.PI / 2) - 0.25); ctx.stroke(); }
+          }
+          const need = s.m === 3 ? 1.25 : s.m === 2 ? 1.7 : 3.1;
+          const zr = cam.z / fitZ;
+          if (a > 0.5 && (isSel || isHov || zr > need || (matches && matches.size <= 12))) labelQueue.push([s, x, y, core]);
+        }
+
+        // labels: the chosen and the bright ones claim their space first
+        labelQueue.sort((a, b) => Number(b[0] === selected) - Number(a[0] === selected) || Number(b[0] === hover) - Number(a[0] === hover) || b[0].m - a[0].m);
+        ctx.textBaseline = 'alphabetic';
+        for (const [s, x, y, core] of labelQueue) {
+          const strong = s === selected || s === hover;
+          const text = s.t.length > 44 ? s.t.slice(0, 42) + '…' : s.t;
+          label(text, x + core + 7, y + 4, strong ? 1 : 0.86, `${strong || s.m > 1 ? 600 : 500} ${strong ? 13 : 12}px Inter, system-ui, sans-serif`, strong ? '#fffaf0' : '#d9d0bc', strong);
+        }
+
+        // constellation names, like the lettering on an old chart
+        const nameAlpha = clamp(2.6 - cam.z / fitZ, 0, 1) * (reduce ? 1 : clamp((time - 1.2) / 1, 0, 1));
+        if (nameAlpha > 0.02) {
+          for (const g of groups) {
+            const gx = sx(g.x), gy = sy(g.y - g.r) - 10;
+            const dimmed = (activeGroup && activeGroup !== g.id) || matches;
+            ctx.font = `700 ${W < 760 ? 11 : 13}px 'Frank Ruhl Libre', Georgia, serif`;
+            (ctx as any).letterSpacing = W < 760 ? '0.14em' : '0.22em';
+            const text = g.name.toUpperCase();
+            const w = ctx.measureText(text).width;
+            ctx.globalAlpha = nameAlpha * (dimmed ? 0.25 : 0.95);
+            ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(8,7,6,0.8)'; ctx.strokeText(text, gx - w / 2, gy);
+            ctx.fillStyle = g.color; ctx.fillText(text, gx - w / 2, gy);
+            (ctx as any).letterSpacing = '0px';
+            ctx.font = `400 ${W < 760 ? 12 : 14}px 'Frank Ruhl Libre', 'Noto Serif Hebrew', serif`;
+            const hw = ctx.measureText(g.he).width;
+            if (W >= 760) {
+              // no room for the second line on a phone
+              ctx.globalAlpha = nameAlpha * (dimmed ? 0.15 : 0.55);
+              ctx.fillStyle = '#c9c0ad'; ctx.fillText(g.he, gx - hw / 2, gy - 18);
+            }
+          }
+        }
+        ctx.globalAlpha = 1;
+        raf = requestAnimationFrame(frame);
+      }
+
+      resize();
+      // arrive at a shared star, e.g. /atlas#/mega-bible
+      const want = decodeURIComponent(location.hash.slice(1));
+      const linked = want.startsWith('/') ? stars.find((s) => s.p === want) : null;
+      if (linked) { stars.forEach((s) => (s.born = -10)); select(linked, true, 1); touch(); }
+      else if (!reduce) { cam.z = fitZ * 0.72; home(); }
+      if (matchMedia('(pointer: coarse)').matches) $('atlas-hint').textContent = 'Drag to move · pinch to zoom · tap a star';
+      raf = requestAnimationFrame(frame);
+    }
+
+    document.addEventListener('astro:page-load', init);
+    if (document.readyState !== 'loading') init(); else document.addEventListener('DOMContentLoaded', init);
+  </script>
+</Layout>
