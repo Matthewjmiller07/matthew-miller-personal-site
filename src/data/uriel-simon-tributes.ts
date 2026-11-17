@@ -4,6 +4,8 @@
 // in full are presented as summaries with short quotations and links, per the
 // full-text rule: full text where retrievable, a linked entry with the reason
 // stated where paywalled, blocked, or audio-only.
+// The two Makor Rishon memorials (Hacohen & Butler; Shemesh) were paywalled at
+// build time; both became freely readable on 17 November 2026 — their notes say so.
 
 export interface Tribute {
   id: string;
@@ -269,11 +271,12 @@ export const tributes: Tribute[] = [
     body: [
       "“The moral demand that guided Uriel Simon all his life, in academia and in the ma‘abara.” In print the essay ran under the section title בעקבות מוסר הנביאים — “In the Footsteps of the Morality of the Prophets.” Hacohen, a legal scholar at Sha‘arei Mishpat, and Butler, a bibliographer, centre the piece on Simon’s five years teaching new immigrants in the transit camps of the 1950s — a year in a tin hut near the Har-Tuv camp, then some four years in Beersheba — and on his defence of his pupils’ Mizrahi culture against the coercive “melting pot.”",
       "Its heart is a first publication: Simon’s letters to his parents from the early 1960s, preserved in his father’s archive at the National Library. They show his doubts about an academic career, his run-ins with Bar-Ilan bureaucracy, his quarrel with his mother over the religious cost Youth Aliyah exacted from immigrant children, and his concern for struggling students. The essay also recounts his entry into Bar-Ilan’s young Bible department after the dismissal of Prof. Meir Weiss and Nechama Leibowitz’s protest resignation, and closes by calling him an oved Hashem who spread the morality of the prophets.",
+      "The letters are the essay’s spine. To his mother he writes of academic doubt while preparing a course on Samuel, and of his quarrel with her over Youth Aliyah: a Ma’ariv article on the eve of Yom Kippur told of a girl at Kibbutz Maoz Haim whose little sisters were taken from her at sorting, who found no Shabbat and no kosher food and lived on vegetables and tea — Simon calls that not mere administrative disorder but outright violence against children’s souls, and demands a parity sorting committee. From reserve duty he writes of three Mizrahi pupils at the gymnasium who are not integrating — two behind in their studies, a third gifted but showing signs of serious complexes — who would have thrived, he believes, in a school fitted to their needs, like the ones in Beersheba or at Efrata.",
     ],
     sourceUrl: "https://www.makorrishon.co.il/judaism/people-judaism/article/378378",
     image: null,
     imageAlt: null,
-    note: "Summary with a short quotation — the full piece sits behind Makor Rishon’s paywall (or free registration).",
+    note: "Summary with short quotations — the full piece is now freely readable at Makor Rishon (no paywall as of 17 November 2026); read it in full at the link.",
   },
   {
     id: "item",
@@ -286,11 +289,12 @@ export const tributes: Tribute[] = [
     body: [
       "“Uriel Simon used to say that after his death he would ask Ibn Ezra a few questions.” Shemesh, a lecturer in Bar-Ilan’s Bible department, was Simon’s doctoral student and worked under him at the Institute for the History of Jewish Bible Research; her long tribute is at once a student’s memoir and a map of the career. She records his death during Chol HaMoed Sukkot at his home in Jerusalem — the city of his birth and burial — and his last day, spent at the beach with his family; the eulogies were given by his children, Prof. Itamar Simon and Rabbanit Michal Nagen.",
       "She traces how he built Bar-Ilan’s Bible department and the Institute; Ibn Ezra as his intellectual and spiritual model; peshat as a discipline of intellectual honesty; his father, Prof. Akiva Ernst Simon of Brith Shalom; the years teaching new immigrants at the Har-Tuv transit camp and his opposition to the “melting pot”; the co-founding of Oz ve-Shalom and Netivot Shalom, and later Meimad; his books, from המקרא ואנחנו to בקש שלום ורדפהו; the spiritual will he left his grandchildren; and his gift as a teacher. He died, she notes, on the eve of the reading of Vezot HaBracha.",
+      "Shemesh’s portrait turns on two of his sayings. The first is his lesson in seeking the meaningful peshat: when she opened a 1997 Toldot dvar Torah with Malachi’s “I loved Jacob and hated Esau,” he gently corrected her — Genesis, for all its rivalries between brothers, never leaves its heroes inside the rupture: Isaac and Ishmael bury Abraham together, Jacob and Esau bury Isaac, Joseph and his brothers bury Jacob. The second is his spiritual will, dictated to his daughter Michal toward his ninetieth birthday: that his grandchildren be filled with fear of Heaven and love of people, and know that a full life is a life of avodat Hashem — and his insistence, learned among the immigrants, that true absorption means the newcomers give as well as receive, and must never be forced into Ashkenazi ways. In his last months his granddaughter Na’ama asked whether the soul lives on after death; he answered that he hoped so, but had to admit he was not objective.",
     ],
     sourceUrl: "https://www.makorrishon.co.il/judaism/people-judaism/article/378371",
     image: null,
     imageAlt: null,
-    note: "Summary with a short quotation — the full piece sits behind Makor Rishon’s paywall (or free registration).",
+    note: "Summary with short quotations — the full piece is now freely readable at Makor Rishon (no paywall as of 17 November 2026); read it in full at the link.",
   },
   {
     id: "item",
