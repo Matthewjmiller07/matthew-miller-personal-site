@@ -1,0 +1,488 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Two Doors — Daf Yomi Game: Bekhorot 59"
+  description="Bekhorot 59: fourteen lambs, a pen with two doors, and Rava's rule that a tally fit to reach ten exempts. Predict which lambs are tithed, exempt, or left for the next gathering; run the pen yourself; and stamp the lambs a shepherd miscounted."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --night:#10161f; --pen:#1a2330; --line:#33445a; --wool:#ede6d6; --mist:#9fb0c2; --red:#c8432d; --gold:#e6b65a; --grass:#8fc27a; --sky:#7fa8d8; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .t-wool { color: var(--wool) !important; }
+    .t-mist { color: var(--mist) !important; }
+    .t-gold { color: var(--gold) !important; }
+    .t-grass { color: var(--grass) !important; }
+    .t-sky { color: var(--sky) !important; }
+    .t-red { color: #e3735e !important; }
+    a.ref { color: var(--gold) !important; text-decoration: underline; text-underline-offset: 2px; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .he { font-family: 'Frank Ruhl Libre', serif; direction: rtl; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .5rem .8rem; font-size: .92rem; line-height: 1.4; text-align: start; background: transparent; color: var(--wool) !important; }
+    .btn:hover:not(:disabled) { background: var(--pen); }
+    .btn:disabled { cursor: default; opacity: .45; }
+    .btn.on { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); background: var(--pen); opacity: 1; }
+    .btn.ok { background: #1f331e; border-color: var(--grass); opacity: 1; }
+    .btn.no { background: #3d1e19; border-color: var(--red); opacity: 1; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .93rem; line-height: 1.65; margin-top: .75rem; color: var(--wool) !important; }
+    .note.ok { border-color: var(--grass); }
+    .note.no { border-color: var(--red); }
+    .note.tk { border-color: var(--gold); }
+    .card { background: var(--pen); border: 1px solid var(--line); border-radius: .6rem; padding: 1rem; }
+    .row { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+    .yard { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: .5rem; align-items: stretch; }
+    .zone { border: 1px solid var(--line); border-radius: .5rem; padding: .5rem; min-height: 9rem; display: flex; flex-direction: column; gap: .35rem; }
+    .zone.pen { background: #16202b; border: 2px solid #6b4a2b; }
+    .zone h4 { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--mist) !important; text-align: center; }
+    .flock { display: flex; flex-wrap: wrap; gap: .25rem; justify-content: center; align-content: flex-start; }
+    .lamb { width: 1.85rem; height: 1.85rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 700; background: var(--wool); color: #2a2a2a !important; border: 2px solid transparent; transition: transform .3s ease, background .3s ease; position: relative; }
+    .lamb.exempt { border-color: var(--grass); background: #cfe6c4; }
+    .lamb.pending { background: #c7c2b6; border-style: dashed; border-color: #6d6a63; }
+    .lamb.next { background: #bcd0ea; border-color: var(--sky); }
+    .lamb.tithe { background: var(--gold); border-color: var(--red); box-shadow: 0 0 0 2px var(--red); }
+    .lamb.tithe::after { content: ''; position: absolute; inset: 40% -2px auto -2px; height: 3px; background: var(--red); transform: rotate(-20deg); }
+    .lamb.dead { opacity: .35; text-decoration: line-through; }
+    .lamb.pop { animation: pop .35s ease; }
+    @keyframes pop { from { transform: scale(.4); } to { transform: scale(1); } }
+    .meter { font-size: .75rem; text-align: center; color: var(--mist) !important; line-height: 1.4; }
+    .meter b { color: var(--wool) !important; }
+    .door { display: block; text-align: center; font-size: .7rem; color: var(--gold) !important; }
+    .legend span { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem; color: var(--mist) !important; margin-inline-end: .8rem; }
+    .legend .lamb { width: 1rem; height: 1rem; font-size: 0; }
+    .opt { border: 1px solid var(--line); border-radius: 999px; padding: .3rem .7rem; font-size: .85rem; color: var(--wool) !important; background: transparent; }
+    .opt.on { border-color: var(--gold); background: #2c2a1f; }
+    .opt.ok { border-color: var(--grass); background: #1f331e; }
+    .opt.no { border-color: var(--red); background: #3d1e19; }
+    .tape { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: center; }
+    .slot { border: 1px solid var(--line); border-radius: .5rem; padding: .6rem; min-width: 9.5rem; flex: 1 1 9.5rem; max-width: 15rem; background: #16202b; }
+    .bubble { border-radius: .6rem; background: var(--wool); color: #1c1c1c !important; padding: .25rem .6rem; font-size: .9rem; display: inline-block; margin-bottom: .4rem; }
+    .bubble.silent { background: transparent; border: 1px dashed var(--line); color: var(--mist) !important; }
+    .stamp { display: block; width: 100%; margin-top: .25rem; font-size: .8rem; padding: .3rem .5rem; }
+    .goal { display: flex; gap: .5rem; align-items: baseline; font-size: .9rem; color: var(--wool) !important; }
+    .goal i { font-style: normal; width: 1.1rem; display: inline-block; }
+    .rod { height: 5px; background: linear-gradient(90deg, #6b4a2b, #a9784a 70%, var(--red)); border-radius: 3px; }
+    @media (max-width: 520px) { .yard { grid-template-columns: 1fr; } .zone.pen { order: -1; } }
+    @media (prefers-reduced-motion: reduce) { .lamb, .lamb.pop { transition: none !important; animation: none !important; } }
+  </style>
+
+  <div class="min-h-screen" style="background: var(--night);">
+    <main class="max-w-3xl mx-auto px-4 py-10">
+      <p class="text-sm uppercase tracking-widest t-mist"><a href="/daf/" class="ref">Daf Yomi Arcade</a> · Bekhorot 59 · <span class="he">בכורות נ״ט</span></p>
+      <h1 class="frank text-5xl font-black mt-3 t-wool">Two Doors</h1>
+      <p class="mt-3 text-lg t-mist leading-relaxed">
+        To tithe his flock, the owner drives his lambs into a pen and lets them out one at a time under the rod. Every tenth is
+        sacred. But what if the pen has <i>two</i> doors, and the lambs don't all reach ten at the same one? Rava answers with one rule:
+        <span class="he t-gold">מִנְיָן הָרָאוּי פּוֹטֵר</span>, <b class="t-wool">a tally that is fit to reach ten exempts</b>
+        (<a class="ref" href="https://www.sefaria.org/Bekhorot.59b.6" target="_blank" rel="noopener">59b:6</a>).
+        If you were counted at a moment when enough lambs were left to make ten at your door, you're free, even if the ten never came.
+      </p>
+      <div class="rod mt-5"></div>
+
+      <div class="legend mt-4">
+        <span><i class="lamb tithe"></i>tenth: tithe</span>
+        <span><i class="lamb exempt"></i>exempt</span>
+        <span><i class="lamb pending"></i>counted, not yet fit</span>
+        <span><i class="lamb next"></i>waits for the next gathering</span>
+      </div>
+
+      <!-- 1. Rava's six endings -->
+      <section class="stn mt-6" aria-labelledby="h1">
+        <h2 id="h1" class="frank text-3xl font-bold t-wool">1. Fourteen lambs, two doors</h2>
+        <p class="mt-2 t-mist leading-relaxed">
+          Rava gives three ways fourteen lambs can split between the doors, and for each, two endings
+          (<a class="ref" href="https://www.sefaria.org/Bekhorot.59b.12-15" target="_blank" rel="noopener">59b:12–15</a>).
+          The setup has already happened. Read the ending, call the fate of each group, then let them out.
+        </p>
+        <div class="row mt-4" id="scTabs" role="tablist"></div>
+        <div class="card mt-3">
+          <p id="scSetup" class="t-wool"></p>
+          <div id="scYard" class="yard mt-3"></div>
+          <p id="scEnding" class="mt-3 t-gold"></p>
+          <div id="scPreds" class="mt-3 flex flex-col gap-2"></div>
+          <div class="row mt-3">
+            <button class="btn" id="scGo">Let them out</button>
+            <span class="t-mist text-sm" id="scScore"></span>
+          </div>
+          <div id="scFb" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- 2. The pen workshop -->
+      <section class="stn" aria-labelledby="h2">
+        <h2 id="h2" class="frank text-3xl font-bold t-wool">2. Run the pen</h2>
+        <p class="mt-2 t-mist leading-relaxed">
+          Now you drive the lambs. Pick a flock, send lambs through a door one at a time, let a lamb die if the case calls for it,
+          and end the gathering when you're done. Each lamb is judged the moment it passes: its door's count plus the lambs still in the pen.
+          If that reaches ten, it's fit and exempt.
+        </p>
+        <div class="row mt-4" id="wsTabs"></div>
+        <p id="wsIntro" class="mt-3 t-wool leading-relaxed"></p>
+        <div class="card mt-3">
+          <div id="wsYard" class="yard"></div>
+          <div class="row mt-3 justify-center">
+            <button class="btn" id="wsW">⟵ West door</button>
+            <button class="btn" id="wsE">East door ⟶</button>
+            <button class="btn" id="wsDiePen">A lamb in the pen dies</button>
+            <button class="btn" id="wsDieCnt">A counted lamb dies</button>
+            <button class="btn" id="wsClose">End the gathering</button>
+            <button class="btn" id="wsReset">Reset</button>
+          </div>
+          <p id="wsTally" class="mt-3 text-sm t-mist text-center"></p>
+          <div id="wsGoals" class="mt-3 flex flex-col gap-1"></div>
+          <div id="wsFb" aria-live="polite"></div>
+        </div>
+        <p class="note tk text-sm">The pen runs Rava's rule as one mechanical test. The Gemara rules on the cases in the goals; if you find
+          some new way to split a flock, that's this game's reading, not a ruling.</p>
+      </section>
+
+      <!-- 3. The shepherd's slip -->
+      <section class="stn" aria-labelledby="h3">
+        <h2 id="h3" class="frank text-3xl font-bold t-wool">3. The shepherd's slip</h2>
+        <p class="mt-2 t-mist leading-relaxed">
+          Counting out loud is easy to get wrong. The daf weighs what happens when the shepherd calls the ninth lamb "tenth!"
+          (<a class="ref" href="https://www.sefaria.org/Bekhorot.59a.3-59b.5" target="_blank" rel="noopener">59a:3–59b:5</a>).
+          Rava holds that a real tenth left standing in the pen is holy on its own, even though it never walked out
+          (<a class="ref" href="https://www.sefaria.org/Bekhorot.59a.2" target="_blank" rel="noopener">59a:2</a>).
+          Stamp each lamb on the tape.
+        </p>
+        <div class="card mt-4">
+          <p class="text-sm t-mist" id="slProg"></p>
+          <p class="mt-1 t-wool" id="slTitle"></p>
+          <div class="tape mt-3" id="slTape"></div>
+          <div class="row mt-3">
+            <button class="btn" id="slCheck">Stamp it</button>
+            <button class="btn" id="slNext" hidden>Next tape ⟶</button>
+          </div>
+          <div id="slFb" aria-live="polite"></div>
+        </div>
+
+        <div class="card mt-5" id="kvCard">
+          <h3 class="frank text-xl font-bold t-wool">Break the kal va-ḥomer</h3>
+          <p class="mt-2 t-wool leading-relaxed text-sm">
+            Rabbi Shimon ben Yehuda, in the name of Rabbi Shimon, says a ninth lamb called "tenth" stays ordinary unless the real tenth was called
+            "ninth." His logic (<a class="ref" href="https://www.sefaria.org/Bekhorot.59b.1-2" target="_blank" rel="noopener">59b:1–2</a>):
+            the <b>eleventh</b>, called "tenth," becomes a peace offering only if the tenth's name was taken off it. So surely the <b>ninth</b>, which only
+            waits for a blemish, needs that too. The Gemara gives <b>two</b> ways the ninth and the eleventh differ. Pick both.
+          </p>
+          <div id="kvOpts" class="flex flex-col gap-2 mt-3"></div>
+          <div id="kvFb" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- 4. Learn -->
+      <section class="stn" aria-labelledby="h4">
+        <h2 id="h4" class="frank text-3xl font-bold t-wool">Learn the real daf</h2>
+        <ul class="mt-3 space-y-2 t-wool list-disc ps-5">
+          <li><a class="ref" href="https://www.sefaria.org/Bekhorot.59a" target="_blank" rel="noopener">Bekhorot 59a</a> and <a class="ref" href="https://www.sefaria.org/Bekhorot.59b" target="_blank" rel="noopener">59b</a> on Sefaria</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Bekhorot.59b.12" target="_blank" rel="noopener">Rashi</a> (40 comments) on the two doors, including his line that the six left in the pen "can be thrown here or there," which is what makes the tally only <i>possibly</i> fit</li>
+          <li><a class="ref" href="https://www.sefaria.org/Ktav_Yad_Rashi_on_Bekhorot.59a.1" target="_blank" rel="noopener">Ktav Yad Rashi</a> (38), <a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Bekhorot.59a.1" target="_blank" rel="noopener">Rabbeinu Gershom</a> (29) and <a class="ref" href="https://www.sefaria.org/Steinsaltz_on_Bekhorot.59a.1" target="_blank" rel="noopener">Steinsaltz</a> (25)</li>
+          <li>The ruling in the Rambam: <a class="ref" href="https://www.sefaria.org/Mishneh_Torah,_Firstlings.8.3" target="_blank" rel="noopener">Mishneh Torah, Firstlings 8</a></li>
+          <li>The mishna behind the slips: <a class="ref" href="https://www.sefaria.org/Mishnah_Bekhorot.9.8" target="_blank" rel="noopener">Mishna Bekhorot 9:8</a> (the ninth, tenth and eleventh), and the verse <a class="ref" href="https://www.sefaria.org/Leviticus.27.32" target="_blank" rel="noopener">Lev. 27:32</a>, "whatever passes under the rod," which Rava reads as "not what has already passed"</li>
+          <li>The opening of the amud: Abba Elazar ben Gomel's tithe "by estimate and by thought," and Rabbi Yosei son of Rabbi Yehuda, for whom an uncounted animal set aside as tithe is still tithe (<a class="ref" href="https://www.sefaria.org/Bekhorot.59a.1" target="_blank" rel="noopener">59a:1</a>)</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <script is:inline>
+  (() => {
+    const RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const $ = (id) => document.getElementById(id);
+    const ref = (r, label) => `<a class="ref" href="https://www.sefaria.org/${r}" target="_blank" rel="noopener">${label}</a>`;
+
+    // ---------- the pen engine ----------
+    // A lamb is judged when it passes: if its door has reached ten it is the tithe (and its door-group is tithed, so exempt);
+    // otherwise, if its door's count + lambs still in the pen >= 10, it was counted in a tally fit to reach ten: exempt.
+    // Otherwise it is pending; when the gathering ends, pending and penned lambs wait for the next gathering.
+    function makePen(n) {
+      const lambs = [];
+      for (let i = 1; i <= n; i++) lambs.push({ id: i, where: 'pen', status: 'pen', dead: false });
+      return { lambs, doors: { W: { count: 0, cur: [] }, E: { count: 0, cur: [] } }, closed: false, events: [] };
+    }
+    const inPen = (p) => p.lambs.filter((l) => l.where === 'pen' && !l.dead);
+    function exit(p, d) {
+      const left = inPen(p);
+      if (!left.length || p.closed) return null;
+      const l = left[0];
+      const door = p.doors[d];
+      l.where = d; door.count++; l.num = door.count; door.cur.push(l);
+      if (door.count === 10) {
+        door.cur.forEach((x) => { x.status = 'exempt'; });
+        l.status = 'tithe';
+        door.count = 0; door.cur = [];
+        p.events.push('tithe');
+      } else {
+        l.status = door.count + inPen(p).length >= 10 ? 'exempt' : 'pending';
+      }
+      return l;
+    }
+    function diePen(p) { const l = inPen(p).pop(); if (l) { l.dead = true; l.status = 'dead'; p.events.push('diePen'); } return l; }
+    function dieCounted(p) {
+      const l = p.lambs.filter((x) => x.where !== 'pen' && !x.dead && x.status !== 'tithe').pop();
+      if (l) { l.dead = true; p.events.push('dieCounted'); }
+      return l;
+    }
+    function close(p) {
+      p.lambs.forEach((l) => { if (!l.dead && (l.status === 'pending' || l.status === 'pen')) l.status = 'next'; });
+      p.closed = true;
+    }
+    function tally(p) {
+      const t = { tithe: 0, exempt: 0, next: 0, dead: 0 };
+      p.lambs.forEach((l) => {
+        if (l.dead) t.dead++;
+        if (l.status === 'tithe') t.tithe++;
+        else if (l.status === 'exempt') t.exempt++;
+        else if (l.status === 'next') t.next++;
+      });
+      return t;
+    }
+    function lambHtml(l, fresh) {
+      const cls = ['lamb', l.status === 'pen' ? '' : l.status, l.dead ? 'dead' : '', fresh ? 'pop' : ''].join(' ');
+      const lab = { pen: 'in the pen', exempt: 'exempt', pending: 'counted, not yet fit', next: 'waits for the next gathering', tithe: 'tithe', dead: 'died' }[l.status];
+      return `<span class="${cls}" title="Lamb ${l.id}: ${lab}${l.dead ? ' (died)' : ''}" aria-label="Lamb ${l.id}: ${lab}">${l.where === 'pen' ? '' : l.num}</span>`;
+    }
+    function renderPen(p, el, opts = {}) {
+      const doors = opts.doors || ['W', 'E'];
+      const penCount = inPen(p).length;
+      const yard = (d, name) => {
+        const ls = p.lambs.filter((l) => l.where === d);
+        const enabled = doors.includes(d);
+        const c = p.doors[d].count;
+        const meter = !enabled ? 'door shut' : p.closed ? 'gathering over' :
+          `count <b>${c}</b> + in pen <b>${penCount}</b> = <b>${c + penCount}</b> ${c + penCount >= 10 ? '<span class="t-grass">fit ✓</span>' : '<span class="t-red">not fit</span>'}`;
+        return `<div class="zone" style="${enabled ? '' : 'opacity:.45'}"><h4>${name}</h4><div class="flock">${ls.map((l) => lambHtml(l, l === opts.fresh)).join('')}</div><div class="meter mt-auto">${meter}</div></div>`;
+      };
+      const pen = p.lambs.filter((l) => l.where === 'pen');
+      el.innerHTML = yard('W', 'West door') +
+        `<div class="zone pen"><h4>The pen · ${penCount} inside</h4><div class="flock">${pen.map((l) => lambHtml(l)).join('')}</div><span class="door mt-auto">⟵ two doors ⟶</span></div>` +
+        yard('E', 'East door');
+    }
+    const sleep = (ms) => new Promise((r) => setTimeout(r, RM ? 0 : ms));
+
+    // ---------- 1. Rava's six endings ----------
+    const FATE = { ex: 'Exempt', nx: 'Waits for the next gathering', ti: 'One is the tithe, the rest exempt' };
+    const SC = [
+      { tab: '6 · 4 · 4 → six', ref: 'Bekhorot.59b.12', setup: 'Six lambs went out the east door, then four out the west door. Four are still in the pen.',
+        ending: 'The last four walk out the east door, the door the six used.', script: [['E', 6], ['W', 4]], end: [['E', 4]],
+        groups: [['First six (east)', 'ex'], ['Four (west)', 'nx'], ['Last four (east)', 'ti']],
+        why: 'The east door reaches ten, so the last one out is the tithe and the six are tithed with it. The west four left when only four were in the pen behind them: 4 + 4 can never make ten at the west door, so they wait (Rashi).' },
+      { tab: '6 · 4 · 4 → not', ref: 'Bekhorot.59b.13', setup: 'Six lambs went out the east door, then four out the west door. Four are still in the pen.',
+        ending: 'The last four walk out the west door instead. (Rava says the same if they just stay in the pen.)', script: [['E', 6], ['W', 4]], end: [['W', 4]],
+        groups: [['First six (east)', 'ex'], ['Four (west)', 'nx'], ['Last four (west)', 'nx']],
+        why: 'No door reaches ten. The six went out while eight were still inside, so their tally was fit: exempt. The four and the four (<span class="he">אַרְבָּעָה אַרְבָּעָה</span>) only make eight together, so they join the next gathering.' },
+      { tab: '4 · 6 · 4 → six', ref: 'Bekhorot.59b.14', setup: 'Four lambs went out the east door, then six out the west door. Four are still in the pen.',
+        ending: 'The last four walk out the west door, the door the six used.', script: [['E', 4], ['W', 6]], end: [['W', 4]],
+        groups: [['First four (east)', 'ex'], ['Six (west)', 'ex'], ['Last four (west)', 'ti']],
+        why: 'The west door reaches ten: the tenth is the tithe. The east four left while ten were still inside, a tally fit to reach ten, so they are exempt too, even though the ten went the other way.' },
+      { tab: '4 · 6 · 4 → not', ref: 'Bekhorot.59b.14', setup: 'Four lambs went out the east door, then six out the west door. Four are still in the pen.',
+        ending: 'The last four walk out the east door instead. (Or they stay in the pen.)', script: [['E', 4], ['W', 6]], end: [['E', 4]],
+        groups: [['First four (east)', 'ex'], ['Six (west)', 'ex'], ['Last four (east)', 'nx']],
+        why: 'Both earlier groups were fit when they left: the four with ten behind them, the six with four behind them. Both are exempt with no tithe taken at all. The last four wait for the next gathering.' },
+      { tab: '4 · 4 · 6 → one door', ref: 'Bekhorot.59b.15', setup: 'Four lambs went out the east door, then four out the west door. Six are still in the pen.',
+        ending: 'The six walk out together through one door, here the east.', script: [['E', 4], ['W', 4]], end: [['E', 6]],
+        groups: [['First four (east)', 'ex'], ['Four (west)', 'ex'], ['The six (east)', 'ti']],
+        why: 'The east door reaches ten and the tenth is the tithe. The west four are exempt too: when they left, six were inside that could have come their way.' },
+      { tab: '4 · 4 · 6 → stay', ref: 'Bekhorot.59b.15', setup: 'Four lambs went out the east door, then four out the west door. Six are still in the pen.',
+        ending: 'The six stay in the pen.', script: [['E', 4], ['W', 4]], end: [],
+        groups: [['First four (east)', 'ex'], ['Four (west)', 'ex'], ['The six (in the pen)', 'nx']],
+        why: 'Both fours are exempt, even though six can only complete <i>one</i> of them. That\'s the point (<a class="ref" href="https://www.sefaria.org/Bekhorot.59b.16" target="_blank" rel="noopener">59b:16</a>): you might think only a <i>certain</i> tally fit to reach ten exempts, and here the six "fit here and fit there." Rava teaches that even a <b>possibly</b> fit tally exempts. The six wait.' },
+    ];
+    let sc = 0, scPen, scPred = [], scDone = new Set(), scRight = 0;
+    function loadSc(i) {
+      sc = i; const s = SC[i];
+      scPen = makePen(14);
+      s.script.forEach(([d, n]) => { for (let k = 0; k < n; k++) exit(scPen, d); });
+      scPred = s.groups.map(() => null);
+      $('scSetup').textContent = s.setup;
+      $('scEnding').textContent = s.ending;
+      renderPen(scPen, $('scYard'));
+      $('scPreds').innerHTML = s.groups.map(([g], gi) =>
+        `<div class="row"><span class="t-wool text-sm" style="min-width:9.5rem">${g}</span>${Object.entries(FATE).map(([k, v]) =>
+          `<button class="opt" data-g="${gi}" data-k="${k}" aria-pressed="false">${v}</button>`).join('')}</div>`).join('');
+      $('scFb').innerHTML = '';
+      $('scGo').disabled = false;
+      [...$('scTabs').children].forEach((b, bi) => b.classList.toggle('on', bi === i));
+    }
+    $('scTabs').innerHTML = SC.map((s, i) => `<button class="btn" role="tab" data-i="${i}">${s.tab}</button>`).join('');
+    $('scTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) loadSc(+b.dataset.i); });
+    $('scPreds').addEventListener('click', (e) => {
+      const b = e.target.closest('.opt'); if (!b || $('scGo').disabled) return;
+      const g = +b.dataset.g; scPred[g] = b.dataset.k;
+      $('scPreds').querySelectorAll(`.opt[data-g="${g}"]`).forEach((o) => { o.classList.toggle('on', o === b); o.setAttribute('aria-pressed', o === b); });
+    });
+    $('scGo').addEventListener('click', async () => {
+      if (scPred.some((x) => !x)) { $('scFb').innerHTML = '<p class="note tk">Call a fate for every group first.</p>'; return; }
+      $('scGo').disabled = true;
+      const s = SC[sc];
+      for (const [d, n] of s.end) for (let k = 0; k < n; k++) { const l = exit(scPen, d); renderPen(scPen, $('scYard'), { fresh: l }); await sleep(260); }
+      close(scPen); renderPen(scPen, $('scYard'));
+      let right = 0;
+      s.groups.forEach(([, ans], gi) => {
+        $('scPreds').querySelectorAll(`.opt[data-g="${gi}"]`).forEach((o) => {
+          if (o.dataset.k === ans) o.classList.add('ok'); else if (o.classList.contains('on')) o.classList.add('no');
+        });
+        if (scPred[gi] === ans) right++;
+      });
+      const all = right === s.groups.length;
+      if (!scDone.has(sc)) { scDone.add(sc); if (all) scRight++; }
+      $('scScore').textContent = `Solved first try: ${scRight} / ${SC.length}`;
+      $('scFb').innerHTML = `<p class="note ${all ? 'ok' : 'no'}">${all ? 'Right.' : `${right} of ${s.groups.length}.`} ${s.why} ${ref(s.ref, '(' + s.ref.replace('Bekhorot.', '') + ')')}</p>`;
+    });
+    loadSc(0);
+
+    // ---------- 2. Workshop ----------
+    const WS = [
+      { tab: 'Ten lambs, one door', n: 10, doors: ['E'], ref: 'Bekhorot.59b.11',
+        intro: 'The baraita that backs Rava: ten lambs in the pen, the owner counts five out, and one lamb dies. Which one died makes all the difference.',
+        goals: [
+          { t: 'A <b>counted</b> lamb dies after five, and you still tithe a tenth ("he keeps counting and completes over them")', ok: (p, t) => p.events.includes('dieCounted') && !p.events.includes('diePen') && t.tithe === 1 },
+          { t: 'A lamb <b>still in the pen</b> dies after five: the five counted go free, the four left wait', ok: (p, t) => p.events.includes('diePen') && !p.events.includes('dieCounted') && t.exempt === 5 && t.next === 4 && t.tithe === 0 },
+        ] },
+      { tab: 'Fourteen lambs, two doors', n: 14, doors: ['W', 'E'], ref: 'Bekhorot.59b.12-15',
+        intro: 'Rebuild Rava\'s cases with your own hands. Each goal is one of his endings.',
+        goals: [
+          { t: 'Tithe one lamb and exempt all thirteen others', ok: (p, t) => t.tithe === 1 && t.exempt === 13 },
+          { t: 'Tithe nothing, yet exempt ten; four wait', ok: (p, t) => p.closed && t.tithe === 0 && t.exempt === 10 && t.next === 4 },
+          { t: 'Exempt six and leave eight for the next gathering', ok: (p, t) => p.closed && t.tithe === 0 && t.exempt === 6 && t.next === 8 },
+          { t: 'Exempt two fours and leave six in the pen', ok: (p, t) => p.closed && t.tithe === 0 && t.exempt === 8 && t.next === 6 && inPen(p).length === 6 },
+        ] },
+      { tab: 'Fifteen lambs', n: 15, doors: ['E'], ref: 'Bekhorot.59b.17',
+        intro: 'Rava: with fifteen lambs, the owner may not pick ten, pen just those, tithe one and call the other five exempt. All fifteen go in; ten come out under the rod; the tenth is tithe. Do it.',
+        goals: [
+          { t: 'One tithe, nine exempt, and the remaining five join the next gathering', ok: (p, t) => p.closed && t.tithe === 1 && t.exempt === 9 && t.next === 5 },
+        ] },
+    ];
+    let ws = 0, wsPen, wsHit = new Set();
+    function wsRender(fresh) {
+      const w = WS[ws];
+      renderPen(wsPen, $('wsYard'), { doors: w.doors, fresh });
+      const t = tally(wsPen);
+      $('wsTally').innerHTML = `Tithe <b class="t-gold">${t.tithe}</b> · Exempt <b class="t-grass">${t.exempt}</b> · Waiting <b class="t-sky">${t.next}</b> · Died <b class="t-red">${t.dead}</b>`;
+      const left = inPen(wsPen).length;
+      $('wsW').disabled = wsPen.closed || !w.doors.includes('W') || !left;
+      $('wsE').disabled = wsPen.closed || !w.doors.includes('E') || !left;
+      $('wsDiePen').disabled = wsPen.closed || !left;
+      $('wsDieCnt').disabled = wsPen.closed || !wsPen.lambs.some((l) => l.where !== 'pen' && !l.dead && l.status !== 'tithe');
+      $('wsClose').disabled = wsPen.closed;
+      w.goals.forEach((g, gi) => { if (g.ok(wsPen, t)) wsHit.add(ws + ':' + gi); });
+      $('wsGoals').innerHTML = w.goals.map((g, gi) => {
+        const hit = wsHit.has(ws + ':' + gi);
+        return `<div class="goal"><i class="${hit ? 't-grass' : 't-mist'}">${hit ? '✓' : '○'}</i><span>${g.t}</span></div>`;
+      }).join('') + `<p class="text-xs t-mist mt-1">${ref(w.ref, w.ref.replace('Bekhorot.', 'Bekhorot '))}</p>`;
+    }
+    function wsLoad(i) {
+      ws = i; wsPen = makePen(WS[i].n);
+      $('wsIntro').innerHTML = WS[i].intro; $('wsFb').innerHTML = '';
+      [...$('wsTabs').children].forEach((b, bi) => b.classList.toggle('on', bi === i));
+      wsRender();
+    }
+    $('wsTabs').innerHTML = WS.map((w, i) => `<button class="btn" data-i="${i}">${w.tab}</button>`).join('');
+    $('wsTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) wsLoad(+b.dataset.i); });
+    $('wsW').onclick = () => wsRender(exit(wsPen, 'W'));
+    $('wsE').onclick = () => wsRender(exit(wsPen, 'E'));
+    $('wsDiePen').onclick = () => { diePen(wsPen); wsRender(); };
+    $('wsDieCnt').onclick = () => { dieCounted(wsPen); wsRender(); };
+    $('wsClose').onclick = () => {
+      close(wsPen); wsRender();
+      const done = WS[ws].goals.every((g, gi) => wsHit.has(ws + ':' + gi));
+      $('wsFb').innerHTML = done ? '<p class="note ok">Every goal for this flock is lit. Try another flock.</p>' : '<p class="note tk">Gathering over. Reset to try for the other goals.</p>';
+    };
+    $('wsReset').onclick = () => wsLoad(ws);
+    wsLoad(0);
+
+    // ---------- 3. The shepherd's slip ----------
+    const ST = { ti: 'Tithe: goes on the altar', bl: 'Holy: eaten only once blemished', sh: 'Peace offering', ch: 'Ordinary (ḥullin)', ex: 'Exempt', ow: 'Still owe tithe' };
+    const CALL = { t: ['עֲשִׂירִי!', '"Tenth!"'], n: ['תְּשִׁיעִי!', '"Ninth!"'], s: null };
+    const SL = [
+      { title: 'He calls the ninth "tenth." The real tenth walks out and he says nothing.', ref: 'Bekhorot.59a.3', who: 'The baraita',
+        slots: [{ n: 9, call: 't', ans: 'bl', opts: ['ti', 'bl', 'ch'] }, { n: 10, call: 's', note: 'walks out', ans: 'ti', opts: ['ti', 'bl', 'ch'] }],
+        why: 'The ninth isn\'t offered, but having been called "tenth" it can be eaten only after a blemish. The tenth is the tithe even unspoken: it was chosen as it came out. Rava wanted to learn from here that a tenth left in the pen is holy too; the Gemara answers that this tenth at least came out, or was pointed at.' },
+      { title: 'He calls the ninth "tenth." Then the real tenth dies in the pen.', ref: 'Bekhorot.59a.5', who: 'The baraita',
+        slots: [{ n: 9, call: 't', ans: 'bl', opts: ['ti', 'bl', 'ch'] }, { n: '1–8', call: 's', note: 'already counted', ans: 'ex', opts: ['ex', 'ow'] }],
+        why: 'The ninth waits for a blemish, and the rest are exempt. Is that because the tenth was holy in the pen, as Rava says? Not proven: they may be exempt simply because they were counted in a tally fit to reach ten (59a:6).' },
+      { title: 'He calls the ninth "tenth." The real tenth stays in the pen.', ref: 'Bekhorot.59a.7', who: 'The baraita',
+        slots: [{ n: 9, call: 't', ans: 'bl', opts: ['ti', 'bl', 'ch'] }, { n: 10, call: 's', note: 'stays in the pen', ans: 'ti', opts: ['ti', 'bl', 'ch'] }],
+        why: 'Here is Rava\'s source at last: the tenth is the tithe though it never left the pen. But another baraita calls this ninth ordinary, and a tanna told Rav Sheshet whose that is: Rabbi Shimon ben Yehuda\'s.' },
+      { title: 'According to Rabbi Shimon ben Yehuda: he calls the ninth "tenth," and the tenth walks out silent.', ref: 'Bekhorot.59b.1', who: 'Rabbi Shimon ben Yehuda',
+        slots: [{ n: 9, call: 't', ans: 'ch', opts: ['ti', 'bl', 'ch'] }, { n: 10, call: 's', note: 'walks out', ans: 'ti', opts: ['ti', 'bl', 'ch'] }],
+        why: 'For him the ninth stays ordinary, eaten even without a blemish, because the name "tenth" was never taken off the real tenth.' },
+      { title: 'According to Rabbi Shimon ben Yehuda: he calls the ninth "tenth" and the tenth "ninth."', ref: 'Bekhorot.59b.1', who: 'Rabbi Shimon ben Yehuda',
+        slots: [{ n: 9, call: 't', ans: 'bl', opts: ['ti', 'bl', 'ch'] }, { n: 10, call: 'n', ans: 'ti', opts: ['ti', 'bl', 'ch'] }],
+        why: 'Now the tenth\'s name was taken off it, so even Rabbi Shimon ben Yehuda agrees the ninth is holy and waits for a blemish. The tenth is the tithe whatever it was called.' },
+      { title: 'He calls the ninth, the tenth and the eleventh all "tenth."', ref: 'Mishnah_Bekhorot.9.8', who: 'The mishna (60a), cited on 59b:2',
+        slots: [{ n: 10, call: 't', ans: 'ti', opts: ['ti', 'sh', 'ch'] }, { n: 11, call: 't', ans: 'ch', opts: ['ti', 'sh', 'ch'] }],
+        why: 'The eleventh is not consecrated: "wherever the name of the tenth was not removed from the tenth, the eleventh is not consecrated."' },
+      { title: 'He calls the ninth "tenth," the tenth "ninth," and the eleventh "tenth."', ref: 'Mishnah_Bekhorot.9.8', who: 'The mishna (60a)',
+        slots: [{ n: 9, call: 't', ans: 'bl', opts: ['ti', 'bl', 'sh', 'ch'] }, { n: 10, call: 'n', ans: 'ti', opts: ['ti', 'bl', 'sh', 'ch'] }, { n: 11, call: 't', ans: 'sh', opts: ['ti', 'bl', 'sh', 'ch'] }],
+        why: 'All three are holy, each its own way: the ninth eaten once blemished, the tenth the tithe, the eleventh a peace offering (breast and thigh to the priest).' },
+    ];
+    let sl = 0, slPick = [], slScore = 0;
+    function slLoad() {
+      const r = SL[sl]; slPick = r.slots.map(() => null);
+      $('slProg').textContent = `Tape ${sl + 1} of ${SL.length} · ${r.who} · stamped right: ${slScore}`;
+      $('slTitle').innerHTML = `${r.title} ${ref(r.ref, '(' + r.ref.replace('Mishnah_Bekhorot.', 'Mishna Bekhorot ').replace('Bekhorot.', '') + ')')}`;
+      $('slTape').innerHTML = r.slots.map((s, si) => {
+        const c = CALL[s.call];
+        const bub = c ? `<span class="bubble"><span class="he">${c[0]}</span> ${c[1]}</span>` : `<span class="bubble silent">… ${s.note || 'silent'}</span>`;
+        return `<div class="slot"><p class="t-gold text-sm font-bold">Lamb ${s.n}${c && s.note ? ' · ' + s.note : ''}</p>${bub}${s.opts.map((k) => `<button class="opt stamp" data-s="${si}" data-k="${k}">${ST[k]}</button>`).join('')}</div>`;
+      }).join('');
+      $('slFb').innerHTML = ''; $('slCheck').hidden = false; $('slNext').hidden = true;
+    }
+    $('slTape').addEventListener('click', (e) => {
+      const b = e.target.closest('.opt'); if (!b || !$('slNext').hidden) return;
+      const s = +b.dataset.s; slPick[s] = b.dataset.k;
+      $('slTape').querySelectorAll(`.opt[data-s="${s}"]`).forEach((o) => o.classList.toggle('on', o === b));
+    });
+    $('slCheck').onclick = () => {
+      if (slPick.some((x) => !x)) { $('slFb').innerHTML = '<p class="note tk">Stamp every lamb on the tape.</p>'; return; }
+      const r = SL[sl]; let right = 0;
+      r.slots.forEach((s, si) => {
+        $('slTape').querySelectorAll(`.opt[data-s="${si}"]`).forEach((o) => {
+          if (o.dataset.k === s.ans) o.classList.add('ok'); else if (o.classList.contains('on')) o.classList.add('no');
+        });
+        if (slPick[si] === s.ans) right++;
+      });
+      const all = right === r.slots.length; if (all) slScore++;
+      $('slFb').innerHTML = `<p class="note ${all ? 'ok' : 'no'}">${all ? 'Right.' : `${right} of ${r.slots.length}.`} ${r.why}</p>`;
+      $('slCheck').hidden = true;
+      $('slNext').hidden = false;
+      $('slNext').textContent = sl < SL.length - 1 ? 'Next tape ⟶' : 'Start over';
+      $('slProg').textContent = `Tape ${sl + 1} of ${SL.length} · ${r.who} · stamped right: ${slScore}`;
+    };
+    $('slNext').onclick = () => { if (sl < SL.length - 1) sl++; else { sl = 0; slScore = 0; } slLoad(); };
+    slLoad();
+
+    // ---------- kal va-chomer ----------
+    const KV = [
+      { t: 'The eleventh takes on a stringent holiness (it goes on the altar as a peace offering); the ninth only waits for a blemish. A lighter holiness can take hold more easily.', ok: true, ref: 'Bekhorot.59b.3' },
+      { t: 'The eleventh is called after the tenth has already come out and been chosen; the ninth is called while the tenth is still in the pen, not yet chosen.', ok: true, ref: 'Bekhorot.59b.4-5' },
+      { t: 'The ninth never passed under the rod, so its call doesn\'t count.', ok: false },
+      { t: 'The eleventh was counted in a tally fit to reach ten, so it is exempt.', ok: false },
+    ];
+    const kvPick = new Set(); let kvDone = false;
+    $('kvOpts').innerHTML = KV.map((k, i) => `<button class="btn" data-i="${i}" aria-pressed="false">${k.t}</button>`).join('') + '<button class="btn" id="kvGo" style="align-self:flex-start">Check</button>';
+    $('kvOpts').addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b || kvDone) return;
+      if (b.id === 'kvGo') {
+        if (kvPick.size !== 2) { $('kvFb').innerHTML = '<p class="note tk">Pick exactly two.</p>'; return; }
+        kvDone = true;
+        let right = 0;
+        $('kvOpts').querySelectorAll('button[data-i]').forEach((o) => {
+          const k = KV[+o.dataset.i];
+          if (k.ok) o.classList.add('ok'); else if (kvPick.has(+o.dataset.i)) o.classList.add('no');
+          if (k.ok && kvPick.has(+o.dataset.i)) right++;
+        });
+        $('kvFb').innerHTML = `<p class="note ${right === 2 ? 'ok' : 'no'}">${right === 2 ? 'Both.' : `${right} of 2.`} The Gemara answers the kal va-ḥomer twice: "that claim itself supports the opposite" (${ref('Bekhorot.59b.3', '59b:3')}), and the ninth is sanctified <i>before</i> any tenth has been picked (${ref('Bekhorot.59b.4-5', '59b:4–5')}). Then: "there is nothing more to add." Rabbi Shimon ben Yehuda's view is rejected, and the ninth called "tenth" is holy even if the tenth keeps its name.</p>`;
+        return;
+      }
+      const i = +b.dataset.i;
+      if (kvPick.has(i)) kvPick.delete(i); else kvPick.add(i);
+      b.classList.toggle('on', kvPick.has(i)); b.setAttribute('aria-pressed', kvPick.has(i));
+    });
+  })();
+  </script>
+</Layout>
