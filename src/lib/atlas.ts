@@ -72,7 +72,7 @@ const RULES: [RegExp, string][] = [
   [/^\/(zmanim-widget|3d-print-tools\/leshem-yichud|calendars)(\/|$)/, 'practice'],
   [/^\/(mega|mega-siddur|siddur|mega-mishnah|mega-maimonides|omer|zmanim|zmanim-watchface|bracha|kosher-scanner|kashrus-publications|cheese|tefillin-trials|jewish-learning-hub|moreh|coffee)$/, 'practice'],
   [/^\/(israel|kolnoa|balashon|aptonyms)(\/|$)/, 'israel'],
-  [/^\/(kosher-cafes|imported-foods|tourism-library|oleh-car|kids-in-wartime|lost-in-translation|trees)$/, 'israel'],
+  [/^\/(kosher-cafes|imported-foods|tourism-library|oleh-car|kids-in-wartime|lost-in-translation|trees|produce)$/, 'israel'],
   [/^\/(air-quality|arxiv-feed|chess-puzzle|chicago-pulse|crypto-vibes|github-trending|hn-live|iss-now|live-sports|on-this-day|quake-watch|radio-world|sky-above|solar-watch|wiki-pulse|world-pulse|weather|weather-avatar)$/, 'pulse'],
   [/^\/(art|3d|3d-print-tools)(\/|$)/, 'studio'],
   [/^\/(catapult|color-by-number|micrography|ai-matthew|face-demo|Gucci|localopoly|business-card-calendar|business-card-designer|videos)$/, 'studio'],
@@ -87,7 +87,7 @@ const BRIGHT: Record<string, 2 | 3> = {
   '/daf': 3, '/mega': 3, '/mega-bible': 3, '/mega-talmud': 2, '/mega-siddur': 2, '/mega-mishnah': 2,
   '/mega-maimonides': 2, '/transcriptions': 3, '/search': 2, '/scp': 2, '/sourcesheets': 2,
   '/rav-asher-weiss': 2, '/parasha': 3, '/painted-torah': 2, '/929': 2, '/genealogies': 2,
-  '/israel': 3, '/kolnoa': 2, '/world-pulse': 3, '/zmanim': 3, '/siddur': 2, '/art': 2, '/3d': 3,
+  '/produce': 2, '/israel': 3, '/kolnoa': 2, '/world-pulse': 3, '/zmanim': 3, '/siddur': 2, '/art': 2, '/3d': 3,
   '/micrography': 2, '/shas-art': 2, '/about': 3, '/projects': 2, '/newsletter': 3, '/writings': 2,
   '/services': 2, '/parenting': 2, '/kids': 2, '/ross': 2, '/videos': 2, '/books': 2, '/calendars': 2,
   '/warmhouse': 2, '/literary-bible': 2, '/phds-on-the-parsha': 2,
@@ -136,6 +136,7 @@ const KEYWORDS: Record<string, string> = {
   '/moreh': 'rambam maimonides guide for the perplexed',
   '/rav-nachman': 'breslov rebbe nachman',
   '/transcriptions': 'shiur shiurim torah lectures',
+  '/produce': 'supermarket shuk fruit vegetables yerakot peirot hebrew names 3d',
 };
 
 const PAGES_DIR = path.join(process.cwd(), 'src', 'pages');

@@ -27,6 +27,14 @@ Keep the desk current as part of normal work, without being asked:
   while any `/newsletter/<slug>/` link in the email isn't live, and the hourly run retries.
   Put `[deploy]` in the publish commit (or PR title) so Netlify deploys it right away instead of at midnight (see below).
 
+## The Atlas
+
+Everything on the site must be on `/atlas`. It charts every page in `src/pages` automatically
+(`src/lib/atlas.ts`), but when you add a page, check that it lands in the right constellation: add its
+route to `RULES` (a page no rule matches falls into "Curiosities"), give a flagship page a `BRIGHT`
+magnitude, and add `KEYWORDS` for what people actually call it. Never add a public page to `HIDDEN`
+without being asked.
+
 ## Netlify credits
 
 Each successful production deploy costs 15 Netlify credits, and the site ran out once. So pushes to
