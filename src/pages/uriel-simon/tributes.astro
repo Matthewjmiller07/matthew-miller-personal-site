@@ -3,9 +3,26 @@ import Layout from '../../layouts/Layout.astro';
 import { bio, principalWorks, tributes } from '../../data/uriel-simon-tributes';
 
 const fullText = tributes.filter((t) => t.kind !== 'video' && t.fullText);
-const linked = tributes.filter((t) => t.kind !== 'video' && !t.fullText);
+const linked = tributes.filter((t) => t.kind !== 'video' && t.kind !== 'audio' && !t.fullText);
 const videos = tributes.filter((t) => t.kind === 'video');
 const audio = tributes.filter((t) => t.kind === 'audio');
+
+// Short label for the browse index. Facebook posts are labelled by the
+// person's name; newspaper pieces by author, with the two Haaretz pieces
+// (one Hebrew, one English) told apart by the title's script.
+const navLabel = (t: (typeof tributes)[number]): string => {
+  if (t.id === 'prof-uriel-simon-z-l') return 'Tradition Online';
+  if (t.id === 'the-expulsion-of-ishmael-and-the-binding') return 'Bavua — Expulsion of Ishmael';
+  if (t.id === 'frispark') return 'Frispark (Norway)';
+  if (t.role === 'Weekly parsha column') return 'Davar — Lech Lecha column';
+  if (t.kind === 'audio') return 'The Promised Podcast';
+  if (t.kind === 'facebook' || t.kind === 'video' || t.kind === 'essay') return t.title;
+  if (t.role.startsWith('Ofer Aderet'))
+    return /[\u0590-\u05FF]/.test(t.title)
+      ? 'Ofer Aderet (Haaretz, Hebrew)'
+      : 'Ofer Aderet (Haaretz, English)';
+  return t.role.split(' — ')[0].split(',')[0];
+};
 ---
 
 <Layout
@@ -18,7 +35,16 @@ const audio = tributes.filter((t) => t.kind === 'audio');
     href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Frank+Ruhl+Libre:wght@400;700&display=swap"
   />
 
-  <main class="ust">
+  <main class="ust" id="top">
+    <nav class="ust-nav" aria-label="Sections">
+      <a href="#life">Life &amp; work</a>
+      <a href="#browse">Browse</a>
+      <a href="#full">In full</a>
+      <a href="#linked">Linked</a>
+      <a href="#video">Video</a>
+      <a href="#funeral">Funeral</a>
+      <a href="#gather">Still to gather</a>
+    </nav>
     <header class="ust-head">
       <div class="ust-kicker">In memory · <span class="he">לזכר</span></div>
       <h1>Uriel Simon — Tributes</h1>
@@ -47,7 +73,33 @@ const audio = tributes.filter((t) => t.kind === 'audio');
       </p>
     </header>
 
-    <section class="ust-sec">
+    <nav class="ust-index" id="browse" aria-label="Browse the tributes">
+      <h2>Browse the tributes</h2>
+      <p>Jump straight to any entry — 28 in all.</p>
+      <h3>In full · {fullText.length}</h3>
+      <ul>
+        {fullText.map((t, i) => (
+          <li><a href={`#full-${i}`}>{navLabel(t)}</a></li>
+        ))}
+      </ul>
+      <h3>Linked entries · {linked.length}</h3>
+      <ul>
+        {linked.map((t, i) => (
+          <li><a href={`#link-${i}`}>{navLabel(t)}</a></li>
+        ))}
+      </ul>
+      <h3>Video &amp; audio · {videos.length + audio.length}</h3>
+      <ul>
+        {videos.map((t, i) => (
+          <li><a href={`#vid-${i}`}>{navLabel(t)}</a></li>
+        ))}
+        {audio.map((t, i) => (
+          <li><a href={`#aud-${i}`}>{navLabel(t)}</a></li>
+        ))}
+      </ul>
+    </nav>
+
+    <section class="ust-sec" id="life">
       <h2>His life &amp; work</h2>
       {bio.map((p) => <p>{p}</p>)}
       <h3>Principal works</h3>
@@ -56,15 +108,15 @@ const audio = tributes.filter((t) => t.kind === 'audio');
       </ul>
     </section>
 
-    <section class="ust-sec">
+    <section class="ust-sec" id="full">
       <h2>The tributes — in full</h2>
       <p class="ust-secnote">
         {fullText.length} tributes reproduced in full: Lawrence Kaplan's Facebook essay, ten further
         Facebook tributes from students, colleagues, family, and institutions (pulled in full on
         19 October 2026), <em>Tradition Online</em>'s memorial, and Davar's Lech Lecha column.
       </p>
-      {fullText.map((t) => (
-        <article class="ust-trib">
+      {fullText.map((t, i) => (
+        <article class="ust-trib" id={`full-${i}`}>
           <h3 lang={t.lang} dir={t.lang === 'he' ? 'rtl' : 'ltr'}>{t.title}</h3>
           <div class="ust-meta">
             {t.role} · {t.date} · {t.lang === 'he' ? 'Hebrew' : t.lang === 'es' ? 'Spanish' : 'English'}
@@ -86,12 +138,13 @@ const audio = tributes.filter((t) => t.kind === 'audio');
               <span>Original post — link not recorded</span>
             )}
             {t.note && <span class="ust-note"> · {t.note}</span>}
+            <a class="ust-top-link" href="#top">↑ Top</a>
           </div>
         </article>
       ))}
     </section>
 
-    <section class="ust-sec">
+    <section class="ust-sec" id="linked">
       <h2>Linked entries — summaries &amp; further reading</h2>
       <p class="ust-secnote">
         These are not reproduced in full. The newspaper pieces are summarised here with short
@@ -99,8 +152,8 @@ const audio = tributes.filter((t) => t.kind === 'audio');
         here, though the two Makor Rishon memorials are now freely readable in full at the source;
         the podcast tribute is audio-only, and the notices are short.
       </p>
-      {linked.map((t) => (
-        <article class="ust-trib ust-linked">
+      {linked.map((t, i) => (
+        <article class="ust-trib ust-linked" id={`link-${i}`}>
           <h3 lang={t.lang} dir={t.lang === 'he' ? 'rtl' : 'ltr'}>{t.title}</h3>
           <div class="ust-meta">
             {t.role} · {t.date} · {t.lang === 'he' ? 'Hebrew' : t.lang === 'es' ? 'Spanish' : 'English'}
@@ -116,11 +169,12 @@ const audio = tributes.filter((t) => t.kind === 'audio');
               <span>Source link not recorded</span>
             )}
             {t.note && <span class="ust-note"> · {t.note}</span>}
+            <a class="ust-top-link" href="#top">↑ Top</a>
           </div>
         </article>
       ))}
-      {audio.map((t) => (
-        <article class="ust-trib ust-linked">
+      {audio.map((t, i) => (
+        <article class="ust-trib ust-linked" id={`aud-${i}`}>
           <h3>{t.title}</h3>
           <div class="ust-meta">
             {t.role} · {t.date} · English
@@ -132,15 +186,16 @@ const audio = tributes.filter((t) => t.kind === 'audio');
           <div class="ust-src">
             <a href={t.sourceUrl} target="_blank" rel="noopener noreferrer">Listen at TLV1</a>
             {t.note && <span class="ust-note"> · {t.note}</span>}
+            <a class="ust-top-link" href="#top">↑ Top</a>
           </div>
         </article>
       ))}
     </section>
 
-    <section class="ust-sec">
+    <section class="ust-sec" id="video">
       <h2>In his memory — video</h2>
-      {videos.map((t) => (
-        <article class="ust-trib">
+      {videos.map((t, i) => (
+        <article class="ust-trib" id={`vid-${i}`}>
           <h3 lang={t.lang} dir={t.lang === 'he' ? 'rtl' : 'ltr'}>{t.title}</h3>
           <div class="ust-meta">{t.role} · {t.date}</div>
           <div class="ust-body">
@@ -161,11 +216,12 @@ const audio = tributes.filter((t) => t.kind === 'audio');
               <a href={t.sourceUrl} target="_blank" rel="noopener noreferrer">Watch on YouTube</a>
             </div>
           )}
+          <p class="ust-top"><a href="#top">↑ Back to top</a></p>
         </article>
       ))}
     </section>
 
-    <section class="ust-sec">
+    <section class="ust-sec" id="funeral">
       <h2>Funeral &amp; shloshim</h2>
       <div class="ust-box">
         <p>
@@ -183,7 +239,7 @@ const audio = tributes.filter((t) => t.kind === 'audio');
       </div>
     </section>
 
-    <section class="ust-sec">
+    <section class="ust-sec" id="gather">
       <h2>Still to be gathered</h2>
       <p>
         Two further Facebook posts — by שלמה אהרון (2 October, “my teacher and rabbi,” on Ibn Ezra, the
@@ -254,4 +310,33 @@ const audio = tributes.filter((t) => t.kind === 'audio');
   .ust-box p { margin: 0 0 .6rem; }
   .ust-box p:last-child { margin-bottom: 0; }
   .ust-note { font-size: .9rem; color: #9aa0a7 !important; margin-top: 3rem; }
+
+  /* In-page navigation: sticky section bar + browse index. The global navbar
+     is sticky at 4rem high, so this bar sticks just below it, and anchors
+     clear both bars. */
+  .ust-nav {
+    position: sticky; top: 4rem; z-index: 40; display: flex; gap: .4rem;
+    overflow-x: auto; margin: -2rem -1rem 0; padding: .7rem 1rem;
+    background: #111827; border-bottom: 1px solid #3a3f45; scrollbar-width: none;
+  }
+  .ust-nav::-webkit-scrollbar { display: none; }
+  .ust-nav a {
+    flex: 0 0 auto; padding: .3rem .8rem; border: 1px solid #3a3f45; border-radius: 999px;
+    color: #9cc3dd !important; font-size: .9rem; white-space: nowrap; text-decoration: none;
+  }
+  .ust-index { margin-top: 2.5rem; border: 1px solid #3a3f45; background: #1b1f23; padding: 1.25rem 1.5rem; }
+  .ust-index h2 { font-size: 1.3rem; font-weight: 600; margin: 0; }
+  .ust-index > p { font-size: 1rem !important; color: #b9b4aa !important; font-style: italic; margin: .3rem 0 0; }
+  .ust-index h3 { font-size: .85rem; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: #9aa0a7 !important; margin: 1.1rem 0 .4rem; }
+  .ust-index ul { columns: 2; column-gap: 2rem; margin: 0; padding-left: 1.1rem; }
+  .ust-index li { break-inside: avoid; margin-bottom: .35rem; font-size: 1rem; line-height: 1.45; }
+  .ust-index a { color: #9cc3dd !important; }
+  .ust-sec, .ust-trib, .ust-index { scroll-margin-top: 7.5rem; }
+  .ust-top-link { margin-left: .6rem; color: #9aa0a7 !important; font-size: .85rem; }
+  .ust-top { font-size: .9rem !important; margin-top: 1rem; }
+  .ust-top a { color: #9aa0a7 !important; }
+  @media (max-width: 640px) {
+    .ust-index { padding: 1rem; }
+    .ust-index ul { columns: 1; }
+  }
 </style>
