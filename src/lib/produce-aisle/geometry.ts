@@ -62,7 +62,7 @@ interface BlobOpts {
 
 /** A displaced sphere: apples, citrus, onions, pumpkins, cabbages… */
 function blob(o: BlobOpts) {
-  const seg = o.seg ?? 12;
+  const seg = Math.round((o.seg ?? 12) * DETAIL);
   const g = clean(new THREE.SphereGeometry(1, seg, Math.max(5, Math.round(seg * 0.7))));
   const p = g.attributes.position;
   const nf = o.noiseF ?? 3;
@@ -87,7 +87,7 @@ function stick(o: {
   r: number; len: number; seg?: number; ribs?: number; ribAmp?: number; noise?: number; bend?: number;
   taperEnd?: number; flat?: number; color?: ColorFn;
 }) {
-  const g = clean(new THREE.CapsuleGeometry(o.r, o.len, 3, o.seg ?? 8));
+  const g = clean(new THREE.CapsuleGeometry(o.r, o.len, Math.round(3 * DETAIL), Math.round((o.seg ?? 8) * DETAIL)));
   g.rotateZ(Math.PI / 2); // long axis → x
   const p = g.attributes.position;
   const half = o.len / 2 + o.r;
@@ -126,6 +126,23 @@ const two = (top: string, bottom: string, cut: number, soft = 0.004): ColorFn =>
 };
 
 const cache = new Map<string, PieceKind>();
+const hiCache = new Map<string, PieceKind>();
+/** Segment multiplier: 1 for the hundreds of pieces in a crate, higher for the one in your hand. */
+let DETAIL = 1;
+
+/** A smooth, high-poly version of one piece, for holding it up to the camera. */
+export function pieceKindHi(key: string): PieceKind {
+  const hit = hiCache.get(key);
+  if (hit) return hit;
+  DETAIL = 3.5;
+  try {
+    const k = build(key);
+    hiCache.set(key, k);
+    return k;
+  } finally {
+    DETAIL = 1;
+  }
+}
 
 /** One piece geometry per produce kind, keyed by the shape name (or a special id). */
 export function pieceKind(key: string): PieceKind {
@@ -150,8 +167,9 @@ function build(key: string): PieceKind {
     case 'lemon': return heap(blob({ r: 0.032, sy: 1.25, taperTop: 0.35, taperBot: 0.35, noise: 0.01, noiseF: 9 }), 0.066, 0.075);
     case 'pomegranate': {
       const body = blob({ r: 0.048, sy: 0.92, ribs: 6, ribAmp: 0.03, noise: 0.015 });
-      const crown = clean(new THREE.CylinderGeometry(0.012, 0.016, 0.022, 6, 1, true));
-      finish(crown); at(crown, 0, 0.05, 0);
+      // the calyx: a short flared tube, sunk into the top
+      const crown = clean(new THREE.CylinderGeometry(0.011, 0.007, 0.014, 6, 1, true));
+      finish(crown, () => [0.8, 0.62, 0.6]); at(crown, 0, 0.048, 0);
       return heap(merge([body, crown]), 0.098, 0.1);
     }
     case 'fig': return heap(blob({ r: 0.027, taperTop: 0.75, sy: 1.1, noise: 0.02, seg: 10 }), 0.056, 0.06);
@@ -179,8 +197,9 @@ function build(key: string): PieceKind {
       return heap(blob({
         r: 0.13, sx: 1.3, seg: 18, noise: 0.01,
         color: (x, y, z) => {
-          const t = Math.sin(Math.atan2(y, z) * 9 + Math.sin(x * 40) * 0.6) > 0.1 ? 1 : 0;
-          return t ? dark : light;
+          const v = Math.sin(Math.atan2(y, z) * 9 + Math.sin(x * 40) * 0.6);
+          const t = THREE.MathUtils.smoothstep(v, -0.1, 0.3);
+          return [light[0] + (dark[0] - light[0]) * t, light[1] + (dark[1] - light[1]) * t, light[2] + (dark[2] - light[2]) * t];
         },
       }), 0.3, 0.24, true);
     }

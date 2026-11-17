@@ -3,7 +3,7 @@
 // all heaps, one for all price cards. It renders only when something moves.
 import * as THREE from 'three';
 import { produce, sections, type Produce } from '../../data/produce-aisle';
-import { crateGeometry, moundGeometry, moundHeight, pieceKind } from './geometry';
+import { crateGeometry, moundGeometry, moundHeight, pieceKind, pieceKindHi } from './geometry';
 
 export interface Slot {
   item: Produce; index: number; side: -1 | 1; z: number;
@@ -16,6 +16,8 @@ export interface AisleApi {
   focus(id: string | null): void;
   goToSection(id: string): void;
   setPanelOffset(px: number, bottomPx: number): void;
+  /** Pick one piece out of the open crate and hold it up to the camera (true), or put it back. */
+  hold(on: boolean): void;
   dispose(): void;
 }
 
@@ -24,6 +26,7 @@ interface Opts {
   onSelect: (id: string | null) => void;
   onSection: (sectionId: string, progress: number) => void;
   onHover: (id: string | null) => void;
+  onHold?: (holding: boolean) => void;
 }
 
 const AISLE_X = 1.55;       // crate centre distance from the aisle's centre line
@@ -437,6 +440,79 @@ export function mountAisle(opts: Opts): AisleApi {
   const ro = new ResizeObserver(resize);
   ro.observe(canvas);
 
+  // ── holding one piece up close ────────────────────────────────────────────
+  // A smooth, high-poly copy of the piece lifts out of the crate and floats in front of the camera,
+  // in the middle of whatever part of the view the panel leaves free. Drag turns it, scroll brings it
+  // closer, a click puts it back.
+  const holdMat = track(new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: 0.45, metalness: 0, transparent: true, opacity: 1 }));
+  const held = new THREE.Mesh(new THREE.BufferGeometry(), holdMat);
+  held.visible = false;
+  held.frustumCulled = false;
+  held.renderOrder = 2; // transparent pass, so it draws after (over) the dimming backdrop
+  scene.add(held);
+  const backdrop = new THREE.Mesh(track(new THREE.PlaneGeometry(6, 6)), track(new THREE.MeshBasicMaterial({ color: '#141210', transparent: true, opacity: 0, depthTest: false, depthWrite: false })));
+  backdrop.renderOrder = 1;
+  backdrop.visible = false;
+  backdrop.frustumCulled = false;
+  scene.add(backdrop);
+  const holdLight = new THREE.PointLight('#fff2dc', 0, 3, 1.2); // always present, so toggling it never recompiles shaders
+  scene.add(holdLight);
+  let holdSlot = -1, holdT = 0, holdGoal = 0, holdScale = 1, holdDist = 0.55, holdClock = 0, spinning = true;
+  const holdQ = new THREE.Quaternion();
+  const fwd = new THREE.Vector3(), camUp = new THREE.Vector3(), camRight = new THREE.Vector3(), hp = new THREE.Vector3();
+  const qa = new THREE.Quaternion(), axis = new THREE.Vector3();
+
+  function pickUp(i: number) {
+    const s = slots[i];
+    const key = s.item.id === 'lemon' ? 'lemon' : s.item.shape;
+    const kind = pieceKindHi(key);
+    if (!kind.geo.boundingSphere) kind.geo.computeBoundingSphere();
+    track(kind.geo);
+    held.geometry = kind.geo;
+    holdMat.color.set(kind.baked ? '#ffffff' : s.item.colors[0]);
+    holdScale = 0.14 / kind.geo.boundingSphere!.radius;
+    holdQ.setFromEuler(new THREE.Euler(0.35, Math.random() * Math.PI * 2, 0.1));
+    holdSlot = i; holdGoal = 1; holdDist = 0.55; spinning = true;
+    held.visible = backdrop.visible = true;
+    opts.onHold?.(true);
+    kick();
+  }
+  function putDown(instant = false) {
+    if (holdSlot < 0) return;
+    holdGoal = 0;
+    if (instant) { holdT = 0; held.visible = backdrop.visible = false; holdLight.intensity = 0; holdSlot = -1; dirty = true; }
+    opts.onHold?.(false);
+    kick();
+  }
+  const holding = () => holdSlot >= 0 && holdGoal === 1;
+
+  function updateHeld(dt: number) {
+    if (holdSlot < 0) return false;
+    holdT = THREE.MathUtils.clamp(holdT + (holdGoal ? 1 : -1) * dt * 2.4, 0, 1);
+    if (holdT === 0 && holdGoal === 0) {
+      held.visible = backdrop.visible = false; holdLight.intensity = 0; holdSlot = -1;
+      return true;
+    }
+    const e = holdT * holdT * (3 - 2 * holdT);
+    holdClock += dt;
+    camera.getWorldDirection(fwd);
+    camUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    camRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    hp.copy(camera.position).addScaledVector(fwd, holdDist).addScaledVector(camUp, Math.sin(holdClock * 1.6) * 0.004);
+    // arc up out of the crate on the way
+    held.position.copy(slots[holdSlot].center).lerp(hp, e).addScaledVector(camUp, Math.sin(e * Math.PI) * 0.12);
+    held.scale.setScalar(1 + (holdScale - 1) * e);
+    if (spinning) holdQ.premultiply(qa.setFromAxisAngle(axis.set(0, 1, 0), dt * 0.5));
+    held.quaternion.copy(camera.quaternion).multiply(holdQ);
+    backdrop.position.copy(camera.position).addScaledVector(fwd, 1.1);
+    backdrop.quaternion.copy(camera.quaternion);
+    (backdrop.material as THREE.MeshBasicMaterial).opacity = 0.62 * e;
+    holdLight.position.copy(camera.position).addScaledVector(camUp, 0.35).addScaledVector(camRight, 0.3);
+    holdLight.intensity = 2 * e;
+    canvas.dataset.hold = e.toFixed(2);
+    return true;
+  }
+
   // ── input ─────────────────────────────────────────────────────────────────
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -451,6 +527,11 @@ export function mountAisle(opts: Opts): AisleApi {
   const clampZ = (z: number) => Math.min(zStart, Math.max(zEnd, z));
 
   function onWheel(ev: WheelEvent) {
+    if (holding()) {
+      ev.preventDefault();
+      holdDist = THREE.MathUtils.clamp(holdDist + (ev.deltaMode === 1 ? ev.deltaY * 30 : ev.deltaY) * 0.0006, 0.28, 0.95);
+      return;
+    }
     if (focused != null) { opts.onSelect(null); return; }
     const d = (ev.deltaMode === 1 ? ev.deltaY * 30 : ev.deltaY) * 0.006;
     const atEnd = walkTarget <= zEnd + 0.01 && d > 0, atStart = walkTarget >= zStart - 0.01 && d < 0;
@@ -459,9 +540,9 @@ export function mountAisle(opts: Opts): AisleApi {
     walkTarget = clampZ(walkTarget - d);
   }
 
-  let down: { x: number; y: number; t: number; yaw: number; pitch: number; z: number; id: number; moved: boolean; touch: boolean } | null = null;
+  let down: { lx: number; ly: number; x: number; y: number; t: number; yaw: number; pitch: number; z: number; id: number; moved: boolean; touch: boolean } | null = null;
   function onDown(ev: PointerEvent) {
-    down = { x: ev.clientX, y: ev.clientY, t: performance.now(), yaw: yawTarget, pitch: pitchTarget, z: walkTarget, id: ev.pointerId, moved: false, touch: ev.pointerType !== 'mouse' };
+    down = { lx: ev.clientX, ly: ev.clientY, x: ev.clientX, y: ev.clientY, t: performance.now(), yaw: yawTarget, pitch: pitchTarget, z: walkTarget, id: ev.pointerId, moved: false, touch: ev.pointerType !== 'mouse' };
     canvas.setPointerCapture(ev.pointerId);
   }
   function onMove(ev: PointerEvent) {
@@ -469,6 +550,15 @@ export function mountAisle(opts: Opts): AisleApi {
       const dx = ev.clientX - down.x, dy = ev.clientY - down.y;
       if (Math.abs(dx) + Math.abs(dy) > 6) down.moved = true;
       if (!down.moved) return;
+      if (holding()) {
+        // turn the piece in your hand, around the view's own axes
+        const mx = ev.clientX - down.lx, my = ev.clientY - down.ly;
+        holdQ.premultiply(qa.setFromAxisAngle(axis.set(0, 1, 0), mx * 0.012));
+        holdQ.premultiply(qa.setFromAxisAngle(axis.set(1, 0, 0), my * 0.012));
+        down.lx = ev.clientX; down.ly = ev.clientY;
+        spinning = false;
+        return;
+      }
       if (focused != null) return;
       yawTarget = THREE.MathUtils.clamp(down.yaw + dx * 0.004, -1.2, 1.2);
       if (down.touch) walkTarget = clampZ(down.z + dy * 0.02);       // swipe up = walk forward
@@ -490,7 +580,9 @@ export function mountAisle(opts: Opts): AisleApi {
     const wasClick = !down.moved && performance.now() - down.t < 500;
     down = null;
     if (!wasClick) return;
+    if (holding()) { putDown(); return; }
     const h = hit(ev.clientX, ev.clientY);
+    if (h != null && h === focused) { pickUp(h); return; } // click the open crate again to take one out
     opts.onSelect(h != null ? slots[h].item.id : null);
   }
   const keys = new Set<string>();
@@ -499,6 +591,7 @@ export function mountAisle(opts: Opts): AisleApi {
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
     const k = ev.key;
     if (ev.type === 'keyup') { keys.delete(k); return; }
+    if (k === 'Escape' && holding()) { putDown(); return; }
     if (k === 'Escape' && focused != null) { opts.onSelect(null); return; }
     if (focused != null && (k === ']' || k === 'ArrowRight' || k === 'n')) { opts.onSelect(slots[(focused + 1) % slots.length].item.id); ev.preventDefault(); return; }
     if (focused != null && (k === '[' || k === 'ArrowLeft' || k === 'p')) { opts.onSelect(slots[(focused - 1 + slots.length) % slots.length].item.id); ev.preventDefault(); return; }
@@ -545,7 +638,8 @@ export function mountAisle(opts: Opts): AisleApi {
     camera.position.copy(camPos);
     camera.lookAt(camLook);
 
-    const moving = before > 1e-7 || keys.size > 0 || Math.abs(walkTarget - walkZ) > 1e-4 || Math.abs(yawTarget - yaw) > 1e-4;
+    const holdingNow = updateHeld(dt);
+    const moving = holdingNow || before > 1e-7 || keys.size > 0 || Math.abs(walkTarget - walkZ) > 1e-4 || Math.abs(yawTarget - yaw) > 1e-4;
     if (dirty || moving) {
       renderer.render(scene, camera);
       dirty = false;
@@ -576,6 +670,7 @@ export function mountAisle(opts: Opts): AisleApi {
     slots,
     focus(id) {
       const i = id ? slots.findIndex((s) => s.item.id === id) : -1;
+      if (holdSlot >= 0 && i !== holdSlot) putDown(true);
       if (i >= 0) {
         focused = i;
         walkTarget = clampZ(slots[i].z + 1.05);
@@ -596,6 +691,10 @@ export function mountAisle(opts: Opts): AisleApi {
       walkTarget = clampZ(s.z + PITCH + 0.6);
       yawTarget = 0;
       kick();
+    },
+    hold(on) {
+      if (on && focused != null) pickUp(focused);
+      else putDown();
     },
     setPanelOffset(px, py) { panelX = px; panelY = py; applyOffset(); camera.updateProjectionMatrix(); dirty = true; kick(); },
     dispose() {
