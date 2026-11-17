@@ -13,6 +13,7 @@ import IsraelTracker from '../components/israel/IsraelTracker.tsx';
 import IsraelNumbers from '../components/israel/IsraelNumbers.tsx';
 // Place-name facts from the Academy of the Hebrew Language's settlements quiz and official names list.
 import placeNames from '../data/israel/place-names.json';
+import { produce } from '../data/produce-aisle';
 // Supermarket prices: week-1 snapshot (Nov 1, 2026) from the chains'
 // price-transparency files under the Food Law, via israeli-prices.
 // The same file is fetched client-side by the cart builder.
@@ -117,6 +118,15 @@ const pageDescription =
         aria-selected="false"
         data-tab="names"
         type="button">Place names</button
+      >
+      <button
+        class="il-ptab"
+        role="tab"
+        id="il-ptab-produce"
+        aria-controls="il-panel-produce"
+        aria-selected="false"
+        data-tab="produce"
+        type="button">Produce aisle</button
       >
       <button
         class="il-ptab is-active"
@@ -436,6 +446,38 @@ const pageDescription =
     </section>
 
     <section
+      class="il-section il-produce il-panel"
+      id="il-panel-produce"
+      role="tabpanel"
+      aria-labelledby="il-ptab-produce"
+      data-panel="produce"
+      hidden
+    >
+      <h2 class="il-h2">The produce aisle, in 3D</h2>
+      <p class="il-lede">
+        Walk the fruit-and-vegetable section of an Israeli supermarket and open any crate to meet its
+        Hebrew name: the verses it turns up in (straight into the Mega Bible), what the rabbis did with it,
+        and where the word comes from, with Ma'agarim, the Academy and Balashon a click away.
+        <a class="il-handle" href="/produce">Open the aisle ↗</a>
+      </p>
+      <a class="il-produce-hero" href="/produce">
+        <img src="/images/previews/produce-aisle.jpg" alt="A 3D supermarket aisle lined with crates of pomegranates, dates, olives and watermelons under green hanging signs" loading="lazy" width="1160" height="696" />
+        <span class="il-produce-cta">Walk in →</span>
+      </a>
+      <ul class="il-produce-grid">
+        {produce.map((p) => (
+          <li>
+            <a href={`/produce#${p.id}`}>
+              <span class="il-produce-dot" style={`background:${p.colors[0]}`}></span>
+              <span class="il-produce-he" lang="he" dir="rtl">{p.he}</span>
+              <span class="il-produce-en">{p.en.replace(/\s*\(.*\)/, '')}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section
       class="il-section il-prices il-panel"
       id="il-panel-prices"
       role="tabpanel"
@@ -643,7 +685,7 @@ const pageDescription =
     // Page tabs: ?tab=<slug> deep-links a tab; clicking updates the URL in place.
     // A ?cart= parameter opens the prices tab (unless ?tab= says otherwise).
     (function () {
-      var SLUGS = ['log', 'kosher-eats', 'numbers', 'names', 'prices'];
+      var SLUGS = ['log', 'kosher-eats', 'numbers', 'names', 'produce', 'prices'];
       function desired() {
         var params = new URLSearchParams(window.location.search);
         var q = params.get('tab');
@@ -1448,6 +1490,16 @@ const pageDescription =
     border-bottom-color: #38bdf8;
   }
 
+  .il-produce-hero { position: relative; display: block; margin: 16px 0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+  .il-produce-hero img { display: block; width: 100%; height: auto; transition: transform .4s ease; }
+  .il-produce-hero:hover img { transform: scale(1.02); }
+  .il-produce-cta { position: absolute; right: 16px; bottom: 16px; background: #ffd60a; color: #111 !important; font-weight: 800; padding: 8px 16px; border-radius: 999px; }
+  .il-produce-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .il-produce-grid a { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(127,127,127,.1); text-decoration: none; color: inherit; }
+  .il-produce-grid a:hover { background: rgba(255,214,10,.25); }
+  .il-produce-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+  .il-produce-he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.1rem; font-weight: 700; }
+  .il-produce-en { font-size: .78rem; opacity: .75; margin-left: auto; text-align: right; }
   .il-section {
     display: flex;
     flex-direction: column;

@@ -1,0 +1,427 @@
+---
+// /produce — The Produce Aisle: walk an Israeli supermarket's fruit-and-vegetable section in 3D and
+// open any crate to see where its Hebrew name comes from: the verses (into the Mega Bible), the
+// rabbinic sources (into Sefaria), Balashon, Ma'agarim and the Academy of the Hebrew Language.
+// Data: src/data/produce-aisle.ts. Scene: src/lib/produce-aisle/.
+import Layout from '../layouts/Layout.astro';
+import { produce, sections } from '../data/produce-aisle';
+
+const megaBible = (v: { book: string; ch: number; v: number }) =>
+  `/mega-bible?mode=chapter&book=${encodeURIComponent(v.book)}&chapter=${v.ch}&verse=${v.v}`;
+const sefariaRef = (v: { book: string; ch: number; v: number }) =>
+  `https://www.sefaria.org/${v.book.replace(/ /g, '_')}.${v.ch}.${v.v}?lang=bi`;
+// "Mishnah Kilayim 1:2" → Mishnah_Kilayim.1.2 ; "Berakhot 57a" → Berakhot.57a
+const sefariaUrl = (ref: string) => {
+  const m = ref.match(/^(.*?) (\d+[ab]?(?::\d+)?)$/);
+  const path = m ? `${m[1].replace(/ /g, '_')}.${m[2].replace(':', '.')}` : ref.replace(/ /g, '_');
+  return `https://www.sefaria.org/${path}?lang=bi`;
+};
+const enc = encodeURIComponent;
+const bySection = sections.map((s) => ({ ...s, items: produce.filter((p) => p.section === s.id) }));
+const verseCount = produce.reduce((n, p) => n + p.verses.length, 0);
+const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
+---
+
+<Layout
+  title="The Produce Aisle"
+  image="/images/previews/produce-aisle.jpg"
+  description="Walk an Israeli supermarket's produce section in 3D. Every crate opens onto its Hebrew name: the verses it appears in, what the rabbis did with it, where the word comes from, with links into the Mega Bible, Sefaria, Balashon, Ma'agarim and the Academy of the Hebrew Language."
+>
+  <section class="aisle on-light" id="aisle" aria-label="3D produce aisle">
+    <canvas id="aisle-canvas" aria-hidden="true"></canvas>
+
+    <div class="hud-top">
+      <div class="title-card">
+        <p class="he" lang="he" dir="rtl">מַחְלֶקֶת פֵּרוֹת וִירָקוֹת</p>
+        <h1>The Produce Aisle</h1>
+        <p class="sub">{produce.length} crates · {verseCount} verses · {rabbinicCount} rabbinic sources</p>
+      </div>
+      <div class="now" aria-live="polite">
+        <span class="now-he" lang="he" dir="rtl" id="now-he">{sections[0].he}</span>
+        <span class="now-en" id="now-en">{sections[0].en}</span>
+      </div>
+    </div>
+
+    <nav class="minimap" aria-label="Aisle sections">
+      {sections.map((s) => (
+        <button type="button" data-section={s.id} title={s.en}><span lang="he">{s.he}</span></button>
+      ))}
+      <div class="you" id="you"></div>
+    </nav>
+
+    <div class="hint" id="hint">
+      <span class="desk-only">Scroll or <kbd>↑</kbd><kbd>↓</kbd> to walk · drag to look · click a crate</span>
+      <span class="touch-only">Swipe up to walk · tap a crate</span>
+      <button type="button" id="list-btn" class="list-btn">🧾 Shopping list</button>
+      <a href="#every-crate" class="list-btn down-btn">↓ Read them all</a>
+    </div>
+
+    <div class="hover-tag" id="hover-tag" hidden></div>
+    <div class="hold-hint" id="hold-hint"><span class="desk-only">Drag to turn it · scroll to bring it closer · click to put it back</span><span class="touch-only">Drag to turn it · tap to put it back</span></div>
+
+    <aside class="panel" id="panel" hidden aria-live="polite">
+      <div class="panel-bar">
+        <button type="button" id="pickup" class="pickup" aria-pressed="false">✋ Pick one up</button>
+        <button type="button" id="prev" aria-label="Previous crate">‹</button>
+        <button type="button" id="next" aria-label="Next crate">›</button>
+        <button type="button" id="close" aria-label="Close">✕</button>
+      </div>
+      <div class="panel-body" id="panel-body"></div>
+    </aside>
+
+    <div class="list-drawer" id="list-drawer" hidden>
+      <div class="drawer-head">
+        <strong>Shopping list</strong>
+        <button type="button" id="list-close" aria-label="Close list">✕</button>
+      </div>
+      {bySection.map((s) => (
+        <div class="drawer-sec">
+          <button type="button" class="drawer-sec-btn" data-section={s.id}><span lang="he" dir="rtl">{s.he}</span> · {s.en}</button>
+          <ul>
+            {s.items.map((p) => (
+              <li><a href={`#${p.id}`} data-item={p.id}><span lang="he" dir="rtl">{p.he}</span> {p.en}</a></li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+
+    <noscript><p class="nojs">The 3D aisle needs JavaScript. Every crate is listed below.</p></noscript>
+  </section>
+
+  <div class="index-wrap on-light"><main class="index">
+    <header class="index-head" id="every-crate">
+      <h2>Every crate</h2>
+      <p>
+        Israeli Hebrew names its fruit and vegetables with words that are three thousand years old, words that
+        changed meaning, words translated from French, and one word that lost to the international one. Each crate
+        below has its verses (they open in the <a href="/mega-bible">Mega Bible</a>), its rabbinic sources (on Sefaria),
+        the history of the word, and links to search it in <a href="https://maagarim.hebrew-academy.org.il/" target="_blank" rel="noopener">Ma'agarim</a>,
+        the <a href="https://hebrew-academy.org.il/" target="_blank" rel="noopener">Academy of the Hebrew Language</a> and
+        David Curwin's <a href="/balashon">Balashon</a>.
+      </p>
+    </header>
+
+    {bySection.map((s) => (
+      <section class="sec" id={`sec-${s.id}`}>
+        <h3><span lang="he" dir="rtl">{s.he}</span> <span class="en">{s.en}</span></h3>
+        <p class="blurb">{s.blurb}</p>
+        <div class="cards">
+          {s.items.map((p) => (
+            <article class="card" id={`item-${p.id}`} data-id={p.id}>
+              <header class="card-head">
+                <div class="swatch" style={`background: linear-gradient(135deg, ${p.colors[0]}, ${p.colors[p.colors.length - 1]})`}></div>
+                <div>
+                  <h4 lang="he" dir="rtl">{p.he}</h4>
+                  <p class="names"><i>{p.translit}</i> · {p.en}</p>
+                </div>
+                <span class="price">₪{p.price}</span>
+              </header>
+              <p class="hook">{p.hook}</p>
+
+              {p.verses.length > 0 && (
+                <div class="block">
+                  <h5>In the Bible <span lang="he">· בַּמִּקְרָא</span></h5>
+                  {p.verses.map((v) => (
+                    <figure class="src">
+                      <blockquote lang="he" dir="rtl">{v.he}</blockquote>
+                      <figcaption>
+                        {v.en}{' '}
+                        <a class="ref" href={megaBible(v)}>{v.book} {v.ch}:{v.v} in the Mega Bible</a>
+                        <a class="ref ext" href={sefariaRef(v)} target="_blank" rel="noopener">Sefaria</a>
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              )}
+
+              {p.rabbinic.length > 0 && (
+                <div class="block">
+                  <h5>The rabbis <span lang="he">· בְּסִפְרוּת חז״ל</span></h5>
+                  {p.rabbinic.map((r) => (
+                    <figure class="src">
+                      {r.he && <blockquote lang="he" dir="rtl">{r.he}</blockquote>}
+                      <figcaption>
+                        {r.en}{' '}
+                        <a class="ref ext" href={sefariaUrl(r.ref)} target="_blank" rel="noopener">{r.ref}</a>
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              )}
+
+              <div class="block">
+                <h5>The word</h5>
+                <p>{p.word}</p>
+                {p.modern && <p class="modern"><b>Today:</b> {p.modern}</p>}
+              </div>
+
+              <div class="explore">
+                {p.verses[0] && <a href={megaBible(p.verses[0])}>📖 Mega Bible</a>}
+                <a href={`https://maagarim.hebrew-academy.org.il/`} target="_blank" rel="noopener" data-copy={p.search} title={`Copies ${p.search} for the Ma'agarim search box`}>🏛️ Ma'agarim <small>(copies {p.search})</small></a>
+                <a href={`https://hebrew-academy.org.il/?s=${enc(p.search)}`} target="_blank" rel="noopener">🎓 The Academy</a>
+                {p.balashon
+                  ? <a href={p.balashon.url} target="_blank" rel="noopener">🔍 Balashon: {p.balashon.title}</a>
+                  : <a href={`https://www.balashon.com/search?q=${enc(p.search)}`} target="_blank" rel="noopener">🔍 Balashon</a>}
+                <a href={`https://www.sefaria.org/search?q=${enc(p.search)}&tab=text`} target="_blank" rel="noopener">📚 Sefaria</a>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <p class="credits">
+      Built in three.js; every fruit is generated in the browser, about ten thousand pieces drawn in a few dozen calls.
+      Rabbinic texts checked against Sefaria. Word histories lean on Balashon, Klein and the Academy of the Hebrew Language;
+      where an etymology is disputed, the card says so.
+    </p>
+  </main></div>
+</Layout>
+
+<style>
+  .aisle {
+    position: relative;
+    height: calc(100svh - 64px);
+    min-height: 480px;
+    overflow: hidden;
+    background: #ece7da;
+    color: #1d1d1b;
+    user-select: none;
+    touch-action: pan-x pinch-zoom;
+  }
+  .panel[hidden], .list-drawer[hidden], .hover-tag[hidden] { display: none !important; }
+  .aisle h1, .aisle h4, .aisle p, .aisle strong, .aisle blockquote, .index h2, .index h3, .index h4, .index p, .index blockquote, .index figcaption { color: #1d1d1b; }
+  .aisle .now-he, .aisle .now-en { color: #fff; }
+  #aisle-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  .hud-top { position: absolute; top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; gap: 12px; pointer-events: none; }
+  .title-card { background: rgba(255,255,255,.88); backdrop-filter: blur(6px); border-radius: 14px; padding: 10px 14px; box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+  .title-card .he, .aisle .title-card .he { font-family: 'Frank Ruhl Libre', serif; font-size: 1rem; color: #0b6e4f; margin: 0; }
+  .title-card h1 { font-size: 1.45rem; font-weight: 800; margin: 0; letter-spacing: -.01em; }
+  .aisle .title-card .sub { font-size: .75rem; color: #666; margin: 2px 0 0; }
+  .now { align-self: flex-start; background: #0b6e4f; color: #fff; border-radius: 12px; padding: 8px 14px; text-align: right; box-shadow: 0 6px 24px rgba(0,0,0,.15); display: flex; flex-direction: column; }
+  .now-he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.25rem; font-weight: 700; line-height: 1.1; }
+  .now-en { font-size: .72rem; opacity: .85; }
+  .minimap { position: absolute; left: 50%; bottom: 58px; transform: translateX(-50%); display: flex; gap: 3px; background: rgba(255,255,255,.85); padding: 4px; border-radius: 999px; box-shadow: 0 4px 16px rgba(0,0,0,.12); max-width: calc(100% - 24px); }
+  .minimap button { position: relative; z-index: 1; border: 0; background: transparent; padding: 4px 9px; border-radius: 999px; font-family: 'Frank Ruhl Libre', serif; font-size: .82rem; white-space: nowrap; cursor: pointer; color: #333; }
+  .minimap button:hover, .minimap button.on { background: #0b6e4f; color: #fff; }
+  .minimap .you { position: absolute; bottom: -6px; left: 0; width: 10px; height: 10px; background: #d0021b; border-radius: 50%; border: 2px solid #fff; transition: left .15s linear; }
+  .hint { position: absolute; left: 0; right: 0; bottom: 14px; display: flex; justify-content: center; align-items: center; gap: 10px; font-size: .8rem; color: #444; pointer-events: none; }
+  .hint > span { background: rgba(255,255,255,.8); padding: 6px 12px; border-radius: 999px; }
+  .hint kbd { font-family: inherit; border: 1px solid #bbb; border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; margin: 0 1px; background: #fff; }
+  .list-btn.down-btn { background: #fff; text-decoration: none; }
+  .list-btn { pointer-events: auto; border: 0; background: #ffd60a; color: #111; font-weight: 700; padding: 7px 14px; border-radius: 999px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.15); font-size: .82rem; }
+  .touch-only { display: none; }
+  @media (hover: none) { .desk-only { display: none; } .touch-only { display: inline; } }
+  .hover-tag { position: absolute; pointer-events: none; background: #111; color: #ffd60a; font-size: .8rem; padding: 4px 9px; border-radius: 6px; transform: translate(12px, 12px); white-space: nowrap; }
+  .hover-tag [lang=he] { font-family: 'Frank Ruhl Libre', serif; font-size: 1rem; }
+
+  .panel { position: absolute; top: 12px; right: 12px; bottom: 12px; width: min(440px, 44vw); background: #fffdf7; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.25); display: flex; flex-direction: column; overflow: hidden; animation: slide .28s cubic-bezier(.2,.8,.2,1); user-select: text; }
+  @keyframes slide { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .panel-bar { display: flex; gap: 6px; justify-content: flex-end; padding: 8px 10px 0; }
+  .panel-bar button { border: 0; background: #f1ede2; width: 34px; height: 34px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; color: #333; }
+  .panel-bar button:hover { background: #ffd60a; }
+  .panel-bar .pickup { width: auto; border-radius: 999px; padding: 0 14px; margin-right: auto; font-size: .85rem; font-weight: 700; background: #ffd60a; color: #111; }
+  .panel-bar .pickup[aria-pressed="true"] { background: #111; color: #ffd60a; }
+  .hold-hint { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); display: none; background: rgba(0,0,0,.6); color: #fff; font-size: .8rem; padding: 8px 12px; border-radius: 10px; max-width: 200px; pointer-events: none; }
+  .aisle.holding .hold-hint { display: block; }
+  .aisle.holding .hud-top, .aisle.holding .minimap, .aisle.holding .hint { display: none; }
+  .panel-body { overflow-y: auto; padding: 0 18px 18px; overscroll-behavior: contain; }
+  .panel-body .card { border: 0; box-shadow: none; padding: 0; background: transparent; }
+  .panel-body .card h4 { font-size: 2.4rem; }
+  @media (max-width: 760px) {
+    .panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 62%; animation-name: rise; }
+    @keyframes rise { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+    .hud-top .now { display: none; }
+    .title-card h1 { font-size: 1.15rem; }
+    .minimap button { padding: 4px 6px; font-size: .74rem; }
+    .minimap { overflow-x: auto; }
+    .aisle { height: 80svh; }
+    .aisle.holding .panel { height: 38%; }
+    .hold-hint { top: 12px; transform: none; max-width: none; right: 12px; text-align: center; }
+    .aisle.reading .hud-top, .aisle.reading .minimap, .aisle.reading .hint { display: none; }
+  }
+
+  .list-drawer { position: absolute; top: 12px; left: 12px; bottom: 12px; width: min(330px, 86vw); background: #fffdf7; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.25); overflow-y: auto; padding: 12px 14px; z-index: 3; }
+  .drawer-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .drawer-head button { border: 0; background: #f1ede2; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; }
+  .drawer-sec-btn { border: 0; background: none; padding: 6px 0 2px; font-weight: 700; color: #0b6e4f; cursor: pointer; text-align: left; font-size: .85rem; }
+  .drawer-sec ul { list-style: none; margin: 0 0 6px; padding: 0; }
+  .drawer-sec a { display: flex; gap: 8px; align-items: baseline; padding: 3px 6px; border-radius: 6px; color: #222; text-decoration: none; font-size: .85rem; }
+  .drawer-sec a:hover { background: #fff3b0; }
+  .drawer-sec a [lang=he] { font-family: 'Frank Ruhl Libre', serif; font-size: 1.05rem; min-width: 5.5em; text-align: right; }
+  .nojs { position: absolute; inset: auto 0 40% 0; text-align: center; }
+
+  .index-wrap { background: #f7f3e8; }
+  .index { max-width: 1180px; margin: 0 auto; padding: 48px 16px 64px; color: #1d1d1b; }
+  .index-head h2 { font-size: 2rem; font-weight: 800; margin: 0 0 8px; }
+  .index-head p { max-width: 760px; color: #444; line-height: 1.6; }
+  .index a { color: #0b6e4f; }
+  .sec { margin-top: 44px; }
+  .sec h3 { font-size: 1.4rem; font-weight: 800; border-bottom: 3px solid #0b6e4f; padding-bottom: 4px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .sec h3 [lang=he] { font-family: 'Frank Ruhl Libre', serif; color: #0b6e4f; }
+  .sec h3 .en { order: -1; }
+.index .blurb { color: #555; max-width: 760px; margin: 8px 0 16px; line-height: 1.55; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .card { background: #fffdf7; border: 1px solid #e6dfcc; border-radius: 14px; padding: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.04); scroll-margin-top: 80px; }
+  .card-head { display: flex; gap: 12px; align-items: center; }
+  .swatch { width: 44px; height: 44px; border-radius: 50%; flex: none; box-shadow: inset -6px -6px 12px rgba(0,0,0,.25); }
+  .card h4 { font-family: 'Frank Ruhl Libre', serif; font-size: 1.9rem; font-weight: 700; margin: 0; line-height: 1.1; text-align: left; }
+  .index .names, .aisle .names { margin: 0; color: #555; font-size: .9rem; }
+  .price { margin-left: auto; background: #ffd60a; color: #d0021b; font-weight: 800; padding: 3px 8px; border-radius: 6px; font-size: .9rem; white-space: nowrap; }
+  .hook { font-weight: 600; margin: 10px 0 4px; }
+  .block { margin-top: 12px; }
+  .block h5 { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: #8a7a3a; margin: 0 0 6px; font-weight: 700; }
+  .block h5 [lang=he] { text-transform: none; letter-spacing: 0; font-family: 'Frank Ruhl Libre', serif; font-size: .85rem; }
+  .block p { margin: 0 0 6px; line-height: 1.55; font-size: .93rem; }
+  .src { margin: 0 0 10px; padding: 8px 10px; background: #f6f2e6; border-radius: 10px; border-right: 3px solid #0b6e4f; }
+  .src blockquote { font-family: 'Frank Ruhl Libre', 'Noto Serif Hebrew', serif; font-size: 1.15rem; margin: 0 0 4px; line-height: 1.5; }
+  .src figcaption { font-size: .86rem; line-height: 1.5; color: #333; }
+  .ref { display: inline-block; margin-right: 8px; font-size: .78rem; font-weight: 600; text-decoration: none; border-bottom: 1px solid currentColor; }
+  .ref.ext::after { content: ' ↗'; }
+  .modern { background: #fff6c9; padding: 6px 9px; border-radius: 8px; }
+  .explore { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .explore a { font-size: .78rem; text-decoration: none; background: #0b6e4f; color: #fff !important; padding: 5px 10px; border-radius: 999px; }
+  .explore a:hover { background: #084f39; }
+  .explore small { opacity: .75; font-family: 'Frank Ruhl Libre', serif; }
+  .card.flash { animation: flash 1.4s ease-out; }
+  @keyframes flash { from { box-shadow: 0 0 0 4px #ffd60a; } to { box-shadow: 0 2px 10px rgba(0,0,0,.04); } }
+  .index .credits { margin-top: 48px; color: #777; font-size: .85rem; max-width: 760px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #111; color: #fff; padding: 8px 14px; border-radius: 999px; font-size: .85rem; z-index: 100; }
+</style>
+
+<script>
+  import { mountAisle, type AisleApi } from '../lib/produce-aisle/scene';
+  import { produce, sections } from '../data/produce-aisle';
+
+  let api: AisleApi | null = null;
+  let cleanup: (() => void)[] = [];
+
+  function toast(msg: string) {
+    const t = document.createElement('div');
+    t.className = 'toast'; t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2200);
+  }
+
+  // Ma'agarim has no link-to-search, so copy the word for its search box on the way out.
+  function onCopyClick(ev: MouseEvent) {
+    const a = (ev.target as HTMLElement).closest<HTMLAnchorElement>('a[data-copy]');
+    if (!a) return;
+    navigator.clipboard?.writeText(a.dataset.copy!).then(() => toast(`Copied ${a.dataset.copy} — paste it into Ma'agarim's search`)).catch(() => {});
+  }
+
+  function boot() {
+    const root = document.getElementById('aisle');
+    const canvas = document.getElementById('aisle-canvas') as HTMLCanvasElement | null;
+    if (!root || !canvas || api) return;
+    document.addEventListener('click', onCopyClick);
+    cleanup.push(() => document.removeEventListener('click', onCopyClick));
+
+    const panel = document.getElementById('panel')!;
+    const pickBtn = document.getElementById('pickup') as HTMLButtonElement;
+    const body = document.getElementById('panel-body')!;
+    const tag = document.getElementById('hover-tag')!;
+    const drawer = document.getElementById('list-drawer')!;
+    const nowHe = document.getElementById('now-he')!, nowEn = document.getElementById('now-en')!;
+    const you = document.getElementById('you')!;
+    const mapBtns = [...root.querySelectorAll<HTMLButtonElement>('.minimap button')];
+    const ids = produce.map((p) => p.id);
+    let current: string | null = null;
+
+    const gl = (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; } })();
+    if (!gl) { root.style.display = 'none'; return; }
+
+    const select = (id: string | null) => {
+      current = id;
+      if (!id) {
+        panel.hidden = true;
+        root.classList.remove('reading');
+        api?.setPanelOffset(0, 0);
+        api?.focus(null);
+        if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+        return;
+      }
+      const card = document.getElementById(`item-${id}`);
+      if (!card) return;
+      body.innerHTML = '';
+      const clone = card.cloneNode(true) as HTMLElement;
+      clone.removeAttribute('id');
+      clone.querySelectorAll('button').forEach((b) => b.remove());
+      body.appendChild(clone);
+      body.scrollTop = 0;
+      panel.hidden = false;
+      root.classList.add('reading');
+      drawer.hidden = true;
+      tag.hidden = true;
+      const narrow = root.clientWidth <= 760;
+      api?.setPanelOffset(narrow ? 0 : panel.offsetWidth + 12, narrow ? panel.offsetHeight : 0);
+      api?.focus(id);
+      history.replaceState(null, '', `#${id}`);
+    };
+
+    api = mountAisle({
+      canvas,
+      onSelect: select,
+      onHold: (on) => {
+        root.classList.toggle('holding', on);
+        pickBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        pickBtn.textContent = on ? '↩ Put it back' : '✋ Pick one up';
+        if (root.clientWidth <= 760 && !panel.hidden) requestAnimationFrame(() => api?.setPanelOffset(0, panel.offsetHeight));
+      },
+      onHover: (id) => {
+        if (!id || current) { tag.hidden = true; return; }
+        const p = produce.find((x) => x.id === id)!;
+        tag.innerHTML = `<span lang="he">${p.he}</span> · ${p.en}`;
+        tag.hidden = false;
+      },
+      onSection: (sid, progress) => {
+        const s = sections.find((x) => x.id === sid)!;
+        if (nowHe.textContent !== s.he) { nowHe.textContent = s.he; nowEn.textContent = s.en; }
+        mapBtns.forEach((b) => b.classList.toggle('on', b.dataset.section === sid));
+        const nav = you.parentElement!;
+        you.style.left = `${4 + progress * (nav.clientWidth - 18)}px`;
+      },
+    });
+    document.getElementById('hint')!.dataset.ready = '1';
+
+    const onMove = (ev: PointerEvent) => { tag.style.left = `${ev.offsetX}px`; tag.style.top = `${ev.offsetY}px`; };
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerleave', () => { tag.hidden = true; });
+
+    const step = (d: number) => { if (current) select(ids[(ids.indexOf(current) + d + ids.length) % ids.length]); };
+    document.getElementById('prev')!.onclick = () => step(-1);
+    document.getElementById('next')!.onclick = () => step(1);
+    document.getElementById('close')!.onclick = () => select(null);
+    pickBtn.onclick = () => api?.hold(pickBtn.getAttribute('aria-pressed') !== 'true');
+    document.getElementById('list-btn')!.onclick = () => { drawer.hidden = !drawer.hidden; };
+    document.getElementById('list-close')!.onclick = () => { drawer.hidden = true; };
+    mapBtns.forEach((b) => (b.onclick = () => { panel.hidden = true; api?.setPanelOffset(0, 0); api?.goToSection(b.dataset.section!); }));
+    drawer.querySelectorAll<HTMLButtonElement>('.drawer-sec-btn').forEach((b) => (b.onclick = () => { drawer.hidden = true; select(null); api?.goToSection(b.dataset.section!); }));
+    drawer.querySelectorAll<HTMLAnchorElement>('a[data-item]').forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); select(a.dataset.item!); }));
+
+    // Cards in the index below can open their crate in the aisle.
+    document.querySelectorAll<HTMLElement>('.index .card').forEach((card) => {
+      const h = card.querySelector('h4');
+      if (!h) return;
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'ref'; btn.textContent = 'Find it in the aisle ↑';
+      btn.style.cssText = 'background:none;border:0;border-bottom:1px solid;color:#0b6e4f;cursor:pointer;padding:0;margin-top:8px';
+      btn.onclick = () => { root.scrollIntoView({ behavior: 'smooth' }); select(card.dataset.id!); };
+      card.querySelector('.hook')?.after(btn);
+    });
+
+    const fromHash = () => { const id = location.hash.slice(1); if (ids.includes(id)) select(id); };
+    fromHash();
+    window.addEventListener('hashchange', fromHash);
+    cleanup.push(() => window.removeEventListener('hashchange', fromHash));
+  }
+
+  function teardown() {
+    api?.dispose(); api = null;
+    cleanup.forEach((f) => f()); cleanup = [];
+  }
+
+  document.addEventListener('astro:page-load', boot);
+  document.addEventListener('astro:before-swap', teardown);
+</script>
