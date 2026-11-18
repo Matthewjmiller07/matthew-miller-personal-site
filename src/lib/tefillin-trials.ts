@@ -1,12 +1,12 @@
 // Reads the Vite manifest of the prebuilt Tefillin Trials game (games/tefillin-trials, built into
 // public/games/tefillin-trials/). One source tree builds two entries: the full R3F game
-// (index.html) and Hineni Lite (lite.html, plain three.js with WebXR).
+// (index.html), Hineni Lite (lite.html, plain three.js with WebXR) and the Knot Explorer (knots.html).
 import fs from 'node:fs';
 import path from 'node:path';
 
 const BASE = '/games/tefillin-trials/';
 
-export function tefillinBundle(entryName: 'index.html' | 'lite.html'): { js: string; css: string[] } {
+export function tefillinBundle(entryName: 'index.html' | 'lite.html' | 'knots.html'): { js: string; css: string[] } {
   try {
     const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/games/tefillin-trials/.vite/manifest.json'), 'utf8'));
     const entry = manifest[entryName];

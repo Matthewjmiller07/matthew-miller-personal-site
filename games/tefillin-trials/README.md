@@ -10,6 +10,9 @@ The same build makes two games from one source tree:
 - `lite.html` → **Hineni Lite** (`/tefillin-trials/lite`): every level again on plain three.js
   (`src/lite/`), about a sixth of the download, and playable in VR (WebXR, `src/lite/vr.js`). It shares
   `content.js`, `nav.js`, `layout.js`, `ward-rules.js`, the stylesheet and the save data with the full game.
+- `knots.html` → **the Knot Explorer** (`/tefillin-trials/knots`, `src/knots/`): a 3D shel yad on an arm and
+  every way to tie it and keep the yud by the bayit (Shiur 6, sheet #81-94, and the video from the shiur).
+  Methods live in `src/knots/data.js`; `?m=chabad` links straight to one.
 
 Levels by shiur (`SHIURIM` in `src/content.js`):
 
