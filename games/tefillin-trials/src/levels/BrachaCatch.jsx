@@ -8,22 +8,9 @@ import { useGame } from '../store.js';
 import { sfx } from '../audio.js';
 import { burst } from '../fx.js';
 import { good, bad } from './common.jsx';
+import { TOKENS, ROUNDS } from '../content.js';
 
-export const TOKENS = {
-  L: { he: 'לְהָנִיחַ', en: 'lehaniach', color: '#ffd84a' },
-  M: { he: 'עַל מִצְוַת', en: 'al mitzvat', color: '#5fb3ff' },
-  B: { he: 'בָּרוּךְ שֵׁם', en: 'Baruch Shem', color: '#ffffff' },
-};
-
-// What each shita needs, in order. bonus: Baruch Shem may be caught at the end.
-export const ROUNDS = [
-  { title: 'Rashi · you didn’t talk', need: ['L'], note: 'One lehaniach covers both tefillin. That’s how Sefardim (Shulchan Aruch 25:5) put them on.' },
-  { title: 'Rabbeinu Tam · you didn’t talk', need: ['L', 'M'], bonus: true, note: 'Lehaniach on the shel yad, al mitzvat on the shel rosh, every day. Ashkenazim follow this (Rema) and add Baruch Shem.' },
-  { title: 'Rashi · you talked in between', need: ['L', 'M'], note: 'Talking cuts the shel rosh off from the first bracha, so it gets al mitzvat (Shulchan Aruch 25:9).' },
-  { title: 'Rabbeinu Tam · you talked in between', need: ['L', 'L', 'M'], bonus: true, note: 'Lehaniach on the shel yad; you talked; now the shel rosh needs lehaniach again plus al mitzvat (Rema 25:9).' },
-  { title: 'Rabbeinu Tam’s tefillin: no bracha at all', need: [], dodge: 12, note: 'No bracha on Rabbeinu Tam’s pair. Catch nothing; the brachot are chasing you!' },
-  { title: 'Rabbi Akiva Eiger’s tenai', need: ['L', 'M'], bonus: true, note: 'Intend that lehaniach won’t cover the shel rosh if Rashi is right. Then al mitzvat works by both. (The Pri Megadim: don’t actually do this.)' },
-];
+export { TOKENS, ROUNDS };
 
 const ARENA = { x: [-13, 13], z: [-20, -4] };
 

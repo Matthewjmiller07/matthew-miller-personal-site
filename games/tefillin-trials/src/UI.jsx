@@ -7,7 +7,9 @@ import { levelLink, shiurFor } from './nav.js';
 import { TOKENS } from './levels/BrachaCatch.jsx';
 import { sfx } from './audio.js';
 
-const LEVEL_NAMES = { gauntlet: 'The Hefsek Gauntlet', catch: 'Bracha Catch', table: 'Hum or Hush', stand: 'World 2 · The Tefillin Stand' };
+// Every level is named for the shiur it comes from: “Shiur 5 · The Ward”.
+const LEVEL_NAMES = Object.fromEntries(SHIURIM.flatMap((sh) => sh.levels.map((l) => [l.id, `Shiur ${sh.shiur} · ${l.name}`])));
+const ALL_LEVELS = SHIURIM.flatMap((sh) => sh.levels.map((l) => ({ ...l, shiur: sh.shiur })));
 
 export function UI() {
   const screen = useGame((s) => s.screen);
@@ -20,6 +22,8 @@ export function UI() {
       {screen === 'catch' && <CatchHud />}
       {screen === 'table' && <TableHud />}
       {screen === 'stand' && <StandHud />}
+      {screen === 'ward' && <WardHud />}
+      {screen === 'check' && <CheckHud />}
       {screen === 'results' && <Results />}
       <LeaderboardPanel />
       <Reaction />
@@ -39,7 +43,7 @@ function Title() {
   return (
     <div className="tt-title">
       <div className="tt-title-card">
-        <div className="tt-kicker">Hilchot Tefillin · Simanim 25–27 · a 3D game · now with World 2</div>
+        <div className="tt-kicker">Hilchot Tefillin · Simanim 25–27 · a 3D game · one level per shiur, now up to Shiur 6 · <a href="/tefillin-trials/lite" style={{ color: 'inherit' }}>Lite &amp; VR ▸</a></div>
         <h1 className="tt-logo"><span lang="he" dir="rtl">הִנֵּנִי</span><small>HINENI · The Tefillin Trials</small></h1>
         <p className="tt-rambam" lang="he" dir="rtl">{RAMBAM.he}</p>
         <p className="tt-rambam-en">{RAMBAM.en} <i>({RAMBAM.ref})</i></p>
@@ -57,7 +61,7 @@ function Title() {
         <div className="tt-shiurim">
           {SHIURIM.map((sh) => (
             <div key={sh.shiur} className="tt-shiur">
-              <div className="tt-shiur-head"><b>World {sh.world} · Shiur {sh.shiur}</b><span lang="he" dir="rtl">{sh.he}</span></div>
+              <div className="tt-shiur-head"><b>Shiur {sh.shiur}</b><span lang="he" dir="rtl">{sh.he}</span></div>
               <div className="tt-shiur-title">{sh.title}</div>
               <small>{sh.sub}</small>
               <div className="tt-shiur-levels">
@@ -106,11 +110,11 @@ function TopBar() {
 function HubHud() {
   const sayings = useGame((s) => s.sayings);
   const stars = useGame((s) => s.stars);
-  const total = (stars.gauntlet || 0) + (stars.catch || 0) + (stars.table || 0) + (stars.stand || 0);
+  const total = ALL_LEVELS.reduce((a, l) => a + (stars[l.id] || 0), 0);
   return (
     <div className="tt-objective">
       <b>The shul</b> · Walk up to the poskim and press E to hear their ruling ({sayings.length}/{WHO_SAID.length}).
-      Step into a glowing ring to play: <span style={{ color: '#ff8a7a' }}>The Hefsek Gauntlet</span>, <span style={{ color: '#5fb3ff' }}>Bracha Catch</span>, <span style={{ color: '#7ad1a8' }}>Hum or Hush</span>, and new: <span style={{ color: '#ffb347' }}>World 2 · The Tefillin Stand</span> (back right). ★ {total}/12
+      Step into a glowing ring to play: {ALL_LEVELS.map((l, i) => <span key={l.id}>{i ? ', ' : ''}<span style={{ color: l.color }}>Shiur {l.shiur} · {l.name}</span></span>)}. ★ {total}/{ALL_LEVELS.length * 3}
     </div>
   );
 }
@@ -224,6 +228,42 @@ function StandHud() {
             </button>
           </div>
           <div className="tt-arm-legend"><span style={{ color: '#3cc45a' }}>■ everyone</span><span style={{ color: '#a6e35a' }}>■ the Gra only</span><span style={{ color: '#ff4a4a' }}>■ not the mitzvah</span></div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function CheckHud() {
+  const hud = useGame((s) => s.hud);
+  return (
+    <>
+      <div className="tt-objective">{hud.objective}</div>
+      <div className="tt-stats">
+        <Hearts n={hud.lives ?? 3} />
+        <div className="tt-score">Checked {hud.served || 0}/{hud.total || 0}</div>
+        <div className="tt-score">{hud.score || 0} pts</div>
+      </div>
+    </>
+  );
+}
+
+function WardHud() {
+  const hud = useGame((s) => s.hud);
+  return (
+    <>
+      <div className="tt-objective">{hud.objective}</div>
+      <div className="tt-stats">
+        <Hearts n={hud.lives ?? 3} />
+        <div className="tt-score">Rounds {hud.served || 0}/{hud.total || 0}</div>
+        <div className="tt-score">{hud.score || 0} pts</div>
+      </div>
+      {hud.stage === 'knot' && (
+        <div className="tt-ritual tt-arm">
+          <div className="tt-ritual-title">Tie the yud: its leg toward the heart ♥</div>
+          <div className="tt-ritual-btns tt-arm-btns">
+            <button onClick={() => fire('action')}><kbd>E</kbd>Tie it here</button>
+          </div>
         </div>
       )}
     </>
@@ -378,11 +418,11 @@ function LeaderboardPanel() {
         <button className="tt-lb-x" onClick={close} aria-label="Close">✕</button>
         <div className="tt-kicker">Leaderboard</div>
         <h2>🏆 {LEVEL_NAMES[level]}</h2>
-        {sh && <div className="tt-lb-sub">World {sh.world} · Shiur {sh.shiur} · {sh.sub}</div>}
+        {sh && <div className="tt-lb-sub">Shiur {sh.shiur} · {sh.sub}</div>}
         <div className="tt-lb-tabs">
           {LB_LEVELS.map((l) => (
             <button key={l.id} aria-pressed={l.id === level} style={{ '--c': l.color }} onClick={() => useGame.getState().showLeaderboard(l.id)}>
-              <small>W{l.world}</small> {l.name}
+              <small>S{l.shiur}</small> {l.name}
             </button>
           ))}
         </div>

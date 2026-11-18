@@ -3,14 +3,11 @@ import * as THREE from 'three';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { MeshReflectorMaterial, Text, Float, Environment, Lightformer, Instances, Instance, Sparkles } from '@react-three/drei';
 
-export const HALF_X = 18;
-export const HALF_Z = 24;
+import { HALF_X, HALF_Z, BENCHES, BIMAH } from '../layout.js';
+
+export { HALF_X, HALF_Z, BENCHES, BIMAH };
 export const FONT = `${import.meta.env.BASE_URL}fonts/NotoSerifHebrew-Bold.ttf`;
 
-// Bench rows: [x, z] centers, each 5.5 wide.
-export const BENCHES = [];
-for (const z of [-16, -12, -8, 8, 12, 16]) for (const x of [-12, -4.5, 4.5, 12]) BENCHES.push([x, z]);
-export const BIMAH = { x: 0, z: 0, half: 2.6 };
 
 // Stained glass: jewel-toned panes with lead lines, used as both colour and emissive map.
 function makeGlassTexture() {

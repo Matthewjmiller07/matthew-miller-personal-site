@@ -4,10 +4,10 @@ import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { Text, Float, Environment, Lightformer, Sparkles, Sky, Instances, Instance } from '@react-three/drei';
 import { FONT } from './Shul.jsx';
 
-// World 2: a Jerusalem-stone street corner on a bright morning, with a tefillin stand.
-export const STREET = { halfX: 22, halfZ: 18 };
-export const STAND = { x: 0, z: -2 }; // the table's centre; customers stand on +z, you behind on -z
-export const ARM_STAGE = { x: 0, y: 0, z: -60 }; // off-screen close-up stage for the arm
+// Shiur 4: a Jerusalem-stone street corner on a bright morning, with a tefillin stand.
+import { STREET, STAND, ARM_STAGE } from '../layout.js';
+
+export { STREET, STAND, ARM_STAGE };
 
 // Warm limestone with mortar lines and a little noise.
 function makeStoneTexture() {

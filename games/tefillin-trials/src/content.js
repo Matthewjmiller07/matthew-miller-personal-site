@@ -339,7 +339,7 @@ export const RANKS = [
   [1300, 'Locked in. Hineni.'],
 ];
 
-// ── World 2 · Yad Keha: the tefillin stand (SCP chabura #4, siman 25-27, sheet #52-75) ──
+// ── Shiur 4 · Yad Keha: the tefillin stand (SCP chabura #4, siman 25-27, sheet #52-75) ──
 
 // The four zones of the upper arm from the sheet's picture (#62), shoulder (-3) to elbow (+3).
 // rank: 3 = everyone agrees, 2 = kosher by the Gra only, 0 = not the mitzvah.
@@ -515,7 +515,347 @@ export const STAND_LESSONS = [
   'The kiborret: the lower half of the muscle by all opinions (#60-#64).',
 ];
 
-// ── Worlds, one per shiur. Deep links: ?shiur=4, ?world=2, ?level=stand (see nav.js) ──
+// ── Bracha Catch: the tokens and the rounds (shita by shita) ──
+export const TOKENS = {
+  L: { he: 'לְהָנִיחַ', en: 'lehaniach', color: '#ffd84a' },
+  M: { he: 'עַל מִצְוַת', en: 'al mitzvat', color: '#5fb3ff' },
+  B: { he: 'בָּרוּךְ שֵׁם', en: 'Baruch Shem', color: '#ffffff' },
+};
+
+// What each shita needs, in order. bonus: Baruch Shem may be caught at the end.
+export const ROUNDS = [
+  { title: 'Rashi · you didn’t talk', need: ['L'], note: 'One lehaniach covers both tefillin. That’s how Sefardim (Shulchan Aruch 25:5) put them on.' },
+  { title: 'Rabbeinu Tam · you didn’t talk', need: ['L', 'M'], bonus: true, note: 'Lehaniach on the shel yad, al mitzvat on the shel rosh, every day. Ashkenazim follow this (Rema) and add Baruch Shem.' },
+  { title: 'Rashi · you talked in between', need: ['L', 'M'], note: 'Talking cuts the shel rosh off from the first bracha, so it gets al mitzvat (Shulchan Aruch 25:9).' },
+  { title: 'Rabbeinu Tam · you talked in between', need: ['L', 'L', 'M'], bonus: true, note: 'Lehaniach on the shel yad; you talked; now the shel rosh needs lehaniach again plus al mitzvat (Rema 25:9).' },
+  { title: 'Rabbeinu Tam’s tefillin: no bracha at all', need: [], dodge: 12, note: 'No bracha on Rabbeinu Tam’s pair. Catch nothing; the brachot are chasing you!' },
+  { title: 'Rabbi Akiva Eiger’s tenai', need: ['L', 'M'], bonus: true, note: 'Intend that lehaniach won’t cover the shel rosh if Rashi is right. Then al mitzvat works by both. (The Pri Megadim: don’t actually do this.)' },
+];
+
+// ── Shiur 5 · The Ward: amputees and the yud (SCP chabura #5, siman 27, sheet #71-91, and the shiur) ──
+// Every patient is right-handed unless he says otherwise. body: the state of each arm, read from
+// the shoulder down: 'whole' | 'gone' (nothing left) | 'bicep' (only the upper arm) | 'stump'
+// (upper arm and part of the forearm) | 'weak' (there, but he can't use it well) | 'numb' (paralyzed,
+// no feeling at all). accept: the [arm, bracha] answers that are right, arm 'left' | 'right' | 'none'.
+// rosh: an optional follow-up; 'ROSH' is filled in from your minhag (which brachot on a lone shel rosh).
+export const ARM_STATES = {
+  whole: { label: 'whole arm', color: '#e8c39e' },
+  gone: { label: 'whole arm gone', color: null },
+  bicep: { label: 'only the upper arm', color: '#e8c39e' },
+  stump: { label: 'upper arm + part of the forearm', color: '#e8c39e' },
+  weak: { label: 'weak, healing', color: '#d9b08a' },
+  numb: { label: 'paralyzed, no feeling', color: '#9fb2c8' },
+};
+
+export const WARD_QUEUE = [
+  {
+    kind: 'patient', name: 'Sgt. Amit', look: PERSON('#4a5a32', '#111', { beard: '#2a1c12' }), body: { L: 'gone', R: 'whole' },
+    line: 'I’m a righty. My whole left arm is gone, from the shoulder. Where does my shel yad go?',
+    accept: [['none', null], ['right', false]],
+    why: 'Mishnah Berurah 27:6: he has no yad keha left, so he’s patur from the shel yad: like being stuck in the desert on Pesach with no matzah, “ones Rachmana patrei”. We don’t move it to his right arm, just as we wouldn’t wrap it on his chest or his leg. Some are machmir (the Magen Avraham, from the Sifrei) and put it on the right; the Shaar HaTziyun (27:7): then only without a bracha.',
+    rosh: 'ROSH',
+    thanks: 'Hineni. The shel rosh is its own mitzvah, and I can still do that one.',
+  },
+  {
+    kind: 'patient', name: 'Sgt. Noam', look: PERSON('#4a5a32', '#c0392b'), body: { L: 'bicep', R: 'whole' },
+    line: 'From the elbow down my left arm is gone. The muscle is still there.',
+    accept: [['left', false]],
+    why: 'Menachot 37a: the Tanna Kamma says a gidem is patur; Acherim say he’s chayav, from the extra hei in “yadcha”. Tosafot: no argument, the Tanna Kamma means the whole arm is gone, Acherim mean the muscle is left, so put it on with a bracha. The Or Zarua: they argue exactly here, and the halacha is like the Tanna Kamma: patur. The Rema (27:1): “gidem ... yaniach bli bracha.” The Bach, the Gra and the Eliyah Rabbah say with a bracha, so the Biur Halacha’s way out: no bracha on the shel yad, and have it in mind with the brachot on the shel rosh.',
+    rosh: {
+      line: 'So no bracha on my arm. When I make the brachot on my shel rosh, what do I have in mind?',
+      options: [
+        { t: 'That they cover the shel yad too', ok: true },
+        { t: 'Only the shel rosh: the shel yad got no bracha, and that’s that' },
+        { t: 'Nothing special: say an extra lehaniach on the arm afterward' },
+      ],
+      why: 'Biur Halacha 27:1: with the brachot on the shel rosh (two for Ashkenazim, one for Sefardim), have in mind that they go on the shel yad as well. That satisfies Tosafot and the Gra without risking a bracha levatala.',
+      lesson: 'Only the upper arm left? Shel yad without a bracha; have it in mind with the shel rosh’s brachot (Rema 27:1, Biur Halacha).',
+    },
+    thanks: 'Acherim and Tosafot, both covered. Am Yisrael chai.',
+  },
+  {
+    kind: 'shaila', title: 'Back to basics: the yud', who: 'Your chavruta',
+    line: '“Everyone says the knot of the shel yad is a yud. So where is the yud’s leg, and where is its head?”',
+    options: [
+      { t: 'The strap’s end coming out of the knot is the leg, pointing toward the heart; the body of the knot is the head', ok: true },
+      { t: 'The yud is printed on the bayit, under the shin' },
+      { t: 'The leg is the long strap going down to your hand' },
+    ],
+    why: 'Minchat Yitzchak (#83): on the knot, the end of the strap is the leg of the yud and the body of the knot is its head. It floats right next to the bayit, the leg aimed at the heart. You look at it every morning: now you know what you’re looking at.',
+    lesson: 'The yud: the knot is its head, the strap’s end is its leg, aimed at the heart (Minchat Yitzchak, #83).',
+  },
+  {
+    kind: 'patient', name: 'Sgt. Yair', look: PERSON('#4a5a32', '#2c5aa0', { beard: '#5a3a22' }), body: { L: 'stump', R: 'whole' },
+    line: 'I lost my left hand and half the forearm. Everything above that is fine.',
+    accept: [['left', true]],
+    why: 'Mishnah Berurah 27: the upper arm with part of the forearm still looks like a hand: it’s called “yadcha”. His weak left arm is still there, so he keeps putting it on the left, with a bracha.',
+    thanks: 'Same arm as always. Baruch Hashem for what’s left.',
+  },
+  {
+    kind: 'patient', name: 'Sgt. Itai', look: PERSON('#4a5a32', '#e0b54a'), body: { L: 'whole', R: 'gone' },
+    line: 'I was a righty. My right arm is gone, all of it. Do I switch?',
+    accept: [['left', true]],
+    why: 'Mishnah Berurah: he’s left with his weak arm, so it goes on the left with a bracha. Why not call him a lefty now? Rav Shlomo Zalman: “lefty” and “righty” only mean something when there are two arms to compare. With the whole right arm gone there’s nothing to compare to: the left is still his yad keha. He can’t tie it himself, so you tie it for him: the mitzvah is that it’s tied on him, not that he ties it.',
+    thanks: 'You tie, I wear. That’s how a mitzvah works here.',
+  },
+  {
+    kind: 'shaila', title: 'The string around the knot', who: 'Your chavruta',
+    line: '“My friend’s shel yad has a thread wrapped around the knot, tying it to the bayit. What’s that for? Should I get one?”',
+    options: [
+      { t: 'It keeps the yud touching the bayit so it never slides away. It’s the accepted custom: worth getting', ok: true },
+      { t: 'It’s a segulah against the evil eye; skip it' },
+      { t: 'It’s pasul: nothing may be tied to the bayit' },
+    ],
+    why: 'Shulchan Aruch 27:2, from the Zohar: the yud must stay right by the bayit. Kaf HaChaim 27:12 (#86): “al kein nahagu ha’olam”, the world ties the yud to the bayit with a gid thread through the titura so it never moves, even in the bag. Orchot Rabbeinu (#87): the Chazon Ish’s tefillin had a cut piece of strap in the ma’abarta to hold the yud in place.',
+    lesson: 'The thread on the knot ties the yud to the bayit so it never moves away (Kaf HaChaim 27:12, #86).',
+  },
+  {
+    kind: 'patient', name: 'Sgt. Ori', look: PERSON('#4a5a32', '#111'), body: { L: 'whole', R: 'stump' },
+    line: 'My right hand and half my forearm are gone. I write with my left now, and I’m getting good at it.',
+    accept: [['right', true]],
+    why: 'The Dagul Mervavah: a righty whose right hand stopped working became a lefty “min hashamayim”. The Mishnah Berurah goes further: kal vachomer if part of the right arm was cut off, he’s a lefty, so his right arm is now his yad keha. He still has part of the forearm, so it’s “yadcha”: with a bracha.',
+    rosh: {
+      line: 'Rav Shlomo Zalman doesn’t like that jump. So after davening, what do I do?',
+      options: [
+        { t: 'Move the shel yad to my left arm without a bracha. Never both arms at the same time', ok: true },
+        { t: 'Wear a second shel yad on my left arm at the same time, to cover everyone' },
+        { t: 'Nothing: the Mishnah Berurah is enough' },
+      ],
+      why: 'Halichot Shlomo (#77) and Halacha Berura (#76): a stump doesn’t make him a real lefty, so he should put it on both arms, one after the other: never both at once, which looks like adding to the mitzvah. Which goes first? While he still leans on the stump (or a prosthetic), left first with the bracha; once his left hand is really the strong one, right first with the bracha, then the left without one.',
+      lesson: 'Lost part of the right arm? Both arms, one after the other, never together; the bracha goes on the arm that’s now yad keha (Halichot Shlomo, #77).',
+    },
+    thanks: 'Right with a bracha, then left. Got it.',
+  },
+  {
+    kind: 'shaila', title: 'At the Kotel', who: 'The Sefardi man next to you',
+    line: 'He wraps the strap around all four sides of his bayit before going down the arm. “Is that how we do it?”',
+    options: [
+      { t: 'Both are Sefardi practice: Or LeTzion prefers wrapping the bayit; Rav Ovadia doesn’t, to protect its squareness', ok: true },
+      { t: 'No: wrapping the bayit is pasul' },
+      { t: 'Yes, and every Sefardi must do it' },
+    ],
+    why: 'Or LeTzion (#88): better to wrap around the bayit, tighten, then go down to the arm. Yabia Omer (#89): our practice is not to wrap the bayit, so its squareness doesn’t wear off from rubbing every day; we rely on the rabbanim and mekubalim who said it’s enough to have it in mind.',
+    lesson: 'Wrapping the strap around the bayit: Or LeTzion yes, Yabia Omer no, to guard the bayit’s squareness (#88, #89).',
+  },
+  {
+    kind: 'patient', name: 'Ezra', look: PERSON('#3a2e5a', '#fff', { beard: '#3a2a1a' }), body: { L: 'whole', R: 'weak' },
+    line: 'A car accident. My right arm barely works, so I’m learning to write with my left. The doctors say it will heal.',
+    accept: [['left', true]],
+    why: 'Halichot Shlomo (#78): if the doctors expect the right hand to recover, he keeps putting on the left. Only once they say it won’t heal is it a yad keha, and then the tefillin go on the right (Shevet HaLevi, #74: like a lefty, and he needn’t retrain himself; Halacha Berura 27:24, #76: and if he can, put them on the left again afterward without a bracha).',
+    thanks: 'Left for now. Bli neder I’ll ask again when the doctors decide.',
+  },
+  {
+    kind: 'shaila', title: 'A lefty’s plan', who: 'A young volunteer',
+    line: '“I’m a lefty. I want to train myself to be right-handed so my tefillin go on the left like everyone. Good idea?”',
+    options: [
+      { t: 'No. Lechatchila don’t change your nature for that: you’ll probably end up half-and-half, a safek', ok: true },
+      { t: 'Yes, it’s a mitzvah to be like everyone' },
+      { t: 'Yes, and once you write with your right you’re a righty' },
+    ],
+    why: 'Piskei Teshuvot 27:15 (#79): lechatchila someone born a lefty shouldn’t change his nature for the sake of tefillin. Some poskim hold it doesn’t help, and you may not fully succeed and end up writing with one hand and working with the other: doubtful which is your yad keha.',
+    lesson: 'A lefty shouldn’t retrain himself for tefillin (Piskei Teshuvot 27:15, #79).',
+  },
+  {
+    kind: 'patient', name: 'Mr. Katz', look: PERSON('#2b3a55', '#111', { beard: '#d9d9d9', hat: 'fedora' }), body: { L: 'whole', R: 'numb' },
+    line: 'A stroke. My right arm is paralyzed: no movement, no feeling at all. Forever, they say.',
+    accept: [['left', true]],
+    why: 'Halichot Shlomo (#78): an arm with no feeling at all is as if it isn’t there, like having no right arm, so the left is still his weak arm: tefillin on the left, with a bracha. (Rav Moshe argues on a dead arm: if you cut it and it bleeds, it’s alive. For a numb LEFT arm that’s the difference: Rav Moshe would keep it on the left; Rav Shlomo Zalman, as if it’s gone.)',
+    thanks: 'Shema Yisrael… thank you, young man.',
+  },
+  {
+    kind: 'shaila', title: 'The new hand', who: 'The ward nurse',
+    line: '“Bed 12 got a hand transplant last month, from a donor. Is it his hand now, for tefillin?”',
+    options: [
+      { t: 'Yes: it lives from his body and is batel to it, like a young branch grafted onto an old tree', ok: true },
+      { t: 'No: it’s the donor’s hand forever' },
+      { t: 'Only if the donor was Jewish' },
+    ],
+    why: 'Sotah 43b: a young orlah branch grafted onto an old tree isn’t orlah: it lives from the tree and is batel to it. Rav Karp: the same for a transplanted hand: it’s his. But for the first weeks it can be numb: Rav Shlomo Zalman would treat it as not there yet, Rav Moshe as alive since blood flows through it.',
+    lesson: 'A transplanted hand is his, like a graft on an old tree (Sotah 43b, Rav Karp); while numb, Rav Shlomo Zalman and Rav Moshe argue.',
+  },
+  {
+    kind: 'patient', name: 'Sgt. Gil', look: PERSON('#4a5a32', '#fff'), body: { L: 'whole', R: 'bicep' },
+    line: 'My right forearm is gone. Only the upper arm is left, and I do everything with my left now.',
+    accept: [['right', false], ['left', false]],
+    why: 'By the Mishnah Berurah he’s now a lefty, so the shel yad belongs on his right arm, but all that’s left there is the upper arm: that’s the Rema’s gidem, so no bracha. By Rav Shlomo Zalman he isn’t a real lefty, so it goes on his left, and since the Mishnah Berurah would call that the wrong arm, no bracha there either. Either way: no bracha on the shel yad; have it in mind with the shel rosh’s brachot.',
+    thanks: 'No bracha on the arm, but the shel rosh covers it. Todah.',
+  },
+  {
+    kind: 'shaila', title: 'Closing the ward: two ways to tie', who: 'Your chavruta',
+    line: '“A Sefardi friend feeds only the loop through the ma’abarta, so it comes out on the far side of the bayit. I keep the loop right by the knot. What changes?”',
+    options: [
+      { t: 'His tightening pulls the yud into the bayit; mine can tug it away, so I need something holding it (like the thread)', ok: true },
+      { t: 'Nothing: it’s just fashion' },
+      { t: 'His way is pasul: the loop has to touch the yud' },
+    ],
+    why: 'Halacha Berura 27:9 (#84, #85): Sefardim and Edot HaMizrach have the doubled strap come out of the ma’abarta on the second side of the bayit, not by the yud, so tightening on the arm pulls toward the outside and draws the yud in. Ashkenazim keep the loop by the knot, so pulling tight tends to drag the yud out: that’s why the thread (#86) matters so much.',
+    lesson: 'Sefardi loop on the far side: tightening pulls the yud in. Ashkenazi loop by the knot: keep the yud tied to the bayit (#84-#86).',
+  },
+];
+
+// Which brachot go on a lone shel rosh, by minhag (Shulchan Aruch and Rema 26:1).
+export const LONE_ROSH = {
+  ashkenaz: {
+    line: 'No shel yad today. Which brachot on my shel rosh? (You’re Ashkenazi.)',
+    options: [
+      { t: 'Both: lehaniach and al mitzvat, then Baruch Shem', ok: true },
+      { t: 'None: without a shel yad there’s no mitzvah' },
+      { t: 'Only lehaniach' },
+    ],
+    why: 'The shel yad and shel rosh are two mitzvot; one doesn’t hold back the other (Menachot 38a). Rema 26:1: on a shel rosh alone, Ashkenazim say both brachot.',
+  },
+  sefard: {
+    line: 'No shel yad today. Which bracha on my shel rosh? (You’re Sefardi.)',
+    options: [
+      { t: 'One bracha: al mitzvat tefillin', ok: true },
+      { t: 'None: without a shel yad there’s no mitzvah' },
+      { t: 'Lehaniach and al mitzvat' },
+    ],
+    why: 'The shel yad and shel rosh are two mitzvot; one doesn’t hold back the other (Menachot 38a). Shulchan Aruch 26:1: a shel rosh alone gets “al mitzvat tefillin”.',
+  },
+};
+
+export const WARD_LESSONS = [
+  'Whole weak arm gone: patur from the shel yad. If he wants, the other arm without a bracha (Mishnah Berurah 27:6, Shaar HaTziyun).',
+  'Only the upper arm left: put it on without a bracha (Rema 27:1); have it in mind with the shel rosh’s brachot (Biur Halacha).',
+  'Upper arm and part of the forearm: still “yadcha”, with a bracha (Mishnah Berurah).',
+  'The yud’s leg points to the heart, and the knot stays touching the bayit (Shulchan Aruch 27:2, #81-#83).',
+];
+
+// ── Shiur 6 · The Checkpoint: keeping the yud in place, and chatzitzah (SCP chabura #6, siman 27, sheet #86-111) ──
+// People walk through a scanner at the shul door. It lights up whatever sits between the tefillin and
+// the body (flag.spot: arm | head | bayit | wrist | hair) and you rule. Between them: shailos.
+export const CHECK_QUEUE = [
+  {
+    kind: 'scan', name: 'Eli', look: PERSON('#3a2e5a', '#111', { beard: '#3a2a1a' }), flag: { spot: 'arm', what: 'bandage over the whole muscle' },
+    line: 'Ax throwing. I cut my left biceps; the bandage covers the whole place for the shel yad.',
+    options: [
+      { t: 'Shel yad on top of the bandage, covered by his sleeve, without a bracha', ok: true },
+      { t: 'On top of his shirt sleeve instead, so it doesn’t press on the cut', why: 'Tefillin on top of the sleeve is “derech hachitzonim”, the Mishnah’s heretics’ way (Megillah 24b): the shel yad must be covered, “lecha le’ot”, a sign for you, not for others.' },
+      { t: 'Rip the bandage off: nothing may come between', why: 'No: if it hurts to put it on the wound he’s patur from the shel yad (Shulchan Aruch HaRav 27:8). And a bandage isn’t like a shirt.' },
+    ],
+    why: 'Magen Avraham 27:6 (#96): you may put it on the bandage if there’s no other way, as long as something covers it. Mishnah Berurah HaMevoar (#98): a bandage is like the arm itself, a place normally covered, unlike a shirt. Shulchan Aruch HaRav 27:8 (#99): put it on the bandage without a bracha, and be careful to cover it.',
+    lesson: 'A bandage on the biceps: shel yad over it, covered, without a bracha. Never over the shirt (Magen Avraham 27:6, Shulchan Aruch HaRav, #96-#99).',
+  },
+  {
+    kind: 'scan', name: 'Dov', look: PERSON('#2e5d4b', '#c0392b'), flag: { spot: 'head', what: 'bandage where the shel rosh goes' },
+    line: 'Stitches on top of my head, right where the shel rosh sits. Thin bandage. Can I put it on?',
+    options: [
+      { t: 'Yes, over the thin bandage, but no bracha on the shel rosh: have it in mind with the shel yad’s lehaniach', ok: true },
+      { t: 'Yes, with both brachot as usual: there’s no chatzitzah for the shel rosh' },
+      { t: 'No shel rosh at all until it heals' },
+    ],
+    why: 'The Rosh (Beit Yosef, #95): from “al yadcha” and “bein einecha” and the kohen’s “al besaro”, nothing may come between the tefillin and the body. The Rashba: there’s no chatzitzah in tefillin at all, and the shel rosh may even go on a hat, since “ve’ra’u kol amei ha’aretz”. So the Rema (27:4): one who puts it on that way doesn’t bless on the shel rosh; the lehaniach on the shel yad covers it.',
+    lesson: 'Bandage under the shel rosh: put it on, no bracha on the rosh; the shel yad’s lehaniach covers it (Rema 27:4; Rosh vs Rashba, #95).',
+  },
+  {
+    kind: 'shaila', title: 'Five ways to keep the yud home', who: 'The sofer at the door',
+    line: '“Ashkenazi loops pull the yud away every time you tighten. The Mishnah Berurah’s own fix for keeping it by the bayit?”',
+    options: [
+      { t: 'Cut a notch in the top of the titura so the knot sits snug against the bayit', ok: true },
+      { t: 'Glue the yud to the bayit' },
+      { t: 'Wrap a gid thread around the titura, underneath' },
+    ],
+    why: 'Mishnah Berurah 27:11: cut into the titura from above and stick the yud to the bayit (that’s why the ma’abarta of a lefty’s pair has the bigger cut on the other side). 27:10: a gid thread tied around the underside of the titura is a chatzitzah, “ra’ui levatel”. The Kaf HaChaim (#88) ties it from the top seam instead; the Chazon Ish had a piece of strap set in the ma’abarta (#89); Sefardim feed the loop out the far side so tightening pulls the yud in (#87); Chabad’s adjustable loop ties the knot itself (#92).',
+    lesson: 'Keep the yud by the bayit: a notch in the titura (Mishnah Berurah 27:11), a thread from the top seam (Kaf HaChaim), never under it (#86-#92).',
+  },
+  {
+    kind: 'scan', name: 'Shimi', look: PERSON('#1d2433', '#e0b54a'), flag: { spot: 'bayit', what: 'a thread looped under the titura' },
+    line: 'I tied my yud to the bayit with a thread. It goes right around the bottom of the titura. Good, no?',
+    options: [
+      { t: 'The thread under the titura is between the bayit and his arm: move it to the top seam', ok: true },
+      { t: 'Perfect: the Zohar wants the yud tied to the bayit' },
+      { t: 'Fine, a thread is too thin to matter' },
+    ],
+    why: 'Mishnah Berurah 27:10: the custom of tying the yud with a gid thread “ra’ui levatel”, because the thread goes around the titura and is a chatzitzah between the arm and the tefillin (so too the Levushei Serad). The Kaf HaChaim (#88): tie it with the gid that sews the titura, coming out of the top seam, “so there’s no chatzitzah between the tefillin and his flesh”.',
+    lesson: 'A thread holding the yud must not run under the titura: tie it from the top seam (Mishnah Berurah 27:10, Kaf HaChaim, #88).',
+  },
+  {
+    kind: 'scan', name: 'Moti', look: PERSON('#5a2e2e', '#fff'), flag: { spot: 'bayit', what: 'clear nail polish on the bottom' },
+    line: 'I sweat a lot, and I shower right before Shacharit. I painted clear nail polish on the bottom of my batim.',
+    options: [
+      { t: 'Fine: it’s there to protect the tefillin, so it’s no chatzitzah', ok: true },
+      { t: 'Chatzitzah: scrape it off before tomorrow' },
+      { t: 'Fine only on the shel rosh' },
+    ],
+    why: 'Halichot Shlomo (#101): you may rub paraffin oil on tefillin against water and sweat; it’s absorbed into the leather. Even ink spilled on the bottom, or lacquer (“lakah”), is kosher: “ein bahem mamash”. Shevet HaLevi (#102): “pashut she’mutar lechatchila”, since it’s done to protect the batim. Wet hair after a shower isn’t a chatzitzah either (Halichot Shlomo, #100).',
+    lesson: 'Sealing the batim against sweat or a wet head: allowed, it protects the tefillin (Halichot Shlomo, Shevet HaLevi, #100-#102).',
+  },
+  {
+    kind: 'shaila', title: 'Borrowed tefillin', who: 'Your lefty friend',
+    line: '“Your pair is a righty’s. On my right arm the knot faces out. If I flip it, the ma’abarta is toward my elbow and the bayit toward my shoulder. What do I do?”',
+    options: [
+      { t: 'Flip it: the yud must face the heart; which end faces the shoulder is only custom. Best: re-thread the strap from the other side', ok: true },
+      { t: 'Keep the bayit toward the elbow, knot facing out: that’s the minhag' },
+      { t: 'You can’t wear a righty’s tefillin at all' },
+    ],
+    why: 'Beit Yosef (#94), from the Terumat HaDeshen: some put the ma’abarta toward the shoulder, some toward the hand, “ein kepida badavar kulei hai”; today everyone puts the ma’abarta toward the shoulder. But the yud facing the heart is a din in the Gemara. Biur Halacha 27:2 (Shvut Yaakov): a lefty with only a righty’s pair may flip it, bayit toward the shoulder, “ki zeh vadai tov yoter”. Better still: undo the strap and feed it in from the other side.',
+    lesson: 'A lefty borrowing a righty’s pair: the yud toward the heart beats which end faces the shoulder; best, re-thread it (Beit Yosef, Biur Halacha, #94).',
+  },
+  {
+    kind: 'scan', name: 'Avi', look: PERSON('#2b3a55', '#2c5aa0', { beard: '#5a3a22' }), flag: { spot: 'hair', what: 'long hair (growing it out for Purim)' },
+    line: 'It’s Chanukah and I’m growing my hair out for my Purim costume. My friend says long hair is a chatzitzah.',
+    options: [
+      { t: 'Your own hair growing in its place isn’t a chatzitzah: “hair is like the head itself”', ok: true },
+      { t: 'He’s right: cut it before tefillin tomorrow' },
+      { t: 'Only a problem past 10 cm' },
+    ],
+    why: 'Aruch HaShulchan 27:15 (#103): some want to be strict with very big hair, “but I see no reason: what limit would you give? Hair is like the head itself.” Only a bald man who combs hair over from somewhere else onto the place of the tefillin has a chatzitzah. “And that’s the simple custom, with no doubt at all.”',
+    lesson: 'Your own hair in its place is like the head: no chatzitzah, however long (Aruch HaShulchan 27:15, #103).',
+  },
+  {
+    kind: 'scan', name: 'Mr. Gold', look: PERSON('#30245a', '#111', { hat: 'fedora' }), flag: { spot: 'hair', what: 'a massive combover' },
+    line: 'Bald on top. I grow it long on the side and comb it right over. Is my combover a chatzitzah?',
+    options: [
+      { t: 'Most say yes, so move it aside under the bayit; Rav Shlomo Zalman is lenient, since that’s how he wears it', ok: true },
+      { t: 'No problem by everyone: it’s his own hair' },
+      { t: 'Shave the side so it can’t happen' },
+    ],
+    why: 'Aruch HaShulchan (#103): hair brought over from another place to the place of the tefillin “vadai yesh chatzitzah”. Maasef LeChol HaMachanot (#104) and Chut Shani (#105): it’s from another place, so it’s chatzitzah, and the question is only how much. Halichot Shlomo (#106): since that’s the normal way for such people, it isn’t considered a chatzitzah. Easy fix: brush it aside where the bayit sits.',
+    lesson: 'A combover is hair from elsewhere: most say chatzitzah, Rav Shlomo Zalman is lenient. Brush it aside under the bayit (#103-#106).',
+  },
+  {
+    kind: 'scan', name: 'Reb Ari', look: PERSON('#101218', '#111', { beard: '#d9d9d9' }), flag: { spot: 'hair', what: 'a toupee' },
+    line: 'No hair left at all; I wear a toupee to shul. Do the tefillin go on the toupee?',
+    options: [
+      { t: 'Put them on at home first, on his own head, and say Shema; then he may wear them over the toupee in shul', ok: true },
+      { t: 'Always over the toupee: it’s his hair now' },
+      { t: 'He must come to shul without it' },
+    ],
+    why: 'Halichot Shlomo (#109): Rav Shlomo Zalman ruled that a man with no hair who goes out in a toupee, since it’s hard to tell him to daven alone at home every day, should first put the tefillin on his bare head at home and read Shema in them; then he may go daven with the tzibbur and put them on over the toupee. (Implanted hair that grows from the scalp is different: Igrot Moshe, #110, it becomes part of the body, no chatzitzah.)',
+    lesson: 'A toupee: tefillin on the bare head at home with Shema first, then over it in shul (Halichot Shlomo, #109). Hair implants aren’t a chatzitzah (Igrot Moshe, #110).',
+  },
+  {
+    kind: 'scan', name: 'Danny', look: PERSON('#4a3a1a', '#2c5aa0'), flag: { spot: 'wrist', what: 'a watch under the straps' },
+    line: 'Let’s set the record straight: do I have to take my watch off before tefillin?',
+    options: [
+      { t: 'It’s proper to take it off, but by the letter of the law only the place of the knot matters, not the wraps', ok: true },
+      { t: 'It must come off: the wraps are the mitzvah' },
+      { t: 'Wear it on top of the bayit for safekeeping' },
+    ],
+    why: 'Pri Megadim (#107): be careful with the strap where it ties; lechatchila the wraps too should be on the skin. Teshuvot VeHanhagot (#108): by din the concern is only at the knot; the order of wraps is a minhag, and the straps of the wraps aren’t a real chatzitzah. So it’s proper to take off the watch, as the Dovev Meisharim wrote, but it isn’t an obligation.',
+    lesson: 'The watch: proper to take it off, but only the knot’s place is the din; the wraps are minhag (Pri Megadim, Teshuvot VeHanhagot, #107-#108).',
+  },
+  {
+    kind: 'shaila', title: 'Last call: the sleeve', who: 'Your chavruta',
+    line: '“The Rashba says there’s no chatzitzah in tefillin at all. So I can put my shel yad on my shirt sleeve and cover it with a sweater, right?”',
+    options: [
+      { t: 'No: it must sit where the arm is normally covered, and a shirt isn’t that', ok: true },
+      { t: 'Yes: no chatzitzah, and the sweater makes it “lecha le’ot”' },
+      { t: 'Yes, but only on Shabbat' },
+    ],
+    why: 'Machatzit HaShekel (#97): by the Rashba the problem with the sleeve isn’t chatzitzah but “vehaya lecha le’ot”, a sign for you and not for others: the shel yad must be covered. Mishnah Berurah HaMevoar (#98): it has to lie in a place people normally cover; on top of a garment isn’t that place, while a bandage on the arm is. Roll up the sleeve.',
+    lesson: 'Never on the sleeve, even under a sweater: the shel yad sits where the arm is normally covered (Machatzit HaShekel, #97-#98).',
+  },
+];
+
+export const CHECK_LESSONS = [
+  'No Gemara says there’s chatzitzah in tefillin. The Rosh learns it from “al yadcha” and “bein einecha”; the Rashba says the sleeve is out only because of “lecha le’ot” (#95).',
+  'The yud stays touching the bayit, even in the bag (Shulchan Aruch 27:2, Mishnah Berurah 27:10-11).',
+  'Things done to protect the tefillin aren’t a chatzitzah (Shevet HaLevi, #102).',
+];
+
+// ── One entry per shiur. Deep links: ?shiur=4 (or ?level=4), ?level=stand (see nav.js) ──
 export const SHIURIM = [
   {
     shiur: 3, world: 1, title: 'One bracha or two?', he: 'הֶפְסֵק', sub: 'Siman 25 · sheet #36-51 · in the shul',
@@ -528,5 +868,13 @@ export const SHIURIM = [
   {
     shiur: 4, world: 2, title: 'Which arm, where, and when', he: 'יָד כֵּהָה', sub: 'Simanim 25-27 · sheet #52-75 · the tefillin stand',
     levels: [{ id: 'stand', name: 'The Tefillin Stand', color: '#ffb347' }],
+  },
+  {
+    shiur: 5, world: 3, title: 'Missing arms, and the yud', he: 'גִּידֵּם', sub: 'Siman 27 · sheet #71-91 · the rehab ward',
+    levels: [{ id: 'ward', name: 'The Ward', color: '#ff7ab8' }],
+  },
+  {
+    shiur: 6, world: 4, title: 'The yud stays home, and nothing in between', he: 'חֲצִיצָה', sub: 'Siman 27 · sheet #86-111 · the checkpoint at the shul door',
+    levels: [{ id: 'check', name: 'The Checkpoint', color: '#5ad1ff' }],
   },
 ];
