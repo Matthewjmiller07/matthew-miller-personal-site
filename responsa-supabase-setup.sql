@@ -3,7 +3,9 @@
 -- (Supabase MCP / dashboard). Seed: Rav Yehuda Henkin, from Gmail threads
 -- 2014-2019 (henkin@012.net.il). Question and answer texts are verbatim
 -- from the emails; the only cleanup is dropped markdown emphasis asterisks
--- around "chukat hagoyim" in the 2019 question.
+-- around "chukat hagoyim" in the 2019 question, and the PS about Taaroch
+-- Lefanei Shulchan book sales removed from the 2019 answer at Matthew's
+-- request (18 Nov 2026).
 
 create table if not exists public.responsa_rabbis (
   slug text primary key,
@@ -106,9 +108,7 @@ Best and Shabbat Shalom,
 Matthew', 'en', '2019-03-29', 'Shalom, I didn''t refer to Aharon''s silence. In Bnei Banim vol. 2, siman 30, I discuss standing during the sirens.
 
 Shavua tov,
-Yehuda Henkin
-
-PS Do you know how many copies of Taaroch Lefanei Shulchan have been sold (or taken by stores)?', 'en', '2019-03-30', 'Much appreciated for the quick response, Rabbi. Could Aharon''s silence be used as another סניף להקל?
+Yehuda Henkin', 'en', '2019-03-30', 'Much appreciated for the quick response, Rabbi. Could Aharon''s silence be used as another סניף להקל?
 
 Alas, I am not the Matthew Miller of Koren so do not know about the book sales but am sure they are selling like hot cakes.
 
