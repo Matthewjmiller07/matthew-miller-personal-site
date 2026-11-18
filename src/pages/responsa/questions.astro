@@ -1,0 +1,52 @@
+---
+// Every question in the collection, with its answers grouped across rabbis.
+// Rendered live from Supabase (responsa_questions + responsa).
+import Layout from '../../layouts/Layout.astro';
+import { listQuestions } from '../../lib/responsa';
+
+export const prerender = false;
+const questions = await listQuestions();
+
+const fmt = (d: string | null) =>
+  d
+    ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+---
+
+<Layout
+  title="Responsa by question | The Other Matthew Miller"
+  description="Every question in the responsa collection, with answers from each rabbi who replied"
+>
+  <main class="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
+    <div class="max-w-4xl mx-auto px-4">
+      <header class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-cyan-600 dark:text-cyan-400 mb-4">Responsa by question</h1>
+        <p class="text-lg text-gray-600 dark:text-gray-400">
+          One question, every answer — browse the collection by what was asked, rather than by who answered.
+        </p>
+        <p class="mt-4">
+          <a href="/responsa" class="text-cyan-600 dark:text-cyan-400 hover:underline">← Browse by rabbi instead</a>
+        </p>
+      </header>
+
+      {questions.length > 0 ? (
+        <div class="space-y-6 mb-8">
+          {questions.map((q) => (
+            <a href={`/responsa/questions/${q.slug}`} class="block bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 p-6">
+              <p class="text-xs font-semibold uppercase tracking-widest text-cyan-600 dark:text-cyan-400 mb-1">
+                {q.answers} {q.answers === 1 ? 'answer' : 'answers'}
+                {` · from ${q.rabbis} ${q.rabbis === 1 ? 'rabbi' : 'rabbis'}`}
+                {q.question_date && ` · ${fmt(q.question_date)}`}
+              </p>
+              <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">{q.title}</h2>
+              {q.title_he && <p class="text-sm text-gray-400 dark:text-gray-500 mb-2 font-hebrew" dir="rtl" lang="he">{q.title_he}</p>}
+              <p class="text-gray-600 dark:text-gray-300 line-clamp-3">{q.question_text}</p>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p class="text-center text-gray-500 dark:text-gray-400">No questions yet.</p>
+      )}
+    </div>
+  </main>
+</Layout>
