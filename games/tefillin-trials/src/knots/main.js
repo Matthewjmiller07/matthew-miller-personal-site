@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { makeArm, buildTefillin } from './model.js';
-import { METHODS, BASICS, VIDEO } from './data.js';
+import { METHODS, BASICS, VIDEO, STEPS } from './data.js';
 import './knots.css';
 
 const $ = (s) => document.querySelector(s);
@@ -87,6 +87,7 @@ const LABELS = {
   thread: ['Gid thread', 'חוּט שֶׁל גִּיד'], under: ['✗ Thread under the titura: chatzitzah', 'חֲצִיצָה'], notch: ['The notch', 'חֲתָךְ'],
   insert: ['The Chazon Ish’s piece', 'חֲתִיכַת רְצוּעָה'], wrap: ['Around the bayit', 'כְּרִיכָה'], over: ['Over the yud', 'עַל הַיּוּ״ד'],
   shin: ['Twice around the titura: a shin', 'כְּמִין שִׁי״ן'], loop2: ['Second loop, out the far side', 'לוּלָאָה'],
+  free: ['The free end of the strap', 'הָרְצוּעָה'],
 };
 let showLabels = true;
 function setLabels(anchors) {
@@ -119,26 +120,63 @@ const groups = [...new Set(METHODS.map((m) => m.group))];
 list.innerHTML = `<button class="kx-item kx-basics" data-m="basics"><b>${esc(BASICS.title)}</b><span lang="he" dir="rtl">${BASICS.he}</span></button>` +
   groups.map((g) => `<div class="kx-group">${esc(g)}</div>${METHODS.filter((m) => m.group === g).map((m) => `<button class="kx-item ${m.bad ? 'bad' : ''}" data-m="${m.id}"><b>${esc(m.name)}</b><span lang="he" dir="rtl">${m.he}</span><small>${esc(m.src)}</small></button>`).join('')}`).join('');
 
-function select(id) {
-  const m = METHODS.find((x) => x.id === id) || METHODS[0];
-  const basics = id === 'basics';
-  method = basics ? METHODS[0] : m;
+const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+let stepI = null; // which step of the tying is shown, or null for the finished knot
+let playing = null;
+
+function build(stage) {
   if (current) scene.remove(current.group);
-  current = buildTefillin(method);
+  current = buildTefillin(method, stage);
   scene.add(current.group);
   setLabels(current.anchors);
   pull = { t: 0, dir: 0 };
   current.update(0);
+  const pb = $('[data-act="pull"]'); if (pb) pb.textContent = '⟲ Tighten';
+}
+
+function stepsHtml(id) {
+  const steps = STEPS[id];
+  if (!steps) return '';
+  const i = stepI;
+  const st = i == null ? null : steps[i];
+  return `<div class="kx-steps">
+    <div class="kx-steps-head"><b>Watch it tied</b><span>as in the video</span></div>
+    <div class="kx-dots">${steps.map((_, k) => `<button data-act="step:${k}" class="${k === i ? 'on' : ''}" aria-label="Step ${k + 1}">${k + 1}</button>`).join('')}<button data-act="step:done" class="${i == null ? 'on' : ''}">✓</button></div>
+    ${st ? `<p class="kx-step-text"><b>Step ${i + 1}.</b> ${esc(st.text)}</p>
+      <div class="kx-step-btns"><button class="kx-btn" data-act="step:prev">◀</button><button class="kx-btn" data-act="step:next">${i + 1 < steps.length ? 'Next ▶' : 'Done ✓'}</button><button class="kx-btn" data-act="watch:${st.t}">▶ ${mmss(st.t)} in the video</button></div>`
+      : `<div class="kx-step-btns"><button class="kx-btn kx-primary" data-act="step:0">▶ Tie it step by step</button><button class="kx-btn" data-act="play">Auto-play</button><button class="kx-btn" data-act="watch:${steps[0].t}">▶ ${mmss(steps[0].t)} in the video</button></div>`}
+  </div>`;
+}
+
+function showStep(i) {
+  const steps = STEPS[method.id];
+  if (!steps) return;
+  stepI = i;
+  const st = i == null ? null : steps[i];
+  build(st ? st.stage : undefined);
+  view(st ? st.cam : 'heart');
+  if (st?.pull) setTimeout(() => { if (stepI === i) pull.dir = 1; }, 900);
+  const box = $('.kx-steps');
+  if (box) box.outerHTML = stepsHtml(method.id);
+}
+
+function select(id, step = null) {
+  const m = METHODS.find((x) => x.id === id) || METHODS[0];
+  const basics = id === 'basics';
+  method = basics ? METHODS[0] : m;
+  clearInterval(playing); playing = null;
+  stepI = !basics && STEPS[m.id] && step != null ? step : null;
+  build(stepI != null ? STEPS[m.id][stepI].stage : undefined);
   const wasMirrored = mirrored;
   mirrored = !!method.extras?.flip;
-  if (mirrored !== wasMirrored) view('heart');
-  const pb = $('[data-act="pull"]'); if (pb) pb.textContent = '⟲ Tighten';
+  if (stepI != null) view(STEPS[m.id][stepI].cam);
+  else if (mirrored !== wasMirrored) view('heart');
   for (const b of list.querySelectorAll('.kx-item')) b.classList.toggle('on', b.dataset.m === (basics ? 'basics' : m.id));
   const card = $('.kx-card');
   card.innerHTML = basics
-    ? `<div class="kx-kicker">The basics · #82, #83, #94</div><h2>${esc(BASICS.title)} <span lang="he" dir="rtl">${BASICS.he}</span></h2>${BASICS.text.map((t) => `<p>${esc(t)}</p>`).join('')}<p class="kx-hint">Pick a method on the left, then press <b>Tighten</b> to see which way the pull moves the yud.</p>`
-    : `<div class="kx-kicker">${esc(m.group)} · ${esc(m.src)}</div><h2>${esc(m.name)} <span lang="he" dir="rtl">${m.he}</span></h2><p>${esc(m.text)}</p><div class="kx-verdict ${m.bad ? 'bad' : m.holds ? 'good' : 'warn'}">${m.holds ? (m.bad ? '✗ ' : '✓ ') : '↔ '}${esc(m.verdict)}</div><div class="kx-hold" hidden></div>`;
-  try { history.replaceState(null, '', `${location.pathname}?m=${basics ? 'basics' : m.id}`); } catch { /* ignore */ }
+    ? `<div class="kx-kicker">The basics · #82, #83, #94</div><h2>${esc(BASICS.title)} <span lang="he" dir="rtl">${BASICS.he}</span></h2>${BASICS.text.map((t) => `<p>${esc(t)}</p>`).join('')}<p class="kx-hint">Pick a method on the left, then press <b>Tighten</b> to see which way the pull moves the yud. Ashkenaz, Sefard, Chabad and the Chafetz Chaim knot can be tied step by step, as in the video.</p>`
+    : `<div class="kx-kicker">${esc(m.group)} · ${esc(m.src)}</div><h2>${esc(m.name)} <span lang="he" dir="rtl">${m.he}</span></h2>${stepsHtml(m.id)}<p>${esc(m.text)}</p><div class="kx-verdict ${m.bad ? 'bad' : m.holds ? 'good' : 'warn'}">${m.holds ? (m.bad ? '✗ ' : '✓ ') : '↔ '}${esc(m.verdict)}</div><div class="kx-hold" hidden></div>`;
+  try { history.replaceState(null, '', `${location.pathname}?m=${basics ? 'basics' : m.id}${stepI != null ? `&step=${stepI + 1}` : ''}`); } catch { /* ignore */ }
 }
 list.addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (b) { select(b.dataset.m); list.classList.remove('open'); } });
 
@@ -147,6 +185,8 @@ const VIEWS = {
   heart: [new THREE.Vector3(2.6, 3.4, -6.4), new THREE.Vector3(0.6, 0.9, -0.2)],
   top: [new THREE.Vector3(0.6, 7.6, -0.8), new THREE.Vector3(0.6, 1.1, 0)],
   out: [new THREE.Vector3(2.0, 3.0, 6.4), new THREE.Vector3(0.6, 0.9, 0.2)],
+  knot: [new THREE.Vector3(-1.0, 3.0, -4.1), new THREE.Vector3(0.35, 0.95, -0.7)],
+  far: [new THREE.Vector3(-0.7, 3.1, 4.4), new THREE.Vector3(0.35, 0.95, 0.6)],
 };
 let flyTo = null;
 let mirrored = false; // the lefty's flipped pair sits on the other end of the arm
@@ -165,9 +205,24 @@ root.addEventListener('click', (e) => {
   if (act === 'pull') { pull.dir = pull.t > 0.5 ? -1 : 1; t.textContent = pull.dir > 0 ? '⟲ Loosen' : '⟲ Tighten'; }
   if (act === 'view') view(arg);
   if (act === 'labels') { showLabels = !showLabels; t.setAttribute('aria-pressed', String(showLabels)); }
-  if (act === 'video') {
+  if (act === 'video' || act === 'watch') {
     $('.kx-video').hidden = false;
-    $('.kx-frame').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${VIDEO.id}?rel=0" title="${esc(VIDEO.title)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+    const start = act === 'watch' ? `&start=${Math.max(0, Number(arg) - 1)}&autoplay=1` : '';
+    $('.kx-frame').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${VIDEO.id}?rel=0${start}" title="${esc(VIDEO.title)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+  }
+  if (act === 'step') {
+    clearInterval(playing); playing = null;
+    const n = STEPS[method.id]?.length || 0;
+    if (arg === 'done') showStep(null);
+    else if (arg === 'next') showStep(stepI == null ? 0 : stepI + 1 < n ? stepI + 1 : null);
+    else if (arg === 'prev') showStep(stepI == null ? n - 1 : Math.max(0, stepI - 1));
+    else showStep(Number(arg));
+    try { history.replaceState(null, '', `${location.pathname}?m=${method.id}${stepI != null ? `&step=${stepI + 1}` : ''}`); } catch { /* ignore */ }
+  }
+  if (act === 'play') {
+    const n = STEPS[method.id]?.length || 0;
+    showStep(0);
+    playing = setInterval(() => { if (stepI == null || stepI + 1 >= n) { clearInterval(playing); playing = null; if (stepI != null) showStep(null); return; } showStep(stepI + 1); }, 4200);
   }
   if (act === 'close' || (act === undefined && t.classList.contains('kx-video'))) { $('.kx-video').hidden = true; $('.kx-frame').innerHTML = ''; }
 });
@@ -211,6 +266,10 @@ renderer.setAnimationLoop(() => {
 });
 controls.addEventListener('start', () => { flyTo = null; });
 
-const q = new URLSearchParams(location.search).get('m');
-select(q && (q === 'basics' || METHODS.some((m) => m.id === q)) ? q : 'basics');
+const qs = new URLSearchParams(location.search);
+const q = qs.get('m');
+const qStep = Number(qs.get('step')) || 0;
+select(q && (q === 'basics' || METHODS.some((m) => m.id === q)) ? q : 'basics', qStep ? qStep - 1 : null);
+// a link straight to a step opens on that step's shot
+if (flyTo) { camera.position.copy(flyTo[0]); controls.target.copy(flyTo[1]); flyTo = null; }
 window.__knots = { select, METHODS, camera };

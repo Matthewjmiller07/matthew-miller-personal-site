@@ -7,7 +7,46 @@
 //   holds: whether the yud stays against the bayit when you tighten
 //   extras: thread ('top' | 'under'), notch, insert, wrapBayit, overYud, shin (Chabad), slip, chafetz, flip
 
-export const VIDEO = { id: 'sPKx9FJyOAw', url: 'https://youtu.be/sPKx9FJyOAw', title: 'Tying the shel yad: Ashkenaz, Sefard, Chabad and the Chafetz Chaim knot' };
+export const VIDEO = { id: 'sPKx9FJyOAw', url: 'https://youtu.be/sPKx9FJyOAw', title: 'The yud knot of the shel yad (SCP): Ashkenaz, Sefard, Chabad and the Chafetz Chaim knot' };
+
+// Step by step, as the video ties each knot. t: seconds into the video. stage: how far the model is
+// tied (see buildTefillin in model.js). cam: 'knot' (close on the yud), 'heart', 'far' (the far side),
+// 'top'. pull: tighten when the step opens.
+const LOOSE = { yud: false, knot: false, loop: null, through: false, ring: false, loose: true, extras: false };
+const SAY = 'Before tying: “הִנְנִי קוֹשֵׁר לְשֵׁם קְדֻשַּׁת תְּפִלִּין”, I am tying for the sake of the holiness of tefillin.';
+export const STEPS = {
+  ashkenaz: [
+    { t: 6, text: SAY, stage: LOOSE, cam: 'knot' },
+    { t: 8, text: 'Fold the tip of the strap over, and over again, into a small square tab. That tab is the yud; the strap’s light back shows at its edges.', stage: { ...LOOSE, yud: true }, cam: 'knot' },
+    { t: 22, text: 'Tie the knot around the yud, leaving a loop beside it. The knot’s body is the yud’s head; the strap’s end is its leg.', stage: { ...LOOSE, yud: true, knot: true, loop: 'big' }, cam: 'knot' },
+    { t: 36, text: 'Work the loop small, right up against the knot. A big loop lets the knot wander; it should sit as close to the knot as it can.', stage: { ...LOOSE, yud: true, knot: true, loop: 'small' }, cam: 'knot' },
+    { t: 46, text: 'Feed the whole strap through the ma’abarta, from the knot’s side out the far side.', stage: { yud: true, knot: true, loop: 'small', through: true, ring: false, loose: true, extras: false }, cam: 'heart' },
+    { t: 56, text: 'Bring the end around the arm and through the loop. Now tighten: an Ashkenazi pulls toward himself, and that pull drags the yud away from the bayit.', stage: {}, cam: 'heart', pull: true },
+  ],
+  sefard: [
+    { t: 80, text: SAY, stage: LOOSE, cam: 'knot' },
+    { t: 88, text: 'Make the yud and the knot at the end of the strap, just like Ashkenaz.', stage: { ...LOOSE, yud: true, knot: true }, cam: 'knot' },
+    { t: 97, text: 'Double the strap into a loop behind the knot. Only that loop goes into the ma’abarta, which is why a Sefardi ma’abarta has room for a double strap.', stage: { ...LOOSE, yud: true, knot: true, loop: 'big' }, cam: 'knot' },
+    { t: 103, text: 'Thread a string through the loop and use it to pull the doubled strap into the ma’abarta.', stage: { yud: true, knot: true, loop: 'small', through: true, ring: false, loose: true, extras: false }, cam: 'far' },
+    { t: 113, text: 'The loop comes out on the far side of the bayit, not by the yud (Halacha Berura 27:9). Feed the free end through it.', stage: { yud: true, knot: true, loop: 'small', through: true, ring: false, loose: true, extras: false }, cam: 'far' },
+    { t: 118, text: 'Around the arm and tighten: the pull goes outward, away from the body, and draws the yud into the bayit.', stage: {}, cam: 'heart', pull: true },
+  ],
+  chabad: [
+    { t: 130, text: 'Chabad tefillin: the strap is already through the ma’abarta, its end out by the heart side.', stage: { ...LOOSE, through: true }, cam: 'knot' },
+    { t: 132, text: 'Fold the yud at the end of the strap.', stage: { ...LOOSE, through: true, yud: true }, cam: 'knot' },
+    { t: 139, text: 'Tie it as a slipknot, with a small loop inside the knot itself, not a loop out the far side (Ketzot HaShulchan, #92).', stage: { ...LOOSE, through: true, yud: true, knot: true, loop: 'small' }, cam: 'knot' },
+    { t: 157, text: 'Pull the strap and the loop opens and closes. So each morning you really tie the knot, not just fasten it.', stage: { ...LOOSE, through: true, yud: true, knot: true, loop: 'small' }, cam: 'knot' },
+    { t: 166, text: 'Set against the bayit, the strap running through the knot’s own loop. Then twice around the titura, like a shin, but never over the ketzitzah (Siddur Baal HaTanya, #93).', stage: {}, cam: 'heart', pull: true },
+  ],
+  chafetz: [
+    { t: 178, text: 'Start with a regular Ashkenaz knot and loop.', stage: { ...LOOSE, yud: true, knot: true, loop: 'small' }, cam: 'knot' },
+    { t: 193, text: 'Feed the strap into the ma’abarta as usual, but fold it so part of the loop sticks out the far side, like Sefard. “In a way it’s connecting the Ashkenaz and the Sefard.”', stage: { yud: true, knot: true, loop: 'small', through: true, ring: false, loose: true, extras: false, loop2: true }, cam: 'far' },
+    { t: 208, text: 'Take the end of the strap and push it inside the knot itself, under the wrap around it.', stage: { yud: true, knot: true, loop: 'small', through: true, ring: false, loose: true, extras: true }, cam: 'knot' },
+    { t: 228, text: 'Pull it all the way through. The strap running back over the titura grabs the whole knot and presses it into the bayit.', stage: { yud: true, knot: true, loop: 'small', through: true, ring: false, loose: true, extras: true }, cam: 'top' },
+    { t: 261, text: 'Take the end again and feed it through the new loop on the far side, all the way.', stage: {}, cam: 'far' },
+    { t: 285, text: 'The finished knot: the strap over the titura, the yud locked to the bayit. “Nuclear proof”, but the Rema says not to run the strap over the titura.', stage: {}, cam: 'top', pull: true },
+  ],
+};
 
 export const BASICS = {
   title: 'The parts, and the yud',
