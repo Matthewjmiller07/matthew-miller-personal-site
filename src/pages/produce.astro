@@ -5,6 +5,7 @@
 // Data: src/data/produce-aisle.ts. Scene: src/lib/produce-aisle/.
 import Layout from '../layouts/Layout.astro';
 import { produce, sections } from '../data/produce-aisle';
+import tanakhCounts from '../data/produce-aisle-tanakh.json';
 
 const megaBible = (v: { book: string; ch: number; v: number }) =>
   `/mega-bible?mode=chapter&book=${encodeURIComponent(v.book)}&chapter=${v.ch}&verse=${v.v}`;
@@ -19,6 +20,11 @@ const sefariaUrl = (ref: string) => {
 const enc = encodeURIComponent;
 const bySection = sections.map((s) => ({ ...s, items: produce.filter((p) => p.section === s.id) }));
 const verseCount = produce.reduce((n, p) => n + p.verses.length, 0);
+// How often the word in each crate's first verse occurs in the whole Tanakh (OSHB lemma counts,
+// scripts/produce-aisle/count-words.mjs). A count of one is a hapax legomenon.
+type Count = { word: string; strong: string; count: number; verses: number; hapax: boolean; elsewhere: { book: string; ch: number; v: number }[] };
+const counts = tanakhCounts as Record<string, Count>;
+const hapaxItems = produce.filter((p) => counts[p.id]?.hapax);
 const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
 ---
 
@@ -35,7 +41,7 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
         <p class="he" lang="he" dir="rtl">מַחְלֶקֶת פֵּרוֹת וִירָקוֹת</p>
         <h1>The Produce Aisle</h1>
         <p class="sub tip">Swipe up to walk · tap a crate</p>
-        <p class="sub">{produce.length} crates · {verseCount} verses · {rabbinicCount} rabbinic sources</p>
+        <p class="sub">{produce.length} crates · {verseCount} verses · {rabbinicCount} rabbinic sources · <span class="hapax-count">✦ {hapaxItems.length} hapax legomena</span></p>
       </div>
       <div class="now" aria-live="polite">
         <span class="now-he" lang="he" dir="rtl" id="now-he">{sections[0].he}</span>
@@ -80,7 +86,7 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
           <button type="button" class="drawer-sec-btn" data-section={s.id}><span lang="he" dir="rtl">{s.he}</span> · {s.en}</button>
           <ul>
             {s.items.map((p) => (
-              <li><a href={`#${p.id}`} data-item={p.id}><span lang="he" dir="rtl">{p.he}</span> {p.en}</a></li>
+              <li><a href={`#${p.id}`} data-item={p.id}><span lang="he" dir="rtl">{p.he}</span> {p.en}{counts[p.id]?.hapax && <span class="hapax-star" title="Hapax legomenon: appears once in the Tanakh"> ✦</span>}</a></li>
             ))}
           </ul>
         </div>
@@ -101,6 +107,13 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
         the <a href="https://hebrew-academy.org.il/" target="_blank" rel="noopener">Academy of the Hebrew Language</a> and
         David Curwin's <a href="/balashon">Balashon</a>.
       </p>
+      <p class="hapax-intro">
+        <b>✦ {hapaxItems.length} of these words are hapax legomena</b>, found exactly once in the whole Tanakh:
+        {hapaxItems.map((p, i) => (<>{i > 0 && (i === hapaxItems.length - 1 ? ' and ' : ', ')}<a href={`#item-${p.id}`}><bdi lang="he">{counts[p.id].word}</bdi> ({p.en.toLowerCase()})</a></>))}.
+        Four of them come from one verse, Numbers 11:5: the cucumbers, melons, onions and garlic the Israelites missed from Egypt are
+        named nowhere else in the Bible. (The leeks of that verse, חָצִיר, are not a hapax: the same word is "grass" twenty more times.)
+        Counts are by Strong's lemma over the OSHB morphology, the same data the <a href="/mega-bible">Mega Bible</a> and the parasha sheets use.
+      </p>
     </header>
 
     {bySection.map((s) => (
@@ -119,6 +132,18 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
                 <span class="price">₪{p.price}</span>
               </header>
               <p class="hook">{p.hook}</p>
+              {counts[p.id] && (counts[p.id].hapax ? (
+                <p class="tanakh-count hapax">
+                  <b>✦ Hapax legomenon.</b> {counts[p.id].word} ({counts[p.id].strong}) appears exactly once in the whole Tanakh, in {p.verses[0].book} {p.verses[0].ch}:{p.verses[0].v}.
+                </p>
+              ) : (
+                <p class="tanakh-count">
+                  <b>{counts[p.id].word}</b> appears {counts[p.id].count} times in the Tanakh, in {counts[p.id].verses} verses{counts[p.id].elsewhere.length > 0 && <>, including{' '}
+                  {counts[p.id].elsewhere.slice(0, 3).map((v, i) => (
+                    <>{i > 0 && ', '}<a href={megaBible(v)}>{v.book} {v.ch}:{v.v}</a></>
+                  ))}</>}.
+                </p>
+              ))}
 
               {p.verses.length > 0 && (
                 <div class="block">
@@ -287,6 +312,15 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
   .src figcaption { font-size: .86rem; line-height: 1.5; color: #333; }
   .ref { display: inline-block; margin-right: 8px; font-size: .78rem; font-weight: 600; text-decoration: none; border-bottom: 1px solid currentColor; }
   .ref.ext::after { content: ' ↗'; }
+  .tanakh-count { font-size: .85rem; margin: 6px 0 0; color: #555; }
+  .tanakh-count a { color: #0b6e4f; }
+  .index .tanakh-count.hapax, .aisle .tanakh-count.hapax { background: #1d1d1b; color: #ffd60a; padding: 6px 9px; border-radius: 8px; }
+  .tanakh-count.hapax b { color: #ffd60a; }
+  .index .hapax-intro { background: #1d1d1b; color: #f4eee1; padding: 12px 14px; border-radius: 12px; max-width: 760px; line-height: 1.6; }
+  .hapax-intro b { color: #ffd60a; }
+  .index .hapax-intro a { color: #ffd60a; }
+  .hapax-count { color: #b8860b; font-weight: 700; }
+  .hapax-star { color: #b8860b; font-weight: 700; }
   .modern { background: #fff6c9; padding: 6px 9px; border-radius: 8px; }
   .explore { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
   .explore a { font-size: .78rem; text-decoration: none; background: #0b6e4f; color: #fff !important; padding: 5px 10px; border-radius: 999px; }

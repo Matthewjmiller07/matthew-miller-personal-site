@@ -3,6 +3,7 @@
 // all heaps, one for all price cards. It renders only when something moves.
 import * as THREE from 'three';
 import { produce, sections, type Produce } from '../../data/produce-aisle';
+import tanakhCounts from '../../data/produce-aisle-tanakh.json';
 import { crateGeometry, moundGeometry, moundHeight, pieceKind, pieceKindHi } from './geometry';
 
 export interface Slot {
@@ -95,6 +96,17 @@ function drawItemAtlas(ctx: CanvasRenderingContext2D, slots: Slot[]) {
     ctx.font = `600 30px ${SANS}`;
     ctx.fillStyle = '#333';
     ctx.fillText(s.item.en.replace(/\s*\(.*\)/, ''), 22, 160);
+    if ((tanakhCounts as Record<string, { hapax: boolean }>)[s.item.id]?.hapax) {
+      // a black corner flash for words found once in the whole Tanakh
+      ctx.save();
+      ctx.fillStyle = '#111';
+      ctx.beginPath(); ctx.moveTo(0, 18); ctx.lineTo(150, 18); ctx.lineTo(0, 118); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffd60a';
+      ctx.font = `800 22px ${SANS}`;
+      ctx.translate(14, 92); ctx.rotate(-Math.atan2(100, 150));
+      ctx.fillText('✦ HAPAX', 0, 0);
+      ctx.restore();
+    }
     ctx.font = `italic 400 24px ${SANS}`;
     ctx.fillStyle = '#5a4a00';
     ctx.fillText(s.item.translit, 22, 194);
