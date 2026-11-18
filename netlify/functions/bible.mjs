@@ -219,12 +219,20 @@ async function supabaseQuery(table, filters) {
   }
   params.set("order", "id.asc");
 
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/${encodeURIComponent(table)}?${params}`,
-    { headers: supabaseHeaders() }
-  );
-  if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
-  return res.json();
+  // PostgREST caps a response at 1,000 rows, and a whole book of a translation
+  // (Genesis, Psalms, Isaiah, Jeremiah...) is longer than that: page until done.
+  const PAGE = 1000;
+  const all = [];
+  for (let from = 0; ; from += PAGE) {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/${encodeURIComponent(table)}?${params}`,
+      { headers: { ...supabaseHeaders(), Range: `${from}-${from + PAGE - 1}`, "Range-Unit": "items" } }
+    );
+    if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
+    const rows = await res.json();
+    all.push(...rows);
+    if (rows.length < PAGE) return all;
+  }
 }
 
 async function supabaseQueryFilter(table, column, value) {
