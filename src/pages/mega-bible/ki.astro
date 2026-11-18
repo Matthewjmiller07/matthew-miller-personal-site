@@ -1,0 +1,599 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="כִּי in Translation — Mega Bible"
+  description="How ten translations, from Wycliffe and the King James to Everett Fox, render the Hebrew word ki (Strong's H3588) — for, because, that, when, but — at each of its 4,487 occurrences in the Tanakh."
+>
+<style is:global>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Cormorant+SC:wght@500&family=Noto+Serif+Hebrew:wght@400;600&display=swap');
+body:has(.ki-page) { background:#0c0b09 !important; }
+</style>
+<style is:global>
+.ki-page {
+  --bg:#0c0b09; --surface:#141210; --surface2:#1c1a15;
+  --border:rgba(201,162,87,.15); --border-hi:rgba(201,162,87,.4);
+  --text:#e8d4aa; --text2:#c9b78f; --muted:#8a7a5a; --faint:#3a3020; --gold:#c9a257;
+  --heb:'Noto Serif Hebrew','Frank Ruhl Libre',serif;
+  --display:'Cormorant Garamond',Georgia,serif; --sc:'Cormorant SC',Georgia,serif;
+  /* categorical slots (validated, dark mode) */
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#0ca30c; --s7:#9085e9; --s0:#5d5a52;
+  background:var(--bg); color:var(--text); font-family:var(--display); font-size:1.12rem; line-height:1.55;
+  padding:2.5rem 16px 5rem;
+}
+.ki-page .ki-wrap { max-width:960px; margin:0 auto; }
+.ki-page .ki-back { font-family:var(--sc); font-size:.85rem; letter-spacing:.06em; color:var(--muted); text-decoration:none; }
+.ki-page .ki-back:hover { color:var(--gold); }
+.ki-page h1 { font-weight:400; font-size:clamp(2.1rem,6vw,3.3rem); line-height:1.1; margin:.6rem 0 .4rem; }
+.ki-page h1 .he { font-family:var(--heb); color:var(--gold); }
+.ki-page h2 { font-family:var(--sc); font-weight:500; letter-spacing:.06em; color:var(--gold); font-size:1.3rem; margin:3rem 0 .6rem; border-bottom:1px solid var(--border); padding-bottom:.3rem; }
+.ki-page p { margin:.6rem 0; color:var(--text2); }
+.ki-page p strong, .ki-page li strong { color:var(--text); font-weight:600; }
+.ki-page a { color:var(--gold); }
+.ki-page .lede { font-size:1.25rem; color:var(--text); }
+.ki-page .he { font-family:var(--heb); direction:rtl; unicode-bidi:isolate; }
+.ki-page .small { font-size:.92rem; color:var(--muted); }
+.ki-page .strongs { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:.8rem 1rem; margin:1rem 0; font-size:1rem; }
+.ki-page .strongs b { font-family:var(--sc); color:var(--gold); font-weight:500; letter-spacing:.04em; }
+
+/* lookup */
+.ki-page .lookup { background:var(--surface); border:1px solid var(--border-hi); border-radius:8px; padding:1rem; margin-top:1rem; }
+.ki-page .lk-bar { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+.ki-page .lk-bar input { flex:1 1 12rem; min-width:0; background:var(--bg); border:1px solid var(--border-hi); color:var(--text); font:inherit; padding:.35rem .6rem; border-radius:5px; }
+.ki-page .btn { background:var(--surface2); border:1px solid var(--border-hi); color:var(--text); font-family:var(--sc); font-size:.9rem; letter-spacing:.04em; padding:.35rem .75rem; border-radius:5px; cursor:pointer; }
+.ki-page .btn:hover { border-color:var(--gold); color:var(--gold); }
+.ki-page .btn:disabled { opacity:.4; cursor:default; }
+.ki-page .lk-head { margin:1rem 0 .4rem; display:flex; flex-wrap:wrap; gap:.4rem 1rem; align-items:baseline; }
+.ki-page .lk-ref { font-size:1.5rem; }
+.ki-page .lk-ctx { font-size:.95rem; color:var(--muted); }
+.ki-page .lk-heb { font-family:var(--heb); direction:rtl; font-size:1.45rem; line-height:2; color:var(--text); margin:.4rem 0 .8rem; }
+.ki-page .lk-heb mark, .ki-page .lk-row mark { background:rgba(201,162,87,.28); color:#fff2d0; border-radius:3px; padding:0 .12em; }
+.ki-page .lk-rows { display:grid; gap:.1rem; }
+.ki-page .lk-row { display:grid; grid-template-columns:9.5rem 7.5rem 1fr; gap:.8rem; padding:.45rem 0; border-top:1px solid var(--border); align-items:baseline; }
+.ki-page .lk-name { font-family:var(--sc); font-size:.95rem; color:var(--text); }
+.ki-page .lk-name span { display:block; font-family:var(--display); font-size:.82rem; color:var(--muted); }
+.ki-page .lk-chip { display:inline-flex; align-items:center; gap:.35rem; font-size:.98rem; color:var(--text); }
+.ki-page .lk-chip i { width:.7rem; height:.7rem; border-radius:2px; flex:none; }
+.ki-page .lk-text { color:var(--text2); font-size:1.02rem; }
+@media (max-width:640px) {
+  .ki-page .lk-row { grid-template-columns:1fr auto; }
+  .ki-page .lk-text { grid-column:1 / -1; }
+}
+
+/* charts */
+.ki-page .filters { display:flex; flex-wrap:wrap; gap:.4rem 1.2rem; margin:.6rem 0 1rem; align-items:center; }
+.ki-page .seg { display:inline-flex; border:1px solid var(--border-hi); border-radius:6px; overflow:hidden; flex-wrap:wrap; }
+.ki-page .seg button { background:transparent; border:0; border-right:1px solid var(--border); color:var(--text2); font:inherit; font-size:.92rem; padding:.25rem .65rem; cursor:pointer; }
+.ki-page .seg button:last-child { border-right:0; }
+.ki-page .seg button[aria-pressed="true"] { background:rgba(201,162,87,.18); color:var(--text); }
+.ki-page .flabel { font-family:var(--sc); font-size:.85rem; color:var(--muted); letter-spacing:.05em; }
+.ki-page .legend { display:flex; flex-wrap:wrap; gap:.3rem 1rem; margin:.2rem 0 .9rem; font-size:.95rem; color:var(--text2); }
+.ki-page .legend span { display:inline-flex; align-items:center; gap:.35rem; }
+.ki-page .legend i { width:.8rem; height:.8rem; border-radius:2px; display:inline-block; }
+.ki-page .bars { display:grid; gap:.55rem; }
+.ki-page .bar-row { display:grid; grid-template-columns:9.5rem 1fr 3.4rem; gap:.7rem; align-items:center; }
+.ki-page .bar-name { font-family:var(--sc); font-size:.95rem; text-align:right; color:var(--text); line-height:1.1; }
+.ki-page .bar-name span { display:block; font-family:var(--display); font-size:.8rem; color:var(--muted); }
+.ki-page .bar { display:flex; height:22px; gap:2px; }
+.ki-page .bar div { height:100%; position:relative; min-width:0; cursor:default; }
+.ki-page .bar div:first-child { border-radius:4px 0 0 4px; }
+.ki-page .bar div:last-child { border-radius:0 4px 4px 0; }
+.ki-page .bar div:hover { filter:brightness(1.25); }
+.ki-page .bar div b { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.78rem; font-weight:600; color:#fff; font-family:system-ui,sans-serif; pointer-events:none; overflow:hidden; }
+.ki-page .bar-n { font-size:.85rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+@media (max-width:640px) {
+  .ki-page .bar-row { grid-template-columns:1fr 3rem; }
+  .ki-page .bar-name { text-align:left; grid-column:1 / -1; }
+}
+.ki-page .tip { position:fixed; z-index:50; pointer-events:none; background:#25221b; border:1px solid var(--border-hi); border-radius:6px; padding:.4rem .6rem; font-size:.92rem; color:var(--text); box-shadow:0 6px 18px rgba(0,0,0,.5); max-width:18rem; display:none; }
+.ki-page .tip .t-sub { color:var(--muted); font-size:.82rem; }
+
+.ki-page table { border-collapse:collapse; width:100%; font-size:.95rem; }
+.ki-page .tbl-wrap { overflow-x:auto; }
+.ki-page th, .ki-page td { padding:.35rem .5rem; border-bottom:1px solid var(--border); text-align:left; }
+.ki-page th { font-family:var(--sc); font-weight:500; color:var(--muted); letter-spacing:.03em; }
+.ki-page .mx td { text-align:center; font-variant-numeric:tabular-nums; color:#fff; font-family:system-ui,sans-serif; font-size:.82rem; border:2px solid var(--bg); }
+.ki-page .mx th { font-size:.82rem; white-space:nowrap; }
+.ki-page .mx th.rot { writing-mode:vertical-rl; transform:rotate(180deg); text-align:left; vertical-align:bottom; padding:.4rem .2rem; }
+.ki-page .hard td:first-child a { white-space:nowrap; }
+.ki-page .hard .heb { font-family:var(--heb); direction:rtl; }
+.ki-page .findings li { margin:.5rem 0; color:var(--text2); }
+.ki-page .note { border-left:2px solid var(--gold); padding:.2rem 0 .2rem .9rem; margin:1rem 0; }
+.ki-page details summary { cursor:pointer; color:var(--gold); font-family:var(--sc); letter-spacing:.04em; }
+</style>
+
+<main class="ki-page">
+<div class="ki-wrap">
+  <a class="ki-back" href="/mega-bible">← Mega Bible</a>
+  <h1><span class="he">כִּי</span> in translation</h1>
+  <p class="lede">
+    One small Hebrew word, <span class="he">כִּי</span> (<em>ki</em>), appears <strong id="kiTotal">4,487</strong> times in the
+    Tanakh, and translators have to decide every time whether it means <em>for</em>, <em>because</em>, <em>that</em>,
+    <em>when</em>, <em>if</em>, <em>but</em>, <em>surely</em> — or nothing at all. This page follows ten translations
+    through every one of them.
+  </p>
+  <div class="strongs">
+    <b>Strong's H3588 · כִּי · kîy</b> — "a primitive particle … indicating causal relations of all kinds, antecedent or
+    consequent; very widely used as a relative conjunction or adverb." The King James renders it, by Strong's own count,
+    as: <em>and, as, assuredly, but, certainly, doubtless, else, even, except, for, how, because, in that, so that,
+    than that, nevertheless, now, rightly, seeing, since, surely, then, therefore, though, although, till, truly,
+    until, when, whether, while, whom, yea, yet.</em>
+  </div>
+
+  <section class="lookup" id="lookup" aria-label="Look up a verse">
+    <div class="lk-bar">
+      <input id="lkInput" type="text" placeholder="Genesis 3:5" aria-label="Verse reference" autocomplete="off" list="lkBooks">
+      <datalist id="lkBooks"></datalist>
+      <button class="btn" id="lkGo" type="button">Show</button>
+      <button class="btn" id="lkPrev" type="button" aria-label="Previous ki">‹ prev</button>
+      <button class="btn" id="lkNext" type="button" aria-label="Next ki">next ›</button>
+      <button class="btn" id="lkRand" type="button">Random</button>
+    </div>
+    <div id="lkOut"><p class="small">Loading…</p></div>
+  </section>
+
+  <h2>What each translation reaches for</h2>
+  <p>
+    Each bar is one translation, oldest first, split by the word it used for <span class="he">כִּי</span>.
+    Everett Fox translates only the Torah, so compare him on the Torah tab.
+  </p>
+  <div class="filters">
+    <span class="flabel">Books</span>
+    <div class="seg" id="fCorpus">
+      <button type="button" data-v="all" aria-pressed="true">Tanakh</button>
+      <button type="button" data-v="torah" aria-pressed="false">Torah</button>
+      <button type="button" data-v="neviim" aria-pressed="false">Prophets</button>
+      <button type="button" data-v="ketuvim" aria-pressed="false">Writings</button>
+    </div>
+    <span class="flabel">Hebrew context</span>
+    <div class="seg" id="fCtx"></div>
+  </div>
+  <div class="legend" id="legend"></div>
+  <div class="bars" id="bars" role="img" aria-label="Stacked bars of how each translation renders ki"></div>
+  <p class="small" id="ctxNote"></p>
+  <details style="margin-top:.8rem"><summary>Table view</summary><div class="tbl-wrap"><table id="barTable"></table></div></details>
+
+  <h2>What we found</h2>
+  <ul class="findings" id="findings"></ul>
+
+  <h2>Who agrees with whom</h2>
+  <p>
+    How often two translations pick the same word for the same <span class="he">כִּי</span>, across the Torah (the only
+    stretch all ten share). Brighter means closer.
+  </p>
+  <div class="tbl-wrap"><table class="mx" id="matrix"></table></div>
+
+  <h2>The hardest cases</h2>
+  <p>
+    The verses where the translations scatter the most — four, five or six different readings of the same
+    <span class="he">כִּי</span>. Click one to compare.
+  </p>
+  <div class="tbl-wrap"><table class="hard" id="hard"></table></div>
+
+  <h2>Buber–Rosenzweig</h2>
+  <p>
+    Martin Buber and Franz Rosenzweig's German <em>Die Schrift</em> (1925–1961) is the translation most famous for
+    refusing to smooth Hebrew out: it keeps the Hebrew's repeated "leading words," its word order and its breath-units,
+    and it is the model Everett Fox names for his own <em>Five Books of Moses</em>. It would be the most interesting
+    voice here, but it is not in this analysis: Buber's text is still under copyright, it is not on Sefaria, and the
+    only digital editions are paid ones inside
+    <a href="https://www.accordancebible.com/?p=768" target="_blank" rel="noopener">Accordance</a> and
+    <a href="https://www.logos.com/product/17814/die-schrift" target="_blank" rel="noopener">Logos</a>.
+  </p>
+  <p>
+    Two things stand in for it. <strong>Fox</strong> carries its method into English, so his column is the closest
+    thing to a Buber–Rosenzweig reading of <span class="he">כִּי</span> — and his choices (<em>indeed</em>, <em>when</em>,
+    <em>rather</em>) are the most distinctive on the page. <strong>Zunz</strong> (Berlin, 1838) is the German-Jewish
+    translation Buber and Rosenzweig were writing against; its <em>denn</em>, <em>daß</em>, <em>wenn</em> and
+    <em>sondern</em> show what the German baseline looked like. With access to a copy of <em>Die Schrift</em>, its
+    renderings could be added as one more column.
+  </p>
+  <p class="small">
+    Further reading: <a href="https://www.thetorah.com/article/die-schrift-a-non-territorial-translation-of-the-land" target="_blank" rel="noopener">"Die Schrift: A Non-Territorial Translation of 'The Land'"</a> (TheTorah.com).
+  </p>
+
+  <h2>How this was made</h2>
+  <p>
+    Every <span class="he">כִּי</span> comes from the Open Scriptures Hebrew Bible (Westminster Leningrad Codex), which
+    tags each word with its Strong's number — the same text the Mega Bible reads. <span class="he">כִּי אִם</span> and
+    <span class="he">כִּי עַל־כֵּן</span> are tagged separately there, and the Hebrew context classes come from the
+    surrounding words: a <span class="he">כִּי</span> after a verb of seeing, knowing, saying or swearing; after an oath
+    (<span class="he">חַי</span>); at the head of a verse followed by an imperfect verb (the case-law "when a man…"); any
+    other at the head of a verse; and the rest, mid-verse.
+  </p>
+  <p>
+    Translations are not aligned word-for-word anywhere, so the word each one chose is found by position: of the words
+    in the translated verse that are known renderings of <span class="he">כִּי</span> (including 16th-century spellings
+    like <em>bycause</em>, <em>yf</em>, <em>whan</em>, and German <em>denn</em>, <em>daß</em>, <em>wenn</em>), the one
+    nearest the place where <span class="he">כִּי</span> sits in the Hebrew verse wins. "No word" means no rendering
+    sat close enough: the translator restructured the sentence or dropped the word. Spot checks find the right word
+    about nine times in ten; the errors are mostly verses that two translators rearranged differently, and the counts
+    above are best read as proportions, not exact tallies. The highlighted word in the lookup is the one that was
+    counted, so you can check any verse yourself.
+  </p>
+  <p class="small">
+    Sources: Wycliffe, Coverdale, Bishops', Geneva and the 1611 King James from the Mega Bible's own translation
+    tables; Everett Fox, JPS 1917, NJPS (1985), Koren and Zunz from <a href="https://www.sefaria.org" target="_blank" rel="noopener">Sefaria</a>.
+    Built by <code>scripts/ki/</code>.
+  </p>
+</div>
+<div class="tip" id="tip"></div>
+</main>
+
+<script>
+type Data = {
+  codes: Record<string, string>;
+  rule: { lex: Record<string, string>; weak: string; near: number; nearWeak: number; weakPenalty: number };
+  sefaria: { names: Record<string, string>; versions: Record<string, string> };
+  translations: { key: string; label: string; year: number; source: string; versification: string; lang: string }[];
+  books: string[];
+  occ: [number, number, number, number, number, number, number, string, string, string][];
+  render: Record<string, string>;
+};
+
+const GROUPS = [
+  { id: 'for', label: 'for', codes: 'f', color: 'var(--s1)' },
+  { id: 'that', label: 'that', codes: 't', color: 'var(--s2)' },
+  { id: 'because', label: 'because / since', codes: 'bc', color: 'var(--s3)' },
+  { id: 'when', label: 'when / if', codes: 'wi', color: 'var(--s4)' },
+  { id: 'but', label: 'but / except / rather', codes: 'uxqp', color: 'var(--s5)' },
+  { id: 'emph', label: 'indeed / surely / yea', codes: 'dsrym', color: 'var(--s6)' },
+  { id: 'other', label: 'other', codes: 'hoklgvazenj', color: 'var(--s7)' },
+  { id: 'none', label: 'no word', codes: '-', color: 'var(--s0)' },
+];
+const groupOf: Record<string, typeof GROUPS[number]> = {};
+GROUPS.forEach(g => [...g.codes].forEach(c => (groupOf[c] = g)));
+
+const CTX: Record<string, { label: string; note: string }> = {
+  all: { label: 'All', note: '' },
+  'ki-im': { label: 'כִּי אִם', note: 'כִּי אִם — "but rather," "except," "unless." The one context where "for" should almost never appear.' },
+  conditional: { label: 'Case law', note: 'Verse-initial כִּי + imperfect verb — the case-law "when a man…" (and some prophetic "for they shall…").' },
+  object: { label: 'After "saw / knew / said"', note: 'After a verb of seeing, knowing, saying or swearing — the "that" of "God saw that it was good."' },
+  oath: { label: 'Oaths', note: 'After an oath with חַי ("as the LORD lives, …").' },
+  initial: { label: 'Verse-initial', note: 'Any other כִּי opening a verse.' },
+  clause: { label: 'Mid-verse', note: 'Everything else: a כִּי inside the verse.' },
+};
+const TORAH = new Set(['Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy']);
+const NEVIIM = new Set(['Joshua','Judges','1 Samuel','2 Samuel','1 Kings','2 Kings','Isaiah','Jeremiah','Ezekiel','Hosea','Joel','Amos','Obadiah','Jonah','Micah','Nahum','Habakkuk','Zephaniah','Haggai','Zechariah','Malachi']);
+
+const $ = (id: string) => document.getElementById(id)!;
+const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+const pct = (n: number, d: number) => (d ? Math.round((100 * n) / d) : 0);
+
+let D: Data;
+let state = { corpus: 'all', ctx: 'all' };
+
+async function main() {
+  D = await (await fetch('/data/ki-translations.json')).json();
+  $('kiTotal').textContent = D.occ.length.toLocaleString();
+  buildFilters();
+  renderBars();
+  renderFindings();
+  renderMatrix();
+  renderHard();
+  initLookup();
+}
+
+// ── Charts ──────────────────────────────────────────────────────────────────
+function inCorpus(o: Data['occ'][number]) {
+  const b = D.books[o[0]];
+  if (state.corpus === 'torah') return TORAH.has(b);
+  if (state.corpus === 'neviim') return NEVIIM.has(b);
+  if (state.corpus === 'ketuvim') return !TORAH.has(b) && !NEVIIM.has(b);
+  return true;
+}
+
+function counts(key: string, filter: (o: Data['occ'][number]) => boolean) {
+  const r = D.render[key];
+  const by: Record<string, number> = {};
+  const words: Record<string, Record<string, number>> = {};
+  let n = 0;
+  D.occ.forEach((o, i) => {
+    const c = r[i];
+    if (c === '?' || !filter(o)) return;
+    const g = groupOf[c];
+    by[g.id] = (by[g.id] || 0) + 1;
+    (words[g.id] ||= {})[c] = (words[g.id][c] || 0) + 1;
+    n++;
+  });
+  return { by, words, n };
+}
+
+function buildFilters() {
+  const ctxSeg = $('fCtx');
+  ctxSeg.innerHTML = Object.entries(CTX).map(([k, v]) =>
+    `<button type="button" data-v="${k}" aria-pressed="${k === 'all'}">${k === 'ki-im' ? `<span class="he">${v.label}</span>` : v.label}</button>`).join('');
+  for (const [id, field] of [['fCorpus', 'corpus'], ['fCtx', 'ctx']] as const) {
+    $(id).addEventListener('click', e => {
+      const b = (e.target as HTMLElement).closest('button');
+      if (!b) return;
+      (state as any)[field] = b.dataset.v;
+      $(id).querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      renderBars();
+    });
+  }
+  $('legend').innerHTML = GROUPS.map(g => `<span><i style="background:${g.color}"></i>${g.label}</span>`).join('');
+}
+
+function renderBars() {
+  const filter = (o: Data['occ'][number]) => inCorpus(o) && (state.ctx === 'all' || o[7] === state.ctx);
+  const rows: string[] = [];
+  const tbl: string[] = [`<tr><th>Translation</th>${GROUPS.map(g => `<th>${g.label}</th>`).join('')}<th>n</th></tr>`];
+  for (const t of D.translations) {
+    const { by, words, n } = counts(t.key, filter);
+    if (!n) continue;
+    const segs = GROUPS.filter(g => by[g.id]).map(g => {
+      const p = (100 * by[g.id]) / n;
+      const top = Object.entries(words[g.id]).sort((a, b) => b[1] - a[1]).slice(0, 4)
+        .map(([c, m]) => `${D.codes[c]} ${m}`).join(' · ');
+      const tip = `<b>${esc(t.label)}</b> — ${g.label}: ${Math.round(p)}% (${by[g.id]} of ${n})<div class="t-sub">${esc(top)}</div>`;
+      return `<div style="flex:${by[g.id]} 1 0;background:${g.color}" data-tip="${esc(tip)}">${p >= 9 ? `<b>${Math.round(p)}%</b>` : ''}</div>`;
+    }).join('');
+    rows.push(`<div class="bar-row"><div class="bar-name">${esc(t.label)}<span>${t.year}</span></div><div class="bar">${segs}</div><div class="bar-n">${n.toLocaleString()}</div></div>`);
+    tbl.push(`<tr><td>${esc(t.label)} (${t.year})</td>${GROUPS.map(g => `<td>${pct(by[g.id] || 0, n)}%</td>`).join('')}<td>${n}</td></tr>`);
+  }
+  $('bars').innerHTML = rows.join('') || '<p class="small">No occurrences in this selection.</p>';
+  $('barTable').innerHTML = tbl.join('');
+  const note = CTX[state.ctx].note;
+  $('ctxNote').innerHTML = note ? note.replace(/([֐-׿][֐-׿\s־]*[֐-׿])/g, '<span class="he">$1</span>') : '';
+}
+
+// tooltip
+const tip = $('tip');
+document.addEventListener('mousemove', e => {
+  const el = (e.target as HTMLElement).closest('[data-tip]') as HTMLElement | null;
+  if (!el) { tip.style.display = 'none'; return; }
+  tip.innerHTML = el.dataset.tip!;
+  tip.style.display = 'block';
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(window.innerWidth - w - 8, e.clientX + 12) + 'px';
+  tip.style.top = (e.clientY + h + 20 > window.innerHeight ? e.clientY - h - 12 : e.clientY + 14) + 'px';
+});
+
+function share(key: string, codes: string, filter: (o: Data['occ'][number]) => boolean) {
+  const r = D.render[key];
+  let n = 0, m = 0;
+  D.occ.forEach((o, i) => {
+    if (r[i] === '?' || !filter(o)) return;
+    n++;
+    if (codes.includes(r[i])) m++;
+  });
+  return { n, m, p: pct(m, n) };
+}
+
+function renderFindings() {
+  const torah = (o: Data['occ'][number]) => TORAH.has(D.books[o[0]]);
+  const all = () => true;
+  const ctx = (c: string, base = all) => (o: Data['occ'][number]) => o[7] === c && base(o);
+  const agree = (a: string, b: string, f = torah) => {
+    let n = 0, m = 0;
+    D.occ.forEach((o, i) => {
+      if (!f(o) || D.render[a][i] === '?' || D.render[b][i] === '?') return;
+      n++; if (D.render[a][i] === D.render[b][i]) m++;
+    });
+    return pct(m, n);
+  };
+  const lbl = (k: string) => D.translations.find(t => t.key === k)!.label;
+  const items = [
+    `<strong>"For" is the default everywhere.</strong> Every translation uses it for roughly half of all occurrences (${share('wyc', 'f', all).p}% in Wycliffe, ${share('kjv1611', 'f', all).p}% in the King James, ${share('jps85', 'f', all).p}% in NJPS). Next comes "that" at about one in six.`,
+    `<strong>Fox writes the case law as "when."</strong> For the verse-opening <span class="he">כִּי</span> + imperfect of the Torah's laws ("<span class="he">כִּי־תִקְנֶה עֶבֶד עִבְרִי</span>"), Fox has "when" ${share('fox', 'w', ctx('conditional', torah)).p}% of the time; the King James splits between "if" (${share('kjv1611', 'i', ctx('conditional', torah)).p}%) and "when" (${share('kjv1611', 'w', ctx('conditional', torah)).p}%).`,
+    `<strong>Fox hears an "indeed."</strong> When <span class="he">כִּי</span> opens a verse, Fox writes "indeed" ${share('fox', 'd', ctx('initial', torah)).p}% of the time (${share('fox', 'd', torah).p}% overall) — a word none of the other English translations uses for more than ${Math.max(...['kjv1611', 'jps17', 'jps85', 'koren', 'gnv'].map(k => share(k, 'd', torah).p))}% of the Torah's <span class="he">כִּי</span>. Where they hear a reason ("for"), he often hears emphasis, and keeps it audible.`,
+    `<strong>NJPS drops the word most.</strong> ${share('jps85', '-', all).p}% of the time NJPS has no word for <span class="he">כִּי</span> at all, more than any translation but Wycliffe (${share('wyc', '-', all).p}%, whose Latin-shaped syntax often leaves it implicit). The other modern translations stay below ${Math.max(share('jps17', '-', all).p, share('koren', '-', all).p) + 1}%.`,
+    `<strong>Koren and JPS 1917 are King James descendants.</strong> In the Torah, Koren picks the same word as the 1611 King James ${agree('koren', 'kjv1611')}% of the time and JPS 1917 ${agree('jps17', 'kjv1611')}% — closer to it than the Geneva Bible the King James revised (${agree('gnv', 'kjv1611')}%).`,
+    `<strong>The English line hardens over a century.</strong> Coverdale (1535) and the King James agree ${agree('cov', 'kjv1611', all)}% of the time across the Tanakh; Bishops' (${agree('bis', 'kjv1611', all)}%) and Geneva (${agree('gnv', 'kjv1611', all)}%) are much closer — the King James is a revision of Bishops', checked against Geneva.`,
+    `<strong><span class="he">כִּי אִם</span> splits along confessional lines.</strong> Christian translations from Wycliffe to the King James use "but" about half the time (${share('kjv1611', 'u', ctx('ki-im')).p}% in the KJV), NJPS spreads it over "but," "for," "except" and "only," Zunz prefers <em>sondern</em> (${share('zunz', 'q', ctx('ki-im')).p}%), and Fox in the Torah favors "except" and "rather."`,
+  ];
+  $('findings').innerHTML = items.map(s => `<li>${s}</li>`).join('');
+}
+
+function renderMatrix() {
+  const keys = D.translations.map(t => t.key);
+  const torahIdx = D.occ.map((o, i) => (TORAH.has(D.books[o[0]]) ? i : -1)).filter(i => i >= 0);
+  const val = (a: string, b: string) => {
+    let n = 0, m = 0;
+    for (const i of torahIdx) {
+      const x = D.render[a][i], y = D.render[b][i];
+      if (x === '?' || y === '?') continue;
+      n++; if (x === y) m++;
+    }
+    return pct(m, n);
+  };
+  const lab = (k: string) => D.translations.find(t => t.key === k)!.label;
+  // one-hue sequential ramp (blue), 40% → 100%
+  const ramp = ['#1c3b5f', '#184f95', '#1c5cab', '#256abf', '#2a78d6', '#3987e5', '#5598e7', '#6da7ec'];
+  let html = `<tr><th></th>${keys.map(k => `<th class="rot">${esc(lab(k))}</th>`).join('')}</tr>`;
+  for (const a of keys) {
+    html += `<tr><th>${esc(lab(a))}</th>`;
+    for (const b of keys) {
+      if (a === b) { html += `<td style="background:var(--surface2);color:var(--muted)">—</td>`; continue; }
+      const v = val(a, b);
+      const step = Math.max(0, Math.min(ramp.length - 1, Math.floor((v - 40) / 7.5)));
+      html += `<td style="background:${ramp[step]}" data-tip="${esc(`<b>${lab(a)}</b> and <b>${lab(b)}</b> pick the same word for ${v}% of the Torah's כִּי`)}">${v}</td>`;
+    }
+    html += '</tr>';
+  }
+  $('matrix').innerHTML = html;
+}
+
+function renderHard() {
+  const keys = D.translations.map(t => t.key);
+  const scored = D.occ.map((o, i) => {
+    const cs = keys.map(k => D.render[k][i]).filter(c => c !== '?');
+    const distinct = new Set(cs.map(c => (c === '-' ? '-' : c)));
+    return { i, d: distinct.size, n: cs.length };
+  }).filter(x => x.n >= 8).sort((a, b) => b.d - a.d || b.n - a.n);
+  const top = scored.slice(0, 14);
+  $('hard').innerHTML = `<tr><th>Verse</th><th>Hebrew</th><th>Readings</th></tr>` + top.map(({ i }) => {
+    const o = D.occ[i];
+    const ref = `${D.books[o[0]]} ${o[1]}:${o[2]}`;
+    const readings = [...new Set(keys.map(k => D.render[k][i]).filter(c => c !== '?'))].map(c => D.codes[c]).join(', ');
+    return `<tr><td><a href="?ref=${encodeURIComponent(ref)}${o[5] ? `&k=${o[5]}` : ''}#lookup" data-goto="${i}">${esc(ref)}</a></td><td class="heb">${esc(o[8] + ' ' + o[9])}</td><td>${esc(readings)}</td></tr>`;
+  }).join('');
+  $('hard').addEventListener('click', e => {
+    const a = (e.target as HTMLElement).closest('a[data-goto]') as HTMLAnchorElement | null;
+    if (!a) return;
+    e.preventDefault();
+    showOcc(Number(a.dataset.goto), true);
+    $('lookup').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+// ── Lookup ──────────────────────────────────────────────────────────────────
+let cur = 0;
+const textCache = new Map<string, Promise<any>>();
+const cached = (url: string) => {
+  if (!textCache.has(url)) textCache.set(url, fetch(url).then(r => (r.ok ? r.json() : null)).catch(() => null));
+  return textCache.get(url)!;
+};
+
+function stripSefaria(t: string) {
+  const doc = new DOMParser().parseFromString(`<div>${t || ''}</div>`, 'text/html');
+  doc.querySelectorAll('sup.footnote-marker, i.footnote').forEach(el => el.remove());
+  doc.querySelectorAll('br').forEach(el => el.replaceWith(' '));
+  return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+async function verseText(t: Data['translations'][number], o: Data['occ'][number]): Promise<string> {
+  const book = D.books[o[0]];
+  if (t.source === 'classic') {
+    const data = await cached(`/api/bible/translation/${t.key}/${encodeURIComponent(book)}/${o[3]}`);
+    return data?.verses?.find((v: any) => v.verse === o[4])?.text || '';
+  }
+  const name = D.sefaria.names[book] || book;
+  const title = D.sefaria.versions[t.key];
+  const lang = t.lang === 'de' ? 'german' : 'english';
+  const data = await cached(`https://www.sefaria.org/api/v3/texts/${encodeURIComponent(`${name} ${o[1]}`)}?version=${encodeURIComponent(`${lang}|${title}`)}`);
+  // Sefaria returns HTML; drop footnotes (which nest other tags) before flattening it.
+  const ch = data?.versions?.[0]?.text;
+  const v = Array.isArray(ch) ? ch[o[2] - 1] : '';
+  return stripSefaria(Array.isArray(v) ? v.join(' ') : v || '');
+}
+
+async function hebrewVerse(o: Data['occ'][number]) {
+  const book = D.books[o[0]];
+  const name = D.sefaria.names[book] || book;
+  const data = await cached(`https://www.sefaria.org/api/v3/texts/${encodeURIComponent(`${name} ${o[1]}`)}?version=hebrew`);
+  const ch = data?.versions?.[0]?.text;
+  return stripSefaria((Array.isArray(ch) ? ch[o[2] - 1] : '') || '');
+}
+
+// Same rule as scripts/ki/align.py: the known rendering nearest ki's position.
+function highlight(text: string, pos: number, code: string) {
+  const parts = text.split(/([^\p{L}\p{N}_]+)/u);
+  const words = parts.map((p, i) => ({ p, i })).filter(x => x.p && !/^[^\p{L}\p{N}_]+$/u.test(x.p));
+  const n = words.length;
+  let best = -1, bestScore = 9;
+  const R = D.rule;
+  words.forEach((w, j) => {
+    const c = R.lex[w.p.toLowerCase()];
+    if (!c || c !== code) return;
+    const d = Math.abs((j + 0.5) / n - pos);
+    const weak = R.weak.includes(c);
+    if (d > (weak ? R.nearWeak : R.near)) return;
+    const s = d + (weak ? R.weakPenalty : 0);
+    if (s < bestScore) { best = w.i; bestScore = s; }
+  });
+  return parts.map((p, i) => (i === best ? `<mark>${esc(p)}</mark>` : esc(p))).join('');
+}
+
+function markHebrewKi(heb: string, k: number) {
+  let seen = -1;
+  return heb.split(/(\s+|־)/).map(w => {
+    const bare = w.replace(/[֑-ׇ]/g, '');
+    if (bare === 'כי' || bare === 'וכי') {
+      seen++;
+      if (seen === k) return `<mark>${esc(w)}</mark>`;
+    }
+    return esc(w);
+  }).join('');
+}
+
+const CTX_LONG: Record<string, string> = {
+  'ki-im': 'כִּי אִם', 'ki-al-ken': 'כִּי עַל־כֵּן', conditional: 'verse-initial, before an imperfect verb (case law)',
+  object: 'after a verb of seeing, knowing, saying or swearing', oath: 'after an oath', initial: 'opening the verse', clause: 'mid-verse',
+};
+
+async function showOcc(i: number, push: boolean) {
+  cur = Math.max(0, Math.min(D.occ.length - 1, i));
+  const o = D.occ[cur];
+  const book = D.books[o[0]];
+  const ref = `${book} ${o[1]}:${o[2]}`;
+  const same = D.occ.filter(x => x[0] === o[0] && x[1] === o[1] && x[2] === o[2]).length;
+  if (push) {
+    const u = new URL(location.href);
+    u.searchParams.set('ref', ref);
+    if (o[5]) u.searchParams.set('k', String(o[5])); else u.searchParams.delete('k');
+    history.replaceState(null, '', u);
+  }
+  ($('lkInput') as HTMLInputElement).value = ref;
+  ($('lkPrev') as HTMLButtonElement).disabled = cur === 0;
+  ($('lkNext') as HTMLButtonElement).disabled = cur === D.occ.length - 1;
+  const ctx = CTX_LONG[o[7]] || o[7];
+  const kjvNote = o[3] !== o[1] || o[4] !== o[2] ? ` · English ${o[3]}:${o[4]}` : '';
+  const rows = D.translations.map(t => {
+    const c = D.render[t.key][cur];
+    const g = c === '?' ? null : groupOf[c];
+    const chip = c === '?' ? '<span class="small">not translated</span>'
+      : `<span class="lk-chip"><i style="background:${g!.color}"></i>${esc(D.codes[c])}</span>`;
+    return `<div class="lk-row" data-key="${t.key}"><div class="lk-name">${esc(t.label)}<span>${t.year}</span></div><div>${chip}</div><div class="lk-text">${c === '?' ? '' : '…'}</div></div>`;
+  }).join('');
+  $('lkOut').innerHTML = `
+    <div class="lk-head"><span class="lk-ref">${esc(ref)}</span>
+      <span class="lk-ctx">${same > 1 ? `כִּי ${o[5] + 1} of ${same} in this verse · ` : ''}${/[֐-׿]/.test(ctx) ? `<span class="he">${esc(ctx)}</span>` : esc(ctx)}${kjvNote}</span>
+      <a class="small" href="/mega-bible?book=${encodeURIComponent(book)}&chapter=${o[1]}&verse=${o[2]}">open in Mega Bible →</a></div>
+    <div class="lk-heb" id="lkHeb"><span class="he">${esc(o[8])} ${esc(o[9])} …</span></div>
+    <div class="lk-rows">${rows}</div>`;
+  const idx = cur;
+  hebrewVerse(o).then(h => { if (idx === cur && h) $('lkHeb').innerHTML = markHebrewKi(h, o[5]); });
+  D.translations.forEach(async t => {
+    const c = D.render[t.key][idx];
+    if (c === '?') return;
+    const text = await verseText(t, o);
+    if (idx !== cur) return;
+    const cell = $('lkOut').querySelector(`.lk-row[data-key="${t.key}"] .lk-text`);
+    if (cell) cell.innerHTML = text ? highlight(text, o[6], c) : '<span class="small">(text unavailable)</span>';
+  });
+}
+
+function findRef(s: string): number {
+  const m = s.trim().match(/^(.+?)\s+(\d+)[:.\s](\d+)$/);
+  if (!m) return -1;
+  const name = m[1].toLowerCase().replace(/^(i{1,2})\s/, (_, r) => `${r.length} `);
+  const bi = D.books.findIndex(b => b.toLowerCase() === name || b.toLowerCase().startsWith(name));
+  if (bi < 0) return -1;
+  const ch = +m[2], v = +m[3];
+  let i = D.occ.findIndex(o => o[0] === bi && o[1] === ch && o[2] === v);
+  if (i < 0) i = D.occ.findIndex(o => o[0] === bi && (o[1] > ch || (o[1] === ch && o[2] >= v)));
+  return i;
+}
+
+function initLookup() {
+  $('lkBooks').innerHTML = D.books.map(b => `<option value="${esc(b)} ">`).join('');
+  const params = new URLSearchParams(location.search);
+  let start = 0;
+  if (params.get('ref')) {
+    const i = findRef(params.get('ref')!);
+    if (i >= 0) start = i + Math.max(0, Math.min(Number(params.get('k') || 0), 5));
+    const o0 = D.occ[i], o1 = D.occ[start];
+    if (!o1 || !o0 || o1[0] !== o0[0] || o1[1] !== o0[1] || o1[2] !== o0[2]) start = Math.max(0, i);
+  } else {
+    start = D.occ.findIndex(o => o[0] === 0 && o[1] === 3 && o[2] === 5);
+  }
+  showOcc(start, false);
+  if (params.get('ref')) $('lookup').scrollIntoView({ block: 'start' });
+  const go = () => {
+    const i = findRef(($('lkInput') as HTMLInputElement).value);
+    if (i >= 0) showOcc(i, true);
+    else $('lkOut').querySelector('.lk-head')?.insertAdjacentHTML('beforeend', '<span class="small">No כִּי found there.</span>');
+  };
+  $('lkGo').addEventListener('click', go);
+  $('lkInput').addEventListener('keydown', e => { if ((e as KeyboardEvent).key === 'Enter') go(); });
+  $('lkPrev').addEventListener('click', () => showOcc(cur - 1, true));
+  $('lkNext').addEventListener('click', () => showOcc(cur + 1, true));
+  $('lkRand').addEventListener('click', () => showOcc(Math.floor(Math.random() * D.occ.length), true));
+}
+
+main();
+</script>
+</Layout>
