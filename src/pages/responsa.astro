@@ -1,0 +1,43 @@
+---
+// Responsa I have received by email, rendered live from Supabase.
+// Add a rabbi or an exchange in the database and the page updates on the next request.
+import Layout from '../layouts/Layout.astro';
+import { listRabbis } from '../lib/responsa';
+
+export const prerender = false;
+const rabbis = await listRabbis();
+---
+
+<Layout
+  title="Responsa | The Other Matthew Miller"
+  description="Questions I have asked rabbis by email, with their answers"
+>
+  <main class="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
+    <div class="max-w-4xl mx-auto px-4">
+      <header class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-cyan-600 dark:text-cyan-400 mb-4">Responsa</h1>
+        <p class="text-lg text-gray-600 dark:text-gray-400">
+          Questions I have asked rabbis by email, with their answers — verbatim from the correspondence.
+        </p>
+      </header>
+
+      {rabbis.length > 0 ? (
+        <div class="grid md:grid-cols-2 gap-8 mb-8">
+          {rabbis.map((rb) => (
+            <a href={`/responsa/${rb.slug}`} class="block bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 p-6">
+              <p class="text-xs font-semibold uppercase tracking-widest text-cyan-600 dark:text-cyan-400 mb-1">
+                {rb.answered} {rb.answered === 1 ? 'answer' : 'answers'}
+                {rb.asked > 0 && ` · ${rb.asked} question${rb.asked === 1 ? '' : 's'} asked`}
+              </p>
+              <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-1">{rb.name}</h2>
+              {rb.name_he && <p class="text-sm text-gray-400 dark:text-gray-500 mb-3 font-hebrew" dir="rtl" lang="he">{rb.name_he}</p>}
+              <p class="text-gray-600 dark:text-gray-300">{rb.bio}</p>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p class="text-center text-gray-500 dark:text-gray-400">Responsa are on their way.</p>
+      )}
+    </div>
+  </main>
+</Layout>

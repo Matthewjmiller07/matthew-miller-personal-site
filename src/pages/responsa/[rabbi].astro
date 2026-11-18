@@ -1,0 +1,174 @@
+---
+// One rabbi's responsa, rendered live from Supabase (responsa_rabbis + responsa).
+// Add or reorder exchanges in the database and the page updates on the next request.
+import Layout from '../../layouts/Layout.astro';
+import { getRabbi, type Responsum } from '../../lib/responsa';
+
+export const prerender = false;
+
+const rabbi = await getRabbi(Astro.params.rabbi ?? '');
+if (!rabbi) return Astro.redirect('/responsa', 302);
+
+const answered = rabbi.responsa.filter((r) => r.answer_text);
+const unanswered = rabbi.responsa.filter((r) => !r.answer_text);
+
+const fmt = (d: string | null) =>
+  d
+    ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+
+// HTML-escape, then split on blank lines into paragraphs; single newlines become <br>.
+function paras(text: string): string {
+  const esc = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return esc
+    .split(/\n\s*\n/)
+    .map((p) => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
+
+function block(r: Responsum, kind: 'question' | 'answer' | 'followup') {
+  const text = kind === 'question' ? r.question_text : kind === 'answer' ? r.answer_text! : r.followup_text!;
+  const lang = kind === 'question' ? r.question_lang : kind === 'answer' ? r.answer_lang ?? 'en' : r.question_lang;
+  const date = kind === 'question' ? r.question_date : kind === 'answer' ? r.answer_date : r.followup_date;
+  const label = kind === 'question' ? 'Question' : kind === 'answer' ? 'Answer' : 'Follow-up';
+  return { text, lang, date, label };
+}
+---
+
+<Layout title={`${rabbi.name} — Responsa | The Other Matthew Miller`} description={rabbi.bio ?? `Responsa from ${rabbi.name}`}>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap"
+    rel="stylesheet"
+  />
+
+  <main class="rs">
+    <a class="rs-back" href="/responsa">← All responsa</a>
+    <header class="rs-head">
+      {rabbi.name_he && <p class="rs-name-he" dir="rtl" lang="he">{rabbi.name_he}</p>}
+      <h1>{rabbi.name}</h1>
+      {rabbi.bio && <p class="rs-bio">{rabbi.bio}</p>}
+      <p class="rs-count">
+        {answered.length} {answered.length === 1 ? 'answer' : 'answers'}
+        {unanswered.length > 0 && ` · ${unanswered.length} question${unanswered.length === 1 ? '' : 's'} asked, no reply on file`}
+      </p>
+    </header>
+
+    {answered.length > 0 && (
+      <section>
+        <h2 class="rs-section">Answered</h2>
+        {answered.map((r, i) => (
+          <article class="rs-exchange">
+            <p class="rs-title">
+              <span class="rs-num">{i + 1}</span>
+              <span class="rs-title-text">{r.title}</span>
+            </p>
+            {r.title_he && <p class="rs-title-he" dir="rtl" lang="he">{r.title_he}</p>}
+            {(['question', 'answer', 'followup'] as const).map((kind) => {
+              if (kind === 'followup' && !r.followup_text) return null;
+              const b = block(r, kind);
+              return (
+                <div class={`rs-block rs-${kind}`}>
+                  <p class="rs-label">
+                    {b.label}
+                    {b.date && <span class="rs-date"> — {fmt(b.date)}</span>}
+                  </p>
+                  <div
+                    class:list={['rs-text', { 'rs-he': b.lang === 'he' }]}
+                    dir={b.lang === 'he' ? 'rtl' : 'ltr'}
+                    lang={b.lang}
+                    set:html={paras(b.text)}
+                  />
+                </div>
+              );
+            })}
+            {r.note && <p class="rs-note">{r.note}</p>}
+          </article>
+        ))}
+      </section>
+    )}
+
+    {unanswered.length > 0 && (
+      <section>
+        <h2 class="rs-section">Questions asked — no reply on file</h2>
+        {unanswered.map((r) => (
+          <article class="rs-exchange">
+            <p class="rs-title">
+              <span class="rs-num rs-num-open">?</span>
+              <span class="rs-title-text">{r.title}</span>
+            </p>
+            {r.title_he && <p class="rs-title-he" dir="rtl" lang="he">{r.title_he}</p>}
+            {(() => {
+              const b = block(r, 'question');
+              return (
+                <div class="rs-block rs-question">
+                  <p class="rs-label">
+                    Question
+                    {b.date && <span class="rs-date"> — {fmt(b.date)}</span>}
+                  </p>
+                  <div
+                    class:list={['rs-text', { 'rs-he': b.lang === 'he' }]}
+                    dir={b.lang === 'he' ? 'rtl' : 'ltr'}
+                    lang={b.lang}
+                    set:html={paras(b.text)}
+                  />
+                </div>
+              );
+            })()}
+            <p class="rs-noreply">No reply is on file for this question.</p>
+            {r.note && <p class="rs-note">{r.note}</p>}
+          </article>
+        ))}
+      </section>
+    )}
+
+    <p class="rs-foot">
+      Questions and answers are verbatim from the email correspondence; dates are the dates the messages were sent.
+    </p>
+  </main>
+</Layout>
+
+<style>
+  .rs {
+    --ink: #1f2933; --muted: #5f6b76; --line: #e3ddd0; --paper: #fffdf8; --accent: #0e7490;
+    max-width: 880px; margin: 0 auto; padding: 40px 16px 80px; color: var(--ink);
+    font-family: 'Crimson Pro', Georgia, serif; font-size: 1.15rem; line-height: 1.6;
+  }
+  :global(.dark) .rs { --ink: #ece7da; --muted: #a8a294; --line: #3a372f; --paper: #1d1b16; --accent: #22d3ee; }
+  .rs-back { color: var(--accent); font-size: .95rem; text-decoration: none; }
+  .rs-head { text-align: center; margin: 24px 0 40px; }
+  .rs-name-he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.6rem; color: var(--muted); margin: 0; }
+  .rs h1 { font-size: 2.6rem; font-weight: 600; margin: 4px 0 8px; color: var(--accent); }
+  .rs-bio { color: var(--muted); max-width: 640px; margin: 0 auto 8px; font-style: italic; }
+  .rs-count { color: var(--muted); font-size: .95rem; margin: 0; }
+  .rs-section { font-size: 1.1rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 6px; margin: 32px 0 16px; }
+  .rs-exchange { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 16px 20px; margin-bottom: 18px; break-inside: avoid; }
+  .rs-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 0 0 4px; }
+  .rs-num { display: inline-grid; place-items: center; min-width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--accent); color: #fff; font-size: .85rem; font-weight: 600; }
+  .rs-num-open { background: none; color: var(--muted); border: 1px solid var(--muted); }
+  .rs-title-text { font-weight: 600; font-size: 1.25rem; }
+  .rs-title-he { font-family: 'Frank Ruhl Libre', serif; color: var(--muted); margin: 0 0 12px 2.4em; }
+  .rs-block { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .rs-block:first-of-type { border-top: none; padding-top: 0; margin-top: 8px; }
+  .rs-label { font-size: .95rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  .rs-date { text-transform: none; letter-spacing: 0; }
+  .rs-answer .rs-label { color: var(--accent); }
+  .rs-text p { margin: 0 0 10px; }
+  .rs-text p:last-child { margin-bottom: 0; }
+  .rs-he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.3rem; line-height: 1.75; }
+  .rs-note { margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed var(--line); color: var(--muted); font-style: italic; font-size: 1rem; }
+  .rs-noreply { margin: 12px 0 0; color: var(--muted); font-style: italic; font-size: 1rem; }
+  .rs-foot { color: var(--muted); font-size: .95rem; font-style: italic; margin-top: 32px; text-align: center; }
+  @media (max-width: 640px) {
+    .rs h1 { font-size: 2rem; }
+  }
+  @media print {
+    .rs-back { display: none; }
+    .rs { padding: 0; }
+    .rs-exchange { border-color: #ccc; }
+  }
+</style>
