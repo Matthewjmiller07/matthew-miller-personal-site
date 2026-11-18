@@ -757,7 +757,7 @@ export const CHECK_QUEUE = [
       { t: 'Wrap a gid thread around the titura, underneath' },
     ],
     why: 'Mishnah Berurah 27:11: cut into the titura from above and stick the yud to the bayit (that’s why the ma’abarta of a lefty’s pair has the bigger cut on the other side). 27:10: a gid thread tied around the underside of the titura is a chatzitzah, “ra’ui levatel”. The Kaf HaChaim (#88) ties it from the top seam instead; the Chazon Ish had a piece of strap set in the ma’abarta (#89); Sefardim feed the loop out the far side so tightening pulls the yud in (#87); Chabad’s adjustable loop ties the knot itself (#92).',
-    lesson: 'Keep the yud by the bayit: a notch in the titura (Mishnah Berurah 27:11), a thread from the top seam (Kaf HaChaim), never under it (#86-#92).',
+    lesson: 'Keep the yud by the bayit: a notch in the titura (Mishnah Berurah 27:11), a thread from the top seam (Kaf HaChaim), never under it (#86-#92). All of them in 3D: /tefillin-trials/knots',
   },
   {
     kind: 'scan', name: 'Shimi', look: PERSON('#1d2433', '#e0b54a'), flag: { spot: 'bayit', what: 'a thread looped under the titura' },

@@ -11,6 +11,6 @@ export default defineConfig({
     manifest: true,
     chunkSizeWarningLimit: 4000,
     // Two games from one source tree: the full R3F game and Hineni Lite (plain three.js, WebXR).
-    rollupOptions: { input: { main: 'index.html', lite: 'lite.html' } },
+    rollupOptions: { input: { main: 'index.html', lite: 'lite.html', knots: 'knots.html' } },
   },
 });

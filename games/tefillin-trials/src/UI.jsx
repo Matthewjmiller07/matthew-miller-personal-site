@@ -68,6 +68,7 @@ function Title() {
                 {sh.levels.map((l) => (
                   <button key={l.id} style={{ borderColor: l.color, color: l.color }} onClick={() => { sfx.unlock(); go(l.id); }}>{l.name} ▸</button>
                 ))}
+                {sh.shiur === 6 && <a className="tt-knots-link" href="/tefillin-trials/knots">🪢 Knot Explorer ▸</a>}
               </div>
             </div>
           ))}
@@ -243,6 +244,7 @@ function CheckHud() {
         <Hearts n={hud.lives ?? 3} />
         <div className="tt-score">Checked {hud.served || 0}/{hud.total || 0}</div>
         <div className="tt-score">{hud.score || 0} pts</div>
+        <a className="tt-knots-link" href="/tefillin-trials/knots" target="_blank" rel="noopener">🪢 Every knot in 3D ↗</a>
       </div>
     </>
   );

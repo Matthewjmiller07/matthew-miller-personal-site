@@ -28,7 +28,7 @@ function title() {
     <div class="tt-shiurim">${SHIURIM.map((sh) => `<div class="tt-shiur">
       <div class="tt-shiur-head"><b>Shiur ${sh.shiur}</b><span lang="he" dir="rtl">${sh.he}</span></div>
       <div class="tt-shiur-title">${sh.title}</div><small>${sh.sub}</small>
-      <div class="tt-shiur-levels">${sh.levels.map((l) => `<button data-act="go:${l.id}" style="border-color:${l.color};color:${l.color}">${l.name} ▸</button>`).join('')}</div>
+      <div class="tt-shiur-levels">${sh.levels.map((l) => `<button data-act="go:${l.id}" style="border-color:${l.color};color:${l.color}">${l.name} ▸</button>`).join('')}${sh.shiur === 6 ? '<a class="tt-knots-link" href="/tefillin-trials/knots">🪢 Knot Explorer ▸</a>' : ''}</div>
     </div>`).join('')}</div>
     <button class="tt-lb-open" data-act="lb:ward">🏆 Leaderboard</button>
     <p class="tt-controls">WASD / arrows to move · Shift to run · E to talk/act · Space: Do Not Disturb pulse · H to hum · B to bless · 1–3 to choose. Link straight to a shiur with <code>?shiur=5</code> or a level with <code>?level=ward</code>. <a href="${FULL_URL}${location.search}" style="color:var(--gold-hi)">Full 3D version ▸</a></p>
@@ -85,7 +85,7 @@ function hud() {
           <button data-act="fire:bless"><kbd>B</kbd><span lang="he">לְהָנִיחַ תְּפִלִּין</span><span class="tt-tight"><span style="width:${(h.tight || 0) * 100}%;${h.tight > 0.7 ? 'background:#ff5a4a' : ''}"></span></span></button></div>
           <div class="tt-arm-legend"><span style="color:#3cc45a">■ everyone</span><span style="color:#a6e35a">■ the Gra only</span><span style="color:#ff4a4a">■ not the mitzvah</span></div></div>` : ''}`;
     case 'check':
-      return `${obj}<div class="tt-stats">${hearts(h.lives ?? 3)}<div class="tt-score">Checked ${h.served || 0}/${h.total || 0}</div><div class="tt-score">${h.score || 0} pts</div></div>`;
+      return `${obj}<div class="tt-stats">${hearts(h.lives ?? 3)}<div class="tt-score">Checked ${h.served || 0}/${h.total || 0}</div><div class="tt-score">${h.score || 0} pts</div><a class="tt-knots-link" href="/tefillin-trials/knots" target="_blank" rel="noopener">🪢 Every knot in 3D ↗</a></div>`;
     case 'ward':
       return `${obj}<div class="tt-stats">${hearts(h.lives ?? 3)}<div class="tt-score">Rounds ${h.served || 0}/${h.total || 0}</div><div class="tt-score">${h.score || 0} pts</div></div>
         ${h.stage === 'knot' ? '<div class="tt-ritual tt-arm"><div class="tt-ritual-title">Tie the yud: its leg toward the heart ♥</div><div class="tt-ritual-btns tt-arm-btns"><button data-act="fire:action"><kbd>E</kbd>Tie it here</button></div></div>' : ''}`;
