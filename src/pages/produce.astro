@@ -34,6 +34,7 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
       <div class="title-card">
         <p class="he" lang="he" dir="rtl">מַחְלֶקֶת פֵּרוֹת וִירָקוֹת</p>
         <h1>The Produce Aisle</h1>
+        <p class="sub tip">Swipe up to walk · tap a crate</p>
         <p class="sub">{produce.length} crates · {verseCount} verses · {rabbinicCount} rabbinic sources</p>
       </div>
       <div class="now" aria-live="polite">
@@ -210,7 +211,8 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
   .hint > span { background: rgba(255,255,255,.8); padding: 6px 12px; border-radius: 999px; }
   .hint kbd { font-family: inherit; border: 1px solid #bbb; border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; margin: 0 1px; background: #fff; }
   .list-btn.down-btn { background: #fff; text-decoration: none; }
-  .list-btn { pointer-events: auto; border: 0; background: #ffd60a; color: #111; font-weight: 700; padding: 7px 14px; border-radius: 999px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.15); font-size: .82rem; }
+  .list-btn { pointer-events: auto; border: 0; background: #ffd60a; color: #111; font-weight: 700; padding: 7px 14px; border-radius: 999px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.15); font-size: .82rem; white-space: nowrap; }
+  .title-card .tip { display: none; }
   .touch-only { display: none; }
   @media (hover: none) { .desk-only { display: none; } .touch-only { display: inline; } }
   .hover-tag { position: absolute; pointer-events: none; background: #111; color: #ffd60a; font-size: .8rem; padding: 4px 9px; border-radius: 6px; transform: translate(12px, 12px); white-space: nowrap; }
@@ -235,7 +237,13 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
     .hud-top .now { display: none; }
     .title-card h1 { font-size: 1.15rem; }
     .minimap button { padding: 4px 6px; font-size: .74rem; }
-    .minimap { overflow-x: auto; }
+    .minimap { overflow-x: auto; left: 10px; right: 10px; transform: none; max-width: none; bottom: 52px; scrollbar-width: none; }
+    .minimap::-webkit-scrollbar { display: none; }
+    /* one short row of buttons under the section bar; the swipe tip moves into the title card */
+    .hint { bottom: 10px; gap: 8px; }
+    .hint > span { display: none; }
+    .list-btn { padding: 6px 12px; font-size: .78rem; }
+    .aisle .title-card .tip { display: block; color: #0b6e4f; font-weight: 600; }
     .aisle { height: 80svh; }
     .aisle.holding .panel { height: 38%; }
     .hold-hint { top: 12px; transform: none; max-width: none; right: 12px; text-align: center; }
@@ -377,10 +385,15 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
       },
       onSection: (sid, progress) => {
         const s = sections.find((x) => x.id === sid)!;
-        if (nowHe.textContent !== s.he) { nowHe.textContent = s.he; nowEn.textContent = s.en; }
-        mapBtns.forEach((b) => b.classList.toggle('on', b.dataset.section === sid));
         const nav = you.parentElement!;
-        you.style.left = `${4 + progress * (nav.clientWidth - 18)}px`;
+        if (nowHe.textContent !== s.he) {
+          nowHe.textContent = s.he; nowEn.textContent = s.en;
+          // on a phone the section bar scrolls sideways: keep the current section in view
+          const on = mapBtns.find((b) => b.dataset.section === sid);
+          if (on && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: on.offsetLeft - nav.clientWidth / 2 + on.offsetWidth / 2, behavior: 'smooth' });
+        }
+        mapBtns.forEach((b) => b.classList.toggle('on', b.dataset.section === sid));
+        you.style.left = `${4 + progress * (nav.scrollWidth - 18)}px`;
       },
     });
     document.getElementById('hint')!.dataset.ready = '1';
