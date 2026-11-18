@@ -70,7 +70,7 @@ const RULES: [RegExp, string][] = [
   [/^\/(929|parasha-sheet)(\/|$)|^\/3d\/(parsha|plagues)$/, 'tanakh'],
   [/^\/(mega-bible|mega-bible\/ki|literary-bible|painted-torah|genealogies|kings-names|kohelet|psalm-emotions|haftarah-explorer|parsha-art|parsha-explorer|parasha|shnayim|bible-coins|biblical-timelines|graetz|sefaria-memory)$/, 'tanakh'],
   [/^\/(zmanim-widget|3d-print-tools\/leshem-yichud|calendars)(\/|$)/, 'practice'],
-  [/^\/(mega|mega-siddur|siddur|mega-mishnah|mega-maimonides|omer|zmanim|zmanim-watchface|bracha|kosher-scanner|kashrus-publications|cheese|tefillin-trials|jewish-learning-hub|moreh|coffee)$/, 'practice'],
+  [/^\/(mega|mega-siddur|siddur|mega-mishnah|mega-maimonides|omer|zmanim|zmanim-watchface|bracha|kosher-scanner|kashrus-publications|cheese|tefillin-trials|tefillin-trials\/lite|jewish-learning-hub|moreh|coffee)$/, 'practice'],
   [/^\/(israel|kolnoa|balashon|aptonyms)(\/|$)/, 'israel'],
   [/^\/(kosher-cafes|imported-foods|tourism-library|oleh-car|kids-in-wartime|lost-in-translation|trees|produce)$/, 'israel'],
   [/^\/(air-quality|arxiv-feed|chess-puzzle|chicago-pulse|crypto-vibes|github-trending|hn-live|iss-now|live-sports|on-this-day|quake-watch|radio-world|sky-above|solar-watch|wiki-pulse|world-pulse|weather|weather-avatar)$/, 'pulse'],
@@ -102,6 +102,7 @@ const OVERRIDES: Record<string, { title?: string; desc?: string }> = {
   '/trees': { title: 'Israel’s Urban Forest', desc: 'Tree canopy data for Israeli cities.' },
   '/jj': { title: 'Against the Thirteen Principles', desc: 'The Podcast of Jewish Ideas, sorted by which of the Thirteen Principles each episode pushes on.' },
   '/tefillin-trials': { title: 'Hineni: The Tefillin Trials' },
+  '/tefillin-trials/lite': { title: 'Hineni Lite (and VR)', desc: 'The Tefillin Trials on plain three.js: every shiur a level, fast on any phone, playable in a VR headset.' },
   '/transcriptions/breitowitz-qa': { title: 'Rabbi Breitowitz Q&A', desc: 'Rabbi Yitzchak Breitowitz’s Q&A sessions, transcribed and searchable.' },
   '/transcriptions/dayan-fuerst': { title: 'Dayan Fuerst', desc: 'Every Dayan Fuerst shiur, transcribed with click-to-seek audio.' },
   '/transcriptions/halacha-headlines': { title: 'Halacha Headlines', desc: 'The Halacha Headlines podcast, transcribed and searchable.' },
@@ -138,6 +139,8 @@ const KEYWORDS: Record<string, string> = {
   '/rav-nachman': 'breslov rebbe nachman',
   '/transcriptions': 'shiur shiurim torah lectures',
   '/produce': 'supermarket shuk fruit vegetables yerakot peirot hebrew names 3d',
+  '/tefillin-trials': 'tefillin game hineni shiur yad keha hefsek chatzitzah amputee 3d',
+  '/tefillin-trials/lite': 'tefillin game vr virtual reality headset quest webxr lite fast shiur',
 };
 
 const PAGES_DIR = path.join(process.cwd(), 'src', 'pages');

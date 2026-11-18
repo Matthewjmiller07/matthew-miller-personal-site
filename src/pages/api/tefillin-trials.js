@@ -14,7 +14,7 @@ export const prerender = false;
 
 import { createClient } from '@supabase/supabase-js';
 
-const LEVELS = ['gauntlet', 'catch', 'table', 'stand'];
+const LEVELS = ['gauntlet', 'catch', 'table', 'stand', 'ward', 'check'];
 const MAX_SCORE = 5000;
 const TABLE = 'tefillin_trials_scores';
 

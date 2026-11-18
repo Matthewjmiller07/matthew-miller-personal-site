@@ -11,6 +11,9 @@ import { Gauntlet } from './levels/Gauntlet.jsx';
 import { BrachaCatch } from './levels/BrachaCatch.jsx';
 import { ShabbosTable } from './levels/ShabbosTable.jsx';
 import { TefillinStand } from './levels/TefillinStand.jsx';
+import { WardRounds } from './levels/WardRounds.jsx';
+import { Checkpoint } from './levels/Checkpoint.jsx';
+import { WardRoom } from './world/Ward.jsx';
 import { Street } from './world/Street.jsx';
 import { UI } from './UI.jsx';
 import { useGame } from './store.js';
@@ -123,12 +126,15 @@ function Level() {
   if (screen === 'catch') return <BrachaCatch />;
   if (screen === 'table') return <ShabbosTable />;
   if (screen === 'stand') return <TefillinStand />;
+  if (screen === 'ward') return <WardRounds />;
+  if (screen === 'check') return <Checkpoint />;
   return <Hub />;
 }
 
-// World 1 is the shul; World 2 (the tefillin stand) is out on the street.
+// Shiurim 3 and 6 happen in the shul, Shiur 4 (the tefillin stand) out on the street, Shiur 5 in the ward.
 function World() {
   const screen = useGame((s) => s.screen);
+  if (screen === 'ward') return <WardRoom />;
   return screen === 'stand' ? <Street /> : <Shul />;
 }
 

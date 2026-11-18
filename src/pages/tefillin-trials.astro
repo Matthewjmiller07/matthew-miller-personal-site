@@ -2,23 +2,13 @@
 // Hineni: The Tefillin Trials. A 3D game built as its own Vite app in games/tefillin-trials/
 // (React Three Fiber, drei, Rapier, Yuka, three.quarks, postprocessing) and committed prebuilt
 // to public/games/tefillin-trials/. Rebuild with: cd games/tefillin-trials && npm i && npm run build
-import fs from 'node:fs';
-import path from 'node:path';
+// The same build makes Hineni Lite (plain three.js, VR) at /tefillin-trials/lite.
+import { tefillinBundle } from '../lib/tefillin-trials';
 
-const base = '/games/tefillin-trials/';
-let js = '';
-let css: string[] = [];
-try {
-  const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public/games/tefillin-trials/.vite/manifest.json'), 'utf8'));
-  const entry = manifest['index.html'];
-  js = base + entry.file;
-  css = (entry.css || []).map((c: string) => base + c);
-} catch {
-  // The game bundle hasn't been built; the page shows a note instead.
-}
+const { js, css } = tefillinBundle('index.html');
 
 const title = 'Hineni: The Tefillin Trials | Matthew Miller';
-const description = 'A 3D game of Hilchot Tefillin, simanim 25–27. Run the Hefsek Gauntlet to your shel rosh without talking, catch the right brachot for Rashi and Rabbeinu Tam, hum (or hush) at the Shabbat table, collect rulings from 20 poskim walking around the shul, and in World 2 run a tefillin stand: the right arm, the right spot on the muscle, the bracha at the right moment.';
+const description = 'A 3D game of Hilchot Tefillin, simanim 25–27. Run the Hefsek Gauntlet to your shel rosh without talking, catch the right brachot for Rashi and Rabbeinu Tam, hum (or hush) at the Shabbat table, collect rulings from 20 poskim walking around the shul, run a tefillin stand (Shiur 4), make tefillin rounds in a rehab ward for soldiers who lost an arm (Shiur 5), and rule on chatzitzah at the shul door (Shiur 6).';
 const url = 'https://theothermatthewmiller.com/tefillin-trials';
 ---
 
@@ -46,6 +36,7 @@ const url = 'https://theothermatthewmiller.com/tefillin-trials';
     #tefillin-trials-root { position: fixed; inset: 0; }
     .tt-home { position: fixed; left: 12px; bottom: calc(env(safe-area-inset-bottom) + 6px); z-index: 30; font: 600 11px Inter, system-ui, sans-serif; color: #a9afc6; text-decoration: none; opacity: .7; }
     .tt-home:hover { opacity: 1; color: #ffd84a; }
+    .tt-lite { left: auto; right: 12px; }
     .tt-loading { position: fixed; inset: 0; display: grid; place-items: center; color: #e0b54a; font: 900 3rem 'Frank Ruhl Libre', serif; letter-spacing: .1em; }
     .tt-loading small { display: block; text-align: center; font: 600 .8rem Inter, sans-serif; color: #a9afc6; letter-spacing: .2em; margin-top: .6rem; }
     @media (pointer: coarse) { .tt-home { display: none; } }
@@ -56,6 +47,7 @@ const url = 'https://theothermatthewmiller.com/tefillin-trials';
     <div class="tt-loading"><div lang="he" dir="rtl">הִנֵּנִי<small>LOADING THE SHUL…</small></div></div>
   </div>
   <a class="tt-home" href="/projects#games">← theothermatthewmiller.com</a>
+  <a class="tt-home tt-lite" href="/tefillin-trials/lite">⚡ Lite · VR</a>
   {js ? <script type="module" src={js}></script> : <p style="color:#fff;text-align:center;margin-top:40vh">The game bundle isn’t built yet.</p>}
 </body>
 </html>

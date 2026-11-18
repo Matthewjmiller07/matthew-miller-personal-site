@@ -99,10 +99,12 @@ export function Hub() {
       ))}
       <Agent v={extras.kid} />
       <group position={[0, 1.2, 0]}><Agent v={extras.chazan} height={2.1} /></group>
-      <Portal position={[-12, 0, 20.5]} color="#ff5a4a" title="The Hefsek Gauntlet" he="הֶפְסֵק" stars={stars.gauntlet || 0} onEnter={() => go('gauntlet')} />
-      <Portal position={[12, 0, 20.5]} color="#5fb3ff" title="Bracha Catch" he="רַשִׁ״י · רַבֵּנוּ תָּם" stars={stars.catch || 0} onEnter={() => go('catch')} />
-      <Portal position={[-12, 0, -20]} color="#7ad1a8" title="Hum or Hush" he="נִגּוּן" stars={stars.table || 0} onEnter={() => go('table')} />
-      <Portal position={[12, 0, -20]} color="#ffb347" title="World 2 · The Tefillin Stand" he="יָד כֵּהָה" stars={stars.stand || 0} onEnter={() => go('stand')} />
+      <Portal position={[-12, 0, 20.5]} color="#ff5a4a" title="Shiur 3 · The Hefsek Gauntlet" he="הֶפְסֵק" stars={stars.gauntlet || 0} onEnter={() => go('gauntlet')} />
+      <Portal position={[12, 0, 20.5]} color="#5fb3ff" title="Shiur 3 · Bracha Catch" he="רַשִׁ״י · רַבֵּנוּ תָּם" stars={stars.catch || 0} onEnter={() => go('catch')} />
+      <Portal position={[-12, 0, -20]} color="#7ad1a8" title="Shiur 3 · Hum or Hush" he="נִגּוּן" stars={stars.table || 0} onEnter={() => go('table')} />
+      <Portal position={[12, 0, -20]} color="#ffb347" title="Shiur 4 · The Tefillin Stand" he="יָד כֵּהָה" stars={stars.stand || 0} onEnter={() => go('stand')} />
+      <Portal position={[-12, 0, 0]} color="#ff7ab8" title="Shiur 5 · The Ward" he="גִּידֵּם" stars={stars.ward || 0} onEnter={() => go('ward')} />
+      <Portal position={[12, 0, 0]} color="#5ad1ff" title="Shiur 6 · The Checkpoint" he="חֲצִיצָה" stars={stars.check || 0} onEnter={() => go('check')} />
     </>
   );
 }

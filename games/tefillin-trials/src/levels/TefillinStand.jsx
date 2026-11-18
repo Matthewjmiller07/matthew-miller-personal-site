@@ -15,7 +15,7 @@ import { burst } from '../fx.js';
 import { good, bad, shuffle } from './common.jsx';
 import { STAND_QUEUE, ARM_ZONES, STAND_LESSONS } from '../content.js';
 
-// World 2 · Yad Keha: the tefillin stand. Passers-by come up one at a time. For each one you
+// Shiur 4 · Yad Keha: the tefillin stand. Passers-by come up one at a time. For each one you
 // pick the arm (siman 27), land the bayit on the right part of the muscle (#59-#64), and time
 // the bracha between placing and tightening (#55-#56). Between customers come quick shailos.
 
@@ -96,7 +96,7 @@ export function TefillinStand() {
   useEffect(() => {
     s.objective = 'Morning on the corner. Set up the stand: walk behind the table.';
     hud();
-    g.getState().toast('World 2 · Yad Keha. Your kid is running the tefillin stand with you today.', 'info');
+    g.getState().toast('Shiur 4 · Yad Keha. Your kid is running the tefillin stand with you today.', 'info');
     kid.setSay?.({ who: 'Your kid', text: 'Abba, the shin has three heads on one side and four on the other. The Avot and the Imahot!' });
     const id = setTimeout(() => { kid.setSay?.(null); next(); }, 3200);
     return () => { clearTimeout(id); player.camOverride = false; player.frozen = false; g.getState().setReaction(null); };

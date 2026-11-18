@@ -5,7 +5,7 @@
 create table if not exists public.tefillin_trials_scores (
   id bigint generated always as identity primary key,
   player text not null check (char_length(player) between 1 and 24),
-  level text not null check (level in ('gauntlet', 'catch', 'table', 'stand')),
+  level text not null check (level in ('gauntlet', 'catch', 'table', 'stand', 'ward', 'check')),
   score integer not null check (score between 0 and 5000),
   stars smallint not null default 0 check (stars between 0 and 3),
   minhag text check (minhag in ('ashkenaz', 'sefard')),
@@ -20,3 +20,8 @@ alter table public.tefillin_trials_scores enable row level security;
 drop policy if exists "tefillin trials scores are public" on public.tefillin_trials_scores;
 create policy "tefillin trials scores are public"
   on public.tefillin_trials_scores for select to anon, authenticated using (true);
+
+-- Shiurim 5 and 6 (the ward, the checkpoint) added after the table existed: widen the level check.
+alter table public.tefillin_trials_scores drop constraint if exists tefillin_trials_scores_level_check;
+alter table public.tefillin_trials_scores add constraint tefillin_trials_scores_level_check
+  check (level in ('gauntlet', 'catch', 'table', 'stand', 'ward', 'check'));

@@ -1,16 +1,18 @@
 // Deep links into the game, and keeping the address bar in step with where you are.
-//   ?level=stand | gauntlet | catch | table   (aliases below)  → straight into that level
-//   ?shiur=4 or ?world=2                                       → that shiur's world (its level, or the shul)
+//   ?level=stand | gauntlet | catch | table | ward | check (aliases below) → straight into that level
+//   ?shiur=6, ?level=6 or ?world=4                              → that shiur (its level, or the shul)
 //   ?leaderboard                                               → open the leaderboard
 // Debug flags (?nopost, ?nofx, …) are left alone.
 import { SHIURIM } from './content.js';
 
-export const LEVEL_IDS = ['gauntlet', 'catch', 'table', 'stand'];
+export const LEVEL_IDS = ['gauntlet', 'catch', 'table', 'stand', 'ward', 'check'];
 const ALIASES = {
   hefsek: 'gauntlet', gauntlet: 'gauntlet', kaddish: 'gauntlet',
   catch: 'catch', bracha: 'catch', brachot: 'catch', rashi: 'catch',
   table: 'table', hum: 'table', niggun: 'table', shabbat: 'table',
   stand: 'stand', 'yad-keha': 'stand', yadkeha: 'stand', arm: 'stand',
+  ward: 'ward', gidem: 'ward', amputee: 'ward', hospital: 'ward',
+  check: 'check', checkpoint: 'check', chatzitzah: 'check', chatzitza: 'check', scanner: 'check', yud: 'check',
 };
 
 export const shiurFor = (level) => SHIURIM.find((s) => s.levels.some((l) => l.id === level));
@@ -19,10 +21,12 @@ export const shiurFor = (level) => SHIURIM.find((s) => s.levels.some((l) => l.id
 export function fromUrl(search = typeof location !== 'undefined' ? location.search : '') {
   const q = new URLSearchParams(search);
   let screen = null;
-  const level = ALIASES[(q.get('level') || '').toLowerCase()];
+  const raw = (q.get('level') || '').toLowerCase();
+  const level = ALIASES[raw];
   if (level) screen = level;
   else {
-    const n = Number(q.get('shiur'));
+    // ?level=5 means shiur 5, like ?shiur=5
+    const n = Number(q.get('shiur')) || (/^\d+$/.test(raw) ? Number(raw) : 0);
     const w = Number(q.get('world'));
     const s = SHIURIM.find((x) => (n && x.shiur === n) || (w && x.world === w));
     // A world with one level opens it; a world with several opens the shul with its portals.

@@ -1,5 +1,7 @@
 // Tiny WebAudio synth: no audio files to download.
-import { useGame } from './store.js';
+// Whatever owns the game state tells the synth whether it's muted (see setMuteSource).
+let isMuted = () => false;
+export function setMuteSource(fn) { isMuted = fn; }
 
 let ctx = null;
 let master = null;
@@ -18,7 +20,7 @@ function ac() {
 }
 
 function tone(freq, dur, { type = 'sine', vol = 0.4, at = 0, slide = 0 } = {}) {
-  if (useGame.getState().muted) return;
+  if (isMuted()) return;
   const c = ac();
   if (!c) return;
   const t = c.currentTime + at;

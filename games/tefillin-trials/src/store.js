@@ -17,7 +17,7 @@ const saved = load();
 const start = fromUrl();
 
 export const useGame = create((set, get) => ({
-  screen: start.screen || 'title', // title | hub | gauntlet | catch | table | stand | results
+  screen: start.screen || 'title', // title | hub | gauntlet | catch | table | stand | ward | check | results
   leaderboard: start.leaderboard ? (start.screen && start.screen !== 'hub' ? start.screen : 'stand') : null, // level shown in the leaderboard panel
   player: saved.player || '',
   minhag: saved.minhag || 'ashkenaz',
