@@ -32,7 +32,7 @@ grainFine.repeat.set(6, 1);
 export const MATS = {
   paint: new THREE.MeshPhysicalMaterial({ color: '#030304', roughness: 0.42, metalness: 0, clearcoat: 0.55, clearcoatRoughness: 0.22, bumpMap: grain, bumpScale: 0.5, envMapIntensity: 0.3 }),
   strapFront: new THREE.MeshPhysicalMaterial({ color: '#050506', roughness: 0.45, clearcoat: 0.4, clearcoatRoughness: 0.3, bumpMap: grainFine, bumpScale: 0.4, envMapIntensity: 0.35, side: THREE.DoubleSide }),
-  strapBack: new THREE.MeshStandardMaterial({ color: '#a87a4c', roughness: 0.95, bumpMap: grainFine, bumpScale: 1.2, side: THREE.DoubleSide }),
+  strapBack: new THREE.MeshStandardMaterial({ color: '#d8d2c4', roughness: 0.95, bumpMap: grainFine, bumpScale: 1.2, side: THREE.DoubleSide }),
   gid: new THREE.MeshStandardMaterial({ color: '#d9c49a', roughness: 0.7 }),
   gidBad: new THREE.MeshStandardMaterial({ color: '#ff4a4a', roughness: 0.5, emissive: '#7a0000', emissiveIntensity: 0.6 }),
   tan: new THREE.MeshStandardMaterial({ color: '#b48a5c', roughness: 0.85, bumpMap: grainFine, bumpScale: 1 }),
@@ -128,7 +128,13 @@ const tube = (pts, r, mat) => { const m = new THREE.Mesh(new THREE.TubeGeometry(
 export const DIM = { T: 0.96, TH: 0.1, B: 0.66, MW: 0.36, MH: 0.24, bx: 0.95 };
 
 /** Build the shel yad for one method. Returns { group, anchors, update(pull) }. */
-export function buildTefillin(method) {
+/**
+ * stage (optional): how far the tying has got, for the step-by-step player. Leave it out for the
+ * finished knot. { yud, knot, loop: null | 'big' | 'small', through, ring, loose, extras }
+ */
+const DONE = { yud: true, knot: true, loop: 'small', through: true, ring: true, loose: false, extras: true };
+export function buildTefillin(method, stage = DONE) {
+  stage = { ...DONE, ...stage };
   const { T, TH: tH, B, MW, MH, bx } = DIM;
   const ex = method.extras || {};
   const y0 = armR(bx) - 0.02;
@@ -180,49 +186,78 @@ export function buildTefillin(method) {
   g.add(knot);
   const kz = -T / 2 - 0.12;
   const ky = y0 + 0.14;
-  const body = new THREE.Mesh(new RoundedBoxGeometry(0.3, 0.24, 0.2, 3, 0.07), MATS.strapFront);
-  body.position.set(mx, ky, kz); body.castShadow = true; knot.add(body);
-  // a twist on the knot so it reads as tied leather
-  const twist = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.035, 8, 24), MATS.strapFront);
-  twist.position.set(mx, ky + 0.02, kz - 0.09); twist.rotation.y = 0.2; knot.add(twist);
+  const far = method.loop === 'far';
+  if (!stage.through) knot.position.z = -0.35; // not yet fed in: the knot sits off to the heart side
+  // The yud, as in the video: the strap's tip folded twice into a small square tab, the natural
+  // back of the strap showing at its edges.
+  if (stage.yud) {
+    const tab = new THREE.Group();
+    tab.add(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.05), MATS.strapBack));
+    const face = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.056), MATS.strapFront); tab.add(face);
+    tab.position.set(mx - 0.04, ky + (stage.knot ? 0.17 : 0.06), kz - 0.04);
+    tab.rotation.set(-0.35, 0.15, 0.25);
+    tab.traverse((o) => { o.castShadow = true; });
+    knot.add(tab);
+  }
+  if (stage.knot) {
+    // the body of the knot: strap wrapped round on itself
+    const body = new THREE.Mesh(new RoundedBoxGeometry(0.3, 0.22, 0.22, 3, 0.08), MATS.strapFront);
+    body.position.set(mx, ky, kz); body.castShadow = true; knot.add(body);
+    for (const [dx, rz] of [[-0.07, 0.5], [0.07, -0.5]]) {
+      const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.022, 6, 24, Math.PI * 1.3), MATS.strapBack);
+      wrap.position.set(mx + dx, ky, kz - 0.01); wrap.rotation.set(0, Math.PI / 2, rz); knot.add(wrap);
+    }
+  }
   // the leg of the yud: the strap's end, toward the heart
   knot.add(ribbon(path([new THREE.Vector3(mx + 0.02, ky - 0.04, kz - 0.08), new THREE.Vector3(mx + 0.05, ky - 0.16, kz - 0.25), new THREE.Vector3(mx + 0.08, ky - 0.32, kz - 0.36)], { steps: 20 }), 0.18));
-  anchors.yud = new THREE.Vector3(mx, ky + 0.2, kz);
+  anchors.yud = new THREE.Vector3(mx, ky + 0.3, kz);
   anchors.leg = new THREE.Vector3(mx + 0.08, ky - 0.36, kz - 0.4);
   // through the ma'abarta
-  knot.add(ribbon(path([new THREE.Vector3(mx, y0 + 0.12, kz + 0.06), new THREE.Vector3(mx, y0 + 0.12, T / 2 + 0.06)], { steps: 6, normal: () => new THREE.Vector3(0, 1, 0) })));
+  if (stage.through) knot.add(ribbon(path([new THREE.Vector3(mx, y0 + 0.12, kz + 0.06), new THREE.Vector3(mx, y0 + 0.12, T / 2 + 0.06)], { steps: 6, normal: () => new THREE.Vector3(0, 1, 0) })));
 
   // the gid thread
-  if (ex.thread === 'top') {
+  if (stage.extras && ex.thread === 'top') {
     knot.add(tube([new THREE.Vector3(bx - T / 2 + 0.06, y0 + tH + 0.005, -T / 2 + 0.08), new THREE.Vector3(mx + 0.1, ky + 0.14, kz + 0.02), new THREE.Vector3(mx - 0.05, ky + 0.15, kz - 0.12), new THREE.Vector3(mx - 0.17, ky, kz - 0.02), new THREE.Vector3(mx - 0.05, ky - 0.12, kz + 0.1), new THREE.Vector3(bx - T / 2 + 0.03, y0 + 0.05, -T / 2 + 0.06)], 0.014, MATS.gid));
     anchors.thread = new THREE.Vector3(mx, ky + 0.2, kz - 0.1);
   }
-  if (ex.thread === 'under') {
+  if (stage.extras && ex.thread === 'under') {
     knot.add(tube([new THREE.Vector3(mx - 0.1, ky, kz), new THREE.Vector3(mx, y0 - 0.005, -T / 2 + 0.1), new THREE.Vector3(bx, y0 - 0.012, 0), new THREE.Vector3(bx + T / 2 - 0.1, y0 - 0.005, T / 2 - 0.1), new THREE.Vector3(bx + T / 2 + 0.02, y0 + tH, T / 2)], 0.02, MATS.gidBad));
     anchors.under = new THREE.Vector3(bx + 0.2, y0 - 0.1, T / 2 + 0.1);
   }
 
-  // the ring around the arm and the loop
-  const far = method.loop === 'far';
+  // the loop: by the knot (Ashkenaz, Chabad), or doubled through to the far side (Sefard)
   const a0 = 0.5; // where the strap leaves the ma'abarta's ends, as an angle around the arm
   const xr = mx;
-  const loopPos = far ? new THREE.Vector3(xr, y0 + 0.03, T / 2 + 0.24) : new THREE.Vector3(xr - 0.02, y0 + 0.02, kz - 0.2);
-  const loopGeo = new THREE.TorusGeometry(ex.slip ? 0.09 : 0.14, 0.04, 10, 28);
-  const loop = new THREE.Mesh(loopGeo, MATS.strapFront);
-  loop.scale.set(1, 1, 0.35);
-  loop.position.copy(loopPos);
-  loop.rotation.y = Math.PI / 2;
-  loop.castShadow = true;
-  if (ex.slip) loop.position.set(mx - 0.13, ky - 0.02, kz - 0.06);
-  knot.add(loop);
-  anchors.loop = (ex.slip ? loop.position.clone() : loopPos.clone()).add(new THREE.Vector3(-0.15, 0.12, far ? 0.15 : -0.15));
-  // the ring: from one end of the ma'abarta, under the arm, to the loop on the other
-  knot.add(ribbon(far ? helix(xr, xr, -a0, -2 * Math.PI + a0, 0.03, 90) : helix(xr, xr, a0, 2 * Math.PI - a0, 0.03, 90)));
+  const loopFar = far && stage.through;
+  const loopPos = loopFar ? new THREE.Vector3(xr, y0 + 0.03, T / 2 + 0.24) : new THREE.Vector3(xr - 0.02, y0 + 0.02, kz - 0.2);
+  if (stage.loop) {
+    const r = ex.slip ? 0.09 : stage.loop === 'big' ? 0.26 : 0.14;
+    const loop = new THREE.Mesh(new THREE.TorusGeometry(r, 0.04, 10, 28), MATS.strapFront);
+    loop.scale.set(1, 1, 0.35);
+    loop.position.copy(loopPos);
+    if (stage.loop === 'big' && !loopFar) loop.position.z -= 0.12;
+    loop.rotation.y = Math.PI / 2;
+    loop.castShadow = true;
+    if (ex.slip) loop.position.set(mx - 0.13, ky - 0.02, kz - 0.06);
+    knot.add(loop);
+    anchors.loop = (ex.slip ? loop.position.clone() : loop.position.clone()).add(new THREE.Vector3(-0.15, 0.12 + (stage.loop === 'big' ? 0.15 : 0), loopFar ? 0.15 : -0.15));
+  }
+  // before the strap goes around the arm, it hangs loose off the heart side (or out of the far loop)
+  if (stage.loose) {
+    const from = stage.through ? new THREE.Vector3(mx, y0 + 0.1, T / 2 + 0.1) : new THREE.Vector3(mx + 0.1, ky - 0.05, kz - 0.05);
+    const out = stage.through ? 1 : -1;
+    knot.add(ribbon(path([from, from.clone().add(new THREE.Vector3(0.15, -0.1, 0.45 * out)), new THREE.Vector3(mx + 0.6, -0.2, 1.6 * out), new THREE.Vector3(mx + 1.2, -2.2, 2.0 * out)], { steps: 50 })));
+    anchors.free = new THREE.Vector3(mx + 0.4, 0.2, 1.4 * out);
+  }
+  if (stage.ring) {
+    // the ring: from one end of the ma'abarta, under the arm, to the loop on the other
+    knot.add(ribbon(far ? helix(xr, xr, -a0, -2 * Math.PI + a0, 0.03, 90) : helix(xr, xr, a0, 2 * Math.PI - a0, 0.03, 90)));
+  }
 
   // the free strap: from the loop around the arm and down toward the forearm
   const xFree = bx + T / 2 + 0.45; // first crossing of the top past the titura
-  let free;
-  if (ex.wrapBayit) {
+  let free = null;
+  if (stage.ring && ex.wrapBayit && stage.extras) {
     // Or LeTzion: around the bayit, then straight down to the forearm with no wraps on the upper arm
     const by = y0 + tH + B * 0.45, h = B / 2 + 0.03;
     const around = [];
@@ -236,8 +271,7 @@ export function buildTefillin(method) {
     knot.add(ribbon(bayitLoop));
     knot.add(ribbon(path([around[around.length - 1], new THREE.Vector3(bx + B / 2 + 0.35, by - 0.15, h + 0.1), new THREE.Vector3(X1 - 0.1, armR(X1) * 0.7, armR(X1) * 0.75), new THREE.Vector3(X1 + 0.5, -0.9, 0.2)], { steps: 40 })));
     anchors.wrap = new THREE.Vector3(bx, by + 0.1, h + 0.12);
-    free = null;
-  } else {
+  } else if (stage.ring) {
     const start = far ? 0.75 : -0.75;
     const dir = far ? 1 : -1;
     const total = Math.PI * 2 * 2.2;
@@ -256,24 +290,27 @@ export function buildTefillin(method) {
   }
 
   // a pass over the yud (the Be'er Heitev) or over the titura (the Chafetz Chaim knot)
-  if (ex.overYud || ex.chafetz) {
+  if (stage.extras && (ex.overYud || ex.chafetz)) {
     const top = y0 + MH + 0.06;
     knot.add(ribbon(path([loopPos.clone().add(new THREE.Vector3(0.1, 0, -0.05)), new THREE.Vector3(mx + 0.12, ky + 0.16, kz - 0.05), new THREE.Vector3(mx + 0.12, top, 0), new THREE.Vector3(mx + 0.12, top - 0.05, T / 2 + 0.12), new THREE.Vector3(mx + 0.15, y0 - 0.3, T / 2 + 0.35)], { steps: 40 }), 0.22));
     anchors.over = new THREE.Vector3(mx + 0.12, top + 0.12, 0);
-    if (ex.chafetz) {
-      const l2 = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.04, 10, 28), MATS.strapFront);
-      l2.scale.set(1, 1, 0.35); l2.position.set(mx - 0.05, y0 + 0.08, T / 2 + 0.2); l2.rotation.y = Math.PI / 2; knot.add(l2);
-      anchors.loop2 = l2.position.clone().add(new THREE.Vector3(-0.1, 0.15, 0.15));
-    }
+  }
+  if (stage.extras && ex.chafetz || stage.loop2) {
+    const l2 = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.04, 10, 28), MATS.strapFront);
+    l2.scale.set(1, 1, 0.35); l2.position.set(mx - 0.05, y0 + 0.08, T / 2 + 0.2); l2.rotation.y = Math.PI / 2; knot.add(l2);
+    anchors.loop2 = l2.position.clone().add(new THREE.Vector3(-0.1, 0.15, 0.15));
   }
   // Chabad: twice around the titura, like a shin (not over the ketzitzah)
-  if (ex.shin) {
-    for (const s of [-1, 1]) {
-      const x = bx + s * (T / 2 - 0.08);
+  if (stage.extras && ex.shin) {
+    for (const sg of [-1, 1]) {
+      const x = bx + sg * (T / 2 - 0.08);
       knot.add(ribbon(path([new THREE.Vector3(x, y0 - 0.1, -T / 2 - 0.3), new THREE.Vector3(x, y0 + tH + 0.02, -T / 2 + 0.02), new THREE.Vector3(x, y0 + tH + 0.02, T / 2 - 0.02), new THREE.Vector3(x, y0 - 0.1, T / 2 + 0.3)], { steps: 30, normal: (p) => new THREE.Vector3(0, Math.max(0.3, p.y - y0 + 0.4), p.z * 0.6).normalize() }), 0.13));
     }
     anchors.shin = new THREE.Vector3(bx, y0 + tH + 0.1, -T / 2 - 0.1);
   }
+  const baseZ = knot.position.z;
+  // anchors on the moving part follow it
+  if (knot.position.z) for (const k of ['yud', 'leg', 'loop', 'free']) anchors[k]?.add(knot.position);
 
   // the heart side, marked
   const heart = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 16), MATS.heart);
@@ -302,7 +339,7 @@ export function buildTefillin(method) {
     /** pull: 0 (loose) → 1 (tight). Ashkenaz-style knots with nothing holding them slide off the bayit. */
     update(pullK) {
       const gap = method.holds ? 0 : 0.26 * pullK;
-      knot.position.z = -gap;
+      knot.position.z = baseZ - gap;
       if (free && pullK > 0.01) {
         const i = Math.floor((1 - pullK) * 30) + 6;
         const s = free[Math.min(free.length - 2, i)];
