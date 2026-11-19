@@ -15,6 +15,46 @@ const verdictClass = {
   agree: 'bg-green-100 text-green-900 dark:bg-green-900/40 dark:text-green-100',
   neutral: 'bg-stone-200 text-stone-700 dark:bg-stone-700 dark:text-stone-200',
 };
+import approaches from '../data/taz-bach/approaches.json';
+
+const mindsTotal = approaches.length;
+const mindsBach = approaches.filter((a) => a.stricter === 'bach').length;
+const mindsTaz = approaches.filter((a) => a.stricter === 'taz').length;
+const mindsNone = approaches.filter((a) => a.stricter === 'none').length;
+const mindsSA = approaches.filter((a) => a.tags.includes('SA')).length;
+const domainOrder = ['Pesach', 'Festivals & fasts', 'Meals & blessings', 'Prayer & blessings', 'Shabbat & eruvin', 'Shechita & treifot', 'Kashrut', 'Nidda', 'Gittin, agunah & kiddushin', 'Other'];
+const domainRows = domainOrder.map((name) => {
+  const rows = approaches.filter((a) => a.domain === name);
+  return { name, bach: rows.filter((a) => a.stricter === 'bach').length, taz: rows.filter((a) => a.stricter === 'taz').length, none: rows.filter((a) => a.stricter === 'none').length };
+});
+// Authority named in the passage around the citation: disagree rate among position-taking citations.
+const authPatterns = [
+  ['Maharshal (Rashal)', 'Acharon, Poland', /רש"ל/],
+  ['Levush', 'Acharon, Poland', /לבוש/],
+  ['Rema', 'Codifier', /רמ"א/],
+  ['Shulchan Arukh', 'Codifier', /ש"ע|השו"ע|השלחן ערוך/],
+  ['Tur', 'Codifier', /הטור/],
+  ['Beit Yosef', 'Codifier', /ב"י/],
+  ['Rosh', 'Rishon', /רא"ש/],
+  ['Rambam', 'Rishon', /רמב"ם/],
+  ['Rashba', 'Rishon', /רשב"א/],
+  ['Mordechai', 'Rishon', /מרדכי/],
+  ['Tosafot', 'Rishon', /תוס/],
+  ['Ran', 'Rishon', /ר"ן/],
+  ['Rashi', 'Rishon', /רש"י/],
+];
+const authRows = authPatterns.map(([name, kind, re]) => {
+  const rows = citations.filter((c) => re.test(c.hebrew.replace(/״/g, '"')));
+  const dis = rows.filter((c) => c.mine === 'disagree').length;
+  const agr = rows.filter((c) => c.mine === 'agree').length;
+  return { name, kind, n: rows.length, dis, pct: dis + agr ? Math.round((100 * dis) / (dis + agr)) : 0 };
+});
+const strictLabel = { bach: 'Bach stricter', taz: 'Taz stricter', none: 'No practical gap' };
+const strictClass = {
+  bach: 'bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-100',
+  taz: 'bg-sky-100 text-sky-900 dark:bg-sky-900/40 dark:text-sky-100',
+  none: 'bg-stone-200 text-stone-700 dark:bg-stone-700 dark:text-stone-200',
+};
 ---
 
 <Layout title={pageTitle} description={pageDescription} image="/og/taz-bach.jpg" imageAlt="Does the Taz Mostly Disagree with the Bach? 56% disagree, of the 421 times the Taz takes a position — 236 disagree, 185 agree, 81 neutral, across all 502 citations.">
@@ -34,6 +74,13 @@ const verdictClass = {
         · <a class="underline hover:no-underline" href="https://www.torahanytime.com/lectures/265883" target="_blank" rel="noopener">TorahAnytime lecture 265883</a>
       </p>
     </header>
+
+    <nav class="mb-8 flex gap-2 border-b border-current/20" role="tablist" aria-label="Sections">
+      <button class="tab-btn px-4 py-2 -mb-px border-b-2 font-semibold" role="tab" data-tab="count">The count</button>
+      <button class="tab-btn px-4 py-2 -mb-px border-b-2 font-semibold" role="tab" data-tab="minds">Two minds <span class="ml-1 text-xs align-top px-1.5 py-0.5 rounded-full bg-red-700 text-white">new</span></button>
+    </nav>
+
+    <div data-panel="count">
 
     <section class="mb-10 rounded-xl border border-current/20 p-5 md:p-6">
       <h2 class="text-xl font-bold mb-2">The verdict: yes, mostly — but by a narrow majority</h2>
@@ -273,6 +320,285 @@ const verdictClass = {
         Jev (jev-1.14.0) classified the same 502 independently.
       </p>
     </section>
+    </div>
+    <div data-panel="minds" hidden>
+    <section class="mb-10">
+      <h2 class="text-2xl md:text-3xl font-bold mb-3">Two minds: how the Taz and the Bach differ</h2>
+      <p class="text-lg opacity-80 max-w-3xl mb-3">
+        The count settles <em>how often</em> the Taz disagrees with his father-in-law. This tab asks
+        <em>how</em>. Is one of them simply the stricter posek? What does each one care about, and
+        whose authority does each of them lean on?
+      </p>
+      <p class="max-w-3xl opacity-80">
+        Method: each of the {mindsTotal} distinct disagreements (the 236 citations, less 12 where two
+        citations quote the same passage) was coded for three things: whether a practical
+        stringency is at stake and who holds it, whether the Taz is defending the text of the
+        Shulchan Arukh, Beit Yosef, Rema or Tur against the Bach, and the area of halacha. The
+        coding was done from the passage. The full seif was read on Sefaria for every case quoted
+        below, and one case was recoded as a result (YD 293:4, below). This is a single reader's
+        first pass, not a census of the same rigour as the count.
+      </p>
+    </section>
+
+    <section class="mb-10 rounded-xl border border-current/20 p-5 md:p-6">
+      <h3 class="text-xl font-bold mb-3">1. Is one of them more machmir?</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div class="rounded-lg bg-stone-100 dark:bg-stone-800 p-4">
+          <p class="text-3xl font-bold">{mindsNone}</p>
+          <p class="text-sm opacity-80">of {mindsTotal} disagreements involve no difference in practice. They are about how to read a text ({Math.round(100*mindsNone/mindsTotal)}%).</p>
+        </div>
+        <div class="rounded-lg bg-red-50 dark:bg-red-950/40 p-4">
+          <p class="text-3xl font-bold">{mindsBach}</p>
+          <p class="text-sm opacity-80">practical disputes where the <strong>Bach</strong> is the stricter one.</p>
+        </div>
+        <div class="rounded-lg bg-sky-50 dark:bg-sky-950/40 p-4">
+          <p class="text-3xl font-bold">{mindsTaz}</p>
+          <p class="text-sm opacity-80">practical disputes where the <strong>Taz</strong> is the stricter one.</p>
+        </div>
+      </div>
+      <p class="max-w-3xl mb-4">
+        Overall, the Bach is somewhat more stringent: he holds the stricter position in
+        {mindsBach} of the {mindsBach + mindsTaz} disagreements with a practical gap
+        ({Math.round(100*mindsBach/(mindsBach+mindsTaz))}%). But the first finding is that most
+        of the time stringency is not what they are fighting about. Nearly two-thirds of the
+        disagreements are over how to read the Tur, the Beit Yosef, Rashi or a sugya, with no
+        change to the ruling. The second finding is that the overall tilt hides a sharp split by
+        area of halacha:
+      </p>
+      <div class="overflow-x-auto mb-3">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-current/20">
+              <th class="py-2 pr-4">Area</th>
+              <th class="py-2 pr-4">Bach stricter</th>
+              <th class="py-2 pr-4">Taz stricter</th>
+              <th class="py-2 pr-4">No practical gap</th>
+              <th class="py-2">Lean</th>
+            </tr>
+          </thead>
+          <tbody>
+            {domainRows.map((d) => (
+              <tr class="border-b border-current/10">
+                <td class="py-2 pr-4">{d.name}</td>
+                <td class="py-2 pr-4">{d.bach}</td>
+                <td class="py-2 pr-4">{d.taz}</td>
+                <td class="py-2 pr-4 opacity-70">{d.none}</td>
+                <td class="py-2 whitespace-nowrap">
+                  <span class="inline-flex h-2.5 w-32 rounded-full overflow-hidden bg-stone-200 dark:bg-stone-700 align-middle">
+                    <span class="bg-red-700" style={`width:${d.bach+d.taz ? 100*d.bach/(d.bach+d.taz) : 0}%`}></span>
+                    <span class="bg-sky-700" style={`width:${d.bach+d.taz ? 100*d.taz/(d.bach+d.taz) : 0}%`}></span>
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="text-xs opacity-70 mb-4">Red = Bach stricter, blue = Taz stricter, as a share of the practical disputes in each area.</p>
+      <p class="max-w-3xl">
+        <strong>The Bach is the stricter one about practice. The Taz is the stricter one about
+        status.</strong> On Pesach the Bach holds the stricter view in all nine practical
+        disputes, and on fasts and festivals in all four. These are chumrot of conduct and piety:
+        lock the chametz dishes in a room, don't kasher wooden bowls, fast a yahrzeit even in
+        Nisan, don't slaughter on Tisha b'Av until after the fast. Where the question is whether
+        a woman is married, whether a get is valid, or whether an agunah may remarry, the balance
+        turns: the Taz is stricter 8 to 5, and in gittin 4 to 0. Kashrut, where the two concerns
+        meet, is close to even (10 to 8 the Taz's way).
+      </p>
+    </section>
+
+    <section class="mb-10">
+      <h3 class="text-xl font-bold mb-4">2. What each of them cares about</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="rounded-xl border border-current/20 p-5">
+          <p class="text-xs uppercase tracking-widest opacity-60 mb-1">The Bach · Rabbi Yoel Sirkis</p>
+          <p class="text-lg font-bold mb-2">He reasons up from the sources.</p>
+          <p class="mb-3 text-sm">
+            The <em>Bayit Chadash</em> is a commentary on the Tur. The Bach argues from the Talmud
+            and the Rishonim, and when he thinks the codes have misread them he overrules the codes.
+            He rejects a ruling of the Rema on the blessing of a convert (OC 46:5). He sets aside the
+            Shulchan Arukh and Beit Yosef because "all the posekim hold like Rashi" (OC 81:1). He
+            narrows a ruling of the Rema on washing for bread (OC 164:4). On chadash he proposes his
+            own reading of the Yerushalmi, against the reading of the Ri that all later authorities
+            had followed (YD 293:4).
+          </p>
+          <p class="mb-3 text-sm">
+            His chumrot tend to be ones of practice and piety:
+            <span dir="rtl" lang="he">כל ירא שמים לא יאכל</span> rice and millet outside the meal
+            (OC 208:11); wooden bowls can't be kashered for Pesach (OC 451:24); a stain shouldn't be
+            ruled on until it dries (YD 188:1).
+          </p>
+          <p class="text-sm">
+            His leniencies are often after the fact (<em>bedi'avad</em>) and rest on his own reading:
+            milk that floated to the top leaves the food permitted even without sixty (YD 98:7); a
+            man seen hanged may be presumed dead even if the witnesses left at once (EH 17:43); an old
+            vessel doesn't absorb even after a full day (YD 93:2).
+          </p>
+        </div>
+        <div class="rounded-xl border border-current/20 p-5">
+          <p class="text-xs uppercase tracking-widest opacity-60 mb-1">The Taz · Rabbi David HaLevi Segal</p>
+          <p class="text-lg font-bold mb-2">He guards the code, and holds the line in both directions.</p>
+          <p class="mb-3 text-sm">
+            The <em>Turei Zahav</em> is a commentary on the Shulchan Arukh, and in {mindsSA} of the
+            disagreements the Taz is defending the Shulchan Arukh, Beit Yosef, Rema or Tur against the
+            Bach's criticism. His signature word is <span dir="rtl" lang="he">ובחנם</span>, "for
+            nothing": the Bach's question was never a question. It appears in 25 citations, and in
+            all but one of them he disagrees.
+          </p>
+          <p class="mb-3 text-sm">
+            He won't accept a chumra that has no source:
+            <span dir="rtl" lang="he">ואיני יודע טעם להחמיר</span> (OC 451:24);
+            <span dir="rtl" lang="he">אין זה אלא חומרא בעלמא</span> (OC 466:4);
+            <span dir="rtl" lang="he">עוד המציא מו״ח ז״ל חומרא אחת</span>, "my father-in-law
+            invented another stringency" (YD 188:1). For him a stringency has costs. Requiring a get
+            where every posek says none is needed would cast doubt on the Maharil's own ruling in a
+            real case (EH 28:2).
+          </p>
+          <p class="text-sm">
+            Nor will he accept a leniency built on a new reading where a married woman could be
+            permitted to remarry: <span dir="rtl" lang="he">ואין לסמוך על הוראה זו כלל</span> on
+            the hanged man (EH 17:43); <span dir="rtl" lang="he">מכשול יצא מתחת ידי מו״ח</span> on
+            the name in a get (EH 129:25). When he is the lenient one, the code is usually
+            behind him: against the Bach and the Rashal, he keeps the lenient custom that the Rema
+            endorsed (YD 104:6).
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-5 rounded-xl bg-stone-100 dark:bg-stone-800 p-5 md:p-6">
+        <p class="text-xs uppercase tracking-widest opacity-60 mb-1">The clearest case · Yoreh De'ah 293:4, chadash</p>
+        <p class="mb-2">
+          Both of them permit the new grain in Poland, where people lived on barley beer. They
+          differ only in how they get there. The Bach offers his own reading of the Yerushalmi, one
+          that undoes the Ri's proof. The Taz refuses:
+          <span dir="rtl" lang="he">אף אם היה לנו פי׳ נכון על הירושלמי אין לנו להרים ראש נגד כל הפוסקים</span>,
+          "even if we had a correct reading of the Yerushalmi, we may not raise our heads against
+          all the posekim." Instead he builds the leniency from the rules of halachic decision:
+          the Mishnah's anonymous first Tanna holds that chadash doesn't apply outside the Land,
+          and <span dir="rtl" lang="he">כדאי הוא לסמוך עליו בשעת הדחק</span>, "he is worthy of
+          being relied on in a time of need."
+        </p>
+        <p class="text-sm opacity-80">
+          The two rulings are the same, but the jurisprudence differs. The Bach will reread the
+          sources. The Taz works within the conclusions that the line of posekim has already
+          reached.
+        </p>
+      </div>
+    </section>
+
+    <section class="mb-10">
+      <h3 class="text-xl font-bold mb-3">3. Whose authority they lean on</h3>
+      <p class="max-w-3xl mb-3">
+        For each earlier authority, this counts the citations where he is named in the passage
+        around the Bach, and how often the Taz disagrees with the Bach in those (among the
+        citations where the Taz takes a position; the overall rate is 56%).
+      </p>
+      <div class="overflow-x-auto mb-3">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-current/20">
+              <th class="py-2 pr-4">Named in the passage</th>
+              <th class="py-2 pr-4">Citations</th>
+              <th class="py-2 pr-4">Disagree</th>
+              <th class="py-2">Disagree rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {authRows.map((a) => (
+              <tr class="border-b border-current/10">
+                <td class="py-2 pr-4">{a.name} <span class="opacity-60 text-xs">· {a.kind}</span></td>
+                <td class="py-2 pr-4">{a.n}</td>
+                <td class="py-2 pr-4">{a.dis}</td>
+                <td class="py-2 whitespace-nowrap">
+                  <span class="inline-block h-2.5 rounded-full bg-red-700 align-middle mr-2" style={`width:${a.pct}px`}></span>{a.pct}%
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <ul class="list-disc ml-6 space-y-2 max-w-3xl">
+        <li>
+          <strong>The Maharshal (Rashal) is common ground.</strong> When he is in the passage, the
+          Taz disagrees with the Bach only 31% of the time, the lowest rate of any authority.
+          Often the Taz cites both of them as support, and sometimes the two join against the
+          Rashal (OC 551:10, YD 69:19, YD 399:4). These are three generations of the same Polish
+          school.
+        </li>
+        <li>
+          <strong>Arguments over the Rishonim are where they fight most.</strong> When the dispute
+          reaches Rashi (88%), the Ran (83%), Tosafot (77%) or the Mordechai (76%), they usually
+          disagree. These are the cases where the Bach reads a source for himself and the Taz
+          reads it differently.
+        </li>
+        <li>
+          <strong>On the Rema, the Taz follows the Rema, not a direction.</strong> Twice the Bach
+          sides with the Rashal against the Rema in the laws of kashrut, once stricter (YD 104:6)
+          and once more lenient (YD 108:5). Both times the Taz takes the Rema's side, so he is the
+          more lenient of the two in the first case and the stricter in the second.
+        </li>
+      </ul>
+      <p class="mt-3 text-xs opacity-70 max-w-3xl">
+        A name appearing in the roughly 200 characters around a citation is a rough signal, not a
+        measure of reliance. The numbers for Tosafot, the Ran and the Rashba are small.
+      </p>
+    </section>
+
+    <section class="mb-10 rounded-xl border-2 border-current/30 p-5 md:p-6">
+      <h3 class="text-xl font-bold mb-2">In one line</h3>
+      <p class="text-lg">
+        The Bach judges the codes by the sources: he will read the Rishonim afresh, rule against
+        the Shulchan Arukh, and add a chumra out of piety. The Taz guards the code: he defends its
+        text, refuses a chumra or a kula without a source, and is strictest where a mistake would
+        leave a married woman free to remarry.
+      </p>
+    </section>
+
+    <section class="mb-10">
+      <h3 class="text-xl font-bold mb-3">Caveats</h3>
+      <ul class="list-disc ml-6 space-y-2 max-w-3xl">
+        <li>Every practical dispute is coded from one side: "stricter" means the more restrictive position in that case, not a general leaning.</li>
+        <li>The coding is one reader's first pass. Most of it is from the passage, with the full seif read for every case quoted on this tab. That check moved one case (YD 293:4) from "Taz stricter" to "no practical gap."</li>
+        <li>The areas of halacha are coarse groupings, and several have fewer than ten practical disputes.</li>
+        <li>Whether Rav Asher Weiss took up the character of the two in the shiur isn't checked here. This tab goes beyond the remark that the count tested.</li>
+      </ul>
+    </section>
+
+    <section class="mb-10">
+      <h3 class="text-xl font-bold mb-3">All {mindsTotal} coded disagreements</h3>
+      <div class="mb-4 flex flex-wrap gap-2 text-sm" id="mindFilters">
+        <button class="mind-btn px-3 py-1 rounded-full border border-current/30 font-bold" data-f="all">All · {mindsTotal}</button>
+        <button class="mind-btn px-3 py-1 rounded-full border border-current/30" data-f="bach">Bach stricter · {mindsBach}</button>
+        <button class="mind-btn px-3 py-1 rounded-full border border-current/30" data-f="taz">Taz stricter · {mindsTaz}</button>
+        <button class="mind-btn px-3 py-1 rounded-full border border-current/30" data-f="none">No practical gap · {mindsNone}</button>
+        <button class="mind-btn px-3 py-1 rounded-full border border-current/30" data-f="SA">Taz defends the code · {mindsSA}</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-current/20">
+              <th class="py-2 pr-3">Source</th>
+              <th class="py-2 pr-3">Area</th>
+              <th class="py-2 pr-3">Stricter</th>
+              <th class="py-2">Taz defends the code</th>
+            </tr>
+          </thead>
+          <tbody>
+            {approaches.map((a) => (
+              <tr class="border-b border-current/10 mind-row" data-s={a.stricter} data-sa={String(a.tags.includes('SA'))}>
+                <td class="py-1.5 pr-3 whitespace-nowrap"><a class="underline hover:no-underline" href={a.url} target="_blank" rel="noopener">{a.ref}</a></td>
+                <td class="py-1.5 pr-3">{a.domain}</td>
+                <td class="py-1.5 pr-3">
+                  <span class={`px-2 py-0.5 rounded-full text-xs font-semibold ${strictClass[a.stricter]}`}>{strictLabel[a.stricter]}</span>
+                </td>
+                <td class="py-1.5">{a.tags.includes('SA') ? 'Yes' : ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    </div>
   </main>
 
   <script>
@@ -291,5 +617,37 @@ const verdictClass = {
         btn.classList.add('opacity-100', 'font-bold');
       });
     });
+    // Tabs: "#minds" opens the Two minds tab; anything else shows the count.
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const panels = document.querySelectorAll('[data-panel]');
+    function showTab(name) {
+      panels.forEach((p) => { p.hidden = p.getAttribute('data-panel') !== name; });
+      tabBtns.forEach((b) => {
+        const on = b.getAttribute('data-tab') === name;
+        b.setAttribute('aria-selected', String(on));
+        b.classList.toggle('border-current', on);
+        b.classList.toggle('border-transparent', !on);
+        b.classList.toggle('opacity-60', !on);
+      });
+    }
+    tabBtns.forEach((b) => b.addEventListener('click', () => {
+      const name = b.getAttribute('data-tab');
+      showTab(name);
+      history.replaceState(null, '', name === 'minds' ? '#minds' : location.pathname);
+    }));
+    showTab(location.hash === '#minds' ? 'minds' : 'count');
+
+    const mindBtns = document.querySelectorAll('.mind-btn');
+    const mindRows = document.querySelectorAll('.mind-row');
+    mindBtns.forEach((btn) => btn.addEventListener('click', () => {
+      const f = btn.getAttribute('data-f');
+      mindRows.forEach((row) => {
+        let show = true;
+        if (f === 'SA') show = row.getAttribute('data-sa') === 'true';
+        else if (f !== 'all') show = row.getAttribute('data-s') === f;
+        row.style.display = show ? '' : 'none';
+      });
+      mindBtns.forEach((b) => b.classList.toggle('font-bold', b === btn));
+    }));
   </script>
 </Layout>
