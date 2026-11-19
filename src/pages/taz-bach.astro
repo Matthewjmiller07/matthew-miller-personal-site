@@ -22,6 +22,33 @@ const mindsBach = approaches.filter((a) => a.stricter === 'bach').length;
 const mindsTaz = approaches.filter((a) => a.stricter === 'taz').length;
 const mindsNone = approaches.filter((a) => a.stricter === 'none').length;
 const mindsSA = approaches.filter((a) => a.tags.includes('SA')).length;
+const mindsRecoded = approaches.filter((a) => a.recoded).length;
+const mindsQuestionable = approaches.filter((a) => a.verdictQuestionable).length;
+const sef = (sec, si, se) => `https://www.sefaria.org/Turei_Zahav_on_Shulchan_Arukh,_${sec}.${si}.${se}`;
+const chumraQuotes = [
+  { he: 'ואיני יודע טעם להחמיר', en: 'I do not know a reason to be strict', ref: 'OC 451:24', url: sef('Orach_Chayim', 451, 24) },
+  { he: 'נראה שאין זה אלא חומרא בעלמא', en: 'it seems this is only a mere stringency', ref: 'OC 466:4', url: sef('Orach_Chayim', 466, 4) },
+  { he: 'ולא ידענא שום מקור או רמז לחומרא זאת ... לית מאן דחש לחומרא זאת', en: 'I know no source or hint for this stringency ... no one worries about it', ref: 'YD 18:5', url: sef("Yoreh_De'ah", 18, 5) },
+  { he: 'ולא ידענא מי הכניסו להוסיף בטרפות', en: 'I do not know what led him to add treifot', ref: 'YD 44:14', url: sef("Yoreh_De'ah", 44, 14) },
+  { he: 'ודברים תמוהים כתב להפסיד ממון של ישראל', en: 'he wrote strange things, to cause a loss to Jewish money', ref: 'YD 33:8', url: sef("Yoreh_De'ah", 33, 8) },
+  { he: 'וכל מי שאומר סברות להחמיר בזה מה שלא נמצא בתלמוד ובפוסקים עליו הראייה', en: 'whoever offers reasons to be strict that are not in the Talmud or the posekim bears the burden of proof', ref: 'YD 93:2', url: sef("Yoreh_De'ah", 93, 2) },
+  { he: 'ותמוה הוא להחמיר על מה שמפורש בתלמוד לקולא', en: 'it is strange to be strict where the Talmud is explicitly lenient', ref: 'YD 184:2', url: sef("Yoreh_De'ah", 184, 2) },
+  { he: 'חומרא יתירא היא והמחמיר יחמיר לעצמו ולא יורה כן לאחרים', en: 'an excessive stringency; let the strict one be strict for himself and not rule so for others', ref: 'YD 188:1', url: sef("Yoreh_De'ah", 188, 1) },
+  { he: 'הפריז על המדה ... רחמנא ליבא בעי', en: 'he went beyond measure ... the Merciful One wants the heart', ref: 'YD 194:3', url: sef("Yoreh_De'ah", 194, 3) },
+];
+const kulaQuotes = [
+  { he: 'ואין לסמוך על הוראה זו כלל', en: 'one may not rely on this ruling at all', ref: 'EH 17:43', url: sef('Even_HaEzer', 17, 43) },
+  { he: 'מכשול יצא מתחת ידי מו״ח ז״ל בזה', en: 'a stumbling block came from under my father-in-law’s hand', ref: 'EH 129:25', url: sef('Even_HaEzer', 129, 25) },
+  { he: 'ולע״ד נראה דלא להקל כלל בזה', en: 'in my humble opinion, not to be lenient in this at all', ref: 'YD 98:7', url: sef("Yoreh_De'ah", 98, 7) },
+  { he: 'אם קבלה היא נקבל ואם לדין יש תשובה', en: 'if it is a tradition, we accept it; if it is reasoning, there is a reply', ref: 'YD 40:4', url: sef("Yoreh_De'ah", 40, 4) },
+  { he: 'ע״כ אין להקל כלל נגדם', en: 'so one may not be lenient against them at all', ref: 'YD 229:5', url: sef("Yoreh_De'ah", 229, 5) },
+];
+const deferQuotes = [
+  { he: 'ותמהתי מאד היאך ראוי לחלוק על גאון', en: 'I was greatly astonished: how can one disagree with a Gaon?', ref: 'OC 7:2', url: sef('Orach_Chayim', 7, 2) },
+  { he: 'אין לנו להרים ראש נגד כל הפוסקים', en: 'we may not raise our heads against all the posekim', ref: 'YD 293:4', url: sef("Yoreh_De'ah", 293, 4) },
+  { he: 'ומי ירים ראש לחלוק עליו', en: 'who would raise his head to disagree with him [the Rashba]?', ref: 'YD 137:8', url: sef("Yoreh_De'ah", 137, 8) },
+  { he: 'ומתירא אני להכניס ראשי החלש בין הרים גדולים ... ומ״מ עצור במלין לא אוכל', en: 'I fear to put my weak head among great mountains ... yet I cannot hold back my words', ref: 'YD 396:2', url: sef("Yoreh_De'ah", 396, 2) },
+];
 const domainOrder = ['Pesach', 'Festivals & fasts', 'Meals & blessings', 'Prayer & blessings', 'Shabbat & eruvin', 'Shechita & treifot', 'Kashrut', 'Nidda', 'Gittin, agunah & kiddushin', 'Other'];
 const domainRows = domainOrder.map((name) => {
   const rows = approaches.filter((a) => a.domain === name);
@@ -333,10 +360,11 @@ const strictClass = {
         Method: each of the {mindsTotal} distinct disagreements (the 236 citations, less 12 where two
         citations quote the same passage) was coded for three things: whether a practical
         stringency is at stake and who holds it, whether the Taz is defending the text of the
-        Shulchan Arukh, Beit Yosef, Rema or Tur against the Bach, and the area of halacha. The
-        coding was done from the passage. The full seif was read on Sefaria for every case quoted
-        below, and one case was recoded as a result (YD 293:4, below). This is a single reader's
-        first pass, not a census of the same rigour as the count.
+        Shulchan Arukh, Beit Yosef, Rema or Tur against the Bach, and the area of halacha. Every
+        code rests on the <strong>full text of the seif</strong> on Sefaria (all 220 seifim), not
+        just the lines around the citation. That full reading changed {mindsRecoded} of the codes
+        from a first pass made from the passages alone, and each disagreement now carries a
+        one-line note on what is at stake, in the table at the bottom.
       </p>
     </section>
 
@@ -359,11 +387,12 @@ const strictClass = {
       <p class="max-w-3xl mb-4">
         Overall, the Bach is somewhat more stringent: he holds the stricter position in
         {mindsBach} of the {mindsBach + mindsTaz} disagreements with a practical gap
-        ({Math.round(100*mindsBach/(mindsBach+mindsTaz))}%). But the first finding is that most
-        of the time stringency is not what they are fighting about. Nearly two-thirds of the
-        disagreements are over how to read the Tur, the Beit Yosef, Rashi or a sugya, with no
-        change to the ruling. The second finding is that the overall tilt hides a sharp split by
-        area of halacha:
+        ({Math.round(100*mindsBach/(mindsBach+mindsTaz))}%). Reading the full text matters here.
+        From the passages alone, nearly two-thirds of the disagreements looked like pure arguments
+        over how to read the Tur, the Beit Yosef or a sugya. With the whole seif in view, fewer
+        than half are ({Math.round(100*mindsNone/mindsTotal)}%): again and again a dispute that
+        opens as a question about a text ends with a ruling. The overall tilt also hides a sharp
+        split by area of halacha:
       </p>
       <div class="overflow-x-auto mb-3">
         <table class="w-full text-left border-collapse text-sm">
@@ -398,12 +427,13 @@ const strictClass = {
       <p class="max-w-3xl">
         <strong>The Bach is the stricter one about practice. The Taz is the stricter one about
         status.</strong> On Pesach the Bach holds the stricter view in all nine practical
-        disputes, and on fasts and festivals in all four. These are chumrot of conduct and piety:
-        lock the chametz dishes in a room, don't kasher wooden bowls, fast a yahrzeit even in
-        Nisan, don't slaughter on Tisha b'Av until after the fast. Where the question is whether
-        a woman is married, whether a get is valid, or whether an agunah may remarry, the balance
-        turns: the Taz is stricter 8 to 5, and in gittin 4 to 0. Kashrut, where the two concerns
-        meet, is close to even (10 to 8 the Taz's way).
+        disputes, and on fasts and festivals in seven of eight. These are chumrot of conduct and
+        piety: lock the chametz dishes in a room, don't kasher wooden bowls, sift all the flour,
+        fast a yahrzeit even in Nisan, don't slaughter on Tisha b'Av until after the fast. Where the
+        question is whether a woman is married, whether a get is valid, or whether an agunah may
+        remarry, the balance turns: the Taz is stricter 13 to 9, and in gittin 8 to 3. In prayer and
+        blessings, too, the Taz is the more careful one (5 to 2): no interruption, no doubtful
+        blessing. Kashrut, where ritual and law meet, splits exactly even, 10 to 10.
       </p>
     </section>
 
@@ -429,7 +459,10 @@ const strictClass = {
             ruled on until it dries (YD 188:1).
           </p>
           <p class="text-sm">
-            His leniencies are often after the fact (<em>bedi'avad</em>) and rest on his own reading:
+            He is not simply a machmir. On geese found with feathers inside, he ruled kosher himself:
+            <span dir="rtl" lang="he">אין לנו להוסיף על הטרפות</span>, "we may not add to the
+            treifot" (YD 51:4). His leniencies are often after the fact (<em>bedi'avad</em>) and rest
+            on his own reading:
             milk that floated to the top leaves the food permitted even without sixty (YD 98:7); a
             man seen hanged may be presumed dead even if the witnesses left at once (EH 17:43); an old
             vessel doesn't absorb even after a full day (YD 93:2).
@@ -450,7 +483,8 @@ const strictClass = {
             <span dir="rtl" lang="he">ואיני יודע טעם להחמיר</span> (OC 451:24);
             <span dir="rtl" lang="he">אין זה אלא חומרא בעלמא</span> (OC 466:4);
             <span dir="rtl" lang="he">עוד המציא מו״ח ז״ל חומרא אחת</span>, "my father-in-law
-            invented another stringency" (YD 188:1). For him a stringency has costs. Requiring a get
+            invented another stringency" (YD 188:1). For him a stringency has costs, and the burden
+            of proof is on the one who adds it. Requiring a get
             where every posek says none is needed would cast doubt on the Maharil's own ruling in a
             real case (EH 28:2).
           </p>
@@ -482,6 +516,61 @@ const strictClass = {
           The two rulings are the same, but the jurisprudence differs. The Bach will reread the
           sources. The Taz works within the conclusions that the line of posekim has already
           reached.
+        </p>
+      </div>
+    </section>
+
+    <section class="mb-10">
+      <h3 class="text-xl font-bold mb-3">In the Taz's own words</h3>
+      <p class="max-w-3xl mb-4">
+        Reading every seif in full turns up a consistent vocabulary. When the Bach adds a
+        stringency, the Taz asks for its source. When the Bach builds a leniency on a new reading
+        in a case of marriage or a get, the Taz will not rely on it.
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div>
+          <p class="text-xs uppercase tracking-widest opacity-60 mb-2">Against an unfounded chumra</p>
+          <ul class="space-y-2 text-sm">
+            {chumraQuotes.map((q) => (
+              <li class="rounded-lg bg-stone-100 dark:bg-stone-800 p-3">
+                <span dir="rtl" lang="he" class="block text-base">{q.he}</span>
+                <span class="opacity-80">"{q.en}"</span> <a class="underline opacity-60 hover:no-underline" href={q.url} target="_blank" rel="noopener">{q.ref}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p class="text-xs uppercase tracking-widest opacity-60 mb-2">Against a leniency built on a new reading</p>
+          <ul class="space-y-2 text-sm">
+            {kulaQuotes.map((q) => (
+              <li class="rounded-lg bg-stone-100 dark:bg-stone-800 p-3">
+                <span dir="rtl" lang="he" class="block text-base">{q.he}</span>
+                <span class="opacity-80">"{q.en}"</span> <a class="underline opacity-60 hover:no-underline" href={q.url} target="_blank" rel="noopener">{q.ref}</a>
+              </li>
+            ))}
+          </ul>
+          <p class="text-xs uppercase tracking-widest opacity-60 mt-5 mb-2">Deference, and its limits</p>
+          <ul class="space-y-2 text-sm">
+            {deferQuotes.map((q) => (
+              <li class="rounded-lg bg-stone-100 dark:bg-stone-800 p-3">
+                <span dir="rtl" lang="he" class="block text-base">{q.he}</span>
+                <span class="opacity-80">"{q.en}"</span> <a class="underline opacity-60 hover:no-underline" href={q.url} target="_blank" rel="noopener">{q.ref}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div class="mt-5 rounded-xl border border-current/20 p-5 max-w-3xl">
+        <p class="font-semibold mb-1">Father-in-law and son-in-law</p>
+        <p class="text-sm">
+          The full text also shows how close the argument was. The Taz brought his questions to
+          the Bach in person and records the answers (YD 204:5, YD 396:2). He argued with him over
+          a lung finding and took the question to Maharam Yafeh (YD 33:8). He was in Krakow when the
+          Bach's ruling on a name in a get was challenged, and he later found Rema's responsum
+          siding with his own reading (EH 129:25). Once, having argued that the Bach was wrong, he
+          still made room for him: <span dir="rtl" lang="he">כיון שכבר הורה זקן מו״ח ז״ל להקל ... יש לתת טעם</span>,
+          "since the elder, my father-in-law, already ruled leniently, there is a reason to give"
+          (YD 124:31).
         </p>
       </div>
     </section>
@@ -558,7 +647,8 @@ const strictClass = {
       <h3 class="text-xl font-bold mb-3">Caveats</h3>
       <ul class="list-disc ml-6 space-y-2 max-w-3xl">
         <li>Every practical dispute is coded from one side: "stricter" means the more restrictive position in that case, not a general leaning.</li>
-        <li>The coding is one reader's first pass. Most of it is from the passage, with the full seif read for every case quoted on this tab. That check moved one case (YD 293:4) from "Taz stricter" to "no practical gap."</li>
+        <li>The coding is one reader's, made from the full text of each seif. Reading the whole seif changed {mindsRecoded} codes from a first pass made from the passages alone, mostly by turning "no practical gap" into a real stringency on one side.</li>
+        <li>The full read also found {mindsQuestionable} citations that the count tab classifies as disagreements where, in the full seif, the Taz agrees with the Bach's ruling and only rejects his proof (marked in the table). The count tab is left as it was; the census will be revisited separately.</li>
         <li>The areas of halacha are coarse groupings, and several have fewer than ten practical disputes.</li>
         <li>Whether Rav Asher Weiss took up the character of the two in the shiur isn't checked here. This tab goes beyond the remark that the count tested.</li>
       </ul>
@@ -580,7 +670,8 @@ const strictClass = {
               <th class="py-2 pr-3">Source</th>
               <th class="py-2 pr-3">Area</th>
               <th class="py-2 pr-3">Stricter</th>
-              <th class="py-2">Taz defends the code</th>
+              <th class="py-2 pr-3">Taz defends the code</th>
+              <th class="py-2">What's at stake</th>
             </tr>
           </thead>
           <tbody>
@@ -591,7 +682,8 @@ const strictClass = {
                 <td class="py-1.5 pr-3">
                   <span class={`px-2 py-0.5 rounded-full text-xs font-semibold ${strictClass[a.stricter]}`}>{strictLabel[a.stricter]}</span>
                 </td>
-                <td class="py-1.5">{a.tags.includes('SA') ? 'Yes' : ''}</td>
+                <td class="py-1.5 pr-3">{a.tags.includes('SA') ? 'Yes' : ''}</td>
+                <td class="py-1.5 text-xs opacity-80 min-w-[16rem]">{a.note}{a.verdictQuestionable ? ' ⚑' : ''}</td>
               </tr>
             ))}
           </tbody>
