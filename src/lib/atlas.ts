@@ -139,7 +139,7 @@ const KEYWORDS: Record<string, string> = {
   '/moreh': 'rambam maimonides guide for the perplexed',
   '/rav-nachman': 'breslov rebbe nachman',
   '/transcriptions': 'shiur shiurim torah lectures',
-  '/produce': 'supermarket shuk fruit vegetables yerakot peirot hebrew names 3d',
+  '/produce': 'supermarket shuk fruit vegetables yerakot peirot hebrew names 3d hapax sand3d',
   '/tefillin-trials': 'tefillin game hineni shiur yad keha hefsek chatzitzah amputee 3d',
   '/tefillin-trials/knots': 'tefillin knot kesher yud shel yad retzuot straps chabad sefard ashkenaz 3d model',
   '/tefillin-trials/lite': 'tefillin game vr virtual reality headset quest webxr lite fast shiur',

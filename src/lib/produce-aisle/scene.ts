@@ -4,7 +4,8 @@
 import * as THREE from 'three';
 import { produce, sections, type Produce } from '../../data/produce-aisle';
 import tanakhCounts from '../../data/produce-aisle-tanakh.json';
-import { crateGeometry, moundGeometry, moundHeight, pieceKind, pieceKindHi } from './geometry';
+import { creditFor, hasModel, loadModelGeometry, loadPieceKind, type Credit } from './models';
+import { crateGeometry, moundGeometry, moundHeight, pieceKind, pieceKindHi, type PieceKind } from './geometry';
 
 export interface Slot {
   item: Produce; index: number; side: -1 | 1; z: number;
@@ -27,7 +28,7 @@ interface Opts {
   onSelect: (id: string | null) => void;
   onSection: (sectionId: string, progress: number) => void;
   onHover: (id: string | null) => void;
-  onHold?: (holding: boolean) => void;
+  onHold?: (holding: boolean, credit: Credit | null) => void;
 }
 
 const AISLE_X = 1.55;       // crate centre distance from the aisle's centre line
@@ -259,17 +260,26 @@ export function mountAisle(opts: Opts): AisleApi {
   const crateColor: Record<string, string> = { bins: '#e9e4d8', greens: '#22292a', coined: '#2f7d4f' };
   const innerW = CRATE_W - 0.07, innerL = CRATE_L - 0.07;
 
-  // group slots by piece kind so each kind is one InstancedMesh
-  const byKind = new Map<string, { slot: Slot; mats: THREE.Matrix4[]; cols: THREE.Color[] }[]>();
+  // Real Sand3D models replace the hand-built pieces as they arrive; until then (and for crates
+  // without one) the procedural piece is drawn, so the first frame never waits on the network.
+  let dirty = true;
+  const loaded = new Map<string, PieceKind>();
+  const procKey = (s: Slot) => (s.item.id === 'lemon' ? 'lemon' : s.item.shape);
+  const kindOf = (s: Slot) => loaded.get(s.item.id) ?? pieceKind(procKey(s));
+  let pieceMeshes: THREE.InstancedMesh[] = [];
   const tmpM = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), pv = new THREE.Vector3();
 
+  function populate() {
+  for (const m of pieceMeshes) { scene.remove(m); m.dispose(); }
+  pieceMeshes = [];
+  const byKind = new Map<string, { slot: Slot; mats: THREE.Matrix4[]; cols: THREE.Color[] }[]>();
   slots.forEach((s, i) => {
     crates.setMatrixAt(i, tmpM.copy(s.matrix).multiply(crateScale));
     c.set(crateColor[s.item.section] ?? '#b98a52');
     crates.setColorAt(i, c);
 
-    const key = s.item.id === 'lemon' ? 'lemon' : s.item.shape;
-    const kind = pieceKind(key);
+    const key = loaded.has(s.item.id) ? `m:${s.item.id}` : procKey(s);
+    const kind = kindOf(s);
     const H = kind.size < 0.06 ? 0.11 : kind.size < 0.12 ? 0.07 : 0.02;
     const bedY = 0.06 * CRATE_H + 0.02;
     // the heap underneath
@@ -313,12 +323,14 @@ export function mountAisle(opts: Opts): AisleApi {
     list.push({ slot: s, mats, cols });
     byKind.set(key, list);
   });
-  scene.add(crates, mounds);
+  crates.instanceMatrix.needsUpdate = true;
+  mounds.instanceMatrix.needsUpdate = true;
+  if (crates.instanceColor) crates.instanceColor.needsUpdate = true;
+  if (mounds.instanceColor) mounds.instanceColor.needsUpdate = true;
 
-  const pieceMat = track(new THREE.MeshLambertMaterial({ color: '#ffffff', vertexColors: true }));
-  let totalPieces = 0;
+  let totalPieces = 0, totalTris = 0;
   for (const [key, list] of byKind) {
-    const kind = pieceKind(key);
+    const kind = key.startsWith('m:') ? loaded.get(key.slice(2))! : pieceKind(key);
     const count = list.reduce((n, l) => n + l.mats.length, 0);
     const mesh = new THREE.InstancedMesh(kind.geo, pieceMat, count);
     let k = 0;
@@ -327,9 +339,27 @@ export function mountAisle(opts: Opts): AisleApi {
     mesh.computeBoundingSphere();
     track(kind.geo);
     scene.add(mesh);
+    pieceMeshes.push(mesh);
     totalPieces += count;
+    totalTris += count * ((kind.geo.index ? kind.geo.index.count : kind.geo.attributes.position.count) / 3);
   }
   (canvas as any).dataset.pieces = String(totalPieces);
+  (canvas as any).dataset.tris = String(Math.round(totalTris));
+  dirty = true;
+  }
+  const pieceMat = track(new THREE.MeshLambertMaterial({ color: '#ffffff', vertexColors: true }));
+  scene.add(crates, mounds);
+  populate();
+
+  // Fetch the Sand3D models (about 3 KB each) and swap them in. The page is already drawn by now.
+  let disposed = false;
+  Promise.all(slots.map((s) => s.item.id).filter(hasModel).map((id) => loadPieceKind(id).then((k) => [id, k] as const).catch(() => null)))
+    .then((res) => {
+      if (disposed) return;
+      let any = false;
+      for (const r of res) if (r) { loaded.set(r[0], r[1]); any = true; }
+      if (any) { populate(); kick(); }
+    });
 
   // ── signs ─────────────────────────────────────────────────────────────────
   const itemCanvas = document.createElement('canvas');
@@ -420,7 +450,6 @@ export function mountAisle(opts: Opts): AisleApi {
   const camPos = new THREE.Vector3(0, EYE, zStart);
   const camLook = new THREE.Vector3(0, EYE - 0.3, zStart - 3);
   const goalPos = new THREE.Vector3(), goalLook = new THREE.Vector3();
-  let dirty = true;
   let panelX = 0, panelY = 0;
 
   function computeGoal() {
@@ -474,26 +503,42 @@ export function mountAisle(opts: Opts): AisleApi {
   const fwd = new THREE.Vector3(), camUp = new THREE.Vector3(), camRight = new THREE.Vector3(), hp = new THREE.Vector3();
   const qa = new THREE.Quaternion(), axis = new THREE.Vector3();
 
+  function setHeld(geo: THREE.BufferGeometry, baked: boolean, s: Slot) {
+    if (!geo.boundingSphere) geo.computeBoundingSphere();
+    held.geometry = geo;
+    holdMat.color.set(baked ? '#ffffff' : s.item.colors[0]);
+    holdScale = 0.14 / geo.boundingSphere!.radius;
+    dirty = true;
+  }
   function pickUp(i: number) {
     const s = slots[i];
-    const key = s.item.id === 'lemon' ? 'lemon' : s.item.shape;
-    const kind = pieceKindHi(key);
-    if (!kind.geo.boundingSphere) kind.geo.computeBoundingSphere();
-    track(kind.geo);
-    held.geometry = kind.geo;
-    holdMat.color.set(kind.baked ? '#ffffff' : s.item.colors[0]);
-    holdScale = 0.14 / kind.geo.boundingSphere!.radius;
-    holdQ.setFromEuler(new THREE.Euler(0.35, Math.random() * Math.PI * 2, 0.1));
+    const id = s.item.id;
+    const lo = loaded.get(id);
+    // the hand-built piece (or the crate's low-detail model) in your hand at once…
+    let layout: 'heap' | 'rows';
+    if (lo) { setHeld(lo.geo, true, s); layout = lo.layout; }
+    else { const k = pieceKindHi(procKey(s)); track(k.geo); setHeld(k.geo, k.baked, s); layout = k.layout; }
+    // …and the full-detail Sand3D model as soon as it has downloaded
+    if (hasModel(id)) {
+      loadModelGeometry(id, 'hi').then((g) => {
+        if (disposed || holdSlot !== i) return;
+        track(g);
+        setHeld(g, true, s);
+        kick();
+      }).catch(() => {});
+    }
+    // long things (banana, carrot, leek) start broadside to you, not end-on
+    holdQ.setFromEuler(new THREE.Euler(0.35, layout === 'rows' ? (Math.random() - 0.5) * 0.7 : Math.random() * Math.PI * 2, 0.1));
     holdSlot = i; holdGoal = 1; holdDist = 0.55; spinning = true;
     held.visible = backdrop.visible = true;
-    opts.onHold?.(true);
+    opts.onHold?.(true, creditFor(id));
     kick();
   }
   function putDown(instant = false) {
     if (holdSlot < 0) return;
     holdGoal = 0;
     if (instant) { holdT = 0; held.visible = backdrop.visible = false; holdLight.intensity = 0; holdSlot = -1; dirty = true; }
-    opts.onHold?.(false);
+    opts.onHold?.(false, null);
     kick();
   }
   const holding = () => holdSlot >= 0 && holdGoal === 1;
@@ -710,6 +755,7 @@ export function mountAisle(opts: Opts): AisleApi {
     },
     setPanelOffset(px, py) { panelX = px; panelY = py; applyOffset(); camera.updateProjectionMatrix(); dirty = true; kick(); },
     dispose() {
+      disposed = true;
       cancelAnimationFrame(raf);
       ro.disconnect(); io.disconnect();
       window.removeEventListener('keydown', onKey);

@@ -6,6 +6,7 @@
 import Layout from '../layouts/Layout.astro';
 import { produce, sections } from '../data/produce-aisle';
 import tanakhCounts from '../data/produce-aisle-tanakh.json';
+import modelManifest from '../../public/produce-aisle/models/manifest.json';
 
 const megaBible = (v: { book: string; ch: number; v: number }) =>
   `/mega-bible?mode=chapter&book=${encodeURIComponent(v.book)}&chapter=${v.ch}&verse=${v.v}`;
@@ -24,6 +25,9 @@ const verseCount = produce.reduce((n, p) => n + p.verses.length, 0);
 // scripts/produce-aisle/count-words.mjs). A count of one is a hapax legomenon.
 type Count = { word: string; strong: string; count: number; verses: number; hapax: boolean; elsewhere: { book: string; ch: number; v: number }[] };
 const counts = tanakhCounts as Record<string, Count>;
+type Credit = { title: string; author: string; url: string; license: string };
+const credits = Object.fromEntries(Object.entries(modelManifest as Record<string, { credit: Credit }>).map(([id, m]) => [id, m.credit]));
+const modelItems = produce.filter((p) => credits[p.id]);
 const hapaxItems = produce.filter((p) => counts[p.id]?.hapax);
 const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
 ---
@@ -64,7 +68,7 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
     </div>
 
     <div class="hover-tag" id="hover-tag" hidden></div>
-    <div class="hold-hint" id="hold-hint"><span class="desk-only">Drag to turn it · scroll to bring it closer · click to put it back</span><span class="touch-only">Drag to turn it · tap to put it back</span></div>
+    <div class="hold-hint" id="hold-hint"><span class="desk-only">Drag to turn it · scroll to bring it closer · click to put it back</span><span class="touch-only">Drag to turn it · tap to put it back</span><small id="hold-credit" hidden></small></div>
 
     <aside class="panel" id="panel" hidden aria-live="polite">
       <div class="panel-bar">
@@ -191,11 +195,29 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
                   : <a href={`https://www.balashon.com/search?q=${enc(p.search)}`} target="_blank" rel="noopener">🔍 Balashon</a>}
                 <a href={`https://www.sefaria.org/search?q=${enc(p.search)}&tab=text`} target="_blank" rel="noopener">📚 Sefaria</a>
               </div>
+              {credits[p.id] && (
+                <p class="model-credit">3D model: <a href={credits[p.id].url} target="_blank" rel="noopener">“{credits[p.id].title}”</a> by {credits[p.id].author}, {credits[p.id].license}, via <a href="https://huggingface.co/datasets/Sandflow/sand3d-objaverse" target="_blank" rel="noopener">Sand3D</a> (modified).</p>
+              )}
             </article>
           ))}
         </div>
       </section>
     ))}
+
+    <section class="model-credits" aria-labelledby="mc-h">
+      <h3 id="mc-h">3D models</h3>
+      <p>
+        The {modelItems.length} fruits and vegetables that have a real model (the rest are generated in the browser) come from
+        <a href="https://huggingface.co/spaces/Sandflow/sand3d-explorer" target="_blank" rel="noopener">Sand3D</a>, Sandflow's open dataset of 3D objects written
+        as code (<a href="https://huggingface.co/datasets/Sandflow/sand3d-objaverse" target="_blank" rel="noopener">sand3d-objaverse</a>, CC BY 4.0).
+        Each is an adaptation of a Sketchfab model that Objaverse collected, simplified here for the web, and each keeps its author's credit:
+      </p>
+      <ul>
+        {modelItems.map((p) => (
+          <li><span lang="he" dir="rtl">{p.he}</span> <a href={credits[p.id].url} target="_blank" rel="noopener">“{credits[p.id].title}”</a> by {credits[p.id].author} · {credits[p.id].license}</li>
+        ))}
+      </ul>
+    </section>
 
     <p class="credits">
       Built in three.js; every fruit is generated in the browser, about ten thousand pieces drawn in a few dozen calls.
@@ -252,6 +274,8 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
   .panel-bar .pickup[aria-pressed="true"] { background: #111; color: #ffd60a; }
   .hold-hint { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); display: none; background: rgba(0,0,0,.6); color: #fff; font-size: .8rem; padding: 8px 12px; border-radius: 10px; max-width: 200px; pointer-events: none; }
   .aisle.holding .hold-hint { display: block; }
+  .hold-hint small { display: block; margin-top: 6px; font-size: .68rem; opacity: .8; line-height: 1.35; }
+  .hold-hint small a { color: #ffd60a; pointer-events: auto; }
   .aisle.holding .hud-top, .aisle.holding .minimap, .aisle.holding .hint { display: none; }
   .panel-body { overflow-y: auto; padding: 0 18px 18px; overscroll-behavior: contain; }
   .panel-body .card { border: 0; box-shadow: none; padding: 0; background: transparent; }
@@ -328,6 +352,13 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
   .explore small { opacity: .75; font-family: 'Frank Ruhl Libre', serif; }
   .card.flash { animation: flash 1.4s ease-out; }
   @keyframes flash { from { box-shadow: 0 0 0 4px #ffd60a; } to { box-shadow: 0 2px 10px rgba(0,0,0,.04); } }
+  .model-credit { font-size: .72rem; color: #777; margin: 10px 0 0; line-height: 1.4; }
+  .model-credit a { color: #0b6e4f; }
+  .index .model-credits { margin-top: 48px; max-width: 760px; font-size: .85rem; color: #555; line-height: 1.55; }
+  .model-credits h3 { font-size: 1.1rem; font-weight: 800; margin: 0 0 6px; }
+  .model-credits ul { columns: 2 280px; padding-left: 1.1rem; margin: 8px 0 0; }
+  .model-credits li { margin: 2px 0; break-inside: avoid; }
+  .model-credits a { color: #0b6e4f; }
   .index .credits { margin-top: 48px; color: #777; font-size: .85rem; max-width: 760px; }
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #111; color: #fff; padding: 8px 14px; border-radius: 999px; font-size: .85rem; z-index: 100; }
 </style>
@@ -362,6 +393,7 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
 
     const panel = document.getElementById('panel')!;
     const pickBtn = document.getElementById('pickup') as HTMLButtonElement;
+    const holdCredit = document.getElementById('hold-credit') as HTMLElement;
     const body = document.getElementById('panel-body')!;
     const tag = document.getElementById('hover-tag')!;
     const drawer = document.getElementById('list-drawer')!;
@@ -405,8 +437,15 @@ const rabbinicCount = produce.reduce((n, p) => n + p.rabbinic.length, 0);
     api = mountAisle({
       canvas,
       onSelect: select,
-      onHold: (on) => {
+      onHold: (on, credit) => {
         root.classList.toggle('holding', on);
+        holdCredit.hidden = !credit;
+        if (credit) {
+          holdCredit.replaceChildren();
+          const a = document.createElement('a');
+          a.href = credit.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = `“${credit.title}”`;
+          holdCredit.append('Model: ', a, ` by ${credit.author}, ${credit.license}, via Sand3D (modified).`);
+        }
         pickBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
         pickBtn.textContent = on ? '↩ Put it back' : '✋ Pick one up';
         if (root.clientWidth <= 760 && !panel.hidden) requestAnimationFrame(() => api?.setPanelOffset(0, panel.offsetHeight));
