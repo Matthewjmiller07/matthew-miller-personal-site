@@ -75,7 +75,7 @@ const RULES: [RegExp, string][] = [
   [/^\/(kosher-cafes|imported-foods|tourism-library|oleh-car|kids-in-wartime|lost-in-translation|trees|produce)$/, 'israel'],
   [/^\/(air-quality|arxiv-feed|chess-puzzle|chicago-pulse|crypto-vibes|github-trending|hn-live|iss-now|live-sports|on-this-day|quake-watch|radio-world|sky-above|solar-watch|wiki-pulse|world-pulse|weather|weather-avatar)$/, 'pulse'],
   [/^\/(art|3d|3d-print-tools)(\/|$)/, 'studio'],
-  [/^\/(catapult|color-by-number|micrography|ai-matthew|face-demo|Gucci|localopoly|business-card-calendar|business-card-designer|videos)$/, 'studio'],
+  [/^\/(catapult|color-by-number|micrography|ai-matthew|face-demo|Gucci|localopoly|business-card-calendar|business-card-designer|videos|slop)$/, 'studio'],
   [/^\/(parenting|warmhouse)(\/|$)/, 'home'],
   [/^\/(kids|qidquotes|ross|pistachios|tjs|mansions)$/, 'home'],
   [/^\/newsletter(\/|$)/, 'matthew'],
@@ -125,6 +125,7 @@ const OVERRIDES: Record<string, { title?: string; desc?: string }> = {
 };
 
 const KEYWORDS: Record<string, string> = {
+  '/slop': 'slop kitchen gross disgusting food combos recipe generator ai food photography whatsapp',
   '/mega-maimonides': 'rambam mishneh torah',
   '/mega-talmud': 'gemara bavli shas daf yomi',
   '/mega-bible': 'tanach tanakh chumash torah neviim ketuvim',
