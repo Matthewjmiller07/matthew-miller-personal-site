@@ -123,7 +123,7 @@ export async function POST({ request }) {
           score: a.nasty.score,
           nastiness: Math.round(expected * 25), // 0..100
           crime: a.crime.choice,
-          unsafe: a.unsafe.noul,
+          unsafe: a.unsafe.noul > 0.5, // noul is a probability
         };
       } catch (e) {
         return { ingredients, error: e.message };
