@@ -1,0 +1,200 @@
+---
+import Layout from '../layouts/Layout.astro';
+import trends from '../data/jqr-trends.json';
+
+const pageTitle = 'The Jewish Quarterly Review, Read Whole';
+const pageDescription = 'All 7.8 million public-domain words of the Jewish Quarterly Review (1888–1923), counted, quoted, and checked against what we know now.';
+
+const { years, per100k } = trends;
+
+// One small chart per term: bars per year, rate per 100k words. Gap year 1909/1911 shown as a break.
+const W = 640, H = 120, PAD = 24;
+const span = 1922 - 1888 + 1;
+const bw = (W - PAD * 2) / span;
+function bars(key: string) {
+  const vals: number[] = per100k[key];
+  const max = Math.max(...vals);
+  return years.map((y: number, i: number) => {
+    const h = max ? (vals[i] / max) * (H - PAD - 6) : 0;
+    return { x: PAD + (y - 1888) * bw, y: H - PAD - h, w: Math.max(bw - 2, 1), h, v: vals[i], year: y };
+  });
+}
+const charts = [
+  { key: 'genizah', label: '“Genizah”', note: 'Two mentions in nine years, then Schechter brings the Cairo Genizah to Cambridge (1896–97) and it never leaves the journal again.', color: '#e8b45a' },
+  { key: 'zion', label: '“Zionism / Zionist”', note: 'Seven mentions in sixteen years, through six Zionist Congresses. Then a single debate, Lucien Wolf vs. Israel Zangwill (1904–05), accounts for 190.', color: '#7fb6e6' },
+  { key: 'bensira', label: '“Ecclesiasticus / Ben Sira”', note: 'The fight over whether the Genizah’s Hebrew Ben Sira was the real original: 1897–1900, and again in 1922.', color: '#b79cf0' },
+];
+
+const verdicts = [
+  {
+    q: 'Is the Genizah’s Hebrew Ben Sira the original, or a medieval retranslation?',
+    said: 'D. S. Margoliouth argued the Hebrew was retranslated from a Persian and Syriac version. Wilhelm Bacher answered in JQR (Oct 1899) that the theory “rose, like a soap bubble, from the Sirach inquiry, only to burst after a short brilliancy.”',
+    data: 'The Masada Ben Sira scroll (Yadin, 1964), 1st century BCE, covers chapters 39–44 and agrees closely with Genizah MS B.',
+    verdict: 'Bacher was right. A few lines in MS A really are retroversions from Syriac (Di Lella, 1966), so the 1922 JQR holdout gets partial credit.',
+    tag: 'settled',
+  },
+  {
+    q: 'How old is the “Zadokite” sect of the Damascus Document?',
+    said: 'After Schechter published the fragments (1910), M. H. Segal traced the sect to Hasmonean-era priests. Adolf Büchler (NS 3, 1912–13) made it “a sect which lived in the district of Damascus in the seventh or eighth century.”',
+    data: 'Qumran Caves 4, 5 and 6 produced about ten copies (4Q266–273, 5Q12, 6Q15), written c. 100 BCE to the 1st century CE.',
+    verdict: 'Büchler’s date was off by about 800 years. Segal and Schechter were right.',
+    tag: 'settled',
+  },
+  {
+    q: 'Was Mishnaic Hebrew ever spoken?',
+    said: 'M. H. Segal (July 1908), against Geiger and Dalman, held that it was “the ordinary language of everyday life.” A 1920–21 JQR article still said Hebrew “was not the vernacular” in Second Temple Palestine.',
+    data: 'The Bar Kokhba letters (Naḥal Ḥever and Murabbaʿat, 1950s–61) are field dispatches in Mishnaic-type Hebrew.',
+    verdict: 'Segal was right, and it is now the standard view.',
+    tag: 'settled',
+  },
+  {
+    q: '“Hebrew is a dead language.”',
+    said: 'F. C. Burkitt (Jan 1898): “For many centuries there has been no community where it has been spoken by the girl to her lover or the child to its parents.” Nine months later Israel Abrahams wrote that Hebrew was “again becoming the living language of the Jews of Palestine.”',
+    data: 'Hebrew today has roughly nine million speakers.',
+    verdict: 'Burkitt was describing a world that was ending as he wrote. Abrahams called the revival in the same volume year.',
+    tag: 'settled',
+  },
+  {
+    q: 'Why does Israel have no art?',
+    said: 'Solomon J. Solomon, a Jewish painter of the Royal Academy (“Art and Judaism,” July 1901), was asked for an article on Jewish art and said he “could more easily write an apology for its non-existence.”',
+    data: 'The Beit Alpha mosaic (found 1929) and the Dura-Europos synagogue frescoes (1932) are full figurative biblical cycles, 3rd–6th centuries.',
+    verdict: 'Disproved by archaeology a generation later.',
+    tag: 'settled',
+  },
+  {
+    q: 'Are the Jews “an evaporating people”?',
+    said: 'July 1901 repeats the claim that Jews, “computed to number about seven millions in biblical times,” were “hardly more numerous to-day.” Israel Zangwill (Apr 1905): “The Jews are an evaporating people.”',
+    data: 'Iron Age Israel and Judah together peaked at about 400,000 people (Broshi & Finkelstein). World Jewry roughly quadrupled in the 1800s, from about 2.5 million to about 10.5 million.',
+    verdict: 'Both claims are wrong on the numbers: the population was growing faster than Europe’s.',
+    tag: 'settled',
+  },
+  {
+    q: 'Lucien Wolf, “The Zionist Peril” (Oct 1904)',
+    said: 'Emancipation is “not likely ever to be disturbed.” “No conceivable development of Eastern or international politics” would make a Jewish state practicable, and one would “assuredly fall to pieces.” Without Zionism, anti-Semitism “must pursue a downward course.”',
+    data: 'The Nuremberg Laws (1935) and Vichy’s Statut des Juifs (1940); the Balfour Declaration (1917) and Israel (1948).',
+    verdict: 'He was wrong on all four counts.',
+    tag: 'settled',
+  },
+  {
+    q: 'Will the journal itself survive?',
+    said: 'The first editorial (Oct 1888): “It must attempt to create the want which it must also seek to satisfy. It remains to be seen whether the double effort will, or will not, be beyond its strength.”',
+    data: 'The London series ran twenty years. The journal was revived in Philadelphia in 1910 and is still publishing.',
+    verdict: 'The want was created.',
+    tag: 'settled',
+  },
+  {
+    q: 'Is Schechter’s “Unknown Khazar Document” (1912) genuine?',
+    said: 'Schechter published a Genizah letter giving a Jewish account of the Khazar conversion.',
+    data: 'Golb and Pritsak (1982) defended it as a 10th-century text, and a minority still doubts it.',
+    verdict: 'Still open. The corpus alone can’t settle it.',
+    tag: 'open',
+  },
+];
+
+const quotes = [
+  ['It must attempt to create the want which it must also seek to satisfy.', 'Opening editorial, Oct 1888'],
+  ['It is the hypothesis of Prof. Margoliouth, which rose, like a soap bubble, from the Sirach inquiry, only to burst after a short brilliancy.', 'W. Bacher, Oct 1899'],
+  ['There is scarce a gem among the mass of new-found piyutim; lost for centuries, they deserved to be lost for ever.', 'I. Abrahams, Oct 1898'],
+  ['We should not care for Liberal Judaism much if we did not care for Judaism more.', 'C. G. Montefiore, Apr 1908'],
+  ['That glorious identification of life and religion, whereby man, in the familiar presence of holiness, can laugh in his own soul and lose nothing of reverence.', 'Nina Davis (Salaman), Jan 1901'],
+  ['No saint was ever satisfied to make Reason a perfect synonym for God.', 'C. G. Montefiore, Jan 1897'],
+  ['We selected our Rabbi in consequence of the excellence of his trial sermon. Since then we have found him to be possessed of every imaginable good quality—excepting that of eloquence.', 'Apr 1891'],
+  ['We poor critics are very behindhand if we think that anybody cares about our problems or their results.', '“Biblical Criticism and the Pulpit,” Jan 1906'],
+  ['Though nothing can be prima facie more obvious than that history repeats itself, the historical analogist is at once confronted with the fact that history never repeats itself entirely or exactly.', 'Oct 1890'],
+  ['We cannot expect the Mediaeval historian to be acquainted with the Hebrew sources—Hebraica sunt, non leguntur.', 'NS vol. 10, 1919–20'],
+  ['It is the teacher, not the book, that is responsible for the results.', 'July 1900'],
+  ['Rejoice, too, in the truth, whatever that may be, which is slowly unveiling itself before our eyes, for God is truth, and every addition to truth is an addition to our knowledge of him.', '“The Religious Teaching of Jowett,” Jan 1900'],
+];
+
+const contributors = [
+  ['Wilhelm Bacher', 31], ['Israel Abrahams', 28], ['Adolf Neubauer', 22], ['E. N. & H. Adler', 20],
+  ['D. S. & G. Margoliouth', 16], ['David Kaufmann', 16], ['Solomon Schechter', 15], ['Claude Montefiore', 15],
+  ['Hartwig Hirschfeld', 12], ['Samuel Poznański', 11],
+];
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+  <main class="max-w-4xl mx-auto px-4 py-10">
+    <header class="mb-10">
+      <p class="text-sm uppercase tracking-widest opacity-60 mb-2">1888–1923 · 7.8 million words</p>
+      <h1 class="text-3xl md:text-4xl font-bold mb-4">The Jewish Quarterly Review, read whole</h1>
+      <p class="text-lg opacity-80 max-w-3xl">
+        The first English-language journal of Jewish scholarship, founded in London in 1888 by Israel Abrahams and
+        Claude Montefiore, revived in Philadelphia in 1910, and still publishing. I took every issue that is public domain
+        and on the Internet Archive: all 80 issues of the Old Series (1888–1908) and New Series volumes 1 and 3–13
+        (1910–1923). Then I counted it, read for the best lines, and went looking for the questions its writers left open
+        that we can now answer.
+      </p>
+    </header>
+
+    <section class="mb-14">
+      <h2 class="text-2xl font-bold mb-2">What the journal talked about</h2>
+      <p class="opacity-75 mb-6">Mentions per 100,000 words, by year. The gap is 1909 and 1911, when no volume is available.</p>
+      {charts.map((c) => {
+        const b = bars(c.key);
+        return (
+          <figure class="mb-8">
+            <figcaption class="mb-1"><strong>{c.label}</strong> <span class="opacity-75">{c.note}</span></figcaption>
+            <svg viewBox={`0 0 ${W} ${H}`} class="w-full h-auto" role="img" aria-label={`${c.label} per 100,000 words by year`}>
+              <line x1={PAD} x2={W - PAD} y1={H - PAD} y2={H - PAD} stroke="currentColor" stroke-opacity="0.3" />
+              {b.map((r) => (
+                <rect x={r.x} y={r.y} width={r.w} height={r.h} fill={c.color} rx="1"><title>{r.year}: {r.v} per 100k</title></rect>
+              ))}
+              {[1888, 1897, 1904, 1910, 1922].map((y) => (
+                <text x={PAD + (y - 1888) * bw + bw / 2} y={H - 6} font-size="11" text-anchor="middle" fill="currentColor" opacity="0.6">{y}</text>
+              ))}
+            </svg>
+          </figure>
+        );
+      })}
+      <p class="opacity-80">
+        The silences say as much as the spikes. Through the whole Dreyfus Affair (1894–1906) the journal never mentions it;
+        the name first appears in 1908, in passing. Its London editors kept current politics out of their pages almost completely.
+      </p>
+    </section>
+
+    <section class="mb-14">
+      <h2 class="text-2xl font-bold mb-2">Unfinished business, finished</h2>
+      <p class="opacity-75 mb-6">Questions JQR’s writers argued over, and what the evidence found since says.</p>
+      <div class="space-y-6">
+        {verdicts.map((v) => (
+          <article class="rounded-xl border border-current/15 p-5">
+            <h3 class="text-lg font-semibold mb-3">{v.q}
+              <span class={`ml-2 align-middle text-xs px-2 py-0.5 rounded-full ${v.tag === 'open' ? 'bg-amber-500/20' : 'bg-emerald-500/20'}`}>{v.tag === 'open' ? 'still open' : 'settled'}</span>
+            </h3>
+            <p class="mb-2"><span class="font-medium opacity-70">JQR said: </span>{v.said}</p>
+            <p class="mb-2"><span class="font-medium opacity-70">What we found since: </span>{v.data}</p>
+            <p><span class="font-medium opacity-70">Verdict: </span><strong>{v.verdict}</strong></p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="mb-14">
+      <h2 class="text-2xl font-bold mb-6">Lines worth keeping</h2>
+      <div class="grid gap-4 md:grid-cols-2">
+        {quotes.map(([q, src]) => (
+          <blockquote class="rounded-xl border border-current/15 p-5">
+            <p class="text-lg leading-relaxed mb-3">“{q}”</p>
+            <footer class="text-sm opacity-65">{src}</footer>
+          </blockquote>
+        ))}
+      </div>
+    </section>
+
+    <section class="mb-14">
+      <h2 class="text-2xl font-bold mb-2">Who wrote it</h2>
+      <p class="opacity-75 mb-4">Most frequent Old Series contributors, counted from the OCR’d tables of contents (approximate).</p>
+      <ol class="grid gap-1 sm:grid-cols-2 list-decimal list-inside">
+        {contributors.map(([n, c]) => <li>{n} <span class="opacity-60">({c})</span></li>)}
+      </ol>
+    </section>
+
+    <footer class="text-sm opacity-65 border-t border-current/15 pt-6">
+      Text: Internet Archive OCR of the periodical scans; everything here was published before 1931 and is public domain in the US.
+      New Series volume 2 and volumes 14 onward aren’t on the Archive, and later volumes are in copyright (Penn Press).
+      Counts are from OCR, so expect small errors; modern evidence in the verdicts is from standard published scholarship.
+      Related: <a class="underline" href="/graetz">Graetz on Psalms</a>.
+    </footer>
+  </main>
+</Layout>
