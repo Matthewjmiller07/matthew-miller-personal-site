@@ -69,6 +69,7 @@ const RULES: [RegExp, string][] = [
   [/^\/(rav-asher-weiss|rav-asher-weiss-booklets|jewish-studies|jj|search|source-sheet-creator|language|memory|stiff-necked-people|language-of-blessing|torahschedule|studyschedules|books|rav-nachman|phds-on-the-parsha|uriel-simon|yom-tov-sheini)$/, 'voices'],
   [/^\/(929|parasha-sheet)(\/|$)|^\/3d\/(parsha|plagues)$/, 'tanakh'],
   [/^\/(mega-bible|mega-bible\/ki|literary-bible|painted-torah|genealogies|kings-names|kohelet|psalm-emotions|haftarah-explorer|parsha-art|parsha-explorer|parasha|shnayim|bible-coins|biblical-timelines|graetz|sefaria-memory)$/, 'tanakh'],
+  [/^\/jqr$/, 'voices'],
   [/^\/(zmanim-widget|3d-print-tools\/leshem-yichud|calendars)(\/|$)/, 'practice'],
   [/^\/(mega|mega-siddur|siddur|mega-mishnah|mega-maimonides|omer|zmanim|zmanim-watchface|bracha|kosher-scanner|kashrus-publications|cheese|tefillin-trials|tefillin-trials\/lite|tefillin-trials\/knots|jewish-learning-hub|moreh|coffee)$/, 'practice'],
   [/^\/(israel|kolnoa|balashon|aptonyms)(\/|$)/, 'israel'],
@@ -125,6 +126,7 @@ const OVERRIDES: Record<string, { title?: string; desc?: string }> = {
 };
 
 const KEYWORDS: Record<string, string> = {
+  '/jqr': 'jewish quarterly review jqr schechter genizah montefiore abrahams wissenschaft ben sira damascus document zadokite',
   '/mega-maimonides': 'rambam mishneh torah',
   '/mega-talmud': 'gemara bavli shas daf yomi',
   '/mega-bible': 'tanach tanakh chumash torah neviim ketuvim',
