@@ -1,0 +1,272 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Priest's Wardrobe — Daf Yomi Game: Arakhin 3"
+  description="Arakhin 3: 'Everyone is obligated' — isn't that obvious? Dress a priest for sukka, tzitzit, tefillin and shofar and find the reason the Gemara needs the word, then name who each 'everyone' adds."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --night:#161215; --card:#241c22; --line:#4a3a46; --ink:#f0e9e2; --mist:#bda9b8; --gold:#f0c35c; --grass:#8fd0a0; --red:#ee8470; --blue:#7fb4e8; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .he { font-family: 'Frank Ruhl Libre', serif; direction: rtl; }
+    .t-ink { color: var(--ink) !important; } .t-mist { color: var(--mist) !important; } .t-gold { color: var(--gold) !important; }
+    a.ref { color: var(--gold) !important; text-decoration: underline; text-underline-offset: 2px; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: .6rem; padding: 1rem; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .5rem .8rem; font-size: .92rem; line-height: 1.4; background: transparent; color: var(--ink) !important; cursor: pointer; text-align: start; }
+    .btn:hover:not(:disabled) { background: var(--card); }
+    .btn:disabled { cursor: default; opacity: .75; }
+    .btn.on { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); background: var(--card); }
+    .btn.ok { border-color: var(--grass); background: #17321f; } .btn.no { border-color: var(--red); background: #3b1d18; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .93rem; line-height: 1.65; margin-top: .75rem; color: var(--ink) !important; }
+    .note.ok { border-color: var(--grass); } .note.no { border-color: var(--red); } .note.tk { border-color: var(--gold); }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .kohen { display: flex; gap: 1rem; align-items: center; padding: 1rem; border-radius: .8rem; border: 1px solid var(--line); background: radial-gradient(ellipse at 50% 0%, #3a2a38 0%, #120d11 75%); }
+    .kohen .fig { font-size: 3.4rem; line-height: 1; }
+    .lamp { display: inline-block; padding: .2rem .6rem; border-radius: 1rem; font-size: .8rem; font-weight: 700; border: 1px solid var(--line); }
+    .lamp.ok { background: #17321f; border-color: var(--grass); color: var(--grass) !important; }
+    .lamp.no { background: #3b1d18; border-color: var(--red); color: var(--red) !important; }
+    .bar { height: .45rem; border-radius: 1rem; background: var(--line); overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: var(--gold); transition: width .4s; }
+    @media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } }
+  </style>
+
+  <main class="frank max-w-3xl mx-auto px-4 py-8" style="background:var(--night)">
+    <p class="text-sm"><a class="ref" href="/daf/">← Daf Yomi games</a></p>
+    <h1 class="text-4xl font-black !text-amber-300 mt-2">🧥 The Priest's Wardrobe</h1>
+    <p class="he text-xl t-mist mt-1">ערכין ג׳</p>
+    <p class="t-ink mt-4 leading-relaxed">
+      Arakhin 3 finishes the “what does <i>everyone</i> add?” hunt (<a class="ref" href="https://www.sefaria.org/Arakhin.3a" target="_blank" rel="noopener">3a</a>),
+      then turns to baraitot that say “everyone is obligated — priests, Levites and Israelites” in sukka, tzitzit, tefillin and shofar.
+      The Gemara's reaction, every time: <b>“Isn't that obvious?”</b> Its answer: no — a priest's special status in the Temple
+      gives us a reason to <i>think</i> he's exempt. Round 1: find that reason. Round 2: name who each “everyone” adds.
+    </p>
+
+    <section class="stn" id="wardrobe">
+      <h2 class="text-2xl font-bold !text-amber-300">Round 1 · Dress the Kohen</h2>
+      <p class="t-mist text-sm mt-1">Pick a mitzva. Choose the “you might have said…” that tempts us to exempt the priest. Then see why he is obligated anyway.</p>
+      <div class="kohen mt-3">
+        <div class="fig" id="kfig" aria-hidden="true">🧑‍🦲</div>
+        <div class="flex-1">
+          <div class="row" id="mitzvot" role="group" aria-label="Choose a mitzva"></div>
+          <div class="mt-2 t-mist text-sm" id="progress"></div>
+        </div>
+      </div>
+      <div id="wbox" class="mt-4"></div>
+    </section>
+
+    <section class="stn" id="roster">
+      <h2 class="text-2xl font-bold !text-amber-300">Round 2 · Who Does It Add?</h2>
+      <p class="t-mist text-sm mt-1">For each “everyone” clause, select every person it adds (or nobody), then check. Some clauses depend on whom you follow.</p>
+      <div class="card mt-3">
+        <div class="flex justify-between text-sm t-mist"><span id="rn"></span><span id="rscore"></span></div>
+        <div class="bar mt-1" aria-hidden="true"><i id="rbar" style="width:0%"></i></div>
+        <p class="t-ink text-lg mt-3 font-bold" id="rtitle"></p>
+        <p class="t-ink mt-1" id="rtext"></p>
+        <div class="row mt-3" id="rview" role="group" aria-label="Opinion"></div>
+        <div class="row mt-3" id="rtoks" role="group" aria-label="People"></div>
+        <div class="row mt-3">
+          <button class="btn on" id="rcheck" type="button">Check</button>
+          <button class="btn" id="rnext" type="button" hidden>Next →</button>
+        </div>
+        <div id="rout" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="stn" id="learn">
+      <h2 class="text-2xl font-bold !text-amber-300">Learn the real daf</h2>
+      <ul class="t-ink mt-3 space-y-2 list-disc ps-5">
+        <li><a class="ref" href="https://www.sefaria.org/Arakhin.3a" target="_blank" rel="noopener">Arakhin 3a</a> and <a class="ref" href="https://www.sefaria.org/Arakhin.3b" target="_blank" rel="noopener">3b</a> on Sefaria</li>
+        <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.3a.1" target="_blank" rel="noopener">Rashi</a> (27 comments), <a class="ref" href="https://www.sefaria.org/Tosafot_on_Arakhin.3a.1" target="_blank" rel="noopener">Tosafot</a> (28), <a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Arakhin.3a.1" target="_blank" rel="noopener">Rabbeinu Gershom</a> (20) and <a class="ref" href="https://www.sefaria.org/Steinsaltz_on_Arakhin.3a.1" target="_blank" rel="noopener">Steinsaltz</a> (34)</li>
+        <li>Verses in play: <a class="ref" href="https://www.sefaria.org/Leviticus.23.42" target="_blank" rel="noopener">Lev. 23:42</a> (sukka), <a class="ref" href="https://www.sefaria.org/Deuteronomy.22.11" target="_blank" rel="noopener">Deut. 22:11–12</a> (shatnez and tzitzit), <a class="ref" href="https://www.sefaria.org/Deuteronomy.6.8" target="_blank" rel="noopener">Deut. 6:8</a> (tefillin), <a class="ref" href="https://www.sefaria.org/Numbers.29.1" target="_blank" rel="noopener">Num. 29:1</a> (Rosh HaShana)</li>
+        <li>The sugya picks up again on the next daf, <a class="ref" href="https://www.sefaria.org/Arakhin.4a" target="_blank" rel="noopener">Arakhin 4a</a>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script is:inline>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    function sf(r) { return 'https://www.sefaria.org/' + r; }
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+    /* ---------- Round 1 ---------- */
+    var M = [
+      { id: 'sukka', e: '🛖', name: 'Sukka', ref: 'Arakhin.3b.4', q: 'Why might we exempt priests from sukka?',
+        opts: [
+          { t: 'Since “you shall dwell” means as in your home — a man and wife together — and priests are busy with the Temple service and cannot dwell with their wives.', ok: true },
+          { t: 'Because priests may not leave the Temple courtyard for seven days.', ok: false },
+          { t: 'Because only Israelites were told “in sukkot you shall dwell.”', ok: false }],
+        why: 'Priests are exempt at the time of the Temple service, but not otherwise — like travelers, who are exempt by day while on the move and obligated at night (3b:5–6).',
+        toggle: { service: ['exempt', 'During the service a priest is exempt, like a traveler on the move by day.'], off: ['obligated', 'Off duty he dwells in the sukka — as travelers do at night.'] } },
+      { id: 'tzitzit', e: '🧵', name: 'Tzitzit', ref: 'Arakhin.3b.7', q: 'Why might we exempt priests from tzitzit?',
+        opts: [
+          { t: 'The verse puts tzitzit right after the ban on wool-and-linen (shatnez): only someone forbidden shatnez is commanded, and priests may wear it — their belt is shatnez — during the service.', ok: true },
+          { t: 'Because priests' + '’' + ' garments have no four corners.', ok: false },
+          { t: 'Because tzitzit are a commandment of the Levites alone.', ok: false }],
+        why: 'The permission is only at the time of the service. Otherwise priests are forbidden shatnez, so they have no absolute dispensation and are obligated (3b:8–9).',
+        toggle: { service: ['permitted shatnez', 'At the service the belt of shatnez is allowed — the source of the doubt.'], off: ['obligated', 'Off duty shatnez is forbidden to him again, so tzitzit apply.'] } },
+      { id: 'arm', e: '💪', name: 'Tefillin', ref: 'Arakhin.3b.10', q: 'Why might we exempt priests from tefillin of the head?',
+        opts: [
+          { t: 'The verse joins them (“upon your hand… between your eyes”), and priests cannot wear the arm-tefillin, since “he shall put upon his flesh” bars anything interposing under the vestments.', ok: true },
+          { t: 'Because the head is covered by the mitre, which is holier than tefillin.', ok: false },
+          { t: 'Because tefillin were commanded only after the Temple was destroyed.', ok: false }],
+        why: 'Lacking one tefillin does not prevent the other (Menaḥot 38a), so priests wear the head-tefillin at service. And the High Priest? The mitre on his head would interpose — but his hair showed between the frontplate and the mitre, and there he put them on (3b:10–14).' },
+      { id: 'shofar', e: '📯', name: 'Shofar', ref: 'Arakhin.3b.15', q: 'The Gemara first suggests why priests might be exempt from the shofar, then rejects that. Which suggestion does it knock down?',
+        opts: [
+          { t: 'They blow trumpets all year at the offerings (Num. 10:10), so Rosh HaShana “a day of sounding” should not oblige them — rejected: trumpets are not the shofar.', ok: true },
+          { t: 'They must stay silent in the Temple on Rosh HaShana.', ok: false },
+          { t: 'The shofar is the Levites’ instrument.', ok: false }],
+        why: 'Then the Gemara reaches for the real reason: Yom Kippur of the Jubilee is “like Rosh HaShana” for shofar. One fully included in the Jubilee is included in Rosh HaShana — but priests and Levites may sell their fields even in the Jubilee. The sugya continues on 4a (3b:15–17).' }
+    ];
+    var done = {}, cur = null, tmode = 'service';
+    var mb = $('mitzvot');
+    function renderMitzvot() {
+      mb.innerHTML = '';
+      M.forEach(function (m) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'btn' + (cur === m.id ? ' on' : '') + (done[m.id] === 1 ? ' ok' : done[m.id] === 0 ? ' no' : '');
+        b.textContent = m.e + ' ' + m.name;
+        b.onclick = function () { cur = m.id; tmode = 'service'; renderMitzvot(); renderBox(); };
+        mb.appendChild(b);
+      });
+      var n = Object.keys(done).length;
+      var good = Object.keys(done).filter(function (k) { return done[k] === 1; }).length;
+      $('progress').textContent = n ? good + ' of ' + n + ' reasons found first try · ' + n + ' of ' + M.length + ' mitzvot dressed' : 'Choose a mitzva to dress him for.';
+    }
+    function renderBox() {
+      var m = M.filter(function (x) { return x.id === cur; })[0];
+      var box = $('wbox'); box.innerHTML = '';
+      if (!m) return;
+      var h = document.createElement('p'); h.className = 't-ink font-bold'; h.textContent = m.q; box.appendChild(h);
+      var q = document.createElement('div'); q.className = 'space-y-2 mt-2'; box.appendChild(q);
+      var out = document.createElement('div'); out.setAttribute('aria-live', 'polite'); box.appendChild(out);
+      var answered = false;
+      m.opts.forEach(function (o) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'btn block w-full'; b.textContent = o.t;
+        b.onclick = function () {
+          if (answered) return; answered = true;
+          if (done[m.id] === undefined) done[m.id] = o.ok ? 1 : 0;
+          Array.prototype.forEach.call(q.children, function (c, i) { c.disabled = true; if (m.opts[i].ok) c.classList.add('ok'); });
+          if (!o.ok) b.classList.add('no');
+          out.innerHTML = '<div class="note ' + (o.ok ? 'ok' : 'no') + '">' + (o.ok ? 'Yes — that is the “hava amina,” the thought the Gemara entertains. ' : 'Not the Gemara’s reasoning; the green one is. ') +
+            '<b>Why he is obligated anyway:</b> ' + esc(m.why) + ' <a class="ref" href="' + sf(m.ref) + '" target="_blank" rel="noopener">Sefaria</a></div>';
+          if (m.toggle) {
+            var t = document.createElement('div'); t.className = 'mt-3'; out.appendChild(t); drawToggle(m, t);
+          }
+          renderMitzvot();
+        };
+        q.appendChild(b);
+      });
+    }
+    function drawToggle(m, host) {
+      host.innerHTML = '<div class="row" role="group" aria-label="Priest status"></div><p class="mt-2 t-ink"></p>';
+      var row = host.firstChild, p = host.lastChild;
+      [['service', '⚱️ At the Temple service'], ['off', '🏠 Not serving']].forEach(function (x) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'btn' + (tmode === x[0] ? ' on' : ''); b.textContent = x[1];
+        b.onclick = function () { tmode = x[0]; drawToggle(m, host); };
+        row.appendChild(b);
+      });
+      var s = m.toggle[tmode];
+      p.innerHTML = '<span class="lamp ' + (s[0] === 'obligated' ? 'ok' : 'no') + '">' + esc(s[0]) + '</span> ' + esc(s[1]);
+    }
+    renderMitzvot();
+
+    /* ---------- Round 2 ---------- */
+    var P = {
+      woman: ['👩', 'A woman'], slave: ['⛓️', 'A slave'], minorK: ['🧒', 'A minor who knows to Whom he blesses'], minor: ['👶', 'A minor'],
+      baby: ['🍼', 'A day-old baby'], uncirc: ['✂️', 'One who is uncircumcised'], sam: ['🧑‍🌾', 'A Samaritan'], apos: ['🚪', 'An apostate Jew (meshummad)'], inexp: ['🔍', 'A priest not expert in the marks']
+    };
+    var C = [
+      { t: 'Megilla', x: 'Everyone is obligated in reading the Megilla.', ref: 'Arakhin.3a.1', ans: { _: ['woman'] }, why: 'Women: “they too were participants in that miracle” — Rabbi Yehoshua ben Levi.' },
+      { t: 'Zimmun — obligated', x: 'Baraita: everyone is obligated to form a zimmun and recite Grace as a group.', ref: 'Arakhin.3a.2', ans: { _: ['woman', 'slave'] }, why: 'Women form a zimmun for themselves, and slaves for themselves.' },
+      { t: 'Zimmun — included', x: 'Baraita: everyone is included in a zimmun.', ref: 'Arakhin.3a.3', ans: { _: ['minorK'] }, why: 'A minor who knows to Whom one recites a blessing is included — Rav Naḥman.' },
+      { t: 'Ziva (Zavim 2:1)', x: 'Everyone becomes impure with a gonorrhea-like discharge (ziva).', ref: 'Arakhin.3a.4', views: [['y', 'Rabbi Yehuda'], ['yb', 'Rabbi Yishmael b. Rabbi Yoḥanan ben Beroka']], ans: { y: ['baby'], yb: [] },
+        why: { y: 'Rabbi Yehuda: “a man” would have sufficed — the extra word includes a day-old baby.', yb: 'Rabbi Yishmael: no addition is needed — “male or female” (Lev. 15:33) already covers child and adult, and “any man” is just the Torah speaking in the language of men.' } },
+      { t: 'Corpse impurity', x: 'Baraita: everyone becomes impure with impurity imparted by a corpse.', ref: 'Arakhin.3a.6', ans: { _: ['minor'] }, why: 'One might read “the man that shall be impure” as adults only; “upon the persons that were there” (Num. 19:18) includes a minor. (“The man” instead excludes a minor from karet.)' },
+      { t: 'Leprous marks (Nega’im 3:1)', x: 'Everyone becomes impure by means of leprous marks.', ref: 'Arakhin.3a.8', ans: { _: ['minor'] }, why: '“A person who shall have in the skin of his flesh” (Lev. 13:2) includes all, irrespective of age. (A woman is learned from a different verse: “and the leper in whom the affliction is.”)' },
+      { t: 'Inspecting marks', x: 'Baraitot: everyone may / is fit to inspect leprous marks.', ref: 'Arakhin.3a.12', ans: { _: ['inexp'] }, why: 'A priest not expert in the types and names — per Ravina, where if they explain to him he understands.' },
+      { t: 'Red-heifer ashes (Para 5:4)', x: 'Everyone is fit to sanctify the ashes of the red heifer.', ref: 'Arakhin.3a.14', views: [['y', 'Rabbi Yehuda'], ['r', 'The Rabbis']], ans: { y: ['minor'], r: ['woman'] },
+        why: { y: 'Rabbi Yehuda deems a minor fit (but not a woman or hermaphrodite), so the clause adds a minor.', r: 'The Rabbis disqualify a minor, so for them the clause adds a woman.' } },
+      { t: 'Sprinkling (Para 12:10)', x: 'Everyone is qualified to sprinkle the purification waters.', ref: 'Arakhin.3a.15', ans: { _: ['uncirc'] }, why: 'One who is uncircumcised, in accordance with Rabbi Elazar.' },
+      { t: 'Slaughter (Ḥullin)', x: 'Everyone slaughters — the mishna says it twice.', ref: 'Arakhin.3a.16', ans: { _: ['sam', 'apos'] }, why: 'The first mention adds a Samaritan; the other adds an apostate Jew.' },
+      { t: 'Ascending to Eretz Yisrael (Ketubot 110b)', x: 'Everyone can force others to ascend to Eretz Yisrael.', ref: 'Arakhin.3b.1', ans: { _: ['slave'] }, why: 'A slave can force his master to ascend with him, sell him to someone who will, or free him. A further mention adds compelling family to move from a pleasant place abroad to a noxious one in the Land.' }
+    ];
+    var ri = 0, rscore = 0, sel = {}, view = null, locked = false;
+    function key() { var c = C[ri]; return c.views ? view : '_'; }
+    function renderC() {
+      var c = C[ri]; sel = {}; locked = false; view = c.views ? c.views[0][0] : null;
+      $('rn').textContent = 'Clause ' + (ri + 1) + ' of ' + C.length; $('rscore').textContent = rscore + ' correct';
+      $('rbar').style.width = (ri / C.length * 100) + '%';
+      $('rtitle').textContent = c.t; $('rtext').textContent = c.x; $('rout').innerHTML = '';
+      $('rnext').hidden = true; $('rcheck').hidden = false; $('rcheck').disabled = false;
+      var vb = $('rview'); vb.innerHTML = '';
+      if (c.views) {
+        var l = document.createElement('span'); l.className = 't-mist text-sm self-center'; l.textContent = 'According to:'; vb.appendChild(l);
+        c.views.forEach(function (v) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'btn' + (view === v[0] ? ' on' : ''); b.textContent = v[1];
+          b.onclick = function () { if (locked) return; view = v[0]; Array.prototype.forEach.call(vb.querySelectorAll('button'), function (x) { x.classList.remove('on'); }); b.classList.add('on'); };
+          vb.appendChild(b);
+        });
+      }
+      var tb = $('rtoks'); tb.innerHTML = '';
+      Object.keys(P).forEach(function (k) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.dataset.k = k; b.setAttribute('aria-pressed', 'false');
+        b.textContent = P[k][0] + ' ' + P[k][1];
+        b.onclick = function () { if (locked) return; sel[k] = !sel[k]; b.classList.toggle('on', !!sel[k]); b.setAttribute('aria-pressed', sel[k] ? 'true' : 'false'); };
+        tb.appendChild(b);
+      });
+    }
+    $('rcheck').onclick = function () {
+      if (locked) return; locked = true;
+      var c = C[ri], a = c.ans[key()], chosen = Object.keys(sel).filter(function (k) { return sel[k]; });
+      var ok = chosen.length === a.length && a.every(function (k) { return sel[k]; });
+      if (ok) rscore++;
+      Array.prototype.forEach.call($('rtoks').querySelectorAll('button'), function (b) {
+        var inA = a.indexOf(b.dataset.k) >= 0;
+        if (inA) b.classList.add('ok'); else if (sel[b.dataset.k]) b.classList.add('no');
+      });
+      var w = typeof c.why === 'string' ? c.why : c.why[key()];
+      var alt = '';
+      if (c.views) {
+        alt = ' <i>(Switch the opinion above to see the other answer.)</i>';
+        locked = false; // allow switching views; re-check not needed
+      }
+      $('rout').innerHTML = '<div class="note ' + (ok ? 'ok' : 'no') + '"><b>' + (ok ? 'Right.' : 'Not quite.') + '</b> ' + (a.length ? 'Adds: ' + a.map(function (k) { return P[k][1].toLowerCase(); }).join(' + ') + '. ' : 'Adds nobody. ') + esc(w) + alt +
+        ' <a class="ref" href="' + sf(c.ref) + '" target="_blank" rel="noopener">Sefaria</a></div>';
+      locked = true;
+      $('rcheck').hidden = true; $('rnext').hidden = false;
+      $('rscore').textContent = rscore + ' correct';
+      if (c.views) {
+        var vb = $('rview');
+        Array.prototype.forEach.call(vb.querySelectorAll('button'), function (b, i) {
+          b.onclick = function () {
+            var v = c.views[i][0]; view = v;
+            Array.prototype.forEach.call(vb.querySelectorAll('button'), function (x) { x.classList.remove('on'); }); b.classList.add('on');
+            var aa = c.ans[v];
+            Array.prototype.forEach.call($('rtoks').querySelectorAll('button'), function (t) { t.classList.remove('ok', 'no'); if (aa.indexOf(t.dataset.k) >= 0) t.classList.add('ok'); });
+            $('rout').innerHTML = '<div class="note tk"><b>' + esc(c.views[i][1]) + ':</b> ' + (aa.length ? 'adds ' + aa.map(function (k) { return P[k][1].toLowerCase(); }).join(' + ') + '. ' : 'adds nobody. ') + esc(c.why[v]) + ' <a class="ref" href="' + sf(c.ref) + '" target="_blank" rel="noopener">Sefaria</a></div>';
+          };
+        });
+      }
+    };
+    $('rnext').onclick = function () {
+      ri++;
+      if (ri >= C.length) {
+        $('rbar').style.width = '100%';
+        $('rtitle').textContent = 'Done: ' + rscore + ' of ' + C.length;
+        $('rtext').textContent = rscore >= 9 ? 'Nothing in this daf is “obvious” to you.' : 'Take another pass — each “everyone” hides someone.';
+        $('rview').innerHTML = ''; $('rtoks').innerHTML = ''; $('rout').innerHTML = ''; $('rnext').hidden = true; $('rcheck').hidden = true;
+        return;
+      }
+      renderC();
+    };
+    renderC();
+  })();
+  </script>
+</Layout>
