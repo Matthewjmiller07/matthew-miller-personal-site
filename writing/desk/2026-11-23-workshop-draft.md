@@ -1,7 +1,7 @@
 ---
-title: "The Workshop, week of 23 November 2026 (draft)"
+title: "The Workshop, week of 23 November 2026 (sent)"
 date: 2026-11-22
-status: draft
+status: sent
 tags: next-issue, draft
 ---
 
@@ -9,7 +9,7 @@ tags: next-issue, draft
 
 **Preheader:** Walk a 3D produce aisle stocked from Numbers 11:5, fly through 215 pages as a night sky, and taste the twelve worst dishes an AI could find.
 
-Email HTML: `writing/newsletter/2026-11-23-workshop.html` (test 1 sent 2026-11-22). The GIFs were recorded from the pages themselves and live in `public/newsletter/2026-11-23/`.
+Email HTML: `writing/newsletter/2026-11-23-workshop.html` (test 1 sent 2026-11-22; published 2026-11-22). The GIFs were recorded from the pages themselves and live in `public/newsletter/2026-11-23/`.
 
 Sections, in order:
 
@@ -19,3 +19,5 @@ Sections, in order:
 4. **The Slop Kitchen** (`/slop`), with a slideshow GIF of six dishes.
 5. Quick hits: Tefillin Trials shiurim 5 and 6, Knot Explorer, Hineni Lite VR, Taz vs. Bach Two minds, כִּי in translation, Reckon (without the Bamba line), daf games for Arakhin 2–3 and Bekhorot 61.
 6. Numbers: 32 crates · 215 stars · 12 vile dishes · 4,487 times כִּי.
+
+WhatsApp kit: `writing/newsletter/2026-11-23-whatsapp.md`, with a 21s vertical status video at `public/newsletter/2026-11-23/whatsapp-status.mp4`.
