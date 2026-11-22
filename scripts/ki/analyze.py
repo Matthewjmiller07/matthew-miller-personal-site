@@ -8,7 +8,7 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from align import CODES, LEX, NEAR, NEAR_WEAK, WEAK, WEAK_PENALTY, pick
+from align import AFTER_IN, CODES, LEX, LEX_BY, NEAR, NEAR_WEAK, WEAK, WEAK_PENALTY, pick
 from fetch_sefaria import SEFARIA_NAME, VERSIONS
 
 HERE = Path(__file__).resolve().parent
@@ -51,7 +51,7 @@ def main():
             else:
                 rows = data.get(str(c)) or []
                 text = next((r['text'] for r in rows if r['verse'] == v), '')
-            out.append(pick(text, o['pos']) if text else '?')
+            out.append(pick(text, o['pos'], key) if text else '?')
         codes[key] = ''.join(out)
 
     # Summary: per translation, overall and per Hebrew context class.
@@ -70,7 +70,7 @@ def main():
         'generated': 'scripts/ki/analyze.py',
         'codes': CODES,
         # The matching rule, so the page highlights the same word the analysis picked.
-        'rule': {'lex': LEX, 'weak': ''.join(sorted(WEAK)), 'near': NEAR, 'nearWeak': NEAR_WEAK,
+        'rule': {'lex': LEX, 'lexBy': LEX_BY, 'afterIn': AFTER_IN, 'weak': ''.join(sorted(WEAK)), 'near': NEAR, 'nearWeak': NEAR_WEAK,
                  'weakPenalty': WEAK_PENALTY},
         'sefaria': {'names': SEFARIA_NAME,
                     'versions': {k: v[0] for k, v in VERSIONS.items() if k != 'chouraqui'}},

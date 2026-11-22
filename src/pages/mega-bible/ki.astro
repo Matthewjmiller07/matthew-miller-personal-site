@@ -205,7 +205,8 @@ body:has(.ki-page) { background:#0c0b09 !important; }
   <p>
     Translations are not aligned word-for-word anywhere, so the word each one chose is found by position: of the words
     in the translated verse that are known renderings of <span class="he">כִּי</span> (including 16th-century spellings
-    like <em>bycause</em>, <em>yf</em>, <em>whan</em>, and German <em>denn</em>, <em>daß</em>, <em>wenn</em>), the one
+    like <em>bycause</em>, <em>yf</em>, <em>whan</em>, <em>indede</em>, Wycliffe's <em>yhe</em> and Coverdale's <em>yee</em>
+    (his spelling of <em>yea</em>; in Geneva and the King James <em>yee</em> is "you"), and German <em>denn</em>, <em>daß</em>, <em>wenn</em>), the one
     nearest the place where <span class="he">כִּי</span> sits in the Hebrew verse wins. "No word" means no rendering
     sat close enough: the translator restructured the sentence or dropped the word. Spot checks find the right word
     about nine times in ten; the errors are mostly verses that two translators rearranged differently, and the counts
@@ -224,7 +225,10 @@ body:has(.ki-page) { background:#0c0b09 !important; }
 <script>
 type Data = {
   codes: Record<string, string>;
-  rule: { lex: Record<string, string>; weak: string; near: number; nearWeak: number; weakPenalty: number };
+  rule: {
+    lex: Record<string, string>; lexBy?: Record<string, Record<string, string>>; afterIn?: Record<string, string>;
+    weak: string; near: number; nearWeak: number; weakPenalty: number;
+  };
   sefaria: { names: Record<string, string>; versions: Record<string, string> };
   translations: { key: string; label: string; year: number; source: string; versification: string; lang: string }[];
   books: string[];
@@ -478,15 +482,19 @@ async function hebrewVerse(o: Data['occ'][number]) {
   return stripSefaria((Array.isArray(ch) ? ch[o[2] - 1] : '') || '');
 }
 
-// Same rule as scripts/ki/align.py: the known rendering nearest ki's position.
-function highlight(text: string, pos: number, code: string) {
-  const parts = text.split(/([^\p{L}\p{N}_]+)/u);
+// Same rule as scripts/ki/align.py: the known rendering nearest ki's position. Tokens split on
+// apostrophes too, as in align.py, and some spellings are read per translation (Coverdale's "yee" is yea).
+function highlight(text: string, pos: number, code: string, key: string) {
+  const parts = text.split(/([^\p{L}\p{N}_’']+|[’'])/u);
   const words = parts.map((p, i) => ({ p, i })).filter(x => x.p && !/^[^\p{L}\p{N}_]+$/u.test(x.p));
   const n = words.length;
   let best = -1, bestScore = 9;
   const R = D.rule;
+  const lex = { ...R.lex, ...(R.lexBy?.[key] || {}) };
   words.forEach((w, j) => {
-    const c = R.lex[w.p.toLowerCase()];
+    const t = w.p.toLowerCase();
+    let c = lex[t];
+    if (!c && j && words[j - 1].p.toLowerCase() === 'in') c = R.afterIn?.[t];
     if (!c || c !== code) return;
     const d = Math.abs((j + 0.5) / n - pos);
     const weak = R.weak.includes(c);
@@ -552,7 +560,7 @@ async function showOcc(i: number, push: boolean) {
     const text = await verseText(t, o);
     if (idx !== cur) return;
     const cell = $('lkOut').querySelector(`.lk-row[data-key="${t.key}"] .lk-text`);
-    if (cell) cell.innerHTML = text ? highlight(text, o[6], c) : '<span class="small">(text unavailable)</span>';
+    if (cell) cell.innerHTML = text ? highlight(text, o[6], c, t.key) : '<span class="small">(text unavailable)</span>';
   });
 }
 

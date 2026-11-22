@@ -2,7 +2,7 @@
 
 A verse's words are numbered; the ki sits at a fraction `pos` of the Hebrew verse. Every word
 in the translation that is a known rendering of ki (for, because, that, but, when, if, surely,
-yea ... and their 16th-century spellings; German and French equivalents) is a candidate, and
+yea ... and their 16th-century spellings, some per translation (LEX_BY); German and French equivalents) is a candidate, and
 the candidate whose own fraction of the translated verse is nearest `pos` wins, if it is near
 enough. Weak candidates (as, so, now, then, even, only), which are common for other reasons,
 must be closer. No candidate in range means the translator restructured the clause or left
@@ -21,8 +21,9 @@ LEX = {
     'surely': 's', 'surelie': 's', 'assuredly': 's',
     'truly': 'r', 'truely': 'r', 'treuli': 'r', 'trewly': 'r', 'verily': 'r', 'verely': 'r', 'certainly': 'r',
     'certeinly': 'r', 'certes': 'r', 'doubtless': 'r', 'doutles': 'r', 'doutlesse': 'r', 'undoubtedly': 'r',
-    'indeed': 'd', 'though': 'h', 'thoughe': 'h', 'although': 'h', 'albeit': 'h', 'thouz': 'h',
-    'yea': 'y', 'yes': 'y', 'yee': None,  # 'yee' is the pronoun in 1611 spelling
+    'indeed': 'd', 'indede': 'd', 'indeede': 'd', 'though': 'h', 'thoughe': 'h', 'although': 'h', 'albeit': 'h', 'thouz': 'h',
+    'yea': 'y', 'yes': 'y', 'yhe': 'y',  # 'yhe' is Wycliffe's yea
+    'yee': None,  # 'yee' is the pronoun in Geneva and the 1611 King James; Coverdale's yea, see LEX_BY
     'except': 'x', 'excepte': 'x', 'unless': 'x', 'vnlesse': 'x', 'vnles': 'x', 'save': 'x', 'saue': 'x',
     'saving': 'x', 'sauyng': 'x', 'rather': 'q', 'instead': 'q',
     'since': 'c', 'sith': 'c', 'sithe': 'c', 'seeing': 'c', 'seing': 'c', 'seyng': 'c', 'forasmuch': 'c',
@@ -42,6 +43,11 @@ LEX = {
     'oui': 'y', 'certes': 'r', 'puisque': 'c', 'quel': 'o', 'quelle': 'o', 'comme': 'a', 'voici': 'n',
 }
 LEX = {k: v for k, v in LEX.items() if v}
+# Spellings that mean different words in different translations. Coverdale (1535) never writes
+# "yea": it spells it "yee" ("Yee, hath God sayde"), and writes the pronoun "ye".
+LEX_BY = {'cov': {'yee': 'y'}}
+# Two-word renderings, scored at the second word: "in dede", "in deede" = indeed.
+AFTER_IN = {'dede': 'd', 'deede': 'd'}
 WEAK = set('azjnep')
 NEAR, NEAR_WEAK, WEAK_PENALTY = 0.25, 0.1, 0.08
 
@@ -60,14 +66,23 @@ def tokens(text: str):
     return [t for t in TOKEN_RE.split((text or '').lower()) if t]
 
 
-def pick(text: str, pos: float) -> str:
+def code_at(toks, i, lex):
+    t = toks[i]
+    code = lex.get(t)
+    if not code and i and toks[i - 1] == 'in':
+        code = AFTER_IN.get(t)
+    return code
+
+
+def pick(text: str, pos: float, key: str = '') -> str:
     toks = tokens(text)
     n = len(toks)
     if not n:
         return '?'
+    lex = {**LEX, **LEX_BY.get(key, {})}
     best, best_score = '-', 9.0
     for i, t in enumerate(toks):
-        code = LEX.get(t)
+        code = code_at(toks, i, lex)
         if not code:
             continue
         d = abs((i + 0.5) / n - pos)
