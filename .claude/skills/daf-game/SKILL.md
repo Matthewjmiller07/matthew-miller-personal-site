@@ -76,6 +76,9 @@ hidden-object in a scene the daf describes.
 1. Add an entry to `src/data/daf-yomi/games.json` (newest first):
    `{ slug, ref, heRef, date, title, tagline, emoji, mechanic }` —
    the `/daf` index page renders from this manifest.
+   `date` must be the daf's actual Daf Yomi calendar date (per the Sefaria calendar,
+   America/Chicago), never the build date: the missing-dafs scan maps dates to dafs,
+   and a build-date stamp silently skips dafs.
 2. Verify: run `npx astro dev`, curl `/daf/<slug>` and `/daf/`, fix errors; play the
    game in the browser if browser tools are available.
 3. Commit with a message like `Add daf game: <ref> — <title>` (include the
