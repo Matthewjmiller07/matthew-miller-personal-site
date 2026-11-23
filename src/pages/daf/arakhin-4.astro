@@ -1,0 +1,184 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Treasurer's Counter — Daf Yomi Game: Arakhin 4"
+  description="Arakhin 4: stand at the Temple treasurer's counter and decide what each valuation vow owes (a hand? the dead? an unspecified valuation?), then tap the word of Leviticus 27 that proves it."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --night:#15130f; --card:#252017; --line:#4d4430; --ink:#f1ebdc; --mist:#c2b697; --gold:#f0c35c; --grass:#8fd0a0; --red:#ee8470; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .he { font-family: 'Frank Ruhl Libre', serif; direction: rtl; }
+    .t-ink { color: var(--ink) !important; } .t-mist { color: var(--mist) !important; } .t-gold { color: var(--gold) !important; }
+    a.ref { color: var(--gold) !important; text-decoration: underline; text-underline-offset: 2px; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: .6rem; padding: 1rem; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .5rem .8rem; font-size: .95rem; line-height: 1.4; background: transparent; color: var(--ink) !important; cursor: pointer; text-align: start; }
+    .btn:hover:not(:disabled) { background: var(--card); }
+    .btn:disabled { cursor: default; opacity: .8; }
+    .btn.ok { border-color: var(--grass); background: #17321f; } .btn.no { border-color: var(--red); background: #3b1d18; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .93rem; line-height: 1.65; margin-top: .75rem; color: var(--ink) !important; }
+    .note.ok { border-color: var(--grass); } .note.no { border-color: var(--red); }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .counter { border: 1px solid var(--line); border-radius: .8rem; padding: 1rem; background: radial-gradient(ellipse at 50% 0%, #3b311c 0%, #100e0a 80%); }
+    .till { display:flex; gap:.25rem; flex-wrap:wrap; min-height:1.8rem; font-size:1.3rem; margin-top:.5rem; }
+    .vw { font-size: 1.7rem; line-height: 2.4; }
+    .vw button { font-family: inherit; font-size: inherit; background: transparent; border: 1px dashed var(--line); border-radius: .35rem; padding: 0 .4rem; margin: 0 .15rem; color: var(--ink) !important; cursor: pointer; }
+    .vw button:hover:not(:disabled) { border-color: var(--gold); }
+    .vw button.ok { border-color: var(--grass); background: #17321f; } .vw button.no { border-color: var(--red); background: #3b1d18; }
+    .bar { height: .45rem; border-radius: 1rem; background: var(--line); overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: var(--gold); transition: width .4s; }
+    @keyframes drop { from { transform: translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
+    .till span { animation: drop .25s ease-out; }
+    @media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } .till span { animation: none; } }
+  </style>
+
+  <main class="frank max-w-3xl mx-auto px-4 py-8" style="background:var(--night)">
+    <p class="text-sm"><a class="ref" href="/daf/">← Daf Yomi games</a></p>
+    <h1 class="text-4xl font-black !text-amber-300 mt-2">🪙 The Treasurer's Counter</h1>
+    <p class="he text-xl t-mist mt-1">ערכין ד׳</p>
+    <p class="t-ink mt-4 leading-relaxed">
+      Arakhin 4 is a long hunt through one verse — <i>“When a man shall clearly utter a vow of persons to the Lord, according to your valuation”</i>
+      (<a class="ref" href="https://www.sefaria.org/Leviticus.27.2" target="_blank" rel="noopener">Lev. 27:2</a>) — squeezing a ruling out of nearly every word.
+      You are the Temple treasurer. Round 1: a vow walks up to the counter; decide what it owes.
+      Round 2: tap the word in the verse that proves it.
+    </p>
+
+    <section class="stn" id="counter">
+      <h2 class="text-2xl font-bold !text-amber-300">Round 1 · At the counter</h2>
+      <div class="bar mt-2" aria-hidden="true"><i id="pbar" style="width:0%"></i></div>
+      <div class="counter mt-3">
+        <div class="t-mist text-sm" id="pcount"></div>
+        <p class="t-ink text-lg mt-1" id="vow" aria-live="polite"></p>
+        <div class="till" id="till" aria-hidden="true"></div>
+      </div>
+      <div class="row mt-3" id="opts" role="group" aria-label="What does the vow owe?"></div>
+      <div id="fb" aria-live="polite"></div>
+      <div class="mt-3"><button class="btn" id="next" hidden>Next vow →</button></div>
+      <div id="r1done" hidden class="card mt-3"></div>
+    </section>
+
+    <section class="stn" id="stamp">
+      <h2 class="text-2xl font-bold !text-amber-300">Round 2 · Stamp the word</h2>
+      <p class="t-mist text-sm mt-1">Each ruling is taught from a specific word. Tap it in the verse.</p>
+      <div class="bar mt-2" aria-hidden="true"><i id="sbar" style="width:0%"></i></div>
+      <div class="card mt-3">
+        <div class="t-mist text-sm" id="scount"></div>
+        <p class="t-ink text-lg mt-1" id="srule"></p>
+        <p class="he vw mt-2" id="sverse" aria-label="Verse words"></p>
+      </div>
+      <div id="sfb" aria-live="polite"></div>
+      <div class="mt-3"><button class="btn" id="snext" hidden>Next ruling →</button></div>
+      <div id="r2done" hidden class="card mt-3"></div>
+    </section>
+
+    <section class="stn" id="learn">
+      <h2 class="text-2xl font-bold !text-amber-300">Learn the real daf</h2>
+      <ul class="t-ink leading-relaxed mt-2 list-disc ps-5">
+        <li><a class="ref" href="https://www.sefaria.org/Arakhin.4a" target="_blank" rel="noopener">Arakhin 4a</a> and <a class="ref" href="https://www.sefaria.org/Arakhin.4b" target="_blank" rel="noopener">4b</a> on Sefaria</li>
+        <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.4a" target="_blank" rel="noopener">Rashi on 4a</a> · <a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.4b" target="_blank" rel="noopener">Rashi on 4b</a></li>
+        <li><a class="ref" href="https://www.sefaria.org/Tosafot_on_Arakhin.4a" target="_blank" rel="noopener">Tosafot on 4a</a> · <a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Arakhin.4a" target="_blank" rel="noopener">Rabbeinu Gershom</a> · <a class="ref" href="https://www.sefaria.org/Leviticus.27" target="_blank" rel="noopener">Leviticus 27</a></li>
+      </ul>
+      <p class="t-mist text-sm mt-3">The first half of the daf finishes “isn't that obvious?” for shofar, Megilla, zimmun and valuations (ben Bukhri, the half-shekel, and Abaye and Rava's three reasons priests might have been exempt). This game covers the second half's sourcing of the rulings. Where the daf records a dispute, the game skips it.</p>
+    </section>
+  </main>
+
+  <script is:inline>
+    (function () {
+      var $ = function (i) { return document.getElementById(i); };
+      var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+      var sf = function (r) { return 'https://www.sefaria.org/' + r; };
+
+      /* ---------- Round 1 ---------- */
+      var V = [
+        { t: 'A man says: “It is incumbent on me to give an <b>unspecified valuation</b>” — no person named.', o: ['1 shekel', '3 shekels', '50 shekels', 'Nothing'], a: 1, c: 3,
+          why: 'He gives the smallest valuation: 3 shekels, a girl under five. Not 50: “if you grasped a lot you grasped nothing; if you grasped a little, you grasped something.” Not 1: the “shekel of the Sanctuary” verse is about what the poor can afford.', ref: 'Arakhin.4b.7' },
+        { t: 'A man says: “I will give the valuation of my <b>hand</b>.”', o: ['His full valuation', 'Half his valuation', 'Nothing', '3 shekels'], a: 2, c: 0,
+          why: 'One gives the valuation of his entire self, not of limbs. A limb vow obligates nothing.', ref: 'Arakhin.4a.17' },
+        { t: 'A man aged 30 says: “I will give the valuation of my <b>liver</b>” (a limb on which life depends).', o: ['Nothing', '3 shekels', '30 shekels', '50 shekels'], a: 3, c: 50,
+          why: 'A vital limb stands for the whole person (“persons” — nefashot, from nefesh), so he owes his entire valuation: 50 shekels for a man aged 20–60.', ref: 'Arakhin.4a.18' },
+        { t: 'A man says: “I will give the valuation of <b>Reuven, who has died</b>.”', o: ['Nothing', 'Valuation of an adult male', '3 shekels', 'Half'], a: 0, c: 0,
+          why: 'Only a living person is valuated. His statement has no effect.', ref: 'Arakhin.4a.18' },
+        { t: 'A man says: “I will give the valuation of Shimon, who is <b>on his deathbed</b>.”', o: ['50 shekels', 'Nothing', '3 shekels', 'Half'], a: 1, c: 0,
+          why: 'Valuation applies to one who can be “set before the priest” (Lev. 27:8), meaning stand. A moribund person cannot.', ref: 'Arakhin.4a.19' },
+        { t: 'A <b>woman</b> says: “I will give the valuation of Dan, a healthy man aged 40.”', o: ['Nothing — only a man vows', 'Half of 50', '50 shekels', '30 shekels'], a: 2, c: 50,
+          why: 'Women are included in the vow of valuation (“persons”). She owes 50, the valuation of a man aged 20–60.', ref: 'Arakhin.4b.1' },
+        { t: 'A man says: “I will give the valuation of <b>a repulsive man</b>, aged 30 — nobody would buy him as a slave.”', o: ['Nothing — no market value', '50 shekels', '1 shekel', '3 shekels'], a: 1, c: 50,
+          why: 'Valuation follows the Torah’s age and sex categories, not market value. “Persons” adds even a repulsive man or one afflicted with boils.', ref: 'Arakhin.4b.2' },
+        { t: 'A man says: “I will give the valuation of <b>a tumtum</b>” (a person of unknown sex).', o: ['50 shekels', '30 shekels', 'The valuation of a woman', 'Nothing'], a: 3, c: 0,
+          why: 'The Torah gives valuations only for a definite male or definite female (“the male”; “and if it be a female”), so a tumtum or hermaphrodite is not valuated.', ref: 'Arakhin.4b.5' },
+        { t: 'Now he says: “I take on myself the <b>assessment</b> of a tumtum” — meaning his market value, not a valuation.', o: ['Nothing — not in valuations, so not in assessments', 'He owes the assessment', '3 shekels', '50 shekels'], a: 1, c: 0,
+          why: 'One might think what is outside valuations is outside assessments too. “Then your valuation shall be” includes a tumtum and hermaphrodite in the assessment.', ref: 'Arakhin.4b.4' }
+      ];
+      var vi = 0, vgood = 0, locked = false;
+      var coins = function (n) { var x = ''; if (n === 0) return '<span aria-hidden="true">∅</span>'; var k = n >= 50 ? 5 : (n >= 3 ? 3 : 1); for (var i = 0; i < k; i++) x += '<span>🪙</span>'; return x; };
+      function showV() {
+        var v = V[vi]; locked = false;
+        $('pcount').textContent = 'Vow ' + (vi + 1) + ' of ' + V.length;
+        $('pbar').style.width = (vi / V.length * 100) + '%';
+        $('vow').innerHTML = v.t; $('till').innerHTML = ''; $('fb').innerHTML = ''; $('next').hidden = true;
+        $('opts').innerHTML = v.o.map(function (o, i) { return '<button class="btn" data-i="' + i + '">' + esc(o) + '</button>'; }).join('');
+      }
+      $('opts').addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b || locked) return; locked = true;
+        var v = V[vi], i = +b.dataset.i, ok = i === v.a;
+        if (ok) vgood++;
+        Array.prototype.forEach.call($('opts').children, function (x, j) { x.disabled = true; if (j === v.a) x.classList.add('ok'); else if (j === i) x.classList.add('no'); });
+        $('till').innerHTML = coins(v.c);
+        $('fb').innerHTML = '<div class="note ' + (ok ? 'ok' : 'no') + '"><b>' + (ok ? 'Correct. ' : 'Not quite. ') + '</b>' + esc(v.why) + ' <a class="ref" href="' + sf(v.ref) + '" target="_blank" rel="noopener">Sefaria</a></div>';
+        $('next').hidden = false; $('next').textContent = vi === V.length - 1 ? 'Finish round →' : 'Next vow →'; $('next').focus();
+      });
+      $('next').addEventListener('click', function () {
+        vi++;
+        if (vi >= V.length) { $('pbar').style.width = '100%'; $('next').hidden = true; $('opts').innerHTML = ''; $('fb').innerHTML = ''; $('vow').textContent = 'Counter closed.';
+          var d = $('r1done'); d.hidden = false; d.innerHTML = '<b class="t-gold">' + vgood + ' / ' + V.length + '</b> vows settled correctly. On to the verse itself ↓'; return; }
+        showV();
+      });
+      showV();
+
+      /* ---------- Round 2 ---------- */
+      var VERSES = {
+        a: { ref: 'Leviticus.27.2', w: ['אִישׁ', 'כִּי', 'יַפְלִא', 'נֶדֶר', 'בְּעֶרְכְּךָ', 'נְפָשֹׁת', 'לַה׳'] },
+        b: { ref: 'Leviticus.27.3', w: ['וְהָיָה', 'עֶרְכְּךָ', 'הַזָּכָר', 'מִבֶּן', 'עֶשְׂרִים', 'שָׁנָה'] },
+        c: { ref: 'Leviticus.27.8', w: ['וְהֶעֱמִידוֹ', 'לִפְנֵי', 'הַכֹּהֵן', 'וְהֶעֱרִיךְ', 'אֹתוֹ', 'הַכֹּהֵן'] },
+        d: { ref: 'Leviticus.27.25', w: ['וְכָל', 'עֶרְכְּךָ', 'יִהְיֶה', 'בְּשֶׁקֶל', 'הַקֹּדֶשׁ'] }
+      };
+      var S = [
+        { r: 'An <b>unspecified valuation</b> (no person named) is a valid vow, worth 3 shekels.', v: 'a', w: 4, ref: 'Arakhin.4b.6', why: '“Valuation” alone would not have included it; the extra “according to your valuation” does (the baraita’s first derivation).' },
+        { r: 'A vow of a <b>vital limb</b> (e.g. the liver) obligates the person’s entire valuation.', v: 'a', w: 5, ref: 'Arakhin.4a.18', why: '“Persons” (nefashot) — a limb on which the nefesh depends.' },
+        { r: 'One who valuates a <b>moribund</b> person owes nothing.', v: 'c', w: 0, ref: 'Arakhin.4a.19', why: '“And he shall set him before the priest”: whoever can be set (stand) is valuated; one on his deathbed cannot.' },
+        { r: 'A <b>tumtum or hermaphrodite</b> is not valuated, since the Torah values only a definite male or female.', v: 'b', w: 2, ref: 'Arakhin.4b.5', why: 'The definite article in “the male” (Lev. 27:3) points to a definite male only; the following verse says “female.”' },
+        { r: 'A tumtum <b>is</b> included in the halakha of <b>assessments</b>.', v: 'b', w: 0, ref: 'Arakhin.4b.4', why: '“Then your valuation shall be” (Lev. 27:3) is the phrase the baraita reads as including a tumtum in assessments.' },
+        { r: 'A poor person who cannot afford a Torah-set valuation must still give at least <b>a shekel</b>.', v: 'd', w: 3, ref: 'Arakhin.4b.9', why: '“According to the shekel of the Sanctuary” is the verse about affordability, written for one who can’t pay what he vowed.' }
+      ];
+      var si = 0, sgood = 0, slock = false;
+      function showS() {
+        var s = S[si], vs = VERSES[s.v]; slock = false;
+        $('scount').textContent = 'Ruling ' + (si + 1) + ' of ' + S.length + ' · ' + vs.ref.replace('Leviticus.', 'Lev. ').replace('.', ':');
+        $('sbar').style.width = (si / S.length * 100) + '%';
+        $('srule').innerHTML = s.r; $('sfb').innerHTML = ''; $('snext').hidden = true;
+        $('sverse').innerHTML = vs.w.map(function (w, i) { return '<button data-i="' + i + '">' + w + '</button>'; }).join(' ');
+      }
+      $('sverse').addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b || slock) return; slock = true;
+        var s = S[si], i = +b.dataset.i, ok = i === s.w;
+        if (ok) sgood++;
+        Array.prototype.forEach.call($('sverse').children, function (x, j) { x.disabled = true; if (j === s.w) x.classList.add('ok'); else if (j === i) x.classList.add('no'); });
+        $('sfb').innerHTML = '<div class="note ' + (ok ? 'ok' : 'no') + '"><b>' + (ok ? 'Stamped. ' : 'Wrong word — the green one. ') + '</b>' + esc(s.why) + ' <a class="ref" href="' + sf(s.ref) + '" target="_blank" rel="noopener">Sefaria</a></div>';
+        $('snext').hidden = false; $('snext').textContent = si === S.length - 1 ? 'Finish →' : 'Next ruling →'; $('snext').focus();
+      });
+      $('snext').addEventListener('click', function () {
+        si++;
+        if (si >= S.length) { $('sbar').style.width = '100%'; $('snext').hidden = true; $('sverse').innerHTML = ''; $('srule').textContent = 'All stamped.'; $('sfb').innerHTML = '';
+          var d = $('r2done'); d.hidden = false; d.innerHTML = '<b class="t-gold">' + sgood + ' / ' + S.length + '</b> words found. The Gemara itself ends with a puzzle: how can one word yield so many rulings? Read 4b:19–20 ↓'; return; }
+        showS();
+      });
+      showS();
+    })();
+  </script>
+</Layout>
