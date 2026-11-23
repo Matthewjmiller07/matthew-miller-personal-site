@@ -109,7 +109,12 @@ const weekly = [
   .me-page .me-link { font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; border-bottom: 1.5px solid var(--ink); padding-bottom: 3px; }
   .me-page .me-link:hover { color: var(--green); border-color: var(--green); }
   .me-phone { width: 100%; max-width: 320px; margin: 0 auto; aspect-ratio: 9/16; background: var(--ink); border-radius: 28px; padding: 8px; box-shadow: 0 30px 60px -30px rgba(24,22,15,0.5); }
+  .me-phone { position: relative; }
   .me-phone video { width: 100%; height: 100%; object-fit: cover; border-radius: 21px; display: block; background: var(--paper); }
+  .me-page .me-sound { position: absolute; right: 18px; bottom: 18px; z-index: 2; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; background: var(--ink); color: var(--paper); border: 0; border-radius: 999px; padding: 9px 14px; cursor: pointer; }
+  .me-page .me-sound.on { background: var(--green); }
+  .me-card-v { position: relative; }
+  .me-card-v .me-sound { right: 10px; bottom: 10px; }
 
   /* sections */
   .me-sec { padding: 96px 0; border-top: 1px solid var(--rule); }
@@ -225,8 +230,9 @@ const weekly = [
           <a class="me-link" href="#readers">The readers</a>
         </div>
       </div>
-      <div class="me-phone" aria-hidden="true">
+      <div class="me-phone">
         <video src={`${base}/reel-vayishlach.mp4`} poster={`${base}/reel-vayishlach.jpg`} muted loop playsinline autoplay preload="metadata"></video>
+        <button class="me-sound" type="button" data-sound>Tap for sound</button>
       </div>
     </section>
   </div>
@@ -278,7 +284,7 @@ const weekly = [
         <p class="me-mono">03 · Reels</p>
         <div>
           <h2>One chapter, thirty seconds.</h2>
-          <p>Each reel opens on a hook that makes sense with the sound off, walks through your argument in four beats, shows the pasuk in Hebrew, and lands on a line from the book, quoted word for word.</p>
+          <p>Each reel opens on a hook that makes sense with the sound off, walks through your argument in four beats, shows the pasuk in Hebrew, and lands on a line from the book, quoted word for word. Each one is scored with an original instrumental. Tap for sound.</p>
         </div>
       </div>
       <div class="me-reels">
@@ -286,6 +292,7 @@ const weekly = [
           <article class="me-reel">
             <div class="me-phone">
               <video src={`${base}/${r.id}.mp4`} poster={`${base}/${r.id}.jpg`} muted loop playsinline preload="none" data-autoplay></video>
+              <button class="me-sound" type="button" data-sound>Tap for sound</button>
             </div>
             <div class="me-reel-meta">
               <span class="me-mono me-green">Parashat {r.parsha}</span>
@@ -316,7 +323,10 @@ const weekly = [
       <div class="me-cards">
         {cards.map((c) => (
           <figure class="me-card">
-            <video src={`${base}/${c.id}.mp4`} poster={`${base}/${c.id}.jpg`} muted loop playsinline preload="none" data-autoplay></video>
+            <div class="me-card-v">
+              <video src={`${base}/${c.id}.mp4`} poster={`${base}/${c.id}.jpg`} muted loop playsinline preload="none" data-autoplay></video>
+              <button class="me-sound" type="button" data-sound>Sound</button>
+            </div>
             <figcaption><span class="me-mono">{c.ref}</span><span class="me-he">{c.he}</span></figcaption>
           </figure>
         ))}
@@ -422,6 +432,22 @@ const weekly = [
     { threshold: 0.4 }
   );
   vids.forEach((v) => obs.observe(v));
+
+  // One video with sound at a time.
+  const buttons = document.querySelectorAll<HTMLButtonElement>('[data-sound]');
+  const label = (b: HTMLButtonElement, on: boolean) => {
+    const short = b.closest('.me-card-v') !== null;
+    b.textContent = on ? 'Sound on' : short ? 'Sound' : 'Tap for sound';
+    b.classList.toggle('on', on);
+  };
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const v = btn.parentElement!.querySelector('video')!;
+      const turningOn = v.muted;
+      buttons.forEach((b) => { b.parentElement!.querySelector('video')!.muted = true; label(b, false); });
+      if (turningOn) { v.muted = false; v.currentTime = 0; v.play().catch(() => {}); label(btn, true); }
+    });
+  });
 </script>
 
 </Layout>
