@@ -1,0 +1,186 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Gabbai's Lamp — Daf Yomi Game: Arakhin 6"
+  description="Arakhin 6: slide the Temple's construction gauge to see which gentile gifts may be accepted, wire the synagogue-lamp switchboard, and rule on charity slips."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --night:#12141a; --card:#1d2029; --line:#3a4052; --ink:#eef0f6; --mist:#aeb4c8; --gold:#f2c14e; --grass:#8fd0a0; --red:#ee8470; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .t-ink { color: var(--ink) !important; } .t-mist { color: var(--mist) !important; } .t-gold { color: var(--gold) !important; }
+    a.ref { color: var(--gold) !important; text-decoration: underline; text-underline-offset: 2px; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: .6rem; padding: 1rem; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .5rem .8rem; font-size: .95rem; line-height: 1.4; background: transparent; color: var(--ink) !important; cursor: pointer; text-align: start; }
+    .btn:hover:not(:disabled) { background: var(--card); }
+    .btn:disabled { cursor: default; opacity: .85; }
+    .btn.ok { border-color: var(--grass); background: #17321f; } .btn.no { border-color: var(--red); background: #3b1d18; }
+    .btn.on { border-color: var(--gold); background: #3a3115; }
+    button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .93rem; line-height: 1.65; margin-top: .75rem; color: var(--ink) !important; }
+    .note.ok { border-color: var(--grass); } .note.no { border-color: var(--red); }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .gift { display:flex; justify-content:space-between; align-items:center; gap:.75rem; padding:.6rem .8rem; border:1px solid var(--line); border-radius:.45rem; margin-top:.5rem; transition: background .3s, border-color .3s; }
+    .gift.acc { background:#17321f; border-color:var(--grass); } .gift.rej { background:#3b1d18; border-color:var(--red); }
+    .lamp { font-size: 4rem; text-align:center; transition: filter .4s, opacity .4s; }
+    .lamp.off { filter: grayscale(1) brightness(.5); } .lamp.lit { filter: drop-shadow(0 0 18px #f2c14e); }
+    .bar { height: .45rem; border-radius: 1rem; background: var(--line); overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: var(--gold); transition: width .4s; }
+    input[type=range] { width: 100%; accent-color: #f2c14e; }
+    @media (prefers-reduced-motion: reduce) { .bar > i, .gift, .lamp { transition: none; } }
+  </style>
+
+  <main class="min-h-screen" style="background:var(--night)">
+    <div class="max-w-3xl mx-auto px-4 py-10">
+      <p class="t-mist text-sm"><a class="ref" href="/daf/">← all daf games</a> · Arakhin 6 · <span class="frank">ערכין ו׳</span></p>
+      <h1 class="frank !text-4xl sm:!text-5xl font-black mt-2 t-gold">The Gabbai's Lamp 🪔</h1>
+      <p class="t-ink mt-3 leading-relaxed">
+        Today's daf is about gifts: who may give to the Temple, who may change a gift's purpose, and when. You are the <i>gabbai</i> (treasurer).
+        Three desks: the Temple's construction gauge, the synagogue lamp switchboard, and the charity slip.
+      </p>
+      <p class="t-mist text-sm mt-2">Score: <b id="score" class="t-gold">0</b> / <span id="total">0</span></p>
+      <div class="bar mt-1"><i id="sbar" style="width:0%"></i></div>
+
+      <section class="stn" id="s1">
+        <h2 class="frank !text-2xl font-bold t-ink">1 · The construction gauge</h2>
+        <p class="t-mist mt-1 text-sm">Gentile donations for Temple maintenance (<a class="ref" href="https://www.sefaria.org/Arakhin.6a.1" target="_blank" rel="noopener">6a:1–3</a>). Slide the gauge to see the status of each gift, then rule on the challenges.</p>
+        <div class="card mt-3">
+          <label for="gauge" class="t-ink text-sm">Building stage: <b id="stage" class="t-gold">Beginning of the building</b></label>
+          <input id="gauge" type="range" min="0" max="1" step="1" value="0" aria-describedby="gh" />
+          <div class="flex justify-between t-mist text-xs" id="gh"><span>Beginning</span><span>End (already built)</span></div>
+          <div id="gifts"></div>
+          <p class="t-mist text-xs mt-3">Why refuse at the start? So Israel not rely on gentile donations (Rabbi Yoḥanan, 6a:2). Plot twist: Nehemiah asked the Persian king for timber (<a class="ref" href="https://www.sefaria.org/Nehemiah.2.8" target="_blank" rel="noopener">Neh. 2:8</a>), and Abaye says government is different — it doesn't retract.</p>
+        </div>
+        <div id="q1" class="mt-4"></div>
+      </section>
+
+      <section class="stn" id="s2">
+        <h2 class="frank !text-2xl font-bold t-ink">2 · The lamp switchboard</h2>
+        <p class="t-mist mt-1 text-sm">A candelabrum or lamp was donated to a synagogue (<a class="ref" href="https://www.sefaria.org/Arakhin.6b.2" target="_blank" rel="noopener">6b:2–5</a>). Set three switches and the lamp shows whether it may be repurposed. Then wire each case.</p>
+        <div class="card mt-3">
+          <div id="lamp" class="lamp off" aria-hidden="true">🪔</div>
+          <div class="row justify-center mt-2" id="switches"></div>
+          <p id="lverdict" class="note mt-3"></p>
+        </div>
+        <div id="q2" class="mt-4"></div>
+        <p class="t-mist text-xs mt-3">Sha'azrak's lamp (<a class="ref" href="https://www.sefaria.org/Arakhin.6b.6" target="_blank" rel="noopener">6b:6–7</a>): the Gemara records that those who changed it held that he was rarely in town, while those who were angry held that he sometimes comes. Sages differed — no single ruling.</p>
+      </section>
+
+      <section class="stn" id="s3">
+        <h2 class="frank !text-2xl font-bold t-ink">3 · The charity slip</h2>
+        <p class="t-mist mt-1 text-sm">Someone says “this sela is for charity.” May they use it and replace it? (<a class="ref" href="https://www.sefaria.org/Arakhin.6a.10" target="_blank" rel="noopener">6a:10–16</a>, <a class="ref" href="https://www.sefaria.org/Arakhin.6b.1" target="_blank" rel="noopener">6b:1</a>.) Following Rava and the baraita, the wording doesn't matter; what matters is whether it has reached the collectors.</p>
+        <div id="q3" class="mt-3"></div>
+      </section>
+
+      <section class="stn" id="learn">
+        <h2 class="frank !text-2xl font-bold t-ink">Learn the real daf</h2>
+        <ul class="t-ink mt-2 space-y-1 text-sm list-disc ps-5">
+          <li><a class="ref" href="https://www.sefaria.org/Arakhin.6a" target="_blank" rel="noopener">Arakhin 6a</a> and <a class="ref" href="https://www.sefaria.org/Arakhin.6b" target="_blank" rel="noopener">6b</a> on Sefaria</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.6a" target="_blank" rel="noopener">Rashi on 6a</a> · <a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.6b" target="_blank" rel="noopener">Rashi on 6b</a></li>
+          <li><a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Arakhin.6a" target="_blank" rel="noopener">Rabbeinu Gershom</a> · <a class="ref" href="https://www.sefaria.org/Tosafot_on_Arakhin.6a" target="_blank" rel="noopener">Tosafot</a> · <a class="ref" href="https://www.sefaria.org/Steinsaltz_on_Arakhin.6a" target="_blank" rel="noopener">Steinsaltz</a></li>
+        </ul>
+        <p class="t-mist text-sm mt-3">The daf then turns to the moribund and to one led out to execution (Mishna, <a class="ref" href="https://www.sefaria.org/Arakhin.6b.8" target="_blank" rel="noopener">6b:8–18</a>): Rabbi Yosei says they can still vow, consecrate and even owe damages, and Rava and Rav Yosef argue about why.</p>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var $ = function (id) { return document.getElementById(id); };
+      var score = 0, total = 0;
+      function tally(ok) { total++; if (ok) score++; $('score').textContent = score; $('total').textContent = total; $('sbar').style.width = (score / total * 100) + '%'; }
+      function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+
+      // ---- Part 1 ----
+      var gifts = [
+        { n: '💧🧂 Water and salt', f: function (s) { return s === 1; }, why: 'At the beginning, not even water and salt are accepted; at the end they are fine (6a:3).' },
+        { n: '🪵 Plain timber, no sign of its donor', f: function (s) { return s === 1; }, why: 'At the end an undefined gift may be accepted (6a:3).' },
+        { n: '🪶 Cubit-wide spikes on the Sanctuary roof (anti-raven)', f: function () { return false; }, why: 'A defined item, visibly from a gentile: not accepted even at the end (Rav Yosef, 6a:3).' }
+      ];
+      var g = $('gauge');
+      function renderGifts() {
+        var s = +g.value;
+        $('stage').textContent = s ? 'End of the building' : 'Beginning of the building';
+        $('gifts').innerHTML = gifts.map(function (x) {
+          var a = x.f(s);
+          return '<div class="gift ' + (a ? 'acc' : 'rej') + '"><span class="t-ink">' + x.n + '</span><b class="' + (a ? '!text-green-300' : '!text-red-300') + '">' + (a ? 'Accept' : 'Refuse') + '</b></div>';
+        }).join('');
+      }
+      g.addEventListener('input', renderGifts); renderGifts();
+
+      var c1 = [
+        { q: 'Building has just begun. A gentile offers a barrel of water and a bag of salt.', a: false, why: 'Refused: at the beginning nothing is accepted, not even water and salt.' },
+        { q: 'The Temple is finished. A gentile offers plain, unmarked timber.', a: true, why: 'Accepted: after completion, an undefined item may be taken.' },
+        { q: 'The Temple is finished. A gentile wants to fund the roof spikes against ravens, a clearly identifiable donation.', a: false, why: 'Refused: it is a defined item.' },
+        { q: 'At the start, the Persian king grants timber to Nehemiah. Is this a proof against the refusal?', a: true, why: 'Yes it is raised as an objection (Rav Yosef); Abaye answers that the government never retracts, so it is a different case.' }
+      ];
+      function quiz(el, cases, labels) {
+        var i = 0;
+        function show() {
+          if (i >= cases.length) { el.innerHTML = '<p class="note ok">Desk cleared ✓</p>'; return; }
+          var c = cases[i];
+          el.innerHTML = '<div class="card"><p class="t-ink">' + c.q + '</p><div class="row mt-3"><button class="btn" data-v="1">' + labels[0] + '</button><button class="btn" data-v="0">' + labels[1] + '</button></div><div class="fb"></div></div>';
+          el.querySelectorAll('button').forEach(function (b) {
+            b.addEventListener('click', function () {
+              var ok = (b.dataset.v === '1') === c.a; tally(ok);
+              el.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+              b.classList.add(ok ? 'ok' : 'no');
+              var fb = el.querySelector('.fb');
+              fb.innerHTML = '<p class="note ' + (ok ? 'ok' : 'no') + '">' + (ok ? 'Right. ' : 'Not quite. ') + esc(c.why) + '</p><button class="btn mt-3 on" id="nx">Next ▸</button>';
+              $('nx').focus();
+              $('nx').addEventListener('click', function () { i++; show(); });
+            });
+          });
+        }
+        show();
+      }
+      quiz($('q1'), c1, ['Accept', 'Refuse']);
+
+      // ---- Part 2 ----
+      var st = { donor: 'jew', change: 'vol', name: 'rem' };
+      var opts = {
+        donor: [['jew', 'Jewish donor'], ['gent', 'Gentile donor']],
+        change: [['vol', 'Change for a voluntary use'], ['mitz', 'Change for another mitzva']],
+        name: [['rem', 'Donor’s name remembered'], ['forg', 'Name forgotten']]
+      };
+      function verdict(s) {
+        if (s.change === 'vol') return [false, 'Forbidden: a lamp given to a synagogue may not be changed for a voluntary use, even if the donor is a Jew (6b:2, 6b:4).'];
+        if (s.donor === 'jew') return [true, 'Permitted: a Jew will not protest if it goes to another mitzva (6b:5).'];
+        if (s.name === 'rem') return [false, 'Forbidden: a gentile whose name is still remembered would protest “where is my lamp?” (6b:5).'];
+        return [true, 'Permitted: once the gentile’s name is forgotten, the lamp may be changed (6b:3).'];
+      }
+      function sw() {
+        $('switches').innerHTML = Object.keys(opts).map(function (k) {
+          return opts[k].map(function (o) { return '<button class="btn ' + (st[k] === o[0] ? 'on' : '') + '" aria-pressed="' + (st[k] === o[0]) + '" data-k="' + k + '" data-v="' + o[0] + '">' + o[1] + '</button>'; }).join('');
+        }).join('');
+        $('switches').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { st[b.dataset.k] = b.dataset.v; sw(); }); });
+        var v = verdict(st);
+        $('lamp').className = 'lamp ' + (v[0] ? 'lit' : 'off');
+        $('lverdict').className = 'note ' + (v[0] ? 'ok' : 'no');
+        $('lverdict').textContent = v[1];
+      }
+      sw();
+      var c2 = [
+        { q: 'A Jew donated a lamp. May it be changed to light something non-mitzva, a voluntary use?', a: false, why: 'No: voluntary changes are forbidden (6b:2).' },
+        { q: 'A Jew donated a lamp. May it be switched for another mitzva?', a: true, why: 'Yes: a Jew won’t protest (6b:5).' },
+        { q: 'A gentile donated it and everyone still recalls him. Switch it for another mitzva?', a: false, why: 'No: he would scream “where is my lamp?” (6b:5).' },
+        { q: 'A gentile donated it, but his name has long been forgotten. Switch it for another mitzva?', a: true, why: 'Yes (Rabbi Asi in Rabbi Yoḥanan’s name, 6b:3).' }
+      ];
+      quiz($('q2'), c2, ['May change', 'May not change']);
+
+      // ---- Part 3 ----
+      var c3 = [
+        { q: 'Reuven says “this sela is for charity” and it is still in his pocket. May he use it and replace it?', a: true, why: 'Yes: it has not reached the collectors (6a:16).' },
+        { q: 'Shimon says “it is incumbent on me to give a sela to charity.” May he spend a sela and replace it?', a: true, why: 'Yes: Rava and the baraita make no distinction between the wordings (6a:12–14); the conclusion in Rav Naḥman’s name is both wordings, for himself or another (6a:15).' },
+        { q: 'Levi’s sela has already come into the hands of the charity collectors. May he change its purpose?', a: false, why: 'No: once with the collectors it is forbidden (6a:16).' },
+        { q: 'Rabbi Yannai, a collector, borrowed from the charity fund and repaid. Forbidden?', a: true, why: 'Permitted in his case: an empty fund spurs people to give more, so it benefits the poor (6b:1).' }
+      ];
+      quiz($('q3'), c3, ['Permitted', 'Forbidden']);
+    })();
+  </script>
+</Layout>
