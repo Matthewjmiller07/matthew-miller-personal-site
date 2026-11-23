@@ -2503,10 +2503,11 @@ async function loadLipsyncVideo(): Promise<Record<string, string>> {
   return videoLipsyncMap!;
 }
 
-// Map of "<Book> <chapter>" → musical chapter video URL
-// (e.g. the 1 Kings 14 song video, horizontal V3).
-let videoMusicMap: Record<string, string> | null = null;
-async function loadMusicVideo(): Promise<Record<string, string>> {
+// Map of "<Book> <chapter>" → musical chapter video: a URL, or
+// { src, sub } when the bar needs its own subtitle.
+type MusicVideo = string | { src: string; sub?: string };
+let videoMusicMap: Record<string, MusicVideo> | null = null;
+async function loadMusicVideo(): Promise<Record<string, MusicVideo>> {
   if (videoMusicMap) return videoMusicMap;
   try {
     const r = await fetch('/data/929-music-video.json');
@@ -2650,14 +2651,16 @@ function buildLipsyncVideoBar(book: string, ch: number): HTMLElement | null {
 }
 
 function buildMusicVideoBar(book: string, ch: number): HTMLElement | null {
-  const src = videoMusicMap?.[`${book} ${ch}`];
-  if (!src) return null;
+  const entry = videoMusicMap?.[`${book} ${ch}`];
+  if (!entry) return null;
+  const src = typeof entry === 'string' ? entry : entry.src;
+  const sub = (typeof entry === 'string' ? '' : entry.sub) || 'The chapter as a song';
   const bar = document.createElement('div');
   bar.className = 'mb-video-bar';
   bar.innerHTML =
     `<div class="mb-video-head">` +
       `<span class="mb-audio-label">🎵 Music video</span>` +
-      `<span class="mb-audio-sub">The chapter as a song — Jeroboam and Rehoboam</span>` +
+      `<span class="mb-audio-sub">${sub}</span>` +
     `</div>` +
     `<video controls preload="metadata" playsinline src="${src}"></video>`;
   return bar;
