@@ -1,0 +1,255 @@
+---
+export const prerender = false;
+
+import Layout from '../../../layouts/Layout.astro';
+import AptonymCertificate from '../../../components/AptonymCertificate.astro';
+import { supabase } from '../../../lib/supabase';
+import {
+  CREDENTIAL, ISSUER, REGISTRAR, MOTTO, SITE, certUrl, linkedInAddUrl, linkedInShareUrl, splitName, partPhrase, formatDate,
+  type Certificate,
+} from '../../../lib/aptonymCertificate';
+
+const code = (Astro.params.code ?? '').toUpperCase().slice(0, 40);
+// The "Verify" boxes submit to /aptonyms/certificate/verify?id=…
+if (code === 'VERIFY') {
+  const id = (Astro.url.searchParams.get('id') ?? '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 40);
+  return Astro.redirect(id ? `/aptonyms/certificate/${id}` : '/aptonyms/certificate');
+}
+const claim = Astro.url.searchParams.get('t')?.slice(0, 64) || null;
+const isNew = Astro.url.searchParams.has('new');
+
+const { data } = await supabase.rpc('aptonym_certificate_get', { p_code: code, p_claim: claim });
+const cert = (Array.isArray(data) ? data[0] : data) as Certificate | undefined;
+if (!cert) Astro.response.status = 404;
+
+const issued = cert?.status === 'issued';
+const owner = !!claim && !!cert;
+const [before, apt, after] = cert ? splitName(cert.name, cert.aptonym_part) : ['', '', ''];
+const url = cert ? certUrl(cert.code) : '';
+const issueDate = cert?.issued_at ? new Date(cert.issued_at) : null;
+const monthYear = issueDate?.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+const png = cert && {
+  before, apt, after, phrase: partPhrase(cert.aptonym_part), profession: cert.profession, fits: cert.how_it_fits,
+  code: cert.code, date: formatDate(cert.issued_at), issuer: ISSUER, credential: CREDENTIAL, registrar: REGISTRAR, motto: MOTTO,
+  verify: `Verify at ${SITE.replace('https://', '')}/aptonyms/certificate`,
+};
+const postText = cert
+  ? `It's official: I'm a ${CREDENTIAL}. My ${cert.aptonym_part === 'Both' ? 'name' : cert.aptonym_part === 'First' ? 'first name' : 'surname'} and my job as ${cert.profession} turn out to be the same thing. Certified by ${ISSUER}. Is your name your job too? ${url}`
+  : '';
+
+const pageTitle = cert ? (issued ? `${cert.name} — ${CREDENTIAL}` : 'Your aptonym claim') : 'Certificate not found';
+const pageDescription = cert
+  ? issued
+    ? `${cert.name} is a ${CREDENTIAL} (${cert.profession}). ${cert.how_it_fits} Credential ID ${cert.code}, issued by ${ISSUER}.`
+    : 'An aptonym certificate claim with The Aptonym Registry.'
+  : 'No aptonym certificate with that credential ID.';
+---
+
+<Layout title={pageTitle} description={pageDescription} image="/aptonyms/certificate-og.png" imageAlt={`A Certificate of Aptonymity from ${ISSUER}`}>
+  {!issued && <meta slot="head" name="robots" content="noindex" />}
+  <div class="max-w-5xl mx-auto px-4 py-10 sm:py-14">
+    <a href="/aptonyms" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-6">← All aptonyms</a>
+
+    {!cert && (
+      <section class="max-w-xl">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">No certificate with that ID</h1>
+        <p class="mt-3 text-gray-600 dark:text-gray-300">
+          <span class="font-mono">{code}</span> isn’t an issued {CREDENTIAL} credential. Check the ID (it looks like
+          <span class="font-mono">APT-2026-ABC123</span>) or look someone up below.
+        </p>
+        <form action="/aptonyms/certificate/verify" method="get" class="mt-6 flex gap-2" id="verify-form">
+          <input name="id" placeholder="APT-2026-…" class="flex-1 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white px-3 py-2 font-mono uppercase" />
+          <button class="rounded-md bg-gray-900 dark:bg-white dark:text-gray-900 text-white px-4">Verify</button>
+        </form>
+        <p class="mt-8"><a href="/aptonyms/certificate" class="text-amber-600 dark:text-amber-400 underline">Claim your own aptonym certificate →</a></p>
+      </section>
+    )}
+
+    {cert && cert.status === 'pending' && (
+      <section class="mb-8 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-5 sm:p-6">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{isNew ? 'Claim received!' : 'Your claim is with the registrar'}</h1>
+        <p class="mt-2 text-gray-700 dark:text-gray-300">
+          The registrar reviews every claim by hand, usually within a day. When yours is approved we’ll email you, and this page
+          turns into your live certificate with a one-click <strong>Add to LinkedIn</strong> button.
+        </p>
+        <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+          Bookmark this page: it’s your private status link. Your credential ID will be <span class="font-mono font-semibold">{cert.code}</span>.
+        </p>
+      </section>
+    )}
+
+    {cert && cert.status === 'declined' && (
+      <section class="mb-8 rounded-xl border border-gray-300 dark:border-gray-700 p-5 sm:p-6">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">The registrar couldn’t certify this one</h1>
+        <p class="mt-2 text-gray-700 dark:text-gray-300">
+          {cert.note_from_registrar || 'Nothing personal: the registry only certifies names that clearly fit what their owner does.'}
+        </p>
+        <p class="mt-3"><a href="/aptonyms/certificate" class="text-amber-600 dark:text-amber-400 underline">Try another claim →</a></p>
+      </section>
+    )}
+
+    {cert && issued && (
+      <header class="mb-6 flex flex-wrap items-center gap-3">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 px-3 py-1 text-sm font-semibold">
+          <svg viewBox="0 0 20 20" class="h-4 w-4" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 111.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z" clip-rule="evenodd" /></svg>
+          Verified credential
+        </span>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{cert.name}, {CREDENTIAL}</h1>
+      </header>
+    )}
+
+    {cert && cert.status !== 'declined' && (
+      <div id="certificate">
+        <AptonymCertificate
+          name={cert.name}
+          part={cert.aptonym_part}
+          profession={cert.profession}
+          fits={cert.how_it_fits}
+          code={cert.code}
+          issuedAt={cert.issued_at}
+          watermark={issued ? undefined : 'PENDING'}
+        />
+      </div>
+    )}
+
+    {cert && issued && (
+      <div class="grid md:grid-cols-2 gap-6 mt-10">
+        <section class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 sm:p-6">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{owner ? 'Put it on LinkedIn' : 'Is this you?'}</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">
+            Adds the credential to <em>Licenses &amp; certifications</em> on your profile, with a <em>Show credential</em> button that links back to this page.
+          </p>
+          <div class="mt-4 flex flex-col gap-2">
+            <a href={linkedInAddUrl(cert)} target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 rounded-md bg-[#0a66c2] hover:bg-[#004182] text-white font-semibold py-3 px-4 transition-colors">
+              <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 110-4.13 2.06 2.06 0 010 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z" /></svg>
+              Add to LinkedIn profile
+            </a>
+            <a href={linkedInShareUrl(cert.code)} target="_blank" rel="noopener" data-copy-post={postText} class="inline-flex items-center justify-center rounded-md border border-[#0a66c2] text-[#0a66c2] dark:text-[#70b5f9] dark:border-[#70b5f9] font-semibold py-2.5 px-4 hover:bg-[#0a66c2]/5">
+              Share a post about it
+            </a>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" id="dl-png" class="rounded-md border border-gray-300 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">Image</button>
+              <button type="button" id="print" class="rounded-md border border-gray-300 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">Print / PDF</button>
+              <button type="button" data-copy={url} class="rounded-md border border-gray-300 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">Copy link</button>
+            </div>
+            <p id="copied" class="hidden text-xs text-emerald-600 dark:text-emerald-400" role="status"></p>
+          </div>
+
+          <details class="mt-5 text-sm text-gray-700 dark:text-gray-300">
+            <summary class="cursor-pointer font-medium">Adding it by hand</summary>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">On your profile: <em>Add profile section → Recommended → Add licenses &amp; certifications</em>, then:</p>
+            <dl class="mt-2 grid grid-cols-[auto_1fr_auto] gap-x-3 gap-y-1.5 items-center">
+              {[
+                ['Name', CREDENTIAL],
+                ['Issuing organization', ISSUER],
+                ['Issue date', monthYear ?? ''],
+                ['Credential ID', cert.code],
+                ['Credential URL', url],
+              ].map(([k, v]) => (
+                <>
+                  <dt class="text-gray-500 dark:text-gray-400">{k}</dt>
+                  <dd class="font-mono text-xs break-all">{v}</dd>
+                  <button type="button" data-copy={v} class="text-xs text-amber-600 dark:text-amber-400 hover:underline">copy</button>
+                </>
+              ))}
+            </dl>
+          </details>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 sm:p-6">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Verification</h2>
+          <dl class="mt-3 space-y-2 text-sm">
+            <div class="flex justify-between gap-4"><dt class="text-gray-500 dark:text-gray-400">Holder</dt><dd class="text-right text-gray-900 dark:text-white font-medium">{cert.name}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-gray-500 dark:text-gray-400">Credential</dt><dd class="text-right text-gray-900 dark:text-white">{CREDENTIAL}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-gray-500 dark:text-gray-400">Calling</dt><dd class="text-right text-gray-900 dark:text-white">{cert.profession}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-gray-500 dark:text-gray-400">Issued by</dt><dd class="text-right text-gray-900 dark:text-white">{ISSUER}, {REGISTRAR}, Registrar</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-gray-500 dark:text-gray-400">Issued</dt><dd class="text-right text-gray-900 dark:text-white">{formatDate(cert.issued_at)}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-gray-500 dark:text-gray-400">Credential ID</dt><dd class="text-right font-mono text-gray-900 dark:text-white">{cert.code}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-gray-500 dark:text-gray-400">Status</dt><dd class="text-right text-emerald-700 dark:text-emerald-300 font-medium">Valid · does not expire</dd></div>
+          </dl>
+          <div class="mt-4 flex flex-wrap gap-3 text-sm">
+            {cert.linkedin_url && <a href={cert.linkedin_url} target="_blank" rel="noopener nofollow" class="text-[#0a66c2] dark:text-[#70b5f9] underline">Holder on LinkedIn</a>}
+            {cert.proof_url && <a href={cert.proof_url} target="_blank" rel="noopener nofollow" class="text-amber-600 dark:text-amber-400 underline">Their work</a>}
+            {cert.aptonym_name && <a href={`/aptonyms/${encodeURIComponent(cert.aptonym_name)}`} class="text-amber-600 dark:text-amber-400 underline">Registry entry</a>}
+          </div>
+          <p class="mt-5 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+            The Aptonym Registry keeps <a href="/aptonyms" class="underline">a collection of people whose names fit what they do</a>.
+            Every certificate is reviewed by hand before it’s issued, and this page is its permanent record.
+          </p>
+        </section>
+      </div>
+    )}
+
+    {cert && (
+      <p class="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
+        Does your name fit your job? <a href="/aptonyms/certificate" class="text-amber-600 dark:text-amber-400 underline">Get your own certificate</a>.
+      </p>
+    )}
+  </div>
+
+  {png && <script type="application/json" id="cert-data" set:html={JSON.stringify(png).replace(/</g, '\\u003c')} />}
+</Layout>
+
+<script>
+  import { downloadCertificate } from '../../../scripts/aptonymCertificatePng';
+
+  function init() {
+    const note = document.getElementById('copied');
+    const flash = (msg: string) => {
+      if (!note) return;
+      note.textContent = msg;
+      note.classList.remove('hidden');
+      setTimeout(() => note.classList.add('hidden'), 2500);
+    };
+    document.querySelectorAll<HTMLElement>('[data-copy]').forEach((b) => {
+      if (b.dataset.ready) return;
+      b.dataset.ready = '1';
+      b.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(b.dataset.copy || '');
+          flash('Copied.');
+          if (b.tagName === 'BUTTON' && b.textContent === 'copy') {
+            b.textContent = 'copied';
+            setTimeout(() => (b.textContent = 'copy'), 1500);
+          }
+        } catch {}
+      });
+    });
+    // LinkedIn's share box no longer accepts prefilled text, so put a ready-made post on the clipboard.
+    document.querySelectorAll<HTMLAnchorElement>('[data-copy-post]').forEach((a) => {
+      if (a.dataset.ready) return;
+      a.dataset.ready = '1';
+      a.addEventListener('click', () => {
+        navigator.clipboard?.writeText(a.dataset.copyPost || '').then(() => flash('A ready-made post is on your clipboard: paste it into LinkedIn.')).catch(() => {});
+      });
+    });
+    const dl = document.getElementById('dl-png');
+    const dataEl = document.getElementById('cert-data');
+    if (dl && dataEl && !dl.dataset.ready) {
+      dl.dataset.ready = '1';
+      dl.addEventListener('click', async () => {
+        const d = JSON.parse(dataEl.textContent || '{}');
+        dl.textContent = '…';
+        await downloadCertificate(d, `aptonym-certificate-${d.code}.png`);
+        dl.textContent = 'Image';
+      });
+    }
+    const pr = document.getElementById('print');
+    if (pr && !pr.dataset.ready) {
+      pr.dataset.ready = '1';
+      pr.addEventListener('click', () => window.print());
+    }
+  }
+  document.addEventListener('astro:page-load', init);
+</script>
+
+<style is:global>
+  @media print {
+    @page { size: A4 landscape; margin: 0; }
+    body * { visibility: hidden !important; }
+    #certificate, #certificate * { visibility: visible !important; }
+    #certificate { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 8mm; background: #fff; }
+    #certificate .apt-cert-wrap { width: 100%; }
+    #certificate .apt-cert { box-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>

@@ -1,0 +1,30 @@
+# Emails for aptonym certificates: new claims from /aptonyms/certificate to Matthew (with a review link), and
+# the decision to the claimant once a claim is issued or declined. Started right away by /api/aptonym-certificate
+# (workflow_dispatch); the hourly run catches anything that start missed.
+name: Aptonym certificates — emails
+
+on:
+  schedule:
+    - cron: '41 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: aptonym-notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/aptonyms
+      - name: Notify
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          NEWSLETTER_TOKEN: ${{ secrets.NEWSLETTER_TOKEN }}
+          # Public anon key (it already ships in the site's browser bundle); the RPCs also need NEWSLETTER_TOKEN.
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1a3ppb2p5bXdsdm1yemFwZ3lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwNjMxNzAsImV4cCI6MjA2OTYzOTE3MH0.I7oR9fcypn-BKb9AS4d2UlXrgvMbpTQtWySqxgAWGzo
+        run: python3 scripts/aptonyms/notify_certificates.py

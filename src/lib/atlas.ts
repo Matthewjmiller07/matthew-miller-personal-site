@@ -54,6 +54,7 @@ const HIDDEN: RegExp[] = [
   /^\/(desk|parasha-books|proposals|aviya-schedules|torah-schedules)(\/|$)/,
   /^\/(aviya|rabbi-dweck-dashboard|competitive-intel|print-quote|color|pistachios-old)$/,
   /^\/warmhouse\/(for|tracker)/,
+  /^\/aptonyms\/certificate\/review$/,
   /^\/ross\/kit$/,
   /^\/art\/sukkah-posters$/,
   /^\/writings\/legacy-of-blessed-contentment$/,
@@ -125,6 +126,8 @@ const OVERRIDES: Record<string, { title?: string; desc?: string }> = {
 };
 
 const KEYWORDS: Record<string, string> = {
+  '/aptonyms': 'serendipitous names nominative determinism name fits job',
+  '/aptonyms/certificate': 'aptonym certificate certified linkedin credential nominative determinism name fits job',
   '/slop': 'slop kitchen gross disgusting food combos recipe generator ai food photography whatsapp',
   '/mega-maimonides': 'rambam mishneh torah',
   '/mega-talmud': 'gemara bavli shas daf yomi',

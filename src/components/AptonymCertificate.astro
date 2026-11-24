@@ -1,0 +1,165 @@
+---
+// The certificate itself. Server-rendered on /aptonyms/certificate/<code>; the claim form and the review
+// page re-fill it live in the browser through the data-f hooks. Scales with its container (cqw units)
+// and turns portrait on a phone.
+import { ISSUER, CREDENTIAL, REGISTRAR, MOTTO, SITE, splitName, partPhrase, formatDate, type Part } from '../lib/aptonymCertificate';
+
+interface Props {
+  name: string;
+  part: Part;
+  profession: string;
+  fits: string;
+  code?: string;
+  issuedAt?: string | null;
+  watermark?: string;
+}
+
+const { name, part, profession, fits, code = 'APT-0000-XXXXXX', issuedAt = null, watermark } = Astro.props;
+const [before, apt, after] = splitName(name || 'Your Name', part);
+---
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link
+  href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Pinyon+Script&display=swap"
+  rel="stylesheet"
+/>
+
+<div class="apt-cert-wrap">
+  <figure class="apt-cert" aria-label={`${CREDENTIAL} certificate for ${name}`}>
+    <div class="frame">
+      <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+
+      <p class="issuer">{ISSUER}</p>
+      <div class="sp top"></div>
+      <h2 class="title">Certificate of Aptonymity</h2>
+      <p class="lede">This is to certify that</p>
+
+      <p class="holder"><span data-f="before">{before}</span><span class="gild" data-f="apt">{apt}</span><span data-f="after">{after}</span></p>
+
+      <p class="lede">is a <strong>{CREDENTIAL}</strong>, <span data-f="phrase">{partPhrase(part)}</span> fits their calling as</p>
+      <p class="profession" data-f="profession">{profession || 'what you do'}</p>
+      <blockquote class="fits" data-f="fits">{fits || 'How your name fits what you do.'}</blockquote>
+
+      <div class="sp"></div>
+      <div class="foot">
+        <div class="sig">
+          <span class="script">{REGISTRAR}</span>
+          <span class="line"></span>
+          <span class="small">Registrar</span>
+        </div>
+
+        <svg class="seal" viewBox="0 0 200 200" aria-hidden="true">
+          <defs>
+            <path id="apt-seal-ring" d="M100,100 m-72,0 a72,72 0 1,1 144,0 a72,72 0 1,1 -144,0" />
+          </defs>
+          <g fill="#b0862f">
+            {Array.from({ length: 36 }, (_, i) => (
+              <path d="M100 4 L106 22 L94 22 Z" transform={`rotate(${i * 10} 100 100)`} />
+            ))}
+          </g>
+          <circle cx="100" cy="100" r="86" fill="#c99a3b" />
+          <circle cx="100" cy="100" r="82" fill="none" stroke="#f4dd9c" stroke-width="1.5" />
+          <circle cx="100" cy="100" r="56" fill="none" stroke="#f4dd9c" stroke-width="1.5" />
+          <text font-family="Cormorant Garamond, serif" font-size="15" font-weight="700" letter-spacing="2.6" fill="#fff6dc">
+            <textPath href="#apt-seal-ring">THE APTONYM REGISTRY · {MOTTO.toUpperCase()} ·</textPath>
+          </text>
+          <text x="100" y="114" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="44" font-weight="700" fill="#fff6dc">Ap</text>
+          <text x="100" y="134" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="11" letter-spacing="2" fill="#fff6dc">CERTIFIED</text>
+        </svg>
+
+        <div class="meta">
+          <span class="small">Credential ID</span>
+          <span class="mono" data-f="code">{code}</span>
+          <span class="small">Issued</span>
+          <span data-f="date">{formatDate(issuedAt)}</span>
+          <span class="small verify">Verify at {SITE.replace('https://', '')}/aptonyms/certificate</span>
+        </div>
+      </div>
+
+      {watermark && <div class="watermark" data-f="watermark">{watermark}</div>}
+    </div>
+  </figure>
+</div>
+
+<style>
+  .apt-cert-wrap { container-type: inline-size; width: 100%; }
+  .apt-cert {
+    --ink: #2b2118; --gold: #b0862f; --paper: #fbf6e9;
+    margin: 0; position: relative; aspect-ratio: 1.414 / 1; width: 100%;
+    background:
+      radial-gradient(ellipse at 50% 40%, rgba(255,255,255,.75), transparent 70%),
+      repeating-linear-gradient(45deg, rgba(176,134,47,.035) 0 2px, transparent 2px 6px),
+      var(--paper);
+    color: var(--ink); font-family: 'Cormorant Garamond', Georgia, serif;
+    box-shadow: 0 1.5cqw 4cqw rgba(0,0,0,.35); border-radius: .4cqw; padding: 2.2cqw;
+  }
+  .frame {
+    position: relative; height: 100%; box-sizing: border-box; overflow: hidden;
+    border: .35cqw solid var(--gold); outline: .12cqw solid var(--gold); outline-offset: -1.1cqw;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: 3.2cqw 6cqw 2.4cqw;
+  }
+  .corner { position: absolute; width: 5cqw; height: 5cqw; border: .3cqw solid var(--gold); }
+  .tl { top: 1.8cqw; left: 1.8cqw; border-right: 0; border-bottom: 0; }
+  .tr { top: 1.8cqw; right: 1.8cqw; border-left: 0; border-bottom: 0; }
+  .bl { bottom: 1.8cqw; left: 1.8cqw; border-right: 0; border-top: 0; }
+  .br { bottom: 1.8cqw; right: 1.8cqw; border-left: 0; border-top: 0; }
+  .issuer { margin: 0; font-size: 1.6cqw; letter-spacing: .6cqw; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+  .title { margin: .6cqw 0 0; font-size: 4.6cqw; font-weight: 700; line-height: 1.05; color: var(--ink); }
+  .lede { margin: 1.2cqw 0 0; font-size: 1.85cqw; font-style: italic; color: var(--ink); }
+  .lede strong { color: var(--ink); font-weight: 700; }
+  .holder {
+    margin: .6cqw 0 0; font-size: 6cqw; font-weight: 600; line-height: 1.1;
+    border-bottom: .12cqw solid rgba(176,134,47,.6); padding: 0 3cqw .4cqw; max-width: 100%; color: var(--ink);
+  }
+  .gild {
+    background: linear-gradient(180deg, #d9a93f, #8c6418); -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-decoration: underline; text-decoration-color: rgba(176,134,47,.55); text-decoration-thickness: .2cqw; text-underline-offset: .7cqw;
+  }
+  .profession { margin: .8cqw 0 0; font-size: 3.1cqw; font-weight: 700; color: var(--ink); }
+  .fits {
+    margin: 1.2cqw 0 0; max-width: 72cqw; font-size: 1.95cqw; font-style: italic; line-height: 1.35; color: #4a3b2c;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .fits::before { content: '“'; } .fits::after { content: '”'; }
+  .sp { flex: 1 1 0; min-height: 0; }
+  .sp.top { flex-grow: .35; }
+  .holder span:not(.gild), .lede span { color: var(--ink); }
+  .foot { width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 2cqw; }
+  .sig { display: flex; flex-direction: column; align-items: center; }
+  .script { font-family: 'Pinyon Script', cursive; font-size: 3.6cqw; line-height: 1; color: #1d2c4f; }
+  .line { width: 80%; border-top: .1cqw solid var(--ink); margin-top: .3cqw; }
+  .small { font-size: 1.2cqw; letter-spacing: .2cqw; text-transform: uppercase; color: #6b5a45; }
+  .seal { width: 11cqw; height: 11cqw; filter: drop-shadow(0 .3cqw .4cqw rgba(0,0,0,.25)); }
+  .meta { display: flex; flex-direction: column; align-items: center; gap: .1cqw; font-size: 1.5cqw; color: var(--ink); }
+  .meta span { color: var(--ink); }
+  .meta .small { color: #6b5a45; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 1.4cqw; font-weight: 700; letter-spacing: .1cqw; }
+  .verify { margin-top: .5cqw; font-size: .95cqw; text-transform: none; letter-spacing: 0; }
+  .watermark {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;
+    font-size: 9cqw; font-weight: 700; letter-spacing: 1cqw; color: rgba(160,40,40,.13); transform: rotate(-18deg);
+  }
+
+  /* Phones: portrait, bigger type. */
+  @container (max-width: 560px) {
+    .apt-cert { aspect-ratio: auto; padding: 3cqw; }
+    .frame { padding: 7cqw 6cqw 6cqw; }
+    .corner { width: 8cqw; height: 8cqw; }
+    .issuer { font-size: 3.2cqw; letter-spacing: .8cqw; }
+    .title { font-size: 8.6cqw; }
+    .lede { font-size: 4cqw; margin-top: 3cqw; }
+    .holder { font-size: 9.5cqw; }
+    .profession { font-size: 5.6cqw; }
+    .fits { font-size: 3.8cqw; max-width: none; -webkit-line-clamp: 6; }
+    .sp { display: none; }
+    .foot { margin-top: 7cqw; grid-template-columns: 1fr 1fr; }
+    .seal { grid-column: 1 / -1; grid-row: 1; justify-self: center; width: 22cqw; height: 22cqw; }
+    .script { font-size: 7cqw; }
+    .small { font-size: 2.6cqw; }
+    .meta { font-size: 3.2cqw; }
+    .mono { font-size: 3cqw; }
+    .verify { font-size: 2.2cqw; }
+    .watermark { font-size: 14cqw; }
+  }
+</style>
