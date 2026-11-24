@@ -22,6 +22,8 @@ export default defineConfig({
         !page.includes('/everything') &&
         !page.includes('/warmhouse/for') &&
         !page.includes('/warmhouse/tracker') &&
+        !page.includes('/aptonyms/certificate/review') &&
+        !page.includes('/aptonyms/certificate/invite') &&
         !page.includes('/ross/kit'),
     })
   ],

@@ -1,0 +1,107 @@
+---
+export const prerender = false;
+
+// The registrar's review page for one claim. Linked from the email the aptonym-notify workflow sends
+// Matthew; the per-claim key in the link is the only thing that unlocks it. Opening the page changes
+// nothing (so link scanners can't approve a claim): issuing or declining takes a button press.
+import Layout from '../../../layouts/Layout.astro';
+import AptonymCertificate from '../../../components/AptonymCertificate.astro';
+import { supabase } from '../../../lib/supabase';
+
+const code = (Astro.url.searchParams.get('code') ?? '').slice(0, 40);
+const key = (Astro.url.searchParams.get('k') ?? '').slice(0, 64);
+const { data } = code && key ? await supabase.rpc('aptonym_claim_for_review', { p_code: code, p_key: key }) : { data: null };
+const c = Array.isArray(data) ? data[0] : null;
+const registry = c
+  ? (await supabase.from('Serendipitous Names').select('Name').ilike('Name', c.name).maybeSingle()).data
+  : null;
+---
+
+<Layout title="Aptonym claim review" description="Registrar review for an aptonym certificate claim.">
+  <meta slot="head" name="robots" content="noindex, nofollow" />
+  <div class="max-w-5xl mx-auto px-4 py-10">
+    {!c && (
+      <p class="text-gray-700 dark:text-gray-300">This review link isn’t valid.</p>
+    )}
+    {c && (
+      <>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Review: {c.name}</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <span class="font-mono">{c.code}</span> · submitted {new Date(c.created_at).toUTCString()} · status <strong>{c.status}</strong>
+          {registry && <> · already in the registry as <a class="underline" href={`/aptonyms/${encodeURIComponent(registry.Name)}`}>{registry.Name}</a></>}
+        </p>
+
+        <div class="mt-4 flex flex-wrap gap-4 text-sm">
+          <span class="text-gray-700 dark:text-gray-300">Email: {c.email}</span>
+          {c.linkedin_url && <a href={c.linkedin_url} target="_blank" rel="noopener" class="text-[#0a66c2] dark:text-[#70b5f9] underline">LinkedIn</a>}
+          {c.proof_url && <a href={c.proof_url} target="_blank" rel="noopener" class="text-amber-600 dark:text-amber-400 underline">Their link</a>}
+          <a href={`https://www.google.com/search?q=${encodeURIComponent(`"${c.name}" ${c.profession}`)}`} target="_blank" rel="noopener" class="underline text-gray-600 dark:text-gray-300">Google them</a>
+        </div>
+
+        <div class="mt-6"><AptonymCertificate name={c.name} part={c.aptonym_part} profession={c.profession} fits={c.how_it_fits} code={c.code} watermark={c.status === 'pending' ? 'PREVIEW' : c.status.toUpperCase()} /></div>
+
+        {c.status === 'pending' ? (
+          <form id="decide" data-code={c.code} data-key={key} class="mt-8 space-y-4 max-w-2xl">
+            <p class="text-sm text-gray-600 dark:text-gray-400">Tidy the wording before issuing if you like; the certificate is issued exactly as below.</p>
+            <fieldset class="flex gap-4 text-sm text-gray-700 dark:text-gray-200">
+              {(['First', 'Last', 'Both'] as const).map((p) => (
+                <label class="flex items-center gap-1"><input type="radio" name="part" value={p} checked={c.aptonym_part === p} /> {p}</label>
+              ))}
+            </fieldset>
+            <label class="block text-sm text-gray-700 dark:text-gray-200">Profession
+              <input name="profession" value={c.profession} maxlength="90" class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-900 px-3 py-2" />
+            </label>
+            <label class="block text-sm text-gray-700 dark:text-gray-200">How the name fits
+              <textarea name="fits" rows="3" maxlength="240" class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-900 px-3 py-2">{c.how_it_fits}</textarea>
+            </label>
+            <label class="block text-sm text-gray-700 dark:text-gray-200">Note to them (optional; included in their email)
+              <textarea name="note" rows="2" maxlength="500" class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-900 px-3 py-2"></textarea>
+            </label>
+            <div class="flex gap-3">
+              <button type="submit" value="issue" class="rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2.5">Issue certificate</button>
+              <button type="submit" value="decline" class="rounded-md border border-red-400 text-red-600 dark:text-red-400 px-5 py-2.5">Decline</button>
+            </div>
+            <p id="decide-out" class="text-sm" role="status"></p>
+          </form>
+        ) : (
+          <p class="mt-6"><a class="underline text-amber-600 dark:text-amber-400" href={`/aptonyms/certificate/${c.code}`}>Open the certificate page →</a></p>
+        )}
+      </>
+    )}
+  </div>
+</Layout>
+
+<script>
+  function init() {
+    const form = document.getElementById('decide') as HTMLFormElement | null;
+    if (!form || form.dataset.ready) return;
+    form.dataset.ready = '1';
+    const out = document.getElementById('decide-out')!;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const decision = ((e as SubmitEvent).submitter as HTMLButtonElement | null)?.value;
+      if (decision === 'decline' && !confirm('Decline this claim?')) return;
+      const fd = new FormData(form);
+      form.querySelectorAll('button').forEach((b) => (b.disabled = true));
+      out.textContent = 'Saving…';
+      const res = await fetch('/api/aptonym-certificate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'decide', code: form.dataset.code, key: form.dataset.key, decision,
+          part: fd.get('part'), profession: fd.get('profession'), fits: fd.get('fits'), note: fd.get('note'),
+        }),
+      });
+      const r = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        out.textContent = r.error || 'Failed.';
+        form.querySelectorAll('button').forEach((b) => (b.disabled = false));
+        return;
+      }
+      out.innerHTML = r.status === 'issued'
+        ? `Issued. They’ll get an email shortly. <a class="underline" href="/aptonyms/certificate/${form.dataset.code}">Open the certificate →</a>`
+        : `Marked ${r.status}.`;
+    });
+  }
+  document.addEventListener('astro:page-load', init);
+</script>

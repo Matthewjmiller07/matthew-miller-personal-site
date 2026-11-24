@@ -1,0 +1,79 @@
+---
+export const prerender = false;
+
+// Matthew's list of personal certificate links, one per registry entry (/aptonyms/certificate/invites?k=<admin key>).
+// The key is checked in Supabase (private.aptonym_admin); without it the page shows nothing.
+import Layout from '../../../layouts/Layout.astro';
+import { supabase } from '../../../lib/supabase';
+import { SITE } from '../../../lib/aptonymCertificate';
+
+const key = (Astro.url.searchParams.get('k') ?? '').slice(0, 100);
+const { data, error } = key ? await supabase.rpc('aptonym_invites_list', { p_key: key }) : { data: null, error: true };
+const rows = (data ?? []) as { aptonym_name: string; profession: string; token: string; code: string | null; redeemed_at: string | null }[];
+const claimed = rows.filter((r) => r.code).length;
+---
+
+<Layout title="Aptonym certificate invites" description="Personal certificate links for the aptonym registry.">
+  <meta slot="head" name="robots" content="noindex, nofollow" />
+  <div class="max-w-5xl mx-auto px-4 py-10">
+    {error ? (
+      <p class="text-gray-700 dark:text-gray-300">This page needs its key.</p>
+    ) : (
+      <>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Certificate invites</h1>
+        <p class="mt-2 text-gray-600 dark:text-gray-300">
+          Send someone their link: it issues their certificate on the spot (no review) and takes them straight to
+          <em>Add to LinkedIn</em>. {claimed} of {rows.length} claimed.
+        </p>
+        <input id="q" type="search" placeholder="Find a name or job…" class="mt-6 w-full sm:w-80 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white px-3 py-2" />
+        <p id="copied" class="mt-2 h-5 text-sm text-emerald-600 dark:text-emerald-400" role="status"></p>
+        <ul id="list" class="mt-2 divide-y divide-gray-200 dark:divide-gray-700">
+          {rows.map((r) => {
+            const link = `${SITE}/aptonyms/certificate/invite/${r.token}`;
+            const first = r.aptonym_name.split(/\s+/)[0];
+            const msg = `Hi ${first}! You're in my collection of aptonyms: people whose names fit what they do. I made you an official "Certified Aptonym" certificate, and you can add it to your LinkedIn profile in one click: ${link}`;
+            return (
+              <li class="py-3 flex flex-wrap items-center gap-x-4 gap-y-2" data-search={`${r.aptonym_name} ${r.profession}`.toLowerCase()}>
+                <div class="flex-1 min-w-[12rem]">
+                  <a href={`/aptonyms/${encodeURIComponent(r.aptonym_name)}`} class="font-medium text-gray-900 dark:text-white hover:underline">{r.aptonym_name}</a>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">{r.profession}</p>
+                </div>
+                {r.code ? (
+                  <a href={`/aptonyms/certificate/${r.code}`} class="text-sm text-emerald-700 dark:text-emerald-300">✓ Certified · {r.code}</a>
+                ) : (
+                  <span class="text-sm text-gray-400">Not claimed yet</span>
+                )}
+                <div class="flex gap-2">
+                  <button type="button" data-copy={msg} class="rounded-md bg-amber-600 hover:bg-amber-700 text-white text-sm px-3 py-1.5">Copy message</button>
+                  <button type="button" data-copy={link} class="rounded-md border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-200 px-3 py-1.5">Copy link</button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </>
+    )}
+  </div>
+</Layout>
+
+<script>
+  function init() {
+    const q = document.getElementById('q') as HTMLInputElement | null;
+    if (!q || q.dataset.ready) return;
+    q.dataset.ready = '1';
+    const items = [...document.querySelectorAll<HTMLElement>('#list li')];
+    q.addEventListener('input', () => {
+      const v = q.value.trim().toLowerCase();
+      items.forEach((li) => (li.hidden = !!v && !li.dataset.search!.includes(v)));
+    });
+    const note = document.getElementById('copied')!;
+    document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(b.dataset.copy || '');
+        note.textContent = b.textContent === 'Copy message' ? 'Message copied: paste it into LinkedIn, WhatsApp or email.' : 'Link copied.';
+        setTimeout(() => (note.textContent = ''), 2500);
+      }),
+    );
+  }
+  document.addEventListener('astro:page-load', init);
+</script>

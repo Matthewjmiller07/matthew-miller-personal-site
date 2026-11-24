@@ -1,0 +1,235 @@
+---
+export const prerender = false;
+
+import Layout from '../../../layouts/Layout.astro';
+import AptonymCertificate from '../../../components/AptonymCertificate.astro';
+import { supabase } from '../../../lib/supabase';
+import { CREDENTIAL, ISSUER, type Part } from '../../../lib/aptonymCertificate';
+
+// /aptonyms/certificate?name=Jane%20Baker prefills the form from the registry entry.
+const wanted = Astro.url.searchParams.get('name')?.trim();
+let pre: { name: string; part: Part; profession: string; fits: string; proof: string } = {
+  name: '', part: 'Last', profession: '', fits: '', proof: '',
+};
+if (wanted) {
+  const { data } = await supabase.from('Serendipitous Names').select('*').eq('Name', wanted).maybeSingle();
+  if (data) {
+    pre = {
+      name: data.Name,
+      part: (['First', 'Last', 'Both'].includes(data['Aptonym Part']) ? data['Aptonym Part'] : 'Last') as Part,
+      profession: data['Profession / Role'] ?? '',
+      fits: data['How the Name Fits the Role'] ?? '',
+      proof: data.Link && data.Link !== 'N/A' ? data.Link : '',
+    };
+  } else pre.name = wanted.slice(0, 120);
+}
+
+const { data: issued } = await supabase.rpc('aptonym_certificates_issued');
+const certified = (issued ?? []).slice(0, 24) as { code: string; name: string }[];
+
+const pageTitle = 'Get Your Aptonym Certified';
+const pageDescription =
+  'Is your name your job? Claim a Certified Aptonym credential from The Aptonym Registry and add it to your LinkedIn profile.';
+---
+
+<Layout title={pageTitle} description={pageDescription} image="/aptonyms/certificate-og.png" imageAlt="A Certificate of Aptonymity from The Aptonym Registry">
+  <div class="max-w-6xl mx-auto px-4 py-10 sm:py-14">
+    <a href="/aptonyms" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-6">
+      ← All aptonyms
+    </a>
+
+    <header class="max-w-3xl mb-10">
+      <p class="text-xs font-semibold tracking-[0.3em] uppercase text-amber-600 dark:text-amber-400">{ISSUER}</p>
+      <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mt-2">Your name is your job. Make it official.</h1>
+      <p class="text-lg text-gray-600 dark:text-gray-300 mt-4">
+        A dentist called Dr. Drill. A weatherman named Storm. A baker named Baker. If your name fits what you do,
+        claim your <strong>{CREDENTIAL}</strong> credential: a real certificate with its own verification page, ready to add
+        to your LinkedIn profile under Licenses &amp; certifications.
+      </p>
+      <ol class="grid sm:grid-cols-3 gap-3 mt-6 text-sm">
+        <li class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-gray-700 dark:text-gray-300"><span class="font-bold text-amber-600 dark:text-amber-400">1.</span> Tell us your name and what you do.</li>
+        <li class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-gray-700 dark:text-gray-300"><span class="font-bold text-amber-600 dark:text-amber-400">2.</span> The registrar checks it (usually within a day) and emails you.</li>
+        <li class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-gray-700 dark:text-gray-300"><span class="font-bold text-amber-600 dark:text-amber-400">3.</span> One click adds it to LinkedIn, linked back to your certificate.</li>
+      </ol>
+      <form action="/aptonyms/certificate/verify" method="get" class="mt-5 flex flex-wrap items-center gap-2 text-sm">
+        <label for="verify-id" class="text-gray-500 dark:text-gray-400">Checking someone’s credential?</label>
+        <input id="verify-id" name="id" placeholder="APT-2026-…" class="w-40 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white px-2 py-1 font-mono uppercase" />
+        <button class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1 text-gray-700 dark:text-gray-200">Verify</button>
+      </form>
+    </header>
+
+    <div class="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-8 items-start">
+      <form id="claim" class="space-y-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 sm:p-6 shadow-sm" novalidate>
+        <div>
+          <label for="f-name" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Your full name</label>
+          <input id="f-name" name="name" required maxlength="80" value={pre.name} placeholder="Jane Baker" autocomplete="name"
+            class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white px-3 py-2 border" />
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Exactly as it should appear on the certificate.</p>
+        </div>
+
+        <fieldset>
+          <legend class="block text-sm font-medium text-gray-700 dark:text-gray-200">Which part is the aptonym?</legend>
+          <div class="mt-2 grid grid-cols-3 gap-2">
+            {(['First', 'Last', 'Both'] as const).map((p) => (
+              <label class="flex items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm cursor-pointer text-gray-700 dark:text-gray-200 has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 dark:has-[:checked]:bg-amber-900/30">
+                <input type="radio" name="part" value={p} checked={pre.part === p} class="accent-amber-600" />
+                {p === 'Both' ? 'Whole name' : `${p} name`}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div>
+          <label for="f-profession" class="block text-sm font-medium text-gray-700 dark:text-gray-200">What you do</label>
+          <input id="f-profession" name="profession" required maxlength="90" value={pre.profession} placeholder="Pastry chef"
+            class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white px-3 py-2 border" />
+        </div>
+
+        <div>
+          <label for="f-fits" class="block text-sm font-medium text-gray-700 dark:text-gray-200">How your name fits</label>
+          <textarea id="f-fits" name="fits" required maxlength="240" rows="3" placeholder="A baker named Baker. The bread was always going to happen."
+            class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white px-3 py-2 border">{pre.fits}</textarea>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1"><span id="fits-count">0</span>/240 · this line goes on the certificate.</p>
+        </div>
+
+        <div>
+          <label for="f-linkedin" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Your LinkedIn profile <span class="font-normal text-gray-400">(recommended)</span></label>
+          <input id="f-linkedin" name="linkedin" type="text" inputmode="url" autocapitalize="off" maxlength="300" placeholder="linkedin.com/in/janebaker"
+            class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white px-3 py-2 border" />
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Helps the registrar confirm it’s you; shown on your certificate page.</p>
+        </div>
+
+        <div>
+          <label for="f-proof" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Any other link that shows what you do <span class="font-normal text-gray-400">(optional)</span></label>
+          <input id="f-proof" name="proof" type="text" inputmode="url" autocapitalize="off" maxlength="300" value={pre.proof} placeholder="Your bakery, your staff page, an article…"
+            class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white px-3 py-2 border" />
+        </div>
+
+        <div>
+          <label for="f-email" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Email</label>
+          <input id="f-email" name="email" type="email" required maxlength="200" placeholder="you@example.com" autocomplete="email"
+            class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white px-3 py-2 border" />
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Only for sending you your certificate. Never shown anywhere.</p>
+        </div>
+
+        <div class="hidden" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off" /></label></div>
+
+        <label class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
+          <input type="checkbox" name="mine" required class="mt-1 accent-amber-600" />
+          <span>This is my own name, and I’m happy for it to be listed in the <a href="/aptonyms" class="underline">aptonym registry</a>.</span>
+        </label>
+
+        <p id="claim-error" class="hidden text-sm text-red-600 dark:text-red-400" role="alert"></p>
+        <button type="submit" class="w-full rounded-md bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 transition-colors disabled:opacity-60">
+          Submit my claim
+        </button>
+      </form>
+
+      <div class="lg:sticky lg:top-24">
+        <p class="text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">Live preview</p>
+        <AptonymCertificate name={pre.name} part={pre.part} profession={pre.profession} fits={pre.fits} watermark="SPECIMEN" />
+        <div id="my-claims" class="hidden mt-6 rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-sm text-gray-700 dark:text-gray-300">
+          <p class="font-medium mb-2">Your claims on this device</p>
+          <ul class="space-y-1"></ul>
+        </div>
+      </div>
+    </div>
+
+    {certified.length > 0 && (
+      <section class="mt-16">
+        <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Recently certified</h2>
+        <div class="flex flex-wrap gap-2">
+          {certified.map((c) => (
+            <a href={`/aptonyms/certificate/${c.code}`} class="inline-flex items-center gap-2 rounded-full border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-3 py-1 text-sm text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40">
+              <span aria-hidden="true">✦</span>{c.name}
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+  </div>
+</Layout>
+
+<script>
+  const PHRASE: Record<string, string> = { First: 'whose first name', Last: 'whose surname', Both: 'whose name' };
+
+  function split(name: string, part: string): [string, string, string] {
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return ['', 'Your Name', ''];
+    if (part === 'Both' || words.length < 2) return ['', words.join(' '), ''];
+    if (part === 'First') return ['', words[0], ' ' + words.slice(1).join(' ')];
+    return [words.slice(0, -1).join(' ') + ' ', words[words.length - 1], ''];
+  }
+
+  function init() {
+    const form = document.getElementById('claim') as HTMLFormElement | null;
+    if (!form || form.dataset.ready) return;
+    form.dataset.ready = '1';
+    const set = (f: string, v: string) => document.querySelectorAll<HTMLElement>(`[data-f="${f}"]`).forEach((el) => (el.textContent = v));
+    const val = (n: string) => ((form.elements.namedItem(n) as HTMLInputElement | null)?.value ?? '').trim();
+    const part = () => (form.querySelector('input[name="part"]:checked') as HTMLInputElement | null)?.value ?? 'Last';
+
+    const render = () => {
+      const [b, a, af] = split(val('name'), part());
+      set('before', b);
+      set('apt', a);
+      set('after', af);
+      set('phrase', PHRASE[part()]);
+      set('profession', val('profession') || 'what you do');
+      set('fits', val('fits') || 'How your name fits what you do.');
+      const count = document.getElementById('fits-count');
+      if (count) count.textContent = String(val('fits').length);
+    };
+    form.addEventListener('input', render);
+    render();
+
+    // Claims made on this device, so a closed tab isn't a lost status link.
+    let mine: { code: string; claim: string; name: string }[] = [];
+    try {
+      mine = JSON.parse(localStorage.getItem('aptonym-claims') || '[]');
+    } catch {}
+    const box = document.getElementById('my-claims');
+    if (box && mine.length) {
+      box.classList.remove('hidden');
+      box.querySelector('ul')!.innerHTML = mine
+        .map((m) => `<li><a class="underline" href="/aptonyms/certificate/${encodeURIComponent(m.code)}?t=${encodeURIComponent(m.claim)}"></a></li>`)
+        .join('');
+      box.querySelectorAll('a').forEach((a, i) => (a.textContent = `${mine[i].name} · ${mine[i].code}`));
+    }
+
+    const err = document.getElementById('claim-error')!;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.classList.add('hidden');
+      if (!form.reportValidity()) return;
+      const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+      try {
+        const res = await fetch('/api/aptonym-certificate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'submit',
+            name: val('name'), part: part(), profession: val('profession'), fits: val('fits'),
+            linkedin: val('linkedin'), proof: val('proof'), email: val('email'), website: val('website'),
+          }),
+        });
+        const out = await res.json();
+        if (!res.ok || !out.code) throw new Error(out.error || 'Something went wrong.');
+        try {
+          mine.unshift({ code: out.code, claim: out.claim, name: val('name') });
+          localStorage.setItem('aptonym-claims', JSON.stringify(mine.slice(0, 10)));
+        } catch {}
+        location.href = `/aptonyms/certificate/${out.code}?t=${out.claim}&new=1`;
+      } catch (x) {
+        err.textContent = (x as Error).message;
+        err.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Submit my claim';
+      }
+    });
+  }
+
+  document.addEventListener('astro:page-load', init);
+</script>
