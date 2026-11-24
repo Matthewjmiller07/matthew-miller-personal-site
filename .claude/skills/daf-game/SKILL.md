@@ -75,7 +75,11 @@ hidden-object in a scene the daf describes.
 
 1. Add an entry to `src/data/daf-yomi/games.json` (newest first):
    `{ slug, ref, heRef, date, title, tagline, emoji, mechanic }` —
-   the `/daf` index page renders from this manifest.
+   then add the game to `src/pages/daf/index.astro` too (`{ slug, name, daf, desc, masechet }`,
+   newest first in its tractate group): the `/daf` index is written inline in that file,
+   not rendered from the manifest, and builds that skip it ship invisible games.
+   Touch only daf-game outputs (game page, game JSON, games.json, index.astro);
+   never edit next-issue.md or other unrelated files.
    `date` must be the daf's actual Daf Yomi calendar date (per the Sefaria calendar,
    America/Chicago), never the build date: the missing-dafs scan maps dates to dafs,
    and a build-date stamp silently skips dafs.
