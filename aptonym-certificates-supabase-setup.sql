@@ -229,9 +229,10 @@ returns table (aptonym_name text, profession text, token text, code text, redeem
 language plpgsql security definer set search_path to '' as $$
 begin
   if not private.aptonym_admin_ok(p_key) then raise exception 'forbidden'; end if;
-  insert into public.aptonym_invites (aptonym_name)
+  -- Named constraint, not (aptonym_name): that would clash with the output column of the same name.
+  insert into public.aptonym_invites as inv (aptonym_name)
     select s."Name" from public."Serendipitous Names" s where s."Name" is not null
-    on conflict (aptonym_name) do nothing;
+    on conflict on constraint aptonym_invites_aptonym_name_key do nothing;
   return query
     select s."Name", s."Profession / Role", i.token,
            coalesce(i.code, (select c.code from public.aptonym_certificates c where c.aptonym_name = s."Name" and c.status = 'issued' limit 1)),
