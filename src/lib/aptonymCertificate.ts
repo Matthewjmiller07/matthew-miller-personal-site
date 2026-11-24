@@ -8,9 +8,10 @@ export const CREDENTIAL = 'Certified Aptonym';
 export const REGISTRAR = 'Matthew Miller';
 export const MOTTO = 'Nomen est omen';
 
-// If the registry ever gets its own LinkedIn company page, put its numeric id here: LinkedIn then
-// shows that page's logo next to the credential. Until then the issuer goes by name (organizationName).
-export const LINKEDIN_ORG_ID = '';
+// LinkedIn Page that issues the credential (linkedin.com/company/theothermatthewmiller). With an id,
+// LinkedIn shows that Page's name and logo as the issuer; without one it would fall back to ISSUER as text.
+export const LINKEDIN_ORG_ID = '118444522';
+export const LINKEDIN_ISSUER = 'The Other Matthew Miller';
 
 export type Part = 'First' | 'Last' | 'Both';
 
