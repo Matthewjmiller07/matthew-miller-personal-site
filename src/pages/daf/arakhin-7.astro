@@ -1,0 +1,283 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Five Sela, Two Vows — Daf Yomi Game: Arakhin 7"
+  description="Arakhin 7: tap which of two candles goes out first, stamp the hair cases by Rav and Rav Naḥman bar Yitzḥak, and solve Rav Adda bar Ahava's two-vow, five-sela payment puzzle."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --night:#14110d; --card:#211c16; --line:#433a2e; --ink:#f3ece0; --mist:#b9ad99; --gold:#e9b949; --grass:#8fd0a0; --red:#ee8470; --wax:#efe3c8; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .t-ink { color: var(--ink) !important; } .t-mist { color: var(--mist) !important; } .t-gold { color: var(--gold) !important; }
+    a.ref { color: var(--gold) !important; text-decoration: underline; text-underline-offset: 2px; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: .6rem; padding: 1rem; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .5rem .8rem; font-size: .95rem; line-height: 1.4; background: transparent; color: var(--ink) !important; cursor: pointer; text-align: start; }
+    .btn:hover:not(:disabled) { background: #2c251c; }
+    .btn:disabled { cursor: default; opacity: .8; }
+    .btn.ok { border-color: var(--grass); background: #17321f; opacity: 1; } .btn.no { border-color: var(--red); background: #3b1d18; opacity: 1; }
+    .btn.on { border-color: var(--gold); background: #3a3115; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .93rem; line-height: 1.65; margin-top: .75rem; color: var(--ink) !important; }
+    .note.ok { border-color: var(--grass); } .note.no { border-color: var(--red); }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .bar { height: .45rem; border-radius: 1rem; background: var(--line); overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: var(--gold); transition: width .4s; }
+    /* candles */
+    .candles { display: flex; justify-content: center; gap: 3.5rem; align-items: flex-end; padding: 1rem 0 .25rem; }
+    .cnd { display: flex; flex-direction: column; align-items: center; gap: .4rem; background: none; border: 1px solid transparent; border-radius: .6rem; padding: .5rem .9rem; cursor: pointer; }
+    .cnd:hover:not(:disabled) { border-color: var(--line); background: #2c251c; }
+    .cnd:disabled { cursor: default; }
+    .flame { width: 18px; height: 30px; border-radius: 50% 50% 45% 45% / 65% 65% 35% 35%; background: radial-gradient(ellipse at 50% 70%, #fff6c8 0%, #f6c04a 45%, #e0702a 80%, transparent 100%); box-shadow: 0 0 22px 6px rgba(246,192,74,.45); animation: flick 1.6s infinite alternate ease-in-out; transition: opacity .9s, transform .9s; }
+    .flame.out { opacity: 0; transform: scale(.2) translateY(10px); }
+    .smoke { height: 30px; width: 18px; display: none; }
+    .wick { width: 2px; height: 8px; background: #2a2a2a; }
+    .stick { background: linear-gradient(90deg, #d9caa6, var(--wax), #d2c19b); border-radius: 3px 3px 2px 2px; }
+    .stick.big { width: 34px; height: 110px; } .stick.small { width: 22px; height: 70px; }
+    @keyframes flick { from { transform: scale(1) rotate(-2deg); } to { transform: scale(1.06, .96) rotate(2deg); } }
+    /* stamps */
+    .stamp { display: inline-block; border: 3px double currentColor; border-radius: .35rem; padding: .1rem .55rem; font-weight: 800; letter-spacing: .08em; transform: rotate(-6deg); font-size: .85rem; }
+    .stamp.pm { color: var(--grass) !important; } .stamp.fb { color: var(--red) !important; }
+    .lens { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; padding: .1rem .45rem; border-radius: 1rem; border: 1px solid var(--line); color: var(--mist) !important; }
+    /* coins */
+    .purse { display: flex; gap: .4rem; flex-wrap: wrap; min-height: 44px; align-items: center; }
+    .coin { width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fbe7a1, #d9a72e 60%, #8e6a17); border: 1px solid #6f520f; display: grid; place-items: center; font-size: .7rem; font-weight: 800; color: #3d2c06 !important; box-shadow: 0 2px 4px rgba(0,0,0,.4); }
+    .altar { border: 1px dashed var(--line); border-radius: .6rem; padding: .8rem; flex: 1 1 240px; }
+    .altar.done-ok { border-style: solid; border-color: var(--grass); } .altar.done-no { border-style: solid; border-color: var(--red); }
+    .step { display: inline-flex; align-items: center; gap: .3rem; }
+    .step button { width: 32px; height: 32px; border-radius: .35rem; border: 1px solid var(--line); background: transparent; color: var(--ink) !important; cursor: pointer; font-size: 1.1rem; }
+    @media (prefers-reduced-motion: reduce) { .bar > i, .flame { transition: none; animation: none; } }
+  </style>
+
+  <main class="min-h-screen" style="background:var(--night)">
+    <div class="max-w-3xl mx-auto px-4 py-10">
+      <p class="t-mist text-sm"><a class="ref" href="/daf/">← all daf games</a> · Arakhin 7 · <span class="frank">ערכין ז׳</span></p>
+      <h1 class="frank !text-4xl sm:!text-5xl font-black mt-2 t-gold">Five Sela, Two Vows 🪙</h1>
+      <p class="t-ink mt-3 leading-relaxed">
+        Arakhin 7 sits between a courtroom and the Temple treasury. It asks what happens to a person who has been sentenced: whose life ends first, what of theirs may still be used,
+        and then turns to the poor person who vowed a valuation they cannot afford. Three rounds: <b>two candles</b>, a <b>stamp desk</b>, and a <b>payment puzzle</b>.
+      </p>
+      <p class="t-mist text-sm mt-2">Score: <b id="score" class="t-gold">0</b> / <span id="total">0</span></p>
+      <div class="bar mt-1"><i id="sbar" style="width:0%"></i></div>
+
+      <!-- ROUND 1 -->
+      <section class="stn" id="s1">
+        <h2 class="frank !text-2xl font-bold t-ink">1 · Two candles</h2>
+        <p class="frank t-mist mt-2 text-lg" dir="rtl" lang="he">הָאִשָּׁה שֶׁיָּצְאָה לֵיהָרֵג, אֵין מַמְתִּינִין לָהּ עַד שֶׁתֵּלֵד. הָאִשָּׁה שֶׁיָּשְׁבָה עַל הַמַּשְׁבֵּר, מַמְתִּינִין לָהּ עַד שֶׁתֵּלֵד.</p>
+        <p class="t-mist mt-1 text-sm">“The soul of man is the candle of God” (<a class="ref" href="https://www.sefaria.org/Proverbs.20.27" target="_blank" rel="noopener">Prov. 20:27</a>). The big candle is the mother, the small one the unborn child.
+          For each case on the daf (<a class="ref" href="https://www.sefaria.org/Arakhin.7a.11" target="_blank" rel="noopener">7a:11–7b:3</a>), tap the candle that the Gemara says goes out <i>first</i>, or choose the third answer.</p>
+        <div class="card mt-3">
+          <p class="t-mist text-xs" id="c-count"></p>
+          <p class="t-ink mt-1 leading-relaxed" id="c-case"></p>
+          <div class="candles" role="group" aria-label="Which candle goes out first?">
+            <button class="cnd" id="c-mom" aria-label="The mother's candle goes out first">
+              <span class="flame" id="f-mom"></span><span class="wick"></span><span class="stick big"></span>
+              <span class="t-mist text-xs">Mother</span>
+            </button>
+            <button class="cnd" id="c-kid" aria-label="The child's candle goes out first">
+              <span class="flame" id="f-kid"></span><span class="wick"></span><span class="stick small"></span>
+              <span class="t-mist text-xs">Child</span>
+            </button>
+          </div>
+          <div class="row justify-center"><button class="btn" id="c-third"></button></div>
+          <div id="c-note"></div>
+          <div class="row mt-3"><button class="btn" id="c-next" hidden>Next case →</button></div>
+        </div>
+      </section>
+
+      <!-- ROUND 2 -->
+      <section class="stn" id="s2">
+        <h2 class="frank !text-2xl font-bold t-ink">2 · The stamp desk</h2>
+        <p class="frank t-mist mt-2 text-lg" dir="rtl" lang="he">הָאִשָּׁה שֶׁנֶּהֶרְגָה, נֶהֱנִין בִּשְׂעָרָהּ. בְּהֵמָה שֶׁנֶּהֶרְגָה, אֲסוּרָה בַּהֲנָאָה.</p>
+        <p class="t-mist mt-1 text-sm">“A woman who was executed: one may benefit from her hair. An animal that was executed: benefit is forbidden.” But a corpse and its hair are forbidden! Rav says the mishna means a wig; Rav Naḥman bar Yitzḥak says it means her real hair (<a class="ref" href="https://www.sefaria.org/Arakhin.7b.4" target="_blank" rel="noopener">7b:4–13</a>).
+          Each slip names whose view to rule by. Stamp it.</p>
+        <div id="slips" class="mt-3 grid gap-3"></div>
+      </section>
+
+      <!-- ROUND 3 -->
+      <section class="stn" id="s3">
+        <h2 class="frank !text-2xl font-bold t-ink">3 · Five sela, two vows</h2>
+        <p class="frank t-mist mt-2 text-lg" dir="rtl" lang="he">אֵין נֶעֱרָכִין פָּחוֹת מִסֶּלַע, וְלֹא יָתֵר עַל חֲמִשִּׁים סֶלַע.</p>
+        <p class="t-mist mt-1 text-sm">The rules (Mishna <a class="ref" href="https://www.sefaria.org/Arakhin.7b.15" target="_blank" rel="noopener">7b:15–16</a>, following the Rabbis): a poor person who vows a valuation pays <b class="t-ink">everything he has</b>, never less than one sela.
+          Pay less than you owed and later get rich, and you owe the full fifty.</p>
+        <div class="card mt-3">
+          <p class="t-ink leading-relaxed">You hold <b class="t-gold">5 sela</b>. You said “My valuation is upon me” — and then said it <b>again</b>. Rav Adda bar Ahava (<a class="ref" href="https://www.sefaria.org/Arakhin.7b.22" target="_blank" rel="noopener">7b:22–24</a>) says there is a way to clear <i>both</i> vows with just these five coins,
+            so that even if you strike it rich tomorrow, you owe nothing more. Choose an amount, then pay the vows in whichever order you like.</p>
+          <p class="t-mist text-xs mt-3">Your purse</p>
+          <div class="purse" id="purse" aria-live="polite"></div>
+          <div class="row mt-3" id="altars"></div>
+          <div id="v-note" aria-live="polite"></div>
+          <div class="row mt-3"><button class="btn" id="v-reset">↺ Start over with 5 sela</button></div>
+        </div>
+        <div class="card mt-4" id="v-quiz"></div>
+      </section>
+
+      <!-- LEARN -->
+      <section class="stn" id="learn">
+        <h2 class="frank !text-2xl font-bold t-ink">Learn the real daf</h2>
+        <ul class="t-ink mt-3 space-y-1 list-disc ps-5">
+          <li><a class="ref" href="https://www.sefaria.org/Arakhin.7a" target="_blank" rel="noopener">Arakhin 7a</a> and <a class="ref" href="https://www.sefaria.org/Arakhin.7b" target="_blank" rel="noopener">7b</a> on Sefaria</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.7a" target="_blank" rel="noopener">Rashi on 7a</a> · <a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.7b" target="_blank" rel="noopener">Rashi on 7b</a></li>
+          <li><a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Arakhin.7a" target="_blank" rel="noopener">Rabbeinu Gershom</a> · <a class="ref" href="https://www.sefaria.org/Steinsaltz_on_Arakhin.7a" target="_blank" rel="noopener">Steinsaltz</a> · <a class="ref" href="https://www.sefaria.org/Tosafot_on_Arakhin.7a" target="_blank" rel="noopener">Tosafot</a></li>
+        </ul>
+        <p class="t-mist text-sm mt-3">Not in the game: the daf opens (<a class="ref" href="https://www.sefaria.org/Arakhin.7a.1" target="_blank" rel="noopener">7a:1–6</a>) with Rav Yosef and Rabba arguing over why Rabbi Shimon ben Elazar exempts the heirs of a man who caused damage on his way to execution: is it that an oral loan can't be collected from heirs, or that a debt written in the Torah isn't like one written in a document? Then come the man digging a pit in the street whom an ox fell on, and the judges who sat at the mouth of the pit.
+          There's also the sentenced man's sacrifices (<a class="ref" href="https://www.sefaria.org/Arakhin.7a.7" target="_blank" rel="noopener">7a:7–10</a>): his blood is sprinkled only if the offering was already slaughtered, because the court may not drag out his sentence.</p>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let score = 0, total = 0;
+    const award = (ok) => { if (ok) score++; $('score').textContent = String(score); $('sbar').style.width = (100 * score / Math.max(total, 1)) + '%'; };
+    const sref = (r, label) => `<a class="ref" href="https://www.sefaria.org/Arakhin.${r}" target="_blank" rel="noopener">${label || r}</a>`;
+
+    // ---------- Round 1: candles ----------
+    const CASES = [
+      { q: 'A pregnant woman dies a natural death.', a: 'kid', third: 'Neither: they go out together',
+        why: `The fetus goes first. Its hold on life is weak, so the Angel of Death's drop reaches it and severs its <i>simanim</i> before the mother (${sref('7a.19', '7a:19')}).` },
+      { q: 'Same case, but witnesses saw the fetus move three times after the mother died.', a: 'kid', third: 'The child is still alive: save it',
+        why: `Still the fetus first. Those movements are like a lizard's tail, which twitches after it is cut off: a spasm, not a sign of life (${sref('7a.20', '7a:20')}).` },
+      { q: 'A pregnant woman is executed by the court, and nothing is done about the fetus.', a: 'mom', third: 'Neither: they go out together',
+        why: `Here the mother goes first. The “fetus dies first” rule applies only to natural death; when the mother is killed, she dies first (${sref('7a.19', '7a:19')}).` },
+      { q: 'Shmuel\'s instruction for executing a pregnant woman.', a: 'kid', third: 'The court waits until she gives birth',
+        why: `Shmuel: strike her opposite the womb, so the fetus dies first and she is not disgraced by bleeding from labor afterward (${sref('7a.16', '7a:16')}). The court does not wait: the fetus is counted as part of her body, and “both of them” (Deut. 22:22) includes it (${sref('7a.13', '7a:12–14')}).` },
+      { q: 'A woman sentenced to death is already in labor, sitting on the birthing stool (<i>mashber</i>).', a: 'third', third: 'The court waits until she gives birth',
+        why: `The court waits. Once the fetus has moved from its place, it is a separate body and is not put to death with her (Mishna ${sref('7a.11', '7a:11')}, ${sref('7a.15', '7a:15')}).` },
+      { q: 'A woman in labor on the birthing stool dies on Shabbat.', a: 'third', third: 'The child may still be alive: bring a knife',
+        why: `Shmuel: bring a knife, even through the public domain on Shabbat, cut her open, and take out the child. It may still be alive. We break Shabbat even though, unlike someone under a rockslide, the child never had a presumption of life (${sref('7a.21', '7a:21')}–${sref('7b.3', '7b:3')}).` },
+    ];
+    total += CASES.length;
+    let ci = 0, cDone = false;
+    const setFlames = (mom, kid) => { $('f-mom').classList.toggle('out', !mom); $('f-kid').classList.toggle('out', !kid); };
+    function showCase() {
+      const c = CASES[ci]; cDone = false;
+      $('c-count').textContent = `Case ${ci + 1} of ${CASES.length}`;
+      $('c-case').innerHTML = c.q; $('c-third').textContent = c.third; $('c-third').className = 'btn';
+      $('c-note').innerHTML = ''; $('c-next').hidden = true; setFlames(true, true);
+      ['c-mom', 'c-kid', 'c-third'].forEach((id) => { $(id).disabled = false; });
+    }
+    function pickCase(choice) {
+      if (cDone) return; cDone = true;
+      const c = CASES[ci], ok = choice === c.a; award(ok);
+      if (c.a === 'mom') setFlames(false, true); else if (c.a === 'kid') setFlames(true, false);
+      ['c-mom', 'c-kid', 'c-third'].forEach((id) => { $(id).disabled = true; });
+      if (choice === 'third') $('c-third').classList.add(ok ? 'ok' : 'no'); else if (c.a === 'third') $('c-third').classList.add('ok');
+      $('c-note').innerHTML = `<p class="note ${ok ? 'ok' : 'no'}">${ok ? '✓ ' : '✗ '}${c.why}</p>`;
+      if (ci === 0) $('c-note').innerHTML += `<p class="note">Why it matters: a one-day-old boy inherits his mother if she dies after he is born, and passes it on to his paternal brothers. A fetus that died in the womb inherits nothing, because we presume it died first, and a son does not inherit from his mother in the grave (${sref('7a.17', '7a:17–18')}).</p>`;
+      if (ci < CASES.length - 1) { $('c-next').hidden = false; $('c-next').focus(); }
+      else $('c-note').innerHTML += `<p class="note">Round complete. On to the stamp desk ↓</p>`;
+    }
+    $('c-mom').onclick = () => pickCase('mom'); $('c-kid').onclick = () => pickCase('kid'); $('c-third').onclick = () => pickCase('third');
+    $('c-next').onclick = () => { ci++; showCase(); };
+    showCase();
+
+    // ---------- Round 2: stamp desk ----------
+    const SLIPS = [
+      { lens: 'Rav', item: 'The executed woman\'s own hair, still growing on her head.', a: 'fb',
+        why: `Rav holds that the mishna can't mean real hair: “a corpse and its hair are forbidden” (${sref('7b.4', '7b:4')}). That's why he moves the mishna onto a wig.` },
+      { lens: 'Rav', item: 'Her wig, worn on her head. On her way out she said: “Give my hair to my daughter.”', a: 'pm',
+        why: `Permitted. By saying it should go to her daughter, she showed she didn't consider the wig part of her body (${sref('7b.5', '7b:5')}).` },
+      { lens: 'Rav', item: 'The same wig, but she said nothing.', a: 'fb',
+        why: `Forbidden. A wig she is wearing counts as part of her body unless she says otherwise (${sref('7b.8', '7b:8')}). Levi's baraita agrees, and adds that even a dead woman's adornments are forbidden (${sref('7b.11', '7b:11–12')}). A wig hanging on a peg is a different, unresolved question, raised by Rabbi Yosei son of Rabbi Ḥanina (${sref('7b.6', '7b:6–7')}).` },
+      { lens: 'The Gemara\'s challenge to Rav', item: 'She said: “Give my <i>hand</i> to my daughter.”', a: 'fb',
+        why: `Obviously forbidden. Her wishes can't permit her body, which is why Rav had to reinterpret the mishna as a wig (${sref('7b.4', '7b:4')}).` },
+      { lens: 'Rav Naḥman bar Yitzḥak', item: 'The executed woman\'s own hair.', a: 'pm',
+        why: `Permitted. Her <b>death</b> is what forbids her, and the hair doesn't change when she dies, so it stays permitted (${sref('7b.10', '7b:10')}). The baraita at ${sref('7b.13', '7b:13')} supports him.` },
+      { lens: 'Rav Naḥman bar Yitzḥak', item: 'Hair of an ox sentenced to stoning for killing a person.', a: 'fb',
+        why: `Forbidden. For an animal, the <b>verdict</b> forbids it while it is still alive, and that includes the hair attached to it (${sref('7b.10', '7b:10')}). The mishna's two halves really do match: both are about the body itself (${sref('7b.9', '7b:9')}).` },
+    ];
+    total += SLIPS.length;
+    $('slips').innerHTML = SLIPS.map((s, i) => `
+      <div class="card" id="slip${i}">
+        <div class="flex justify-between items-start gap-3"><span class="lens">By ${s.lens}</span><span id="stamp${i}"></span></div>
+        <p class="t-ink mt-2">${s.item}</p>
+        <div class="row mt-2"><button class="btn" data-s="${i}" data-v="pm">✓ Permitted to benefit</button><button class="btn" data-s="${i}" data-v="fb">✗ Forbidden</button></div>
+        <div id="sn${i}"></div>
+      </div>`).join('');
+    $('slips').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-s]'); if (!b) return;
+      const i = +b.dataset.s, s = SLIPS[i], ok = b.dataset.v === s.a; award(ok);
+      $('slip' + i).querySelectorAll('button').forEach((x) => { x.disabled = true; if (x.dataset.v === s.a) x.classList.add('ok'); else if (x === b) x.classList.add('no'); });
+      $('stamp' + i).innerHTML = `<span class="stamp ${s.a}">${s.a === 'pm' ? 'PERMITTED' : 'FORBIDDEN'}</span>`;
+      $('sn' + i).innerHTML = `<p class="note ${ok ? 'ok' : 'no'}">${ok ? '✓ ' : '✗ '}${s.why}</p>`;
+    });
+
+    // ---------- Round 3: two vows ----------
+    // Rabbis: the first vow's payment must be >= max(1, purse at that moment) (no earlier lien).
+    // The second vow, paid while the first is still open, finds the whole purse already liened to the first vow -> as if he has nothing -> one sela suffices.
+    // The second vow, paid after the first is fulfilled -> must be >= max(1, purse).
+    total += 1; // solving the puzzle
+    let purse, paid, amt, order, solvedOnce = false;
+    const V = { A: 'First vow', B: 'Second vow' };
+    function resetV() { purse = 5; paid = {}; amt = { A: 1, B: 1 }; order = []; $('v-note').innerHTML = ''; drawV(); }
+    function drawV() {
+      $('purse').innerHTML = purse ? Array.from({ length: purse }, () => '<span class="coin" aria-hidden="true">סלע</span>').join('') + `<span class="t-mist text-sm ms-2">${purse} sela</span>` : '<span class="t-mist text-sm">empty</span>';
+      $('altars').innerHTML = ['A', 'B'].map((k) => {
+        const p = paid[k];
+        const cls = p ? (p.ok ? 'done-ok' : 'done-no') : '';
+        const body = p
+          ? `<p class="t-ink text-sm mt-1">Paid <b class="t-gold">${p.n}</b> sela (${order.indexOf(k) === 0 ? 'paid first' : 'paid second'}) — ${p.ok ? '<b style="color:var(--grass)">fulfilled</b>' : '<b style="color:var(--red)">not fulfilled</b>'}</p><p class="t-mist text-xs mt-1">${p.why}</p>`
+          : `<div class="row items-center mt-2"><span class="step"><button data-k="${k}" data-d="-1" aria-label="less">−</button><b class="t-gold" style="min-width:1.5rem;text-align:center">${Math.min(amt[k], purse)}</b><button data-k="${k}" data-d="1" aria-label="more">+</button></span>
+             <button class="btn" data-pay="${k}" ${purse < 1 ? 'disabled' : ''}>Pay</button></div>${purse < 1 ? '<p class="t-mist text-xs mt-1">Nothing left to pay with.</p>' : ''}`;
+        return `<div class="altar ${cls}"><p class="t-ink font-bold">${k === 'A' ? '①' : '②'} ${V[k]}</p><p class="t-mist text-xs">“My valuation is upon me” (said ${k === 'A' ? 'first' : 'second'})</p>${body}</div>`;
+      }).join('');
+    }
+    $('altars').addEventListener('click', (e) => {
+      const s = e.target.closest('button[data-k]');
+      if (s) { const k = s.dataset.k; amt[k] = Math.max(1, Math.min(purse, Math.min(amt[k], purse) + +s.dataset.d)); drawV(); return; }
+      const p = e.target.closest('button[data-pay]'); if (!p) return;
+      const k = p.dataset.pay, n = Math.min(amt[k], purse); if (n < 1) return;
+      let need, why;
+      if (k === 'A') {
+        need = Math.max(1, Math.min(50, purse));
+        why = `At that moment you held ${purse}; nothing earlier had a claim on it, so the Rabbis require all ${need}.`;
+      } else if (!paid.A || !paid.A.ok) {
+        need = 1;
+        why = `Your whole purse was already pledged to the first vow, so for the second vow you count as having nothing, and one sela is enough (7b:24).`;
+      } else {
+        need = Math.max(1, Math.min(50, purse));
+        why = purse ? `The first vow was already settled, so the ${purse} you held were free and all of it is owed.` : '';
+      }
+      const ok = n >= need;
+      purse -= n; paid[k] = { n, ok, why: why + (ok ? '' : ` You paid less than ${need}, so if you get rich you owe 50.`) }; order.push(k);
+      // a vow left unpaid with an empty purse
+      ['A', 'B'].forEach((o) => { if (!paid[o] && purse === 0) { paid[o] = { n: 0, ok: false, why: 'The purse is empty and this vow got nothing, not even one sela. Get rich, and you owe 50.' }; order.push(o); } });
+      drawV();
+      if (paid.A && paid.B) {
+        const win = paid.A.ok && paid.B.ok;
+        if (win && !solvedOnce) { solvedOnce = true; award(true); }
+        $('v-note').innerHTML = win
+          ? `<p class="note ok">✓ Both vows cleared with five sela. That's Rav Adda bar Ahava's move: <b>pay the second vow first</b> (he gives it four). When you paid it, everything you had was pledged to the first vow, so you counted as penniless and any sela would do. Then you really did have only what was left, and that is all the first vow could demand. The model is a creditor with a <i>later</i> note who collected first: what he collected, he keeps (${sref('7b.23', '7b:23')}).</p>`
+          : `<p class="note no">✗ At least one vow is still open. Hint: think about who held a lien on your purse at the moment of each payment. Start over and try again.</p>`;
+      }
+    });
+    $('v-reset').onclick = resetV;
+    resetV();
+
+    // follow-up quiz on Rabbi Meir vs the Rabbis
+    const QZ = [
+      { q: 'A poor man holding five sela vows a valuation. What does he pay according to <b>Rabbi Meir</b>?', opts: ['One sela', 'All five', 'Fifty, in installments'], a: 0,
+        why: `Rabbi Meir: the valuation is either the full amount or one shekel, nothing in between: “all your valuations shall be according to the shekel of the Sanctuary” (Lev. 27:25; ${sref('7b.19', '7b:19')}).` },
+      { q: 'And according to <b>the Rabbis</b>?', opts: ['One sela', 'All five', 'Nothing until he gets rich'], a: 1,
+        why: `The Rabbis read “according to the means of him that vowed” (Lev. 27:8): if he has more than a shekel, take all he can afford (${sref('7b.20', '7b:20')}).` },
+      { q: 'A poor man vows the valuation of a <b>rich</b> man. Whose means set the price?', opts: ['The rich man\'s (whose valuation it is)', 'The poor man\'s (who vowed)'], a: 1,
+        why: `“Him that <i>vowed</i>”: it goes by the means of the one who vowed, not the one being valued. Rabbi Meir learns this from the verse, and the Rabbis learn it from there too (${sref('7b.21', '7b:21')}).` },
+    ];
+    total += QZ.length;
+    $('v-quiz').innerHTML = '<p class="t-mist text-xs">Bonus · Rabbi Meir vs. the Rabbis</p>' + QZ.map((z, i) => `
+      <div class="mt-3" id="qz${i}"><p class="t-ink">${z.q}</p><div class="row mt-2">${z.opts.map((o, j) => `<button class="btn" data-q="${i}" data-o="${j}">${o}</button>`).join('')}</div><div id="qn${i}"></div></div>`).join('');
+    $('v-quiz').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-q]'); if (!b) return;
+      const i = +b.dataset.q, z = QZ[i], ok = +b.dataset.o === z.a; award(ok);
+      $('qz' + i).querySelectorAll('button').forEach((x) => { x.disabled = true; if (+x.dataset.o === z.a) x.classList.add('ok'); else if (x === b) x.classList.add('no'); });
+      $('qn' + i).innerHTML = `<p class="note ${ok ? 'ok' : 'no'}">${ok ? '✓ ' : '✗ '}${z.why}</p>`;
+    });
+
+    $('total').textContent = String(total);
+  </script>
+</Layout>
