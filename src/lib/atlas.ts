@@ -54,7 +54,7 @@ const HIDDEN: RegExp[] = [
   /^\/(desk|parasha-books|proposals|aviya-schedules|torah-schedules)(\/|$)/,
   /^\/(aviya|rabbi-dweck-dashboard|competitive-intel|print-quote|color|pistachios-old)$/,
   /^\/warmhouse\/(for|tracker)/,
-  /^\/aptonyms\/certificate\/review$/,
+  /^\/aptonyms\/certificate\/(review|invites)$/,
   /^\/ross\/kit$/,
   /^\/art\/sukkah-posters$/,
   /^\/writings\/legacy-of-blessed-contentment$/,

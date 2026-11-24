@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Emails for aptonym certificates (/aptonyms/certificate).
 
-1. Each new claim → one email to GMAIL_USER with the claim and its review link (Reply-To: the claimant).
+1. Each new claim → one email to GMAIL_USER with the claim and its review link (Reply-To: the claimant),
+   or, for an invite link someone redeemed, a note that they took their certificate.
 2. Each decision → one email to the claimant: their certificate and LinkedIn link, or a kind no.
 
 Reads Supabase `aptonym_certificates` through RPCs gated by NEWSLETTER_TOKEN (see
@@ -41,17 +42,26 @@ def claims(s, user, token):
             f"How it fits: {r['how_it_fits']}",
             f"LinkedIn: {r.get('linkedin_url') or '(none)'}",
             f"Link: {r.get('proof_url') or '(none)'}",
-            f"Email: {r['email']}",
+            f"Email: {r.get('email') or '(none)'}",
         ]
         msg = EmailMessage()
         msg["From"] = f"{ISSUER} <{user}>"
         msg["To"] = user
-        msg["Reply-To"] = r["email"]
-        msg["Subject"] = f"Aptonym claim: {r['name']} ({r['profession']})"
-        msg.set_content(
-            f"{r['name']} wants a Certified Aptonym certificate.\n\n" + "\n".join(lines) +
-            f"\n\nReview, tidy the wording, and issue or decline:\n{review}\n\nCredential ID once issued: {r['code']}\n"
-        )
+        if r.get("email"):
+            msg["Reply-To"] = r["email"]
+        if r.get("status") == "issued":
+            # An invite link redeemed: already issued, nothing to review.
+            msg["Subject"] = f"{r['name']} claimed their aptonym certificate"
+            msg.set_content(
+                f"{r['name']} opened your invite link and took their certificate.\n\n" + "\n".join(lines) +
+                f"\n\nTheir certificate: {SITE}/aptonyms/certificate/{r['code']}\n"
+            )
+        else:
+            msg["Subject"] = f"Aptonym claim: {r['name']} ({r['profession']})"
+            msg.set_content(
+                f"{r['name']} wants a Certified Aptonym certificate.\n\n" + "\n".join(lines) +
+                f"\n\nReview, tidy the wording, and issue or decline:\n{review}\n\nCredential ID once issued: {r['code']}\n"
+            )
         try:
             s.send_message(msg)
             done.append(r["code"])

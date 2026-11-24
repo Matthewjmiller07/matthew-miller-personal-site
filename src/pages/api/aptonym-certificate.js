@@ -5,6 +5,8 @@ export const prerender = false;
  *
  *   POST { action: 'submit', name, part, profession, fits, proof, linkedin, email }
  *        → { code, claim }   the claimant's private status link is /aptonyms/certificate/<code>?t=<claim>
+ *   POST { action: 'redeem', token, email?, linkedin? }
+ *        → { code, claim }   a personal invite link for someone already in the registry: issued on the spot
  *   POST { action: 'decide', code, key, decision: 'issue'|'decline', part?, profession?, fits?, note? }
  *        → { status }        used by the review page linked from Matthew's email
  *
@@ -100,6 +102,23 @@ export async function POST({ request }) {
     }
     await notify();
     const row = Array.isArray(data) ? data[0] : data;
+    return json({ code: row.code, claim: row.claim_token });
+  }
+
+  if (body?.action === 'redeem') {
+    const email = str(body.email, 200).toLowerCase();
+    if (email && !EMAIL_RE.test(email)) return json({ error: 'That email address doesn’t look right.' }, 400);
+    const linkedin = url(body.linkedin);
+    if (body.linkedin && (!linkedin || !/(^|\.)linkedin\.com$/i.test(new URL(linkedin).hostname)))
+      return json({ error: 'The LinkedIn field should be a linkedin.com/in/… link.' }, 400);
+    const { data, error } = await supabase.rpc('aptonym_invite_redeem', {
+      p_token: str(body.token, 64),
+      p_email: email || null,
+      p_linkedin: linkedin,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row) return json({ error: 'That invite link isn’t valid.' }, 403);
+    await notify();
     return json({ code: row.code, claim: row.claim_token });
   }
 

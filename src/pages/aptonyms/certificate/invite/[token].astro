@@ -1,0 +1,101 @@
+---
+export const prerender = false;
+
+// A personal invite for someone already in the aptonym registry. Matthew sends the link (from
+// /aptonyms/certificate/invites); the holder confirms and their certificate is issued on the spot,
+// no review, because Matthew vetted the entry when he added it. Once used, the link opens the certificate.
+import Layout from '../../../../layouts/Layout.astro';
+import AptonymCertificate from '../../../../components/AptonymCertificate.astro';
+import { supabase } from '../../../../lib/supabase';
+import { CREDENTIAL, ISSUER, type Part } from '../../../../lib/aptonymCertificate';
+
+const token = (Astro.params.token ?? '').slice(0, 64);
+const { data } = await supabase.rpc('aptonym_invite_get', { p_token: token });
+const inv = (Array.isArray(data) ? data[0] : data) as
+  | { aptonym_name: string; aptonym_part: string; profession: string; how_it_fits: string; code: string | null }
+  | undefined;
+if (inv?.code) return Astro.redirect(`/aptonyms/certificate/${inv.code}`);
+if (!inv) Astro.response.status = 404;
+const part = (['First', 'Last', 'Both'].includes(inv?.aptonym_part ?? '') ? inv!.aptonym_part : 'Last') as Part;
+const first = inv?.aptonym_name.split(/\s+/)[0];
+---
+
+<Layout title={inv ? `${inv.aptonym_name}: your aptonym certificate` : 'Invite not found'} description={`Claim your ${CREDENTIAL} certificate from ${ISSUER}.`} image="/aptonyms/certificate-og.png">
+  <meta slot="head" name="robots" content="noindex, nofollow" />
+  <div class="max-w-5xl mx-auto px-4 py-10 sm:py-14">
+    {!inv && (
+      <section class="max-w-xl">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">This invite link isn’t valid</h1>
+        <p class="mt-3 text-gray-600 dark:text-gray-300">Check you copied the whole link, or <a href="/aptonyms/certificate" class="underline text-amber-600 dark:text-amber-400">claim your certificate here</a>.</p>
+      </section>
+    )}
+    {inv && (
+      <>
+        <header class="max-w-3xl mb-8">
+          <p class="text-xs font-semibold tracking-[0.3em] uppercase text-amber-600 dark:text-amber-400">{ISSUER}</p>
+          <h1 class="text-3xl sm:text-5xl font-bold text-gray-900 dark:text-white mt-2">{first}, your name is your job.</h1>
+          <p class="text-lg text-gray-600 dark:text-gray-300 mt-4">
+            You’re in <a href={`/aptonyms/${encodeURIComponent(inv.aptonym_name)}`} class="underline">the aptonym registry</a>
+            as {inv.profession}. Your <strong>{CREDENTIAL}</strong> certificate is ready. Claim it below, then add it to your
+            LinkedIn profile in one click.
+          </p>
+        </header>
+
+        <AptonymCertificate name={inv.aptonym_name} part={part} profession={inv.profession} fits={inv.how_it_fits} code="APT-····-······" watermark="YOURS" />
+
+        <form id="redeem" data-token={token} class="mt-8 max-w-xl space-y-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 sm:p-6">
+          <div>
+            <label for="r-linkedin" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Your LinkedIn profile <span class="font-normal text-gray-400">(optional)</span></label>
+            <input id="r-linkedin" name="linkedin" type="text" inputmode="url" autocapitalize="off" maxlength="300" placeholder="linkedin.com/in/…"
+              class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white px-3 py-2" />
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Shown on your certificate page so people can find you.</p>
+          </div>
+          <div>
+            <label for="r-email" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Email <span class="font-normal text-gray-400">(optional)</span></label>
+            <input id="r-email" name="email" type="email" maxlength="200" autocomplete="email" placeholder="you@example.com"
+              class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white px-3 py-2" />
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">We’ll email you the link to your certificate. Never shown anywhere.</p>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Something on it wrong? Reply to whoever sent you this link before claiming, and it’ll be fixed.</p>
+          <p id="redeem-error" class="hidden text-sm text-red-600 dark:text-red-400" role="alert"></p>
+          <button type="submit" class="w-full rounded-md bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 transition-colors disabled:opacity-60">
+            Claim my certificate
+          </button>
+        </form>
+      </>
+    )}
+  </div>
+</Layout>
+
+<script>
+  function init() {
+    const form = document.getElementById('redeem') as HTMLFormElement | null;
+    if (!form || form.dataset.ready) return;
+    form.dataset.ready = '1';
+    const err = document.getElementById('redeem-error')!;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.classList.add('hidden');
+      const btn = form.querySelector('button') as HTMLButtonElement;
+      btn.disabled = true;
+      btn.textContent = 'Issuing…';
+      const fd = new FormData(form);
+      try {
+        const res = await fetch('/api/aptonym-certificate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'redeem', token: form.dataset.token, email: fd.get('email'), linkedin: fd.get('linkedin') }),
+        });
+        const out = await res.json();
+        if (!res.ok || !out.code) throw new Error(out.error || 'Something went wrong.');
+        location.href = `/aptonyms/certificate/${out.code}?t=${out.claim}&welcome=1`;
+      } catch (x) {
+        err.textContent = (x as Error).message;
+        err.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Claim my certificate';
+      }
+    });
+  }
+  document.addEventListener('astro:page-load', init);
+</script>
