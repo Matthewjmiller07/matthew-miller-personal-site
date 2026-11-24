@@ -91,7 +91,7 @@ def decisions(s, user, token):
                 f"{page}\n\n"
                 f"To put it on LinkedIn, open that page and press \"Add to LinkedIn profile\". It fills in\n"
                 f"Licenses & certifications for you:\n\n"
-                f"  Name: Certified Aptonym\n  Issuing organization: {ISSUER}\n  Credential ID: {r['code']}\n  Credential URL: {page}\n\n"
+                f"  Name: Certified Aptonym\n  Issuing organization: The Other Matthew Miller\n  Credential ID: {r['code']}\n  Credential URL: {page}\n\n"
                 f"The same page has a share button and a downloadable image of the certificate.\n"
                 + (f"\nA note from the registrar: {note}\n" if note else "")
                 + f"\nCongratulations,\nMatthew Miller\nRegistrar, {ISSUER}\n{SITE}/aptonyms\n"
