@@ -1,0 +1,528 @@
+---
+import Layout from '../layouts/Layout.astro';
+import S from '../data/mishneh-torah/summary.json';
+import paintings from '../data/mishneh-torah/paintings.json';
+import { VOICE, REALM, ACTOR } from '../lib/mishneh-torah-jev.js';
+
+// The whole Mishneh Torah read by Jev, halakha by halakha (scripts/mishneh-torah/analyze.mjs), aggregated by
+// scripts/mishneh-torah/insights.mjs. Everything drawn here is computed from Jev's typed answers.
+const T = S.totals;
+const pct = (x: number, d = 0) => `${(x * 100).toFixed(d)}%`;
+const fmt = (n: number) => n.toLocaleString('en-US');
+const jevCost = (S.tokens * 0.042 / 1e6).toFixed(2);
+const books = S.books;
+const H = S.hilchot;
+const sefaria = (title: string, c?: number, n?: number) => `https://www.sefaria.org/Mishneh_Torah,_${title.replace(/ /g, '_')}${c ? `.${c}${n ? `.${n}` : ''}` : ''}`;
+const lab = (o: Record<string, [string, string]>, k: string) => o[k]?.[0] || k;
+const byKey = (arr: any[], k: string) => [...arr].sort((a, b) => b[k] - a[k]);
+
+// Colour scales. Warmth: slate blue (dry) to gold (moving). Stakes: pale to crimson.
+const warmCol = (w: number) => { const t = Math.max(0, Math.min(1, w / 2.2)); return `hsl(${215 - t * 175} ${35 + t * 50}% ${38 + t * 22}%)`; };
+const BOOK_HUES = books.map((_, i) => (i * 360) / 14);
+
+// 1. The Hand: 14 petals, one per book, one ray per chapter. Ray length is the chapter's stakes, colour
+// its warmth, and the ray fades by how little of it can be kept today.
+const R0 = 118, CX = 400, CY = 400;
+const totalCh = S.series.length;
+const gapDeg = 2.2;
+const usable = 360 - gapDeg * 14;
+let ang = -90;
+const rays: { x1: number; y1: number; x2: number; y2: number; col: string; op: number; title: string }[] = [];
+const petals: { a0: number; a1: number; mid: number; b: any }[] = [];
+books.forEach((b) => {
+  const chs = S.series.filter((p) => b.hilchot.includes(p.i));
+  const span = (chs.length / totalCh) * usable;
+  const a0 = ang;
+  chs.forEach((p, k) => {
+    const a = ((a0 + (k + 0.5) * (span / chs.length)) * Math.PI) / 180;
+    const len = 28 + p.stakes * 58 + p.abstraction * 8;
+    rays.push({
+      x1: CX + Math.cos(a) * R0, y1: CY + Math.sin(a) * R0, x2: CX + Math.cos(a) * (R0 + len), y2: CY + Math.sin(a) * (R0 + len),
+      col: warmCol(p.warmth), op: 0.35 + 0.65 * p.today, title: `${H[p.i].title} ${p.c}`,
+    });
+  });
+  petals.push({ a0, a1: a0 + span, mid: a0 + span / 2, b });
+  ang += span + gapDeg;
+});
+const arc = (r: number, a0: number, a1: number) => {
+  const p = (a: number) => [CX + Math.cos((a * Math.PI) / 180) * r, CY + Math.sin((a * Math.PI) / 180) * r];
+  const [x0, y0] = p(a0), [x1, y1] = p(a1);
+  return `M${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(1)},${y1.toFixed(1)}`;
+};
+
+// 2. The seismograph: warmth up, stakes down, chapter by chapter.
+const SW = 1200, SH = 300, MID = 150;
+const sx = (k: number) => (k / (totalCh - 1)) * SW;
+const smooth = (vals: number[], w = 3) => vals.map((_, k) => { const s = vals.slice(Math.max(0, k - w), k + w + 1); return s.reduce((a, b) => a + b, 0) / s.length; });
+const warmS = smooth(S.series.map((p) => p.warmth)), stakeS = smooth(S.series.map((p) => p.stakes));
+const area = (vals: number[], sign: number, scale: number) => `M0,${MID} ` + vals.map((v, k) => `L${sx(k).toFixed(1)},${(MID - sign * v * scale).toFixed(1)}`).join(' ') + ` L${SW},${MID} Z`;
+const bookStarts = books.map((b) => S.series.findIndex((p) => b.hilchot.includes(p.i)));
+
+// 3. The constellation: 84 hilchot, abstraction (x) by warmth (y), size by length, colour by how much applies today.
+const CW = 900, CH = 520;
+const cxs = (a: number) => 50 + ((a - 1.1) / (3.4 - 1.1)) * (CW - 100);
+const cys = (w: number) => CH - 40 - (w / 2.9) * (CH - 80);
+const labelled = new Set([...byKey(H, 'warmth').slice(0, 7), ...byKey(H, 'abstraction').slice(0, 4), ...[...H].sort((a, b) => a.warmth - b.warmth).slice(0, 1), ...byKey(H, 'stakes').slice(0, 2)].map((h) => h.title));
+
+// Findings.
+const love = books.find((b) => b.en === 'Love')!, service = books.find((b) => b.en === 'Service')!, offerings = books.find((b) => b.en === 'Offerings')!, purity = books.find((b) => b.en === 'Purity')!;
+const pools = H.find((h) => h.title === 'Immersion Pools')!;
+const knowledge = books[0], judges = books[13];
+const warmestH = byKey(H, 'warmth').slice(0, 3), coldestH = [...H].sort((a, b) => a.warmth - b.warmth).slice(0, 3);
+const gravestH = byKey(H, 'stakes')[0], gentlestH = [...H].sort((a, b) => a.stakes - b.stakes)[0];
+const vi = (k: string) => S.voice.indexOf(k), ri = (k: string) => S.realm.indexOf(k), ai = (k: string) => S.actor.indexOf(k);
+const orderCh = S.moods.order || 0;
+const seasons = books.find((b) => b.en === 'Seasons')!;
+const mostWhy = byKey(books, 'why')[0], leastWhy = [...books].sort((a, b) => a.why - b.why)[0];
+const realmWarm = S.realm.map((k, i) => ({ k, w: T.warmthByRealm[i], s: T.stakesByRealm[i], n: T.realm[i] })).sort((a, b) => b.w - a.w);
+const actorWarm = S.actor.map((k, i) => ({ k, w: T.warmthByActor[i], n: T.actor[i] })).filter((x) => x.k !== 'nobody').sort((a, b) => b.w - a.w);
+const sup = S.superlatives;
+const og = '/yad/book-1.jpg';
+const loomDims = [['voice', 'What it does'], ['realm', 'What it is about'], ['actor', 'Who it is for'], ['stakes', 'Stakes'], ['warmth', 'Warmth'], ['today', 'Kept today'], ['abstraction', 'Abstraction']];
+const legends = {
+  voice: S.voice.map((k: string) => lab(VOICE as any, k)), realm: S.realm.map((k: string) => lab(REALM as any, k)), actor: S.actor.map((k: string) => lab(ACTOR as any, k)),
+};
+---
+
+<Layout title="The Mighty Hand" description={`All ${fmt(T.n)} halakhot of Maimonides' Mishneh Torah, read one by one by TypeSafe's Jev model: what still applies, where the warmth is, how high the stakes run, drawn as art.`} image={og} imageAlt="The Book of Knowledge, painted">
+<main class="yad">
+  <header class="hero">
+    <div class="k">Maimonides × Jev · 14 books · {fmt(T.n)} halakhot</div>
+    <h1>The Mighty Hand <span lang="he">היד החזקה</span></h1>
+    <p class="lede">
+      Maimonides called his code the <i>Mishneh Torah</i>; generations called it the <i>Yad</i>, "the hand," because it has fourteen books
+      and יד is fourteen. We gave every one of its {fmt(T.n)} halakhot to TypeSafe's Jev model, one at a time, and asked the same nine
+      questions of each: what it does, what part of the world it is about, who it speaks to, how abstract it is, how high the stakes are,
+      how much warmth it carries, whether a Jew could keep it today, whether it turns on a number, and whether it gives a reason.
+      Then Jev read each of the {fmt(T.chapterCount)} chapters whole and chose its gem. Everything below is drawn from those answers.
+    </p>
+    <div class="stats">
+      <span><b>{fmt(T.n)}</b> halakhot read</span>
+      <span><b>{fmt(T.chapterCount)}</b> chapters, {T.hilchotCount} sections, 14 books</span>
+      <span><b>{(S.tokens / 1e6).toFixed(1)}M</b> tokens</span>
+      <span><b>${jevCost}</b> of Jev, all told</span>
+    </div>
+  </header>
+
+  <section class="hand-wrap" aria-labelledby="hand-h">
+    <div class="hand-text">
+      <div class="k">I · The Hand</div>
+      <h2 id="hand-h">Fourteen petals, {fmt(T.chapterCount)} rays</h2>
+      <p>Each petal is one book, in Rambam's order, clockwise from the top. Each ray is one chapter. A ray grows longer with its <b>stakes</b>
+        (and a little with its abstraction), turns from slate to gold with its <b>warmth</b>, and fades when it can no longer be kept without a Temple.</p>
+      <p>The ghostly quarter at the bottom right is the Temple: Service, Offerings and Purity. The gold at the top is where Rambam begins,
+        with God, character and repentance, and the gold returning at the end is mourning, kings and the Messiah.</p>
+      <ol class="petal-key">
+        {books.map((b, i) => <li><span style={`background:hsl(${BOOK_HUES[i]} 45% 55%)`}></span>{b.en} <i lang="he">{b.he.replace('ספר ', '')}</i></li>)}
+      </ol>
+    </div>
+    <svg class="hand" viewBox="0 0 800 800" role="img" aria-label="A rose of 1,006 rays, one for each chapter of the Mishneh Torah">
+      <defs>
+        <radialGradient id="glow"><stop offset="0" stop-color="#c9a257" stop-opacity=".22" /><stop offset="1" stop-color="#c9a257" stop-opacity="0" /></radialGradient>
+      </defs>
+      <circle cx={CX} cy={CY} r="380" fill="url(#glow)" />
+      {rays.map((r) => <line x1={r.x1.toFixed(1)} y1={r.y1.toFixed(1)} x2={r.x2.toFixed(1)} y2={r.y2.toFixed(1)} stroke={r.col} stroke-opacity={r.op.toFixed(2)} stroke-width="1.6" stroke-linecap="round"><title>{r.title}</title></line>)}
+      {petals.map((p, i) => <path d={arc(R0 - 8, p.a0, p.a1)} stroke={`hsl(${BOOK_HUES[i]} 45% 55%)`} stroke-width="5" fill="none" />)}
+      {petals.map((p, i) => {
+        const a = (p.mid * Math.PI) / 180;
+        return <text x={(CX + Math.cos(a) * (R0 - 30)).toFixed(1)} y={(CY + Math.sin(a) * (R0 - 30) + 4).toFixed(1)} text-anchor="middle" class="pn">{i + 1}</text>;
+      })}
+      <text x={CX} y={CY + 26} text-anchor="middle" class="yud">יד</text>
+    </svg>
+  </section>
+
+  <section aria-labelledby="seis-h">
+    <div class="k">II · The Seismograph</div>
+    <h2 id="seis-h">Warmth above the line, stakes below</h2>
+    <p class="sub">Every chapter in order, smoothed over seven chapters. Gold rises with warmth, crimson falls with stakes. The code is
+      framed in warmth: it opens with God and character and closes with mourning and the Messiah, and the long cold valley between is the Temple and its purity.</p>
+    <div class="seis-scroll">
+      <svg class="seis" viewBox={`0 0 ${SW} ${SH + 40}`} preserveAspectRatio="none" role="img" aria-label="Warmth and stakes across every chapter of the Mishneh Torah">
+        {bookStarts.map((s, i) => <rect x={sx(s).toFixed(1)} y="0" width={(sx(bookStarts[i + 1] ?? totalCh - 1) - sx(s)).toFixed(1)} height={SH} fill={i % 2 ? 'rgba(255,255,255,.025)' : 'transparent'} />)}
+        <path d={area(warmS, 1, 52)} fill="#d6a84a" fill-opacity=".85" />
+        <path d={area(stakeS, -1, 36)} fill="#a8323a" fill-opacity=".75" />
+        <line x1="0" x2={SW} y1={MID} y2={MID} stroke="#e8d4aa" stroke-opacity=".4" />
+        {bookStarts.map((s, i) => <text x={(sx(s) + 4).toFixed(1)} y={SH + 22} class="bl">{books[i].en}</text>)}
+      </svg>
+    </div>
+  </section>
+
+  <section aria-labelledby="loom-h">
+    <div class="k">III · The Loom</div>
+    <h2 id="loom-h">{fmt(T.n)} threads</h2>
+    <p class="sub">Every halakha is one stitch, woven in order from the first law of the Foundations of the Torah to the last law of Kings and Wars.
+      Change what the colour means. Hover or tap a stitch to read what Jev said about it.</p>
+    <div class="dims" role="tablist">
+      {loomDims.map(([k, l], i) => <button type="button" data-dim={k} aria-pressed={i === 0 ? 'true' : 'false'}>{l}</button>)}
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="loom-box"><canvas id="loom" aria-label="Every halakha as a coloured stitch"></canvas><div class="tip" id="tip" hidden></div></div>
+    <p class="note" id="loomnote">Loading {fmt(T.n)} halakhot…</p>
+  </section>
+
+  <section class="findings" aria-labelledby="find-h">
+    <div class="k">IV · What Jev found</div>
+    <h2 id="find-h">Nine findings</h2>
+    <ol>
+      <li>
+        <h3>{pct(T.today)} of it can be kept today</h3>
+        <p>Jev judged {fmt(Math.round(T.today * T.n))} of the {fmt(T.n)} halakhot ({pct(T.todayWords / T.totalWords)} of the words) practicable with no Temple, no Sanhedrin and no king.
+          The Book of Love (prayer, tefillin, blessings, circumcision) is {pct(love.today)} live. Service is {pct(service.today, 1)} and Offerings {pct(offerings.today, 1)}.
+          Rambam codified the altar with the same care as the siddur, for a Temple that had been gone for over a thousand years.</p>
+        <div class="bars">{books.map((b) => <div class="bar"><span>{b.en}</span><i style={`width:${b.today * 100}%`}></i><em>{pct(b.today)}</em></div>)}</div>
+      </li>
+      <li>
+        <h3>One island in the Book of Purity</h3>
+        <p>Purity is {pct(purity.today)} practicable, but one of its sections stands out: <a href={sefaria('Immersion Pools')}>Immersion Pools</a> at {pct(pools.today)}.
+          Everything else about ritual purity waits for the Temple; the mikveh never stopped.</p>
+      </li>
+      <li>
+        <h3>It is a casebook, not a list of commandments</h3>
+        <p>{pct(T.voice[vi('case')])} of halakhot rule on a case ("if a person did this, then…"). Plain commands are {pct(T.voice[vi('command')], 1)}, prohibitions {pct(T.voice[vi('prohibition')])},
+          definitions {pct(T.voice[vi('definition')])}, and statements of belief under one percent. The Book of Knowledge is the exception: there, character and belief take
+          {pct(knowledge.voice[vi('ethic')] + knowledge.voice[vi('belief')])} of the text.</p>
+      </li>
+      <li>
+        <h3>The warmth is at the edges</h3>
+        <p>The warmest sections are {warmestH.map((h, i) => <><a href={sefaria(h.title)}>{h.title}</a>{i < warmestH.length - 1 ? ', ' : ''}</>)}.
+          The coldest are {coldestH.map((h, i) => <><a href={sefaria(h.title)}>{h.title}</a>{i < coldestH.length - 1 ? ', ' : ''}</>)}: on Jev's five-point scale from dry to moving, {coldestH[0].warmth.toFixed(2)}.
+          Book by book, warmth starts at {knowledge.warmth.toFixed(2)} in Knowledge, sinks to {purity.warmth.toFixed(2)} in Purity, and climbs back to {judges.warmth.toFixed(2)} in Judges.</p>
+      </li>
+      <li>
+        <h3>Money is warmer than the altar</h3>
+        <p>By subject, halakhot about the mind and heart are by far the warmest ({realmWarm[0].w.toFixed(2)}). Next come people, words and money
+          ({T.warmthByRealm[ri('money')].toFixed(2)}): the laws of wages, loans and damages are full of care for the worker and the poor.
+          Animals and objects ({T.warmthByRealm[ri('creatures')].toFixed(2)} and {T.warmthByRealm[ri('things')].toFixed(2)}), most of them the Temple's, are the coldest.</p>
+        <div class="bars">{realmWarm.map((r) => <div class="bar"><span>{lab(REALM as any, r.k)}</span><i style={`width:${(r.w / realmWarm[0].w) * 100}%;background:${warmCol(r.w)}`}></i><em>{r.w.toFixed(2)}</em></div>)}</div>
+      </li>
+      <li>
+        <h3>The sage gets the warmest words</h3>
+        <p>Halakhot about the Torah scholar and the pious person average {T.warmthByActor[ai('sage')].toFixed(2)} for warmth, laws for the king {T.warmthByActor[ai('king')].toFixed(2)},
+          laws for everyone {T.warmthByActor[ai('everyone')].toFixed(2)}, and laws for priests {T.warmthByActor[ai('priest')].toFixed(2)}. A third of the code ({pct(T.actor[ai('everyone')])}) is addressed to every Jew;
+          a quarter ({pct(T.actor[ai('householder')])}) to the owner, farmer, buyer and lender.</p>
+      </li>
+      <li>
+        <h3>Gravity and warmth barely move together</h3>
+        <p>Across all halakhot, stakes and warmth correlate at r = {T.corr.toFixed(2)}: almost nothing. The gravest section is
+          <a href={sefaria(gravestH.title)}>{gravestH.title}</a> ({gravestH.stakes.toFixed(2)} of 4), which is also one of the most humane:
+          it is where Rambam rules that whoever can save a life and does not has broken &ldquo;do not stand idly by your neighbour&rsquo;s blood.&rdquo; The gentlest is <a href={sefaria(gentlestH.title)}>{gentlestH.title}</a>.</p>
+      </li>
+      <li>
+        <h3>{pct(orderCh / T.chapterCount)} of chapters are calm order</h3>
+        <p>Asked for each chapter's mood, Jev answered "order" for {fmt(orderCh)} of {fmt(T.chapterCount)}. Justice took {S.moods.justice}, grief {S.moods.grief} (almost all in Mourning),
+          wisdom {S.moods.wisdom}, awe {S.moods.awe}, danger {S.moods.danger}, mercy {S.moods.mercy}, and joy exactly {S.moods.joy}: a chapter of the Seder night,
+          "in every generation a person must show himself as if he had left Egypt."</p>
+      </li>
+      <li>
+        <h3>Almost half turns on a number</h3>
+        <p>{pct(T.number)} of halakhot hinge on a quantity, a measure or a span of time. Seasons leads at {pct(seasons.number)}: the calendar is arithmetic.
+          {mostWhy.en} gives reasons most often ({pct(mostWhy.why)}, by Jev's generous reading) and {leastWhy.en} least ({pct(leastWhy.why)}).</p>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="gal-h">
+    <div class="k">V · Fourteen paintings</div>
+    <h2 id="gal-h">One for each book</h2>
+    <p class="sub">Each painting shows a halakha that Jev chose as the gem of its chapter: of each book's gems, the most concrete one Jev scored warmest.
+      The book's own profile sets the painting: its main subject chooses the place and palette, and its warmth, stakes and abstraction choose the tradition.
+      FLUX.2 [klein] 4B painted them.</p>
+    <div class="gallery">
+      {paintings.map((p) => {
+        const b = books[p.num - 1];
+        return (
+          <figure class="book">
+            <img src={p.img} alt={`The Book of ${p.en}: ${p.text.slice(0, 120)}`} loading="lazy" width="1080" height="720" />
+            <figcaption>
+              <div class="bn"><span>{p.num}</span> {p.en} <i lang="he">{p.he}</i></div>
+              <blockquote lang="he" dir="rtl">{p.heText.length > 260 ? `${p.heText.slice(0, 257)}…` : p.heText}</blockquote>
+              <blockquote>{p.text.length > 320 ? `${p.text.slice(0, 317)}…` : p.text}</blockquote>
+              <a class="ref" href={sefaria(p.ref.replace(/ (\d+):(\d+)$/, ''), +p.ref.match(/(\d+):/)![1], +p.ref.match(/:(\d+)$/)![1])}>{p.ref}</a>
+              <dl>
+                <div><dt>Halakhot</dt><dd>{fmt(b.n)}</dd></div>
+                <div><dt>Kept today</dt><dd>{pct(b.today)}</dd></div>
+                <div><dt>Warmth</dt><dd>{b.warmth.toFixed(2)}</dd></div>
+                <div><dt>Stakes</dt><dd>{b.stakes.toFixed(2)}</dd></div>
+              </dl>
+            </figcaption>
+          </figure>
+        );
+      })}
+    </div>
+  </section>
+
+  <section aria-labelledby="con-h">
+    <div class="k">VI · The Constellation</div>
+    <h2 id="con-h">{T.hilchotCount} sections as stars</h2>
+    <p class="sub">Each star is one section of laws, placed by how abstract it is (left to right) and how warm (bottom to top). Its size is its length,
+      and its colour is how much of it can be kept today: teal for practice, rust for the Temple. Rambam's philosophy floats up and to the right; the Temple sits in the cold bottom left.</p>
+    <div class="con-scroll">
+      <svg class="con" viewBox={`0 0 ${CW} ${CH}`} role="img" aria-label="Sections of the Mishneh Torah by abstraction and warmth">
+        <line x1="50" x2={CW - 50} y1={CH - 40} y2={CH - 40} class="ax" />
+        <line x1="50" x2="50" y1="30" y2={CH - 40} class="ax" />
+        <text x={CW - 50} y={CH - 14} text-anchor="end" class="axl">more abstract →</text>
+        <text x="58" y="40" class="axl">↑ warmer</text>
+        {H.map((h) => (
+          <a href={sefaria(h.title)}>
+            <circle cx={cxs(h.abstraction).toFixed(1)} cy={cys(h.warmth).toFixed(1)} r={(2 + Math.sqrt(h.n) / 2.4).toFixed(1)}
+              fill={`hsl(${20 + h.today * 150} ${55}% ${50}%)`} fill-opacity=".8" stroke="#0c0b09"><title>{`${h.title} · ${h.n} halakhot · ${pct(h.today)} kept today · warmth ${h.warmth.toFixed(2)} · stakes ${h.stakes.toFixed(2)}`}</title></circle>
+            {labelled.has(h.title) && (cxs(h.abstraction) > CW - 220
+              ? <text x={(cxs(h.abstraction) - 6 - Math.sqrt(h.n) / 2.4).toFixed(1)} y={(cys(h.warmth) + 4).toFixed(1)} text-anchor="end" class="cl">{h.title}</text>
+              : <text x={(cxs(h.abstraction) + 6 + Math.sqrt(h.n) / 2.4).toFixed(1)} y={(cys(h.warmth) + 4).toFixed(1)} class="cl">{h.title}</text>)}
+          </a>
+        ))}
+      </svg>
+    </div>
+  </section>
+
+  <section class="supers" aria-labelledby="sup-h">
+    <div class="k">VII · Superlatives</div>
+    <h2 id="sup-h">The halakhot Jev scored highest</h2>
+    <div class="sup-grid">
+      {[['warmest', 'Warmest', 'Of all 15,000, the halakhot Jev found most moving.'], ['abstract', 'Most abstract', 'Pure thought: philosophy, love of God, the limits of knowing.'], ['why', 'Most clearly reasoned', 'Laws (not philosophy) that most plainly say why.']].map(([k, t, d]) => (
+        <div class="sup">
+          <h3>{t}</h3><p class="d">{d}</p>
+          {sup[k].map((x: any) => (
+            <article>
+              <p lang="he" dir="rtl">{x.he.length > 220 ? `${x.he.slice(0, 217)}…` : x.he}</p>
+              <p>{x.en.length > 300 ? `${x.en.slice(0, 297)}…` : x.en}</p>
+              <a href={sefaria(x.ref.replace(/ (\d+):(\d+)$/, ''), x.c, x.n)}>{x.ref}</a>
+            </article>
+          ))}
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section aria-labelledby="gem-h">
+    <div class="k">VIII · A gem from every chapter</div>
+    <h2 id="gem-h">{fmt(T.chapterCount)} chapters, {fmt(T.chapterCount)} gems</h2>
+    <p class="sub">For each chapter, Jev read every halakha and chose the one most likely to surprise, move or delight someone who has never opened the Mishneh Torah.</p>
+    <div class="gem-bar">
+      <label>Section <select id="gemsel">{books.map((b) => <optgroup label={`${b.num}. ${b.en}`}>{b.hilchot.map((i: number) => <option value={i}>{H[i].title}</option>)}</optgroup>)}</select></label>
+      <button type="button" id="gemrand">Surprise me</button>
+    </div>
+    <div id="gems" class="gems"><p class="note">Loading gems…</p></div>
+  </section>
+
+  <section class="method" aria-labelledby="m-h">
+    <div class="k">How this was made</div>
+    <h2 id="m-h">Method</h2>
+    <ol>
+      <li><b>The text.</b> All {T.hilchotCount} sections from Sefaria's public export: Eliyahu Touger's English (Moznaim) and Sefaria's merged Hebrew. {fmt(T.totalWords)} Hebrew words.</li>
+      <li><b>Jev reads each halakha.</b> One request per halakha to TypeSafe's Jev ({S.model}), with the halakha as state and nine typed questions at once:
+        three Choices (what it does, its subject, who it is for), three Scores (abstraction, stakes, warmth, each on a five-step scale) and three Nouls
+        (kept today, turns on a number, gives a reason). Jev answers with probabilities, so every label carries its confidence. {fmt(T.n)} requests ran in under two minutes.</li>
+      <li><b>Jev reads each chapter.</b> One more request per chapter, with all its halakhot: a Choice over the chapter's own halakhot for its gem, and a Choice of mood.</li>
+      <li><b>The art is the data.</b> The Hand, the Seismograph, the Loom and the Constellation are drawn straight from Jev's answers, with no hand-picking.
+        The fourteen paintings take their halakha and their art direction from the same answers, and FLUX.2 [klein] 4B paints them.</li>
+      <li><b>Caveats.</b> Jev reads the English translation, including Touger's bracketed glosses. "Kept today" is a judgement, not a psak:
+        it marks what needs a Temple, a Sanhedrin or a king, not what any community practises. The "gives a reason" Noul is generous, so it is best read book against book.</li>
+    </ol>
+    <p class="data"><a href="/yad/insights.png">The key findings as one image</a> (PNG) · Data: <a href="/data/mishneh-torah/halakhot.json">every halakha's answers</a> (JSON) · <a href="/data/mishneh-torah/chapters.json">every chapter's gem</a>.
+      See also <a href="/mega-maimonides">Mega Maimonides</a>, <a href="/painted-torah">The Painted Torah</a> and <a href="/moreh">the Guide for the Perplexed</a>.</p>
+  </section>
+</main>
+
+<script is:inline define:vars={{ legends, hilchot: H.map((h) => h.title), bookOf: H.map((h) => books.findIndex((b) => b.hilchot.includes(h.i))), bookNames: books.map((b) => b.en) }}>
+(() => {
+  const VC = ['#e0b44c', '#c4453c', '#6fa8dc', '#8e7cc3', '#9aa39a', '#e69138', '#f1e3b5', '#6aa84f', '#b45f06'];
+  const RC = ['#f1e3b5', '#cc4125', '#e69138', '#a64d79', '#6aa84f', '#8e7cc3', '#e0b44c', '#c27ba0', '#3d85c6', '#76a5af', '#d5a6bd'];
+  const AC = ['#e0b44c', '#a64d79', '#6fa8dc', '#cc4125', '#93c47d', '#e69138', '#f1e3b5', '#555'];
+  const warm = (w) => { const t = Math.max(0, Math.min(1, w / 2.2)); return `hsl(${215 - t * 175} ${35 + t * 50}% ${30 + t * 32}%)`; };
+  const stake = (s) => { const t = Math.max(0, Math.min(1, s / 4)); return `hsl(${45 - t * 45} ${30 + t * 55}% ${70 - t * 32}%)`; };
+  const abs = (a) => { const t = Math.max(0, Math.min(1, a / 4)); return `hsl(${30 + t * 230} ${40}% ${35 + t * 30}%)`; };
+  const today = (p) => (p >= 0.5 ? `hsl(170 50% ${30 + p * 20}%)` : `hsl(15 55% ${25 + (1 - p) * 20}%)`);
+  const COLOR = {
+    voice: (r) => VC[r[3]], realm: (r) => RC[r[4]], actor: (r) => AC[r[5]],
+    abstraction: (r) => abs(r[6]), stakes: (r) => stake(r[7]), warmth: (r) => warm(r[8]), today: (r) => today(r[9]),
+  };
+  const LEG = {
+    voice: legends.voice.map((l, i) => [l, VC[i]]), realm: legends.realm.map((l, i) => [l, RC[i]]), actor: legends.actor.map((l, i) => [l, AC[i]]),
+    stakes: [['None', stake(0)], ['Minor', stake(1)], ['Serious', stake(2)], ['Grave', stake(3)], ['Capital', stake(4)]],
+    warmth: [['Dry', warm(0)], ['Neutral', warm(0.55)], ['Humane', warm(1.1)], ['Warm', warm(1.65)], ['Moving', warm(2.2)]],
+    today: [['Needs the Temple, a court or a king', today(0.1)], ['Kept today', today(0.9)]],
+    abstraction: [['Physical', abs(0)], ['Mixed', abs(2)], ['Abstract', abs(4)]],
+  };
+  const canvas = document.getElementById('loom'), tip = document.getElementById('tip'), note = document.getElementById('loomnote'), legend = document.getElementById('legend');
+  let rows = [], dim = 'voice', cell = 6, cols = 0, pos = [];
+  const draw = () => {
+    if (!rows.length) return;
+    const w = canvas.parentElement.clientWidth;
+    cell = w < 600 ? 3 : 5;
+    cols = Math.floor(w / cell);
+    // Each book starts a new line, with one blank line between books.
+    pos = []; let line = 0, col = 0, prevBook = -1;
+    rows.forEach((r) => {
+      const b = bookOf[r[0]];
+      if (b !== prevBook) { if (prevBook >= 0) { line += col ? 2 : 1; col = 0; } prevBook = b; }
+      pos.push([col, line]); col++; if (col >= cols) { col = 0; line++; }
+    });
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = cols * cell * dpr; canvas.height = (line + 1) * cell * dpr;
+    canvas.style.width = `${cols * cell}px`; canvas.style.height = `${(line + 1) * cell}px`;
+    const g = canvas.getContext('2d'); g.scale(dpr, dpr);
+    g.fillStyle = '#0c0b09'; g.fillRect(0, 0, cols * cell, (line + 1) * cell);
+    rows.forEach((r, k) => { if (r.length < 4) return; g.fillStyle = COLOR[dim](r); g.fillRect(pos[k][0] * cell, pos[k][1] * cell, cell - (cell > 3 ? 1 : 0), cell - (cell > 3 ? 1 : 0)); });
+    legend.innerHTML = LEG[dim].map(([l, c]) => `<span><i style="background:${c}"></i>${l}</span>`).join('');
+  };
+  document.querySelectorAll('.dims button').forEach((b) => b.addEventListener('click', () => {
+    dim = b.dataset.dim;
+    document.querySelectorAll('.dims button').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    draw();
+  }));
+  const hit = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) / cell), y = Math.floor((e.clientY - rect.top) / cell);
+    const k = pos.findIndex((p) => p[0] === x && p[1] === y);
+    if (k < 0 || rows[k].length < 4) { tip.hidden = true; return; }
+    const r = rows[k], t = hilchot[r[0]];
+    const lv = (v, names) => names[Math.max(0, Math.min(4, Math.round(v)))];
+    tip.innerHTML = `<b>${t} ${r[1]}:${r[2]}</b><span>${bookNames[bookOf[r[0]]]}</span>
+      <span>${legends.voice[r[3]]} · ${legends.realm[r[4]]} · ${legends.actor[r[5]]}</span>
+      <span>Stakes: ${lv(r[7], ['none', 'minor', 'serious', 'grave', 'capital'])} · Warmth: ${lv(r[8], ['dry', 'neutral', 'humane', 'warm', 'moving'])}</span>
+      <span>${r[9] >= 0.5 ? 'Kept today' : 'Needs the Temple, a court or a king'} (${Math.round(r[9] * 100)}%)</span>
+      <a href="https://www.sefaria.org/Mishneh_Torah,_${t.replace(/ /g, '_')}.${r[1]}.${r[2]}" target="_blank" rel="noopener">Read it on Sefaria →</a>`;
+    const bx = canvas.parentElement.getBoundingClientRect();
+    tip.style.left = `${Math.min(bx.width - 260, Math.max(0, e.clientX - bx.left + 12))}px`;
+    tip.style.top = `${e.clientY - bx.top + 14}px`;
+    tip.hidden = false;
+  };
+  canvas.addEventListener('mousemove', hit);
+  canvas.addEventListener('click', hit);
+  canvas.parentElement.addEventListener('mouseleave', () => { tip.hidden = true; });
+  fetch('/data/mishneh-torah/halakhot.json').then((r) => r.json()).then((d) => {
+    rows = d.rows; note.textContent = `${rows.filter((r) => r.length > 3).length.toLocaleString()} halakhot · ${d.model} · built ${d.built}`; draw();
+  }).catch(() => { note.textContent = 'Could not load the halakhot.'; });
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(draw, 150); });
+
+  // Gems
+  const sel = document.getElementById('gemsel'), box = document.getElementById('gems');
+  let gems = null;
+  const MOOD = { awe: 'Awe', order: 'Order', justice: 'Justice', mercy: 'Mercy', joy: 'Joy', grief: 'Grief', danger: 'Danger', wisdom: 'Wisdom' };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const isHe = (s) => /[֐-׿]/.test((s || '').slice(0, 20));
+  const show = () => {
+    if (!gems) return;
+    const i = +sel.value, t = hilchot[i];
+    const list = Object.entries(gems).filter(([k]) => +k.split(':')[0] === i).sort((a, b) => +a[0].split(':')[1] - +b[0].split(':')[1]);
+    box.innerHTML = list.map(([k, g]) => {
+      const c = k.split(':')[1];
+      return `<article><div class="gh"><a href="https://www.sefaria.org/Mishneh_Torah,_${t.replace(/ /g, '_')}.${c}.${g.gem}" target="_blank" rel="noopener">${esc(t)} ${c}:${g.gem}</a><span class="mood m-${g.mood}">${MOOD[g.mood] || g.mood}</span></div>
+        <p lang="he" dir="rtl">${esc(g.he)}</p>${isHe(g.en) ? '' : `<p>${esc(g.en)}</p>`}</article>`;
+    }).join('');
+  };
+  sel.addEventListener('change', show);
+  document.getElementById('gemrand').addEventListener('click', () => { sel.selectedIndex = Math.floor(Math.random() * sel.options.length); show(); });
+  const load = () => fetch('/data/mishneh-torah/chapters.json').then((r) => r.json()).then((d) => { gems = d; show(); }).catch(() => { box.innerHTML = '<p class="note">Could not load the gems.</p>'; });
+  const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); load(); } }, { rootMargin: '600px' });
+  io.observe(box);
+})();
+</script>
+
+<style>
+  .yad { --gold: #c9a257; --text: #e8d4aa; --muted: #a8977a; --line: rgba(201,162,87,.28); --panel: #12100d;
+    max-width: 1200px; margin: 0 auto; padding: 3rem 16px 5rem; color: var(--text); font-family: 'Cormorant Garamond', Georgia, serif; }
+  .yad :is(h1, h2, h3, p, div, li, label, figcaption, blockquote) { color: inherit; }
+  .yad section { margin: 4.5rem 0; }
+  .yad a { color: var(--gold); }
+  .yad .k { font-family: 'Cormorant SC', Georgia, serif; font-size: .78rem; letter-spacing: .28em; text-transform: uppercase; color: var(--gold); }
+  .yad h1 { font-weight: 300; font-size: clamp(2.6rem, 8vw, 5.2rem); margin: .3rem 0 .9rem; line-height: 1; }
+  .yad h1 span { display: inline-block; font-family: 'Frank Ruhl Libre', serif; color: var(--gold); font-size: .62em; margin-inline-start: .3em; }
+  .yad h2 { font-weight: 400; font-size: clamp(1.8rem, 4.5vw, 2.7rem); margin: .3rem 0 .6rem; line-height: 1.1; }
+  .yad h3 { font-weight: 600; font-size: 1.35rem; margin: 0 0 .35rem; }
+  .yad .lede { font-size: 1.22rem; line-height: 1.6; color: var(--muted); max-width: 54rem; }
+  .yad .sub { font-size: 1.12rem; line-height: 1.55; color: var(--muted); max-width: 52rem; margin-bottom: 1.2rem; }
+  .yad .stats { display: flex; flex-wrap: wrap; gap: .5rem 1.6rem; margin-top: 1.3rem; font-size: 1.08rem; color: var(--muted); }
+  .yad .stats b { color: var(--gold); font-weight: 600; }
+  .yad .note { color: var(--muted); font-size: .95rem; }
+  .yad [lang="he"] { font-family: 'Frank Ruhl Libre', 'David', serif; }
+
+  .hand-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 2rem; align-items: center; }
+  .hand-text p { font-size: 1.1rem; line-height: 1.55; color: var(--muted); }
+  .hand-text b { color: var(--text); }
+  .hand { width: 100%; height: auto; }
+  .hand .pn { fill: var(--muted); font: 600 13px Georgia, serif; }
+  .hand .yud { fill: var(--gold); font: 400 64px 'Frank Ruhl Libre', serif; }
+  .petal-key { columns: 2; padding: 0; list-style: none; font-size: 1rem; margin-top: 1rem; counter-reset: p; }
+  .petal-key li { counter-increment: p; display: flex; align-items: center; gap: .45rem; break-inside: avoid; margin: .1rem 0; }
+  .petal-key li::before { content: counter(p); color: var(--muted); min-width: 1.3em; text-align: right; font-size: .85rem; }
+  .petal-key span { width: .9rem; height: .3rem; border-radius: 2px; flex: none; }
+  .petal-key i { color: var(--muted); font-style: normal; font-size: .9rem; }
+
+  .seis-scroll, .con-scroll { overflow-x: auto; }
+  .seis { width: 100%; min-width: 760px; height: 340px; display: block; }
+  .seis .bl { fill: var(--muted); font: 11px Georgia, serif; }
+
+  .dims { display: flex; flex-wrap: wrap; gap: .4rem; margin: .4rem 0 .7rem; }
+  .dims button { background: transparent; border: 1px solid var(--line); color: var(--text); padding: .35rem .8rem; border-radius: 999px; font: inherit; font-size: 1rem; cursor: pointer; }
+  .dims button[aria-pressed="true"] { background: var(--gold); color: #17130c; border-color: var(--gold); }
+  .legend { display: flex; flex-wrap: wrap; gap: .3rem 1rem; font-size: .95rem; color: var(--muted); margin-bottom: .8rem; min-height: 1.4rem; }
+  .legend :global(span) { display: inline-flex; align-items: center; gap: .35rem; }
+  .legend :global(i) { width: .8rem; height: .8rem; border-radius: 2px; display: inline-block; }
+  .loom-box { position: relative; border: 1px solid var(--line); background: #0c0b09; }
+  #loom { display: block; cursor: crosshair; }
+  .tip { position: absolute; z-index: 5; width: 250px; background: #17140f; border: 1px solid var(--gold); padding: .6rem .75rem; font-size: .95rem; line-height: 1.35;
+    display: flex; flex-direction: column; gap: .15rem; box-shadow: 0 10px 30px rgba(0,0,0,.6); }
+  .tip[hidden] { display: none; }
+  .tip :global(span) { color: var(--muted); }
+
+  .findings ol { list-style: none; padding: 0; counter-reset: f; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 1.2rem; }
+  .findings li { counter-increment: f; background: var(--panel); border: 1px solid var(--line); padding: 1.1rem 1.2rem 1.2rem; }
+  .findings li::before { content: counter(f, upper-roman); display: block; color: var(--gold); font-size: .9rem; letter-spacing: .15em; margin-bottom: .2rem; }
+  .findings li:first-child, .findings li:nth-child(5) { grid-column: 1 / -1; }
+  .findings p { font-size: 1.08rem; line-height: 1.55; color: var(--muted); margin: 0; }
+  .bars { margin-top: .9rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: .25rem 1.5rem; }
+  .bar { display: grid; grid-template-columns: 7.5rem 1fr 3rem; align-items: center; gap: .5rem; font-size: .98rem; }
+  .bar i { height: .55rem; background: linear-gradient(90deg, #4a8f80, #9ed3c4); border-radius: 2px; display: block; }
+  .bar em { font-style: normal; color: var(--gold); text-align: right; }
+
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 1.4rem; }
+  .book { margin: 0; background: var(--panel); border: 1px solid var(--line); }
+  .book img { width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; display: block; }
+  .book figcaption { padding: .8rem 1rem 1rem; }
+  .bn { font-size: 1.3rem; font-weight: 600; }
+  .bn span { color: var(--gold); margin-inline-end: .2rem; }
+  .bn i { font-style: normal; color: var(--muted); font-weight: 400; font-size: 1rem; margin-inline-start: .3rem; }
+  .book blockquote { margin: .5rem 0 0; font-size: 1.02rem; line-height: 1.45; color: var(--muted); }
+  .book blockquote[lang="he"] { color: var(--text); font-size: 1.06rem; }
+  .book .ref { display: inline-block; margin-top: .4rem; font-size: .95rem; }
+  .book dl { display: grid; grid-template-columns: repeat(4, 1fr); gap: .3rem; margin: .8rem 0 0; border-top: 1px solid var(--line); padding-top: .6rem; }
+  .book dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  .book dd { margin: 0; color: var(--gold); font-size: 1.05rem; }
+
+  .con { width: 100%; min-width: 640px; height: auto; display: block; }
+  .con .ax { stroke: var(--line); }
+  .con .axl { fill: var(--muted); font: italic 14px Georgia, serif; }
+  .con .cl { fill: var(--text); font: 12px Georgia, serif; paint-order: stroke; stroke: #0c0b09; stroke-width: 3px; }
+  .con a:hover circle { stroke: var(--gold); stroke-width: 2; }
+
+  .sup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1.2rem; }
+  .sup .d { color: var(--muted); margin: 0 0 .6rem; }
+  .sup article, .gems :global(article) { background: var(--panel); border: 1px solid var(--line); padding: .8rem 1rem; margin-bottom: .7rem; }
+  .sup article p, .gems :global(article p) { margin: .2rem 0 .4rem; line-height: 1.5; font-size: 1.04rem; }
+  .sup article p:not([lang]), .gems :global(article p:not([lang])) { color: var(--muted); }
+
+  .gem-bar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-bottom: 1rem; }
+  .gem-bar label { display: flex; align-items: center; gap: .4rem; min-width: 0; max-width: 100%; }
+  .gem-bar select { min-width: 0; width: 100%; background: var(--panel); color: var(--text); border: 1px solid var(--line); padding: .4rem .5rem; font: inherit; font-size: 1rem; max-width: 100%; }
+  .gem-bar button { background: var(--gold); color: #17130c; border: 0; padding: .45rem .9rem; font: inherit; font-size: 1rem; cursor: pointer; border-radius: 3px; }
+  .gems { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: .8rem; }
+  .gems :global(article) { margin: 0; }
+  .gems :global(.gh) { display: flex; justify-content: space-between; gap: .5rem; align-items: center; font-size: .95rem; }
+  .gems :global(.mood) { font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; padding: .1rem .45rem; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+  .gems :global(.m-awe), .gems :global(.m-wisdom) { color: #f1d27a; border-color: #f1d27a; } .gems :global(.m-mercy), .gems :global(.m-joy) { color: #9ed3c4; border-color: #9ed3c4; }
+  .gems :global(.m-grief), .gems :global(.m-danger) { color: #e08a7a; border-color: #e08a7a; } .gems :global(.m-justice) { color: #9fb7e0; border-color: #9fb7e0; }
+
+  .method ol { padding-inline-start: 1.2rem; }
+  .method li { font-size: 1.08rem; line-height: 1.55; color: var(--muted); margin-bottom: .6rem; }
+  .method li b { color: var(--text); }
+  .method .data { color: var(--muted); }
+
+  @media (max-width: 820px) {
+    .hand-wrap { grid-template-columns: 1fr; }
+    .hand { order: -1; }
+    .bar { grid-template-columns: 6.5rem 1fr 2.6rem; }
+  }
+</style>
+</Layout>

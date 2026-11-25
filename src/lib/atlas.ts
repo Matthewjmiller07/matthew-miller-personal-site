@@ -71,7 +71,7 @@ const RULES: [RegExp, string][] = [
   [/^\/(929|parasha-sheet)(\/|$)|^\/3d\/(parsha|plagues)$/, 'tanakh'],
   [/^\/(mega-bible|mega-bible\/ki|literary-bible|painted-torah|genealogies|kings-names|kohelet|psalm-emotions|haftarah-explorer|parsha-art|parsha-explorer|parasha|shnayim|bible-coins|biblical-timelines|graetz|sefaria-memory)$/, 'tanakh'],
   [/^\/(zmanim-widget|3d-print-tools\/leshem-yichud|calendars)(\/|$)/, 'practice'],
-  [/^\/(mega|mega-siddur|siddur|mega-mishnah|mega-maimonides|omer|zmanim|zmanim-watchface|bracha|kosher-scanner|kashrus-publications|cheese|tefillin-trials|tefillin-trials\/lite|tefillin-trials\/knots|jewish-learning-hub|moreh|coffee)$/, 'practice'],
+  [/^\/(mega|mega-siddur|siddur|mega-mishnah|mega-maimonides|yad|omer|zmanim|zmanim-watchface|bracha|kosher-scanner|kashrus-publications|cheese|tefillin-trials|tefillin-trials\/lite|tefillin-trials\/knots|jewish-learning-hub|moreh|coffee)$/, 'practice'],
   [/^\/(israel|kolnoa|balashon|aptonyms)(\/|$)/, 'israel'],
   [/^\/(kosher-cafes|imported-foods|tourism-library|oleh-car|kids-in-wartime|lost-in-translation|trees|produce)$/, 'israel'],
   [/^\/(air-quality|arxiv-feed|chess-puzzle|chicago-pulse|crypto-vibes|github-trending|hn-live|iss-now|live-sports|on-this-day|quake-watch|radio-world|sky-above|solar-watch|wiki-pulse|world-pulse|weather|weather-avatar)$/, 'pulse'],
@@ -86,7 +86,7 @@ const RULES: [RegExp, string][] = [
 // Flagships and hubs burn brighter.
 const BRIGHT: Record<string, 2 | 3> = {
   '/daf': 3, '/mega': 3, '/mega-bible': 3, '/mega-talmud': 2, '/mega-siddur': 2, '/mega-mishnah': 2,
-  '/mega-maimonides': 2, '/transcriptions': 3, '/search': 2, '/scp': 2, '/sourcesheets': 2,
+  '/mega-maimonides': 2, '/yad': 2, '/transcriptions': 3, '/search': 2, '/scp': 2, '/sourcesheets': 2,
   '/rav-asher-weiss': 2, '/parasha': 3, '/painted-torah': 2, '/929': 2, '/genealogies': 2,
   '/produce': 2, '/israel': 3, '/kolnoa': 2, '/world-pulse': 3, '/zmanim': 3, '/siddur': 2, '/art': 2, '/3d': 3,
   '/micrography': 2, '/shas-art': 2, '/about': 3, '/projects': 2, '/newsletter': 3, '/writings': 2,
@@ -130,6 +130,7 @@ const KEYWORDS: Record<string, string> = {
   '/aptonyms/certificate': 'aptonym certificate certified linkedin credential nominative determinism name fits job',
   '/slop': 'slop kitchen gross disgusting food combos recipe generator ai food photography whatsapp',
   '/mega-maimonides': 'rambam mishneh torah',
+  '/yad': 'rambam maimonides mishneh torah yad hachazakah mighty hand jev typesafe halakha data art',
   '/mega-talmud': 'gemara bavli shas daf yomi',
   '/mega-bible': 'tanach tanakh chumash torah neviim ketuvim',
   '/mega-bible/ki': 'ki כי because for that strongs H3588 translation kjv geneva fox buber rosenzweig conjunction',
