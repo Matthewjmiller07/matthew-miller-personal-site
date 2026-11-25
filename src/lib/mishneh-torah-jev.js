@@ -131,3 +131,24 @@ export const BOOKS_EN = {
   'Sefer Korbanot': 'Offerings', 'Sefer Taharah': 'Purity', 'Sefer Nezikim': 'Damages', 'Sefer Kinyan': 'Acquisition',
   'Sefer Mishpatim': 'Judgements', 'Sefer Shoftim': 'Judges',
 };
+
+// Michael's question: does what still applies change between the Land of Israel and the diaspora?
+// Two Nouls per halakha, asked of every halakha (scripts/mishneh-torah/israel.mjs).
+export const ISRAEL_QUESTIONS = {
+  israel: {
+    type: 'noul',
+    instructions: 'Could a Jew living in the Land of Israel keep or apply `halakha` today, with no Temple, no Sanhedrin and no king?',
+    criteria: {
+      true: 'It applies in practice in the Land of Israel today (including laws of the Land such as tithes, terumah, the Sabbatical year, orlah or mixed species, as practised today).',
+      false: 'It depends on the Temple, sacrifices, purity for the Temple, a Sanhedrin, a king or the Jubilee, so it cannot be kept even in the Land of Israel today.',
+    },
+  },
+  diaspora: {
+    type: 'noul',
+    instructions: 'Could a Jew living outside the Land of Israel (in the diaspora) keep or apply `halakha` today?',
+    criteria: {
+      true: 'It applies in practice outside the Land of Israel today.',
+      false: 'It applies only in the Land of Israel (tithes, terumah, the Sabbatical year, gifts of the field and similar), or it depends on the Temple, a Sanhedrin or a king.',
+    },
+  },
+};
