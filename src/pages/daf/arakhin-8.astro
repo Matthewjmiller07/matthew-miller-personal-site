@@ -1,0 +1,375 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="The Eighteen-Day Ring — Daf Yomi Game: Arakhin 8"
+  description="Arakhin 8: spin a run of days around the 7 + 11 ring to find the worst case the baraita counts, bracket the chapter's 'no less than, no more than' limits, and weigh Rabba and Rav Yehuda on God's scale."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --night:#0f1216; --card:#181d23; --line:#2f3843; --ink:#eef1f4; --mist:#a7b2be; --gold:#e8c46a; --rose:#d9707a; --sea:#6fb7c9; --grass:#8fd0a0; --red:#ee8470; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .t-ink { color: var(--ink) !important; } .t-mist { color: var(--mist) !important; } .t-gold { color: var(--gold) !important; }
+    .t-rose { color: var(--rose) !important; } .t-sea { color: var(--sea) !important; }
+    a.ref { color: var(--gold) !important; text-decoration: underline; text-underline-offset: 2px; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: .6rem; padding: 1rem; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .5rem .8rem; font-size: .95rem; line-height: 1.4; background: transparent; color: var(--ink) !important; cursor: pointer; }
+    .btn:hover:not(:disabled) { background: #222a33; }
+    .btn:disabled { cursor: default; opacity: .6; }
+    .btn.ok { border-color: var(--grass); background: #17321f; opacity: 1; } .btn.no { border-color: var(--red); background: #3b1d18; opacity: 1; }
+    .btn.prime { border-color: var(--gold); }
+    button:focus-visible, a:focus-visible, svg:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .93rem; line-height: 1.65; margin-top: .75rem; color: var(--ink) !important; }
+    .note.ok { border-color: var(--grass); } .note.no { border-color: var(--red); }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+    .ring-wrap { display: grid; place-items: center; }
+    #ring { width: min(340px, 88vw); height: auto; touch-action: none; }
+    #ring .bead { transition: r .2s, fill .2s, stroke .2s; }
+    .chip { display: inline-block; min-width: 2.1rem; text-align: center; border: 1px solid var(--line); border-radius: .3rem; padding: .1rem .3rem; font-variant-numeric: tabular-nums; }
+    .chip.hit { border-color: var(--gold); color: var(--gold) !important; }
+    .step { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: .4rem; overflow: hidden; }
+    .step button { padding: .3rem .65rem; color: var(--ink) !important; background: transparent; cursor: pointer; }
+    .step button:hover:not(:disabled) { background: #222a33; }
+    .step output { min-width: 2.4rem; text-align: center; font-variant-numeric: tabular-nums; color: var(--ink) !important; }
+    .beam { transition: transform .8s cubic-bezier(.3,1.4,.5,1); transform-origin: 160px 40px; }
+    .pan { transition: transform .8s cubic-bezier(.3,1.4,.5,1); }
+    .stone { transition: opacity .6s, transform .8s; }
+    @media (prefers-reduced-motion: reduce) { #ring .bead, .beam, .pan, .stone { transition: none !important; } }
+  </style>
+
+  <div class="min-h-screen" style="background:var(--night)">
+    <main class="max-w-3xl mx-auto px-4 py-10">
+      <a href="/daf/" class="text-sm !text-slate-400 hover:!text-amber-300">← All daf games</a>
+      <header class="mt-4">
+        <p class="frank text-2xl t-gold" dir="rtl" lang="he">ערכין ח׳ · אין פוחתין</p>
+        <h1 class="text-3xl md:text-4xl font-bold t-ink mt-1">The Eighteen-Day Ring</h1>
+        <p class="t-mist mt-2 leading-relaxed">The third chapter of Arakhin is a chapter of limits: “there is no less than … and no more than …”.
+          Today's daf brings the hardest one. A woman saw blood and doesn't know where she stands in the Torah's cycle:
+          <b class="t-rose">7 days of niddah</b> followed by <b class="t-sea">11 days of ziva</b>, around and around.
+          How many clean days until she is <i>certainly</i> back at the start? Never fewer than 7, never more than 17
+          (<a class="ref" href="https://www.sefaria.org/Arakhin.8a.5" target="_blank" rel="noopener">8a:5</a>).</p>
+        <p class="t-mist mt-2 text-sm">Score: <b id="score" class="t-gold">0</b> · three rounds below.</p>
+      </header>
+
+      <!-- ROUND 1: the ring -->
+      <section class="stn" aria-labelledby="r1">
+        <h2 id="r1" class="text-xl font-bold t-ink">1 · Find the worst case</h2>
+        <p class="t-mist mt-1 text-sm leading-relaxed">She tells you how many days she saw. You don't know where on the ring they fell, so the baraita
+          (<a class="ref" href="https://www.sefaria.org/Arakhin.8a.6" target="_blank" rel="noopener">8a:6–8b:2</a>) assumes the <b class="t-ink">worst</b>:
+          the placement that leaves the most days until a new niddah cycle surely begins. Spin the run around the ring (drag, tap a bead, or use ◀ ▶ / arrow keys),
+          then lock in the worst case.</p>
+        <p class="t-mist mt-1 text-sm leading-relaxed"><b class="t-ink">Rashi's catch</b> (<a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.8a.9.1" target="_blank" rel="noopener">on 8a:9</a>):
+          if <b>three</b> days fall in ziva and then the run goes on into niddah day 1, that can't be: three days in ziva make her a full zava, and she doesn't start a new niddah cycle until she has counted seven clean days. So that placement is off the board.</p>
+
+        <div class="card mt-4">
+          <div class="row justify-between">
+            <p class="t-ink">Round <b id="rIdx">1</b>/6: “I saw <b id="rN" class="t-gold">1</b> day<span id="rS"></span>.”</p>
+            <p class="text-sm t-mist">ring = <span class="t-rose">●</span> niddah 1–7 · <span class="t-sea">●</span> ziva 1–11</p>
+          </div>
+          <div class="ring-wrap mt-2">
+            <svg id="ring" viewBox="0 0 320 320" tabindex="0" role="slider" aria-label="Where the run of days begins on the 18-day ring" aria-valuemin="0" aria-valuemax="17" aria-valuenow="0"></svg>
+          </div>
+          <p id="readout" class="text-center t-ink mt-1 min-h-[3rem]" aria-live="polite"></p>
+          <div class="row justify-center mt-2">
+            <button class="btn" id="prev" aria-label="Move the run back one day">◀</button>
+            <button class="btn" id="next" aria-label="Move the run forward one day">▶</button>
+            <button class="btn prime" id="lock">This is the worst case</button>
+          </div>
+          <div id="rFeedback"></div>
+          <div class="row justify-end mt-3"><button class="btn hidden" id="rNext">Next round →</button></div>
+        </div>
+
+        <div class="card mt-4">
+          <p class="t-mist text-sm">The baraita's table: days seen → clean days needed. Each round you solve lights up its cell.</p>
+          <div id="table" class="row mt-2 text-sm"></div>
+          <p class="t-mist text-xs mt-2">From 3 days on, every extra day she saw takes one clean day off: the worst case always puts exactly two at the end of ziva and the rest from niddah day 1 onward (for 12 and 13, that runs past niddah into the next ziva days, as on 8b:1–2). At 13 days you hit the mishna's floor of seven (<a class="ref" href="https://www.sefaria.org/Arakhin.8b.3" target="_blank" rel="noopener">8b:3</a>).</p>
+        </div>
+      </section>
+
+      <!-- ROUND 2: brackets -->
+      <section class="stn" aria-labelledby="r2">
+        <h2 id="r2" class="text-xl font-bold t-ink">2 · No less than, no more than</h2>
+        <p class="t-mist mt-1 text-sm leading-relaxed">The mishnayot on this daf are one long list of brackets. Set the floor and ceiling for each, then check.</p>
+        <div id="brackets" class="grid gap-3 mt-4"></div>
+        <div class="row mt-3"><button class="btn prime" id="bCheck">Check all brackets</button><span id="bScore" class="t-mist text-sm"></span></div>
+      </section>
+
+      <!-- ROUND 3: scale -->
+      <section class="stn" aria-labelledby="r3">
+        <h2 id="r3" class="text-xl font-bold t-ink">3 · Mountains and the deep</h2>
+        <p class="t-mist mt-1 text-sm leading-relaxed">“Your righteousness is like the mighty mountains; Your judgments are like the great deep” (<a class="ref" href="https://www.sefaria.org/Psalms.36.7" target="_blank" rel="noopener">Ps. 36:7</a>).
+          A person's merits and sins are exactly even. God is “abundant in kindness”, but how does He tip the scale? Try both ways, then match each to its Amora (<a class="ref" href="https://www.sefaria.org/Arakhin.8b.12" target="_blank" rel="noopener">8b:12–14</a>).</p>
+        <div class="card mt-4">
+          <svg id="scale" viewBox="0 0 320 210" class="w-full max-w-md mx-auto" aria-hidden="true">
+            <path d="M40 200 Q160 150 280 200 Z" fill="#1d3442" />
+            <text x="160" y="196" text-anchor="middle" font-size="10" fill="#6fb7c9">the great deep</text>
+            <rect x="156" y="40" width="8" height="150" fill="#3b4652" />
+            <g class="beam" id="beam">
+              <rect x="50" y="36" width="220" height="8" rx="4" fill="#8a7a50" />
+              <g class="pan" id="panL"><line x1="60" y1="40" x2="45" y2="100" stroke="#6b7785"/><line x1="60" y1="40" x2="75" y2="100" stroke="#6b7785"/><path d="M35 100 h50 a25 10 0 0 1 -50 0z" fill="#56606b"/>
+                <circle cx="52" cy="95" r="6" fill="#8fd0a0"/><circle cx="68" cy="95" r="6" fill="#8fd0a0"/><circle cx="60" cy="85" r="6" fill="#8fd0a0"/>
+                <text x="60" y="125" text-anchor="middle" font-size="10" fill="#8fd0a0">merits</text></g>
+              <g class="pan" id="panR"><line x1="260" y1="40" x2="245" y2="100" stroke="#6b7785"/><line x1="260" y1="40" x2="275" y2="100" stroke="#6b7785"/><path d="M235 100 h50 a25 10 0 0 1 -50 0z" fill="#56606b"/>
+                <circle cx="252" cy="95" r="6" fill="#ee8470"/><circle cx="268" cy="95" r="6" fill="#ee8470"/><circle class="stone" id="hidden" cx="260" cy="85" r="6" fill="#ee8470"/>
+                <text x="260" y="125" text-anchor="middle" font-size="10" fill="#ee8470">sins</text></g>
+            </g>
+            <g id="hand" opacity="0" style="transition:opacity .5s"><text x="282" y="28" font-size="20">✋</text></g>
+          </svg>
+          <div class="row justify-center mt-2">
+            <button class="btn" id="doHide">Hide one sin away</button>
+            <button class="btn" id="doLift">Lift the pan of sins</button>
+            <button class="btn" id="doReset">Reset</button>
+          </div>
+          <p id="scaleNote" class="note" aria-live="polite">Even scale. Try a way of tipping it.</p>
+          <div class="grid sm:grid-cols-2 gap-3 mt-4" id="match"></div>
+          <div id="mFeedback"></div>
+        </div>
+      </section>
+
+      <section class="stn" id="learn">
+        <h2 class="text-xl font-bold t-ink">Learn the real daf</h2>
+        <ul class="mt-3 space-y-1 t-ink list-disc ps-5">
+          <li><a class="ref" href="https://www.sefaria.org/Arakhin.8a" target="_blank" rel="noopener">Arakhin 8a</a> and <a class="ref" href="https://www.sefaria.org/Arakhin.8b" target="_blank" rel="noopener">8b</a> on Sefaria</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.8a" target="_blank" rel="noopener">Rashi on 8a</a> · <a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.8b" target="_blank" rel="noopener">Rashi on 8b</a> (he works out every line of the ring)</li>
+          <li><a class="ref" href="https://www.sefaria.org/Steinsaltz_on_Arakhin.8a" target="_blank" rel="noopener">Steinsaltz</a> · <a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Arakhin.8a" target="_blank" rel="noopener">Rabbeinu Gershom</a> · <a class="ref" href="https://www.sefaria.org/Tosafot_on_Arakhin.8a" target="_blank" rel="noopener">Tosafot</a> · <a class="ref" href="https://www.sefaria.org/Rashash_on_Arakhin.8a" target="_blank" rel="noopener">Rashash</a></li>
+        </ul>
+        <p class="t-mist text-sm mt-3">Not in the game: the daf opens by finishing yesterday's five-sela purse (<a class="ref" href="https://www.sefaria.org/Arakhin.8a.1" target="_blank" rel="noopener">8a:1–2</a>): pay four and then one, and only the second vow is cleared. If he vowed “my valuation twice” in one breath, Rav Adda bar Ahava's question stays unresolved (<i>teiku</i>).
+          Rav Adda bar Ahava also asks Rabba why all this counting matters if seven clean days always permit her to her husband. Rabba answers that the count only settles her <i>status</i>, so we know whether her next bleeding starts a niddah cycle (<a class="ref" href="https://www.sefaria.org/Arakhin.8b.4" target="_blank" rel="noopener">8b:4–5</a>).
+          A baraita then covers which uncertain zavot bring an offering that the kohanim may eat: only the ones who saw 12 or 13 days (<a class="ref" href="https://www.sefaria.org/Arakhin.8b.6" target="_blank" rel="noopener">8b:6–8</a>).</p>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const sref = (r, label) => `<a class="ref" href="https://www.sefaria.org/Arakhin.${r}" target="_blank" rel="noopener">${label || r.replace('.', ':')}</a>`;
+    let score = 0;
+    const bump = (n) => { score += n; document.getElementById('score').textContent = String(score); };
+
+    // ===== Round 1: the ring =====
+    // positions 0..6 = niddah days 1..7, 7..17 = ziva days 1..11
+    const isZiva = (p) => p >= 7;
+    const label = (p) => isZiva(p) ? `ziva day ${p - 6}` : `niddah day ${p + 1}`;
+    const run = (start, n) => Array.from({ length: n }, (_, i) => (start + i) % 18);
+    function evaluate(start, n) {
+      const days = run(start, n);
+      let streak = 0;
+      // Rashi on 8a:9: three days in ziva make her a zava, so the next day can't begin a niddah cycle
+      for (const p of days) { if (isZiva(p)) streak++; else { if (streak >= 3) return { valid: false }; streak = 0; } }
+      const end = days[days.length - 1];
+      return { valid: true, clean: 17 - end, end };
+    }
+    const worst = (n) => Math.max(...Array.from({ length: 18 }, (_, s) => evaluate(s, n)).filter(e => e.valid).map(e => e.clean));
+    const ROUNDS = [
+      { n: 1, ref: '8a.6', why: 'If it was niddah day 1, she has six more days of niddah and eleven of ziva: 17.' },
+      { n: 3, ref: '8a.8', why: 'Two on the last days of ziva and the third on niddah day 1: still 6 + 11 = 17.' },
+      { n: 4, ref: '8a.9', why: 'Two at the end of ziva, two at the start of niddah: 5 + 11 = 16. Three in ziva then niddah day 1 can’t happen: after three ziva days she is a zava (Rashi).' },
+      { n: 7, ref: '8a.11', why: 'Two at the end of ziva, five in niddah: 2 + 11 = 13.' },
+      { n: 10, ref: '8a.14', why: 'Two at the end of ziva, seven in niddah, one into the next ziva: 10 of the 11 ziva days remain.' },
+      { n: 13, ref: '8b.2', why: 'Two at the end of ziva, seven of niddah, four of ziva: seven left, the mishna’s floor.' },
+    ];
+    const ALL = Array.from({ length: 13 }, (_, i) => ({ n: i + 1, c: worst(i + 1) }));
+    const solved = new Set();
+    const table = document.getElementById('table');
+    function drawTable() {
+      table.innerHTML = ALL.map(r => `<span class="chip ${solved.has(r.n) ? 'hit' : ''} t-ink" title="${r.n} days seen">${r.n}→${solved.has(r.n) ? r.c : '?'}</span>`).join('');
+    }
+
+    const svg = document.getElementById('ring');
+    const NS = 'http://www.w3.org/2000/svg';
+    const C = 160, R = 120;
+    const ang = (p) => (p / 18) * 2 * Math.PI - Math.PI / 2;
+    const beads = [];
+    let bigT, subT;
+    (function buildRing() {
+      const arc = (a0, a1, col) => {
+        const p0 = [C + 138 * Math.cos(a0), C + 138 * Math.sin(a0)], p1 = [C + 138 * Math.cos(a1), C + 138 * Math.sin(a1)];
+        const big = a1 - a0 > Math.PI ? 1 : 0;
+        const path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', `M${p0[0]} ${p0[1]} A138 138 0 ${big} 1 ${p1[0]} ${p1[1]}`);
+        path.setAttribute('stroke', col); path.setAttribute('stroke-width', '4'); path.setAttribute('fill', 'none'); path.setAttribute('opacity', '.55');
+        svg.appendChild(path);
+      };
+      arc(ang(-0.4), ang(6.4), '#d9707a'); arc(ang(6.6), ang(17.4), '#6fb7c9');
+      for (let p = 0; p < 18; p++) {
+        const a = ang(p), x = C + R * Math.cos(a), y = C + R * Math.sin(a);
+        const c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', '13'); c.setAttribute('class', 'bead');
+        c.style.cursor = 'pointer';
+        c.addEventListener('click', () => { if (!locked) { start = p; draw(); } });
+        svg.appendChild(c);
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', x); t.setAttribute('y', y + 4); t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', '11');
+        t.setAttribute('pointer-events', 'none');
+        t.textContent = isZiva(p) ? String(p - 6) : String(p + 1);
+        svg.appendChild(t);
+        beads.push({ c, t });
+      }
+      const mk = (y, txt, size, col) => { const t = document.createElementNS(NS, 'text'); t.setAttribute('x', C); t.setAttribute('y', y); t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', size); t.setAttribute('fill', col); t.textContent = txt; svg.appendChild(t); return t; };
+      mk(30, 'new cycle ↓', 10, '#e8c46a');
+      bigT = mk(C + 8, '', 38, '#e8c46a');
+      subT = mk(C + 30, '', 11, '#a7b2be');
+    })();
+
+    let ri = 0, start = 0, locked = false;
+    const readout = document.getElementById('readout');
+    function draw() {
+      const n = ROUNDS[ri].n, days = new Set(run(start, n)), ev = evaluate(start, n);
+      beads.forEach(({ c, t }, p) => {
+        const on = days.has(p);
+        c.setAttribute('fill', on ? (ev.valid ? '#7a2a33' : '#3a3f46') : '#11161b');
+        c.setAttribute('stroke', on ? (ev.valid ? '#ffb3b9' : '#ee8470') : (isZiva(p) ? '#6fb7c9' : '#d9707a'));
+        c.setAttribute('stroke-width', on ? '2.5' : '1.2');
+        c.setAttribute('r', on ? '15' : '12');
+        t.setAttribute('fill', on ? '#fff' : (isZiva(p) ? '#6fb7c9' : '#d9707a'));
+      });
+      svg.setAttribute('aria-valuenow', String(start));
+      svg.setAttribute('aria-valuetext', `starts on ${label(start)}`);
+      if (ev.valid) {
+        bigT.textContent = String(ev.clean);
+        subT.textContent = 'clean days to be sure';
+        readout.innerHTML = `Starts on <b>${label(start)}</b>, ends on <b>${label(ev.end)}</b>: <b class="t-gold">${ev.clean}</b> clean day${ev.clean === 1 ? '' : 's'} until niddah day 1 comes round.`;
+      } else {
+        bigT.textContent = '✕';
+        subT.textContent = 'zava can’t enter niddah';
+        readout.innerHTML = `Three ziva days run straight into niddah day 1. After three days in ziva she is a <b>zava</b>, and a new niddah cycle can't begin there, so the baraita doesn't consider this placement.`;
+      }
+    }
+    function setRound() {
+      const r = ROUNDS[ri]; locked = false; start = (ri * 5 + 3) % 18;
+      document.getElementById('rIdx').textContent = String(ri + 1);
+      document.getElementById('rN').textContent = String(r.n);
+      document.getElementById('rS').textContent = r.n === 1 ? '' : 's';
+      document.getElementById('rFeedback').innerHTML = '';
+      document.getElementById('rNext').classList.add('hidden');
+      document.getElementById('lock').disabled = false;
+      draw();
+    }
+    const move = (d) => { if (!locked) { start = (start + d + 18) % 18; draw(); } };
+    document.getElementById('prev').addEventListener('click', () => move(-1));
+    document.getElementById('next').addEventListener('click', () => move(1));
+    svg.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { move(1); e.preventDefault(); }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { move(-1); e.preventDefault(); }
+    });
+    let dragging = false;
+    const fromPointer = (e) => {
+      const b = svg.getBoundingClientRect();
+      const x = (e.clientX - b.left) / b.width * 320 - C, y = (e.clientY - b.top) / b.height * 320 - C;
+      let a = Math.atan2(y, x) + Math.PI / 2; if (a < 0) a += 2 * Math.PI;
+      const p = Math.round(a / (2 * Math.PI) * 18) % 18;
+      if (p !== start) { start = p; draw(); }
+    };
+    svg.addEventListener('pointerdown', (e) => { if (locked) return; dragging = true; svg.setPointerCapture(e.pointerId); fromPointer(e); });
+    svg.addEventListener('pointermove', (e) => { if (dragging && !locked) fromPointer(e); });
+    svg.addEventListener('pointerup', () => { dragging = false; });
+
+    document.getElementById('lock').addEventListener('click', () => {
+      const r = ROUNDS[ri], ev = evaluate(start, r.n), best = worst(r.n);
+      locked = true; document.getElementById('lock').disabled = true;
+      const ok = ev.valid && ev.clean === best;
+      if (ok) bump(10);
+      solved.add(r.n); drawTable();
+      document.getElementById('rFeedback').innerHTML = `<p class="note ${ok ? 'ok' : 'no'}">${ok ? '✓ That’s the worst case.' : `✗ ${ev.valid ? `That leaves ${ev.clean}, but there’s a worse placement.` : 'That placement makes her a zava.'}`}
+        Saw ${r.n} → <b class="t-gold">${best}</b> clean days. ${r.why} (${sref(r.ref)})</p>`;
+      const nx = document.getElementById('rNext');
+      if (ri < ROUNDS.length - 1) { nx.classList.remove('hidden'); nx.focus(); }
+      else document.getElementById('rFeedback').insertAdjacentHTML('beforeend', `<p class="note">Ring complete. The rest of the table is now filled in: try any of those cells on the ring yourself, and the pattern holds.</p>`);
+      if (ri === ROUNDS.length - 1) { ALL.forEach(x => solved.add(x.n)); drawTable(); }
+    });
+    document.getElementById('rNext').addEventListener('click', () => { ri++; setRound(); svg.focus(); });
+    drawTable(); setRound();
+
+    // ===== Round 2: brackets =====
+    const BR = [
+      { what: 'Payment of a valuation', unit: 'sela', lo: 1, hi: 50, init: [5, 30], ref: '8a.3', why: 'A poor man pays at least one sela; no valuation ever exceeds fifty (and in between, he pays whatever he has).' },
+      { what: 'Clean days to end her uncertainty', unit: 'days', lo: 7, hi: 17, init: [3, 20], ref: '8a.5', why: 'Round 1: 17 if she saw 1–3 days, down to 7 if she saw 13.' },
+      { what: 'Quarantine for a leprous mark', unit: 'weeks', lo: 1, hi: 3, init: [2, 2], ref: '8b.10', why: 'One week for a boil or burn on a person; up to three for a house.' },
+      { what: 'Full 30-day months in a year', unit: 'months', lo: 4, hi: 8, init: [2, 10], ref: '8b.15', why: 'At least four; the Sages didn’t see fit to make more than eight.' },
+      { what: 'Two Loaves of Shavuot eaten, counting from baking', unit: 'day', lo: 2, hi: 3, init: [1, 5], ref: '8b.15', why: 'Baked on the eve of Shavuot and eaten on the festival: day 2. If Shavuot falls on Sunday they are baked Friday: day 3.' },
+      { what: 'Shewbread eaten, counting from baking', unit: 'day', lo: 9, hi: 11, init: [7, 14], ref: '8b.15', why: 'Baked Friday, eaten the next Shabbat (day 9); day 11 if Rosh HaShana falls on Thursday–Friday and it is baked Wednesday.' },
+      { what: 'Circumcision of a baby boy', unit: 'day', lo: 8, hi: 12, init: [7, 9], ref: '8b.16', why: 'Born at twilight on Friday, then two days of Rosh HaShana on Sunday–Monday: Tuesday, day 12.' },
+    ];
+    const bWrap = document.getElementById('brackets');
+    const vals = BR.map(b => [...b.init]);
+    bWrap.innerHTML = BR.map((b, i) => `
+      <div class="card" id="b${i}">
+        <p class="t-ink font-semibold">${b.what} <span class="t-mist text-xs font-normal">(${sref(b.ref)})</span></p>
+        <div class="row mt-2 text-sm">
+          <span class="t-mist">no less than</span>
+          <span class="step"><button data-i="${i}" data-k="0" data-d="-1" aria-label="lower floor">−</button><output id="v${i}0">${vals[i][0]}</output><button data-i="${i}" data-k="0" data-d="1" aria-label="raise floor">+</button></span>
+          <span class="t-mist">no more than</span>
+          <span class="step"><button data-i="${i}" data-k="1" data-d="-1" aria-label="lower ceiling">−</button><output id="v${i}1">${vals[i][1]}</output><button data-i="${i}" data-k="1" data-d="1" aria-label="raise ceiling">+</button></span>
+          <span class="t-mist">${b.unit}</span>
+        </div>
+        <div id="bf${i}"></div>
+      </div>`).join('');
+    bWrap.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-i]'); if (!btn || bDone) return;
+      const i = +btn.dataset.i, k = +btn.dataset.k;
+      vals[i][k] = Math.max(0, vals[i][k] + +btn.dataset.d);
+      document.getElementById(`v${i}${k}`).textContent = String(vals[i][k]);
+    });
+    let bDone = false;
+    document.getElementById('bCheck').addEventListener('click', (e) => {
+      if (bDone) return; bDone = true; e.currentTarget.disabled = true;
+      let right = 0;
+      BR.forEach((b, i) => {
+        const ok = vals[i][0] === b.lo && vals[i][1] === b.hi;
+        if (ok) right++;
+        document.getElementById(`bf${i}`).innerHTML = `<p class="note ${ok ? 'ok' : 'no'}">${ok ? '✓' : `✗ It's ${b.lo}–${b.hi}.`} ${b.why}</p>`;
+      });
+      bump(right * 5);
+      document.getElementById('bScore').textContent = `${right}/${BR.length} exact`;
+    });
+
+    // ===== Round 3: the scale =====
+    const beam = document.getElementById('beam'), panL = document.getElementById('panL'), panR = document.getElementById('panR');
+    const hidden = document.getElementById('hidden'), hand = document.getElementById('hand'), sNote = document.getElementById('scaleNote');
+    const tilt = (deg) => { beam.style.transform = `rotate(${deg}deg)`; };
+    function resetScale() {
+      tilt(0); hidden.style.opacity = '1'; hidden.style.transform = ''; hand.setAttribute('opacity', '0');
+      sNote.className = 'note'; sNote.textContent = 'Even scale. Try a way of tipping it.';
+    }
+    document.getElementById('doHide').addEventListener('click', () => {
+      resetScale();
+      hidden.style.transform = 'translate(-10px, 110px)'; hidden.style.opacity = '0';
+      setTimeout(() => tilt(12), 350);
+      sNote.innerHTML = 'One sin is taken off the scale and sunk into the deep, and the merits outweigh what is left. That is <b>Rabbi Elazar</b>: “He hides away” (<i>kovesh</i>).';
+    });
+    document.getElementById('doLift').addEventListener('click', () => {
+      resetScale(); hand.setAttribute('opacity', '1'); tilt(12);
+      sNote.innerHTML = 'Every sin stays on the scale, but God lifts their pan, so the merits go down. That is <b>Rabbi Yosei son of Rabbi Ḥanina</b>: “He lifts” (<i>nosei</i>).';
+    });
+    document.getElementById('doReset').addEventListener('click', resetScale);
+
+    const MATCH = [
+      { who: 'Rabba', reading: '“Your righteousness is like the mighty mountains <i>because</i> Your judgments are cast into the great deep.”', ans: 'hide' },
+      { who: 'Rav Yehuda', reading: '“If not for Your righteousness, high as the mountains, who could withstand Your judgments, deep as the abyss?”', ans: 'lift' },
+    ];
+    const mWrap = document.getElementById('match');
+    const picks = {};
+    mWrap.innerHTML = MATCH.map((m, i) => `
+      <div class="card">
+        <p class="t-ink font-semibold">${m.who}</p>
+        <p class="t-mist text-sm mt-1">${m.reading}</p>
+        <div class="row mt-2"><button class="btn text-sm" data-m="${i}" data-v="hide">hides a sin</button><button class="btn text-sm" data-m="${i}" data-v="lift">lifts the pan</button></div>
+      </div>`).join('');
+    mWrap.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-m]'); if (!b) return;
+      const i = +b.dataset.m; if (picks[i]) return;
+      picks[i] = b.dataset.v;
+      const ok = b.dataset.v === MATCH[i].ans;
+      b.classList.add(ok ? 'ok' : 'no');
+      mWrap.querySelectorAll(`button[data-m="${i}"]`).forEach(x => { x.disabled = true; if (x.dataset.v === MATCH[i].ans) x.classList.add('ok'); });
+      if (ok) bump(10);
+      if (Object.keys(picks).length === MATCH.length) {
+        document.getElementById('mFeedback').innerHTML = `<p class="note">Rabba follows Rabbi Elazar: the sins are thrown into the deep, and <i>that</i> is the kindness. Rav Yehuda follows Rabbi Yosei son of Rabbi Ḥanina: kindness lifts the merits mountain-high, and without it no one could survive judgment (${sref('8b.14', '8b:14')}).
+          Rav Pappa reads the same verse about our mishna: “mountains” are a person's marks, settled within a week, and “the deep” is a house's marks, which can take three (${sref('8b.11', '8b:11')}).</p>`;
+      }
+    });
+  </script>
+</Layout>
