@@ -92,9 +92,37 @@ const totals = {
 const moods = {};
 Object.values(C).forEach((c) => { moods[c.mood] = (moods[c.mood] || 0) + 1; });
 
+// Inside and outside the Land (scripts/mishneh-torah/israel.mjs): [israel, diaspora] Nouls per halakha.
+// "Clearly" means Jev's two answers differ by 0.4 or more; smaller gaps are near coin-flips.
+const IS = fs.existsSync('./public/data/mishneh-torah/israel.json') ? JSON.parse(fs.readFileSync('./public/data/mishneh-torah/israel.json', 'utf8')).h : null;
+let israel = null;
+if (IS) {
+  // Where the two answers are close (gap under 0.4), they are one judgement asked twice: both take their mean.
+  const iv = (x) => { const a = IS[`${x.i}:${x.c}:${x.n}`]; if (!a) return a; if (Math.abs(a[0] - a[1]) >= 0.4) return a; const m = (a[0] + a[1]) / 2; return [m, m, a]; };
+  const prof = (rs) => {
+    const v = rs.map(iv).filter(Boolean);
+    return { n: v.length, israel: r(v.filter((a) => a[0] >= 0.5).length / v.length, 3), diaspora: r(v.filter((a) => a[1] >= 0.5).length / v.length, 3),
+      only: v.filter((a) => a[0] >= 0.5 && a[1] < 0.5).length, clear: v.filter((a) => a[0] - a[1] >= 0.4).length, reverseClear: v.filter((a) => a[1] - a[0] >= 0.4).length,
+      reverseRaw: v.filter((a) => a[2] && a[2][1] >= 0.5 && a[2][0] < 0.5).length };
+  };
+  const sections = D.hilchot.map((h, i) => ({ title: h.title, ...prof(rows.filter((x) => x.i === i)) })).sort((a, b) => (b.israel - b.diaspora) - (a.israel - a.diaspora));
+  const only = rows.filter((x) => { const a = iv(x); return a && a[0] - a[1] >= 0.4; });
+  israel = {
+    ...prof(rows),
+    books: books.map((b) => ({ en: b.en, ...prof(rows.filter((x) => b.hilchot.includes(x.i))) })),
+    sections: sections.slice(0, 8),
+    seedsShare: r(only.filter((x) => books.find((b) => b.en === 'Seeds').hilchot.includes(x.i)).length / only.length, 3),
+    examples: ['Tithes', 'Sabbatical Year and the Jubilee', 'Gifts to the Poor'].map((t) => {
+      const i = D.hilchot.findIndex((h) => h.title === t);
+      const x = only.filter((y) => y.i === i && y.words <= 70).sort((a, b) => (iv(b)[0] - iv(b)[1]) - (iv(a)[0] - iv(a)[1]))[0];
+      return x && { ref: ref(x), c: x.c, n: x.n, ...text(x.i, x.c, x.n) };
+    }).filter(Boolean),
+  };
+}
+
 fs.mkdirSync('./src/data/mishneh-torah', { recursive: true });
 fs.writeFileSync('./src/data/mishneh-torah/summary.json', JSON.stringify({
   model: D.model, built: D.built, tokens: D.tokens, voice: D.voice, realm: D.realm, actor: D.actor,
-  totals, books, hilchot, series, superlatives, moods,
+  totals, books, hilchot, series, superlatives, moods, israel,
 }) + '\n');
 console.log(JSON.stringify({ totals, moods, books: books.map((b) => [b.en, b.n, b.today, b.warmth, b.stakes, b.why]) }, null, 1));
