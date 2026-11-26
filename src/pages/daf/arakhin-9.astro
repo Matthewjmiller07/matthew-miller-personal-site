@@ -1,0 +1,422 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Full and Hollow — Daf Yomi Game: Arakhin 9"
+  description="Arakhin 9: set each month of the year to 30 or 29 days and watch where the new moon of Tishrei lands, spin the omer-to-Rosh-HaShana weekday wheel, and find whose baraita it really is."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --night:#0d1120; --card:#161b2e; --line:#2c3450; --ink:#eef0f7; --mist:#a6aec8; --moon:#f1e4b3; --gold:#e8c46a; --rose:#e0848f; --sea:#7fb8e0; --grass:#8fd0a0; --red:#ee8470; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .t-ink { color: var(--ink) !important; } .t-mist { color: var(--mist) !important; } .t-gold { color: var(--gold) !important; }
+    .t-moon { color: var(--moon) !important; } .t-rose { color: var(--rose) !important; } .t-sea { color: var(--sea) !important; } .t-grass { color: var(--grass) !important; } .t-red { color: var(--red) !important; }
+    a.ref { color: var(--gold) !important; text-decoration: underline; text-underline-offset: 2px; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: .6rem; padding: 1rem; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .5rem .8rem; font-size: .95rem; line-height: 1.4; background: transparent; color: var(--ink) !important; cursor: pointer; }
+    .btn:hover:not(:disabled) { background: #222a44; }
+    .btn:disabled { cursor: default; opacity: .6; }
+    .btn.ok { border-color: var(--grass); background: #17321f; opacity: 1; } .btn.no { border-color: var(--red); background: #3b1d18; opacity: 1; }
+    .btn.on { border-color: var(--moon); background: #2a2a3a; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .93rem; line-height: 1.65; margin-top: .75rem; color: var(--ink) !important; }
+    .note.ok { border-color: var(--grass); } .note.no { border-color: var(--red); } .note.warn { border-color: var(--gold); }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+    .months { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .4rem; }
+    @media (max-width: 480px) { .months { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    .mo { border: 1px solid var(--line); border-radius: .5rem; padding: .45rem .2rem; text-align: center; cursor: pointer; background: #12172a; transition: background .2s, border-color .2s; }
+    .mo:hover { border-color: var(--mist); }
+    .mo .he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.05rem; color: var(--ink) !important; display: block; }
+    .mo .en { font-size: .7rem; color: var(--mist) !important; display: block; }
+    .mo .d { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; display: block; }
+    .mo .w { font-size: .68rem; display: block; }
+    .mo.full { background: #2b2a1c; border-color: var(--moon); } .mo.full .d, .mo.full .w { color: var(--moon) !important; }
+    .mo.hollow { background: #121a2e; } .mo.hollow .d, .mo.hollow .w { color: var(--sea) !important; }
+    .mo svg { display: block; margin: .15rem auto; }
+    .lamp { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid var(--line); border-radius: 999px; padding: .2rem .65rem; font-size: .85rem; color: var(--ink) !important; }
+    .lamp i { width: .6rem; height: .6rem; border-radius: 50%; background: #444; display: inline-block; }
+    .lamp.ok i { background: var(--grass); box-shadow: 0 0 8px var(--grass); } .lamp.no i { background: var(--red); box-shadow: 0 0 8px var(--red); }
+    .goal { display: flex; gap: .5rem; align-items: baseline; font-size: .92rem; color: var(--mist) !important; }
+    .goal b { color: var(--ink) !important; }
+    .goal.done { color: var(--grass) !important; } .goal.done b { color: var(--grass) !important; }
+    .gauge { position: relative; height: 64px; }
+    .gauge .track { position: absolute; left: 0; right: 0; top: 30px; height: 4px; background: var(--line); border-radius: 2px; }
+    .gauge .tick { position: absolute; top: 22px; width: 1px; height: 20px; background: var(--line); }
+    .gauge .tl { position: absolute; top: 44px; transform: translateX(-50%); font-size: .7rem; color: var(--mist) !important; white-space: nowrap; }
+    .gauge .rh { position: absolute; top: 2px; transform: translateX(-50%); font-size: .75rem; color: var(--gold) !important; white-space: nowrap; }
+    .gauge .moonDot { position: absolute; top: 20px; width: 24px; height: 24px; margin-left: -12px; border-radius: 50%; background: var(--moon); box-shadow: 0 0 14px var(--moon); transition: left .6s cubic-bezier(.3,1.3,.5,1); }
+    #wheel { width: min(300px, 80vw); height: auto; }
+    #rhMark, #omerMark { transition: transform .7s cubic-bezier(.3,1.3,.5,1); transform-origin: 150px 150px; }
+    @media (prefers-reduced-motion: reduce) { .gauge .moonDot, #rhMark, #omerMark, .mo { transition: none !important; } }
+  </style>
+
+  <div class="min-h-screen" style="background:radial-gradient(ellipse at top, #1a2140 0%, var(--night) 55%)">
+    <main class="max-w-3xl mx-auto px-4 py-10">
+      <a href="/daf/" class="text-sm !text-slate-400 hover:!text-amber-300">← All daf games</a>
+      <header class="mt-4">
+        <p class="frank text-2xl t-moon" dir="rtl" lang="he">ערכין ט׳ · מלאים וחסרים</p>
+        <h1 class="text-3xl md:text-4xl font-bold t-ink mt-1">Full and Hollow</h1>
+        <p class="t-mist mt-2 leading-relaxed">The court sets every month at <b class="t-moon">30 days (full, מלא)</b> or <b class="t-sea">29 days (hollow, חסר)</b>.
+          The moon takes about 29½ days, so six of each keeps the year honest at 354 days. Yesterday's mishna says the court never makes fewer than four full months,
+          and “it did not seem right to make more than eight.” More than eight <i>what</i>? Rav Huna says full months, Ulla says hollow ones
+          (<a class="ref" href="https://www.sefaria.org/Arakhin.9a.3" target="_blank" rel="noopener">9a:3</a>). Today you get the court's pen.</p>
+        <p class="t-mist mt-2 text-sm">Score: <b id="score" class="t-gold">0</b> · three rounds below.</p>
+      </header>
+
+      <!-- ROUND 1 -->
+      <section class="stn" aria-labelledby="r1">
+        <h2 id="r1" class="text-xl font-bold t-ink">1 · Set the year, watch the moon</h2>
+        <p class="t-mist mt-1 text-sm leading-relaxed">Tap a month to flip it between 30 and 29. Every full month beyond six pulls Rosh HaShana a day later than the moon,
+          so the new moon of Tishrei shows up <i>before</i> the holiday; every hollow month beyond six does the opposite. Two days off and people mock the court for
+          declaring months at whim (<a class="ref" href="https://www.sefaria.org/Arakhin.9a.1" target="_blank" rel="noopener">9a:1</a>, <a class="ref" href="https://www.sefaria.org/Arakhin.9a.4" target="_blank" rel="noopener">9a:4</a>).
+          Rav Mesharshiyya's escape: <b class="t-ink">last year was a leap year</b>, and the length of its added month cancels one of this year's extras
+          (<a class="ref" href="https://www.sefaria.org/Arakhin.9a.2" target="_blank" rel="noopener">9a:2</a>, <a class="ref" href="https://www.sefaria.org/Arakhin.9a.5" target="_blank" rel="noopener">9a:5</a>).</p>
+
+        <div class="card mt-4">
+          <div class="months" id="months" role="group" aria-label="The twelve months, tap to flip between 30 and 29 days"></div>
+          <div class="row mt-4 justify-between">
+            <p class="t-ink text-sm">Full months: <b id="nFull" class="t-moon">6</b> · Year: <b id="nDays" class="t-moon">354</b> days</p>
+            <button class="btn text-sm" id="resetMonths">Reset to alternating</button>
+          </div>
+          <div class="row mt-3">
+            <span class="t-mist text-sm">Last year's added month:</span>
+            <button class="btn text-sm on" data-leap="0">No leap year</button>
+            <button class="btn text-sm" data-leap="29">29 days (Rabban Shimon ben Gamliel)</button>
+            <button class="btn text-sm" data-leap="30">30 days (the first tanna)</button>
+          </div>
+
+          <div class="gauge mt-5" id="gauge" aria-hidden="true"></div>
+          <p id="moonSay" class="note" aria-live="polite"></p>
+
+          <div class="row mt-3">
+            <span class="lamp" id="lampHuna"><i></i>Rav Huna: 4–8 full</span>
+            <span class="lamp" id="lampUlla"><i></i>Ulla: 4–7 full (≤ 8 hollow)</span>
+            <span class="lamp" id="lampShmuel"><i></i>Shmuel: 352–356 days</span>
+          </div>
+        </div>
+
+        <div class="card mt-4">
+          <p class="t-ink font-semibold">Court orders</p>
+          <div id="goals1" class="mt-2 space-y-1"></div>
+          <div id="g1Feedback" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- ROUND 2 -->
+      <section class="stn" aria-labelledby="r2">
+        <h2 id="r2" class="text-xl font-bold t-ink">2 · The omer wheel</h2>
+        <p class="t-mist mt-1 text-sm leading-relaxed">A baraita: <span class="frank t-moon" dir="rtl" lang="he">אין עצרת חלה אלא ביום הנף, ואין ראש השנה חלה אלא או ביום הנף או לאור עיבורו</span>.
+          Shavuot falls only on the weekday of the omer waving (16 Nisan), and Rosh HaShana only on that weekday <i>or the one after it</i>
+          (<a class="ref" href="https://www.sefaria.org/Arakhin.9b.2" target="_blank" rel="noopener">9b:2</a>). Six month-ends stand between the omer and Rosh HaShana (<a class="ref" href="https://www.sefaria.org/Arakhin.9b.3" target="_blank" rel="noopener">9b:3</a>).
+          Flip the summer months and see where Rosh HaShana lands.</p>
+
+        <div class="card mt-4">
+          <div class="grid sm:grid-cols-2 gap-4 items-center">
+            <div class="grid place-items-center">
+              <svg id="wheel" viewBox="0 0 300 300" role="img" aria-label="Weekday wheel"></svg>
+            </div>
+            <div>
+              <div class="row">
+                <span class="t-mist text-sm">Omer waved on:</span>
+                <button class="btn text-sm" id="omerPrev" aria-label="Earlier weekday">◀</button>
+                <b id="omerDay" class="t-gold text-sm">Sunday</b>
+                <button class="btn text-sm" id="omerNext" aria-label="Later weekday">▶</button>
+              </div>
+              <p class="t-ink text-sm mt-3">16 Nisan → 1 Tishrei: <b id="span" class="t-moon">162</b> days</p>
+              <p class="t-ink text-sm mt-1">Shavuot: <b id="shavDay" class="t-gold">—</b> · Rosh HaShana: <b id="rhDay" class="t-sea">—</b></p>
+              <p id="wheelSay" class="note" aria-live="polite"></p>
+            </div>
+          </div>
+          <div class="months mt-4" id="summer" role="group" aria-label="The six summer months, tap to flip"></div>
+        </div>
+
+        <div class="card mt-4">
+          <p class="t-ink font-semibold">Land Rosh HaShana on all three</p>
+          <div id="goals2" class="mt-2 space-y-1"></div>
+          <div id="whoBox" class="mt-3" hidden>
+            <p class="t-ink text-sm">The baraita never mentions the third landing. The Gemara first throws it at Rav Huna, who allows eight full months (<a class="ref" href="https://www.sefaria.org/Arakhin.9b.5" target="_blank" rel="noopener">9b:5</a>).
+              But Ulla allows <i>seven</i> full months, and that extra one could fall in summer too (<a class="ref" href="https://www.sefaria.org/Arakhin.9b.6" target="_blank" rel="noopener">9b:6</a>). So whose baraita is it?</p>
+            <div class="row mt-2" id="whoBtns">
+              <button class="btn text-sm" data-who="huna">Rav Huna's</button>
+              <button class="btn text-sm" data-who="ulla">Ulla's</button>
+              <button class="btn text-sm" data-who="acherim">Aḥerim's</button>
+            </div>
+            <div id="whoFeedback"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ROUND 3 -->
+      <section class="stn" aria-labelledby="r3">
+        <h2 id="r3" class="text-xl font-bold t-ink">3 · Aḥerim's four, five … six?</h2>
+        <p class="t-mist mt-1 text-sm leading-relaxed">Aḥerim: <span class="frank t-moon" dir="rtl" lang="he">אין בין ראש השנה לראש השנה אלא ארבעה ימים בלבד, ואם היתה שנה מעוברת — חמשה</span>.
+          Months always alternate, so Rosh HaShana moves four weekdays a year, five after a leap year (<a class="ref" href="https://www.sefaria.org/Arakhin.9b.7" target="_blank" rel="noopener">9b:7</a>).
+          But then Rosh HaShana can never fall on the omer weekday (<a class="ref" href="https://www.sefaria.org/Arakhin.9b.8" target="_blank" rel="noopener">9b:8</a>). Pick the year and find Rav Mesharshiyya's way out.</p>
+        <div class="card mt-4">
+          <div class="row">
+            <button class="btn text-sm" data-yr="354">Ordinary year</button>
+            <button class="btn text-sm" data-yr="383">Leap year, 29-day added month</button>
+            <button class="btn text-sm" data-yr="384">Leap year, 30-day added month</button>
+          </div>
+          <div id="yrOut" class="mt-3" aria-live="polite"></div>
+          <div class="row mt-3" id="fixRow" hidden>
+            <button class="btn text-sm" id="fixBtn">Make one full month after Pesach hollow</button>
+          </div>
+          <div id="fixOut" aria-live="polite"></div>
+        </div>
+
+        <div class="card mt-4">
+          <p class="t-ink font-semibold">The nazirite's calendar</p>
+          <p class="t-mist text-sm mt-1">Shmuel says a lunar year can run to 356 days (<a class="ref" href="https://www.sefaria.org/Arakhin.9b.12" target="_blank" rel="noopener">9b:12–13</a>). A man vows to be a nazirite “like the days of a year.” How many days does he count?</p>
+          <div id="naz" class="mt-3 space-y-3"></div>
+          <div id="nazFeedback"></div>
+        </div>
+      </section>
+
+      <section class="stn" id="learn">
+        <h2 class="text-xl font-bold t-ink">Learn the real daf</h2>
+        <ul class="mt-3 space-y-1 t-ink list-disc ps-5">
+          <li><a class="ref" href="https://www.sefaria.org/Arakhin.9a" target="_blank" rel="noopener">Arakhin 9a</a> and <a class="ref" href="https://www.sefaria.org/Arakhin.9b" target="_blank" rel="noopener">9b</a> on Sefaria</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.9a" target="_blank" rel="noopener">Rashi on 9a</a> · <a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.9b" target="_blank" rel="noopener">Rashi on 9b</a> (29 comments; he does the month arithmetic line by line)</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Arakhin.9b" target="_blank" rel="noopener">Rabbeinu Gershom</a> · <a class="ref" href="https://www.sefaria.org/Steinsaltz_on_Arakhin.9b" target="_blank" rel="noopener">Steinsaltz</a> · <a class="ref" href="https://www.sefaria.org/Tosafot_on_Arakhin.9b" target="_blank" rel="noopener">Tosafot</a> · <a class="ref" href="https://www.sefaria.org/Rashash_on_Arakhin.9b" target="_blank" rel="noopener">Rashash</a></li>
+        </ul>
+        <p class="t-mist text-sm mt-3">Not in the game: Rav Huna and Ulla's dispute rests on the baraita about the leap month, thirty days or (Rabban Shimon ben Gamliel) a hollow month (<a class="ref" href="https://www.sefaria.org/Arakhin.9b.1" target="_blank" rel="noopener">9b:1</a>).
+          Rav Adda bar Ahava asks why Aḥerim counted weekdays instead of just saying months alternate; Rava answers that they are teaching that we do not wait for the moon to be sighted (<a class="ref" href="https://www.sefaria.org/Arakhin.9b.10" target="_blank" rel="noopener">9b:10</a>).
+          Ravina objects that a month is 29 days, 12 hours and 793 parts, so an extra day creeps in every three years and another every thirty; since they don't come every year, the baraita leaves them out (<a class="ref" href="https://www.sefaria.org/Arakhin.9b.11" target="_blank" rel="noopener">9b:11</a>).
+          And the daf ends on a cliffhanger: Rebbi once made <i>nine</i> hollow months and the moon still came on time. His son Rabbi Shimon asks, “perhaps last year was a leap year?” (<a class="ref" href="https://www.sefaria.org/Arakhin.9b.16" target="_blank" rel="noopener">9b:16</a>). The answer is on tomorrow's daf.</p>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const sref = (r, label) => `<a class="ref" href="https://www.sefaria.org/Arakhin.${r}" target="_blank" rel="noopener">${label || r.replace('.', ':')}</a>`;
+    let score = 0;
+    const scoreEl = document.getElementById('score');
+    const bump = (n) => { score += n; scoreEl.textContent = String(score); };
+
+    const moonIcon = (full) => full
+      ? '<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="#f1e4b3"/></svg>'
+      : '<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="#7fb8e0" stroke-width="1.5"/><path d="M10 2 a8 8 0 0 1 0 16 a5 8 0 0 0 0 -16z" fill="#7fb8e0" opacity=".5"/></svg>';
+
+    // ---------- ROUND 1 ----------
+    const MONTHS = [
+      ['תשרי','Tishrei'],['חשון','Ḥeshvan'],['כסלו','Kislev'],['טבת','Tevet'],['שבט','Shevat'],['אדר','Adar'],
+      ['ניסן','Nisan'],['אייר','Iyar'],['סיון','Sivan'],['תמוז','Tammuz'],['אב','Av'],['אלול','Elul'],
+    ];
+    const ALT = MONTHS.map((_, i) => i % 2 === 0);
+    let full = ALT.slice();
+    let leap = 0;
+    let touched1 = false, touched2 = false;
+    const monthsEl = document.getElementById('months');
+
+    function renderMonths(el, list, state) {
+      el.innerHTML = list.map(([he, en], i) => {
+        const f = state[i];
+        return `<button class="mo ${f ? 'full' : 'hollow'}" data-i="${i}" aria-pressed="${f}" aria-label="${en}: ${f ? '30 days, full' : '29 days, hollow'}">
+          <span class="he" dir="rtl" lang="he">${he}</span><span class="en">${en}</span>${moonIcon(f)}<span class="d">${f ? 30 : 29}</span><span class="w">${f ? 'full' : 'hollow'}</span></button>`;
+      }).join('');
+    }
+
+    const GOALS1 = [
+      { id: 'ord', t: 'An ordinary year: 354 days, moon on time.', test: (s) => s.days === 354 && s.drift === 0 },
+      { id: 'huna', t: 'Rav Huna’s defense: eight full months, and the moon only one day early.', test: (s) => s.nFull === 8 && s.drift === 1 },
+      { id: 'ulla', t: 'Ulla’s defense: eight hollow months, and the moon only one day late.', test: (s) => s.nFull === 4 && s.drift === -1 },
+      { id: 'split', t: 'A year Rav Huna allows and Ulla forbids.', test: (s) => s.huna && !s.ulla },
+      { id: 'rebbi', t: 'Rebbi’s astonishing year: nine hollow months (9b:16).', test: (s) => s.nFull === 3 },
+    ];
+    const done1 = new Set();
+    const goals1El = document.getElementById('goals1');
+    const renderGoals1 = () => {
+      goals1El.innerHTML = GOALS1.map(g => `<p class="goal ${done1.has(g.id) ? 'done' : ''}"><span>${done1.has(g.id) ? '●' : '○'}</span><b>${g.t}</b></p>`).join('');
+    };
+    const G1NOTES = {
+      ord: `Six full, six hollow: the alternating year the Gemara treats as the default (${sref('9b.13', '9b:13')}).`,
+      huna: `Rav Huna's eight full months put the moon two days early, but last year's added month of 29 days cancels one, and “people don't pay attention to one day” <span class="frank t-moon" dir="rtl" lang="he">לא אדעתייהו דאינשי</span> (${sref('9a.2', '9a:2')}). That 29-day leap month is Rabban Shimon ben Gamliel's view, which is why Rav Huna holds like him (${sref('9b.1', '9b:1')}).`,
+      ulla: `Ulla's eight hollow months put the moon two days late; last year's 30-day added month cancels one, and for the last day people say “it was seen, we just didn't notice” <span class="frank t-moon" dir="rtl" lang="he">איתחזויי איתחזי ואנן לאו אדעתין</span> (${sref('9a.6', '9a:6')}). Ulla follows the first tanna's thirty-day leap month (${sref('9b.1', '9b:1')}).`,
+      split: `Eight full months: 356 days. Shmuel's ceiling (${sref('9b.12', '9b:12')}) only works for Rav Huna, so “Shmuel also holds like Rav Huna.”`,
+      rebbi: `Three full months: 351 days, below Shmuel's floor and outside both readings of the mishna. Rebbi did exactly this and the moon was still seen on time. He was astonished; his son suggested last year was a leap year (${sref('9b.16', '9b:16')}). The story continues on 10a.`,
+    };
+
+    const gauge = document.getElementById('gauge');
+    const pos = (d) => 50 - d * 12; // drift +n = moon n days before RH (left)
+    gauge.innerHTML = `<div class="track"></div>` +
+      [-3, -2, -1, 0, 1, 2, 3].map(d => `<div class="tick" style="left:${pos(d)}%"></div><div class="tl" style="left:${pos(d)}%">${d === 0 ? 'on time' : Math.abs(d) + (d > 0 ? ' early' : ' late')}</div>`).join('') +
+      `<div class="rh" style="left:50%">Rosh HaShana ▼</div><div class="moonDot" id="moonDot"></div>`;
+    const moonDot = document.getElementById('moonDot');
+    const moonSay = document.getElementById('moonSay');
+
+    function state1() {
+      const nFull = full.filter(Boolean).length;
+      const days = 354 + (nFull - 6);
+      const drift = (nFull - 6) + (leap === 29 ? -1 : leap === 30 ? 1 : 0);
+      return { nFull, days, drift, huna: nFull >= 4 && nFull <= 8, ulla: nFull >= 4 && nFull <= 7, shmuel: days >= 352 && days <= 356 };
+    }
+    function setLamp(id, ok) { const el = document.getElementById(id); el.classList.toggle('ok', ok); el.classList.toggle('no', !ok); }
+
+    function update1() {
+      renderMonths(monthsEl, MONTHS, full);
+      const s = state1();
+      document.getElementById('nFull').textContent = s.nFull;
+      document.getElementById('nDays').textContent = s.days;
+      const clamped = Math.max(-3.4, Math.min(3.4, s.drift));
+      moonDot.style.left = pos(clamped) + '%';
+      const n = Math.abs(s.drift);
+      let msg, cls;
+      if (s.drift === 0) { msg = 'The new moon of Tishrei appears right on Rosh HaShana.'; cls = 'ok'; }
+      else if (s.drift === 1) { msg = `The moon is one day early. “People don't pay attention to one day” (${sref('9a.2', '9a:2')}).`; cls = 'warn'; }
+      else if (s.drift === -1) { msg = `The moon is one day off. People will say “it was seen yesterday and we didn't notice” (${sref('9a.6', '9a:6')}).`; cls = 'warn'; }
+      else { msg = `The moon is ${n} days ${s.drift > 0 ? 'before' : 'after'} Rosh HaShana. People will mock the court for declaring months whenever it likes (${sref(s.drift > 0 ? '9a.1' : '9a.4', s.drift > 0 ? '9a:1' : '9a:4')}).`; cls = 'no'; }
+      moonSay.className = 'note ' + cls; moonSay.innerHTML = msg;
+      setLamp('lampHuna', s.huna); setLamp('lampUlla', s.ulla); setLamp('lampShmuel', s.shmuel);
+      const fb = document.getElementById('g1Feedback');
+      for (const g of GOALS1) {
+        if (touched1 && !done1.has(g.id) && g.test(s)) {
+          done1.add(g.id); bump(10);
+          fb.innerHTML = `<p class="note ok">${G1NOTES[g.id]}</p>`;
+        }
+      }
+      renderGoals1();
+    }
+    monthsEl.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-i]'); if (!b) return;
+      const i = +b.dataset.i; full[i] = !full[i]; touched1 = true; update1();
+      monthsEl.querySelector(`button[data-i="${i}"]`)?.focus();
+    });
+    document.getElementById('resetMonths').addEventListener('click', () => { full = ALT.slice(); touched1 = true; update1(); });
+    document.querySelectorAll('button[data-leap]').forEach(b => b.addEventListener('click', () => {
+      leap = +b.dataset.leap; touched1 = true;
+      document.querySelectorAll('button[data-leap]').forEach(x => x.classList.toggle('on', x === b));
+      update1();
+    }));
+    update1();
+
+    // ---------- ROUND 2 ----------
+    const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Shabbat'];
+    const DAYS_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+    const SUMMER = MONTHS.slice(6);
+    let summer = ALT.slice(6);
+    let omer = 0;
+    const summerEl = document.getElementById('summer');
+    const wheel = document.getElementById('wheel');
+    const ang = (i) => (i * 360 / 7) - 90;
+    const pt = (a, r) => [150 + r * Math.cos(a * Math.PI / 180), 150 + r * Math.sin(a * Math.PI / 180)];
+    let wsvg = '<circle cx="150" cy="150" r="128" fill="#12172a" stroke="#2c3450"/>';
+    for (let i = 0; i < 7; i++) {
+      const [x1, y1] = pt(ang(i) - 360 / 14, 128); const [x2, y2] = pt(ang(i) - 360 / 14, 60);
+      wsvg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2c3450"/>`;
+      const [tx, ty] = pt(ang(i), 102);
+      wsvg += `<text x="${tx}" y="${ty + 7}" text-anchor="middle" font-family="Frank Ruhl Libre, serif" font-size="22" fill="#eef0f7">${DAYS_HE[i]}</text>`;
+    }
+    wsvg += '<circle cx="150" cy="150" r="60" fill="#0d1120" stroke="#2c3450"/>';
+    wsvg += '<g id="omerMark"><path d="M150 22 l-9 -14 h18z" fill="#e8c46a"/><text x="150" y="58" text-anchor="middle" font-size="11" fill="#e8c46a">omer</text></g>';
+    wsvg += '<g id="rhMark"><path d="M150 68 l-9 18 h18z" fill="#7fb8e0"/><text x="150" y="104" text-anchor="middle" font-size="11" fill="#7fb8e0">RH</text></g>';
+    wsvg += '<text id="wheelCenter" x="150" y="156" text-anchor="middle" font-size="15" fill="#f1e4b3">+1</text>';
+    wheel.innerHTML = wsvg;
+    const omerMark = document.getElementById('omerMark');
+    const rhMark = document.getElementById('rhMark');
+    let rhRot = 0, omerRot = 0;
+
+    const GOALS2 = [
+      { off: 0, t: 'On the omer weekday itself <span class="frank" dir="rtl" lang="he">ביום הנף</span>' },
+      { off: 1, t: 'On the weekday after <span class="frank" dir="rtl" lang="he">לאור עיבורו</span>' },
+      { off: 2, t: 'Two weekdays after: the case the baraita never lists' },
+    ];
+    const done2 = new Set();
+    const goals2El = document.getElementById('goals2');
+
+    function update2() {
+      renderMonths(summerEl, SUMMER, summer);
+      const len = summer.map(f => f ? 30 : 29);
+      const span = (len[0] - 16) + len.slice(1).reduce((a, b) => a + b, 0) + 1;
+      const off = span % 7;
+      const rh = (omer + off) % 7;
+      document.getElementById('span').textContent = span;
+      document.getElementById('omerDay').textContent = DAYS[omer];
+      document.getElementById('shavDay').textContent = DAYS[omer];
+      document.getElementById('rhDay').textContent = DAYS[rh];
+      document.getElementById('wheelCenter').textContent = (off === 0 ? '±0' : '+' + off);
+      const targetO = ang(omer) + 90, targetR = ang(rh) + 90;
+      omerRot += ((targetO - omerRot) % 360 + 540) % 360 - 180;
+      rhRot += ((targetR - rhRot) % 360 + 540) % 360 - 180;
+      omerMark.style.transform = `rotate(${omerRot}deg)`;
+      rhMark.style.transform = `rotate(${rhRot}deg)`;
+      const nFullS = summer.filter(Boolean).length;
+      const ws = document.getElementById('wheelSay');
+      if (off === 1) { ws.className = 'note ok'; ws.innerHTML = `Three full, three hollow: Rosh HaShana falls the weekday after the omer, “by the light of its extra day” (${sref('9b.4', '9b:4')}).`; }
+      else if (off === 0) { ws.className = 'note ok'; ws.innerHTML = `One summer month went hollow (${nFullS} full), so Rosh HaShana falls on the omer weekday itself. Ulla's extra hollow month can land here (${sref('9b.3', '9b:3')}).`; }
+      else if (off === 2) { ws.className = 'note no'; ws.innerHTML = `${nFullS} full summer months push Rosh HaShana two weekdays past the omer. The baraita says that never happens (${sref('9b.5', '9b:5')}).`; }
+      else { ws.className = 'note no'; ws.innerHTML = `${nFullS} full summer months: no opinion on the daf moves the summer this far from alternating.`; }
+      const g = GOALS2.find(x => x.off === off);
+      if (touched2 && g && !done2.has(off) && Math.abs(nFullS - 3) <= 1) { done2.add(off); bump(10); }
+      goals2El.innerHTML = GOALS2.map(x => `<p class="goal ${done2.has(x.off) ? 'done' : ''}"><span>${done2.has(x.off) ? '●' : '○'}</span><b>${x.t}</b></p>`).join('');
+      if (done2.has(2)) document.getElementById('whoBox').hidden = false;
+    }
+    summerEl.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-i]'); if (!b) return;
+      const i = +b.dataset.i; summer[i] = !summer[i]; touched2 = true; update2();
+      summerEl.querySelector(`button[data-i="${i}"]`)?.focus();
+    });
+    document.getElementById('omerPrev').addEventListener('click', () => { omer = (omer + 6) % 7; touched2 = true; update2(); });
+    document.getElementById('omerNext').addEventListener('click', () => { omer = (omer + 1) % 7; touched2 = true; update2(); });
+    update2();
+
+    let whoDone = false;
+    document.getElementById('whoBtns').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-who]'); if (!b || whoDone) return;
+      whoDone = true;
+      const ok = b.dataset.who === 'acherim';
+      if (ok) bump(15);
+      document.querySelectorAll('#whoBtns button').forEach(x => { x.disabled = true; if (x.dataset.who === 'acherim') x.classList.add('ok'); else if (x === b) x.classList.add('no'); });
+      document.getElementById('whoFeedback').innerHTML = `<p class="note ${ok ? 'ok' : 'no'}">${ok ? 'Right.' : 'Not quite.'} Rav Huna answers that the third landing breaks Ulla just as much, so the baraita must be Aḥerim's, who hold that months always alternate (${sref('9b.7', '9b:7')}). Round 3 tests whether that works.</p>`;
+    });
+
+    // ---------- ROUND 3 ----------
+    const yrOut = document.getElementById('yrOut');
+    const fixRow = document.getElementById('fixRow');
+    const fixOut = document.getElementById('fixOut');
+    const yrSeen = new Set();
+    let fixed = false;
+    document.querySelectorAll('button[data-yr]').forEach(b => b.addEventListener('click', () => {
+      const d = +b.dataset.yr;
+      document.querySelectorAll('button[data-yr]').forEach(x => x.classList.toggle('on', x === b));
+      const wk = Math.floor(d / 7), r = d % 7;
+      const expect = d === 354 ? 4 : 5;
+      const ok = r === expect;
+      let html = `<p class="t-ink text-sm">${d} days = ${wk} weeks + <b class="${ok ? 't-grass' : 't-red'}">${r}</b>. Next Rosh HaShana moves ${r} weekdays.</p>`;
+      if (d === 354) html += `<p class="note ok">Four, as Aḥerim say. And since every summer alternates, Rosh HaShana is always the day after the omer weekday, never on it (${sref('9b.8', '9b:8')}).</p>`;
+      if (d === 383) html += `<p class="note ok">Five, as Aḥerim say for a leap year (${sref('9b.7', '9b:7')}).</p>`;
+      if (d === 384) html += `<p class="note no">Six! Aḥerim insist a leap year moves Rosh HaShana exactly five. Something has to give.</p>`;
+      yrOut.innerHTML = html;
+      if (!yrSeen.has(d)) { yrSeen.add(d); bump(5); }
+      fixRow.hidden = d !== 384 || fixed;
+      if (d !== 384) fixOut.innerHTML = '';
+    }));
+    document.getElementById('fixBtn').addEventListener('click', () => {
+      if (fixed) return; fixed = true; bump(15); fixRow.hidden = true;
+      fixOut.innerHTML = `<p class="t-ink text-sm mt-3">383 days = 54 weeks + <b class="t-grass">5</b>. And the summer now has two full months instead of three: 161 days from the omer, 23 weeks exactly.</p>
+        <p class="note ok">Rav Mesharshiyya: when the added month was thirty days, take one full month after Pesach and make it hollow, “corresponding to” the extra one. The year moves exactly five, and Rosh HaShana lands on the omer weekday itself, so Aḥerim's baraita finds both landings (${sref('9b.9', '9b:9')}).</p>`;
+    });
+
+    const NAZ = [
+      { q: '“…like the days of a solar year”', opts: [354, 356, 365], ans: 365 },
+      { q: '“…like the days of a lunar year”', opts: [352, 354, 356], ans: 354 },
+    ];
+    const nazEl = document.getElementById('naz');
+    nazEl.innerHTML = NAZ.map((n, i) => `<div><p class="t-ink text-sm">${n.q}</p><div class="row mt-1">${n.opts.map(o => `<button class="btn text-sm" data-n="${i}" data-v="${o}">${o} days</button>`).join('')}</div></div>`).join('');
+    const nazPicked = {};
+    nazEl.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-n]'); if (!b) return;
+      const i = +b.dataset.n; if (nazPicked[i] !== undefined) return;
+      nazPicked[i] = +b.dataset.v;
+      const ok = nazPicked[i] === NAZ[i].ans; if (ok) bump(10);
+      nazEl.querySelectorAll(`button[data-n="${i}"]`).forEach(x => { x.disabled = true; if (+x.dataset.v === NAZ[i].ans) x.classList.add('ok'); else if (x === b) x.classList.add('no'); });
+      if (Object.keys(nazPicked).length === NAZ.length) {
+        document.getElementById('nazFeedback').innerHTML = `<p class="note ok">The baraita gives 365 and 354 (${sref('9b.14', '9b:14')}). Why not 356, if Shmuel says a year can reach it? <span class="frank t-moon" dir="rtl" lang="he">בנדרים הלך אחר לשון בני אדם, ורוב שנים</span>: vows follow how people talk, and when people say “a lunar year” they mean the length of most years (${sref('9b.15', '9b:15')}).</p>`;
+      }
+    });
+  </script>
+</Layout>
