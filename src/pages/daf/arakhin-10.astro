@@ -1,0 +1,533 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Why Not Hallel? — Daf Yomi Game: Arakhin 10"
+  description="Arakhin 10: tally the Temple's trumpet blasts the Rabbis' way and Rabbi Yehuda's, play the makshan who breaks each rule for when Hallel is said, and learn why nobody should improve Moses' reed flute."
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&display=swap" />
+
+  <style is:global>
+    :root { --night:#140f0b; --card:#1f1813; --line:#3d3026; --ink:#f3ece2; --mist:#b8a996; --brass:#e0b45a; --reed:#b9cf7a; --silver:#cfd8e3; --rose:#e48a7c; --sky:#8cc0e6; }
+    .frank { font-family: 'Frank Ruhl Libre', serif; }
+    .t-ink { color: var(--ink) !important; } .t-mist { color: var(--mist) !important; } .t-brass { color: var(--brass) !important; }
+    .t-reed { color: var(--reed) !important; } .t-silver { color: var(--silver) !important; } .t-rose { color: var(--rose) !important; } .t-sky { color: var(--sky) !important; }
+    a.ref { color: var(--brass) !important; text-decoration: underline; text-underline-offset: 2px; }
+    .stn { border-top: 1px solid var(--line); padding: 2.25rem 0; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: .6rem; padding: 1rem; }
+    .btn { border: 1px solid var(--line); border-radius: .4rem; padding: .5rem .8rem; font-size: .95rem; line-height: 1.4; background: transparent; color: var(--ink) !important; cursor: pointer; text-align: start; }
+    .btn:hover:not(:disabled) { background: #2d241c; }
+    .btn:disabled { cursor: default; opacity: .55; }
+    .btn.ok { border-color: var(--reed); background: #24301a; opacity: 1; } .btn.no { border-color: var(--rose); background: #3a1d18; opacity: 1; }
+    .btn.on { border-color: var(--brass); background: #3a2d18; }
+    button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+    .note { border-inline-start: 3px solid var(--line); padding: .3rem .8rem; font-size: .93rem; line-height: 1.65; margin-top: .75rem; color: var(--ink) !important; }
+    .note.ok { border-color: var(--reed); } .note.no { border-color: var(--rose); } .note.warn { border-color: var(--brass); }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: .5rem; }
+
+    /* trumpets */
+    .chip { display: flex; justify-content: space-between; gap: .5rem; align-items: center; }
+    .chip small { color: var(--mist) !important; font-variant-numeric: tabular-nums; }
+    .chip.on small { color: var(--brass) !important; }
+    .pips { display: flex; flex-wrap: wrap; gap: 6px 10px; min-height: 30px; }
+    .trip { display: inline-flex; gap: 2px; padding: 2px; border-radius: 5px; transition: background .25s, box-shadow .25s; }
+    .pip { width: 9px; height: 18px; border-radius: 3px; background: var(--silver); }
+    .pip.ter { height: 18px; background: repeating-linear-gradient(180deg, var(--brass) 0 3px, transparent 3px 5px); }
+    .yehuda .trip { background: #3a2d18; box-shadow: 0 0 0 1px var(--brass); }
+    .count { font-size: 2.2rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+    .lamp { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid var(--line); border-radius: 999px; padding: .2rem .65rem; font-size: .85rem; color: var(--ink) !important; }
+    .lamp i { width: .6rem; height: .6rem; border-radius: 50%; background: #4a3d33; display: inline-block; }
+    .lamp.ok i { background: var(--reed); box-shadow: 0 0 8px var(--reed); }
+
+    /* makshan */
+    .rule { display: flex; flex-direction: column; gap: .35rem; }
+    .gate { display: flex; gap: .6rem; align-items: baseline; padding: .45rem .7rem; border: 1px solid var(--line); border-radius: .45rem; background: #18120e; color: var(--ink) !important; animation: rise .4s ease-out; }
+    .gate b { color: var(--brass) !important; min-width: 1.4rem; }
+    .gate.except { border-style: dashed; border-color: var(--reed); }
+    .gate.except b { color: var(--reed) !important; }
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .day { display: flex; flex-direction: column; align-items: flex-start; gap: .1rem; }
+    .day .he { font-family: 'Frank Ruhl Libre', serif; font-size: 1.05rem; color: var(--brass) !important; }
+    .day small { color: var(--mist) !important; font-size: .78rem; }
+    .stage { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--mist) !important; }
+    .dots { display: flex; gap: 4px; }
+    .dots i { width: 22px; height: 5px; border-radius: 3px; background: var(--line); display: block; }
+    .dots i.done { background: var(--brass); }
+    .tally { display: grid; grid-template-columns: repeat(auto-fill, minmax(26px, 1fr)); gap: 4px; }
+    .tally span { height: 26px; border-radius: 4px; font-size: .62rem; display: flex; align-items: center; justify-content: center; color: #140f0b !important; font-weight: 700; }
+
+    /* vessels */
+    .vessel { display: flex; flex-direction: column; gap: .5rem; }
+    .meter { height: 10px; background: #2a211a; border-radius: 5px; overflow: hidden; }
+    .meter > i { display: block; height: 100%; background: linear-gradient(90deg, var(--reed), var(--brass)); transition: width .8s cubic-bezier(.3,1.2,.5,1); }
+    .meter.bad > i { background: linear-gradient(90deg, #8a4a3a, var(--rose)); }
+    .vessel svg { width: 100%; height: 70px; }
+    @media (prefers-reduced-motion: reduce) { .meter > i, .trip, .gate { transition: none !important; animation: none !important; } }
+  </style>
+
+  <div class="min-h-screen" style="background:radial-gradient(ellipse at top, #2b1f14 0%, var(--night) 60%)">
+    <main class="max-w-3xl mx-auto px-4 py-10">
+      <a href="/daf/" class="text-sm !text-slate-400 hover:!text-amber-300">← All daf games</a>
+      <header class="mt-4">
+        <p class="frank text-2xl t-brass" dir="rtl" lang="he">ערכין י׳ · שירה לפני המזבח</p>
+        <h1 class="text-3xl md:text-4xl font-bold t-ink mt-1">Why Not Hallel?</h1>
+        <p class="t-mist mt-2 leading-relaxed">After nine pages of valuations, the mishna turns to the Temple's music: how many trumpet blasts a day,
+          how many lyres and flutes, which twelve days the flute played before the altar (<a class="ref" href="https://www.sefaria.org/Arakhin.10a.2-4" target="_blank" rel="noopener">10a:2–4</a>).
+          The Gemara follows the flute to Hallel and asks one question again and again: <i>if that's the rule, why not on this day?</i></p>
+        <p class="t-mist mt-2 text-sm">Score: <b id="score" class="t-brass">0</b> · three rounds below.</p>
+      </header>
+
+      <!-- ROUND 1 -->
+      <section class="stn" id="r1">
+        <h2 class="text-xl font-bold t-ink">1 · The trumpeters' tally</h2>
+        <p class="t-mist mt-2 leading-relaxed">The mishna: <span class="frank t-brass" dir="rtl" lang="he">אֵין פּוֹחֲתִין מֵעֶשְׂרִים וְאַחַת תְּקִיעוֹת בַּמִּקְדָּשׁ, וְלֹא מוֹסִיפִין עַל אַרְבָּעִים וּשְׁמֹנֶה</span>:
+          never fewer than 21 blasts a day, never more than 48. Rabbi Yehuda says 7 and 16. They agree on every sound that was blown; they argue about how to count.
+          The Rabbis count each <span class="t-silver">tekia</span> and each <span class="t-brass">terua</span>; Rabbi Yehuda counts a whole <span class="t-silver">tekia</span>–<span class="t-brass">terua</span>–<span class="t-silver">tekia</span> as one
+          (<a class="ref" href="https://www.sefaria.org/Arakhin.10a.5-6" target="_blank" rel="noopener">10a:5–6</a>). Switch on the day's blowings.</p>
+
+        <div class="grid2 mt-4" id="events"></div>
+
+        <div class="card mt-4">
+          <div class="row" style="justify-content:space-between">
+            <div><div class="stage">The Rabbis count sounds</div><div class="count t-silver" id="cR">0</div></div>
+            <div style="text-align:end"><div class="stage">Rabbi Yehuda counts sets</div><div class="count t-brass" id="cY">0</div></div>
+          </div>
+          <div class="row mt-3"><button class="btn" id="viewBtn" aria-pressed="false">Show Rabbi Yehuda's grouping</button></div>
+          <div class="pips mt-3" id="pips" aria-hidden="true"></div>
+          <div class="row mt-3" id="goals">
+            <span class="lamp" id="gMin"><i></i>Fewest: an ordinary weekday</span>
+            <span class="lamp" id="gMax"><i></i>Most: Friday of Sukkot</span>
+          </div>
+          <div id="tallyNote"></div>
+        </div>
+
+        <div class="card mt-4" id="kahana">
+          <p class="t-ink">Rav Kahana: <span class="frank t-brass" dir="rtl" lang="he">אֵין בֵּין תְּקִיעָה לִתְרוּעָה וְלֹא כְּלוּם</span>, there is no pause between tekia and terua <i>at all</i>. Whose view is he following?</p>
+          <div class="row mt-3" id="kahanaOpts"></div>
+          <div id="kahanaNote"></div>
+        </div>
+      </section>
+
+      <!-- ROUND 2 -->
+      <section class="stn" id="r2">
+        <h2 class="text-xl font-bold t-ink">2 · Be the makshan</h2>
+        <p class="t-mist mt-2 leading-relaxed">The flute played on the twelve days the individual completes the whole Hallel (<a class="ref" href="https://www.sefaria.org/Arakhin.10a.12-13" target="_blank" rel="noopener">10a:12–13</a>).
+          The Gemara then builds a rule for those days one objection at a time. You're the one raising the objections: find the day that breaks the rule, then give the Gemara's answer. Each answer adds a line to the rule.</p>
+        <div class="row mt-3" style="justify-content:space-between"><div class="dots" id="dots"></div><span class="stage" id="stageLbl"></span></div>
+        <div class="grid mt-4" style="display:grid;gap:1rem;grid-template-columns:1fr">
+          <div class="card">
+            <div class="stage mb-2">The rule so far</div>
+            <div class="rule" id="rule"><p class="t-mist text-sm">(empty: Sukkot gets Hallel every day, Pesach only on the first. Why?)</p></div>
+          </div>
+          <div class="card">
+            <p class="t-ink leading-relaxed" id="prompt"></p>
+            <div class="grid2 mt-3" id="opts"></div>
+            <div id="m2note"></div>
+            <div class="row mt-3"><button class="btn" id="nextBtn" hidden>Next objection →</button></div>
+          </div>
+        </div>
+        <div id="finale" hidden class="card mt-4">
+          <p class="t-ink">Rabbi Yoḥanan in the name of Rabbi Shimon ben Yehotzadak: <b class="t-brass">18 days</b> in the Land, <b class="t-brass">21</b> in the Diaspora (<a class="ref" href="https://www.sefaria.org/Arakhin.10a.13" target="_blank" rel="noopener">10a:13</a>). Toggle to see the second festival days appear.</p>
+          <div class="row mt-3"><button class="btn on" id="landBtn" aria-pressed="true">Eretz Yisrael</button><button class="btn" id="golaBtn" aria-pressed="false">Diaspora</button></div>
+          <div class="tally mt-3" id="tally"></div>
+          <p class="t-mist text-sm mt-2" id="tallyLegend"></p>
+        </div>
+      </section>
+
+      <!-- ROUND 3 -->
+      <section class="stn" id="r3">
+        <h2 class="text-xl font-bold t-ink">3 · Don't fix it</h2>
+        <p class="t-mist mt-2 leading-relaxed">A baraita lists Temple objects that someone tried to improve (<a class="ref" href="https://www.sefaria.org/Arakhin.10b.11-17" target="_blank" rel="noopener">10b:11–17</a>). For each one, predict what the upgrade did, then see what happened.
+          Tap ♪ to hear the flute and the cymbal.</p>
+        <div class="grid2 mt-4" id="vessels"></div>
+        <div id="moral" hidden class="note warn"><span class="frank t-brass" dir="rtl" lang="he">אַל יִתְהַלֵּל חָכָם בְּחָכְמָתוֹ וְאַל יִתְהַלֵּל הַגִּבּוֹר בִּגְבוּרָתוֹ</span>: “Let not the wise man glory in his wisdom, neither let the mighty man glory in his might” (Jeremiah 9:22). That's the verse Rabban Shimon ben Gamliel attaches to the Shiloaḥ (<a class="ref" href="https://www.sefaria.org/Arakhin.10b.16" target="_blank" rel="noopener">10b:16</a>).</div>
+      </section>
+
+      <section class="stn" id="learn">
+        <h2 class="text-xl font-bold t-ink">Learn the real daf</h2>
+        <ul class="mt-3 space-y-1 t-ink list-disc ps-5">
+          <li><a class="ref" href="https://www.sefaria.org/Arakhin.10a" target="_blank" rel="noopener">Arakhin 10a</a> and <a class="ref" href="https://www.sefaria.org/Arakhin.10b" target="_blank" rel="noopener">10b</a> on Sefaria</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.10a" target="_blank" rel="noopener">Rashi on 10a</a> · <a class="ref" href="https://www.sefaria.org/Rashi_on_Arakhin.10b" target="_blank" rel="noopener">Rashi on 10b</a> (44 comments, including where each of the 48 blasts falls)</li>
+          <li><a class="ref" href="https://www.sefaria.org/Rabbeinu_Gershom_on_Arakhin.10a" target="_blank" rel="noopener">Rabbeinu Gershom</a> · <a class="ref" href="https://www.sefaria.org/Steinsaltz_on_Arakhin.10b" target="_blank" rel="noopener">Steinsaltz</a> · <a class="ref" href="https://www.sefaria.org/Tosafot_on_Arakhin.10a" target="_blank" rel="noopener">Tosafot</a> · <a class="ref" href="https://www.sefaria.org/Ben_Yehoyada_on_Arakhin.10b" target="_blank" rel="noopener">Ben Yehoyada</a> · <a class="ref" href="https://www.sefaria.org/Haggahot_Ya'avetz_on_Arakhin.10a" target="_blank" rel="noopener">Haggahot Ya'avetz</a></li>
+        </ul>
+        <p class="t-mist text-sm mt-3">Not in the game: the daf opens by finishing yesterday's story. Rebbi made nine hollow months, and the moon still came on time because the year before had eight full months and a thirty-day leap month. Rebbi answers his son: “Lamp of Israel! So it was” (<a class="ref" href="https://www.sefaria.org/Arakhin.10a.1" target="_blank" rel="noopener">10a:1</a>).
+          The mishna's lyres (two to six) and flutes (two to twelve), and the three views on who the musicians were: slaves of priests (Rabbi Meir), Israelite families pure enough to marry into the priesthood (Rabbi Yosei), or Levites (Rabbi Ḥanina ben Antigonus) (<a class="ref" href="https://www.sefaria.org/Arakhin.10a.3-4" target="_blank" rel="noopener">10a:3–4</a>).
+          Rav Pappa: the <i>ḥalil</i> is the <i>abuv</i>, renamed because its sound is sweet, <i>ḥali</i> (<a class="ref" href="https://www.sefaria.org/Arakhin.10b.10" target="_blank" rel="noopener">10b:10</a>).
+          Rav and Shmuel on Ezra's “two vessels of fine bronze, precious as gold”: each worth two gold vessels, or both together worth one; Rabbi Natan reads <i>shenayim</i> as <i>sheniyyim</i>, pairs (<a class="ref" href="https://www.sefaria.org/Arakhin.10b.13-15" target="_blank" rel="noopener">10b:13–15</a>).
+          And the daf ends on the <i>magreifa</i>, an instrument Shmuel says was in the Temple. What it was is on tomorrow's daf (<a class="ref" href="https://www.sefaria.org/Arakhin.10b.18" target="_blank" rel="noopener">10b:18</a>).</p>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const sref = (r, label) => `<a class="ref" href="https://www.sefaria.org/Arakhin.${r}" target="_blank" rel="noopener">${label || r.replace('.', ':')}</a>`;
+    let score = 0;
+    const scoreEl = document.getElementById('score');
+    const bump = (n) => { score += n; scoreEl.textContent = String(score); };
+    const $ = (id) => document.getElementById(id);
+
+    /* ---------- Round 1: trumpets ---------- */
+    const EVENTS = [
+      { id: 'gates', name: 'Opening the gates', n: 3, daily: true },
+      { id: 'tamid1', name: 'Morning tamid', n: 9, daily: true },
+      { id: 'tamid2', name: 'Afternoon tamid', n: 9, daily: true },
+      { id: 'water', name: 'Water drawing (Sukkot)', n: 12 },
+      { id: 'musaf', name: 'Additional offerings (musaf)', n: 9 },
+      { id: 'cease', name: 'Friday: stop working', n: 3 },
+      { id: 'shabbat', name: 'Friday: Shabbat begins', n: 3 },
+    ];
+    const on = new Set();
+    let yehudaView = false, minDone = false, maxDone = false;
+    const evBox = $('events');
+    EVENTS.forEach((e) => {
+      const b = document.createElement('button');
+      b.className = 'btn chip'; b.setAttribute('aria-pressed', 'false');
+      b.innerHTML = `<span>${e.name}</span><small>${e.n} · ${e.n / 3} set${e.n > 3 ? 's' : ''}</small>`;
+      b.addEventListener('click', () => {
+        on.has(e.id) ? on.delete(e.id) : on.add(e.id);
+        b.classList.toggle('on', on.has(e.id)); b.setAttribute('aria-pressed', String(on.has(e.id)));
+        renderTally();
+      });
+      evBox.appendChild(b);
+    });
+    $('viewBtn').addEventListener('click', () => {
+      yehudaView = !yehudaView;
+      $('viewBtn').setAttribute('aria-pressed', String(yehudaView));
+      $('viewBtn').classList.toggle('on', yehudaView);
+      $('pips').classList.toggle('yehuda', yehudaView);
+    });
+    function renderTally() {
+      const total = EVENTS.filter((e) => on.has(e.id)).reduce((s, e) => s + e.n, 0);
+      $('cR').textContent = String(total); $('cY').textContent = String(total / 3);
+      $('pips').innerHTML = Array.from({ length: total / 3 }, () => '<span class="trip"><i class="pip"></i><i class="pip ter"></i><i class="pip"></i></span>').join('');
+      const ids = [...on].sort().join(',');
+      const minIds = ['gates', 'tamid1', 'tamid2'].sort().join(',');
+      const note = $('tallyNote');
+      if (ids === minIds && !minDone) {
+        minDone = true; bump(10); $('gMin').classList.add('ok');
+        note.innerHTML = `<p class="note ok">21 sounds, or 7 sets: 3 for opening the gates, 9 for the morning tamid, 9 for the afternoon tamid. Every day of the year has at least this much (${sref('10a.2', '10a:2')}).</p>`;
+      } else if (on.size === EVENTS.length && !maxDone) {
+        maxDone = true; bump(10); $('gMax').classList.add('ok');
+        note.innerHTML = `<p class="note ok">48 sounds, or 16 sets. Only a Friday of Sukkot has it all: 12 for the water drawing, 9 for the musaf, 3 to stop work, 3 to bring in Shabbat (${sref('10a.2', '10a:2')}). Same trumpets, same air: 48 and 16 are the same day, counted two ways (${sref('10a.6', '10a:6')}).</p>`;
+      } else if (on.has('water') && !on.has('musaf') && on.size > 3 && !note.dataset.warned) {
+        note.dataset.warned = '1';
+        note.innerHTML = `<p class="note warn">Water drawing means it's Sukkot, and every day of Sukkot has a musaf. Keep going.</p>`;
+      }
+    }
+    renderTally();
+
+    const KAH = [
+      { t: 'Rabbi Yehuda', ok: true },
+      { t: 'The Rabbis', ok: false },
+      { t: 'Rabbi Yoḥanan', ok: false },
+    ];
+    let kahDone = false;
+    KAH.forEach((k) => {
+      const b = document.createElement('button'); b.className = 'btn'; b.textContent = k.t;
+      b.addEventListener('click', () => {
+        if (kahDone) return; kahDone = true;
+        b.classList.add(k.ok ? 'ok' : 'no'); if (k.ok) bump(10);
+        $('kahanaOpts').querySelectorAll('button').forEach((x) => (x.disabled = true));
+        $('kahanaNote').innerHTML = `<p class="note ${k.ok ? 'ok' : 'no'}">${k.ok ? 'Right.' : 'The Gemara says Rabbi Yehuda.'} If tekia–terua–tekia is <i>one</i> blast, it can't have a gap in the middle. Could Rav Kahana follow the Rabbis and just be rejecting Rabbi Yoḥanan, who lets you hear nine Rosh HaShana blasts over nine hours? No: “<i>at all</i>” (<span class="frank t-brass" lang="he">וְלֹא כְּלוּם</span>) rules out even a tiny pause (${sref('10a.9-11', '10a:9–11')}).
+          <br>The two sides also trade verses: Rabbi Yehuda reads “you shall <i>sound</i> (tekia) a terua” as one unit. The Rabbis cite “sound a tekia and not a terua” to gather the people: would the Torah ask for half a mitzva? Rabbi Yehuda: that was only a signal, not a mitzva (${sref('10a.7-8', '10a:7–8')}).</p>`;
+      });
+      $('kahanaOpts').appendChild(b);
+    });
+
+    /* ---------- Round 2: be the makshan ---------- */
+    const D = (he, en, sub) => ({ he, en, sub });
+    const STEPS = [
+      {
+        q: 'Sukkot gets the full Hallel all eight days. Pesach gets it only on the first day. What makes Sukkot different?',
+        noObj: true,
+        ans: [
+          { t: 'Each day of Sukkot has a different musaf (the bulls count down 13, 12, 11…). Pesach repeats the same musaf every day.', ok: true },
+          { t: 'Sukkot is a longer festival.', ok: false },
+          { t: 'Pesach is a festival of matza, not song.', ok: false },
+        ],
+        gate: 'Its musaf offering is distinct from the day before.',
+        why: `Sukkot's days are <span class="frank t-brass" lang="he">חֲלוּקִין בְּקׇרְבְּנוֹתֵיהֶן</span>, distinct in their offerings, so each is a new day of song (${sref('10b.1', '10b:1')}).`,
+      },
+      {
+        q: 'Rule: Hallel on a day with its own musaf. Which day breaks it?',
+        obj: [
+          { d: D('שַׁבָּת', 'Shabbat', 'its own musaf, no Hallel'), ok: true },
+          { d: D('שְׁבִיעִי שֶׁל פֶּסַח', '7th day of Pesach', 'same musaf, no full Hallel'), ok: false, why: 'Same musaf as the day before, and no full Hallel. That fits the rule.' },
+          { d: D('שָׁבוּעוֹת', 'Shavuot', 'its own musaf, full Hallel'), ok: false, why: 'Shavuot has its own musaf and gets Hallel. That fits the rule.' },
+        ],
+        ans: [
+          { t: 'Shabbat is not called a moed, an appointed day.', ok: true },
+          { t: 'Shabbat has no musaf.', ok: false },
+          { t: 'Shabbat is too holy for song.', ok: false },
+        ],
+        gate: 'The Torah calls it a moed, an appointed day.',
+        why: `Hallel is for days the Torah calls <i>moed</i>, days of rejoicing (Leviticus 23:4). Shabbat is not called one (${sref('10b.2', '10b:2')}).`,
+      },
+      {
+        q: 'Rule: a moed with its own musaf. Which day breaks it?',
+        obj: [
+          { d: D('רֹאשׁ חֹדֶשׁ', 'Rosh Ḥodesh', 'called moed, own musaf'), ok: true },
+          { d: D('חֹל הַמּוֹעֵד פֶּסַח', 'Ḥol HaMoed Pesach', 'moed, same musaf'), ok: false, why: 'Its musaf repeats the day before, so the rule already says no full Hallel.' },
+          { d: D('שַׁבָּת', 'Shabbat', 'not a moed'), ok: false, why: 'Already answered: Shabbat is not a moed.' },
+        ],
+        ans: [
+          { t: 'Rosh Ḥodesh isn’t sanctified: work is allowed. “Song, as the night a festival is sanctified.”', ok: true },
+          { t: 'The new moon isn’t always seen in time.', ok: false },
+          { t: 'Rosh Ḥodesh has no musaf.', ok: false },
+        ],
+        gate: 'It is sanctified: work is forbidden.',
+        why: `<span class="frank t-brass" lang="he">הַשִּׁיר יִהְיֶה לָכֶם כְּלֵיל הִתְקַדֶּשׁ חָג</span>, “You shall have a song as in the night when a festival is sanctified” (Isaiah 30:29). A day not sanctified against labor gets no song (${sref('10b.3', '10b:3')}).`,
+      },
+      {
+        q: 'Rule: a moed, its own musaf, work forbidden. Which days break it?',
+        obj: [
+          { d: D('רֹאשׁ הַשָּׁנָה וְיוֹם הַכִּפּוּרִים', 'Rosh HaShana & Yom Kippur', 'moed, own musaf, no work'), ok: true },
+          { d: D('רֹאשׁ חֹדֶשׁ', 'Rosh Ḥodesh', 'work allowed'), ok: false, why: 'Already answered: work is allowed on Rosh Ḥodesh.' },
+          { d: D('שְׁמִינִי עֲצֶרֶת', 'Shemini Atzeret', 'moed, own musaf, no work'), ok: false, why: 'Shemini Atzeret passes every gate and gets Hallel. That fits the rule.' },
+        ],
+        ans: [
+          { t: 'The King sits on the throne of judgment with the books of life and death open. Should Israel sing?', ok: true },
+          { t: 'Yom Kippur is a fast day.', ok: false },
+          { t: 'The shofar takes the place of Hallel.', ok: false },
+        ],
+        gate: 'It is not a day of judgment.',
+        why: `Rabbi Abbahu: the ministering angels asked why Israel doesn't sing on these days. <span class="frank t-brass" lang="he">אֶפְשָׁר, מֶלֶךְ יוֹשֵׁב עַל כִּסֵּא הַדִּין, וְסִפְרֵי חַיִּים וְסִפְרֵי מֵתִים פְּתוּחִין לְפָנָיו, וְיִשְׂרָאֵל אוֹמְרִים שִׁירָה?</span> (${sref('10b.4-5', '10b:4–5')})`,
+      },
+      {
+        q: 'The rule is now very tight. Which day fails every gate and still gets the full Hallel?',
+        obj: [
+          { d: D('חֲנוּכָּה', 'Ḥanukkah', 'no musaf, work allowed, full Hallel'), ok: true },
+          { d: D('פֶּסַח, יוֹם רִאשׁוֹן', '1st day of Pesach', 'passes every gate'), ok: false, why: 'The first day of Pesach passes every gate. No problem.' },
+          { d: D('פּוּרִים', 'Purim', 'no Hallel'), ok: false, why: 'Purim fails the gates and has no Hallel. That fits, for now.' },
+        ],
+        ans: [
+          { t: 'Hallel on Ḥanukkah is for the miracle, not because it is a festival.', ok: true },
+          { t: 'Ḥanukkah has a hidden musaf.', ok: false },
+          { t: 'Work is forbidden while the lights burn.', ok: false },
+        ],
+        gate: 'Or: a miracle happened on it.', except: true,
+        why: `<span class="frank t-brass" lang="he">וְהָא חֲנוּכָּה דְּלָא הָכִי וְלָא הָכִי וְקָאָמַר! מִשּׁוּם נִיסָּא</span>: “Ḥanukkah is neither, and we say it!” Because of the miracle (${sref('10b.6', '10b:6')}).`,
+      },
+      {
+        q: 'New gate: a miracle. Which day breaks it now?',
+        obj: [
+          { d: D('פּוּרִים', 'Purim', 'a miracle, no Hallel'), ok: true },
+          { d: D('יוֹם כִּפּוּר', 'Yom Kippur', 'a day of judgment'), ok: false, why: 'Already answered: no singing while the books are open.' },
+          { d: D('חֲנוּכָּה', 'Ḥanukkah', 'miracle, Hallel'), ok: false, why: 'That fits the new gate.' },
+        ],
+        multi: true,
+        q2: 'The Gemara gives three answers for Purim. Find all three.',
+        ans: [
+          { t: 'Rabbi Yitzḥak: no song for a miracle outside the Land of Israel.', ok: true },
+          { t: 'Rav Naḥman: reading the Megilla is its Hallel.', ok: true },
+          { t: 'Rava: “Praise, servants of God” — but after Purim we were still Aḥashverosh’s servants.', ok: true },
+          { t: 'Purim is only rabbinic, so no Hallel.', ok: false },
+          { t: 'There was no Temple on Purim.', ok: false },
+        ],
+        gate: '…in the Land of Israel (Rabbi Yitzḥak).', except: true,
+        why: `Three answers, three different Purims (${sref('10b.6', '10b:6')}, ${sref('10b.8', '10b:8')}). Each makes the rule work a different way, and each draws its own objection.`,
+      },
+      {
+        q: 'Rav Naḥman bar Yitzḥak attacks Rabbi Yitzḥak. Which miracle happened outside the Land and still gets Hallel?',
+        obj: [
+          { d: D('יְצִיאַת מִצְרַיִם', 'The Exodus', 'Hallel on Pesach night'), ok: true },
+          { d: D('חֲנוּכָּה', 'Ḥanukkah', 'in Jerusalem'), ok: false, why: 'The Ḥanukkah miracle happened in the Land.' },
+          { d: D('פּוּרִים', 'Purim', 'no Hallel'), ok: false, why: 'Purim is the case we’re defending.' },
+        ],
+        ans: [
+          { t: 'Until Israel entered the Land, every land was fit for song.', ok: true },
+          { t: 'Egypt counts as part of the Land.', ok: false },
+          { t: 'Pesach night’s Hallel is for the matza, not the miracle.', ok: false },
+        ],
+        gate: '…unless it happened before Israel entered the Land.', except: true,
+        why: `A baraita: until Israel entered the Land, <span class="frank t-brass" lang="he">הוּכְשְׁרוּ כׇּל הָאֲרָצוֹת לוֹמַר שִׁירָה</span>, all lands were fit for song; once they entered, the other lands lost that (${sref('10b.7', '10b:7')}).`,
+      },
+      {
+        q: 'Now the same baraita hits Rav Naḥman: if no land outside Israel is fit for song after the entry, how can the Megilla be a Hallel for Shushan?',
+        noObj: true,
+        ans: [
+          { t: 'Once Israel was exiled, the other lands became fit again.', ok: true },
+          { t: 'Shushan counts as part of the Land.', ok: false },
+          { t: 'The Megilla isn’t really song.', ok: false },
+        ],
+        gate: '(Rav Naḥman: after the exile, all lands were fit again.)', except: true,
+        why: `<span class="frank t-brass" lang="he">כֵּיוָן שֶׁגָּלוּ חָזְרוּ לְהֶיתֵּירָן הָרִאשׁוֹן</span>: once they were exiled, the lands returned to their first fitness (${sref('10b.9', '10b:9')}).`,
+      },
+    ];
+    let si = 0, phase = 'obj', picks = new Set();
+    const dots = $('dots');
+    dots.innerHTML = STEPS.map(() => '<i></i>').join('');
+    function addGate(s, n) {
+      const r = $('rule');
+      if (r.querySelector('p')) r.innerHTML = '';
+      const g = document.createElement('div');
+      g.className = 'gate' + (s.except ? ' except' : '');
+      g.innerHTML = `<b>${s.except ? '+' : n}</b><span>${s.gate}</span>`;
+      r.appendChild(g);
+    }
+    let gateNum = 0;
+    function renderStep() {
+      const s = STEPS[si];
+      $('m2note').innerHTML = ''; $('nextBtn').hidden = true; picks = new Set();
+      phase = s.noObj ? 'ans' : 'obj';
+      $('stageLbl').textContent = `Step ${si + 1} of ${STEPS.length} · ${phase === 'obj' ? 'raise the objection' : 'answer it'}`;
+      $('prompt').innerHTML = s.q;
+      const box = $('opts'); box.innerHTML = '';
+      if (phase === 'obj') {
+        s.obj.forEach((o) => {
+          const b = document.createElement('button'); b.className = 'btn day';
+          b.innerHTML = `<span class="he" lang="he">${o.d.he}</span><span>${o.d.en}</span><small>${o.d.sub}</small>`;
+          b.addEventListener('click', () => {
+            if (o.ok) {
+              b.classList.add('ok'); bump(5);
+              box.querySelectorAll('button').forEach((x) => (x.disabled = true));
+              $('m2note').innerHTML = `<p class="note ok"><b>Kashya!</b> ${o.d.en} breaks the rule.</p>`;
+              setTimeout(renderAnswers, 650);
+            } else {
+              b.classList.add('no'); b.disabled = true;
+              $('m2note').innerHTML = `<p class="note no">${o.why}</p>`;
+            }
+          });
+          box.appendChild(b);
+        });
+      } else renderAnswers();
+    }
+    function shuffle(a) { return a.map((x) => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map((p) => p[1]); }
+    function renderAnswers() {
+      const s = STEPS[si]; phase = 'ans';
+      $('stageLbl').textContent = `Step ${si + 1} of ${STEPS.length} · answer it`;
+      if (s.q2) $('prompt').innerHTML = s.q2;
+      else if (!s.noObj) $('prompt').innerHTML = 'How does the Gemara answer?';
+      const box = $('opts'); box.innerHTML = '';
+      const need = s.ans.filter((a) => a.ok).length;
+      let firstTry = true;
+      shuffle(s.ans).forEach((a) => {
+        const b = document.createElement('button'); b.className = 'btn'; b.textContent = a.t;
+        b.addEventListener('click', () => {
+          b.disabled = true;
+          if (!a.ok) { b.classList.add('no'); firstTry = false; $('m2note').innerHTML = '<p class="note no">Not the Gemara’s answer. Try another.</p>'; return; }
+          b.classList.add('ok'); picks.add(a.t);
+          if (picks.size < need) { $('m2note').innerHTML = `<p class="note ok">Yes, ${need - picks.size} more.</p>`; return; }
+          box.querySelectorAll('button').forEach((x) => (x.disabled = true));
+          bump(firstTry ? 10 : 4);
+          if (!s.except) gateNum++;
+          addGate(s, gateNum);
+          dots.children[si].classList.add('done');
+          $('m2note').innerHTML = `<p class="note ok">${s.why}</p>`;
+          if (si < STEPS.length - 1) { $('nextBtn').hidden = false; $('nextBtn').focus(); }
+          else { $('finale').hidden = false; renderCal(false); }
+        });
+        box.appendChild(b);
+      });
+    }
+    $('nextBtn').addEventListener('click', () => { si++; renderStep(); });
+    renderStep();
+
+    const CAL = [
+      { k: 'Sukkot + Shemini Atzeret', n: 8, g: 9, c: '#b9cf7a' },
+      { k: 'Ḥanukkah', n: 8, g: 8, c: '#e0b45a' },
+      { k: 'Pesach', n: 1, g: 2, c: '#cfd8e3' },
+      { k: 'Shavuot', n: 1, g: 2, c: '#8cc0e6' },
+    ];
+    function renderCal(gola) {
+      $('landBtn').classList.toggle('on', !gola); $('golaBtn').classList.toggle('on', gola);
+      $('landBtn').setAttribute('aria-pressed', String(!gola)); $('golaBtn').setAttribute('aria-pressed', String(gola));
+      let html = '', total = 0;
+      CAL.forEach((c) => { const n = gola ? c.g : c.n; total += n; for (let i = 0; i < n; i++) html += `<span style="background:${c.c}" title="${c.k}">${i + 1}</span>`; });
+      $('tally').innerHTML = html;
+      $('tallyLegend').innerHTML = CAL.map((c) => `<span style="color:${c.c} !important">■</span> ${c.k} ${gola ? c.g : c.n}`).join(' · ') + ` = <b class="t-brass">${total}</b>. Ḥanukkah stays at eight in both lists.`;
+    }
+    $('landBtn').addEventListener('click', () => renderCal(false));
+    $('golaBtn').addEventListener('click', () => renderCal(true));
+
+    /* ---------- Round 3: don't fix it ---------- */
+    let actx = null;
+    function play(kind, spoiled) {
+      try {
+        actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+        const t = actx.currentTime, g = actx.createGain();
+        g.connect(actx.destination);
+        if (kind === 'flute') {
+          const o = actx.createOscillator();
+          o.type = spoiled ? 'sawtooth' : 'sine';
+          o.frequency.setValueAtTime(587, t); o.frequency.setValueAtTime(659, t + .35); o.frequency.setValueAtTime(784, t + .7);
+          if (!spoiled) { const v = actx.createOscillator(), vg = actx.createGain(); v.frequency.value = 5; vg.gain.value = 6; v.connect(vg); vg.connect(o.frequency); v.start(t); v.stop(t + 1.2); }
+          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(spoiled ? .06 : .18, t + .08); g.gain.linearRampToValueAtTime(0, t + 1.15);
+          o.connect(g); o.start(t); o.stop(t + 1.2);
+        } else {
+          [1, 1.48, 2.13, 2.9, 3.6].forEach((r, i) => {
+            const o = actx.createOscillator(); o.type = spoiled ? 'square' : 'sine';
+            o.frequency.value = 420 * r * (spoiled ? 1 + (i % 2) * .04 : 1);
+            const og = actx.createGain(); og.gain.setValueAtTime(.09 / (i + 1), t); og.gain.exponentialRampToValueAtTime(.0001, t + (spoiled ? .35 : 1.8));
+            o.connect(og); og.connect(g); o.start(t); o.stop(t + 1.9);
+          });
+          g.gain.value = spoiled ? .5 : 1;
+        }
+      } catch (e) { /* no audio, no problem */ }
+    }
+    const ART = {
+      flute: '<svg viewBox="0 0 200 70"><rect x="10" y="30" width="180" height="10" rx="5" fill="var(--fill)"/>' + [40,62,84,106,128,150].map((x) => `<circle cx="${x}" cy="35" r="2.6" fill="#140f0b"/>`).join('') + '</svg>',
+      cymbal: '<svg viewBox="0 0 200 70"><ellipse cx="100" cy="38" rx="70" ry="14" fill="var(--fill)"/><ellipse cx="100" cy="33" rx="14" ry="5" fill="#140f0b" opacity=".35"/><path class="crack" d="M120 30 l8 6 -5 4 9 6" stroke="#140f0b" stroke-width="2" fill="none"/></svg>',
+      mortar: '<svg viewBox="0 0 200 70"><path d="M60 22 h80 l-10 40 h-60z" fill="var(--fill)"/><rect x="112" y="4" width="10" height="36" rx="4" transform="rotate(25 117 22)" fill="var(--fill)" opacity=".8"/><path class="crack" d="M80 30 l6 8 -4 6 6 10" stroke="#140f0b" stroke-width="2" fill="none"/></svg>',
+      shiloah: '<svg viewBox="0 0 200 70"><rect x="10" y="8" width="70" height="54" fill="#5c4a3a"/><circle class="hole" cx="80" cy="30" r="5" fill="#140f0b"/><path class="jet" d="M84 30 Q130 30 160 62" stroke="#8cc0e6" stroke-width="6" fill="none" stroke-linecap="round"/></svg>',
+      organ: '<svg viewBox="0 0 200 70">' + [0,1,2,3,4,5,6].map((i) => `<rect x="${50 + i * 15}" y="${10 + Math.abs(3 - i) * 7}" width="10" height="${50 - Math.abs(3 - i) * 7}" rx="2" fill="var(--fill)"/>`).join('') + '<rect x="40" y="58" width="120" height="8" fill="#5c4a3a"/></svg>',
+    };
+    const VES = [
+      { id: 'flute', name: 'The reed flute', he: 'אַבּוּב שֶׁל קָנֶה', ref: '10b.11', fill: '#b9cf7a', fix: 'The king orders it plated with gold', fixFill: '#e0b45a', sound: true,
+        what: 'smooth, thin, made of reed, from the days of Moses', bad: 'Gold plating: its sound was no longer sweet.', undo: 'Strip the gold off', good: 'Plating removed, the sound came back as sweet as before.' },
+      { id: 'cymbal', name: 'The bronze cymbal', he: 'צִלְצָל שֶׁל נְחֹשֶׁת', ref: '10b.11', fill: '#c98a4b', fix: 'Damaged: craftsmen from Alexandria repair it', fixFill: '#c98a4b', sound: true,
+        what: 'bronze, its sound pleasant', bad: 'Alexandrian repair: the sound was not as pleasant.', undo: 'Remove the repair', good: 'Repair removed, the sound was pleasant again.' },
+      { id: 'mortar', name: 'The incense mortar', he: 'מָכְתֶּשֶׁת', ref: '10b.12', fill: '#c98a4b', fix: 'Damaged: craftsmen from Alexandria repair it', fixFill: '#c98a4b',
+        what: 'bronze, from the days of Moses, for compounding the incense spices', bad: 'Repaired: it no longer ground the spices as well.', undo: 'Remove the repair', good: 'Repair removed, it ground the spices as before.' },
+      { id: 'shiloah', name: 'The Shiloaḥ spring', he: 'שִׁילוֹחַ', ref: '10b.16', fill: '#5c4a3a', fix: 'The king widens the opening for more water', fixFill: '#5c4a3a',
+        what: 'spurting through an opening the size of an issar coin', bad: 'Widened: the water decreased.', undo: 'Narrow it back to an issar', good: 'Narrowed again, it spurted as before.' },
+      { id: 'organ', name: 'A hydraulic organ', he: 'הִרְדַּוְלִים', ref: '10b.17', fill: '#cfd8e3', fix: 'Install a hirdolim, a water organ, in the Temple', fixFill: '#cfd8e3',
+        what: 'a sweet-sounding machine', bad: 'Rabban Shimon ben Gamliel: there was none in the Temple. Abaye: its sound is sweet, but it jumbles the melody.', undo: 'Leave it out', good: 'No hirdolim in the Temple.' },
+    ];
+    let vesDone = 0;
+    const vBox = $('vessels');
+    VES.forEach((v) => {
+      const c = document.createElement('div'); c.className = 'card vessel';
+      c.style.setProperty('--fill', v.fill);
+      c.innerHTML = `<div class="row" style="justify-content:space-between"><b class="t-ink">${v.name}</b><span class="frank t-brass" lang="he" dir="rtl">${v.he}</span></div>
+        <div class="art">${ART[v.id]}</div>
+        <div class="meter"><i style="width:90%"></i></div>
+        <p class="t-mist text-sm">${v.what} (${sref(v.ref)}).</p>
+        <p class="t-ink text-sm"><b class="t-brass">Upgrade:</b> ${v.fix}. What happens?</p>
+        <div class="row act"><button class="btn" data-p="better">Better</button><button class="btn" data-p="worse">Worse</button>${v.sound ? '<button class="btn" data-play aria-label="Hear it">♪</button>' : ''}</div>
+        <div class="msg"></div>`;
+      const meter = c.querySelector('.meter'), bar = meter.querySelector('i'), msg = c.querySelector('.msg'), act = c.querySelector('.act');
+      let spoiled = false;
+      const art = () => {
+        if (v.id === 'flute') c.style.setProperty('--fill', spoiled ? v.fixFill : v.fill);
+        c.querySelectorAll('.crack').forEach((k) => (k.style.opacity = spoiled ? '0' : '1'));
+        if (v.id === 'shiloah') { c.querySelector('.hole').setAttribute('r', spoiled ? '12' : '5'); const j = c.querySelector('.jet'); j.setAttribute('d', spoiled ? 'M88 34 Q100 50 100 62' : 'M84 30 Q130 30 160 62'); j.setAttribute('stroke-width', spoiled ? '3' : '6'); }
+        if (v.id === 'organ') c.querySelector('svg').style.opacity = spoiled ? '1' : '.3';
+      };
+      if (v.id === 'cymbal' || v.id === 'mortar') c.querySelectorAll('.crack').forEach((k) => (k.style.opacity = '1'));
+      if (v.id === 'organ') c.querySelector('svg').style.opacity = '.3';
+      const playBtn = c.querySelector('[data-play]');
+      if (playBtn) playBtn.addEventListener('click', () => play(v.id, spoiled));
+      c.querySelectorAll('[data-p]').forEach((b) => b.addEventListener('click', () => {
+        const right = b.dataset.p === 'worse';
+        if (right) bump(5);
+        c.querySelectorAll('[data-p]').forEach((x) => { x.disabled = true; if (x === b) x.classList.add(right ? 'ok' : 'no'); });
+        spoiled = true; art(); bar.style.width = '35%'; meter.classList.add('bad');
+        if (v.sound) play(v.id, true);
+        msg.innerHTML = `<p class="note ${right ? 'ok' : 'no'}">${v.bad}</p>`;
+        const u = document.createElement('button'); u.className = 'btn mt-2'; u.textContent = v.undo;
+        u.addEventListener('click', () => {
+          spoiled = false; art(); bar.style.width = '90%'; meter.classList.remove('bad'); u.remove();
+          if (v.sound) play(v.id, false);
+          msg.innerHTML = `<p class="note ok">${v.good}</p>`;
+          if (++vesDone === VES.length) { $('moral').hidden = false; bump(10); }
+        });
+        msg.appendChild(u);
+      }));
+      vBox.appendChild(c);
+    });
+  </script>
+</Layout>
