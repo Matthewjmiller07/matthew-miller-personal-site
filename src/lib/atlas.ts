@@ -67,7 +67,7 @@ const HIDDEN: RegExp[] = [
 const RULES: [RegExp, string][] = [
   [/^\/daf(\/|$)|^\/(mega-talmud|shas-art|taz-bach|shechalak)$/, 'talmud'],
   [/^\/(transcriptions|scp|sourcesheets)(\/|$)/, 'voices'],
-  [/^\/(rav-asher-weiss|rav-asher-weiss-booklets|jewish-studies|jj|search|source-sheet-creator|language|memory|stiff-necked-people|language-of-blessing|torahschedule|studyschedules|books|rav-nachman|phds-on-the-parsha|uriel-simon|yom-tov-sheini)$/, 'voices'],
+  [/^\/(rav-asher-weiss|rav-asher-weiss-booklets|jewish-studies|jj|search|source-sheet-creator|language|memory|stiff-necked-people|language-of-blessing|torahschedule|studyschedules|books|rav-nachman|phds-on-the-parsha|uriel-simon|yom-tov-sheini|thanksgiving)$/, 'voices'],
   [/^\/(929|parasha-sheet)(\/|$)|^\/3d\/(parsha|plagues)$/, 'tanakh'],
   [/^\/(mega-bible|mega-bible\/ki|literary-bible|painted-torah|genealogies|kings-names|kohelet|psalm-emotions|haftarah-explorer|parsha-art|parsha-explorer|parasha|shnayim|bible-coins|biblical-timelines|graetz|sefaria-memory)$/, 'tanakh'],
   [/^\/(zmanim-widget|3d-print-tools\/leshem-yichud|calendars)(\/|$)/, 'practice'],
@@ -91,7 +91,7 @@ const BRIGHT: Record<string, 2 | 3> = {
   '/produce': 2, '/israel': 3, '/kolnoa': 2, '/world-pulse': 3, '/zmanim': 3, '/siddur': 2, '/art': 2, '/3d': 3,
   '/micrography': 2, '/shas-art': 2, '/about': 3, '/projects': 2, '/newsletter': 3, '/writings': 2,
   '/services': 2, '/parenting': 2, '/kids': 2, '/ross': 2, '/videos': 2, '/books': 2, '/calendars': 2,
-  '/warmhouse': 2, '/literary-bible': 2, '/phds-on-the-parsha': 2,
+  '/warmhouse': 2, '/literary-bible': 2, '/phds-on-the-parsha': 2, '/thanksgiving': 2,
 };
 
 const OVERRIDES: Record<string, { title?: string; desc?: string }> = {
@@ -123,9 +123,11 @@ const OVERRIDES: Record<string, { title?: string; desc?: string }> = {
   '/rav-asher-weiss': { desc: 'Quote cards from his shiurim. Tap any card to hear the moment in his own voice.' },
   '/rav-asher-weiss-booklets': { desc: 'His weekly parasha booklets, collected.' },
   '/jewish-studies': { title: 'The Podcast of Jewish Ideas', desc: 'Every episode of the podcast.' },
+  '/thanksgiving': { title: 'Gratitude', desc: 'A Thanksgiving source sheet on hakarat ha-tov, with a short film, a printable PDF and a vertical short on the Hebrew root of thanks.' },
 };
 
 const KEYWORDS: Record<string, string> = {
+  '/thanksgiving': 'thanksgiving gratitude hakarat hatov todah modeh ani thank you source sheet film leah yehudah',
   '/aptonyms': 'serendipitous names nominative determinism name fits job',
   '/aptonyms/certificate': 'aptonym certificate certified linkedin credential nominative determinism name fits job',
   '/slop': 'slop kitchen gross disgusting food combos recipe generator ai food photography whatsapp',
